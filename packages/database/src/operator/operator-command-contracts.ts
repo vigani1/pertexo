@@ -7,7 +7,6 @@ export type GenericOperatorCommandResult = Readonly<{
 }>;
 
 export interface OperatorCommandDatabaseOptions {
-  readonly forbiddenRoles?: readonly string[];
   readonly lockTimeoutMs?: number;
   readonly statementTimeoutMs?: number;
 }

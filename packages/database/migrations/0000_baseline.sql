@@ -11171,25 +11171,25 @@ CREATE TABLE pertexo_internal.preview_retention_transition_capabilities (
     CONSTRAINT preview_retention_transition_capabilities_target_status_check CHECK (((target_status)::text = ANY ((ARRAY['deleting'::character varying, 'deleted'::character varying])::text[])))
 );
 
-GRANT USAGE ON SCHEMA app TO {{api_runtime_role}};
-GRANT USAGE ON SCHEMA app TO {{worker_runtime_role}};
-GRANT USAGE ON SCHEMA app TO {{dispatcher_role}};
+GRANT USAGE ON SCHEMA app TO {{app_role}};
+GRANT USAGE ON SCHEMA app TO {{app_role}};
 GRANT USAGE ON SCHEMA app TO {{maintenance_role}};
-GRANT USAGE ON SCHEMA app TO {{lifecycle_command_role}};
-GRANT USAGE ON SCHEMA app TO {{operator_role}};
+GRANT USAGE ON SCHEMA app TO {{maintenance_role}};
+GRANT USAGE ON SCHEMA app TO {{maintenance_role}};
+GRANT USAGE ON SCHEMA app TO {{maintenance_role}};
 
-GRANT USAGE ON SCHEMA pertexo_internal TO {{api_runtime_role}};
-GRANT USAGE ON SCHEMA pertexo_internal TO {{worker_runtime_role}};
-GRANT USAGE ON SCHEMA pertexo_internal TO {{dispatcher_role}};
+GRANT USAGE ON SCHEMA pertexo_internal TO {{app_role}};
+GRANT USAGE ON SCHEMA pertexo_internal TO {{app_role}};
 GRANT USAGE ON SCHEMA pertexo_internal TO {{maintenance_role}};
-GRANT USAGE ON SCHEMA pertexo_internal TO {{lifecycle_command_role}};
-GRANT USAGE ON SCHEMA pertexo_internal TO {{operator_role}};
+GRANT USAGE ON SCHEMA pertexo_internal TO {{maintenance_role}};
+GRANT USAGE ON SCHEMA pertexo_internal TO {{maintenance_role}};
+GRANT USAGE ON SCHEMA pertexo_internal TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.admit_workflow_organization_batch(p_key_hash text, p_body jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.admit_workflow_organization_batch(p_key_hash text, p_body jsonb) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.admit_workflow_organization_batch(p_key_hash text, p_body jsonb) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.apply_connection_health_observation(p_workspace uuid, p_observation uuid, p_mode text, p_outbox uuid, p_checksum text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.apply_connection_health_observation(p_workspace uuid, p_observation uuid, p_mode text, p_outbox uuid, p_checksum text) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.apply_connection_health_observation(p_workspace uuid, p_observation uuid, p_mode text, p_outbox uuid, p_checksum text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.apply_workflow_organization_item(p_operation text, p_workflow uuid, p_body jsonb) FROM PUBLIC;
 
@@ -11198,7 +11198,7 @@ REVOKE ALL ON FUNCTION app.apply_workspace_deletion_side_effects() FROM PUBLIC;
 REVOKE ALL ON FUNCTION app.apply_workspace_invitation_deletion_side_effects() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.arm_dispatcher_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.arm_dispatcher_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) TO {{dispatcher_role}};
+GRANT ALL ON FUNCTION app.arm_dispatcher_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.arm_workspace_control_projection() FROM PUBLIC;
 
@@ -11207,26 +11207,26 @@ REVOKE ALL ON FUNCTION app.artifact_capacity_purge_start() FROM PUBLIC;
 REVOKE ALL ON FUNCTION app.artifact_capacity_transition() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.assert_workflow_input_cases_enabled() FROM PUBLIC;
-GRANT ALL ON FUNCTION app.assert_workflow_input_cases_enabled() TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.assert_workflow_input_cases_enabled() TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.assert_workflow_organization_writes_enabled() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.audit_connection_secret_access(p_workspace uuid, p_connection uuid, p_secret uuid, p_actor text, p_request text, p_trace text, p_purpose text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.audit_connection_secret_access(p_workspace uuid, p_connection uuid, p_secret uuid, p_actor text, p_request text, p_trace text, p_purpose text) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.audit_connection_secret_access(p_workspace uuid, p_connection uuid, p_secret uuid, p_actor text, p_request text, p_trace text, p_purpose text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.authorize_workspace_lifecycle_append(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.authorize_workspace_lifecycle_append(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{lifecycle_command_role}};
+GRANT ALL ON FUNCTION app.authorize_workspace_lifecycle_append(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.authorize_workspace_purge_completion_append(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint, p_projected_sequence bigint, p_projected_hash character) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.authorize_workspace_purge_completion_append(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint, p_projected_sequence bigint, p_projected_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.bind_node_attempt_connection_dispatch(p_workspace uuid, p_attempt uuid, p_worker text, p_fence bigint, p_connection uuid, p_secret uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.bind_node_attempt_connection_dispatch(p_workspace uuid, p_attempt uuid, p_worker text, p_fence bigint, p_connection uuid, p_secret uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.bind_node_attempt_connection_dispatch(p_workspace uuid, p_attempt uuid, p_worker text, p_fence bigint, p_connection uuid, p_secret uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.block_incomplete_workspace_deletion() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.cancel_operator_run(uuid, uuid, uuid, character varying, character varying, boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.cancel_operator_run(uuid, uuid, uuid, character varying, character varying, boolean) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.cancel_operator_run(uuid, uuid, uuid, character varying, character varying, boolean) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.canonicalize_workspace_lifecycle_operation_time() FROM PUBLIC;
 
@@ -11236,16 +11236,16 @@ REVOKE ALL ON FUNCTION app.checkpoint_workspace_object_versions_page(p_job_id uu
 GRANT ALL ON FUNCTION app.checkpoint_workspace_object_versions_page(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint, p_deleted_count integer, p_completed boolean, p_projected_sequence bigint, p_projected_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.claim_authentication_mail(p_worker_id text, p_limit integer, p_lease_token uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.claim_authentication_mail(p_worker_id text, p_limit integer, p_lease_token uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.claim_authentication_mail(p_worker_id text, p_limit integer, p_lease_token uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.claim_due_node_run_wakeups(p_limit integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.claim_due_node_run_wakeups(p_limit integer) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.claim_due_node_run_wakeups(p_limit integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.claim_due_trigger_schedules(p_lease_owner character varying, p_limit integer, p_lease_seconds integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.claim_due_trigger_schedules(p_lease_owner character varying, p_limit integer, p_lease_seconds integer) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.claim_due_trigger_schedules(p_lease_owner character varying, p_limit integer, p_lease_seconds integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.claim_due_workflow_run_deadlines(p_limit integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.claim_due_workflow_run_deadlines(p_limit integer) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.claim_due_workflow_run_deadlines(p_limit integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.claim_retention_batches(p_lease_owner character varying, p_limit integer, p_lease_seconds integer) FROM PUBLIC;
 
@@ -11258,7 +11258,7 @@ GRANT ALL ON FUNCTION app.claim_retention_dry_run_batches(p_lease_owner characte
 REVOKE ALL ON FUNCTION app.claim_workflow_organization_command(p_operation text, p_target uuid, p_key_hash text, p_request jsonb) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.claim_workspace_lifecycle_operations(p_lease_owner character varying, p_limit integer, p_lease_interval interval) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.claim_workspace_lifecycle_operations(p_lease_owner character varying, p_limit integer, p_lease_interval interval) TO {{lifecycle_command_role}};
+GRANT ALL ON FUNCTION app.claim_workspace_lifecycle_operations(p_lease_owner character varying, p_limit integer, p_lease_interval interval) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.claim_workspace_purge_step(p_job_id uuid, p_projected_sequence bigint, p_projected_hash character, p_lease_owner character varying, p_lease_interval interval) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.claim_workspace_purge_step(p_job_id uuid, p_projected_sequence bigint, p_projected_hash character, p_lease_owner character varying, p_lease_interval interval) TO {{maintenance_role}};
@@ -11266,7 +11266,7 @@ GRANT ALL ON FUNCTION app.claim_workspace_purge_step(p_job_id uuid, p_projected_
 REVOKE ALL ON FUNCTION app.cleanup_connection_health_command() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.complete_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_result_run_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.complete_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_result_run_id uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.complete_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_result_run_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.complete_preview_artifact_cleanup(p_workspace_id uuid, p_artifact_id uuid, p_expected_control_sequence bigint, p_expected_control_hash character) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.complete_preview_artifact_cleanup(p_workspace_id uuid, p_artifact_id uuid, p_expected_control_sequence bigint, p_expected_control_hash character) TO {{maintenance_role}};
@@ -11277,45 +11277,45 @@ REVOKE ALL ON FUNCTION app.complete_run_artifact_retention(p_workspace_id uuid, 
 GRANT ALL ON FUNCTION app.complete_run_artifact_retention(p_workspace_id uuid, p_artifact_id uuid, p_expected_control_sequence bigint, p_expected_control_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.complete_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid, p_occurrence_id uuid, p_scheduled_at timestamp with time zone, p_disposition character varying, p_workflow_run_id uuid, p_next_fire_at timestamp with time zone) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.complete_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid, p_occurrence_id uuid, p_scheduled_at timestamp with time zone, p_disposition character varying, p_workflow_run_id uuid, p_next_fire_at timestamp with time zone) TO {{worker_runtime_role}};
-GRANT ALL ON FUNCTION app.complete_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid, p_occurrence_id uuid, p_scheduled_at timestamp with time zone, p_disposition character varying, p_workflow_run_id uuid, p_next_fire_at timestamp with time zone) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.complete_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid, p_occurrence_id uuid, p_scheduled_at timestamp with time zone, p_disposition character varying, p_workflow_run_id uuid, p_next_fire_at timestamp with time zone) TO {{app_role}};
+GRANT ALL ON FUNCTION app.complete_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid, p_occurrence_id uuid, p_scheduled_at timestamp with time zone, p_disposition character varying, p_workflow_run_id uuid, p_next_fire_at timestamp with time zone) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.complete_workflow_organization_command(p_operation text, p_target uuid, p_key_hash text, p_result jsonb) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.complete_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint, p_control_sequence bigint, p_control_record_hash character) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.connection_dispatch_fence_current(p_workspace_id uuid, p_connection_id uuid, p_expected_provider_key text, p_expected_auth_type text, p_secret_version_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.connection_dispatch_fence_current(p_workspace_id uuid, p_connection_id uuid, p_expected_provider_key text, p_expected_auth_type text, p_secret_version_id uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.connection_dispatch_fence_current(p_workspace_id uuid, p_connection_id uuid, p_expected_provider_key text, p_expected_auth_type text, p_secret_version_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.consume_auth_email_proof(p_digest bytea, p_next_id uuid, p_next_digest bytea, p_next_expires_at timestamp with time zone, p_mail_id uuid, p_mail_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.consume_auth_email_proof(p_digest bytea, p_next_id uuid, p_next_digest bytea, p_next_expires_at timestamp with time zone, p_mail_id uuid, p_mail_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.consume_auth_email_proof(p_digest bytea, p_next_id uuid, p_next_digest bytea, p_next_expires_at timestamp with time zone, p_mail_id uuid, p_mail_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.consume_webhook_ingress_limit(p_endpoint_key_hash character) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.consume_webhook_ingress_limit(p_endpoint_key_hash character) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.consume_webhook_ingress_limit(p_endpoint_key_hash character) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.create_workflow_duplicate_draft(p_destination uuid, p_workspace uuid, p_source uuid, p_actor uuid, p_name character varying, p_schema integer, p_graph jsonb, p_key_hash character, p_request_hash character, p_kind text, p_version uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.create_workflow_duplicate_draft(p_destination uuid, p_workspace uuid, p_source uuid, p_actor uuid, p_name character varying, p_schema integer, p_graph jsonb, p_key_hash character, p_request_hash character, p_kind text, p_version uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.create_workflow_duplicate_draft(p_destination uuid, p_workspace uuid, p_source uuid, p_actor uuid, p_name character varying, p_schema integer, p_graph jsonb, p_key_hash character, p_request_hash character, p_kind text, p_version uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.create_workflow_import_draft(p_destination uuid, p_workspace uuid, p_actor uuid, p_graph jsonb, p_key_hash character, p_request_hash character, p_command text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.create_workflow_import_draft(p_destination uuid, p_workspace uuid, p_actor uuid, p_graph jsonb, p_key_hash character, p_request_hash character, p_command text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.create_workflow_import_draft(p_destination uuid, p_workspace uuid, p_actor uuid, p_graph jsonb, p_key_hash character, p_request_hash character, p_command text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.create_workflow_with_draft(p_workflow_id uuid, p_workspace_id uuid, p_name character varying, p_actor_id uuid, p_schema_version integer, p_graph_json jsonb, p_key_hash character, p_request_hash character, p_request_id character varying, p_trace_id character varying) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.create_workflow_with_draft(p_workflow_id uuid, p_workspace_id uuid, p_name character varying, p_actor_id uuid, p_schema_version integer, p_graph_json jsonb, p_key_hash character, p_request_hash character, p_request_id character varying, p_trace_id character varying) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.create_workflow_with_draft(p_workflow_id uuid, p_workspace_id uuid, p_name character varying, p_actor_id uuid, p_schema_version integer, p_graph_json jsonb, p_key_hash character, p_request_hash character, p_request_id character varying, p_trace_id character varying) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.curated_https_endpoint_valid(p_value text) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.curated_template_inventory_matches(p_digest text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.curated_template_inventory_matches(p_digest text) TO {{api_runtime_role}};
-GRANT ALL ON FUNCTION app.curated_template_inventory_matches(p_digest text) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.curated_template_inventory_matches(p_digest text) TO {{app_role}};
+GRANT ALL ON FUNCTION app.curated_template_inventory_matches(p_digest text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.current_workflow_favorite_generation() FROM PUBLIC;
-GRANT ALL ON FUNCTION app.current_workflow_favorite_generation() TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.current_workflow_favorite_generation() TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.defer_run_artifact_retention(p_workspace_id uuid, p_artifact_id uuid, p_expected_control_sequence bigint, p_expected_control_hash character) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.defer_run_artifact_retention(p_workspace_id uuid, p_artifact_id uuid, p_expected_control_sequence bigint, p_expected_control_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.defer_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid, p_retry_seconds integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.defer_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid, p_retry_seconds integer) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.defer_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid, p_retry_seconds integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.enforce_connection_health_protocol() FROM PUBLIC;
 
@@ -11332,7 +11332,7 @@ REVOKE ALL ON FUNCTION app.enforce_workspace_legal_hold_ledger_links() FROM PUBL
 REVOKE ALL ON FUNCTION app.enforce_workspace_retention_control_initial_state() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.enqueue_authentication_mail(p_id uuid, p_purpose text, p_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.enqueue_authentication_mail(p_id uuid, p_purpose text, p_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.enqueue_authentication_mail(p_id uuid, p_purpose text, p_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.execute_operator_execution_command(p_command_id uuid, p_command_type character varying, p_workspace_id uuid, p_target_id uuid, p_expected_fence bigint, p_action character varying, p_evidence_kind character varying, p_evidence_ref jsonb, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) FROM PUBLIC;
 
@@ -11343,16 +11343,16 @@ REVOKE ALL ON FUNCTION app.execute_standard_retention_page(p_batch_id uuid, p_le
 GRANT ALL ON FUNCTION app.execute_standard_retention_page(p_batch_id uuid, p_lease_token uuid, p_lease_fence bigint, p_page_limit integer, p_expected_control_sequence bigint, p_expected_control_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.execute_workflow_favorite_command(p_workflow_id uuid, p_key_hash text, p_body jsonb, p_verified_generation uuid, p_issued_seconds bigint, p_expires_seconds bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.execute_workflow_favorite_command(p_workflow_id uuid, p_key_hash text, p_body jsonb, p_verified_generation uuid, p_issued_seconds bigint, p_expires_seconds bigint) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.execute_workflow_favorite_command(p_workflow_id uuid, p_key_hash text, p_body jsonb, p_verified_generation uuid, p_issued_seconds bigint, p_expires_seconds bigint) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.execute_workflow_folder_command(p_operation text, p_folder uuid, p_key_hash text, p_body jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.execute_workflow_folder_command(p_operation text, p_folder uuid, p_key_hash text, p_body jsonb) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.execute_workflow_folder_command(p_operation text, p_folder uuid, p_key_hash text, p_body jsonb) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.execute_workflow_folder_placement(p_workflow uuid, p_key_hash text, p_body jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.execute_workflow_folder_placement(p_workflow uuid, p_key_hash text, p_body jsonb) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.execute_workflow_folder_placement(p_workflow uuid, p_key_hash text, p_body jsonb) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.execute_workflow_organization_batch_item(p_parent_key_hash text, p_body jsonb, p_workflow uuid, p_item_key_hash text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.execute_workflow_organization_batch_item(p_parent_key_hash text, p_body jsonb, p_workflow uuid, p_item_key_hash text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.execute_workflow_organization_batch_item(p_parent_key_hash text, p_body jsonb, p_workflow uuid, p_item_key_hash text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.execute_workflow_run_input_retention_dry_run_page(p_batch_id uuid, p_lease_token uuid, p_lease_fence bigint, p_page_limit integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.execute_workflow_run_input_retention_dry_run_page(p_batch_id uuid, p_lease_token uuid, p_lease_fence bigint, p_page_limit integer) TO {{maintenance_role}};
@@ -11361,10 +11361,10 @@ REVOKE ALL ON FUNCTION app.execute_workflow_run_input_retention_page(p_batch_id 
 GRANT ALL ON FUNCTION app.execute_workflow_run_input_retention_page(p_batch_id uuid, p_lease_token uuid, p_lease_fence bigint, p_page_limit integer, p_expected_control_sequence bigint, p_expected_control_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.execute_workflow_tag_assignment_command(p_operation text, p_workflow_id uuid, p_key_hash text, p_body jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.execute_workflow_tag_assignment_command(p_operation text, p_workflow_id uuid, p_key_hash text, p_body jsonb) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.execute_workflow_tag_assignment_command(p_operation text, p_workflow_id uuid, p_key_hash text, p_body jsonb) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.execute_workflow_tag_command(p_operation text, p_tag_id uuid, p_key_hash text, p_body jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.execute_workflow_tag_command(p_operation text, p_tag_id uuid, p_key_hash text, p_body jsonb) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.execute_workflow_tag_command(p_operation text, p_tag_id uuid, p_key_hash text, p_body jsonb) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.execute_workspace_tenant_rows_page(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint, p_page_size integer, p_projected_sequence bigint, p_projected_hash character) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.execute_workspace_tenant_rows_page(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint, p_page_size integer, p_projected_sequence bigint, p_projected_hash character) TO {{maintenance_role}};
@@ -11376,16 +11376,16 @@ REVOKE ALL ON FUNCTION app.execute_workspace_tenant_rows_page_before_input_cases
 REVOKE ALL ON FUNCTION app.execute_workspace_tenant_rows_page_before_organization(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint, p_page_size integer, p_projected_sequence bigint, p_projected_hash character) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.expire_workspace_inbox_threads(p_limit integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.expire_workspace_inbox_threads(p_limit integer) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.expire_workspace_inbox_threads(p_limit integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.fail_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_safe_error_code character varying) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.fail_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_safe_error_code character varying) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.fail_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_safe_error_code character varying) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.fail_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.fail_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.fail_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.fail_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint, p_error_code character varying) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.fail_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint, p_error_code character varying) TO {{lifecycle_command_role}};
+GRANT ALL ON FUNCTION app.fail_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint, p_error_code character varying) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.find_due_preview_cleanup(p_limit integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.find_due_preview_cleanup(p_limit integer) TO {{maintenance_role}};
@@ -11406,13 +11406,13 @@ REVOKE ALL ON FUNCTION app.finish_preview_cleanup(p_workspace_id uuid, p_preview
 GRANT ALL ON FUNCTION app.finish_preview_cleanup(p_workspace_id uuid, p_preview_run_id uuid, p_expected_control_sequence bigint, p_expected_control_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.fold_workflow_trigger_outcomes(p_limit integer, p_enforce boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.fold_workflow_trigger_outcomes(p_limit integer, p_enforce boolean) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.fold_workflow_trigger_outcomes(p_limit integer, p_enforce boolean) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.fold_workspace_inbox_events(p_limit integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.fold_workspace_inbox_events(p_limit integer) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.fold_workspace_inbox_events(p_limit integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.get_operator_command(p_command_id uuid, p_workspace_id uuid, p_actor_ref character varying, p_reason character varying) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.get_operator_command(p_command_id uuid, p_workspace_id uuid, p_actor_ref character varying, p_reason character varying) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.get_operator_command(p_command_id uuid, p_workspace_id uuid, p_actor_ref character varying, p_reason character varying) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.guard_curated_template_descriptor() FROM PUBLIC;
 
@@ -11421,33 +11421,33 @@ REVOKE ALL ON FUNCTION app.guard_preview_artifact_destruction() FROM PUBLIC;
 REVOKE ALL ON FUNCTION app.guard_workflow_input_case_write() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.inspect_auth_email_proof(p_digest bytea) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.inspect_auth_email_proof(p_digest bytea) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.inspect_auth_email_proof(p_digest bytea) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.invalidate_workflow_favorite_membership() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.issue_auth_email_proof(p_id uuid, p_digest bytea, p_user_id uuid, p_purpose text, p_email text, p_new_email text, p_expires_at timestamp with time zone, p_mail_id uuid, p_mail_purpose text, p_mail_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.issue_auth_email_proof(p_id uuid, p_digest bytea, p_user_id uuid, p_purpose text, p_email text, p_new_email text, p_expires_at timestamp with time zone, p_mail_id uuid, p_mail_purpose text, p_mail_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.issue_auth_email_proof(p_id uuid, p_digest bytea, p_user_id uuid, p_purpose text, p_email text, p_new_email text, p_expires_at timestamp with time zone, p_mail_id uuid, p_mail_purpose text, p_mail_expires_at timestamp with time zone, p_ciphertext text, p_nonce text, p_tag text, p_key_version text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.jsonb_references_artifact(p_value jsonb, p_artifact_id uuid) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.lock_curated_template_descriptor(p_id text, p_version integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_curated_template_descriptor(p_id text, p_version integer) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_curated_template_descriptor(p_id text, p_version integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_execution_artifact_references() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.lock_failure_notification_dispatch_destination(p_workspace_id uuid, p_intent_id uuid, p_attempt_number integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_failure_notification_dispatch_destination(p_workspace_id uuid, p_intent_id uuid, p_attempt_number integer) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_failure_notification_dispatch_destination(p_workspace_id uuid, p_intent_id uuid, p_attempt_number integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_manual_workflow_run_start(p_actor uuid, p_workflow uuid, p_scope text, p_key_hash text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_manual_workflow_run_start(p_actor uuid, p_workflow uuid, p_scope text, p_key_hash text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_manual_workflow_run_start(p_actor uuid, p_workflow uuid, p_scope text, p_key_hash text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_notification_connection(p_workspace uuid, p_connection uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_notification_connection(p_workspace uuid, p_connection uuid) TO {{api_runtime_role}};
-GRANT ALL ON FUNCTION app.lock_notification_connection(p_workspace uuid, p_connection uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_notification_connection(p_workspace uuid, p_connection uuid) TO {{app_role}};
+GRANT ALL ON FUNCTION app.lock_notification_connection(p_workspace uuid, p_connection uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_workflow_failure_notification_policy(p_workspace_id uuid, p_workflow_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_workflow_failure_notification_policy(p_workspace_id uuid, p_workflow_id uuid) TO {{api_runtime_role}};
-GRANT ALL ON FUNCTION app.lock_workflow_failure_notification_policy(p_workspace_id uuid, p_workflow_id uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_workflow_failure_notification_policy(p_workspace_id uuid, p_workflow_id uuid) TO {{app_role}};
+GRANT ALL ON FUNCTION app.lock_workflow_failure_notification_policy(p_workspace_id uuid, p_workflow_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_workflow_favorite_generation(p_update boolean) FROM PUBLIC;
 
@@ -11456,26 +11456,26 @@ REVOKE ALL ON FUNCTION app.lock_workflow_organization_authority(p_roles text[]) 
 REVOKE ALL ON FUNCTION app.lock_workflow_organization_coordination(p_exclusive boolean) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.lock_workflow_organization_for_lifecycle() FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_workflow_organization_for_lifecycle() TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_workflow_organization_for_lifecycle() TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_workflow_portable_version(p_workspace uuid, p_workflow uuid, p_version uuid, p_actor uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_workflow_portable_version(p_workspace uuid, p_workflow uuid, p_version uuid, p_actor uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_workflow_portable_version(p_workspace uuid, p_workflow uuid, p_version uuid, p_actor uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_workflow_run_replay_source(p_workspace_id uuid, p_source_run_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_workflow_run_replay_source(p_workspace_id uuid, p_source_run_id uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_workflow_run_replay_source(p_workspace_id uuid, p_source_run_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_workflow_run_replay_version(p_workspace_id uuid, p_workflow_id uuid, p_workflow_version_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_workflow_run_replay_version(p_workspace_id uuid, p_workflow_id uuid, p_workflow_version_id uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_workflow_run_replay_version(p_workspace_id uuid, p_workflow_id uuid, p_workflow_version_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.lock_workspace_control_ledger(p_workspace_id uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.lock_workspace_control_ledger(p_workspace_id uuid) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.lock_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{lifecycle_command_role}};
+GRANT ALL ON FUNCTION app.lock_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.lock_workspace_run_admission(p_workspace_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.lock_workspace_run_admission(p_workspace_id uuid) TO {{api_runtime_role}};
-GRANT ALL ON FUNCTION app.lock_workspace_run_admission(p_workspace_id uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.lock_workspace_run_admission(p_workspace_id uuid) TO {{app_role}};
+GRANT ALL ON FUNCTION app.lock_workspace_run_admission(p_workspace_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.minimize_terminal_workspace_invitation_pii(p_limit integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.minimize_terminal_workspace_invitation_pii(p_limit integer) TO {{maintenance_role}};
@@ -11489,7 +11489,7 @@ REVOKE ALL ON FUNCTION app.prepare_run_artifact_retention(p_workspace_id uuid, p
 GRANT ALL ON FUNCTION app.prepare_run_artifact_retention(p_workspace_id uuid, p_artifact_id uuid, p_expected_control_sequence bigint, p_expected_control_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.prepare_workflow_favorite_command(p_workflow_id uuid, p_key_hash text, p_body jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.prepare_workflow_favorite_command(p_workflow_id uuid, p_key_hash text, p_body jsonb) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.prepare_workflow_favorite_command(p_workflow_id uuid, p_key_hash text, p_body jsonb) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.prepare_workspace_purge_completion(p_job_id uuid, p_projected_sequence bigint, p_projected_hash character, p_lease_owner character varying, p_lease_interval interval) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.prepare_workspace_purge_completion(p_job_id uuid, p_projected_sequence bigint, p_projected_hash character, p_lease_owner character varying, p_lease_interval interval) TO {{maintenance_role}};
@@ -11503,7 +11503,7 @@ REVOKE ALL ON FUNCTION app.process_operator_maintenance_rerun() FROM PUBLIC;
 GRANT ALL ON FUNCTION app.process_operator_maintenance_rerun() TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.project_and_complete_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint, p_sequence bigint, p_previous_hash character, p_record_hash character) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.project_and_complete_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint, p_sequence bigint, p_previous_hash character, p_record_hash character) TO {{lifecycle_command_role}};
+GRANT ALL ON FUNCTION app.project_and_complete_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint, p_sequence bigint, p_previous_hash character, p_record_hash character) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.project_workspace_deletion(p_workspace_id uuid, p_sequence bigint, p_command_id uuid, p_command_type character varying, p_subject_id uuid, p_previous_hash character, p_record_hash character, p_actor_ref character varying, p_legal_authority character varying, p_reason character varying, p_occurred_at timestamp with time zone, p_recovery_interval interval) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.project_workspace_deletion(p_workspace_id uuid, p_sequence bigint, p_command_id uuid, p_command_type character varying, p_subject_id uuid, p_previous_hash character, p_record_hash character, p_actor_ref character varying, p_legal_authority character varying, p_reason character varying, p_occurred_at timestamp with time zone, p_recovery_interval interval) TO {{maintenance_role}};
@@ -11537,10 +11537,10 @@ REVOKE ALL ON FUNCTION app.prune_manual_start_rejections(p_limit integer) FROM P
 GRANT ALL ON FUNCTION app.prune_manual_start_rejections(p_limit integer) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.read_workflow_favorite_generation() FROM PUBLIC;
-GRANT ALL ON FUNCTION app.read_workflow_favorite_generation() TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.read_workflow_favorite_generation() TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.read_workspace_lifecycle_operation(p_workspace_id uuid, p_operation_id uuid, p_actor_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.read_workspace_lifecycle_operation(p_workspace_id uuid, p_operation_id uuid, p_actor_user_id uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.read_workspace_lifecycle_operation(p_workspace_id uuid, p_operation_id uuid, p_actor_user_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.reap_transient_data(p_limit integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.reap_transient_data(p_limit integer) TO {{maintenance_role}};
@@ -11555,37 +11555,37 @@ REVOKE ALL ON FUNCTION app.reap_workspace_invitation_transients(p_limit integer)
 GRANT ALL ON FUNCTION app.reap_workspace_invitation_transients(p_limit integer) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.rebind_workflow_run_active_admission(p_workspace_id uuid, p_workflow_run_id uuid, p_old_outbox_event_id uuid, p_new_outbox_event_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.rebind_workflow_run_active_admission(p_workspace_id uuid, p_workflow_run_id uuid, p_old_outbox_event_id uuid, p_new_outbox_event_id uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.rebind_workflow_run_active_admission(p_workspace_id uuid, p_workflow_run_id uuid, p_old_outbox_event_id uuid, p_new_outbox_event_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.reconcile_operator_attempt(p_command_id uuid, p_workspace_id uuid, p_attempt_id uuid, p_expected_fence bigint, p_action character varying, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.reconcile_operator_attempt(p_command_id uuid, p_workspace_id uuid, p_attempt_id uuid, p_expected_fence bigint, p_action character varying, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.reconcile_operator_attempt(p_command_id uuid, p_workspace_id uuid, p_attempt_id uuid, p_expected_fence bigint, p_action character varying, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.reconcile_workspace_execution_admission(p_workspace_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.reconcile_workspace_execution_admission(p_workspace_id uuid) TO {{api_runtime_role}};
-GRANT ALL ON FUNCTION app.reconcile_workspace_execution_admission(p_workspace_id uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.reconcile_workspace_execution_admission(p_workspace_id uuid) TO {{app_role}};
+GRANT ALL ON FUNCTION app.reconcile_workspace_execution_admission(p_workspace_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.record_identity_method_audit_fact(p_user_id uuid, p_event_type text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.record_identity_method_audit_fact(p_user_id uuid, p_event_type text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.record_identity_method_audit_fact(p_user_id uuid, p_event_type text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.record_identity_profile_audit_fact(p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.record_identity_profile_audit_fact(p_user_id uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.record_identity_profile_audit_fact(p_user_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.record_node_attempt_connection_health(p_workspace uuid, p_attempt uuid, p_worker text, p_fence bigint, p_kind text, p_reason text, p_mode text, p_observation uuid, p_outbox uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.record_node_attempt_connection_health(p_workspace uuid, p_attempt uuid, p_worker text, p_fence bigint, p_kind text, p_reason text, p_mode text, p_observation uuid, p_outbox uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.record_node_attempt_connection_health(p_workspace uuid, p_attempt uuid, p_worker text, p_fence bigint, p_kind text, p_reason text, p_mode text, p_observation uuid, p_outbox uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.record_operator_unknown_outcome_evidence(uuid, uuid, uuid, character varying, jsonb, character varying, character varying) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.record_operator_unknown_outcome_evidence(uuid, uuid, uuid, character varying, jsonb, character varying, character varying) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.record_operator_unknown_outcome_evidence(uuid, uuid, uuid, character varying, jsonb, character varying, character varying) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.record_workflow_organization_audit(p_action text, p_target uuid, p_metadata jsonb) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.recover_due_run_failure_notifications(p_limit integer, p_max_attempts integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.recover_due_run_failure_notifications(p_limit integer, p_max_attempts integer) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.recover_due_run_failure_notifications(p_limit integer, p_max_attempts integer) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.recover_due_workflow_run_active_admissions(p_limit integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.recover_due_workflow_run_active_admissions(p_limit integer) TO {{dispatcher_role}};
+GRANT ALL ON FUNCTION app.recover_due_workflow_run_active_admissions(p_limit integer) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.redispatch_failed_outbox_event(p_command_id uuid, p_workspace_id uuid, p_outbox_event_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.redispatch_failed_outbox_event(p_command_id uuid, p_workspace_id uuid, p_outbox_event_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.redispatch_failed_outbox_event(p_command_id uuid, p_workspace_id uuid, p_outbox_event_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.refresh_workflow_run_admission_counters() FROM PUBLIC;
 
@@ -11616,19 +11616,19 @@ REVOKE ALL ON FUNCTION app.reject_workspace_lifecycle_operation_direct_mutation(
 REVOKE ALL ON FUNCTION app.reject_workspace_purge_direct_mutation() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.release_dispatcher_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.release_dispatcher_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) TO {{dispatcher_role}};
+GRANT ALL ON FUNCTION app.release_dispatcher_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.release_retention_batch(p_batch_id uuid, p_lease_token uuid, p_lease_fence bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.release_retention_batch(p_batch_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.release_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.release_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.release_trigger_schedule_claim(p_trigger_id uuid, p_lease_token uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.release_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.release_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.release_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.release_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.release_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{lifecycle_command_role}};
+GRANT ALL ON FUNCTION app.release_workspace_lifecycle_operation(p_operation_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.release_workspace_purge_completion(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.release_workspace_purge_completion(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{maintenance_role}};
@@ -11640,29 +11640,29 @@ REVOKE ALL ON FUNCTION app.release_workspace_purge_step(p_job_id uuid, p_lease_t
 GRANT ALL ON FUNCTION app.release_workspace_purge_step(p_job_id uuid, p_lease_token uuid, p_lease_fence bigint) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.request_operator_maintenance_rerun(p_command_id uuid, p_workspace_id uuid, p_target_type character varying, p_target_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.request_operator_maintenance_rerun(p_command_id uuid, p_workspace_id uuid, p_target_type character varying, p_target_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.request_operator_maintenance_rerun(p_command_id uuid, p_workspace_id uuid, p_target_type character varying, p_target_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.request_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_source_run_id uuid, p_workflow_version_id uuid, p_run_input jsonb, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.request_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_source_run_id uuid, p_workflow_version_id uuid, p_run_input jsonb, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.request_operator_run_replay(p_command_id uuid, p_workspace_id uuid, p_source_run_id uuid, p_workflow_version_id uuid, p_run_input jsonb, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.request_workspace_lifecycle_operation(p_id uuid, p_workspace_id uuid, p_idempotency_key_hash character, p_command_type character varying, p_actor_user_id uuid, p_reason character varying, p_request_hash character) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.request_workspace_lifecycle_operation(p_id uuid, p_workspace_id uuid, p_idempotency_key_hash character, p_command_type character varying, p_actor_user_id uuid, p_reason character varying, p_request_hash character) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.request_workspace_lifecycle_operation(p_id uuid, p_workspace_id uuid, p_idempotency_key_hash character, p_command_type character varying, p_actor_user_id uuid, p_reason character varying, p_request_hash character) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.require_active_workspace_integration() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.require_new_failure_notification_intent_pin() FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.reserve_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid, p_workflow_run_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.reserve_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid, p_workflow_run_id uuid) TO {{dispatcher_role}};
+GRANT ALL ON FUNCTION app.reserve_workflow_run_active_admission(p_workspace_id uuid, p_outbox_event_id uuid, p_workflow_run_id uuid) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.resolve_public_webhook_endpoint(p_endpoint_key_hash character) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.resolve_public_webhook_endpoint(p_endpoint_key_hash character) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.resolve_public_webhook_endpoint(p_endpoint_key_hash character) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.resume_operator_due_work(uuid, uuid, uuid, character varying, character varying, boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.resume_operator_due_work(uuid, uuid, uuid, character varying, character varying, boolean) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.resume_operator_due_work(uuid, uuid, uuid, character varying, character varying, boolean) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.retry_operator_trigger_reconciliation(p_command_id uuid, p_workspace_id uuid, p_workflow_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.retry_operator_trigger_reconciliation(p_command_id uuid, p_workspace_id uuid, p_workflow_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{operator_role}};
+GRANT ALL ON FUNCTION app.retry_operator_trigger_reconciliation(p_command_id uuid, p_workspace_id uuid, p_workflow_id uuid, p_actor_ref character varying, p_reason character varying, p_dry_run boolean) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.revoke_auth_sessions_for_email_change() FROM PUBLIC;
 
@@ -11673,22 +11673,22 @@ REVOKE ALL ON FUNCTION app.revoke_auth_sessions_for_workspace_unavailability() F
 REVOKE ALL ON FUNCTION app.scan_workspace_invitation_replacement_claims(p_scan_kind character varying, p_scan_id uuid, p_workspace_id uuid, p_limit integer) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.schedule_claim_is_eligible(p_trigger_id uuid, p_lease_token uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.schedule_claim_is_eligible(p_trigger_id uuid, p_lease_token uuid) TO {{worker_runtime_role}};
-GRANT ALL ON FUNCTION app.schedule_claim_is_eligible(p_trigger_id uuid, p_lease_token uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.schedule_claim_is_eligible(p_trigger_id uuid, p_lease_token uuid) TO {{app_role}};
+GRANT ALL ON FUNCTION app.schedule_claim_is_eligible(p_trigger_id uuid, p_lease_token uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid) TO {{worker_runtime_role}};
-GRANT ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid) TO {{app_role}};
+GRANT ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid, p_scheduled_at timestamp with time zone) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid, p_scheduled_at timestamp with time zone) TO {{api_runtime_role}};
-GRANT ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid, p_scheduled_at timestamp with time zone) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid, p_scheduled_at timestamp with time zone) TO {{app_role}};
+GRANT ALL ON FUNCTION app.schedule_claim_workflow_paused(p_trigger_id uuid, p_lease_token uuid, p_scheduled_at timestamp with time zone) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.schedule_workflow_run_input_retention(p_limit integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.schedule_workflow_run_input_retention(p_limit integer) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.settle_authentication_mail(p_id uuid, p_lease_token uuid, p_lease_generation bigint, p_outcome text, p_provider_reference text, p_failure_code text, p_retry_at timestamp with time zone) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.settle_authentication_mail(p_id uuid, p_lease_token uuid, p_lease_generation bigint, p_outcome text, p_provider_reference text, p_failure_code text, p_retry_at timestamp with time zone) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.settle_authentication_mail(p_id uuid, p_lease_token uuid, p_lease_generation bigint, p_outcome text, p_provider_reference text, p_failure_code text, p_retry_at timestamp with time zone) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.standard_retention_dry_run_stage_keys(p_workspace_id uuid, p_retention_kind character varying, p_retention_stage character varying, p_cutoff_at timestamp with time zone, p_cursor jsonb, p_upper jsonb, p_descending boolean, p_limit integer) FROM PUBLIC;
 
@@ -11700,12 +11700,12 @@ REVOKE ALL ON FUNCTION app.validate_workflow_run_failure_notification_pin() FROM
 REVOKE ALL ON FUNCTION app.verify_curated_template_origin(p_manifest jsonb, p_origin jsonb, p_digest text) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.workflow_auto_pause_control(p_workspace uuid, p_actor uuid, p_workflow uuid, p_operation text, p_request jsonb, p_key_hash text, p_request_hash text, p_request_id text, p_trace_id text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.workflow_auto_pause_control(p_workspace uuid, p_actor uuid, p_workflow uuid, p_operation text, p_request jsonb, p_key_hash text, p_request_hash text, p_request_id text, p_trace_id text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.workflow_auto_pause_control(p_workspace uuid, p_actor uuid, p_workflow uuid, p_operation text, p_request jsonb, p_key_hash text, p_request_hash text, p_request_id text, p_trace_id text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.workflow_concurrency_admissible(p_workspace uuid, p_run uuid, p_grant boolean) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.workflow_concurrency_control(p_workspace uuid, p_actor uuid, p_workflow uuid, p_operation text, p_request jsonb, p_key_hash text, p_request_hash text, p_request_id text, p_trace_id text) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.workflow_concurrency_control(p_workspace uuid, p_actor uuid, p_workflow uuid, p_operation text, p_request jsonb, p_key_hash text, p_request_hash text, p_request_id text, p_trace_id text) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.workflow_concurrency_control(p_workspace uuid, p_actor uuid, p_workflow uuid, p_operation text, p_request jsonb, p_key_hash text, p_request_hash text, p_request_id text, p_trace_id text) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.workflow_favorite_command_body(p_body jsonb) FROM PUBLIC;
 
@@ -11720,712 +11720,712 @@ REVOKE ALL ON FUNCTION app.workflow_organization_revision(p_value jsonb) FROM PU
 REVOKE ALL ON FUNCTION app.workflow_organization_uuid(p_value jsonb, p_nullable boolean) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.workflow_run_active_admission_eligible(p_workspace_id uuid, p_outbox_event_id uuid, p_workflow_run_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.workflow_run_active_admission_eligible(p_workspace_id uuid, p_outbox_event_id uuid, p_workflow_run_id uuid) TO {{dispatcher_role}};
+GRANT ALL ON FUNCTION app.workflow_run_active_admission_eligible(p_workspace_id uuid, p_outbox_event_id uuid, p_workflow_run_id uuid) TO {{maintenance_role}};
 
 REVOKE ALL ON FUNCTION app.workflow_run_active_capacity_available(p_workspace_id uuid, p_entitlement_version integer, p_workflow_run_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.workflow_run_active_capacity_available(p_workspace_id uuid, p_entitlement_version integer, p_workflow_run_id uuid) TO {{worker_runtime_role}};
+GRANT ALL ON FUNCTION app.workflow_run_active_capacity_available(p_workspace_id uuid, p_entitlement_version integer, p_workflow_run_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.workflow_run_admission_blockers(p_workspace uuid, p_run uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.workflow_run_admission_blockers(p_workspace uuid, p_run uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.workflow_run_admission_blockers(p_workspace uuid, p_run uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.workspace_inbox_recipient_eligible(p_workspace_id uuid, p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.workspace_inbox_recipient_eligible(p_workspace_id uuid, p_user_id uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.workspace_inbox_recipient_eligible(p_workspace_id uuid, p_user_id uuid) TO {{app_role}};
 
 REVOKE ALL ON FUNCTION app.workspace_invitation_replacement_claim_is_reapable(p_prior_workspace_id uuid, p_prior_intent_id uuid, p_prior_binding_digest character) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.workspace_purge_immutable_delete_is_armed(p_workspace_id uuid) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION app.workspace_reserved_active_slot_count(p_workspace_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.workspace_reserved_active_slot_count(p_workspace_id uuid) TO {{api_runtime_role}};
+GRANT ALL ON FUNCTION app.workspace_reserved_active_slot_count(p_workspace_id uuid) TO {{app_role}};
 
-GRANT SELECT ON TABLE app.artifact_links TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.artifact_links TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.artifact_links TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.artifact_links TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.artifacts TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.artifacts TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.artifacts TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.artifacts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.artifacts TO {{api_runtime_role}};
-GRANT UPDATE(status) ON TABLE app.artifacts TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.artifacts TO {{app_role}};
+GRANT UPDATE(status) ON TABLE app.artifacts TO {{app_role}};
 
-GRANT UPDATE(expires_at) ON TABLE app.artifacts TO {{api_runtime_role}};
-GRANT UPDATE(expires_at) ON TABLE app.artifacts TO {{worker_runtime_role}};
+GRANT UPDATE(expires_at) ON TABLE app.artifacts TO {{app_role}};
+GRANT UPDATE(expires_at) ON TABLE app.artifacts TO {{app_role}};
 
-GRANT UPDATE(finalized_at) ON TABLE app.artifacts TO {{api_runtime_role}};
-GRANT UPDATE(finalized_at) ON TABLE app.artifacts TO {{worker_runtime_role}};
+GRANT UPDATE(finalized_at) ON TABLE app.artifacts TO {{app_role}};
+GRANT UPDATE(finalized_at) ON TABLE app.artifacts TO {{app_role}};
 
-GRANT UPDATE(deleted_at) ON TABLE app.artifacts TO {{api_runtime_role}};
-GRANT UPDATE(deleted_at) ON TABLE app.artifacts TO {{worker_runtime_role}};
+GRANT UPDATE(deleted_at) ON TABLE app.artifacts TO {{app_role}};
+GRANT UPDATE(deleted_at) ON TABLE app.artifacts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.artifacts TO {{api_runtime_role}};
-GRANT UPDATE(updated_at) ON TABLE app.artifacts TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.artifacts TO {{app_role}};
+GRANT UPDATE(updated_at) ON TABLE app.artifacts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.audit_events TO {{api_runtime_role}};
-GRANT INSERT ON TABLE app.audit_events TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.audit_events TO {{app_role}};
+GRANT INSERT ON TABLE app.audit_events TO {{app_role}};
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.auth_accounts TO {{api_runtime_role}};
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.auth_accounts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.auth_identities TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.auth_identities TO {{app_role}};
 
-GRANT UPDATE(profile_metadata) ON TABLE app.auth_identities TO {{api_runtime_role}};
+GRANT UPDATE(profile_metadata) ON TABLE app.auth_identities TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.auth_identities TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.auth_identities TO {{app_role}};
 
-GRANT UPDATE(native_method_verified_at) ON TABLE app.auth_identities TO {{api_runtime_role}};
+GRANT UPDATE(native_method_verified_at) ON TABLE app.auth_identities TO {{app_role}};
 
-GRANT SELECT,INSERT,UPDATE ON TABLE app.auth_legacy_method_migration_attempts TO {{api_runtime_role}};
+GRANT SELECT,INSERT,UPDATE ON TABLE app.auth_legacy_method_migration_attempts TO {{app_role}};
 
-GRANT SELECT,INSERT,UPDATE ON TABLE app.auth_method_link_attempts TO {{api_runtime_role}};
+GRANT SELECT,INSERT,UPDATE ON TABLE app.auth_method_link_attempts TO {{app_role}};
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.auth_sessions TO {{api_runtime_role}};
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.auth_sessions TO {{app_role}};
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.auth_verifications TO {{api_runtime_role}};
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.auth_verifications TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.connection_events TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.connection_events TO {{app_role}};
 
-GRANT SELECT ON TABLE app.connection_health_observations TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.connection_health_observations TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.connection_secret_versions TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.connection_secret_versions TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.connection_secret_versions TO {{app_role}};
+GRANT SELECT ON TABLE app.connection_secret_versions TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.connections TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.connections TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.connections TO {{app_role}};
+GRANT SELECT ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(current_secret_version_id) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(current_secret_version_id) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(last_tested_at) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(last_tested_at) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(last_healthy_at) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(last_healthy_at) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(last_error_code) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(last_error_code) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(health_revision) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(health_revision) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(last_run_observed_at) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(last_run_observed_at) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(last_health_transition_at) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(last_health_transition_at) ON TABLE app.connections TO {{app_role}};
 
-GRANT UPDATE(last_health_transition_source) ON TABLE app.connections TO {{api_runtime_role}};
+GRANT UPDATE(last_health_transition_source) ON TABLE app.connections TO {{app_role}};
 
-GRANT SELECT ON TABLE app.curated_template_descriptors TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.curated_template_descriptors TO {{app_role}};
 
-GRANT SELECT ON TABLE app.curated_template_rollout TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.curated_template_rollout TO {{app_role}};
 
-GRANT UPDATE(singleton) ON TABLE app.curated_template_rollout TO {{api_runtime_role}};
+GRANT UPDATE(singleton) ON TABLE app.curated_template_rollout TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.failure_notification_destination_versions TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.failure_notification_destination_versions TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.failure_notification_destination_versions TO {{app_role}};
+GRANT SELECT ON TABLE app.failure_notification_destination_versions TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.failure_notification_destinations TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.failure_notification_destinations TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.failure_notification_destinations TO {{app_role}};
+GRANT SELECT ON TABLE app.failure_notification_destinations TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.failure_notification_destinations TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.failure_notification_destinations TO {{app_role}};
 
-GRANT UPDATE(current_config_version) ON TABLE app.failure_notification_destinations TO {{api_runtime_role}};
+GRANT UPDATE(current_config_version) ON TABLE app.failure_notification_destinations TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.failure_notification_destinations TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.failure_notification_destinations TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.idempotency_records TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.idempotency_records TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.idempotency_records TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.idempotency_records TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.idempotency_records TO {{api_runtime_role}};
-GRANT UPDATE(status) ON TABLE app.idempotency_records TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.idempotency_records TO {{app_role}};
+GRANT UPDATE(status) ON TABLE app.idempotency_records TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.idempotency_records TO {{api_runtime_role}};
-GRANT UPDATE(result_ref) ON TABLE app.idempotency_records TO {{worker_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.idempotency_records TO {{app_role}};
+GRANT UPDATE(result_ref) ON TABLE app.idempotency_records TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.idempotency_records TO {{api_runtime_role}};
-GRANT UPDATE(updated_at) ON TABLE app.idempotency_records TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.idempotency_records TO {{app_role}};
+GRANT UPDATE(updated_at) ON TABLE app.idempotency_records TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.inbox_receipts TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.inbox_receipts TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.inbox_receipts TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.inbox_receipts TO {{app_role}};
 
-GRANT UPDATE(completed_at) ON TABLE app.inbox_receipts TO {{api_runtime_role}};
-GRANT UPDATE(completed_at) ON TABLE app.inbox_receipts TO {{worker_runtime_role}};
+GRANT UPDATE(completed_at) ON TABLE app.inbox_receipts TO {{app_role}};
+GRANT UPDATE(completed_at) ON TABLE app.inbox_receipts TO {{app_role}};
 
-GRANT SELECT ON TABLE app.node_attempt_connection_dispatches TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.node_attempt_connection_dispatches TO {{app_role}};
 
-GRANT SELECT ON TABLE app.node_attempts TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.node_attempts TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(lease_owner) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(lease_owner) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(lease_expires_at) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(lease_expires_at) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(fence_token) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(fence_token) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(dispatch_marked_at) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(dispatch_marked_at) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(output_ref) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(output_ref) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(safe_error_code) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(safe_error_code) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(error_summary) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(error_summary) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(reconciliation_ref) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(reconciliation_ref) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(started_at) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(started_at) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(completed_at) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(completed_at) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(executor_failure_kind) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(executor_failure_kind) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(executor_error_kind) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(executor_error_kind) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(executor_possibly_dispatched) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(executor_possibly_dispatched) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT UPDATE(retry_decision) ON TABLE app.node_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(retry_decision) ON TABLE app.node_attempts TO {{app_role}};
 
-GRANT SELECT ON TABLE app.node_runs TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.node_runs TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(input_ref) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(input_ref) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(output_ref) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(output_ref) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(current_attempt_id) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(current_attempt_id) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(current_attempt_number) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(current_attempt_number) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(resume_at) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(resume_at) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(retry_due_at) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(retry_due_at) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(safe_error_code) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(safe_error_code) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(started_at) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(started_at) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(completed_at) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(completed_at) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(due_wakeup_at) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(due_wakeup_at) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(control_kind) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(control_kind) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(wait_kind) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(wait_kind) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT UPDATE(provider_dispatch_binding) ON TABLE app.node_runs TO {{worker_runtime_role}};
+GRANT UPDATE(provider_dispatch_binding) ON TABLE app.node_runs TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.oidc_login_transactions TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.oidc_login_transactions TO {{app_role}};
 
-GRANT UPDATE(consumed_at) ON TABLE app.oidc_login_transactions TO {{api_runtime_role}};
+GRANT UPDATE(consumed_at) ON TABLE app.oidc_login_transactions TO {{app_role}};
 
-GRANT SELECT ON TABLE app.operator_run_replay_requests TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.operator_run_replay_requests TO {{app_role}};
 
-GRANT SELECT(command_id) ON TABLE app.operator_unknown_outcome_evidence TO {{worker_runtime_role}};
+GRANT SELECT(command_id) ON TABLE app.operator_unknown_outcome_evidence TO {{app_role}};
 
-GRANT SELECT(workspace_id) ON TABLE app.operator_unknown_outcome_evidence TO {{worker_runtime_role}};
+GRANT SELECT(workspace_id) ON TABLE app.operator_unknown_outcome_evidence TO {{app_role}};
 
-GRANT SELECT(attempt_id) ON TABLE app.operator_unknown_outcome_evidence TO {{worker_runtime_role}};
+GRANT SELECT(attempt_id) ON TABLE app.operator_unknown_outcome_evidence TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.outbox_events TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.outbox_events TO {{worker_runtime_role}};
-GRANT SELECT ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT SELECT,INSERT ON TABLE app.outbox_events TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.outbox_events TO {{app_role}};
+GRANT SELECT ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(available_at) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(available_at) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(lease_owner) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(lease_owner) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(lease_token) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(lease_token) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(lease_expires_at) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(lease_expires_at) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(publish_attempts) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(publish_attempts) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(published_at) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(published_at) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(failed_at) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(failed_at) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(last_error_code) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(last_error_code) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.outbox_events TO {{dispatcher_role}};
+GRANT UPDATE(updated_at) ON TABLE app.outbox_events TO {{maintenance_role}};
 
-GRANT SELECT ON TABLE app.outbox_fair_dispatch_cursor TO {{dispatcher_role}};
+GRANT SELECT ON TABLE app.outbox_fair_dispatch_cursor TO {{maintenance_role}};
 
-GRANT UPDATE(last_workspace_id) ON TABLE app.outbox_fair_dispatch_cursor TO {{dispatcher_role}};
+GRANT UPDATE(last_workspace_id) ON TABLE app.outbox_fair_dispatch_cursor TO {{maintenance_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.outbox_fair_dispatch_cursor TO {{dispatcher_role}};
+GRANT UPDATE(updated_at) ON TABLE app.outbox_fair_dispatch_cursor TO {{maintenance_role}};
 
-GRANT SELECT,INSERT ON TABLE app.preview_attempts TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.preview_attempts TO {{app_role}};
+GRANT SELECT ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(lease_owner) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(lease_owner) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(lease_expires_at) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(lease_expires_at) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(fence_token) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(fence_token) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(dispatch_marked_at) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(dispatch_marked_at) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(output_ref) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(output_ref) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(safe_error_code) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(safe_error_code) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(reconciliation_ref) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(reconciliation_ref) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(started_at) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(started_at) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(completed_at) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(completed_at) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT UPDATE(provider_dispatch_binding) ON TABLE app.preview_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(provider_dispatch_binding) ON TABLE app.preview_attempts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.preview_runs TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.preview_runs TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.preview_runs TO {{app_role}};
+GRANT SELECT ON TABLE app.preview_runs TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.preview_runs TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.preview_runs TO {{app_role}};
 
-GRANT UPDATE(output_ref) ON TABLE app.preview_runs TO {{worker_runtime_role}};
+GRANT UPDATE(output_ref) ON TABLE app.preview_runs TO {{app_role}};
 
-GRANT UPDATE(safe_error_code) ON TABLE app.preview_runs TO {{worker_runtime_role}};
+GRANT UPDATE(safe_error_code) ON TABLE app.preview_runs TO {{app_role}};
 
-GRANT UPDATE(started_at) ON TABLE app.preview_runs TO {{worker_runtime_role}};
+GRANT UPDATE(started_at) ON TABLE app.preview_runs TO {{app_role}};
 
-GRANT UPDATE(completed_at) ON TABLE app.preview_runs TO {{worker_runtime_role}};
+GRANT UPDATE(completed_at) ON TABLE app.preview_runs TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.preview_runs TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.preview_runs TO {{app_role}};
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.rls_probe_records TO {{api_runtime_role}};
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.rls_probe_records TO {{worker_runtime_role}};
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.rls_probe_records TO {{app_role}};
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.rls_probe_records TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.run_checkpoints TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.run_checkpoints TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(revision) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(revision) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(engine_version) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(engine_version) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(scheduler_state) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(scheduler_state) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(resume_at) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(resume_at) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(resume_lease_owner) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(resume_lease_owner) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(resume_lease_token) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(resume_lease_token) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(resume_lease_expires_at) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(resume_lease_expires_at) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT UPDATE(last_transition_fingerprint) ON TABLE app.run_checkpoints TO {{worker_runtime_role}};
+GRANT UPDATE(last_transition_fingerprint) ON TABLE app.run_checkpoints TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.run_events TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.run_events TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.run_events TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.run_events TO {{app_role}};
 
-GRANT SELECT ON TABLE app.run_failure_notification_audit_facts TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.run_failure_notification_audit_facts TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.run_failure_notification_audit_facts TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.run_failure_notification_audit_facts TO {{app_role}};
 
-GRANT SELECT ON TABLE app.run_failure_notification_intents TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.run_failure_notification_intents TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(delivery_attempts) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(delivery_attempts) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(dispatch_marked_at) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(dispatch_marked_at) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(recovery_at) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(recovery_at) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(next_delivery_at) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(next_delivery_at) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(safe_error_code) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(safe_error_code) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(possibly_dispatched) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(possibly_dispatched) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(provider_reference) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(provider_reference) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(completed_at) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(completed_at) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT UPDATE(delivery_binding) ON TABLE app.run_failure_notification_intents TO {{worker_runtime_role}};
+GRANT UPDATE(delivery_binding) ON TABLE app.run_failure_notification_intents TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.sessions TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.sessions TO {{app_role}};
 
-GRANT UPDATE(revoked_at) ON TABLE app.sessions TO {{api_runtime_role}};
+GRANT UPDATE(revoked_at) ON TABLE app.sessions TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.transport_security_audit_facts TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.transport_security_audit_facts TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.transport_security_audit_facts TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.transport_security_audit_facts TO {{app_role}};
 
-GRANT SELECT ON TABLE app.trigger_schedule_occurrences TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.trigger_schedule_occurrences TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(next_fire_at) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(next_fire_at) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(next_fire_at) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(next_fire_at) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(last_fire_at) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(last_fire_at) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(last_fire_at) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(last_fire_at) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(status) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(status) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(health_status) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(health_status) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(health_status) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(health_status) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(last_error_code) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(last_error_code) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(last_error_code) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(last_error_code) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(lease_owner) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(lease_owner) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(lease_owner) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(lease_owner) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(lease_token) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(lease_token) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(lease_token) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(lease_token) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(lease_acquired_at) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(lease_acquired_at) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(lease_acquired_at) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(lease_acquired_at) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(lease_expires_at) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(lease_expires_at) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(lease_expires_at) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(lease_expires_at) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.trigger_schedules TO {{api_runtime_role}};
-GRANT UPDATE(updated_at) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.trigger_schedules TO {{app_role}};
+GRANT UPDATE(updated_at) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT UPDATE(admission_deferred_until) ON TABLE app.trigger_schedules TO {{worker_runtime_role}};
+GRANT UPDATE(admission_deferred_until) ON TABLE app.trigger_schedules TO {{app_role}};
 
-GRANT SELECT ON TABLE app.usage_events TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.usage_events TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.usage_events TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.usage_events TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.user_profile_command_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.user_profile_command_receipts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.user_profile_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.user_profile_command_receipts TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.user_profile_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.user_profile_command_receipts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.user_profile_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.user_profile_command_receipts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.users TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.users TO {{app_role}};
 
-GRANT UPDATE(email) ON TABLE app.users TO {{api_runtime_role}};
+GRANT UPDATE(email) ON TABLE app.users TO {{app_role}};
 
-GRANT UPDATE(display_name) ON TABLE app.users TO {{api_runtime_role}};
+GRANT UPDATE(display_name) ON TABLE app.users TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.users TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.users TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.users TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.users TO {{app_role}};
 
-GRANT UPDATE(email_verified) ON TABLE app.users TO {{api_runtime_role}};
+GRANT UPDATE(email_verified) ON TABLE app.users TO {{app_role}};
 
-GRANT UPDATE(image) ON TABLE app.users TO {{api_runtime_role}};
+GRANT UPDATE(image) ON TABLE app.users TO {{app_role}};
 
-GRANT UPDATE(profile_revision) ON TABLE app.users TO {{api_runtime_role}};
+GRANT UPDATE(profile_revision) ON TABLE app.users TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.webhook_trigger_deliveries TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.webhook_trigger_deliveries TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.webhook_trigger_endpoints TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT SELECT(id) ON TABLE app.webhook_trigger_endpoints TO {{worker_runtime_role}};
+GRANT SELECT(id) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT SELECT(workspace_id) ON TABLE app.webhook_trigger_endpoints TO {{worker_runtime_role}};
+GRANT SELECT(workspace_id) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT SELECT(trigger_id) ON TABLE app.webhook_trigger_endpoints TO {{worker_runtime_role}};
+GRANT SELECT(trigger_id) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT UPDATE(endpoint_key_hash) ON TABLE app.webhook_trigger_endpoints TO {{api_runtime_role}};
+GRANT UPDATE(endpoint_key_hash) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.webhook_trigger_endpoints TO {{api_runtime_role}};
-GRANT SELECT(status),UPDATE(status) ON TABLE app.webhook_trigger_endpoints TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
+GRANT SELECT(status),UPDATE(status) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT UPDATE(current_secret_version_id) ON TABLE app.webhook_trigger_endpoints TO {{api_runtime_role}};
+GRANT UPDATE(current_secret_version_id) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT UPDATE(previous_secret_version_id) ON TABLE app.webhook_trigger_endpoints TO {{api_runtime_role}};
+GRANT UPDATE(previous_secret_version_id) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT UPDATE(previous_secret_valid_until) ON TABLE app.webhook_trigger_endpoints TO {{api_runtime_role}};
+GRANT UPDATE(previous_secret_valid_until) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.webhook_trigger_endpoints TO {{api_runtime_role}};
-GRANT UPDATE(updated_at) ON TABLE app.webhook_trigger_endpoints TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
+GRANT UPDATE(updated_at) ON TABLE app.webhook_trigger_endpoints TO {{app_role}};
 
-GRANT SELECT,INSERT,DELETE ON TABLE app.webhook_trigger_replay_records TO {{api_runtime_role}};
+GRANT SELECT,INSERT,DELETE ON TABLE app.webhook_trigger_replay_records TO {{app_role}};
 
-GRANT UPDATE(workflow_run_id) ON TABLE app.webhook_trigger_replay_records TO {{api_runtime_role}};
+GRANT UPDATE(workflow_run_id) ON TABLE app.webhook_trigger_replay_records TO {{app_role}};
 
-GRANT INSERT ON TABLE app.webhook_trigger_secret_versions TO {{api_runtime_role}};
+GRANT INSERT ON TABLE app.webhook_trigger_secret_versions TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_drafts TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_drafts TO {{app_role}};
 
-GRANT UPDATE(revision) ON TABLE app.workflow_drafts TO {{api_runtime_role}};
+GRANT UPDATE(revision) ON TABLE app.workflow_drafts TO {{app_role}};
 
-GRANT UPDATE(schema_version) ON TABLE app.workflow_drafts TO {{api_runtime_role}};
+GRANT UPDATE(schema_version) ON TABLE app.workflow_drafts TO {{app_role}};
 
-GRANT UPDATE(graph_json) ON TABLE app.workflow_drafts TO {{api_runtime_role}};
+GRANT UPDATE(graph_json) ON TABLE app.workflow_drafts TO {{app_role}};
 
-GRANT UPDATE(updated_by) ON TABLE app.workflow_drafts TO {{api_runtime_role}};
+GRANT UPDATE(updated_by) ON TABLE app.workflow_drafts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workflow_drafts TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workflow_drafts TO {{app_role}};
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.workflow_failure_notification_policies TO {{api_runtime_role}};
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.workflow_failure_notification_policies TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_favorite_receipts TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_favorite_receipts TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_favorites TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_favorites TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_folders TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_folders TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workflow_input_case_payloads TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workflow_input_case_payloads TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workflow_input_case_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workflow_input_case_receipts TO {{app_role}};
 
-GRANT SELECT,UPDATE ON TABLE app.workflow_input_case_rollout TO {{operator_role}};
+GRANT SELECT,UPDATE ON TABLE app.workflow_input_case_rollout TO {{maintenance_role}};
 
-GRANT SELECT,INSERT,UPDATE ON TABLE app.workflow_input_cases TO {{api_runtime_role}};
+GRANT SELECT,INSERT,UPDATE ON TABLE app.workflow_input_cases TO {{app_role}};
 
-GRANT SELECT,INSERT,DELETE ON TABLE app.workflow_integration_usage TO {{api_runtime_role}};
+GRANT SELECT,INSERT,DELETE ON TABLE app.workflow_integration_usage TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workflow_manual_start_rejections TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workflow_manual_start_rejections TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_organization_rollout TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_organization_rollout TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_organization_state TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_organization_state TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_portability_rollout TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_portability_rollout TO {{app_role}};
 
-GRANT UPDATE(singleton) ON TABLE app.workflow_portability_rollout TO {{api_runtime_role}};
+GRANT UPDATE(singleton) ON TABLE app.workflow_portability_rollout TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workflow_runs TO {{api_runtime_role}};
-GRANT SELECT,INSERT ON TABLE app.workflow_runs TO {{worker_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workflow_runs TO {{app_role}};
+GRANT SELECT,INSERT ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workflow_runs TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workflow_runs TO {{worker_runtime_role}};
-GRANT UPDATE(updated_at) ON TABLE app.workflow_runs TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workflow_runs TO {{app_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(cancel_requested_at) ON TABLE app.workflow_runs TO {{api_runtime_role}};
+GRANT UPDATE(cancel_requested_at) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(cancel_requested_by) ON TABLE app.workflow_runs TO {{api_runtime_role}};
+GRANT UPDATE(cancel_requested_by) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(cancel_reason) ON TABLE app.workflow_runs TO {{api_runtime_role}};
+GRANT UPDATE(cancel_reason) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(started_at) ON TABLE app.workflow_runs TO {{worker_runtime_role}};
+GRANT UPDATE(started_at) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(completed_at) ON TABLE app.workflow_runs TO {{worker_runtime_role}};
+GRANT UPDATE(completed_at) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(output_ref) ON TABLE app.workflow_runs TO {{worker_runtime_role}};
+GRANT UPDATE(output_ref) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT UPDATE(error_summary) ON TABLE app.workflow_runs TO {{worker_runtime_role}};
+GRANT UPDATE(error_summary) ON TABLE app.workflow_runs TO {{app_role}};
 
 GRANT UPDATE(deadline_wakeup_at) ON TABLE app.workflow_runs TO {{owner_role}};
-GRANT UPDATE(deadline_wakeup_at) ON TABLE app.workflow_runs TO {{worker_runtime_role}};
+GRANT UPDATE(deadline_wakeup_at) ON TABLE app.workflow_runs TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_tag_assignments TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_tag_assignments TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_tags TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_tags TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflow_template_origins TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflow_template_origins TO {{app_role}};
 
-GRANT INSERT ON TABLE app.workflow_trigger_outcomes TO {{worker_runtime_role}};
+GRANT INSERT ON TABLE app.workflow_trigger_outcomes TO {{app_role}};
 
-GRANT SELECT,INSERT,DELETE ON TABLE app.workflow_triggers TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.workflow_triggers TO {{worker_runtime_role}};
+GRANT SELECT,INSERT,DELETE ON TABLE app.workflow_triggers TO {{app_role}};
+GRANT SELECT ON TABLE app.workflow_triggers TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workflow_triggers TO {{api_runtime_role}};
-GRANT UPDATE(status) ON TABLE app.workflow_triggers TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workflow_triggers TO {{app_role}};
+GRANT UPDATE(status) ON TABLE app.workflow_triggers TO {{app_role}};
 
-GRANT UPDATE(desired_config) ON TABLE app.workflow_triggers TO {{api_runtime_role}};
+GRANT UPDATE(desired_config) ON TABLE app.workflow_triggers TO {{app_role}};
 
-GRANT UPDATE(config_fingerprint) ON TABLE app.workflow_triggers TO {{api_runtime_role}};
+GRANT UPDATE(config_fingerprint) ON TABLE app.workflow_triggers TO {{app_role}};
 
-GRANT UPDATE(health_status) ON TABLE app.workflow_triggers TO {{api_runtime_role}};
-GRANT UPDATE(health_status) ON TABLE app.workflow_triggers TO {{worker_runtime_role}};
+GRANT UPDATE(health_status) ON TABLE app.workflow_triggers TO {{app_role}};
+GRANT UPDATE(health_status) ON TABLE app.workflow_triggers TO {{app_role}};
 
-GRANT UPDATE(last_error_code) ON TABLE app.workflow_triggers TO {{api_runtime_role}};
-GRANT UPDATE(last_error_code) ON TABLE app.workflow_triggers TO {{worker_runtime_role}};
+GRANT UPDATE(last_error_code) ON TABLE app.workflow_triggers TO {{app_role}};
+GRANT UPDATE(last_error_code) ON TABLE app.workflow_triggers TO {{app_role}};
 
-GRANT UPDATE(reconciled_at) ON TABLE app.workflow_triggers TO {{api_runtime_role}};
-GRANT UPDATE(reconciled_at) ON TABLE app.workflow_triggers TO {{worker_runtime_role}};
+GRANT UPDATE(reconciled_at) ON TABLE app.workflow_triggers TO {{app_role}};
+GRANT UPDATE(reconciled_at) ON TABLE app.workflow_triggers TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workflow_triggers TO {{api_runtime_role}};
-GRANT UPDATE(updated_at) ON TABLE app.workflow_triggers TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workflow_triggers TO {{app_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workflow_triggers TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workflow_versions TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(id) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(id) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(workspace_id) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(workspace_id) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(workflow_id) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(workflow_id) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(version_number) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(version_number) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(schema_version) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(schema_version) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(checksum) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(checksum) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(executable_schema_version) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(executable_schema_version) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(executable_json) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(executable_json) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT(compatibility_release_epoch) ON TABLE app.workflow_versions TO {{worker_runtime_role}};
+GRANT SELECT(compatibility_release_epoch) ON TABLE app.workflow_versions TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workflows TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workflows TO {{app_role}};
 
-GRANT SELECT(id) ON TABLE app.workflows TO {{worker_runtime_role}};
+GRANT SELECT(id) ON TABLE app.workflows TO {{app_role}};
 
-GRANT SELECT(workspace_id) ON TABLE app.workflows TO {{worker_runtime_role}};
+GRANT SELECT(workspace_id) ON TABLE app.workflows TO {{app_role}};
 
-GRANT UPDATE(name) ON TABLE app.workflows TO {{api_runtime_role}};
+GRANT UPDATE(name) ON TABLE app.workflows TO {{app_role}};
 
-GRANT UPDATE(lifecycle_status) ON TABLE app.workflows TO {{api_runtime_role}};
-GRANT SELECT(lifecycle_status) ON TABLE app.workflows TO {{worker_runtime_role}};
+GRANT UPDATE(lifecycle_status) ON TABLE app.workflows TO {{app_role}};
+GRANT SELECT(lifecycle_status) ON TABLE app.workflows TO {{app_role}};
 
-GRANT UPDATE(activation_status) ON TABLE app.workflows TO {{api_runtime_role}};
-GRANT SELECT(activation_status),UPDATE(activation_status) ON TABLE app.workflows TO {{worker_runtime_role}};
+GRANT UPDATE(activation_status) ON TABLE app.workflows TO {{app_role}};
+GRANT SELECT(activation_status),UPDATE(activation_status) ON TABLE app.workflows TO {{app_role}};
 
-GRANT UPDATE(published_version_id) ON TABLE app.workflows TO {{api_runtime_role}};
-GRANT SELECT(published_version_id) ON TABLE app.workflows TO {{worker_runtime_role}};
+GRANT UPDATE(published_version_id) ON TABLE app.workflows TO {{app_role}};
+GRANT SELECT(published_version_id) ON TABLE app.workflows TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workflows TO {{api_runtime_role}};
-GRANT UPDATE(updated_at) ON TABLE app.workflows TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workflows TO {{app_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workflows TO {{app_role}};
 
-GRANT UPDATE(lifecycle_revision) ON TABLE app.workflows TO {{api_runtime_role}};
+GRANT UPDATE(lifecycle_revision) ON TABLE app.workflows TO {{app_role}};
 
-GRANT UPDATE(name_revision) ON TABLE app.workflows TO {{api_runtime_role}};
+GRANT UPDATE(name_revision) ON TABLE app.workflows TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workspace_artifact_capacity TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.workspace_artifact_capacity TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.workspace_artifact_capacity TO {{app_role}};
+GRANT SELECT ON TABLE app.workspace_artifact_capacity TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_creation_idempotency_records TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_creation_idempotency_records TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_creation_idempotency_records TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_creation_idempotency_records TO {{app_role}};
 
-GRANT UPDATE(resource_id) ON TABLE app.workspace_creation_idempotency_records TO {{api_runtime_role}};
+GRANT UPDATE(resource_id) ON TABLE app.workspace_creation_idempotency_records TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.workspace_creation_idempotency_records TO {{api_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.workspace_creation_idempotency_records TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_creation_idempotency_records TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_creation_idempotency_records TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workspace_execution_admission_counters TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.workspace_execution_admission_counters TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.workspace_execution_admission_counters TO {{app_role}};
+GRANT SELECT ON TABLE app.workspace_execution_admission_counters TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workspace_execution_entitlement_versions TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.workspace_execution_entitlement_versions TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.workspace_execution_entitlement_versions TO {{app_role}};
+GRANT SELECT ON TABLE app.workspace_execution_entitlement_versions TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workspace_execution_entitlements TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.workspace_execution_entitlements TO {{worker_runtime_role}};
+GRANT SELECT ON TABLE app.workspace_execution_entitlements TO {{app_role}};
+GRANT SELECT ON TABLE app.workspace_execution_entitlements TO {{app_role}};
 
-GRANT INSERT ON TABLE app.workspace_inbox_events TO {{worker_runtime_role}};
+GRANT INSERT ON TABLE app.workspace_inbox_events TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_inbox_reads TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_inbox_reads TO {{app_role}};
 
-GRANT UPDATE(read_revision) ON TABLE app.workspace_inbox_reads TO {{api_runtime_role}};
+GRANT UPDATE(read_revision) ON TABLE app.workspace_inbox_reads TO {{app_role}};
 
-GRANT UPDATE(read_at) ON TABLE app.workspace_inbox_reads TO {{api_runtime_role}};
+GRANT UPDATE(read_at) ON TABLE app.workspace_inbox_reads TO {{app_role}};
 
-GRANT SELECT ON TABLE app.workspace_inbox_threads TO {{api_runtime_role}};
+GRANT SELECT ON TABLE app.workspace_inbox_threads TO {{app_role}};
 
-GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitation_acceptance_intents TO {{api_runtime_role}};
+GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitation_acceptance_intents TO {{app_role}};
 
-GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitation_binding_replacement_claims TO {{api_runtime_role}};
+GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitation_binding_replacement_claims TO {{app_role}};
 
-GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitation_command_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitation_command_receipts TO {{app_role}};
 
-GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitation_delivery_attempts TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
+GRANT SELECT ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT UPDATE(token_ciphertext) ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(token_ciphertext) ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT UPDATE(token_nonce) ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(token_nonce) ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT UPDATE(token_tag) ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(token_tag) ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT UPDATE(token_key_version) ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(token_key_version) ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT UPDATE(provider_reference) ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(provider_reference) ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT UPDATE(failure_code) ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(failure_code) ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_invitation_delivery_attempts TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_invitation_delivery_attempts TO {{app_role}};
 
-GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitations TO {{api_runtime_role}};
-GRANT SELECT ON TABLE app.workspace_invitations TO {{worker_runtime_role}};
+GRANT SELECT,INSERT,UPDATE ON TABLE app.workspace_invitations TO {{app_role}};
+GRANT SELECT ON TABLE app.workspace_invitations TO {{app_role}};
 
-GRANT UPDATE(delivery_status) ON TABLE app.workspace_invitations TO {{worker_runtime_role}};
+GRANT UPDATE(delivery_status) ON TABLE app.workspace_invitations TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_invitations TO {{worker_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_invitations TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_member_departure_command_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_member_departure_command_receipts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_member_departure_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_member_departure_command_receipts TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.workspace_member_departure_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.workspace_member_departure_command_receipts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_member_departure_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_member_departure_command_receipts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_member_removal_command_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_member_removal_command_receipts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_member_removal_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_member_removal_command_receipts TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.workspace_member_removal_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.workspace_member_removal_command_receipts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_member_removal_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_member_removal_command_receipts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_member_role_command_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_member_role_command_receipts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_member_role_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_member_role_command_receipts TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.workspace_member_role_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.workspace_member_role_command_receipts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_member_role_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_member_role_command_receipts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_member_suspension_command_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_member_suspension_command_receipts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_member_suspension_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_member_suspension_command_receipts TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.workspace_member_suspension_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.workspace_member_suspension_command_receipts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_member_suspension_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_member_suspension_command_receipts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_memberships TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_memberships TO {{app_role}};
 
-GRANT UPDATE(role) ON TABLE app.workspace_memberships TO {{api_runtime_role}};
+GRANT UPDATE(role) ON TABLE app.workspace_memberships TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_memberships TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_memberships TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_memberships TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_memberships TO {{app_role}};
 
-GRANT UPDATE(role_revision) ON TABLE app.workspace_memberships TO {{api_runtime_role}};
+GRANT UPDATE(role_revision) ON TABLE app.workspace_memberships TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_ownership_transfer_command_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_ownership_transfer_command_receipts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_ownership_transfer_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_ownership_transfer_command_receipts TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.workspace_ownership_transfer_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.workspace_ownership_transfer_command_receipts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_ownership_transfer_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_ownership_transfer_command_receipts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspace_rename_command_receipts TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspace_rename_command_receipts TO {{app_role}};
 
-GRANT UPDATE(status) ON TABLE app.workspace_rename_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(status) ON TABLE app.workspace_rename_command_receipts TO {{app_role}};
 
-GRANT UPDATE(result_ref) ON TABLE app.workspace_rename_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(result_ref) ON TABLE app.workspace_rename_command_receipts TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspace_rename_command_receipts TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspace_rename_command_receipts TO {{app_role}};
 
-GRANT SELECT,INSERT ON TABLE app.workspaces TO {{api_runtime_role}};
+GRANT SELECT,INSERT ON TABLE app.workspaces TO {{app_role}};
 
-GRANT SELECT(id) ON TABLE app.workspaces TO {{worker_runtime_role}};
+GRANT SELECT(id) ON TABLE app.workspaces TO {{app_role}};
 
-GRANT UPDATE(name) ON TABLE app.workspaces TO {{api_runtime_role}};
+GRANT UPDATE(name) ON TABLE app.workspaces TO {{app_role}};
 
-GRANT SELECT(status) ON TABLE app.workspaces TO {{worker_runtime_role}};
+GRANT SELECT(status) ON TABLE app.workspaces TO {{app_role}};
 
-GRANT UPDATE(updated_at) ON TABLE app.workspaces TO {{api_runtime_role}};
+GRANT UPDATE(updated_at) ON TABLE app.workspaces TO {{app_role}};
 
-GRANT UPDATE(revision) ON TABLE app.workspaces TO {{api_runtime_role}};
+GRANT UPDATE(revision) ON TABLE app.workspaces TO {{app_role}};
 
 -- Seed rows
 
@@ -13963,7 +13963,7 @@ ALTER TABLE ONLY app.workspaces
 
 ALTER TABLE app.artifact_links ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY artifact_links_workspace_scope ON app.artifact_links TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY artifact_links_workspace_scope ON app.artifact_links TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.artifacts ENABLE ROW LEVEL SECURITY;
 
@@ -13973,45 +13973,45 @@ CREATE POLICY artifacts_owner_retention_inventory ON app.artifacts FOR SELECT TO
 
 CREATE POLICY artifacts_owner_retention_update ON app.artifacts FOR UPDATE TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY artifacts_workspace_scope ON app.artifacts TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY artifacts_workspace_scope ON app.artifacts TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.audit_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY audit_events_retention_scope ON app.audit_events TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY audit_events_workspace_insert ON app.audit_events FOR INSERT TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY audit_events_workspace_insert ON app.audit_events FOR INSERT TO {{owner_role}}, {{app_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY audit_events_workspace_select ON app.audit_events FOR SELECT TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY audit_events_workspace_select ON app.audit_events FOR SELECT TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.connection_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY connection_events_workspace_scope ON app.connection_events TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY connection_events_workspace_scope ON app.connection_events TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.connection_health_observations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY connection_health_observations_workspace_scope ON app.connection_health_observations TO {{owner_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY connection_health_observations_workspace_scope ON app.connection_health_observations TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.connection_secret_versions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY connection_secret_versions_workspace_scope ON app.connection_secret_versions TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY connection_secret_versions_workspace_scope ON app.connection_secret_versions TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.connections ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY connections_workspace_scope ON app.connections TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY connections_workspace_scope ON app.connections TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.failure_notification_destination_versions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY failure_notification_destination_versions_workspace_scope ON app.failure_notification_destination_versions TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY failure_notification_destination_versions_workspace_scope ON app.failure_notification_destination_versions TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.failure_notification_destinations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY failure_notification_destinations_workspace_scope ON app.failure_notification_destinations TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY failure_notification_destinations_workspace_scope ON app.failure_notification_destinations TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.idempotency_records ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY idempotency_records_owner_maintenance ON app.idempotency_records TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY idempotency_records_workspace_scope ON app.idempotency_records TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY idempotency_records_workspace_scope ON app.idempotency_records TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.inbox_receipts ENABLE ROW LEVEL SECURITY;
 
@@ -14023,17 +14023,17 @@ CREATE POLICY inbox_receipts_owner_leased_purge_lock ON app.inbox_receipts FOR U
 
 CREATE POLICY inbox_receipts_owner_leased_purge_select ON app.inbox_receipts FOR SELECT TO {{owner_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND app.workspace_purge_immutable_delete_is_armed(workspace_id)));
 
-CREATE POLICY inbox_receipts_workspace_scope ON app.inbox_receipts TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY inbox_receipts_workspace_scope ON app.inbox_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.node_attempt_connection_dispatches ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY node_attempt_connection_dispatches_workspace_scope ON app.node_attempt_connection_dispatches TO {{owner_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY node_attempt_connection_dispatches_workspace_scope ON app.node_attempt_connection_dispatches TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.node_attempts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY node_attempts_retention_scope ON app.node_attempts TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY node_attempts_workspace_scope ON app.node_attempts TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY node_attempts_workspace_scope ON app.node_attempts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.node_runs ENABLE ROW LEVEL SECURITY;
 
@@ -14045,7 +14045,7 @@ CREATE POLICY node_runs_lifecycle_owner_select ON app.node_runs FOR SELECT TO {{
 
 CREATE POLICY node_runs_retention_scope ON app.node_runs TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY node_runs_workspace_scope ON app.node_runs TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY node_runs_workspace_scope ON app.node_runs TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.operator_maintenance_rerun_requests ENABLE ROW LEVEL SECURITY;
 
@@ -14053,11 +14053,11 @@ CREATE POLICY operator_maintenance_rerun_workspace_scope ON app.operator_mainten
 
 ALTER TABLE app.operator_run_replay_requests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY operator_run_replay_requests_workspace_scope ON app.operator_run_replay_requests TO {{owner_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY operator_run_replay_requests_workspace_scope ON app.operator_run_replay_requests TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 CREATE POLICY operator_unknown_evidence_owner_all ON app.operator_unknown_outcome_evidence TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY operator_unknown_evidence_worker_select ON app.operator_unknown_outcome_evidence FOR SELECT TO {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY operator_unknown_evidence_worker_select ON app.operator_unknown_outcome_evidence FOR SELECT TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.operator_unknown_outcome_evidence ENABLE ROW LEVEL SECURITY;
 
@@ -14069,9 +14069,9 @@ CREATE POLICY outbox_events_active_admission_owner_update ON app.outbox_events F
 
 CREATE POLICY outbox_events_connection_health_owner_delete ON app.outbox_events FOR DELETE TO {{owner_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND ((job_name)::text = 'apply-connection-health-observation'::text)));
 
-CREATE POLICY outbox_events_dispatcher_select ON app.outbox_events FOR SELECT TO {{dispatcher_role}} USING (true);
+CREATE POLICY outbox_events_dispatcher_select ON app.outbox_events FOR SELECT TO {{maintenance_role}} USING (true);
 
-CREATE POLICY outbox_events_dispatcher_update ON app.outbox_events FOR UPDATE TO {{dispatcher_role}} USING (true) WITH CHECK (true);
+CREATE POLICY outbox_events_dispatcher_update ON app.outbox_events FOR UPDATE TO {{maintenance_role}} USING (true) WITH CHECK (true);
 
 CREATE POLICY outbox_events_due_wakeup_owner_insert ON app.outbox_events FOR INSERT TO {{owner_role}} WITH CHECK (true);
 
@@ -14081,19 +14081,19 @@ CREATE POLICY outbox_events_operator_command_update ON app.outbox_events FOR UPD
 
 CREATE POLICY outbox_events_owner_leased_purge_delete ON app.outbox_events FOR DELETE TO {{owner_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND app.workspace_purge_immutable_delete_is_armed(workspace_id)));
 
-CREATE POLICY outbox_events_tenant_insert ON app.outbox_events FOR INSERT TO {{api_runtime_role}}, {{worker_runtime_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY outbox_events_tenant_insert ON app.outbox_events FOR INSERT TO {{app_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY outbox_events_tenant_select ON app.outbox_events FOR SELECT TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY outbox_events_tenant_select ON app.outbox_events FOR SELECT TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.preview_attempts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY preview_attempts_workspace_scope ON app.preview_attempts TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY preview_attempts_workspace_scope ON app.preview_attempts TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.preview_runs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY preview_runs_owner_retention_inventory ON app.preview_runs FOR SELECT TO {{owner_role}} USING (true);
 
-CREATE POLICY preview_runs_workspace_scope ON app.preview_runs TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY preview_runs_workspace_scope ON app.preview_runs TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.retention_batches ENABLE ROW LEVEL SECURITY;
 
@@ -14109,7 +14109,7 @@ CREATE POLICY retention_schedule_state_owner_all ON app.retention_schedule_state
 
 ALTER TABLE app.rls_probe_records ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY rls_probe_records_workspace_scope ON app.rls_probe_records TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY rls_probe_records_workspace_scope ON app.rls_probe_records TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.run_checkpoints ENABLE ROW LEVEL SECURITY;
 
@@ -14119,7 +14119,7 @@ CREATE POLICY run_checkpoints_lifecycle_owner_update ON app.run_checkpoints FOR 
 
 CREATE POLICY run_checkpoints_retention_scope ON app.run_checkpoints TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY run_checkpoints_workspace_scope ON app.run_checkpoints TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY run_checkpoints_workspace_scope ON app.run_checkpoints TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.run_events ENABLE ROW LEVEL SECURITY;
 
@@ -14129,13 +14129,13 @@ CREATE POLICY run_events_lifecycle_owner_select ON app.run_events FOR SELECT TO 
 
 CREATE POLICY run_events_retention_scope ON app.run_events TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY run_events_workspace_scope ON app.run_events TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY run_events_workspace_scope ON app.run_events TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.run_failure_notification_audit_facts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY run_failure_notification_audit_recovery_owner_insert ON app.run_failure_notification_audit_facts FOR INSERT TO {{owner_role}} WITH CHECK (true);
 
-CREATE POLICY run_failure_notification_audit_workspace_scope ON app.run_failure_notification_audit_facts TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY run_failure_notification_audit_workspace_scope ON app.run_failure_notification_audit_facts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.run_failure_notification_intents ENABLE ROW LEVEL SECURITY;
 
@@ -14143,13 +14143,13 @@ CREATE POLICY run_failure_notification_intents_recovery_owner_select ON app.run_
 
 CREATE POLICY run_failure_notification_intents_recovery_owner_update ON app.run_failure_notification_intents FOR UPDATE TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY run_failure_notification_intents_workspace_scope ON app.run_failure_notification_intents TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY run_failure_notification_intents_workspace_scope ON app.run_failure_notification_intents TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.transport_security_audit_facts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY transport_security_audit_facts_retention_scope ON app.transport_security_audit_facts TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY transport_security_audit_facts_workspace_scope ON app.transport_security_audit_facts TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY transport_security_audit_facts_workspace_scope ON app.transport_security_audit_facts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.trigger_schedule_occurrences ENABLE ROW LEVEL SECURITY;
 
@@ -14157,21 +14157,21 @@ CREATE POLICY trigger_schedule_occurrences_owner_worker ON app.trigger_schedule_
 
 CREATE POLICY trigger_schedule_occurrences_retention_scope ON app.trigger_schedule_occurrences TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY trigger_schedule_occurrences_workspace_scope ON app.trigger_schedule_occurrences TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY trigger_schedule_occurrences_workspace_scope ON app.trigger_schedule_occurrences TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.trigger_schedules ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY trigger_schedules_owner_worker ON app.trigger_schedules TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY trigger_schedules_worker_reconciliation ON app.trigger_schedules TO {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY trigger_schedules_worker_reconciliation ON app.trigger_schedules TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY trigger_schedules_workspace_scope ON app.trigger_schedules TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY trigger_schedules_workspace_scope ON app.trigger_schedules TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.usage_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY usage_events_workspace_insert ON app.usage_events FOR INSERT TO {{owner_role}}, {{worker_runtime_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY usage_events_workspace_insert ON app.usage_events FOR INSERT TO {{owner_role}}, {{app_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY usage_events_workspace_select ON app.usage_events FOR SELECT TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY usage_events_workspace_select ON app.usage_events FOR SELECT TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.webhook_endpoint_ingress_limits ENABLE ROW LEVEL SECURITY;
 
@@ -14181,25 +14181,25 @@ ALTER TABLE app.webhook_trigger_deliveries ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY webhook_trigger_deliveries_retention_scope ON app.webhook_trigger_deliveries TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY webhook_trigger_deliveries_workspace_scope ON app.webhook_trigger_deliveries TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY webhook_trigger_deliveries_workspace_scope ON app.webhook_trigger_deliveries TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.webhook_trigger_endpoints ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY webhook_trigger_endpoints_api_scope ON app.webhook_trigger_endpoints TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY webhook_trigger_endpoints_api_scope ON app.webhook_trigger_endpoints TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 CREATE POLICY webhook_trigger_endpoints_owner_resolver ON app.webhook_trigger_endpoints FOR SELECT TO {{owner_role}} USING (true);
 
-CREATE POLICY webhook_trigger_endpoints_worker_reconciliation ON app.webhook_trigger_endpoints TO {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY webhook_trigger_endpoints_worker_reconciliation ON app.webhook_trigger_endpoints TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.webhook_trigger_replay_records ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY webhook_trigger_replay_records_retention_scope ON app.webhook_trigger_replay_records TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY webhook_trigger_replay_records_workspace_scope ON app.webhook_trigger_replay_records TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY webhook_trigger_replay_records_workspace_scope ON app.webhook_trigger_replay_records TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.webhook_trigger_secret_versions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY webhook_trigger_secret_versions_api_scope ON app.webhook_trigger_secret_versions TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY webhook_trigger_secret_versions_api_scope ON app.webhook_trigger_secret_versions TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 CREATE POLICY webhook_trigger_secret_versions_owner_resolver ON app.webhook_trigger_secret_versions FOR SELECT TO {{owner_role}} USING (true);
 
@@ -14217,11 +14217,11 @@ CREATE POLICY workflow_concurrency_receipts_owner ON app.workflow_concurrency_co
 
 ALTER TABLE app.workflow_drafts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workflow_drafts_workspace_scope ON app.workflow_drafts TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_drafts_workspace_scope ON app.workflow_drafts TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_failure_notification_policies ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workflow_failure_notification_policies_workspace_scope ON app.workflow_failure_notification_policies TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_failure_notification_policies_workspace_scope ON app.workflow_failure_notification_policies TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_failure_streaks ENABLE ROW LEVEL SECURITY;
 
@@ -14237,13 +14237,13 @@ CREATE POLICY workflow_favorite_membership_generations_owner ON app.workflow_fav
 
 ALTER TABLE app.workflow_favorite_receipts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workflow_favorite_receipts_actor ON app.workflow_favorite_receipts FOR SELECT TO {{api_runtime_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND ((actor_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text)) AND (generation = app.current_workflow_favorite_generation())));
+CREATE POLICY workflow_favorite_receipts_actor ON app.workflow_favorite_receipts FOR SELECT TO {{app_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND ((actor_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text)) AND (generation = app.current_workflow_favorite_generation())));
 
 CREATE POLICY workflow_favorite_receipts_owner ON app.workflow_favorite_receipts TO {{owner_role}} USING (true) WITH CHECK (true);
 
 ALTER TABLE app.workflow_favorites ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workflow_favorites_actor ON app.workflow_favorites FOR SELECT TO {{api_runtime_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND ((actor_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text)) AND (generation = app.current_workflow_favorite_generation())));
+CREATE POLICY workflow_favorites_actor ON app.workflow_favorites FOR SELECT TO {{app_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND ((actor_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text)) AND (generation = app.current_workflow_favorite_generation())));
 
 CREATE POLICY workflow_favorites_owner ON app.workflow_favorites TO {{owner_role}} USING (true) WITH CHECK (true);
 
@@ -14251,7 +14251,7 @@ ALTER TABLE app.workflow_folders ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_folders_owner ON app.workflow_folders TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_folders_reader ON app.workflow_folders FOR SELECT TO {{api_runtime_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND (EXISTS ( SELECT 1
+CREATE POLICY workflow_folders_reader ON app.workflow_folders FOR SELECT TO {{app_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND (EXISTS ( SELECT 1
    FROM ((app.workspaces w
      JOIN app.workspace_memberships m ON ((m.workspace_id = w.id)))
      JOIN app.users u ON ((u.id = m.user_id)))
@@ -14261,29 +14261,29 @@ ALTER TABLE app.workflow_input_case_payloads ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_input_case_payloads_owner ON app.workflow_input_case_payloads TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_input_case_payloads_tenant ON app.workflow_input_case_payloads TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_input_case_payloads_tenant ON app.workflow_input_case_payloads TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_input_case_receipts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_input_case_receipts_owner ON app.workflow_input_case_receipts TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_input_case_receipts_tenant ON app.workflow_input_case_receipts TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_input_case_receipts_tenant ON app.workflow_input_case_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_input_cases ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_input_cases_owner ON app.workflow_input_cases TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_input_cases_tenant ON app.workflow_input_cases TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_input_cases_tenant ON app.workflow_input_cases TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_integration_usage ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workflow_integration_usage_workspace_scope ON app.workflow_integration_usage TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_integration_usage_workspace_scope ON app.workflow_integration_usage TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_manual_start_rejections ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_manual_start_rejections_owner ON app.workflow_manual_start_rejections TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_manual_start_rejections_tenant ON app.workflow_manual_start_rejections TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_manual_start_rejections_tenant ON app.workflow_manual_start_rejections TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_organization_coordination ENABLE ROW LEVEL SECURITY;
 
@@ -14297,7 +14297,7 @@ ALTER TABLE app.workflow_organization_state ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_organization_state_owner ON app.workflow_organization_state TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_organization_state_reader ON app.workflow_organization_state FOR SELECT TO {{api_runtime_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND (EXISTS ( SELECT 1
+CREATE POLICY workflow_organization_state_reader ON app.workflow_organization_state FOR SELECT TO {{app_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND (EXISTS ( SELECT 1
    FROM ((app.workspaces w
      JOIN app.workspace_memberships m ON ((m.workspace_id = w.id)))
      JOIN app.users u ON ((u.id = m.user_id)))
@@ -14315,13 +14315,13 @@ CREATE POLICY workflow_runs_deadline_wakeup_owner_update ON app.workflow_runs FO
 
 CREATE POLICY workflow_runs_retention_delete_scope ON app.workflow_runs FOR DELETE TO {{owner_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY workflow_runs_workspace_scope ON app.workflow_runs TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_runs_workspace_scope ON app.workflow_runs TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_tag_assignments ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_tag_assignments_owner ON app.workflow_tag_assignments TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_tag_assignments_reader ON app.workflow_tag_assignments FOR SELECT TO {{api_runtime_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND (EXISTS ( SELECT 1
+CREATE POLICY workflow_tag_assignments_reader ON app.workflow_tag_assignments FOR SELECT TO {{app_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND (EXISTS ( SELECT 1
    FROM ((app.workspaces w
      JOIN app.workspace_memberships m ON ((m.workspace_id = w.id)))
      JOIN app.users u ON ((u.id = m.user_id)))
@@ -14331,7 +14331,7 @@ ALTER TABLE app.workflow_tags ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_tags_owner ON app.workflow_tags TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_tags_reader ON app.workflow_tags FOR SELECT TO {{api_runtime_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND (EXISTS ( SELECT 1
+CREATE POLICY workflow_tags_reader ON app.workflow_tags FOR SELECT TO {{app_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND (EXISTS ( SELECT 1
    FROM ((app.workspaces w
      JOIN app.workspace_memberships m ON ((m.workspace_id = w.id)))
      JOIN app.users u ON ((u.id = m.user_id)))
@@ -14341,13 +14341,13 @@ ALTER TABLE app.workflow_template_origins ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_template_origins_owner ON app.workflow_template_origins TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_template_origins_tenant ON app.workflow_template_origins FOR SELECT TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_template_origins_tenant ON app.workflow_template_origins FOR SELECT TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_trigger_outcomes ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_trigger_outcomes_owner_commands ON app.workflow_trigger_outcomes TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workflow_trigger_outcomes_worker_insert ON app.workflow_trigger_outcomes FOR INSERT TO {{worker_runtime_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_trigger_outcomes_worker_insert ON app.workflow_trigger_outcomes FOR INSERT TO {{app_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_trigger_pause_periods ENABLE ROW LEVEL SECURITY;
 
@@ -14357,33 +14357,33 @@ ALTER TABLE app.workflow_triggers ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workflow_triggers_owner_resolver ON app.workflow_triggers FOR SELECT TO {{owner_role}} USING (true);
 
-CREATE POLICY workflow_triggers_worker_reconciliation ON app.workflow_triggers TO {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_triggers_worker_reconciliation ON app.workflow_triggers TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY workflow_triggers_workspace_scope ON app.workflow_triggers TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_triggers_workspace_scope ON app.workflow_triggers TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflow_versions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workflow_versions_worker_execution_read ON app.workflow_versions FOR SELECT TO {{worker_runtime_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND ((checksum)::text ~~ 'wf:v2:sha256:%'::text) AND (executable_schema_version = 2) AND (executable_json IS NOT NULL) AND (compatibility_release_epoch > 0)));
+CREATE POLICY workflow_versions_worker_execution_read ON app.workflow_versions FOR SELECT TO {{app_role}} USING ((((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)) AND ((checksum)::text ~~ 'wf:v2:sha256:%'::text) AND (executable_schema_version = 2) AND (executable_json IS NOT NULL) AND (compatibility_release_epoch > 0)));
 
-CREATE POLICY workflow_versions_workspace_scope ON app.workflow_versions TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflow_versions_workspace_scope ON app.workflow_versions TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workflows ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workflows_worker_trigger_reconciliation ON app.workflows TO {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflows_worker_trigger_reconciliation ON app.workflows TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
-CREATE POLICY workflows_workspace_scope ON app.workflows TO {{owner_role}}, {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workflows_workspace_scope ON app.workflows TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_artifact_capacity ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_artifact_capacity_owner_all ON app.workspace_artifact_capacity TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_artifact_capacity_workspace_scope ON app.workspace_artifact_capacity TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_artifact_capacity_workspace_scope ON app.workspace_artifact_capacity TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_control_ledger_projection ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_control_ledger_projection_owner_all ON app.workspace_control_ledger_projection TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_creation_idempotency_actor_scope ON app.workspace_creation_idempotency_records TO {{api_runtime_role}} USING (((actor_user_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text))) WITH CHECK (((actor_user_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text)));
+CREATE POLICY workspace_creation_idempotency_actor_scope ON app.workspace_creation_idempotency_records TO {{app_role}} USING (((actor_user_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text))) WITH CHECK (((actor_user_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text)));
 
 CREATE POLICY workspace_creation_idempotency_owner_maintenance ON app.workspace_creation_idempotency_records TO {{owner_role}} USING (true) WITH CHECK (true);
 
@@ -14391,63 +14391,63 @@ ALTER TABLE app.workspace_creation_idempotency_records ENABLE ROW LEVEL SECURITY
 
 ALTER TABLE app.workspace_execution_admission_counters ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_execution_admission_counters_scope ON app.workspace_execution_admission_counters TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_execution_admission_counters_scope ON app.workspace_execution_admission_counters TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_execution_entitlement_versions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_execution_entitlement_versions_scope ON app.workspace_execution_entitlement_versions TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_execution_entitlement_versions_scope ON app.workspace_execution_entitlement_versions TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_execution_entitlements ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_execution_entitlements_scope ON app.workspace_execution_entitlements TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_execution_entitlements_scope ON app.workspace_execution_entitlements TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_inbox_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_inbox_events_owner_commands ON app.workspace_inbox_events TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_inbox_events_worker_insert ON app.workspace_inbox_events FOR INSERT TO {{worker_runtime_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_inbox_events_worker_insert ON app.workspace_inbox_events FOR INSERT TO {{app_role}} WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_inbox_reads ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_inbox_reads_owner_commands ON app.workspace_inbox_reads TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_inbox_reads_recipient_scope ON app.workspace_inbox_reads TO {{api_runtime_role}} USING (app.workspace_inbox_recipient_eligible(workspace_id, user_id)) WITH CHECK (app.workspace_inbox_recipient_eligible(workspace_id, user_id));
+CREATE POLICY workspace_inbox_reads_recipient_scope ON app.workspace_inbox_reads TO {{app_role}} USING (app.workspace_inbox_recipient_eligible(workspace_id, user_id)) WITH CHECK (app.workspace_inbox_recipient_eligible(workspace_id, user_id));
 
 ALTER TABLE app.workspace_inbox_threads ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_inbox_threads_owner_commands ON app.workspace_inbox_threads TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_inbox_threads_recipient_select ON app.workspace_inbox_threads FOR SELECT TO {{api_runtime_role}} USING ((app.workspace_inbox_recipient_eligible(workspace_id, (NULLIF(current_setting('app.actor_id'::text, true), ''::text))::uuid) AND (latest_occurred_at > (statement_timestamp() - '720:00:00'::interval))));
+CREATE POLICY workspace_inbox_threads_recipient_select ON app.workspace_inbox_threads FOR SELECT TO {{app_role}} USING ((app.workspace_inbox_recipient_eligible(workspace_id, (NULLIF(current_setting('app.actor_id'::text, true), ''::text))::uuid) AND (latest_occurred_at > (statement_timestamp() - '720:00:00'::interval))));
 
 ALTER TABLE app.workspace_invitation_acceptance_intents ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_invitation_acceptance_intents_owner_maintenance ON app.workspace_invitation_acceptance_intents TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_invitation_acceptance_intents_workspace_scope ON app.workspace_invitation_acceptance_intents TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_invitation_acceptance_intents_workspace_scope ON app.workspace_invitation_acceptance_intents TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_invitation_binding_replacement_claims ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_invitation_binding_replacement_claims_owner_maintenan ON app.workspace_invitation_binding_replacement_claims TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_invitation_binding_replacement_claims_workspace_scope ON app.workspace_invitation_binding_replacement_claims TO {{api_runtime_role}} USING (((prior_workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((prior_workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_invitation_binding_replacement_claims_workspace_scope ON app.workspace_invitation_binding_replacement_claims TO {{app_role}} USING (((prior_workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((prior_workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_invitation_command_receipts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_invitation_command_receipts_owner_maintenance ON app.workspace_invitation_command_receipts TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_invitation_command_receipts_workspace_scope ON app.workspace_invitation_command_receipts TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_invitation_command_receipts_workspace_scope ON app.workspace_invitation_command_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_invitation_delivery_attempts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_invitation_delivery_attempts_owner_maintenance ON app.workspace_invitation_delivery_attempts TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_invitation_delivery_attempts_workspace_scope ON app.workspace_invitation_delivery_attempts TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_invitation_delivery_attempts_workspace_scope ON app.workspace_invitation_delivery_attempts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_invitations ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_invitations_owner_maintenance ON app.workspace_invitations TO {{owner_role}} USING (true) WITH CHECK (true);
 
-CREATE POLICY workspace_invitations_workspace_scope ON app.workspace_invitations TO {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_invitations_workspace_scope ON app.workspace_invitations TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_legal_holds ENABLE ROW LEVEL SECURITY;
 
@@ -14459,29 +14459,29 @@ CREATE POLICY workspace_lifecycle_operations_owner_all ON app.workspace_lifecycl
 
 ALTER TABLE app.workspace_member_departure_command_receipts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_member_departure_command_receipts_workspace_scope ON app.workspace_member_departure_command_receipts TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_member_departure_command_receipts_workspace_scope ON app.workspace_member_departure_command_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_member_removal_command_receipts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_member_removal_command_receipts_workspace_scope ON app.workspace_member_removal_command_receipts TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_member_removal_command_receipts_workspace_scope ON app.workspace_member_removal_command_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_member_role_command_receipts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_member_role_command_receipts_workspace_scope ON app.workspace_member_role_command_receipts TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_member_role_command_receipts_workspace_scope ON app.workspace_member_role_command_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_member_suspension_command_receipts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_member_suspension_command_receipts_workspace_scope ON app.workspace_member_suspension_command_receipts TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_member_suspension_command_receipts_workspace_scope ON app.workspace_member_suspension_command_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_memberships ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_memberships_actor_discovery ON app.workspace_memberships FOR SELECT TO {{api_runtime_role}} USING (((current_setting('app.discovery_scope'::text, true) = 'workspace_memberships'::text) AND (NULLIF(current_setting('app.workspace_id'::text, true), ''::text) IS NULL) AND ((user_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text)) AND ((status)::text = 'active'::text)));
+CREATE POLICY workspace_memberships_actor_discovery ON app.workspace_memberships FOR SELECT TO {{app_role}} USING (((current_setting('app.discovery_scope'::text, true) = 'workspace_memberships'::text) AND (NULLIF(current_setting('app.workspace_id'::text, true), ''::text) IS NULL) AND ((user_id)::text = NULLIF(current_setting('app.actor_id'::text, true), ''::text)) AND ((status)::text = 'active'::text)));
 
-CREATE POLICY workspace_memberships_workspace_scope ON app.workspace_memberships TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_memberships_workspace_scope ON app.workspace_memberships TO {{owner_role}}, {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_ownership_transfer_command_receipts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_ownership_transfer_command_receipts_workspace_scope ON app.workspace_ownership_transfer_command_receipts TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_ownership_transfer_command_receipts_workspace_scope ON app.workspace_ownership_transfer_command_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
 
 ALTER TABLE app.workspace_purge_completions ENABLE ROW LEVEL SECURITY;
 
@@ -14497,4 +14497,4 @@ CREATE POLICY workspace_purge_steps_owner_all ON app.workspace_purge_steps TO {{
 
 ALTER TABLE app.workspace_rename_command_receipts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY workspace_rename_command_receipts_workspace_scope ON app.workspace_rename_command_receipts TO {{api_runtime_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));
+CREATE POLICY workspace_rename_command_receipts_workspace_scope ON app.workspace_rename_command_receipts TO {{app_role}} USING (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text))) WITH CHECK (((workspace_id)::text = NULLIF(current_setting('app.workspace_id'::text, true), ''::text)));

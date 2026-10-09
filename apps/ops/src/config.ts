@@ -32,19 +32,6 @@ const baseEnvironmentSchema = z.object({
     .default(30_000),
   OPERATOR_WORKSPACE_ID: z.uuid(),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
-  POSTGRES_API_RUNTIME_USER: z.string().default('pertexo_api'),
-  POSTGRES_DISPATCHER_RUNTIME_USER: z.string().default('pertexo_dispatcher'),
-  POSTGRES_LIFECYCLE_COMMAND_USER: z
-    .string()
-    .default('pertexo_lifecycle_command'),
-  POSTGRES_MAINTENANCE_USER: z.string().default('pertexo_maintenance'),
-  POSTGRES_MIGRATION_USER: z.string().default('pertexo_migration'),
-  POSTGRES_OPERATOR_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_operator'),
-  POSTGRES_OWNER_USER: z.string().default('pertexo_owner'),
-  POSTGRES_WORKER_RUNTIME_USER: z.string().default('pertexo_worker'),
   SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
 });
 
@@ -220,8 +207,6 @@ export interface OperatorCommandConfig {
       }>;
   readonly database: DatabaseConfig;
   readonly observability: ObservabilityConfig;
-  readonly operatorRole: string;
-  readonly forbiddenRoles: readonly string[];
   readonly timeoutMs: number;
 }
 
@@ -317,15 +302,6 @@ export function parseOperatorCommandConfig(
   return Object.freeze({
     command: toOperatorCommand(parsed),
     database,
-    forbiddenRoles: Object.freeze([
-      parsed.POSTGRES_API_RUNTIME_USER,
-      parsed.POSTGRES_DISPATCHER_RUNTIME_USER,
-      parsed.POSTGRES_LIFECYCLE_COMMAND_USER,
-      parsed.POSTGRES_MAINTENANCE_USER,
-      parsed.POSTGRES_MIGRATION_USER,
-      parsed.POSTGRES_OWNER_USER,
-      parsed.POSTGRES_WORKER_RUNTIME_USER,
-    ]),
     observability: parseObservabilityConfig({
       environment: parsed.NODE_ENV,
       logLevel: parsed.LOG_LEVEL,
@@ -335,7 +311,6 @@ export function parseOperatorCommandConfig(
       serviceName: 'pertexo-ops',
       serviceVersion: parsed.SERVICE_VERSION,
     }),
-    operatorRole: database.operatorRole,
     timeoutMs: parsed.OPERATOR_TIMEOUT_MS,
   });
 }

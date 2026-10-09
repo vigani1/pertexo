@@ -57,7 +57,6 @@ describe('operator command config', () => {
       workspaceId,
     });
     expect(config.database.max).toBe(1);
-    expect(config.operatorRole).toBe('pertexo_operator');
   });
 
   it('rejects an implicit or unbounded operator invocation', () => {

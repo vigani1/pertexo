@@ -75,15 +75,10 @@ export async function bootstrapOperatorCommand(
     telemetry.start();
     const modules = await (dependencies.loadModules ?? loadModules)();
     logger = modules.logging.createStructuredLogger(config.observability);
-    database = modules.database.createOperatorCommandDatabase(
-      config.database,
-      config.operatorRole,
-      {
-        forbiddenRoles: config.forbiddenRoles,
-        lockTimeoutMs: config.timeoutMs,
-        statementTimeoutMs: config.timeoutMs,
-      },
-    );
+    database = modules.database.createOperatorCommandDatabase(config.database, {
+      lockTimeoutMs: config.timeoutMs,
+      statementTimeoutMs: config.timeoutMs,
+    });
     const commandResources = {
       command: config.command,
       cleanupTimeoutMs: Math.min(config.timeoutMs, 10_000),
