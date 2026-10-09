@@ -355,6 +355,9 @@ describe('worker readiness lifecycle', () => {
       idleRuntime(),
       idleRuntime(),
       idleRuntime(),
+      idleRuntime(),
+      idleRuntime(),
+      idleRuntime(),
     );
     const checking = readiness.checkReadiness();
 
@@ -364,8 +367,8 @@ describe('worker readiness lifecycle', () => {
     await expect(checking).rejects.toThrow('worker is draining');
   });
 
-  it('includes coordinator, trigger, node, and maintenance health', async () => {
-    const checks = Array.from({ length: 6 }, () =>
+  it('includes the health of every runtime', async () => {
+    const checks = Array.from({ length: 9 }, () =>
       vi.fn().mockResolvedValue(undefined),
     );
     const readiness = new WorkerReadiness(
@@ -376,6 +379,9 @@ describe('worker readiness lifecycle', () => {
       { checkReadiness: checks[3] } as never,
       { checkReadiness: checks[4] } as never,
       { checkReadiness: checks[5] } as never,
+      { checkReadiness: checks[6] } as never,
+      { checkReadiness: checks[7] } as never,
+      { checkReadiness: checks[8] } as never,
     );
 
     await expect(readiness.checkReadiness()).resolves.toBeUndefined();
@@ -392,6 +398,9 @@ describe('worker readiness lifecycle', () => {
       { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never,
       { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never,
       new WorkerDrainState(),
+      idleRuntime(),
+      idleRuntime(),
+      idleRuntime(),
       idleRuntime(),
       idleRuntime(),
       idleRuntime(),

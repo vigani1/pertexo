@@ -6,7 +6,7 @@ import {
   type WorkerApplicationCompositionFactories,
 } from '../src/app.js';
 import { parseWorkerConfig } from '../src/config/worker.js';
-import { WORKSPACE_DATABASE } from '../src/platform/database/database.module.js';
+import { WorkerReadinessMonitor } from '../src/runtime/health/readiness-monitor.js';
 import { WorkerDrainState } from '../src/runtime/shutdown/drain-state.js';
 import { WorkerShutdownCoordinator } from '../src/runtime/shutdown/coordinator.js';
 import { workerEnvironment } from './support/worker-environment.js';
@@ -108,7 +108,7 @@ describe('worker application construction ownership', () => {
     expect(dispatcherClose).toHaveBeenCalledOnce();
   });
 
-  it('preserves a compatibility failure when Nest close itself fails', async () => {
+  it('preserves a readiness failure when Nest close itself fails', async () => {
     const readinessFailure = new Error('database readiness failed');
     const nestCloseFailure = new Error('Nest before-shutdown hook failed');
     const shutdown = new WorkerShutdownCoordinator(new WorkerDrainState());
@@ -118,10 +118,8 @@ describe('worker application construction ownership', () => {
       }),
       get: vi.fn((token: unknown) => {
         if (token === WorkerShutdownCoordinator) return shutdown;
-        if (token === WORKSPACE_DATABASE)
-          return {
-            checkReadiness: () => Promise.reject(readinessFailure),
-          };
+        if (token === WorkerReadinessMonitor)
+          return { check: () => Promise.reject(readinessFailure) };
         throw new Error('Unexpected application token');
       }),
     };

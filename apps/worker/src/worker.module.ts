@@ -109,41 +109,7 @@ export class WorkerModule {
       module: WorkerModule,
       imports: [
         DatabaseModule.register(config.database, databaseOptions),
-        TransportModule.register(config, {
-          logger: dependencies.logger,
-          ...(dependencies.coordinatorRuntime === undefined
-            ? {}
-            : { coordinatorRuntime: dependencies.coordinatorRuntime }),
-          ...(dependencies.nodeAttemptRuntime === undefined
-            ? {}
-            : { nodeAttemptRuntime: dependencies.nodeAttemptRuntime }),
-          ...(dependencies.maintenanceRuntime === undefined
-            ? {}
-            : {
-                maintenanceRuntime: dependencies.maintenanceRuntime,
-              }),
-          ...(dependencies.triggerRuntime === undefined
-            ? {}
-            : { triggerRuntime: dependencies.triggerRuntime }),
-          ...(dependencies.dispatcherDatabase === undefined
-            ? {}
-            : { dispatcherDatabase: dependencies.dispatcherDatabase }),
-          ...(dependencies.databaseRuntime === undefined
-            ? {}
-            : { databaseRuntime: dependencies.databaseRuntime }),
-          ...(dependencies.dispatcherDatabaseRuntime === undefined
-            ? {}
-            : {
-                dispatcherDatabaseRuntime:
-                  dependencies.dispatcherDatabaseRuntime,
-              }),
-          ...(dependencies.queueProducer === undefined
-            ? {}
-            : { queueProducer: dependencies.queueProducer }),
-          ...(dependencies.transportMetrics === undefined
-            ? {}
-            : { transportMetrics: dependencies.transportMetrics }),
-        }),
+        TransportModule.register(config, dependencies),
         ObservabilityModule.register(
           dependencies.logger,
           dependencies.telemetry,
