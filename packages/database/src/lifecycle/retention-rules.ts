@@ -440,21 +440,6 @@ export const RETENTION_RULES = Object.freeze([
         = (page.workspace_id, page.case_id, page.revision)`,
   },
   {
-    name: 'input_case_receipts',
-    statement: `
-      with page as (
-        select workspace_id, actor_id, workflow_id, operation, key_hash
-        from app.workflow_input_case_receipts
-        where expires_at <= clock_timestamp()
-        order by expires_at limit $1
-      )
-      delete from app.workflow_input_case_receipts receipt using page
-      where (receipt.workspace_id, receipt.actor_id, receipt.workflow_id,
-             receipt.operation, receipt.key_hash)
-        = (page.workspace_id, page.actor_id, page.workflow_id,
-           page.operation, page.key_hash)`,
-  },
-  {
     // A deleted case goes once its payloads are gone.
     name: 'deleted_input_cases',
     statement: `

@@ -73,37 +73,3 @@ export const workflowInputCasePayloads = appSchema.table(
     }),
   ],
 );
-export const workflowInputCaseReceipts = appSchema.table(
-  'workflow_input_case_receipts',
-  {
-    workspaceId: uuid('workspace_id').notNull(),
-    actorId: uuid('actor_id').notNull(),
-    workflowId: uuid('workflow_id').notNull(),
-    operation: varchar('operation', { length: 8 }).notNull(),
-    keyHash: varchar('key_hash', { length: 64 }).notNull(),
-    requestHash: varchar('request_hash', { length: 64 }).notNull(),
-    caseId: uuid('case_id').notNull(),
-    revision: integer('revision').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
-      .default(sql`clock_timestamp()+interval '24 hours'`)
-      .notNull(),
-  },
-  (table) => [
-    primaryKey({
-      columns: [
-        table.workspaceId,
-        table.actorId,
-        table.workflowId,
-        table.operation,
-        table.keyHash,
-      ],
-    }),
-    index('workflow_input_case_receipts_expiry_idx').on(
-      table.expiresAt,
-      table.workspaceId,
-    ),
-  ],
-);

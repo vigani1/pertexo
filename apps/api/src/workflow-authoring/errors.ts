@@ -1,9 +1,7 @@
 import {
   IdempotencyConflictError,
-  WorkflowIdempotencyConflictError,
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
-  WorkflowInputCaseUnavailableError,
   WorkflowConcurrencyRevisionConflictError,
   WorkflowConcurrencyLimitUnavailableError,
   WorkflowConcurrencyLimitExceededError,
@@ -101,11 +99,6 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
       safeDetail:
         'The run-input case count or retained storage limit has been reached.',
     });
-  if (error instanceof WorkflowInputCaseUnavailableError)
-    return applicationError('workflow.input_cases_unavailable', {
-      safeDetail:
-        'Run-input cases are not enabled or are temporarily unavailable. Retain any uncertain command for explicit recovery.',
-    });
   if (error instanceof WorkflowConcurrencyRevisionConflictError)
     return applicationError('workflow.concurrency_revision_conflict', {
       safeDetail:
@@ -140,10 +133,7 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
         'The workspace default has changed; reload it before retrying.',
       details: { currentRevision: error.currentRevision },
     });
-  if (
-    error instanceof WorkflowIdempotencyConflictError ||
-    error instanceof IdempotencyConflictError
-  )
+  if (error instanceof IdempotencyConflictError)
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
     });

@@ -81,7 +81,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
       )
       delete from app.workflow_folders row using page where row.ctid = page.ctid`,
   },
-  ...['workflow_tags', 'workflow_input_case_receipts'].map(deleteRows),
+  deleteRows('workflow_tags'),
   {
     // Payloads are large; a page stays under 1 MiB.
     name: 'workflow_input_case_payloads',

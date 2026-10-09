@@ -184,7 +184,12 @@ export async function verifyWorkflowInputCasesEvidence(
     case_id: string;
     revision: number;
   }>(
-    'select operation,case_id,revision from app.workflow_input_case_receipts where workspace_id=$1 and workflow_id=$2 order by case_id,revision limit 6',
+    `select substring(operation from 'workflow\\.inputcase\\.(.*)') operation,
+            resource_id case_id, (result_ref->>'revision')::int revision
+     from app.idempotency_records
+     where workspace_id=$1 and operation like 'workflow.inputcase.%'
+       and scope like '%:' || $2
+     order by resource_id, revision limit 6`,
     [evidence.workspaceId, evidence.workflowId],
   );
   expect(receipts.rows).toHaveLength(5);

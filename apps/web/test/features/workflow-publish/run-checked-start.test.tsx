@@ -79,7 +79,9 @@ function openRunMenu() {
               workspaceWith(['run:start']),
             ),
             workflow: workflowSummarySchema.parse(
-              summary(workflowId, 'Rollout workflow', { publishedVersionId }),
+              summary(workflowId, 'Checked start workflow', {
+                publishedVersionId,
+              }),
             ),
           }}
         />
@@ -122,81 +124,42 @@ function recordRuns(uncertain = false) {
 }
 
 it.each(['Run published version', 'Run with input…'])(
-  'keeps %s explicitly confirmable and unchecked with rollout disabled',
+  'starts from %s with the current publication as its precondition',
   async (action) => {
-    mockServer.use(
-      http.get(casesPath, () =>
-        problem(503, 'workflow.input_cases_unavailable'),
-      ),
-    );
+    mockServer.use(http.get(casesPath, () => HttpResponse.json({ items: [] })));
     const writes = recordRuns();
     const { event } = openRunMenu();
     const start = await chooseRun(event, action);
-    await screen.findByText(/An ordinary run uses the publication current/u);
-    expect(
-      screen.queryByRole('button', { name: 'New input case' }),
-    ).not.toBeInTheDocument();
-    expect(writes).toEqual([]);
     expect(start).toBeEnabled();
     fireEvent.change(screen.getByLabelText('Run input (JSON)'), {
-      target: { value: '{"proof":"ordinary"}' },
+      target: { value: '{"proof":"checked"}' },
     });
     await event.click(start);
     await waitFor(() => {
       expect(writes).toHaveLength(1);
     });
-    expect(writes[0]?.body).toEqual({ input: { proof: 'ordinary' } });
+    expect(writes[0]?.body).toEqual({
+      input: { proof: 'checked' },
+      expectedPublishedVersionId: versionId,
+    });
     expect(writes[0]?.key).toBeTruthy();
   },
 );
 
-it('does not infer unchecked availability from pending or failed discovery', async () => {
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  mockServer.use(
-    http.get(casesPath, async () => {
-      await held;
-      return problem(500, 'internal.unexpected');
-    }),
-  );
-  const writes = recordRuns();
-  const { event } = openRunMenu();
-  const start = await chooseRun(event);
-  expect(start).toBeDisabled();
-  release();
-  await screen.findByRole('button', { name: 'Retry' });
-  expect(start).toBeDisabled();
-  expect(writes).toEqual([]);
-});
-
-it('keeps an uncertain checked command byte-for-byte on rollback and republication', async () => {
-  let enabled = true;
-  mockServer.use(
-    http.get(casesPath, () =>
-      enabled
-        ? HttpResponse.json({ items: [] })
-        : problem(503, 'workflow.input_cases_unavailable'),
-    ),
-  );
+it('retries an uncertain checked start byte-for-byte after republication', async () => {
+  mockServer.use(http.get(casesPath, () => HttpResponse.json({ items: [] })));
   const writes = recordRuns(true);
   const { event, queryClient, displayPublication } = openRunMenu();
   const start = await chooseRun(event);
-  await waitFor(() => {
-    expect(start).toBeEnabled();
-  });
   fireEvent.change(screen.getByLabelText('Run input (JSON)'), {
     target: { value: '{"proof":"checked"}' },
   });
   await event.click(start);
   const retry = await screen.findByRole('button', { name: 'Retry same run' });
-  enabled = false;
   act(() => {
     displayPublication(newerVersion);
   });
   await act(() => queryClient.invalidateQueries());
-  await screen.findByText(/Input cases aren’t enabled/u);
   expect(screen.getByLabelText('Run input (JSON)')).toBeDisabled();
   expect(screen.getByText(/Original submitted version/u)).toHaveTextContent(
     versionId,
@@ -211,113 +174,4 @@ it('keeps an uncertain checked command byte-for-byte on rollback and republicati
     expectedPublishedVersionId: versionId,
   });
   expect(writes[1]).toEqual(writes[0]);
-});
-
-it('does not downgrade a previously submitted checked command after a definitive rejection', async () => {
-  let enabled = true;
-  mockServer.use(
-    http.get(casesPath, () =>
-      enabled
-        ? HttpResponse.json({ items: [] })
-        : problem(503, 'workflow.input_cases_unavailable'),
-    ),
-  );
-  const writes = recordRuns();
-  const { event, queryClient } = openRunMenu();
-  const start = await chooseRun(event);
-  await waitFor(() => {
-    expect(start).toBeEnabled();
-  });
-  await event.click(start);
-  await waitFor(() => {
-    expect(writes).toHaveLength(1);
-    expect(start).toBeEnabled();
-  });
-  enabled = false;
-  await act(() => queryClient.invalidateQueries());
-  await screen.findByText(/Input cases aren’t enabled/u);
-  await waitFor(() => {
-    expect(start).toBeDisabled();
-  });
-  expect(writes[0]?.body).toEqual({
-    input: {},
-    expectedPublishedVersionId: versionId,
-  });
-  expect(writes).toHaveLength(1);
-});
-
-it('keeps an uncertain unchecked retry unchecked when rollout becomes available', async () => {
-  let enabled = false;
-  mockServer.use(
-    http.get(casesPath, () =>
-      enabled
-        ? HttpResponse.json({ items: [] })
-        : problem(503, 'workflow.input_cases_unavailable'),
-    ),
-  );
-  const writes = recordRuns(true);
-  const { event, queryClient } = openRunMenu();
-  const start = await chooseRun(event);
-  await waitFor(() => {
-    expect(start).toBeEnabled();
-  });
-  await event.click(start);
-  const retry = await screen.findByRole('button', { name: 'Retry same run' });
-  enabled = true;
-  await act(() => queryClient.invalidateQueries());
-  await screen.findByText(/No input cases yet/u);
-  expect(
-    screen.queryByText(/Current published version/u),
-  ).not.toBeInTheDocument();
-  await event.click(retry);
-  await waitFor(() => {
-    expect(writes).toHaveLength(2);
-  });
-  expect(writes[0]?.body).toEqual({ input: {} });
-  expect(writes[1]).toEqual(writes[0]);
-});
-
-it('does not downgrade a loaded case when the rollout gate is withdrawn', async () => {
-  const caseId = '34343434-3434-4343-8343-343434343434';
-  const metadata = {
-    id: caseId,
-    workspaceId,
-    workflowId,
-    workflowVersionId: versionId,
-    versionChecksum: `wf:v1:sha256:${'a'.repeat(64)}`,
-    name: 'Bound input',
-    revision: 1,
-    representationTag: `"wic1.${caseId.replaceAll('-', '')}.1"`,
-    createdAt: '2026-10-01T12:00:00.000Z',
-    updatedAt: '2026-10-01T12:00:00.000Z',
-  };
-  let enabled = true;
-  mockServer.use(
-    http.get(casesPath, () =>
-      enabled
-        ? HttpResponse.json({ items: [metadata] })
-        : problem(503, 'workflow.input_cases_unavailable'),
-    ),
-    http.get(`${casesPath}/${caseId}`, () =>
-      HttpResponse.json(
-        { case: { ...metadata, input: { proof: 'bound' } } },
-        { headers: { ETag: metadata.representationTag } },
-      ),
-    ),
-  );
-  const writes = recordRuns();
-  const { event, queryClient } = openRunMenu();
-  const start = await chooseRun(event);
-  await event.click(
-    await screen.findByRole('button', { name: 'Load Bound input' }),
-  );
-  await screen.findByText(/Loaded case: Bound input/u);
-  enabled = false;
-  await act(() => queryClient.invalidateQueries());
-  await screen.findByText(/Input cases aren’t enabled/u);
-  expect(start).toBeDisabled();
-  expect(screen.getByLabelText('Run input (JSON)')).toHaveValue(
-    JSON.stringify({ proof: 'bound' }, null, 2),
-  );
-  expect(writes).toEqual([]);
 });

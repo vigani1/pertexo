@@ -63,15 +63,6 @@ const errors = {
   '401': responseReference('Unauthenticated'),
   '403': responseReference('Forbidden'),
   '404': responseReference('NotFound'),
-  '503': {
-    description:
-      'Run-input case rollout is not enabled or currently unavailable',
-    content: {
-      'application/problem+json': {
-        schema: { $ref: '#/components/schemas/ApiProblem' },
-      },
-    },
-  },
   '500': responseReference('Unexpected'),
 };
 const commandErrors = { ...errors, '409': responseReference('Conflict') };

@@ -1,10 +1,5 @@
-import {
-  infiniteQueryOptions,
-  skipToken,
-  useInfiniteQuery,
-} from '@tanstack/react-query';
+import { infiniteQueryOptions, skipToken } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
 import { listInputCases } from './input-cases.api';
 import { workflowKeys } from './workflows.queries';
 
@@ -40,34 +35,4 @@ export function inputCasesQueryOptions(
     gcTime: 0,
     retry: false,
   });
-}
-
-/** Observe the existing list gate; never guess from errors or mirror its state. */
-export function useInputCasesAvailability(
-  scope:
-    | Readonly<{
-        apiClient: ApiClient;
-        userId: string;
-        workspaceId: string;
-        workflowId: string;
-      }>
-    | undefined,
-  enabled: boolean,
-) {
-  const query = useInfiniteQuery({
-    ...inputCasesQueryOptions(
-      scope?.apiClient,
-      scope?.userId ?? '',
-      scope?.workspaceId ?? '',
-      scope?.workflowId ?? '',
-    ),
-    enabled: enabled && scope !== undefined,
-  });
-  if (query.isFetching) return undefined;
-  if (
-    isApiError(query.error) &&
-    query.error.problem?.code === 'workflow.input_cases_unavailable'
-  )
-    return false;
-  return query.isSuccess ? true : undefined;
 }

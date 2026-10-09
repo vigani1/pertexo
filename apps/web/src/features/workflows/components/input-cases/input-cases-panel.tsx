@@ -17,7 +17,6 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { ReadFailure } from '@/components/patterns/read-failure';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
 import { useInputCases } from '../../use-input-cases';
 import type { InputCaseCommand } from '../../input-cases.api';
 
@@ -80,20 +79,10 @@ export function InputCasesPanel({
   useEffect(() => {
     if (cases.accessLost) onAccessLost?.();
   }, [cases.accessLost, onAccessLost]);
-  const readUnavailable =
-    isApiError(cases.query.error) &&
-    cases.query.error.problem?.code === 'workflow.input_cases_unavailable';
   if (cases.accessLost)
     return (
       <Notice tone="warning">
         Access to input cases is no longer available.
-      </Notice>
-    );
-  if ((cases.unavailable || readUnavailable) && !cases.uncertain)
-    return (
-      <Notice tone="info">
-        Input cases aren’t enabled in this installation yet. No case controls
-        are available.
       </Notice>
     );
 

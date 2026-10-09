@@ -20,10 +20,7 @@ import {
 } from '@pertexo/node-catalog';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  WorkflowManualStartUnavailableError,
-  WorkflowPublishedVersionConflictError,
-} from '@pertexo/database/api';
+import { WorkflowPublishedVersionConflictError } from '@pertexo/database/api';
 
 import { createInitialCheckpoint, ENGINE_VERSION } from '@pertexo/execution';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
@@ -504,10 +501,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
   });
 
   it.each([
-    [
-      new WorkflowManualStartUnavailableError(),
-      'workflow.input_cases_unavailable',
-    ],
     [
       new WorkflowPublishedVersionConflictError(workflowVersionId, runId),
       'workflow.published_version_conflict',
