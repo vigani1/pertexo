@@ -407,14 +407,6 @@ export const RETENTION_RULES = Object.freeze([
             updated_at = clock_timestamp()
         from page
         where intent.invitation_id = page.id and intent.verified_email is not null
-      ), receipts as (
-        update app.workspace_invitation_command_receipts receipt
-        set result_ref = jsonb_set(receipt.result_ref, '{invitation,email}',
-              to_jsonb(page.address), false),
-            updated_at = clock_timestamp()
-        from page
-        where receipt.result_ref -> 'invitation' ? 'email'
-          and receipt.result_ref -> 'invitation' ->> 'id' = page.id::text
       )
       update app.workspace_invitations invitation
       set recipient_email = page.address, normalized_email = page.address,

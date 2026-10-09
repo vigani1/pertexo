@@ -1,3 +1,4 @@
+import { IdempotencyConflictError } from '@pertexo/database/api';
 import {
   IdentityConflictError,
   IdempotencyRequestConflictError,
@@ -18,7 +19,6 @@ describe('identity/workspace conflict mapping', () => {
     ['revision_conflict', 'workspace.revision_conflict', 412],
     ['workspace_inactive', 'workspace.conflict', 409],
     ['actor_inactive', 'auth.forbidden', 403],
-    ['idempotency_conflict', 'request.idempotency_conflict', 409],
   ] as const)('maps workspace-rename %s to %s', (reason, code, status) => {
     const error = mapIdentityWorkspaceError(
       new WorkspaceRenameCommandConflictError(reason, 'unsafe detail'),
@@ -148,17 +148,21 @@ describe('identity/workspace conflict mapping', () => {
     expect(error).not.toHaveProperty('safeDetail');
   });
 
-  it('maps a reused idempotency key with changed input to the stable conflict', () => {
-    const error = mapIdentityWorkspaceError(
-      new IdempotencyRequestConflictError(),
-    );
+  it.each([
+    new IdempotencyRequestConflictError(),
+    new IdempotencyConflictError(),
+  ])(
+    'maps a reused idempotency key with changed input to the stable conflict',
+    (failure) => {
+      const error = mapIdentityWorkspaceError(failure);
 
-    expect(error).toEqual({
-      code: 'request.idempotency_conflict',
-      safeDetail: 'The idempotency key was already used for another request.',
-    });
-    expect(APPLICATION_ERROR_CATALOG[error.code].status).toBe(409);
-  });
+      expect(error).toEqual({
+        code: 'request.idempotency_conflict',
+        safeDetail: 'The idempotency key was already used for another request.',
+      });
+      expect(APPLICATION_ERROR_CATALOG[error.code].status).toBe(409);
+    },
+  );
 
   it('maps invalid lifecycle state to 409 without exposing persistence detail', () => {
     const error = mapIdentityWorkspaceError(

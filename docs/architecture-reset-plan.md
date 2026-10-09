@@ -192,6 +192,10 @@ now, as one ordered program — not "whenever we touch it".
         an "input cases not enabled" state.
   - [ ] Workspaces and access: memberships, invitations (including the
         replacement-claim scan's unused purge mode), ownership, identity.
+    - [x] Rename, invitation, acceptance, role, removal, departure,
+          suspension and ownership commands key through the shared
+          idempotency helper; their seven receipt tables go. Profile
+          commands belong to a user, not a workspace, and keep theirs.
   - [ ] Connections.
   - [ ] Triggers: schedules and webhooks.
   - [ ] Notifications and inbox.

@@ -1,5 +1,6 @@
 import {
   IdentityConflictError,
+  IdempotencyConflictError,
   IdempotencyRequestConflictError,
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
@@ -43,6 +44,10 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
   if (error instanceof AuthorizationError) {
     return workspaceApplicationError(error.code, error.message);
   }
+  if (error instanceof IdempotencyConflictError)
+    return applicationError('request.idempotency_conflict', {
+      safeDetail: IDEMPOTENCY_CONFLICT_DETAIL,
+    });
   if (isIdentityError(error)) {
     return mapIdentityError(error);
   }
@@ -81,10 +86,6 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
       return applicationError('workspace.revision_conflict', {
         safeDetail: 'The workspace changed since it was loaded.',
       });
-    if (error.reason === 'idempotency_conflict')
-      return applicationError('request.idempotency_conflict', {
-        safeDetail: 'The idempotency key was already used for another request.',
-      });
     if (error.reason === 'workspace_inactive')
       return applicationError('workspace.conflict', {
         safeDetail: 'Only an active workspace can be renamed.',
@@ -99,10 +100,6 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     if (error.reason === 'revision_conflict')
       return applicationError('workspace.invitation_revision_conflict', {
         safeDetail: 'The invitation changed since it was loaded.',
-      });
-    if (error.reason === 'idempotency_conflict')
-      return applicationError('request.idempotency_conflict', {
-        safeDetail: 'The idempotency key was already used for another request.',
       });
     if (error.reason === 'delivery_unresolved')
       return applicationError('workspace.invitation_delivery_unavailable', {
@@ -126,10 +123,6 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     if (error.reason === 'recipient_mismatch')
       return applicationError('workspace.invitation_recipient_mismatch', {
         safeDetail: 'Sign in with the address that received the invitation.',
-      });
-    if (error.reason === 'idempotency_conflict')
-      return applicationError('request.idempotency_conflict', {
-        safeDetail: 'The idempotency key was already used for another request.',
       });
     if (error.reason === 'proof_expired')
       return applicationError('workspace.invitation_proof_expired', {
@@ -182,10 +175,6 @@ function mapMemberCommandConflict(
     return applicationError('workspace.member_role_revision_conflict', {
       safeDetail: copy.revision,
     });
-  if (reason === 'idempotency_conflict')
-    return applicationError('request.idempotency_conflict', {
-      safeDetail: IDEMPOTENCY_CONFLICT_DETAIL,
-    });
   if (reason === 'target_inactive') return copy.inactive;
   return applicationError('auth.forbidden', { safeDetail: copy.forbidden });
 }
@@ -200,10 +189,6 @@ function mapMembershipConflict(
     case 'revision_conflict':
       return applicationError('workspace.member_role_revision_conflict', {
         safeDetail: 'A membership changed since it was loaded.',
-      });
-    case 'idempotency_conflict':
-      return applicationError('request.idempotency_conflict', {
-        safeDetail: IDEMPOTENCY_CONFLICT_DETAIL,
       });
     case 'target_removed':
       return applicationError('workspace.member_removal_conflict', {

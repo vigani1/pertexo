@@ -111,7 +111,7 @@ function requireTargetPresent(target: LockedMember): void {
  */
 function leaveWorkspace(pool: Pool, raw: LeaveWorkspaceInput) {
   return executeMemberCommand(pool, {
-    table: 'workspace_member_departure_command_receipts',
+    operation: 'workspace.member.departure',
     workspaceId: raw.workspaceId,
     actorUserId: raw.actorUserId,
     targetUserId: raw.actorUserId,
@@ -171,7 +171,7 @@ function changeMemberStatus(
     raw.expectedRoleRevision,
   );
   return executeMemberCommand(pool, {
-    table: 'workspace_member_suspension_command_receipts',
+    operation: 'workspace.member.suspension',
     workspaceId: raw.workspaceId,
     actorUserId: raw.actorUserId,
     targetUserId: raw.targetUserId,
@@ -243,7 +243,7 @@ function transferWorkspaceOwnership(
     raw.expectedOwnerRoleRevision,
   );
   return executeMemberCommand(pool, {
-    table: 'workspace_ownership_transfer_command_receipts',
+    operation: 'workspace.ownership.transfer',
     workspaceId: raw.workspaceId,
     actorUserId: raw.actorUserId,
     targetUserId: raw.targetUserId,

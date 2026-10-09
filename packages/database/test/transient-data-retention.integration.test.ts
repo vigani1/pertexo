@@ -279,7 +279,6 @@ describe('transient data retention', () => {
 
   it('minimizes terminal invitation recipient data after 90 days', async () => {
     const invitationId = randomUUID();
-    const receiptId = randomUUID();
     await asOwner(
       `insert into app.workspace_invitations
         (id,workspace_id,recipient_email,normalized_email,role,status,revision,
@@ -291,41 +290,15 @@ describe('transient data retention', () => {
          clock_timestamp()-interval '100 days',clock_timestamp()-interval '100 days')`,
       [invitationId, workspaceId, digest(invitationId), userId],
     );
-    await asOwner(
-      `insert into app.workspace_invitation_command_receipts
-        (id,workspace_id,actor_user_id,operation,key_hash,request_hash,status,result_ref,
-         created_at,updated_at)
-       values($1,$2,$3,'create',$4,$5,'completed',
-         jsonb_build_object('invitation',jsonb_build_object(
-           'id',$6::uuid,'email','retained-recipient@example.test')),
-         clock_timestamp()-interval '100 days',clock_timestamp()-interval '100 days')`,
-      [
-        receiptId,
-        workspaceId,
-        userId,
-        digest(`key:${invitationId}`),
-        digest(`request:${invitationId}`),
-        invitationId,
-      ],
-    );
-
     const { removed } = await retention.enforce();
     expect(removed.invitation_recipients).toBe(1);
-    const minimized = await asOwner<{
-      recipient_email: string;
-      receipt_email: string;
-    }>(
-      `select invitation.recipient_email,
-              receipt.result_ref->'invitation'->>'email' receipt_email
-         from app.workspace_invitations invitation
-         join app.workspace_invitation_command_receipts receipt
-           on receipt.id=$3
-        where invitation.workspace_id=$1 and invitation.id=$2`,
-      [workspaceId, invitationId, receiptId],
+    const minimized = await asOwner<{ recipient_email: string }>(
+      `select recipient_email from app.workspace_invitations
+        where workspace_id=$1 and id=$2`,
+      [workspaceId, invitationId],
     );
     expect(minimized.rows[0]).toEqual({
       recipient_email: `minimized+${invitationId}@invalid.pertexo`,
-      receipt_email: `minimized+${invitationId}@invalid.pertexo`,
     });
   });
 

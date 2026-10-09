@@ -1,12 +1,13 @@
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
 import {
-  commandKeySchema,
-  hashFlatIdentityCommand,
-  hashIdentityCommandKey,
-} from './identity-command-primitives.js';
+  claimCommand,
+  completeCommand,
+  type CommandIdentity,
+} from '../platform/idempotency.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
+import { commandKeySchema } from './identity-command-primitives.js';
 import type { MembershipRole } from './identity-workspace-contracts.js';
 import { parseIdentityUuid } from './identity-workspace-support.js';
 import { withTenantScopedClient } from './workspace.js';
@@ -14,16 +15,17 @@ import { withTenantScopedClient } from './workspace.js';
 /*
  * The shared half of the existing-member commands (ADR 037 role change,
  * ADR 042 removal and the ADR 047 membership lifecycle): the workspace-first
- * lock order, the locked participant rows, the actor/workspace-scoped command
- * receipt and the transaction that ties them together.
+ * lock order, the locked participant rows, the actor-scoped command key and
+ * the transaction that ties them together.
  */
 
-type MemberCommandReceiptTable =
-  | 'workspace_member_role_command_receipts'
-  | 'workspace_member_removal_command_receipts'
-  | 'workspace_member_departure_command_receipts'
-  | 'workspace_member_suspension_command_receipts'
-  | 'workspace_ownership_transfer_command_receipts';
+/** The command's operation name in `idempotency_records`. */
+type MemberCommandOperation =
+  | 'workspace.member.role'
+  | 'workspace.member.removal'
+  | 'workspace.member.departure'
+  | 'workspace.member.suspension'
+  | 'workspace.ownership.transfer';
 
 export type LockedMember = Readonly<{
   user_id: string;
@@ -85,73 +87,6 @@ export function isActiveMemberManager(
   );
 }
 
-type ClaimedReceipt =
-  | Readonly<{ claimId: string }>
-  | Readonly<{ requestHash: string; status: string; resultRef: unknown }>;
-
-/** Claims a new receipt, or locks and returns the existing one for the key. */
-async function claimMemberCommandReceipt(
-  client: PoolClient,
-  table: MemberCommandReceiptTable,
-  input: Readonly<{
-    workspaceId: string;
-    actorUserId: string;
-    targetUserId: string;
-    keyHash: string;
-    requestHash: string;
-  }>,
-): Promise<ClaimedReceipt> {
-  const claimId = generatePersistedId();
-  const inserted = await client.query(
-    `insert into app.${table}
-       (id,workspace_id,actor_user_id,target_user_id,key_hash,request_hash,status)
-     values($1,$2,$3,$4,$5,$6,'in_progress')
-     on conflict(actor_user_id,workspace_id,key_hash) do nothing`,
-    [
-      claimId,
-      input.workspaceId,
-      input.actorUserId,
-      input.targetUserId,
-      input.keyHash,
-      input.requestHash,
-    ],
-  );
-  if (inserted.rowCount === 1) return { claimId };
-  const existing = await client.query<{
-    request_hash: string;
-    status: string;
-    result_ref: unknown;
-  }>(
-    `select request_hash,status,result_ref
-     from app.${table}
-     where actor_user_id=$1 and workspace_id=$2 and key_hash=$3 for update`,
-    [input.actorUserId, input.workspaceId, input.keyHash],
-  );
-  const row = existing.rows[0];
-  return Object.freeze({
-    requestHash: row?.request_hash ?? '',
-    status: row?.status ?? '',
-    resultRef: row?.result_ref,
-  });
-}
-
-/** Records the applied result; a receipt completes exactly once. */
-async function completeMemberCommandReceipt(
-  client: PoolClient,
-  table: MemberCommandReceiptTable,
-  claimId: string,
-  result: unknown,
-): Promise<void> {
-  const completed = await client.query(
-    `update app.${table}
-     set status='completed',result_ref=$2::jsonb,updated_at=clock_timestamp()
-     where id=$1 and status='in_progress'`,
-    [claimId, JSON.stringify(result)],
-  );
-  if (completed.rowCount !== 1)
-    throw new Error('Workspace member command receipt could not be completed');
-}
-
 /** Appends the command's safe workspace audit fact. */
 export async function recordMemberCommandAudit(
   client: PoolClient,
@@ -206,14 +141,14 @@ type MemberCommandResult = Readonly<Record<string, unknown>>;
 
 /**
  * Runs one existing-member command in a tenant transaction: lock the
- * participants, let the command admit its actor before any receipt is read,
- * replay an exact retry from its receipt without rechecking the old state,
- * and otherwise apply the change and complete the receipt in the same commit.
+ * participants, let the command admit its actor before its key is read,
+ * replay an exact retry without rechecking the old state, and otherwise
+ * apply the change and store its result in the same commit.
  */
 export async function executeMemberCommand<Result extends MemberCommandResult>(
   pool: Pool,
   command: Readonly<{
-    table: MemberCommandReceiptTable;
+    operation: MemberCommandOperation;
     workspaceId: string;
     actorUserId: string;
     targetUserId: string;
@@ -221,10 +156,7 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
     /** The command body; identifiers are added to its request hash. */
     request: Readonly<Record<string, string | number>>;
     result: z.ZodType<Result>;
-    conflict: (
-      reason: 'actor_inactive' | 'idempotency_conflict',
-      message: string,
-    ) => Error;
+    conflict: (reason: 'actor_inactive', message: string) => Error;
     admit: (
       locked: Readonly<{
         actor: LockedMember | undefined;
@@ -244,10 +176,12 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
     actorUserId: parseIdentityUuid(command.actorUserId),
     targetUserId: parseIdentityUuid(command.targetUserId),
   });
-  const keyHash = hashIdentityCommandKey(
-    commandKeySchema.parse(command.idempotencyKey),
-  );
-  const requestHash = hashFlatIdentityCommand({ ...command.request, ...scope });
+  const key: CommandIdentity = {
+    workspaceId: scope.workspaceId,
+    operation: command.operation,
+    scope: scope.actorUserId,
+    idempotencyKey: commandKeySchema.parse(command.idempotencyKey),
+  };
   return withTenantScopedClient(
     pool,
     { workspaceId: scope.workspaceId, actorId: scope.actorUserId },
@@ -261,31 +195,20 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
       if (!locked.workspaceActive)
         throw command.conflict('actor_inactive', 'The workspace is not active');
       const admitted = command.admit(locked, scope);
-      const receipt = await claimMemberCommandReceipt(client, command.table, {
-        ...scope,
-        keyHash,
-        requestHash,
+      const stored = await claimCommand(client, {
+        ...key,
+        request: { ...command.request, targetUserId: scope.targetUserId },
+        resourceId: scope.targetUserId,
       });
-      if (!('claimId' in receipt)) {
-        if (receipt.requestHash !== requestHash)
-          throw command.conflict(
-            'idempotency_conflict',
-            'The idempotency key belongs to another member command',
-          );
-        const parsed = command.result.safeParse(receipt.resultRef);
-        if (receipt.status !== 'completed' || !parsed.success)
-          throw new Error('Workspace member command receipt is incomplete');
-        return Object.freeze({ ...parsed.data, replayed: true });
-      }
+      if (stored !== null)
+        return Object.freeze({
+          ...command.result.parse(stored),
+          replayed: true,
+        });
       const result = command.result.parse(
         await command.apply(client, admitted, scope),
       );
-      await completeMemberCommandReceipt(
-        client,
-        command.table,
-        receipt.claimId,
-        result,
-      );
+      await completeCommand(client, key, result);
       return Object.freeze({ ...result, replayed: false });
     },
   );

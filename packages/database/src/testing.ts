@@ -278,7 +278,6 @@ export {
   usageEvents,
   users,
   workspaceMemberships,
-  workspaceRenameCommandReceipts,
   workspaces,
   workspaceCreationIdempotencyRecords,
   workflowDrafts,
