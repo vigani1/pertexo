@@ -5,7 +5,7 @@ import {
   commandRevisionSchema,
   hashFlatIdentityCommand,
   hashIdentityCommandKey,
-} from '../src/tenant-access/identity-command-primitives.js';
+} from '../src/tenant-access/command-keys.js';
 
 describe('flat identity command receipt hashes', () => {
   it('retains the shared printable-key and positive-revision boundaries', () => {

@@ -3,7 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 import {
   withTenantScopedClient,
   withTenantScopedReadClient,
-} from '../tenant-access/workspace.js';
+} from '../tenant-access/transactions.js';
 
 export function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted)

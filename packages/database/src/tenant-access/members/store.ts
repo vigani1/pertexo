@@ -1,10 +1,13 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { rolesForCapability } from './workspace-policy.js';
-import { withActorScopedClient, withTenantScopedClient } from './workspace.js';
-import { parseIdentityUuid } from './identity-workspace-support.js';
-import { WorkspaceAccessDeniedError } from './identity-workspace-errors.js';
+import { rolesForCapability } from '../policy.js';
+import {
+  withActorScopedClient,
+  withTenantScopedClient,
+} from '../transactions.js';
+import { parseIdentityUuid } from '../support.js';
+import { WorkspaceAccessDeniedError } from '../errors.js';
 import type {
   IdentityWorkspaceDatabase,
   AccessibleWorkspacesPage,
@@ -12,7 +15,7 @@ import type {
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
   WorkspaceStatus,
-} from './identity-workspace-contracts.js';
+} from '../contracts.js';
 
 type MemberStore = Pick<
   IdentityWorkspaceDatabase,

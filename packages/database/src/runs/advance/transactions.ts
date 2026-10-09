@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { withTenantScopedClient } from '../../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 export function assertCoordinatorNotAborted(signal: AbortSignal): void {
   if (signal.aborted)

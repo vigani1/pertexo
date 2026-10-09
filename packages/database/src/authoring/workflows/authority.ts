@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import type { Role } from '../../tenant-access/workspace-policy.js';
+import type { Role } from '../../tenant-access/policy.js';
 import { WorkflowNotFoundError } from './errors.js';
 
 /** Ordered current authority fence shared by authoring writes and organization

@@ -44,7 +44,7 @@ import {
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
-} from '../tenant-access/workspace.js';
+} from '../tenant-access/transactions.js';
 const uuidSchema = z.uuid();
 const sealedSchema = z
   .object({

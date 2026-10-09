@@ -13,7 +13,7 @@ vi.mock('../src/platform/database-runtime.js', () => ({
   })),
 }));
 
-vi.mock('../src/tenant-access/workspace.js', () => ({
+vi.mock('../src/tenant-access/transactions.js', () => ({
   withTenantScopedClient: seams.withTenantScopedClient,
 }));
 

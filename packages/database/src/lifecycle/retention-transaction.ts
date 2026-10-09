@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { withPlatformTransaction } from '../tenant-access/workspace.js';
+import { withPlatformTransaction } from '../tenant-access/transactions.js';
 
 /** One maintenance transaction with lock and statement timeouts. */
 export type RetentionTransactionOptions = Readonly<{

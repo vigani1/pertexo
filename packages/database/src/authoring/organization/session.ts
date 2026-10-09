@@ -6,7 +6,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/database-runtime.js';
-import { withTenantScopedClient } from '../../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import type { OrganizationScope } from './command.js';
 
 export type OrganizationRequestScope = OrganizationScope &

@@ -1,14 +1,14 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
-import { withPlatformTransaction } from './workspace.js';
+import { acquireDatabasePool } from '../../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import { withPlatformTransaction } from '../transactions.js';
 import { z } from 'zod';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 
-import type { DatabaseConfig } from '../config.js';
-import { IdentityConflictError } from './identity-workspace-errors.js';
-import { readIdentityDatabaseErrorCode } from './identity-workspace-support.js';
+import type { DatabaseConfig } from '../../config.js';
+import { IdentityConflictError } from '../errors.js';
+import { readIdentityDatabaseErrorCode } from '../support.js';
 
 const stateDigestSchema = sha256HexSchema;
 const secretSchema = z.string().min(1).max(16_384);

@@ -1,24 +1,24 @@
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { recordIdentitySecurityFact } from '../identity/security-facts.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { recordIdentitySecurityFact } from '../../identity/security-facts.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   commandKeySchema,
   commandRevisionSchema,
   hashFlatIdentityCommand,
   hashIdentityCommandKey,
-} from './identity-command-primitives.js';
+} from '../command-keys.js';
 import type {
   IdentityWorkspaceDatabase,
   UpdateUserProfileInput,
   UserProfileUpdateResult,
   UserRecord,
-} from './identity-workspace-contracts.js';
-import { UserProfileCommandConflictError } from './identity-workspace-errors.js';
-import { mapUser } from './identity-workspace-rows.js';
-import { parseIdentityUuid } from './identity-workspace-support.js';
-import { withPlatformTransaction } from './workspace.js';
+} from '../contracts.js';
+import { UserProfileCommandConflictError } from '../errors.js';
+import { mapUser } from '../rows.js';
+import { parseIdentityUuid } from '../support.js';
+import { withPlatformTransaction } from '../transactions.js';
 
 type ProfileStore = Pick<IdentityWorkspaceDatabase, 'updateUserProfile'>;
 

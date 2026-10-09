@@ -2,13 +2,13 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
-import { withTenantScopedClient } from './workspace.js';
-import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
+} from '../../platform/database-runtime.js';
+import { withTenantScopedClient } from '../transactions.js';
+import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
 const id = z.uuid();
 const sealedToken = z

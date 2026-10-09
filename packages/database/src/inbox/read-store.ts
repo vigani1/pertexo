@@ -13,7 +13,7 @@ import {
   withTenantScopedClient,
   withTenantScopedReadClient,
   type TenantTransactionScope,
-} from '../tenant-access/workspace.js';
+} from '../tenant-access/transactions.js';
 import {
   readWorkflowRunFailedSteps,
   type WorkflowRunFailedStep,

@@ -7,19 +7,16 @@ import {
   type CommandIdentity,
 } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
-import {
-  commandKeySchema,
-  commandRevisionSchema,
-} from './identity-command-primitives.js';
+import { commandKeySchema, commandRevisionSchema } from './command-keys.js';
 import type {
   IdentityWorkspaceDatabase,
   RenameWorkspaceInput,
   WorkspaceRenameResult,
-} from './identity-workspace-contracts.js';
-import { WorkspaceRenameCommandConflictError } from './identity-workspace-errors.js';
-import { mapWorkspace } from './identity-workspace-rows.js';
-import { parseIdentityUuid } from './identity-workspace-support.js';
-import { withTenantScopedClient } from './workspace.js';
+} from './contracts.js';
+import { WorkspaceRenameCommandConflictError } from './errors.js';
+import { mapWorkspace } from './rows.js';
+import { parseIdentityUuid } from './support.js';
+import { withTenantScopedClient } from './transactions.js';
 
 type RenameStore = Pick<IdentityWorkspaceDatabase, 'renameWorkspace'>;
 const nameSchema = z.string().trim().min(1).max(128);

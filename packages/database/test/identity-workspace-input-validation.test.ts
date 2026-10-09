@@ -23,14 +23,14 @@ const pg = vi.hoisted(() => {
 vi.mock('pg', () => ({ Pool: pg.FakePool }));
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createIdentityWorkspaceIdentityStore } from '../src/tenant-access/identity-workspace-identity-store.js';
-import { createIdentityWorkspaceSessionStore } from '../src/tenant-access/identity-workspace-session-store.js';
-import { mapAuthIdentity } from '../src/tenant-access/identity-workspace-rows.js';
+import { createIdentityWorkspaceIdentityStore } from '../src/tenant-access/users/identities.js';
+import { createIdentityWorkspaceSessionStore } from '../src/tenant-access/users/sessions.js';
+import { mapAuthIdentity } from '../src/tenant-access/rows.js';
 import {
   parseIdentityMetadata,
   readIdentityDatabaseErrorCode,
-} from '../src/tenant-access/identity-workspace-support.js';
-import { createOidcLoginTransactionStore } from '../src/tenant-access/oidc-login-transactions.js';
+} from '../src/tenant-access/support.js';
+import { createOidcLoginTransactionStore } from '../src/tenant-access/users/oidc-login.js';
 
 const now = Date.parse('2026-09-13T09:00:00.000Z');
 const config = parseDatabaseConfig({

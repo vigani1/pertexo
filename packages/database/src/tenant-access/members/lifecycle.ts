@@ -6,12 +6,12 @@ import type {
   LeaveWorkspaceInput,
   TransferWorkspaceOwnershipInput,
   WorkspaceMemberStatusCommandInput,
-} from './identity-workspace-contracts.js';
+} from '../contracts.js';
 import {
   WorkspaceMembershipCommandConflictError,
   type WorkspaceMembershipCommandConflictReason,
-} from './identity-workspace-errors.js';
-import { commandRevisionSchema } from './identity-command-primitives.js';
+} from '../errors.js';
+import { commandRevisionSchema } from '../command-keys.js';
 import {
   executeMemberCommand,
   isActiveMemberManager,
@@ -19,13 +19,13 @@ import {
   updateMembership,
   type AdmittedMemberCommand,
   type LockedMember,
-} from './identity-workspace-member-command.js';
-import { revokeUserSessions } from './identity-workspace-session-store.js';
+} from './command.js';
+import { revokeUserSessions } from '../users/sessions.js';
 import {
   canLeaveWorkspace,
   canSuspendWorkspaceMember,
   canTransferWorkspaceOwnership,
-} from './workspace-policy.js';
+} from '../policy.js';
 
 type MembershipLifecycleStore = Pick<
   IdentityWorkspaceDatabase,

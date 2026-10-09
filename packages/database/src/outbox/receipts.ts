@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import type { WorkspaceDatabase } from '../database.js';
 import { inboxReceipts, transportSecurityAuditFacts } from '../schema.js';
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 const inboxMessageSchema = z

@@ -8,7 +8,7 @@ import {
   insertFailureNotificationDeliveryOutbox,
 } from './store-support.js';
 import type { FailureNotificationStore } from './contracts.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
 import {
   parseFailureNotificationAttemptNumber,
   parseFailureNotificationMaximumAttempts,

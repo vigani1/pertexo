@@ -25,7 +25,7 @@ import {
   canTransferWorkspaceOwnership,
   capabilitiesForRole,
   ROLES,
-} from '../../../../../packages/database/src/tenant-access/workspace-policy';
+} from '../../../../../packages/database/src/tenant-access/policy';
 
 function member(
   role: WorkspaceMember['role'],

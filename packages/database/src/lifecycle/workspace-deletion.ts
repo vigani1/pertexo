@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { requestActiveRunCancellations } from '../runs/runs.repository.js';
 import { IdempotencyRequestConflictError } from '../runs/commands/acceptance.js';
 import { databaseSchema } from '../schema.js';
-import { WorkspaceLifecycleConflictError } from '../tenant-access/identity-workspace-errors.js';
-import { parseWorkspaceId } from '../tenant-access/workspace.js';
+import { WorkspaceLifecycleConflictError } from '../tenant-access/errors.js';
+import { parseWorkspaceId } from '../tenant-access/transactions.js';
 
 /** How long a workspace waits for restore before it is purged. */
 export const WORKSPACE_RECOVERY_DAYS = 30;

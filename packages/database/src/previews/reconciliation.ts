@@ -24,7 +24,7 @@ import {
   serializeStoredExecutionValueV1,
   type StoredExecutionValueV1,
 } from '../platform/stored-execution-value.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
 
 export type PreviewDeliveryReconciliationResult =
   | Readonly<{ kind: 'duplicate' }>

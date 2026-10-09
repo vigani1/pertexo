@@ -6,7 +6,7 @@ import {
 } from '../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
+import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/database.js';
 import { createArtifactMigrationConfig } from './artifact-migration-fixture.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 import { createWorkflowAuthoringFixtureDatabase } from './workflow-authoring-admission.fixture.js';

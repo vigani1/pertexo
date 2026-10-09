@@ -9,8 +9,8 @@ import {
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
-import type { WorkspaceTransactionOptions } from '../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
+import type { WorkspaceTransactionOptions } from '../tenant-access/transactions.js';
 
 export const uuidSchema = z.uuid();
 export const providerKeySchema = z

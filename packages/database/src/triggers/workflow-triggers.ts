@@ -12,7 +12,7 @@ import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
 } from './workflow-trigger-errors.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
 import { deactivateArchivedWorkflowTriggers } from './workflow-trigger-activation.js';
 import {
   readHealth,

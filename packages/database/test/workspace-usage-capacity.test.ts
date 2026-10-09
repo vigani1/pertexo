@@ -1,10 +1,10 @@
 import type { Pool } from 'pg';
-import type { WorkspaceTransaction } from '../src/tenant-access/workspace.js';
-import { WorkspaceAccessDeniedError } from '../src/tenant-access/identity-workspace-errors.js';
+import type { WorkspaceTransaction } from '../src/tenant-access/transactions.js';
+import { WorkspaceAccessDeniedError } from '../src/tenant-access/errors.js';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const fixture = vi.hoisted(() => ({ execute: vi.fn(), transaction: vi.fn() }));
-vi.mock('../src/tenant-access/workspace.js', () => ({
+vi.mock('../src/tenant-access/transactions.js', () => ({
   withWorkspaceReadTransaction: fixture.transaction,
 }));
 import { readWorkspaceUsageCapacity } from '../src/runs/queries/usage-capacity.js';

@@ -27,7 +27,7 @@ import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionValueV1,
 } from '../platform/stored-execution-value.js';
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 const identityKeySchema = z

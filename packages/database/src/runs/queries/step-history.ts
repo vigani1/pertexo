@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
-} from '../../tenant-access/workspace.js';
+} from '../../tenant-access/transactions.js';
 
 /** How many of a workflow's newest runs step history looks at (ADR 051). */
 const STEP_HISTORY_RUN_WINDOW = 100;

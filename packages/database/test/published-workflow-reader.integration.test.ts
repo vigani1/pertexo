@@ -5,7 +5,7 @@ import type { DatabaseError } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-workspace.js';
+import { createIdentityWorkspaceDatabase } from '../src/tenant-access/database.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/runs/published-workflow.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './support/workflow-authoring-admission.fixture.js';

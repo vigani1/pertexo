@@ -10,7 +10,7 @@ import {
   previewReconciliationPayloadSchema,
   type PreviewDelivery,
 } from './contract.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
 
 export type PreviewOutboxClient = Parameters<
   Parameters<typeof withTenantScopedClient>[2]

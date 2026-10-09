@@ -36,7 +36,7 @@ import {
   withPlatformTransaction,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
-} from '../tenant-access/workspace.js';
+} from '../tenant-access/transactions.js';
 
 const claimSchema = z.object({
   trigger_id: z.uuid(),

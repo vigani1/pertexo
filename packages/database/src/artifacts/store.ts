@@ -7,7 +7,7 @@ import {
   runCheckpoints,
   runEvents,
 } from '../schema.js';
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import {
   artifactByteLengthSchema,
   artifactMediaTypeSchema,

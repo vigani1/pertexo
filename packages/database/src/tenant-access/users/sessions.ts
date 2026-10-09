@@ -1,22 +1,19 @@
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
-import { withPlatformTransaction } from './workspace.js';
+import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import { withPlatformTransaction } from '../transactions.js';
 
 import type {
   CreateSessionInput,
   IdentityWorkspaceDatabase,
   ReplacementSessionInput,
   SessionRecord,
-} from './identity-workspace-contracts.js';
-import {
-  IdentityConflictError,
-  IdentityNotFoundError,
-} from './identity-workspace-errors.js';
-import { mapSession } from './identity-workspace-rows.js';
-import { readIdentityDatabaseErrorCode } from './identity-workspace-support.js';
+} from '../contracts.js';
+import { IdentityConflictError, IdentityNotFoundError } from '../errors.js';
+import { mapSession } from '../rows.js';
+import { readIdentityDatabaseErrorCode } from '../support.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = sha256HexSchema;

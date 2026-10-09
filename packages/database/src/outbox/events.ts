@@ -4,7 +4,7 @@ import { types as nodeTypes } from 'node:util';
 import { z } from 'zod';
 
 import { outboxEvents } from '../schema.js';
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 const checksumSchema = sha256HexSchema;

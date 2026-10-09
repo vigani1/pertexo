@@ -6,7 +6,7 @@ import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
 } from '../published-workflow.js';
-import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   WorkflowRunNotExecutableError,

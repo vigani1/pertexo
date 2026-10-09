@@ -14,7 +14,7 @@ import { operatorCommands } from '../schema/operator.js';
 import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
-} from '../tenant-access/workspace.js';
+} from '../tenant-access/transactions.js';
 import {
   cancelRun,
   reconcileAttempt,

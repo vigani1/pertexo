@@ -11,7 +11,7 @@ import {
   checkDatabaseReadiness,
   EXPECTED_MIGRATION_HEAD,
 } from '../src/platform/readiness.js';
-import { WorkspaceAccessDeniedError } from '../src/tenant-access/identity-workspace-errors.js';
+import { WorkspaceAccessDeniedError } from '../src/tenant-access/errors.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import {
   explainDocument,

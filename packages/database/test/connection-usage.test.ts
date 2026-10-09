@@ -2,7 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 const tenant = vi.hoisted<{ client?: PoolClient }>(() => ({}));
-vi.mock('../src/tenant-access/workspace.js', () => ({
+vi.mock('../src/tenant-access/transactions.js', () => ({
   withTenantScopedClient: async (
     _pool: unknown,
     _scope: unknown,

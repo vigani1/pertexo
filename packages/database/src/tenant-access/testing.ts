@@ -12,7 +12,7 @@ export {
   WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
   UserProfileCommandConflictError,
-} from './identity-workspace.js';
+} from './database.js';
 export type {
   AuthIdentityRecord,
   CreateAuthIdentityInput,
@@ -37,19 +37,19 @@ export type {
   WorkspaceRecord,
   WorkspaceStatus,
   WorkspaceWithOwnerInput,
-} from './identity-workspace.js';
+} from './database.js';
 export {
   createOidcLoginTransactionStore,
   OidcTransactionCapacityError,
   OidcTransactionSealingError,
-} from './oidc-login-transactions.js';
+} from './users/oidc-login.js';
 export type {
   OidcLoginTransaction,
   OidcLoginTransactionStore,
   OidcSecretEncryptionAdapter,
   OidcTransactionConsumeResult,
   SealedOidcSecret,
-} from './oidc-login-transactions.js';
+} from './users/oidc-login.js';
 export {
   parseWorkspaceId,
   withActorScopedClient,
@@ -59,9 +59,9 @@ export {
   withWorkspaceReadTransaction,
   withWorkspaceTransaction,
   type WorkspaceTransactionOptions,
-} from './workspace.js';
+} from './transactions.js';
 export type {
   WorkspaceDrizzle,
   WorkspaceId,
   WorkspaceTransaction,
-} from './workspace.js';
+} from './transactions.js';

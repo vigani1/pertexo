@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createRetentionDatabase } from '../src/lifecycle/retention.js';
 import { changeWorkspaceLifecycle } from '../src/lifecycle/workspace-deletion.js';
-import { withTenantScopedClient } from '../src/tenant-access/workspace.js';
+import { withTenantScopedClient } from '../src/tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import {
   actorId,

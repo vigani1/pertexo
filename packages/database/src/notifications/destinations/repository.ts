@@ -32,7 +32,7 @@ import {
   readWorkflowFailureNotificationPolicy,
   setWorkflowFailureNotificationPolicy,
 } from '../workflow-policies.js';
-import { withTenantScopedClient } from '../../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 export { FailureNotificationDestinationError } from './errors.js';
 export type { FailureNotificationDestinationRecord } from './records.js';

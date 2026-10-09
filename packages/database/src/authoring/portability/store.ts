@@ -22,7 +22,7 @@ import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/se
 
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { rolesForCapability } from '../../tenant-access/workspace-policy.js';
+import { rolesForCapability } from '../../tenant-access/policy.js';
 import type {
   ExportWorkflowInput,
   ImportWorkflowInput,

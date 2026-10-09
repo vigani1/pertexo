@@ -9,7 +9,7 @@ import {
 } from './acceptance.js';
 import { parseStoredExecutionValueV1 } from '../platform/stored-execution-value.js';
 import { previewRuns } from '../schema.js';
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 
 const previewStatusSchema = z.enum(
   Object.values(PREVIEW_STATUS) as [PreviewStatus, ...PreviewStatus[]],
