@@ -18,9 +18,9 @@ import { sql } from 'drizzle-orm';
 import { Redis } from 'ioredis';
 import { Pool, type PoolClient } from 'pg';
 
-import { WorkerDrainState } from '../../src/runtime/drain-state.js';
-import { OutboxDispatcher } from '../../src/transport/outbox-dispatcher.js';
-import { dropDisconnectedDatabase } from './disposable-database.js';
+import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatcher.js';
+import { dropDisconnectedDatabase } from './infrastructure/disposable-database.js';
 
 export function createTransportTestCleanupStack(stage: string) {
   const owners: { close: () => unknown; label: string }[] = [];

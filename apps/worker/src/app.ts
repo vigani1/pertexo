@@ -14,14 +14,11 @@ import type { TransportMetrics } from '@pertexo/observability';
 import type { WorkerConfig } from './config/worker.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
-import { observeWorkspaceArtifactCapacity } from './runtime/artifact-metrics.js';
-import { WorkerReadinessMonitor } from './runtime/readiness-monitor.js';
-import { WorkerShutdownCoordinator } from './runtime/shutdown-coordinator.js';
-import {
-  OUTBOX_DISPATCHER,
-  TRANSPORT_METRICS,
-} from './transport/transport.module.js';
-import type { OutboxDispatcher } from './transport/outbox-dispatcher.js';
+import { observeWorkspaceArtifactCapacity } from './runtime/health/artifact-metrics.js';
+import { WorkerReadinessMonitor } from './runtime/health/readiness-monitor.js';
+import { WorkerShutdownCoordinator } from './runtime/shutdown/coordinator.js';
+import { OUTBOX_DISPATCHER, TRANSPORT_METRICS } from './transport/module.js';
+import type { OutboxDispatcher } from './transport/outbox/dispatcher.js';
 import {
   WorkerModule,
   type WorkerModuleDependencies,

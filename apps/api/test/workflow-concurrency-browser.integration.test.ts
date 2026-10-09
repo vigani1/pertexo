@@ -79,7 +79,7 @@ describe.skipIf(!enabled)(
       worker = own(
         fork(
           new URL(
-            '../../worker/test/editor-browser-worker-process-fixture.ts',
+            '../../worker/test/support/editor-browser/worker-process.fixture.ts',
             import.meta.url,
           ),
           [],

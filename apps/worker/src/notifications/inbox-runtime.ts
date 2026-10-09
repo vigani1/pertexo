@@ -8,7 +8,7 @@ import {
   createPollingRuntime,
   reportDiagnostic,
   type PollingRuntime,
-} from '../runtime/polling-runtime.js';
+} from '../runtime/polling.js';
 
 export type WorkspaceInboxRuntime = PollingRuntime;
 

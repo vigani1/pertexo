@@ -55,16 +55,16 @@ import {
   RETENTION_RUNTIME,
   type RetentionRuntime,
 } from './retention/runtime.js';
-import { WorkerReadiness } from './runtime/readiness.js';
+import { WorkerReadiness } from './runtime/health/readiness.js';
 import {
   WorkerReadinessMonitor,
   type WorkerReadinessMarker,
-} from './runtime/readiness-monitor.js';
-import { WorkerResourceMonitor } from './runtime/resource-monitor.js';
-import { WorkerDrainState } from './runtime/drain-state.js';
+} from './runtime/health/readiness-monitor.js';
+import { WorkerResourceMonitor } from './runtime/health/resource-monitor.js';
+import { WorkerDrainState } from './runtime/shutdown/drain-state.js';
 import { WorkerProcessKeepalive } from './runtime/process-keepalive.js';
-import { WorkerShutdownCoordinator } from './runtime/shutdown-coordinator.js';
-import { TransportModule } from './transport/transport.module.js';
+import { WorkerShutdownCoordinator } from './runtime/shutdown/coordinator.js';
+import { TransportModule } from './transport/module.js';
 import { OutboxDispatcherLifecycle } from './transport/lifecycle.js';
 
 export type WorkerModuleDependencies = Readonly<{

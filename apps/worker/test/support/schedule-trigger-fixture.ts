@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { lockManualFixtureClient } from './manual-start.fixture.js';
+import { lockManualFixtureClient } from './attempts/manual-start.js';
 
 import {
   migrateDatabase,
@@ -20,8 +20,8 @@ import {
 import { Queue } from 'bullmq';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 
-import { dropDisconnectedDatabase } from './disposable-database.js';
-import { createRedisTestNamespace } from './redis-test-namespace.js';
+import { dropDisconnectedDatabase } from './infrastructure/disposable-database.js';
+import { createRedisTestNamespace } from './infrastructure/redis-test-namespace.js';
 
 function scheduleAuthoringOptions(
   validator: Pick<WorkflowAuthoringValidator, 'validate'>,
