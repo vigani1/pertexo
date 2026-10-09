@@ -263,15 +263,6 @@ function createPreviewExecutionEnvironment(
 export function createPreviewAttemptHandler(
   dependencies: PreviewAttemptHandlerDependencies,
 ): PreviewAttemptHandler {
-  if (
-    !Number.isSafeInteger(dependencies.heartbeatIntervalMillis) ||
-    dependencies.heartbeatIntervalMillis < 10 ||
-    dependencies.heartbeatIntervalMillis >=
-      dependencies.leaseDurationSeconds * 1_000
-  )
-    throw new TypeError(
-      'Preview attempt heartbeat interval must be positive and shorter than its lease',
-    );
   return Object.freeze({
     handle: async (
       delivery: PreviewQueueDelivery,

@@ -12,6 +12,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
+import type { ArtifactStoreConfig } from '@pertexo/artifact-store';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { createQueueTraceRunner } from '@pertexo/observability';
@@ -319,16 +320,6 @@ export async function createNodeAttemptRuntime(
   );
 
   try {
-    if (
-      !Number.isSafeInteger(options.leaseDurationSeconds) ||
-      options.leaseDurationSeconds < 1 ||
-      options.leaseDurationSeconds > 300 ||
-      !Number.isSafeInteger(options.heartbeatIntervalMillis) ||
-      options.heartbeatIntervalMillis < 10 ||
-      options.heartbeatIntervalMillis >= options.leaseDurationSeconds * 1_000 ||
-      !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(options.workerId)
-    )
-      throw new TypeError('Node-attempt runtime options are invalid');
     const production = await createProductionNodeAttemptRuntime(
       options,
       dependencies,
@@ -392,4 +383,3 @@ export async function createNodeAttemptRuntime(
     throw error;
   }
 }
-import type { ArtifactStoreConfig } from '@pertexo/artifact-store';

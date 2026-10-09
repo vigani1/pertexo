@@ -366,15 +366,6 @@ async function persistPreparedOutcome(
 export function createNodeAttemptHandler(
   dependencies: NodeAttemptHandlerDependencies,
 ): NodeAttemptHandler {
-  if (
-    !Number.isSafeInteger(dependencies.heartbeatIntervalMillis) ||
-    dependencies.heartbeatIntervalMillis < 10 ||
-    dependencies.heartbeatIntervalMillis >=
-      dependencies.leaseDurationSeconds * 1_000
-  )
-    throw new TypeError(
-      'Node attempt heartbeat interval must be positive and shorter than its lease',
-    );
   return Object.freeze({
     handle: async (
       delivery: AttemptDelivery,
@@ -402,11 +393,6 @@ export function createNodeAttemptHandler(
       });
       if (published === null)
         throw new NodeAttemptHandlerStateError('workflow_not_found');
-      if (
-        published.id !== claimed.lease.workflowVersionId ||
-        published.workspaceId !== delivery.data.workspaceId
-      )
-        throw new NodeAttemptHandlerStateError('identity_mismatch');
       const prepared = dependencies.engine.prepare({
         lease: claimed.lease,
         projection: published,

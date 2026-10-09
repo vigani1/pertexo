@@ -32,10 +32,6 @@ import {
   type ProviderRateLimiter,
 } from '../providers/connections.js';
 import {
-  MAXIMUM_ARTIFACT_RETENTION_MILLIS,
-  MINIMUM_ARTIFACT_RETENTION_MILLIS,
-} from './artifacts/policy.js';
-import {
   createNodeArtifactRuntimeFactory,
   type ArtifactSpoolOperations,
   type WorkerArtifactPersistence,
@@ -137,12 +133,6 @@ export async function createWorkerNodeRuntimeCapabilities(
 ): Promise<WorkerNodeRuntimeCapabilities> {
   const retentionMillis =
     options.artifactRetentionMillis ?? DEFAULT_ARTIFACT_RETENTION_MILLIS;
-  if (
-    !Number.isSafeInteger(retentionMillis) ||
-    retentionMillis < MINIMUM_ARTIFACT_RETENTION_MILLIS ||
-    retentionMillis > MAXIMUM_ARTIFACT_RETENTION_MILLIS
-  )
-    throw new TypeError('Node artifact retention is invalid');
 
   let encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined;
   let ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;

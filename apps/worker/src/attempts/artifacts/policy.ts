@@ -1,5 +1,3 @@
-export const MINIMUM_ARTIFACT_RETENTION_MILLIS = 60_000;
-export const MAXIMUM_ARTIFACT_RETENTION_MILLIS = 365 * 24 * 60 * 60_000;
 const MAXIMUM_NODE_ARTIFACT_BYTES = 10_485_760;
 
 type ArtifactIdentity = Readonly<{

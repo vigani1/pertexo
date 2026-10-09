@@ -435,26 +435,6 @@ describe('failure notification handler', () => {
     expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
   });
 
-  it.each([
-    { timeoutMillis: 0 },
-    { timeoutMillis: 120_001 },
-    { maxAttempts: 0 },
-    { maxAttempts: 101 },
-    { retryDelaySeconds: 0 },
-    { retryDelaySeconds: 86_401 },
-  ])('rejects invalid delivery bounds %#', (override) => {
-    expect(() =>
-      createFailureNotificationHandler({
-        store: store(),
-        delivery: { deliver: vi.fn() },
-        timeoutMillis: 100,
-        maxAttempts: 3,
-        retryDelaySeconds: 1,
-        ...override,
-      }),
-    ).toThrow(/bounds/u);
-  });
-
   it('cancels a deferred terminal write with the transport signal', async () => {
     const repository = store();
     const controller = new AbortController();

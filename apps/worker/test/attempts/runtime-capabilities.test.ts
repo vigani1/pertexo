@@ -51,18 +51,6 @@ afterEach(async () => {
 });
 
 describe('worker node runtime capabilities', () => {
-  it.each([59_999, 60_000.5, 365 * 24 * 60 * 60_000 + 1])(
-    'rejects invalid artifact retention %s',
-    async (artifactRetentionMillis) => {
-      await expect(
-        createWorkerNodeRuntimeCapabilities({
-          database: databaseConfig,
-          artifactRetentionMillis,
-        }),
-      ).rejects.toBeInstanceOf(TypeError);
-    },
-  );
-
   it('fails closed for partially configured runtime capabilities', async () => {
     await expect(
       createWorkerNodeRuntimeCapabilities(

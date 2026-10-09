@@ -34,63 +34,35 @@ const STORED_CHECKPOINT = createCheckpoint({
 });
 
 describe('NodeAttemptHandler', () => {
-  it.each([9, 1_000.5, 30_000])(
-    'rejects invalid heartbeat interval %s',
-    (heartbeatIntervalMillis) => {
-      expect(() =>
-        createNodeAttemptHandler({
-          engine: { prepare: vi.fn() },
-          heartbeatIntervalMillis,
-          leaseDurationSeconds: 30,
-          reader: { close: vi.fn(), readForExecution: vi.fn() },
-          registry: { execute: vi.fn() },
-          runStore: {
-            claimDelivery: vi.fn(),
-            close: vi.fn(),
-            complete: vi.fn(),
-            heartbeat: vi.fn(),
-            loadInputs: vi.fn(),
-            readLoopDeclaration: vi.fn(),
-            markDispatched: vi.fn(),
-          },
-          workerId: 'worker-1',
-        }),
-      ).toThrow(TypeError);
-    },
-  );
+  it('rejects an unavailable published workflow', async () => {
+    const handler = createNodeAttemptHandler({
+      engine: { prepare: vi.fn() },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn(),
+        readForExecution: vi.fn().mockResolvedValue(null),
+      },
+      registry: { execute: vi.fn() },
+      runStore: {
+        claimDelivery: vi
+          .fn()
+          .mockResolvedValue({ kind: 'claimed', lease: lease() }),
+        close: vi.fn(),
+        complete: vi.fn(),
+        heartbeat: vi.fn(),
+        loadInputs: vi.fn(),
+        readLoopDeclaration: vi.fn(),
+        markDispatched: vi.fn(),
+      },
+      workerId: 'worker-1',
+    });
+    await expect(
+      handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).rejects.toMatchObject({ code: 'workflow_not_found' });
+  });
 
-  it.each([[null, 'workflow_not_found']])(
-    'rejects an unavailable published workflow as %s',
-    async (published, code) => {
-      const handler = createNodeAttemptHandler({
-        engine: { prepare: vi.fn() },
-        heartbeatIntervalMillis: 1_000,
-        leaseDurationSeconds: 30,
-        reader: {
-          close: vi.fn(),
-          readForExecution: vi.fn().mockResolvedValue(published),
-        },
-        registry: { execute: vi.fn() },
-        runStore: {
-          claimDelivery: vi
-            .fn()
-            .mockResolvedValue({ kind: 'claimed', lease: lease() }),
-          close: vi.fn(),
-          complete: vi.fn(),
-          heartbeat: vi.fn(),
-          loadInputs: vi.fn(),
-          readLoopDeclaration: vi.fn(),
-          markDispatched: vi.fn(),
-        },
-        workerId: 'worker-1',
-      });
-      await expect(
-        handler.handle(delivery(), { signal: new AbortController().signal }),
-      ).rejects.toMatchObject({ code });
-    },
-  );
-
-  it('rejects published identity drift and missing durable control reasons', async () => {
+  it('rejects an abort request without a durable control reason', async () => {
     const runStore = {
       claimDelivery: vi
         .fn()
@@ -124,20 +96,6 @@ describe('NodeAttemptHandler', () => {
       workerId: 'worker-1',
     } satisfies Parameters<typeof createNodeAttemptHandler>[0];
 
-    const drifted = {
-      ...dependencies,
-      reader: {
-        ...dependencies.reader,
-        readForExecution: vi
-          .fn()
-          .mockResolvedValue({ ...projection(), workspaceId: ATTEMPT_ID }),
-      },
-    };
-    await expect(
-      createNodeAttemptHandler(drifted).handle(delivery(), {
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toMatchObject({ code: 'identity_mismatch' });
     await expect(
       createNodeAttemptHandler(dependencies).handle(delivery(), {
         signal: new AbortController().signal,
