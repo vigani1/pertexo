@@ -24,6 +24,7 @@ import {
   randomUUID,
   saveCurrentDraft,
   testDefinitionCatalog,
+  WorkflowNotFoundError,
   workspaceId,
 } from './support/workflow-authoring.integration.support.js';
 
@@ -170,54 +171,93 @@ describe('workflow publication projections', () => {
     }
   });
 
-  it.each(['workspaceId', 'workflowId'] as const)(
-    'rejects a replay whose durable publication %s does not match its claim',
-    async (identityField) => {
-      const created = await authoring.createWorkflow({
+  it('fails closed when a stored publication names a version this workflow does not have', async () => {
+    const created = await authoring.createWorkflow({
+      actorId,
+      emptyGraph,
+      idempotencyKey: 'create-corrupt-publish',
+      name: 'Corrupt publish',
+      workspaceId,
+    });
+    const idempotencyKey = 'publish-corrupt-result';
+    const command = {
+      actorId,
+      representationTag: await currentRepresentationTag(
+        authoring,
+        workspaceId,
+        created.workflowId,
         actorId,
-        emptyGraph,
-        idempotencyKey: `create-corrupt-publish-${identityField}`,
-        name: `Corrupt publish ${identityField}`,
+      ),
+      idempotencyKey,
+      requestHash: createHash('sha256').update(idempotencyKey).digest('hex'),
+      workflowId: created.workflowId,
+      workspaceId,
+    } as const;
+    await expect(authoring.publishWorkflow(command)).resolves.toMatchObject({
+      replayed: false,
+    });
+    await queryAsOwner(
+      `update app.idempotency_records
+          set result_ref=jsonb_set(result_ref,'{versionId}',to_jsonb($2::text),false)
+        where workspace_id=$3 and operation='workflow.publish' and key_hash=$1
+        returning key_hash`,
+      [
+        createHash('sha256').update(idempotencyKey).digest('hex'),
+        randomUUID(),
+        workspaceId,
+      ],
+      workspaceId,
+    );
+    await expect(authoring.publishWorkflow(command)).rejects.toBeInstanceOf(
+      WorkflowNotFoundError,
+    );
+  });
+
+  it('publishes and replays a graph larger than a stored command result', async () => {
+    const catalogAuthoring = createWorkflowAuthoringDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+      { definitionCatalog: testDefinitionCatalog },
+    );
+    try {
+      const graph = {
+        ...emptyGraph,
+        nodes: Array.from({ length: 24 }, (_, index) =>
+          draftNode(`large-${String(index)}`, { note: 'x'.repeat(256) }),
+        ),
+      };
+      expect(JSON.stringify(graph).length).toBeGreaterThan(4096);
+      const created = await catalogAuthoring.createWorkflow({
+        actorId,
+        emptyGraph: graph,
+        idempotencyKey: 'create-large-publication',
+        name: 'Large publication',
         workspaceId,
       });
-      const idempotencyKey = `publish-corrupt-result-${identityField}`;
       const command = {
         actorId,
         representationTag: await currentRepresentationTag(
-          authoring,
+          catalogAuthoring,
           workspaceId,
           created.workflowId,
           actorId,
+          testDefinitionCatalog,
         ),
-        idempotencyKey,
-        requestHash: createHash('sha256').update(idempotencyKey).digest('hex'),
+        idempotencyKey: 'publish-large',
+        requestHash: '7'.repeat(64),
         workflowId: created.workflowId,
         workspaceId,
-      } as const;
-      await expect(authoring.publishWorkflow(command)).resolves.toMatchObject({
-        replayed: false,
+      };
+      const published = await catalogAuthoring.publishWorkflow(command);
+      expect(published).toMatchObject({ replayed: false, reused: false });
+      expect(published.version.graphJson).toEqual(graph);
+      await expect(catalogAuthoring.publishWorkflow(command)).resolves.toEqual({
+        ...published,
+        replayed: true,
       });
-      await queryAsOwner(
-        `update app.idempotency_records
-            set result_ref=jsonb_set(
-              result_ref,$2::text[],to_jsonb($3::text),false)
-          where workspace_id=$4 and operation='workflow.publish'
-            and key_hash=$1
-          returning key_hash`,
-        [
-          createHash('sha256').update(idempotencyKey).digest('hex'),
-          ['version', identityField],
-          identityField === 'workspaceId' ? otherWorkspaceId : randomUUID(),
-          workspaceId,
-        ],
-        workspaceId,
-      );
-
-      await expect(authoring.publishWorkflow(command)).rejects.toThrow(
-        'Durable workflow publication result identity does not match its claim',
-      );
-    },
-  );
+    } finally {
+      await catalogAuthoring.close();
+    }
+  });
 
   it('uses canonical executable identity rather than JSON or presentation identity', async () => {
     const catalogAuthoring = createWorkflowAuthoringDatabase(

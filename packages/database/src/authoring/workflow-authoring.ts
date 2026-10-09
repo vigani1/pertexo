@@ -29,7 +29,6 @@ export type {
   WorkflowRecord,
   WorkflowVersionRecord,
 } from './workflow-authoring-records.js';
-import { checksumSchema, mapVersion } from './workflow-authoring-rows.js';
 import {
   acceptPreviewRun,
   readPreviewRun,
@@ -65,10 +64,7 @@ export type {
   TransitionWorkflowLifecycleResult,
   WorkflowLifecycleCommand,
 } from './workflow-authoring-contracts.js';
-import type {
-  PublishWorkflowResult,
-  WorkflowAuthoringDatabase,
-} from './workflow-authoring-contracts.js';
+import type { WorkflowAuthoringDatabase } from './workflow-authoring-contracts.js';
 
 export type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model/graph';
 
@@ -169,54 +165,6 @@ async function requireWorkspaceReader(
     throw new WorkflowNotFoundError('Workflow is not visible');
 }
 
-function durablePublishResult(
-  value: unknown,
-  expectedWorkspaceId: string,
-  expectedWorkflowId: string,
-): Omit<PublishWorkflowResult, 'replayed'> {
-  const parsed = z
-    .object({
-      version: z
-        .object({
-          id: z.uuid(),
-          workspaceId: z.uuid(),
-          workflowId: z.uuid(),
-          versionNumber: z.number().int().positive(),
-          schemaVersion: z.number().int().positive(),
-          graphJson: z.unknown(),
-          checksum: checksumSchema,
-          publishedBy: z.uuid(),
-          publishedAt: z.iso.datetime(),
-        })
-        .strict(),
-      reused: z.boolean(),
-    })
-    .strict()
-    .parse(value);
-  if (
-    parsed.version.workspaceId !== expectedWorkspaceId ||
-    parsed.version.workflowId !== expectedWorkflowId
-  )
-    throw new Error(
-      'Durable workflow publication result identity does not match its claim',
-    );
-  const version = mapVersion({
-    id: parsed.version.id,
-    workspace_id: parsed.version.workspaceId,
-    workflow_id: parsed.version.workflowId,
-    version_number: parsed.version.versionNumber,
-    schema_version: parsed.version.schemaVersion,
-    graph_json: parsed.version.graphJson,
-    checksum: parsed.version.checksum,
-    published_by: parsed.version.publishedBy,
-    published_at: parsed.version.publishedAt,
-  });
-  return Object.freeze({
-    version,
-    reused: parsed.reused,
-  });
-}
-
 function createPreviewStore(
   pool: Pool,
 ): Pick<
@@ -281,7 +229,6 @@ export function createWorkflowAuthoringDatabase(
     transact,
   };
   const publishWorkflow = createWorkflowPublisher({
-    durableResult: durablePublishResult,
     requireAuthor: requireWorkspaceAuthor,
     selectVariant: selectCompatibilityVariant,
     testHooks: options.testHooks,
