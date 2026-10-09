@@ -435,10 +435,7 @@ export class OutboxDispatcher {
       this.observeMetrics(() => {
         this.metrics.recordOutboxLeaseEvent('expired');
       });
-    } else if (
-      jobName === JOB_NAME.advanceWorkflowRun ||
-      jobName === JOB_NAME.expireArtifacts
-    ) {
+    } else if (jobName === JOB_NAME.advanceWorkflowRun) {
       this.scheduleWorkspaceCapacityObservation(event.workspaceId);
     }
     return marked ? 'published' : 'stale';

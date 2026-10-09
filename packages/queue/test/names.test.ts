@@ -26,9 +26,7 @@ describe('queue names', () => {
       reconcilePreviewAttempt: 'reconcile-preview-attempt',
       reconcileUnknownOutcome: 'reconcile-unknown-outcome',
       replayWorkflowRun: 'replay-workflow-run',
-      sweepExpiredPreviews: 'sweep-expired-previews',
       reconcileWorkflowTriggers: 'reconcile-workflow-triggers',
-      expireArtifacts: 'expire-artifacts',
       deliverRunFailureNotification: 'deliver-run-failure-notification',
       deliverWorkspaceInvitation: 'deliver-workspace-invitation',
       applyConnectionHealthObservation: 'apply-connection-health-observation',
@@ -40,9 +38,7 @@ describe('queue names', () => {
       [JOB_NAME.reconcilePreviewAttempt]: QUEUE_NAME.maintenance,
       [JOB_NAME.reconcileUnknownOutcome]: QUEUE_NAME.maintenance,
       [JOB_NAME.replayWorkflowRun]: QUEUE_NAME.maintenance,
-      [JOB_NAME.sweepExpiredPreviews]: QUEUE_NAME.maintenance,
       [JOB_NAME.reconcileWorkflowTriggers]: QUEUE_NAME.triggerLifecycle,
-      [JOB_NAME.expireArtifacts]: QUEUE_NAME.maintenance,
       [JOB_NAME.deliverRunFailureNotification]: QUEUE_NAME.maintenance,
       [JOB_NAME.deliverWorkspaceInvitation]: QUEUE_NAME.maintenance,
       [JOB_NAME.applyConnectionHealthObservation]: QUEUE_NAME.maintenance,
@@ -51,7 +47,7 @@ describe('queue names', () => {
 
   it('keeps the public unions assignable to the literal registry', () => {
     const queue: QueueName = QUEUE_NAME.maintenance;
-    const job: JobName = JOB_NAME.expireArtifacts;
+    const job: JobName = JOB_NAME.replayWorkflowRun;
 
     expect(QUEUE_FOR_JOB[job]).toBe(queue);
   });
