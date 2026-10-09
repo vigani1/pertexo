@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/api-error-copy';
-import { formatDateTime } from '@/lib/format-time';
+import { formatDateTime } from '@/lib/format/time';
 
 /** Independent recovery keeps a failed capacity read from hiding activity. */
 export function UsageSnapshot({

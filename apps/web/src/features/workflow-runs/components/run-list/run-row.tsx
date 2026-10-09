@@ -10,7 +10,7 @@ import {
   formatDateTime,
   formatDurationMs,
   formatElapsedTime,
-} from '@/lib/format-time';
+} from '@/lib/format/time';
 import { shortRunId, workflowLabel } from '../../model/list/run-list';
 import { describeListedFailure } from '../../model/run-failure';
 import { describeRunStatus } from '../../model/run-status';

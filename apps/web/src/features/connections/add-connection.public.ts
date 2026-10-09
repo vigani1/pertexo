@@ -2,5 +2,5 @@
 // connection in place (a workflow step's connection slot), kept apart from
 // the page's interface so the lens loads with the feature that opens it.
 export { AddConnectionSheet } from './components/add-connection/add-connection-sheet';
-export type { ConnectionMutationScope } from './connections.mutations';
+export type { ConnectionMutationScope } from './data/connections.mutations';
 export { providerForCredential } from './model/connection-providers';

@@ -9,7 +9,7 @@ import {
   threadBarScale,
 } from '../../model/list/run-list';
 import { isActiveRunStatus } from '../../model/run-status';
-import { useNow } from '@/lib/use-now';
+import { useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/utils';
 import { RunRow } from './run-row';
 import { RUN_ROW_LAYOUT, type RunListVariant } from './run-row-layout';

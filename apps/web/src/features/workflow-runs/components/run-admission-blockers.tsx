@@ -1,5 +1,5 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
-import { formatDateTime } from '@/lib/format-time';
+import { formatDateTime } from '@/lib/format/time';
 
 const reasons = {
   workspace_capacity: 'workspace capacity',

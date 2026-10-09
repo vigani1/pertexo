@@ -1,4 +1,4 @@
-import type { CanvasRenderer } from './use-canvas-renderer';
+import type { CanvasRenderer } from './hooks/use-canvas-renderer';
 
 // The shared plumbing of every Canvas 2D drawing (the Core, the sign-in
 // threads, the Loom, the loading wave): a context whose backing store follows

@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/empty';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { readFailureReason } from '@/lib/api/api-error-copy';
-import type { InvitationCommand } from '../../mutations/use-invitation-command';
+import type { InvitationCommand } from '../../data/mutations/use-invitation-command';
 import {
   InvitationActionDialog,
   type InvitationSelection,

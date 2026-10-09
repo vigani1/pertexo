@@ -5,7 +5,7 @@ import type {
 import type { ReactNode } from 'react';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import type { ApiClient } from '@/lib/api/client';
-import { useWorkspaceLifecycleCommand } from '../../mutations/lifecycle/use-workspace-lifecycle-command';
+import { useWorkspaceLifecycleCommand } from '../../data/mutations/lifecycle/use-workspace-lifecycle-command';
 import { WorkspaceDeletionDialog } from './workspace-deletion-dialog';
 import { WorkspaceLifecycleOperation } from './workspace-lifecycle-operation';
 import { WorkspaceRestoreDialog } from './workspace-restore-dialog';

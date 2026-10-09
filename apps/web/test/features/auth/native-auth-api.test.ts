@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   requestPasswordReset,
   resetPassword,
-} from '@/features/auth/native-auth.api';
-import { startLegacyMethodMigration } from '@/features/auth/legacy-migration.api';
+} from '@/features/auth/data/native-auth.api';
+import { startLegacyMethodMigration } from '@/features/auth/data/legacy-migration.api';
 import type { ApiClient } from '@/lib/api/client';
 
 describe('native authentication API', () => {

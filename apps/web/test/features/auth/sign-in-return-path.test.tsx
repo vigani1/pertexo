@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
-import { LoginPage } from '@/features/auth/login-page';
+import { LoginPage } from '@/features/auth/pages/login';
 import { allowlistedReturnPath } from '@/features/auth/return-path.public';
 import { mockServer } from '../../support/mock-server';
 import { renderApp, testFetch } from '../../support/render-app';

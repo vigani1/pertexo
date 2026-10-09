@@ -4,7 +4,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   runCancellationError,
   useRunCancellation,
-} from '../../mutations/use-run-cancellation';
+} from '../../data/mutations/use-run-cancellation';
 
 /**
  * Stopping a run is destructive, so it asks first. The outcome is reported

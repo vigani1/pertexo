@@ -5,7 +5,7 @@ import {
   formatMonthName,
   formatMonthYear,
   weekdayNames,
-} from '@/lib/format-time';
+} from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import {

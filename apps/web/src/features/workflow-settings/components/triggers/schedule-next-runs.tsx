@@ -5,7 +5,7 @@ import { ReadFailure } from '@/components/patterns/read-failure';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScheduleRunTimes } from '@/features/catalog/presentation.public';
 import type { ApiClient } from '@/lib/api/client';
-import { scheduleNextRunsQueryOptions } from '../../workflow-settings.queries';
+import { scheduleNextRunsQueryOptions } from '../../data/workflow-settings.queries';
 
 /**
  * The next three times a published schedule runs, as the server's scheduler

@@ -4,4 +4,4 @@ export {
   webhookTriggersQueryOptions,
   workflowSettingsKeys,
   workflowVersionsQueryOptions,
-} from './workflow-settings.queries';
+} from './data/workflow-settings.queries';

@@ -1,1 +1,1 @@
-export { WorkspaceSelectionPage } from './workspace-selection-page';
+export { WorkspaceSelectionPage } from './pages/workspace-selection';

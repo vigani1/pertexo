@@ -2,11 +2,11 @@ import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import { describePreviewStatus } from '@/features/workflow-publish/public';
 import { shortStepError } from '@/features/workflow-runs/failure.public';
-import { formatDurationMs } from '@/lib/format-time';
+import { formatDurationMs } from '@/lib/format/time';
 import { useEditorStore } from '../../model/editor-store-context';
 import { levelOf } from '../../model/graph/graph-scopes';
 import { describeTestPath } from '../../model/test-path';
-import type { RecordedTest } from '../../use-last-test';
+import type { RecordedTest } from '../../hooks/use-last-test';
 
 /**
  * The bar under the canvas after a step test: "Test passed", the path into

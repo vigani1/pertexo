@@ -12,12 +12,12 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDateTime } from '@/lib/format-time';
+import { formatDateTime } from '@/lib/format/time';
 import {
   concurrencyKey,
   concurrencyQueryOptions,
-} from '../../concurrency.queries';
-import { useConcurrencyCommand } from '../../mutations/use-concurrency-command';
+} from '../../data/concurrency.queries';
+import { useConcurrencyCommand } from '../../data/mutations/use-concurrency-command';
 import { visibleSettingsData } from '../../model/settings-query';
 import { SettingsQueryState } from '../settings-query-state';
 

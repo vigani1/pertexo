@@ -1,1 +1,1 @@
-export { ConnectionsPage } from './connections-page';
+export { ConnectionsPage } from './pages/connections';

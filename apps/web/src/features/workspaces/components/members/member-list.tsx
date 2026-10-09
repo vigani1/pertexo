@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Status, StatusGlyph } from '@/components/ui/status';
-import { formatDate } from '@/lib/format-time';
+import { formatDate } from '@/lib/format/time';
 import {
   ROLE_NAMES,
   type ManagedRole,

@@ -6,13 +6,13 @@ import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Status } from '@/components/ui/status';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { describeTriggerState } from '../../model/triggers/trigger-state';
 import {
   WEBHOOK_ACTIONS,
   type UncertainWebhookCommand,
   type WebhookCommand,
-} from '../../mutations/use-trigger-commands';
+} from '../../data/mutations/use-trigger-commands';
 import { WebhookGuide } from './webhook-guide';
 
 /** One webhook trigger: its health, its endpoint and the commands for it. */

@@ -20,7 +20,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { PatternGlyph } from '@/features/workflows/shape.public';
-import { formatDate } from '@/lib/format-time';
+import { formatDate } from '@/lib/format/time';
 import { stepCountLabel } from '../../model/versions/version-steps';
 import { VersionDiffSummary } from './version-diff-summary';
 

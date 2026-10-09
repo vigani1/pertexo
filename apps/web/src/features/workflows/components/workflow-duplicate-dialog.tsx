@@ -20,7 +20,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../model/workflow-rename';
-import { useWorkflowDuplicate } from '../use-workflow-duplicate';
+import { useWorkflowDuplicate } from '../hooks/use-workflow-duplicate';
 import { canDuplicateWorkflow } from '../model/workflow-duplicate';
 
 export function WorkflowDuplicateDialog({

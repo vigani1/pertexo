@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { getWorkflowNodePreview } from '../node-test.api';
+import { getWorkflowNodePreview } from '../data/node-test.api';
 
 export const previewTerminalStatuses: ReadonlySet<PreviewRunSummary['status']> =
   new Set(['succeeded', 'failed', 'canceled', 'timed_out', 'outcome_unknown']);

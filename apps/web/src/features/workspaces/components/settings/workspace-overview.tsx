@@ -18,7 +18,7 @@ import { countWorkflowStates } from '@/features/workflows/counts.public';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { ROLE_NAMES, WORKSPACE_ROLES } from '../../model/workspace-roles';
-import { workspaceMembersInfiniteQueryOptions } from '../../workspaces.queries';
+import { workspaceMembersInfiniteQueryOptions } from '../../data/workspaces.queries';
 
 type OverviewTarget =
   | '/w/$workspaceId/workflows'

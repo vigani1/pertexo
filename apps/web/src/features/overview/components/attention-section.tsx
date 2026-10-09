@@ -12,8 +12,8 @@ import {
 } from '../model/needs-attention';
 import { mergedBlockState, type BlockQuery } from '../model/home-block-state';
 import { NEEDS_ATTENTION_LIMIT, NeedsAttention } from './needs-attention';
-import { useRunFailures } from '../use-run-failures';
-import { useSetupReads } from '../use-setup-reads';
+import { useRunFailures } from '../hooks/use-run-failures';
+import { useSetupReads } from '../hooks/use-setup-reads';
 
 /** Reads everything "Needs attention" is derived from, per capability. */
 export function AttentionSection({

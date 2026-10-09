@@ -2,6 +2,6 @@ export {
   accessibleWorkspacesQueryOptions,
   workspaceLifecycleOperationQueryOptions,
   workspaceMembersInfiniteQueryOptions,
-} from './workspaces.queries';
+} from './data/workspaces.queries';
 export { parseTeamSearch } from './model/team-search';
-export { getAllAccessibleWorkspaces } from './workspaces.api';
+export { getAllAccessibleWorkspaces } from './data/workspaces.api';

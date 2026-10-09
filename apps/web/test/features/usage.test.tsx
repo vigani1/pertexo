@@ -14,7 +14,7 @@ import {
   statisticsHandler,
 } from '../support/run-fixtures';
 import { parseUsageSearch } from '@/features/usage/usage-search.public';
-import { usageCapacityQueryOptions } from '@/features/usage/usage.queries';
+import { usageCapacityQueryOptions } from '@/features/usage/data/usage.queries';
 import { createApiClient } from '@/lib/api/client';
 
 const path = `/w/${fixtureIds.workspace}/settings/usage`;

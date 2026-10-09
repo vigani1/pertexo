@@ -12,16 +12,16 @@ import {
   accessibleWorkspaceSchema,
   workflowSummarySchema,
 } from '@pertexo/contracts';
-import { useOrganizationList } from '@/features/workflows/use-organization-list';
+import { useOrganizationList } from '@/features/workflows/hooks/use-organization-list';
 import { WorkflowOrganizationFilters } from '@/features/workflows/components/organization/workflow-organization-filters';
-import { workflowOrganizationKeys } from '@/features/workflows/organization.queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization.queries';
 import {
   getWorkflowOrganizationPage,
   getWorkflowFolders,
   getWorkflowTagsPage,
   sendWorkflowOrganizationCommand,
-} from '@/features/workflows/organization.api';
-import { useWorkflowOrganizationCommand } from '@/features/workflows/use-workflow-organization-command';
+} from '@/features/workflows/data/organization.api';
+import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/use-workflow-organization-command';
 import { assertSessionIdentity } from '@/features/auth/session-identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { ApiError } from '@/lib/api/api-error';
@@ -36,7 +36,7 @@ import {
 } from './workflow-list.fixtures';
 import type { WorkflowListSearch } from '@/features/workflows/model/workflow-list-view';
 
-vi.mock('@/features/workflows/organization.api', async (original) => ({
+vi.mock('@/features/workflows/data/organization.api', async (original) => ({
   ...(await original<object>()),
   getWorkflowOrganizationPage: vi.fn(),
   getWorkflowFolders: vi.fn(),

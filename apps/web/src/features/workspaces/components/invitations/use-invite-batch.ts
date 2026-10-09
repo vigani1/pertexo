@@ -3,7 +3,7 @@ import type { ManagedRole } from '../../model/workspace-roles';
 import type {
   InvitationCommand,
   InvitationOutcome,
-} from '../../mutations/use-invitation-command';
+} from '../../data/mutations/use-invitation-command';
 import type { InviteRow } from './invite-results';
 
 type Batch = Readonly<{ rows: readonly InviteRow[]; role: ManagedRole }>;

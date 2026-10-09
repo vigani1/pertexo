@@ -4,7 +4,7 @@ import { ReadFailure } from '@/components/patterns/read-failure';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 
 /** The parts of a paged (infinite) query a recent-activity list reads. */

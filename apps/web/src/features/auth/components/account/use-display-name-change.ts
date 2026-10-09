@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { isApiError } from '@/lib/api/api-error';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { updateCurrentUserProfile } from '../../auth.api';
-import { currentUserQueryKey } from '../../auth.queries';
+import { updateCurrentUserProfile } from '../../data/auth.api';
+import { currentUserQueryKey } from '../../data/auth.queries';
 import { accountCommandFailure } from '../../model/account/account-failure';
 
 type NameAttempt = Readonly<{

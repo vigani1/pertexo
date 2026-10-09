@@ -24,12 +24,12 @@ import { isUncertainOutcome } from '@/lib/api/api-error-copy';
 import {
   destinationCommandError,
   isDestinationConflict,
-} from '../failure-notification-errors';
+} from '../model/failure-notification-errors';
 import {
   useAppendFailureNotificationDestinationVersionMutation,
   useCreateFailureNotificationDestinationMutation,
   type DestinationMutationScope,
-} from '../failure-notifications.mutations';
+} from '../data/failure-notifications.mutations';
 import {
   channelKey,
   describeChannel,

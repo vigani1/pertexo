@@ -11,7 +11,7 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LoadMore } from '@/components/patterns/load-more';
-import { workflowTagAssignmentsInfiniteQueryOptions } from '../../organization.queries';
+import { workflowTagAssignmentsInfiniteQueryOptions } from '../../data/organization.queries';
 import type { WorkflowOrganizationAttempt } from '../../model/workflow-organization';
 import {
   OrganizationCommandFeedback,

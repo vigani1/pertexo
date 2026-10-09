@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { useLatestRequest } from '@/lib/use-latest-request';
+import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 
 describe('useLatestRequest', () => {
   it('stays pending until the current request finishes, whatever an older one does', () => {

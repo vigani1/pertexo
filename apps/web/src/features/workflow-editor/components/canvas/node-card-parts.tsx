@@ -5,7 +5,7 @@ import {
   StepTile,
   type StepPresentation,
 } from '@/features/catalog/presentation.public';
-import { formatByteLength } from '@/lib/format-bytes';
+import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/utils';
 import type { WorkflowFlowNode } from '../../model/graph/graph-adapter';
 import { portName } from '@/features/catalog/presentation.public';

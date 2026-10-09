@@ -3,7 +3,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { useOnlineStatus } from '@/lib/use-online-status';
+import { useOnlineStatus } from '@/lib/hooks/use-online-status';
 
 /** States that last: shown under the breadcrumb on every page. */
 export function WorkspaceBanners({

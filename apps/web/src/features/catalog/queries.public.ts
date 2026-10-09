@@ -1,1 +1,1 @@
-export { authoringCatalogQueryOptions } from './catalog.queries';
+export { authoringCatalogQueryOptions } from './data/catalog.queries';

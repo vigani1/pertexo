@@ -1,1 +1,1 @@
-export { SignOutPage } from './sign-out-page';
+export { SignOutPage } from './pages/sign-out';

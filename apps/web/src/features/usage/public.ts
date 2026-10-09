@@ -1,1 +1,1 @@
-export { UsagePage } from './usage-page';
+export { UsagePage } from './pages/usage';

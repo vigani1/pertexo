@@ -11,9 +11,9 @@ import {
 import {
   signInWithEmail,
   startSocialAuthentication,
-} from '../../native-auth.api';
-import { useCountdown } from '@/lib/use-countdown';
-import { useLatestRequest } from '@/lib/use-latest-request';
+} from '../../data/native-auth.api';
+import { useCountdown } from '@/lib/hooks/use-countdown';
+import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 
 /**
  * Password and provider sign-in for the sign-in lens: one request at a time,

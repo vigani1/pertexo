@@ -1,1 +1,1 @@
-export { WorkspaceGeneralPage } from './workspace-general-page';
+export { WorkspaceGeneralPage } from './pages/workspace-general';

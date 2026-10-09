@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { formatClock, formatDurationMs } from '@/lib/format-time';
+import { formatClock, formatDurationMs } from '@/lib/format/time';
 import {
   describeLiveUpdates,
   type LiveConnectionStatus,

@@ -14,9 +14,9 @@ import {
 } from '@/components/ui/empty';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { readFailureReason } from '@/lib/api/api-error-copy';
-import type { FailureNotificationDestinationList } from '../failure-notifications.api';
+import type { FailureNotificationDestinationList } from '../data/failure-notifications.api';
 import type { ChannelNames } from '../model/channel-names';
-import type { DestinationMutationScope } from '../failure-notifications.mutations';
+import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
 import { DestinationRow } from './destination-row';
 
 /** The destinations list with its loading, failed, stale and empty states. */

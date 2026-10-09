@@ -6,8 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
-import { accountSecuritySessionsQueryOptions } from '../../account-security.queries';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
+import { accountSecuritySessionsQueryOptions } from '../../data/account-security.queries';
 import {
   accountCommandFailure,
   accountReadFailure,

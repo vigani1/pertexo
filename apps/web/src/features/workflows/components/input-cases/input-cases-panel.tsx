@@ -17,8 +17,8 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { ReadFailure } from '@/components/patterns/read-failure';
 import type { ApiClient } from '@/lib/api/client';
-import { useInputCases } from '../../use-input-cases';
-import type { InputCaseCommand } from '../../input-cases.api';
+import { useInputCases } from '../../hooks/use-input-cases';
+import type { InputCaseCommand } from '../../data/input-cases.api';
 
 export type LoadedInputCase = Readonly<{
   name: string;

@@ -1,5 +1,5 @@
 export {
   inboxSummaryQueryOptions,
   inboxThreadsInfiniteQueryOptions,
-} from './inbox.queries';
+} from './data/inbox.queries';
 export { parseInboxSearch } from './model/inbox-search';

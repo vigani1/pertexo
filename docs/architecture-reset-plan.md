@@ -303,6 +303,12 @@ now, as one ordered program — not "whenever we touch it".
   - [ ] worker
   - [ ] api
   - [ ] web
+    - [x] Feature folders by role: only public entry files stay at a
+          feature's root; screens go to `pages/`, hooks to `hooks/`, server
+          access to `data/` (`*.api.ts`, `*.queries.ts`, `*.mutations.ts`,
+          `mutations/`), other logic to `model/` or `components/`. Routes are
+          grouped into `root/`, `auth/`, `workspace/` and `workflow/`; shared
+          hooks and formatters in `lib/hooks/` and `lib/format/`.
   - [ ] ops
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.

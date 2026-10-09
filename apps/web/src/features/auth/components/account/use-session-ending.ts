@@ -4,7 +4,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   useRevokeAccountSession,
   useRevokeOtherAccountSessions,
-} from '../../account-security.mutations';
+} from '../../data/account-security.mutations';
 
 export type SessionEnding =
   | Readonly<{ kind: 'one'; id: string; label: string }>

@@ -8,7 +8,7 @@ import {
 import { createEditorStore } from '@/features/workflow-editor/model/editor.store';
 import { createSaveCoordinator } from '@/features/workflow-editor/model/persistence/save-coordinator';
 
-import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/workflow-editor.api';
+import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/data/workflow-editor.api';
 import { bareSetDefinition as definition } from '../../support/workflow-editor-fixtures';
 
 const etagA = `"draft-v1.${'a'.repeat(43)}"`;

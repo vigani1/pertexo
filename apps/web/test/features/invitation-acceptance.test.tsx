@@ -2,7 +2,7 @@ import { HttpResponse, http } from 'msw';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { InvitationAcceptancePage } from '@/features/workspace-invitations/invitation-acceptance-page';
+import { InvitationAcceptancePage } from '@/features/workspace-invitations/pages/invitation-acceptance';
 import { createApiClient } from '@/lib/api/client';
 
 import { mockServer } from '../support/mock-server';
