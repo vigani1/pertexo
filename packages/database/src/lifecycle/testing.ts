@@ -2,7 +2,8 @@ export {
   changeWorkspaceLifecycle,
   WORKSPACE_RECOVERY_DAYS,
 } from './workspace-deletion.js';
-export { createRetentionDatabase, RETENTION_RULES } from './retention.js';
+export { createRetentionDatabase } from './retention.js';
+export { RETENTION_RULES } from './retention-rules.js';
 export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
 export {
   createWorkspacePurgeCoordinator,
