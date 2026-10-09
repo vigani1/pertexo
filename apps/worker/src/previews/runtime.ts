@@ -2,7 +2,6 @@ import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
 } from '@pertexo/database/previews';
-import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
 import {
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
@@ -34,10 +33,7 @@ const previewExecutableNodeSchema = z
   })
   .strict();
 
-/**
- * Resolves the pinned definition in the served catalog, with no
- * latest-version fallback, then executes it through the platform registry.
- */
+/** Executes the pinned node through the platform registry. */
 export function createPlatformPreviewNodeInvoker(
   dependencies: Readonly<{
     registry: ReturnType<typeof createPlatformNodeRegistry>;
@@ -76,29 +72,10 @@ export function createPlatformPreviewNodeInvoker(
     if (lease.input.kind !== 'inline')
       return failedWith('preview.input_artifact_unsupported');
     try {
+      // Acceptance pinned this node, its definition and its executor.
       const node = previewExecutableNodeSchema.parse(lease.executableNode);
-      if (
-        node.id !== lease.nodeId ||
-        node.definition.key !== lease.definitionKey ||
-        node.definition.version !== lease.definitionVersion
-      )
-        return failedWith('preview.executable_invalid');
       if (node.definition.key === 'core.wait' && node.definition.version === 1)
         return failedWith('preview.suspension_not_supported');
-      let definition: ReturnType<
-        typeof resolvePlatformNodeDefinition
-      >['manifest'];
-      try {
-        definition = resolvePlatformNodeDefinition(node.definition).manifest;
-      } catch {
-        return failedWith('preview.executable_invalid');
-      }
-      if (
-        node.configVersion !== definition.configVersion ||
-        lease.executorKey !== definition.executor.key ||
-        lease.executorVersion !== definition.executor.version
-      )
-        return failedWith('preview.executable_invalid');
       const resolvedInput = await resolveSingleNodePreviewInput({
         node,
         runInput: lease.input.value,

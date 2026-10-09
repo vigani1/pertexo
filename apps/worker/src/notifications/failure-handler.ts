@@ -1,10 +1,9 @@
 import type { FailureNotificationStore } from '@pertexo/database/notifications';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
-import {
-  type FailureNotificationContext,
-  type FailureNotificationDeliveryResult,
-  FailureNotificationDeliveryResultSchema,
+import type {
+  FailureNotificationContext,
+  FailureNotificationDeliveryResult,
 } from '@pertexo/workflow-model';
 
 type Delivery = Extract<
@@ -111,31 +110,22 @@ export function createFailureNotificationHandler(
         }, dependencies.timeoutMillis);
         let result: FailureNotificationDeliveryResult;
         try {
-          let deliveryPromise: Promise<unknown>;
-          try {
-            deliveryPromise = Promise.resolve(
-              dependencies.delivery.deliver({
-                context: claim.context,
-                workspaceId: delivery.data.workspaceId,
-                intentId: delivery.data.notificationIntentId,
-                attemptNumber: claim.attemptNumber,
-                destinationId: claim.destinationId,
-                destinationConfigVersion: claim.destinationConfigVersion,
-                idempotencyKey: claim.idempotencyKey,
-                sideEffectClass: claim.sideEffectClass,
-                connectionSecretVersionId: claim.connectionSecretVersionId,
-                deliveryUnresolved: claim.deliveryUnresolved,
-                ...(claim.deliveryBinding === undefined
-                  ? {}
-                  : { deliveryBinding: claim.deliveryBinding }),
-                signal: controller.signal,
-              }),
-            );
-          } catch (error: unknown) {
-            // Preserve hostile legacy rejection values for conservative mapping.
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-            deliveryPromise = Promise.reject(error);
-          }
+          const deliveryPromise = dependencies.delivery.deliver({
+            context: claim.context,
+            workspaceId: delivery.data.workspaceId,
+            intentId: delivery.data.notificationIntentId,
+            attemptNumber: claim.attemptNumber,
+            destinationId: claim.destinationId,
+            destinationConfigVersion: claim.destinationConfigVersion,
+            idempotencyKey: claim.idempotencyKey,
+            sideEffectClass: claim.sideEffectClass,
+            connectionSecretVersionId: claim.connectionSecretVersionId,
+            deliveryUnresolved: claim.deliveryUnresolved,
+            ...(claim.deliveryBinding === undefined
+              ? {}
+              : { deliveryBinding: claim.deliveryBinding }),
+            signal: controller.signal,
+          });
           const settlement = await settleUntilAbort(
             deliveryPromise,
             controller.signal,
@@ -148,9 +138,7 @@ export function createFailureNotificationHandler(
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (queueContext.signal.aborted) return;
           if (settlement.kind === 'rejected') throw settlement.reason;
-          result = FailureNotificationDeliveryResultSchema.parse(
-            settlement.value,
-          );
+          result = settlement.value;
         } catch {
           result = {
             schemaVersion: 1,

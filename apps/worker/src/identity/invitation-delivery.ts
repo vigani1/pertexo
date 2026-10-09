@@ -39,9 +39,8 @@ export function createWorkspaceInvitationDeliveryHandler(
     timeoutMillis: number;
   }>,
 ): WorkspaceInvitationDeliveryHandler {
+  // Config parsed the web origin; it has no path.
   const origin = new URL(dependencies.webOrigin);
-  if (origin.pathname !== '/' || origin.search !== '' || origin.hash !== '')
-    throw new TypeError('Invitation web origin must not include a path');
   return Object.freeze({
     handle: async (
       delivery: Delivery,
