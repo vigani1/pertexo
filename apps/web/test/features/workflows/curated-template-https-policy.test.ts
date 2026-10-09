@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   configureTemplate,
   setupValueError,
@@ -24,7 +24,7 @@ describe('Browser-owned curated HTTPS v1 setup policy', () => {
       await readFile(
         resolve(
           process.cwd(),
-          '../../packages/workflow-model/test/fixtures/curated-https-endpoint-v1-corpus.json',
+          '../../packages/templates/test/fixtures/https-endpoint-corpus.json',
         ),
         'utf8',
       ),

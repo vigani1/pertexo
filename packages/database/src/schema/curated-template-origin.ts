@@ -1,5 +1,5 @@
 import { foreignKey, jsonb, primaryKey, uuid } from 'drizzle-orm/pg-core';
-import type { WorkflowTemplateOrigin } from '@pertexo/workflow-model/curated-templates';
+import type { WorkflowTemplateOrigin } from '@pertexo/templates';
 import { appSchema } from './app-schema.js';
 import { workflows } from './authoring.js';
 

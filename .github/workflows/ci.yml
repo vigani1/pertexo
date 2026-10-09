@@ -97,8 +97,9 @@ jobs:
               --filter @pertexo/node-catalog --filter @pertexo/node-sdk --filter
               @pertexo/nodes-core --filter @pertexo/observability --filter
               @pertexo/queue --filter @pertexo/rate-limit --filter
-              @pertexo/workflow-engine --filter @pertexo/workflow-model --filter
-              @pertexo/artifact-store --filter @pertexo/database
+              @pertexo/templates --filter @pertexo/workflow-engine --filter
+              @pertexo/workflow-model --filter @pertexo/artifact-store --filter
+              @pertexo/database
           - group: apps
             filter: >-
               --filter @pertexo/api --filter @pertexo/worker --filter

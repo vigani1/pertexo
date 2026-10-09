@@ -136,6 +136,9 @@ importers:
       '@opentelemetry/sdk-node':
         specifier: 0.222.0
         version: 0.222.0(@opentelemetry/api@1.9.1)(supports-color@7.2.0)
+      '@pertexo/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
@@ -169,6 +172,9 @@ importers:
       '@pertexo/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@pertexo/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../../packages/workflow-model
@@ -339,6 +345,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@pertexo/templates':
+        specifier: workspace:*
+        version: link:../templates
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../workflow-model
@@ -361,6 +370,9 @@ importers:
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../nodes-core
+      '@pertexo/templates':
+        specifier: workspace:*
+        version: link:../templates
       '@pertexo/workflow-engine':
         specifier: workspace:*
         version: link:../workflow-engine
@@ -429,6 +441,9 @@ importers:
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../nodes-core
+      '@pertexo/templates':
+        specifier: workspace:*
+        version: link:../templates
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../workflow-model
@@ -526,6 +541,15 @@ importers:
       ioredis:
         specifier: 6.0.0
         version: 6.0.0(supports-color@7.2.0)
+
+  packages/templates:
+    dependencies:
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../workflow-model
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
 
   packages/workflow-engine:
     dependencies:

@@ -7,7 +7,7 @@ import {
   workflowDraftResponseSchema,
   workflowTemplateOriginProjectionResponseSchema,
 } from '@pertexo/contracts/schemas/workflow-authoring';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import type { useBetterAuthRealApi } from './better-auth-real-api.integration.support.js';
 import { executeCuratedTemplateGraphs } from './curated-template-worker-evidence.js';
 import { executeCuratedTemplateTriggers } from './curated-template-trigger-evidence.js';

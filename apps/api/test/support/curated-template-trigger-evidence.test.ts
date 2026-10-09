@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   curatedAutomaticScheduleVariation,
   curatedScheduleTimestamp,

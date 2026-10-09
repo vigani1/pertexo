@@ -43,6 +43,7 @@
   "devDependencies": {
     "@nestjs/testing": "11.2.6",
     "@opentelemetry/sdk-node": "0.222.0",
+    "@pertexo/templates": "workspace:*",
     "@types/pg": "8.23.1"
   }
 }

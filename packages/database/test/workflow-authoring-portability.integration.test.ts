@@ -4,7 +4,7 @@ import {
   projectWorkflowPortableManifest,
   type WorkflowPortabilityCatalog,
 } from '@pertexo/workflow-model/portability';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import {
   WorkflowPortabilityCompatibilityConflictError,

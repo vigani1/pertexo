@@ -7,7 +7,7 @@ import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-w
 import {
   CURATED_WORKFLOW_TEMPLATES,
   verifyCuratedTemplateManifest,
-} from '@pertexo/workflow-model/curated-templates';
+} from '@pertexo/templates';
 import {
   configureTemplate,
   curatedTemplateChooserEnabled,

@@ -6,6 +6,7 @@
     "lib": ["ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "resolvePackageJsonExports": true,
     "composite": true,
     "declaration": true,
     "declarationMap": true,
@@ -13,12 +14,13 @@
     "rootDir": "src",
     "sourceMap": true,
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
-    "types": []
+    "types": ["node"]
   },
-  "references": [
-    { "path": "../templates/tsconfig.json" },
-    { "path": "../workflow-model/tsconfig.json" }
-  ],
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "test"]
+  "exclude": ["dist", "test"],
+  "references": [
+    {
+      "path": "../workflow-model/tsconfig.json"
+    }
+  ]
 }

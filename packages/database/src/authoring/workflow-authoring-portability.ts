@@ -4,13 +4,12 @@ import { z } from 'zod';
 import {
   verifyCuratedTemplateManifest,
   workflowTemplateOriginRequestSchema,
-} from '@pertexo/workflow-model/curated-templates';
+} from '@pertexo/templates';
 import { EMPTY_WORKFLOW_GRAPH_V1 } from '@pertexo/workflow-model/graph';
 import {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,
   WorkflowPortabilityError,
-  type WorkflowPortabilityCatalog,
 } from '@pertexo/workflow-model/portability';
 import {
   canonicalWorkflowPortableJson,
@@ -32,6 +31,7 @@ import type {
   WorkflowAuthoringDatabase,
 } from './workflow-authoring-contracts.js';
 import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
+import type { PortableCatalog } from './workflow-authoring-types.js';
 import {
   WorkflowNotFoundError,
   WorkflowPortabilityCompatibilityConflictError,
@@ -112,7 +112,7 @@ function selectedPolicy(
 /** A template origin must name a curated template and change only its setup values. */
 function inspectTemplateOrigin(
   input: PreviewWorkflowImportInput,
-  catalog: WorkflowPortabilityCatalog,
+  catalog: PortableCatalog,
 ): readonly PortableIssue[] {
   if (input.templateOrigin === undefined) return [];
   const verified = verifyCuratedTemplateManifest(

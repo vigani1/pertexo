@@ -1,5 +1,7 @@
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { WorkflowPortabilityCatalog } from '@pertexo/workflow-model/portability';
+import type { WorkflowPortableManifest } from '@pertexo/workflow-model/portability-contract';
+import type { WorkflowTemplateOriginRequest } from '@pertexo/templates';
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
 import type {
   WorkflowDefinitionCatalogV1,
@@ -68,8 +70,17 @@ export type WorkflowAuthoringGraphValidator = (
   options: Readonly<{ signal?: AbortSignal }>,
 ) => Promise<GraphValidationResult>;
 
+/** The portability catalog, plus the registered check of a template's setup values. */
+export type PortableCatalog = WorkflowPortabilityCatalog &
+  Readonly<{
+    validateTemplateSetup?: (
+      manifest: WorkflowPortableManifest,
+      origin: WorkflowTemplateOriginRequest,
+    ) => boolean;
+  }>;
+
 type WorkflowAuthoringCompatibilityVariant = Readonly<{
-  portableCatalog?: WorkflowPortabilityCatalog;
+  portableCatalog?: PortableCatalog;
   compatibilityRelease: CompatibilityReleaseExpectation;
   definitionCatalog: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog: WorkflowDefinitionCatalogV1;
@@ -78,7 +89,7 @@ type WorkflowAuthoringCompatibilityVariant = Readonly<{
 }>;
 
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
-  portableCatalog?: WorkflowPortabilityCatalog;
+  portableCatalog?: PortableCatalog;
   compatibilityRelease?: CompatibilityReleaseExpectation;
   compatibilityReleaseVariants?: readonly WorkflowAuthoringCompatibilityVariant[];
   compatibilityReadinessReleases?: readonly CompatibilityReleaseExpectation[];

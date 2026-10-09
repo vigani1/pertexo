@@ -4,8 +4,8 @@ import type {
   WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 
-import type { WorkflowPortabilityCatalog } from '@pertexo/workflow-model/portability';
 import type {
+  PortableCatalog,
   WorkflowAuthoringGraphValidator,
   WorkflowAuthoringTestHooks,
 } from './workflow-authoring-types.js';
@@ -26,7 +26,7 @@ export type WorkflowAuthoringWriteContext = Readonly<{
     Readonly<{
       definitionCatalog: WorkflowDefinitionCatalogV1;
       placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;
-      portableCatalog: WorkflowPortabilityCatalog | undefined;
+      portableCatalog: PortableCatalog | undefined;
       validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
     }>
   >;

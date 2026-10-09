@@ -8,7 +8,7 @@ import {
   CURATED_WORKFLOW_TEMPLATES,
   validateCuratedTemplateSetupValue,
   isCuratedHttpsEndpointV1,
-} from '@pertexo/workflow-model/curated-templates';
+} from '@pertexo/templates';
 import {
   PLATFORM_REGISTRY_RELEASE_HISTORY,
   platformServingRegistryRelease,
@@ -67,7 +67,7 @@ interface CorpusCase {
 const corpus = JSON.parse(
   await readFile(
     new URL(
-      '../../workflow-model/test/fixtures/curated-https-endpoint-v1-corpus.json',
+      '../../templates/test/fixtures/https-endpoint-corpus.json',
       import.meta.url,
     ),
     'utf8',

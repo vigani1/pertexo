@@ -48,6 +48,9 @@
       "path": "./packages/rate-limit/tsconfig.json"
     },
     {
+      "path": "./packages/templates/tsconfig.json"
+    },
+    {
       "path": "./packages/workflow-engine/tsconfig.json"
     },
     {

@@ -117,7 +117,6 @@ describe('workflow-model package contract', () => {
         name === './failure-notification' ||
         name === './graph-contract' ||
         name === './portability-contract' ||
-        name === './curated-templates' ||
         name === './json-path' ||
         name === './lifecycle' ||
         name === './observation-window'

@@ -3,7 +3,7 @@ import type { WorkflowPortableManifest } from '@pertexo/contracts/schemas/workfl
 import {
   type CuratedWorkflowTemplate,
   validateCuratedTemplateSetupValue,
-} from '@pertexo/workflow-model/curated-templates';
+} from '@pertexo/templates';
 
 export type CuratedTemplate = CuratedWorkflowTemplate;
 export type SetupTarget = CuratedTemplate['setupTargets'][number];

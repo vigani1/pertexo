@@ -18,6 +18,7 @@
   "include": ["src"],
   "references": [
     { "path": "../../packages/contracts/tsconfig.json" },
+    { "path": "../../packages/templates/tsconfig.json" },
     { "path": "../../packages/workflow-model/tsconfig.json" }
   ]
 }

@@ -12,7 +12,7 @@ import {
   workflowNodeRunStatusSchema,
   workflowRunStatusSchema,
 } from '@pertexo/contracts/schemas/workflow-runs';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import type { useBetterAuthRealApi } from './better-auth-real-api.integration.support.js';
 import {
   curatedContinuationDiagnosticSchema,
