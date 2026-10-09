@@ -15,6 +15,7 @@ import {
   forEachGraph,
   graph,
   nodeRelease,
+  completedOutputs,
 } from './executable-workflow.fixtures.js';
 
 function standardExecutable() {
@@ -48,7 +49,7 @@ function setAttempt(overrides: Record<string, unknown> = {}) {
     }),
     nodeId: 'set',
     runInput: {},
-    completedNodeOutputs: { manual: {} },
+    completedNodeOutputs: completedOutputs({ manual: {} }),
     registry: successfulRegistry(),
     signal: new AbortController().signal,
     ...overrides,

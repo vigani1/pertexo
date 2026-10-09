@@ -124,44 +124,28 @@ function parseCompletedOutputs(
   graph: WorkflowExecutableGraph,
   directUpstream: ReadonlySet<string>,
 ): Readonly<Record<string, JsonValue>> {
-  if (Array.isArray(completed)) {
-    const outputs = Object.create(null) as Record<string, JsonValue>;
-    const canonicalByNodeId = new Map<string, string>();
-    for (const candidate of completed as readonly JsonValue[]) {
-      const [nodeId, value] = parseCompletedDescriptor(
-        candidate,
-        input,
-        node,
-        graph,
-        directUpstream,
-      );
-      const canonicalValue = canonicalJson(value);
-      const existing = canonicalByNodeId.get(nodeId);
-      if (existing !== undefined && existing !== canonicalValue)
-        operationError('attempt_invalid', 'completed outputs conflict');
-      if (existing === undefined) {
-        canonicalByNodeId.set(nodeId, canonicalValue);
-        outputs[nodeId] = value;
-      }
-    }
-    return outputs;
-  }
-  if ((input.iterationPath?.length ?? 0) > 0) {
-    operationError(
-      'attempt_invalid',
-      'scoped completed outputs require invocation descriptors',
+  if (!Array.isArray(completed))
+    operationError('attempt_invalid', 'completed outputs must be a list');
+  const outputs = Object.create(null) as Record<string, JsonValue>;
+  const canonicalByNodeId = new Map<string, string>();
+  for (const candidate of completed as readonly JsonValue[]) {
+    const [nodeId, value] = parseCompletedDescriptor(
+      candidate,
+      input,
+      node,
+      graph,
+      directUpstream,
     );
-  }
-  const legacy = record(completed, 'attempt_invalid', 'completed outputs');
-  for (const nodeId of Object.keys(legacy)) {
-    if (!directUpstream.has(nodeId)) {
-      operationError(
-        'attempt_invalid',
-        'completed output is not direct upstream',
-      );
+    const canonicalValue = canonicalJson(value);
+    const existing = canonicalByNodeId.get(nodeId);
+    if (existing !== undefined && existing !== canonicalValue)
+      operationError('attempt_invalid', 'completed outputs conflict');
+    if (existing === undefined) {
+      canonicalByNodeId.set(nodeId, canonicalValue);
+      outputs[nodeId] = value;
     }
   }
-  return legacy;
+  return outputs;
 }
 
 function parseStructuredInputs(
