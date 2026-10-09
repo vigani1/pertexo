@@ -261,7 +261,7 @@ describe('operations observability assets', () => {
   });
 
   it('binds source freshness to the qualified export, batch, and scrape cadence', async () => {
-    const { alerts, collector, emitters, prometheus } = await operationsAssets;
+    const { collector, emitters, prometheus } = await operationsAssets;
 
     expect(emitters).toContain('METRIC_EXPORT_INTERVAL_MILLISECONDS = 60_000');
     expect(collector).toContain('timeout: 5s');
