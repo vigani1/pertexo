@@ -15,7 +15,7 @@ type Scope = Awaited<ReturnType<OrganizationOwnedFixture['scope']>>;
 interface Result {
   tag?: { id: string; key: string; revision: number };
   organizationRevision?: number;
-  tagIds?: string[];
+  tagIds?: readonly string[];
   favoriteRevision?: string;
   isFavorite?: boolean;
   replayed: boolean;

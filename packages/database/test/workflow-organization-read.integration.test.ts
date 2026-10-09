@@ -149,7 +149,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       for (const [workflow, folder] of [
         [inParent, parent],
         [inChild, child],
-      ])
+      ] as const)
         await folders.placeWorkflow({
           ...context(scope),
           workflowId: workflow,
