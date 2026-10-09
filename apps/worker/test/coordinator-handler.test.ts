@@ -111,7 +111,7 @@ describe('coordinator handler', () => {
     },
   );
 
-  it.each(['not_found', 'not_executable', 'capacity_exceeded'] as const)(
+  it.each(['not_found', 'capacity_exceeded'] as const)(
     'fails the delivery for a run that cannot advance: %s',
     async (kind) => {
       const { handler } = handlerWith(vi.fn().mockResolvedValue({ kind }));

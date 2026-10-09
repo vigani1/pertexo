@@ -17,6 +17,7 @@ import {
   workflowId,
 } from './execution-acceptance.fixtures.js';
 import { enforceRetention } from './support/retention.js';
+import { testExecutableCompiler } from '../src/authoring/test-executable-compiler.js';
 
 export async function setLimit(limit: number | null, id = workflowId) {
   await withOwner(async (client) => {
@@ -66,6 +67,7 @@ export async function withConcurrencyControls<T>(
   });
   const authoring = createWorkflowAuthoringDatabase(
     parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+    { executableCompiler: testExecutableCompiler },
   );
   try {
     if (authoring.concurrency === undefined)

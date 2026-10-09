@@ -1,3 +1,4 @@
+export { testExecutableCompiler } from './test-executable-compiler.js';
 export {
   createWorkflowAuthoringDatabase,
   reconcileWorkflowTriggersPayload,

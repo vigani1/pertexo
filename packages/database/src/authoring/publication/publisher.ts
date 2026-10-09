@@ -14,7 +14,6 @@ import {
   workflowCompatibilityReport,
   type WorkflowDefinitionCatalog,
   workflowDraftRepresentationTag,
-  workflowExecutableChecksum,
   workflowIntegrationUsage,
 } from '@pertexo/workflow-model/server';
 import { admitWorkflowAuthoring } from '../workflows/admission.js';
@@ -31,10 +30,6 @@ import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
 } from '../workflows/contracts.js';
-import type {
-  WorkflowExecutableCompiler,
-  WorkflowAuthoringGraphValidator,
-} from '../workflows/types.js';
 import type { WorkflowVersionRecord } from '../workflows/records.js';
 import {
   mapDraft,
@@ -45,12 +40,12 @@ import {
   reconcileWorkflowTriggersPayload,
   persistPublishedWorkflowTriggers,
 } from './trigger-reconciliation.js';
+import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 export { reconcileWorkflowTriggersPayload } from './trigger-reconciliation.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = sha256HexSchema;
-const checksumSchema = z.string().regex(/^wf:v[12]:sha256:[0-9a-f]{64}$/u);
 const workflowDraftTagSchema = z
   .string()
   .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
@@ -67,16 +62,9 @@ const operationKeySchema = z
 const executableSchema = z
   .object({
     checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
-    executableSchemaVersion: z.literal(2),
     executableJson: z.record(z.string(), z.unknown()),
   })
   .strict();
-
-type PublicationVariant = Readonly<{
-  definitionCatalog: WorkflowDefinitionCatalog;
-  executableCompiler: WorkflowExecutableCompiler | undefined;
-  validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
-}>;
 
 export type WorkflowPublicationDependencies = Readonly<{
   requireAuthor(
@@ -84,7 +72,7 @@ export type WorkflowPublicationDependencies = Readonly<{
     workspaceId: string,
     actorId: string,
   ): Promise<void>;
-  selectVariant(client: Pick<PoolClient, 'query'>): Promise<PublicationVariant>;
+  catalogs: AuthoringCatalogs;
   transact<T>(
     workspaceId: string,
     actorId: string,
@@ -102,7 +90,7 @@ type PublicationClaim = Readonly<{
 type CompiledPublication = Readonly<{
   checksum: string;
   definitionCatalog: WorkflowDefinitionCatalog;
-  executable: z.output<typeof executableSchema> | undefined;
+  executable: z.output<typeof executableSchema>;
   graph: WorkflowGraph;
   schemaVersion: number;
 }>;
@@ -152,7 +140,7 @@ async function lockAndCompilePublication(
   workflowId: string,
   dependencies: WorkflowPublicationDependencies,
 ): Promise<CompiledPublication> {
-  const variant = await dependencies.selectVariant(client);
+  const variant = dependencies.catalogs;
   const workflow = await client.query(
     `select id from app.workflows where workspace_id=$1 and id=$2
        and lifecycle_status='active' for update`,
@@ -191,14 +179,9 @@ async function lockAndCompilePublication(
     draft.graphJson,
     variant.definitionCatalog,
   );
-  const compiled = variant.executableCompiler?.(graph);
-  const executable =
-    compiled === undefined ? undefined : executableSchema.parse(compiled);
+  const executable = executableSchema.parse(variant.executableCompiler(graph));
   return Object.freeze({
-    checksum: checksumSchema.parse(
-      executable?.checksum ??
-        workflowExecutableChecksum(graph, variant.definitionCatalog),
-    ),
+    checksum: executable.checksum,
     definitionCatalog: variant.definitionCatalog,
     executable,
     graph,
@@ -227,9 +210,9 @@ async function persistVersion(
     const inserted = await client.query<Record<string, unknown>>(
       `insert into app.workflow_versions (
          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-         checksum,executable_schema_version,executable_json,published_by)
+         checksum,executable_json,published_by)
        select $1,$2,$3,coalesce(max(version_number),0)+1,$4,$5::jsonb,$6,
-         $7,$8::jsonb,$9 from app.workflow_versions
+         $7::jsonb,$8 from app.workflow_versions
        where workspace_id=$2 and workflow_id=$3
        returning ${workflowVersionRowSelection}`,
       [
@@ -239,10 +222,7 @@ async function persistVersion(
         publication.schemaVersion,
         JSON.stringify(publication.graph),
         publication.checksum,
-        publication.executable?.executableSchemaVersion ?? null,
-        publication.executable === undefined
-          ? null
-          : JSON.stringify(publication.executable.executableJson),
+        JSON.stringify(publication.executable.executableJson),
         input.actorId,
       ],
     );

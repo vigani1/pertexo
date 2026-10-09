@@ -44,17 +44,13 @@ function dependencies() {
   const reader: PublishedWorkflowReader = {
     close: vi.fn().mockResolvedValue(undefined),
     readForExecution: vi.fn().mockResolvedValue({
-      kind: 'v2_projection',
-      workflowVersion: {
-        id: VERSION_ID,
-        workspaceId: WORKSPACE_ID,
-        workflowId: WORKFLOW_ID,
-        versionNumber: 1,
-        schemaVersion: 1,
-        checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
-        executableSchemaVersion: 2,
-        executableJson: {},
-      },
+      id: VERSION_ID,
+      workspaceId: WORKSPACE_ID,
+      workflowId: WORKFLOW_ID,
+      versionNumber: 1,
+      schemaVersion: 1,
+      checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+      executableJson: {},
     }),
   };
   const reconciliation: WorkflowTriggerReconciliationDatabase = {
@@ -103,11 +99,10 @@ describe('trigger reconciliation handler', () => {
         workspaceId: WORKSPACE_ID,
         workflowVersionId: VERSION_ID,
       });
-      if (current.kind !== 'v2_projection')
-        throw new Error('fixture projection is missing');
+      if (current === null) throw new Error('fixture projection is missing');
       vi.mocked(selected.reader.readForExecution).mockResolvedValue({
-        kind: 'v2_projection',
-        workflowVersion: { ...current.workflowVersion, ...override },
+        ...current,
+        ...override,
       });
 
       await expect(

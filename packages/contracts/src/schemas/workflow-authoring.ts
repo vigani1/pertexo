@@ -194,7 +194,7 @@ export const workflowVersionResponseSchema = z
     versionNumber: z.number().int().positive(),
     schemaVersion: z.literal(1),
     graph: workflowGraphSchema,
-    checksum: z.string().regex(/^wf:v[12]:sha256:[0-9a-f]{64}$/u),
+    checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
     publishedAt: z.iso.datetime(),
   })
   .strict();

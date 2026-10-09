@@ -45,6 +45,7 @@ import {
   lockPortableSource,
   reviewedSourceGraph,
 } from './source-authority.js';
+import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 const scope = z.object({
   workspaceId: z.uuid(),
@@ -91,11 +92,7 @@ const exportInput = scope
       value.source.kind !== 'draft' || value.representationTag !== undefined,
   );
 
-function selectedPolicy(
-  selection: Awaited<
-    ReturnType<WorkflowAuthoringWriteContext['selectCatalogs']>
-  >,
-) {
+function selectedPolicy(selection: AuthoringCatalogs) {
   const catalog = selection.portableCatalog;
   if (catalog === undefined)
     throw new WorkflowPortabilityUnavailableError(
@@ -164,9 +161,7 @@ async function inspectImport(
   client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
   context: WorkflowAuthoringWriteContext,
   input: PreviewWorkflowImportInput,
-  selection: Awaited<
-    ReturnType<WorkflowAuthoringWriteContext['selectCatalogs']>
-  >,
+  selection: AuthoringCatalogs,
 ) {
   const catalog = selectedPolicy(selection);
   const inspected = inspectWorkflowPortableManifest(
@@ -235,7 +230,7 @@ function exportPortableWorkflow(
     async (client) => {
       await requirePortabilityAuthority(client, input, false);
       const row = await lockPortableSource(client, input);
-      const selection = await context.selectCatalogs(client);
+      const selection = context.catalogs;
       const graph = reviewedSourceGraph(input, row, selection);
       if ((await portableGraphDigest(graph)) !== input.reviewedGraphDigest)
         throw new WorkflowPortabilityReviewConflictError(
@@ -305,7 +300,7 @@ function previewPortableWorkflow(
     input.actorId,
     async (client) => {
       await requirePortabilityAuthority(client, input, true);
-      const selection = await context.selectCatalogs(client);
+      const selection = context.catalogs;
       try {
         const report = await inspectImport(client, context, input, selection);
         return {
@@ -371,7 +366,7 @@ function importPortableWorkflow(
           );
         return Object.freeze(replay);
       }
-      const selection = await context.selectCatalogs(client);
+      const selection = context.catalogs;
       if (
         workflowDefinitionCatalogFingerprint(selection.definitionCatalog) !==
         input.expectedCompatibilityFingerprint

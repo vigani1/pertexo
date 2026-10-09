@@ -121,17 +121,15 @@ export async function verifyScheduleEvidence(
     id: string;
     graph_json: unknown;
     checksum: string;
-    executable_schema_version: number;
     executable_json: unknown;
   }>(
-    'select id,graph_json,checksum,executable_schema_version,executable_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2',
+    'select id,graph_json,checksum,executable_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2',
     scope,
   );
   expect(versions.rows).toHaveLength(1);
   const version = versions.rows[0];
   if (version === undefined) throw new Error('Owned immutable version missing');
   expect(version.id).toBe(evidence.workflowVersionId);
-  expect(version.executable_schema_version).toBe(2);
   verifyWorkflowExecutable({
     envelope: version.executable_json,
     checksum: version.checksum,

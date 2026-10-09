@@ -1,5 +1,5 @@
 import type {
-  PublishedWorkflowV2Projection,
+  PublishedWorkflow,
   RunAdvanceDecision,
 } from '@pertexo/database/runs';
 import { parseCheckpoint } from '@pertexo/workflow-engine';
@@ -10,7 +10,7 @@ import type { PersistedWorkflowProjectionVerificationOptions } from '../../src/w
 type DecideInput = Readonly<{
   runId: string;
   workflowVersionId: string;
-  projection: PublishedWorkflowV2Projection;
+  projection: PublishedWorkflow;
   checkpoint: unknown;
   observations: readonly unknown[];
   completedOutputs?: readonly unknown[];

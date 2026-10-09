@@ -10,7 +10,7 @@ import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { consumeInboxMessage } from '../outbox/receipts.js';
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
-import { classifyPublishedWorkflowVersionRow } from '../runs/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../runs/published-workflow.js';
 
 const inputSchema = z
   .object({
@@ -161,21 +161,16 @@ export function createOperatorRunReplayStore(
           const versions = await transaction.db.execute(
             sql<Record<string, unknown>>`
               select id,workspace_id,workflow_id,version_number,schema_version,
-                checksum,executable_schema_version,executable_json
+                checksum,executable_json
               from app.workflow_versions
               where workspace_id=${transaction.workspaceId}
                 and id=${request.data.workflow_version_id}
             `,
           );
-          const classified = classifyPublishedWorkflowVersionRow(
-            versions.rows[0],
-          );
-          if (
-            classified.kind !== 'v2_projection' ||
-            classified.workflowVersion.workflowId !== request.data.workflow_id
-          )
+          const version = parsePublishedWorkflowRow(versions.rows[0]);
+          if (version?.workflowId !== request.data.workflow_id)
             throw new OperatorRunReplayNotExecutableError();
-          const initial = checkpointFactory(classified.workflowVersion);
+          const initial = checkpointFactory(version);
           const accepted = await acceptWorkflowRun(transaction, {
             engineVersion: initial.engineVersion,
             initialCheckpoint: initial.checkpoint,

@@ -3,8 +3,8 @@ import { z } from 'zod';
 
 import { readWorkflowRunAcceptanceReplay } from './acceptance.js';
 import {
-  classifyPublishedWorkflowVersionRow,
-  type PublishedWorkflowV2Projection,
+  parsePublishedWorkflowRow,
+  type PublishedWorkflow,
 } from '../published-workflow.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -95,7 +95,7 @@ async function lockReplayVersion(
   transaction: WorkspaceTransaction,
   workflowId: string,
   workflowVersionId: string,
-): Promise<PublishedWorkflowV2Projection> {
+): Promise<PublishedWorkflow> {
   const result = await transaction.db.execute(sql<Record<string, unknown>>`
     select
       id,
@@ -104,20 +104,16 @@ async function lockReplayVersion(
       version_number,
       schema_version,
       checksum,
-      executable_schema_version,
       executable_json
     from app.lock_workflow_run_replay_version(
       ${transaction.workspaceId}, ${workflowId}, ${workflowVersionId}
     )
   `);
-  const classified = classifyPublishedWorkflowVersionRow(result.rows[0]);
-  if (classified.kind === 'not_found') throw new WorkflowRunNotFoundError();
-  if (classified.kind !== 'v2_projection')
-    throw new WorkflowRunNotExecutableError();
+  const version = parsePublishedWorkflowRow(result.rows[0]);
   if (
-    classified.workflowVersion.workflowId !== workflowId ||
-    classified.workflowVersion.workspaceId !== transaction.workspaceId
+    version?.workflowId !== workflowId ||
+    version.workspaceId !== transaction.workspaceId
   )
     throw new WorkflowRunNotFoundError();
-  return classified.workflowVersion;
+  return version;
 }

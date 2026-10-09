@@ -52,10 +52,7 @@ describe('atomic attempt connection health forwarding', () => {
         leaseDurationSeconds: 1,
         reader: {
           close: vi.fn(),
-          readForExecution: vi.fn().mockResolvedValue({
-            kind: 'v2_projection',
-            workflowVersion: projection(),
-          }),
+          readForExecution: vi.fn().mockResolvedValue(projection()),
         },
         registry: {
           dispatchMode: () => 'executor_controlled',
@@ -116,10 +113,7 @@ describe('atomic attempt connection health forwarding', () => {
         leaseDurationSeconds: 30,
         reader: {
           close: vi.fn(),
-          readForExecution: vi.fn().mockResolvedValue({
-            kind: 'v2_projection',
-            workflowVersion: projection(),
-          }),
+          readForExecution: vi.fn().mockResolvedValue(projection()),
         },
         registry: {
           dispatchMode: () => 'executor_controlled',
@@ -173,10 +167,7 @@ describe('atomic attempt connection health forwarding', () => {
       leaseDurationSeconds: 30,
       reader: {
         close: vi.fn(),
-        readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: projection(),
-        }),
+        readForExecution: vi.fn().mockResolvedValue(projection()),
       },
       registry: {
         dispatchMode: () => 'executor_controlled',

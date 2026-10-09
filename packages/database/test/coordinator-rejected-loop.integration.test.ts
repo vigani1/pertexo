@@ -46,8 +46,8 @@ async function rejectedFixture() {
     await client.query(
       `insert into app.workflow_versions (
          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-         checksum,executable_schema_version,executable_json,published_by
-       ) values ($1,$2,$3,1,1,$4::jsonb,$5,2,$6::jsonb,$7)`,
+         checksum,executable_json,published_by
+       ) values ($1,$2,$3,1,1,$4::jsonb,$5,$6::jsonb,$7)`,
       [
         versionId,
         fixture.workspaceA,

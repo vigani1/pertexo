@@ -93,7 +93,7 @@ function version(): WorkflowVersionRecord {
     schemaVersion: 1,
     graphJson: graph,
     checksum:
-      'wf:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      'wf:v2:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     publishedBy: actorId,
     publishedAt: new Date('2026-08-20T12:00:00.000Z'),
   };

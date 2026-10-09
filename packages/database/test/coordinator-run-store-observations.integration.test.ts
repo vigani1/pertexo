@@ -247,11 +247,11 @@ describe('Coordinator observation integrity invariants', () => {
         client.query(
           `insert into app.workflow_versions (
          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-         checksum,executable_schema_version,executable_json,published_by
+         checksum,executable_json,published_by
        ) select $1,$2,workflow.id,
            (select coalesce(max(version_number),0)+1 from app.workflow_versions
              where workspace_id=$2 and workflow_id=workflow.id),
-           1,'{}'::jsonb,$3,2,$4::jsonb,workflow.created_by
+           1,'{}'::jsonb,$3,$4::jsonb,workflow.created_by
          from app.workflows workflow where workflow.workspace_id=$2 and workflow.id=$5`,
           [
             workflowVersionId,

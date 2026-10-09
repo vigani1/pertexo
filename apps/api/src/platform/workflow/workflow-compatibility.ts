@@ -97,7 +97,6 @@ export function createCoreAuthoringOptions(
       });
       return Object.freeze({
         checksum: compiled.checksum,
-        executableSchemaVersion: 2 as const,
         executableJson: compiled.envelope,
       });
     },

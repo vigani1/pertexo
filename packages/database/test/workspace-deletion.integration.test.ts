@@ -127,9 +127,9 @@ beforeAll(async () => {
     await owner.query(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,
          version_number,schema_version,graph_json,checksum,
-         executable_schema_version,executable_json,
+         executable_json,
          published_by)
-       values($1,$2,$3,1,1,$4::jsonb,$5,2,'{}'::jsonb,$6)`,
+       values($1,$2,$3,1,1,$4::jsonb,$5,'{}'::jsonb,$6)`,
       [
         workflowVersionId,
         workspaceId,

@@ -40,7 +40,6 @@ describe('advanceRun decisions', () => {
         versionNumber: 1,
         schemaVersion: 1,
         checksum: executable.checksum,
-        executableSchemaVersion: 2,
         executableJson: executable.envelope,
       },
       checkpoint,
@@ -76,7 +75,6 @@ describe('advanceRun decisions', () => {
           versionNumber: 1,
           schemaVersion: 1,
           checksum: executable.checksum,
-          executableSchemaVersion: 2,
           executableJson: executable.envelope,
         },
         checkpoint: result.plan.checkpoint,
@@ -98,7 +96,6 @@ describe('advanceRun decisions', () => {
       versionNumber: 1,
       schemaVersion: 1 as const,
       checksum: executable.checksum,
-      executableSchemaVersion: 2 as const,
       executableJson: executable.envelope,
     };
     const engine = createDecisionEngine({

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/server';
+import { testExecutableCompiler } from '@pertexo/database/testing';
 import {
   workflowInputCaseCommandResponseSchema,
   workflowInputCaseResponseSchema,
@@ -53,20 +53,18 @@ describe.runIf(betterAuthIntegrationEnabled)(
         edges: [],
         settings: {},
       };
-      const checksum = workflowRetainedExecutableChecksum(
-        parseWorkflowGraphDraft(graph),
-      );
-      // Retained version fixture only; the independent browser qualification publishes and executes a pure-node workflow.
+      const compiled = testExecutableCompiler(parseWorkflowGraphDraft(graph));
       await api
         .database()
         .query(
-          'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,published_by) values($1,$2,$3,1,1,$4::jsonb,$5,$6)',
+          'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,executable_json,published_by) values($1,$2,$3,1,1,$4::jsonb,$5,$6::jsonb,$7)',
           [
             versionId,
             workspaceId,
             workflowId,
             JSON.stringify(graph),
-            checksum,
+            compiled.checksum,
+            JSON.stringify(compiled.executableJson),
             actorId,
           ],
         );

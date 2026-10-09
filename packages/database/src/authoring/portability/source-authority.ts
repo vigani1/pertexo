@@ -8,12 +8,12 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import type { ExportWorkflowInput } from '../workflows/contracts.js';
-import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../workflows/errors.js';
 import { mapDraft } from '../workflows/rows.js';
+import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 /** Lock workflow before its selected source; select catalog only after source. */
 export async function lockPortableSource(
@@ -50,9 +50,7 @@ export async function lockPortableSource(
 export function reviewedSourceGraph(
   input: ExportWorkflowInput,
   row: Record<string, unknown>,
-  selection: Awaited<
-    ReturnType<WorkflowAuthoringWriteContext['selectCatalogs']>
-  >,
+  selection: AuthoringCatalogs,
 ): WorkflowGraph {
   if (input.source.kind === 'version')
     return parseWorkflowGraphDraft(row.graph_json);

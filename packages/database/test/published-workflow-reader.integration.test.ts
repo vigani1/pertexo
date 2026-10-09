@@ -58,8 +58,7 @@ const workerReader = createPublishedWorkflowReader(
 const actorId = randomUUID();
 let workspaceId = '';
 let workflowId = '';
-let v1VersionId = '';
-let v2VersionId = '';
+let versionId = '';
 
 function expectPgCode(code: string): (error: unknown) => boolean {
   return (error: unknown): boolean => {
@@ -151,22 +150,17 @@ beforeAll(async () => {
     })
   ).workflowId;
 
-  v1VersionId = randomUUID();
-  v2VersionId = randomUUID();
+  versionId = randomUUID();
   await executeAsOwner(
     `insert into app.workflow_versions (
        id, workspace_id, workflow_id, version_number, schema_version,
-       graph_json, checksum, executable_schema_version, executable_json, published_by
-     ) values
-       ($1, $3, $4, 1, 1, $5::jsonb, $6, null, null, $9),
-       ($2, $3, $4, 2, 1, $5::jsonb, $7, 2, $8::jsonb, $9)`,
+       graph_json, checksum, executable_json, published_by
+     ) values ($1, $2, $3, 2, 1, $4::jsonb, $5, $6::jsonb, $7)`,
     [
-      v1VersionId,
-      v2VersionId,
+      versionId,
       workspaceId,
       workflowId,
       JSON.stringify({ edges: [], nodes: [], schemaVersion: 1, settings: {} }),
-      `wf:v1:sha256:${'1'.repeat(64)}`,
       `wf:v2:sha256:${'2'.repeat(64)}`,
       JSON.stringify({ schemaVersion: 2, nodes: [], edges: [] }),
       actorId,
@@ -200,72 +194,47 @@ afterAll(async () => {
 });
 
 describe('PublishedWorkflowReader', () => {
-  it('classifies a retained V1 row as non-executable for an authorized API reader', async () => {
-    await expect(
-      apiReader.readForExecution({
-        workspaceId,
-        workflowVersionId: v1VersionId,
-      }),
-    ).resolves.toMatchObject({
-      kind: 'non_executable',
-      workflowVersion: {
-        id: v1VersionId,
-        checksum: `wf:v1:sha256:${'1'.repeat(64)}`,
-      },
-    });
-  });
-
-  it('loads only a same-workspace V2 executable projection for the worker', async () => {
+  it('loads only a same-workspace published version for the worker', async () => {
     await expect(
       workerReader.readForExecution({
         workspaceId,
-        workflowVersionId: v2VersionId,
+        workflowVersionId: versionId,
       }),
     ).resolves.toEqual({
-      kind: 'v2_projection',
-      workflowVersion: {
-        checksum: `wf:v2:sha256:${'2'.repeat(64)}`,
-        executableJson: { schemaVersion: 2, nodes: [], edges: [] },
-        executableSchemaVersion: 2,
-        id: v2VersionId,
-        schemaVersion: 1,
-        versionNumber: 2,
-        workflowId,
-        workspaceId,
-      },
+      checksum: `wf:v2:sha256:${'2'.repeat(64)}`,
+      executableJson: { schemaVersion: 2, nodes: [], edges: [] },
+      id: versionId,
+      schemaVersion: 1,
+      versionNumber: 2,
+      workflowId,
+      workspaceId,
     });
     await expect(
       workerReader.readForExecution({
         workspaceId: randomUUID(),
-        workflowVersionId: v2VersionId,
+        workflowVersionId: versionId,
       }),
-    ).resolves.toEqual({ kind: 'not_found' });
-    await expect(
-      workerReader.readForExecution({
-        workspaceId,
-        workflowVersionId: v1VersionId,
-      }),
-    ).resolves.toMatchObject({ kind: 'non_executable' });
+    ).resolves.toBeNull();
   });
 
   it('enforces forced RLS and denies version updates and deletes', async () => {
     await expect(
       queryAsWorker(
         `select id, workspace_id, workflow_id, version_number, schema_version,
-                checksum, executable_schema_version, executable_json
+                checksum, executable_json
          from app.workflow_versions where id = $1`,
-        [v2VersionId],
+        [versionId],
         workspaceId,
       ),
     ).resolves.toHaveLength(1);
     await expect(
       queryAsWorker('select id from app.workflow_versions where id = $1', [
-        v2VersionId,
+        versionId,
       ]),
     ).resolves.toEqual([]);
     for (const statement of [
-      `update app.workflow_versions set version_number = 99 where id = '${v2VersionId}'`,
-      `delete from app.workflow_versions where id = '${v2VersionId}'`,
+      `update app.workflow_versions set version_number = 99 where id = '${versionId}'`,
+      `delete from app.workflow_versions where id = '${versionId}'`,
     ]) {
       await expect(queryAsWorker(statement, [], workspaceId)).rejects.toSatisfy(
         expectPgCode('42501'),
@@ -273,17 +242,21 @@ describe('PublishedWorkflowReader', () => {
     }
   });
 
-  it('rejects partial, malformed and oversized executable rows and keeps versions append-only', async () => {
+  it('rejects missing, malformed and oversized executable rows and keeps versions append-only', async () => {
     const insertPrefix = `insert into app.workflow_versions
       (id, workspace_id, workflow_id, version_number, schema_version,
-       graph_json, checksum, executable_schema_version, executable_json, published_by) values`;
+       graph_json, checksum, executable_json, published_by) values`;
+    await expect(
+      executeAsOwner(
+        `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 10,
+          1, '{}', 'wf:v2:sha256:${'a'.repeat(64)}', null, '${actorId}')`,
+      ),
+    ).rejects.toSatisfy(expectPgCode('23502'));
     const cases = [
-      `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 10,
-        1, '{}', 'wf:v2:sha256:${'a'.repeat(64)}', 2, null, '${actorId}')`,
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 11,
-        1, '{}', 'wf:v2:sha256:${'b'.repeat(64)}', 2, '[]', '${actorId}')`,
+        1, '{}', 'wf:v2:sha256:${'b'.repeat(64)}', '[]', '${actorId}')`,
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 12,
-        1, '{}', 'wf:v1:sha256:${'c'.repeat(64)}', 2, '{}', '${actorId}')`,
+        1, '{}', 'wf:v1:sha256:${'c'.repeat(64)}', '{}', '${actorId}')`,
     ];
     for (const statement of cases) {
       await expect(executeAsOwner(statement)).rejects.toSatisfy(
@@ -292,7 +265,7 @@ describe('PublishedWorkflowReader', () => {
     }
     await expect(
       executeAsOwner(
-        `${insertPrefix} ($1, $2, $3, 13, 1, '{}', $4, 2,
+        `${insertPrefix} ($1, $2, $3, 13, 1, '{}', $4,
           jsonb_build_object('payload', $5::text), $6)`,
         [
           randomUUID(),
@@ -309,12 +282,12 @@ describe('PublishedWorkflowReader', () => {
       apiPool.query(
         `update app.workflow_versions set executable_json = '{}'
          where id = $1`,
-        [v1VersionId],
+        [versionId],
       ),
     ).rejects.toSatisfy(expectPgCode('42501'));
     await expect(
       apiPool.query('delete from app.workflow_versions where id = $1', [
-        v2VersionId,
+        versionId,
       ]),
     ).rejects.toSatisfy(expectPgCode('42501'));
   });

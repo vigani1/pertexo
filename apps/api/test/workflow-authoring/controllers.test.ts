@@ -40,7 +40,7 @@ const version = {
   schemaVersion: 1 as const,
   graph: body.graph,
   checksum:
-    'wf:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    'wf:v2:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   publishedAt: '2026-08-20T12:00:00.000Z',
 };
 

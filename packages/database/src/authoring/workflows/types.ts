@@ -8,9 +8,9 @@ import type {
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import type { WorkflowTemplateOriginRequest } from '@pertexo/templates';
 
+/** Compiles a graph into the executable a published version stores. */
 export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
   checksum: `wf:v2:sha256:${string}`;
-  executableSchemaVersion: 2;
   executableJson: unknown;
 }>;
 
@@ -32,6 +32,6 @@ export type WorkflowAuthoringDatabaseOptions = Readonly<{
   portableCatalog?: PortableCatalog;
   definitionCatalog?: WorkflowDefinitionCatalog;
   runtime?: DatabaseRuntime;
-  executableCompiler?: WorkflowExecutableCompiler;
+  executableCompiler: WorkflowExecutableCompiler;
   validateAuthoringGraph?: WorkflowAuthoringGraphValidator;
 }>;

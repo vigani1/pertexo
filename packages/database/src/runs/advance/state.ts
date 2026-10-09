@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
-import { classifyPublishedWorkflowVersionRow } from '../published-workflow.js';
+import { parsePublishedWorkflowRow } from '../published-workflow.js';
 import {
   CoordinatorRunStateCorruptError,
   type RunAdvanceState,
@@ -47,7 +47,7 @@ export type PendingCoordinatorFailure = Readonly<{
 }>;
 
 export type LoadedRunAdvance =
-  | Readonly<{ kind: 'not_found' | 'not_executable' | 'capacity_exceeded' }>
+  | Readonly<{ kind: 'not_found' | 'capacity_exceeded' }>
   | Readonly<{
       kind: 'loaded';
       row: CoordinatorCommitRow;
@@ -67,7 +67,6 @@ type LockedRow = CoordinatorCommitRow &
     version_number: number | null;
     schema_version: number | null;
     checksum: string | null;
-    executable_schema_version: unknown;
     executable_json: unknown;
   }>;
 
@@ -76,7 +75,6 @@ function publishedVersion(row: LockedRow): unknown {
   return {
     checksum: row.checksum,
     executable_json: row.executable_json,
-    executable_schema_version: row.executable_schema_version,
     id: row.version_id,
     schema_version: row.schema_version,
     version_number: row.version_number,
@@ -112,8 +110,7 @@ export async function loadRunForAdvance(
               and run.deadline_at <= clock_timestamp() as deadline_expired,
             version.id as version_id, version.workspace_id as version_workspace_id,
             version.workflow_id as version_workflow_id, version.version_number,
-            version.schema_version, version.checksum,
-            version.executable_schema_version, version.executable_json
+            version.schema_version, version.checksum, version.executable_json
        from app.workflow_runs run
        join app.run_checkpoints checkpoint
          on checkpoint.workspace_id = run.workspace_id
@@ -128,9 +125,9 @@ export async function loadRunForAdvance(
   );
   const row = locked.rows[0];
   if (row === undefined) return Object.freeze({ kind: 'not_found' });
-  const version = classifyPublishedWorkflowVersionRow(publishedVersion(row));
-  if (version.kind !== 'v2_projection')
-    return Object.freeze({ kind: 'not_executable' });
+  // A run's version is immutable; one that is gone went with its run.
+  const version = parsePublishedWorkflowRow(publishedVersion(row));
+  if (version === null) return Object.freeze({ kind: 'not_found' });
   const firstSequence = row.next_event_sequence;
   if (firstSequence === null || firstSequence < 1)
     throw new CoordinatorRunStateCorruptError();
@@ -215,9 +212,7 @@ export async function loadRunForAdvance(
 
   let controlOutputNodeIds: ReadonlySet<string>;
   try {
-    controlOutputNodeIds = workflowControlOutputNodeIds(
-      version.workflowVersion.executableJson,
-    );
+    controlOutputNodeIds = workflowControlOutputNodeIds(version.executableJson);
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }
@@ -235,7 +230,7 @@ export async function loadRunForAdvance(
           completedInlineOutput(fact, controlOutputNodeIds),
         ),
       ),
-      workflow: version.workflowVersion,
+      workflow: version,
     }),
   });
 }

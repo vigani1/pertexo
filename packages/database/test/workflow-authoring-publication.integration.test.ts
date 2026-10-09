@@ -26,6 +26,7 @@ import {
   WorkflowNotFoundError,
   workspaceId,
 } from './support/workflow-authoring.integration.support.js';
+import { testExecutableCompiler } from '../src/authoring/test-executable-compiler.js';
 
 function recordBenchmarkOperation(name: string, startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
@@ -43,6 +44,7 @@ describe('workflow publication projections', () => {
     );
     const unavailableAuthoring = createUnwiredAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+      { executableCompiler: testExecutableCompiler },
     );
     try {
       const created = await catalogAuthoring.createWorkflow({
@@ -419,7 +421,6 @@ describe('workflow publication projections', () => {
         definitionCatalog: executableDefinitionCatalog,
         executableCompiler: () => ({
           checksum,
-          executableSchemaVersion: 2,
           executableJson,
         }),
       },
@@ -452,7 +453,7 @@ describe('workflow publication projections', () => {
       expect(published.version.checksum).toBe(checksum);
       await expect(
         queryAsOwner(
-          `select checksum, executable_schema_version, executable_json
+          `select checksum, executable_json
              from app.workflow_versions
             where workspace_id = $1 and id = $2`,
           [workspaceId, published.version.id],
@@ -461,7 +462,6 @@ describe('workflow publication projections', () => {
       ).resolves.toEqual([
         {
           checksum,
-          executable_schema_version: 2,
           executable_json: executableJson,
         },
       ]);
@@ -475,7 +475,6 @@ describe('workflow publication projections', () => {
           },
           executableCompiler: () => ({
             checksum,
-            executableSchemaVersion: 2,
             executableJson,
           }),
         },
@@ -499,8 +498,8 @@ describe('workflow publication projections', () => {
       await queryAsOwner(
         `insert into app.workflow_versions
            (id,workspace_id,workflow_id,version_number,schema_version,
-            graph_json,checksum,executable_schema_version,executable_json,published_by)
-         values($1,$2,$3,2,1,'{}'::jsonb,$4,2,$5::jsonb,$6)
+            graph_json,checksum,executable_json,published_by)
+         values($1,$2,$3,2,1,'{}'::jsonb,$4,$5::jsonb,$6)
          returning id`,
         [
           randomUUID(),

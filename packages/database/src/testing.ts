@@ -144,9 +144,7 @@ export {
 } from './runs/published-workflow.js';
 export type {
   PublishedWorkflowReader,
-  PublishedWorkflowReadResult,
-  PublishedWorkflowV2Projection,
-  PublishedWorkflowVersionIdentity,
+  PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
 } from './runs/published-workflow.js';
 export { createOutboxDispatcherDatabase } from './outbox/dispatcher/database.js';

@@ -40,10 +40,10 @@ export function createTriggerReconciliationHandler(
         signal: context.signal,
       });
       if (
-        publication.kind !== 'not_found' &&
-        (publication.workflowVersion.id !== delivery.data.publishedVersionId ||
-          publication.workflowVersion.workflowId !== delivery.data.workflowId ||
-          publication.workflowVersion.workspaceId !== delivery.data.workspaceId)
+        publication !== null &&
+        (publication.id !== delivery.data.publishedVersionId ||
+          publication.workflowId !== delivery.data.workflowId ||
+          publication.workspaceId !== delivery.data.workspaceId)
       )
         throw unrecoverableQueueError(
           'Trigger reconciliation publication identity is invalid',

@@ -22,9 +22,8 @@ vi.mock('../src/runs/commands/acceptance.js', async (importOriginal) => ({
 }));
 vi.mock('../src/runs/published-workflow.js', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  classifyPublishedWorkflowVersionRow: () => ({
-    kind: 'v2_projection',
-    workflowVersion: { id: '00000000-0000-4000-8000-000000000005' },
+  parsePublishedWorkflowRow: () => ({
+    id: '00000000-0000-4000-8000-000000000005',
   }),
 }));
 

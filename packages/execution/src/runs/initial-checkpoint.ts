@@ -1,6 +1,6 @@
 import type {
   InitialCheckpointFactory,
-  PublishedWorkflowV2Projection,
+  PublishedWorkflow,
 } from '@pertexo/database/runs';
 import {
   createCheckpoint,
@@ -20,7 +20,7 @@ export const ENGINE_VERSION = 'phase3-engine-v1';
  * run starts. Throws `WorkflowEngineError` when the served catalog cannot run it.
  */
 export function createInitialCheckpoint(
-  projection: PublishedWorkflowV2Projection,
+  projection: PublishedWorkflow,
   verification: PersistedWorkflowProjectionVerificationOptions,
 ): Readonly<{ engineVersion: string; checkpoint: WorkflowCheckpoint }> {
   verifyPersistedWorkflowProjection(projection, verification);

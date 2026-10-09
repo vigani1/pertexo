@@ -98,11 +98,11 @@ async function addWorkflows(
      )
      insert into app.workflow_versions
        (id, workspace_id, workflow_id, version_number, schema_version,
-        graph_json, checksum, executable_schema_version, executable_json,
+        graph_json, checksum, executable_json,
         published_by)
      select gen_random_uuid(), $1, created.id, 1, 1,
             '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
-            'wf:v2:sha256:' || repeat('e', 64), 2,
+            'wf:v2:sha256:' || repeat('e', 64),
             '{"schemaVersion":2}'::jsonb, $2
      from created`,
     [

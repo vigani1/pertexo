@@ -23,6 +23,7 @@ import { WorkflowRevisionConflictError } from '../src/authoring/workflows/errors
 import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflows/database.js';
 import { createDatabaseRuntime } from '../src/platform/pool/runtime.js';
+import { testExecutableCompiler } from '../src/authoring/test-executable-compiler.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -150,7 +151,9 @@ describe('snapshot validation and publication ordering', () => {
       max: 1,
       ownerRole: 'pertexo_owner',
     } as const;
-    const database = createWorkflowAuthoringDatabase(config);
+    const database = createWorkflowAuthoringDatabase(config, {
+      executableCompiler: testExecutableCompiler,
+    });
     const connect = vi
       .spyOn(Pool.prototype, 'connect')
       .mockRejectedValue(new Error('must not check out'));
@@ -228,6 +231,7 @@ describe('snapshot validation and publication ordering', () => {
       .mockResolvedValue({ query, release } as unknown as PoolClient);
     const runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
     const database = createWorkflowAuthoringDatabase(config, {
+      executableCompiler: testExecutableCompiler,
       runtime,
       validateAuthoringGraph: () =>
         Promise.reject(
@@ -271,10 +275,6 @@ describe('snapshot validation and publication ordering', () => {
       .mockResolvedValueOnce(budget);
     const client = { query } as unknown as PoolClient;
     const validator = vi.fn().mockResolvedValue(invalid);
-    const selectValidationVariant = vi.fn().mockResolvedValue({
-      definitionCatalog: catalog,
-      validateAuthoringGraph: validator,
-    });
     const transactions = vi.fn();
     async function transact<T>(
       workspaceId: string,
@@ -288,10 +288,10 @@ describe('snapshot validation and publication ordering', () => {
     }
     const store = createWorkflowAuthoringReadStore({
       requireReader: vi.fn().mockResolvedValue(undefined),
-      selectDefinitionCatalog: vi
-        .fn()
-        .mockRejectedValue(new Error('separate catalog read forbidden')),
-      selectValidationVariant,
+      catalogs: {
+        definitionCatalog: catalog,
+        validateAuthoringGraph: validator,
+      },
       transact,
     });
     const controller = new AbortController();
@@ -308,7 +308,6 @@ describe('snapshot validation and publication ordering', () => {
       expect.any(Function),
       controller.signal,
     );
-    expect(selectValidationVariant).toHaveBeenCalledOnce();
     expect(validator).toHaveBeenCalledWith(graph, {
       signal: controller.signal,
     });
@@ -363,11 +362,6 @@ describe('snapshot validation and publication ordering', () => {
     const client = { query } as unknown as PoolClient;
     const validator = vi.fn().mockResolvedValue(invalid);
     const executableCompiler = vi.fn();
-    const selectVariant = vi.fn().mockResolvedValue({
-      definitionCatalog: catalog,
-      executableCompiler,
-      validateAuthoringGraph: validator,
-    });
     const replay = {
       reused: false,
       version: {
@@ -386,7 +380,13 @@ describe('snapshot validation and publication ordering', () => {
     const transact = vi.fn();
     const publish = createWorkflowPublisher({
       requireAuthor,
-      selectVariant,
+      catalogs: {
+        definitionCatalog: catalog,
+        executableCompiler,
+        placementDefinitionCatalog: undefined,
+        portableCatalog: undefined,
+        validateAuthoringGraph: validator,
+      },
       transact: <T>(
         workspaceId: string,
         actorId: string,
@@ -402,7 +402,6 @@ describe('snapshot validation and publication ordering', () => {
       query,
       validator,
       executableCompiler,
-      selectVariant,
       requireAuthor,
       transact,
       replay,
@@ -419,7 +418,6 @@ describe('snapshot validation and publication ordering', () => {
       replayed: true,
     });
     expect(fixture.requireAuthor).toHaveBeenCalledOnce();
-    expect(fixture.selectVariant).not.toHaveBeenCalled();
     expect(fixture.validator).not.toHaveBeenCalled();
     expect(
       fixture.query.mock.calls.some(([sql]) => sql.includes('workflow_drafts')),
@@ -431,7 +429,6 @@ describe('snapshot validation and publication ordering', () => {
     await expect(fixture.publish(command)).rejects.toBeInstanceOf(
       IdempotencyConflictError,
     );
-    expect(fixture.selectVariant).not.toHaveBeenCalled();
   });
 
   it('checks the original ETag before admission and never compiles or writes an invalid expression', async () => {

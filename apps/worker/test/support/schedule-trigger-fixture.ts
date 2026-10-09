@@ -73,7 +73,6 @@ function scheduleAuthoringOptions(
         const compiled = buildWorkflowExecutable({ graph, catalog });
         return {
           checksum: compiled.checksum,
-          executableSchemaVersion: 2 as const,
           executableJson: compiled.envelope,
         };
       },

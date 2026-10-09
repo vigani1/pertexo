@@ -1,7 +1,7 @@
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
-import type { PublishedWorkflowV2Projection } from '../published-workflow.js';
+import type { PublishedWorkflow } from '../published-workflow.js';
 import type { RunTransitionPlan } from './plan.js';
 
 export const coordinatorIdentitySchema = z.uuid();
@@ -24,7 +24,7 @@ export type RunAdvanceState = Readonly<{
   checkpoint: unknown;
   observations: readonly unknown[];
   completedOutputs: readonly unknown[];
-  workflow: PublishedWorkflowV2Projection;
+  workflow: PublishedWorkflow;
 }>;
 
 export type RunAdvanceDecision =
@@ -60,7 +60,7 @@ export type RunAdvanceResult =
       revision: number;
     }>
   | Readonly<{
-      kind: 'not_found' | 'not_executable' | 'capacity_exceeded';
+      kind: 'not_found' | 'capacity_exceeded';
     }>;
 
 export interface RunAdvanceStore {

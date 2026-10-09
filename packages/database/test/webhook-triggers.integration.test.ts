@@ -284,7 +284,6 @@ beforeAll(async () => {
       checksum: `wf:v2:sha256:${createHash('sha256')
         .update(JSON.stringify(graph))
         .digest('hex')}`,
-      executableSchemaVersion: 2,
       executableJson: {
         schemaVersion: 2,
         graph,
@@ -317,8 +316,8 @@ beforeAll(async () => {
   );
   await ownerQuery(
     `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-       schema_version,graph_json,checksum,executable_schema_version,executable_json,published_by)
-     values($1,$2,$3,1,1,$4::jsonb,$5,2,'{}'::jsonb,$6)`,
+       schema_version,graph_json,checksum,executable_json,published_by)
+     values($1,$2,$3,1,1,$4::jsonb,$5,'{}'::jsonb,$6)`,
     [
       versionId,
       workspaceId,

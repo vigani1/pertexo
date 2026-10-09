@@ -2,7 +2,7 @@ import { createCheckpoint } from '@pertexo/workflow-engine';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
-  PublishedWorkflowV2Projection,
+  PublishedWorkflow,
 } from '@pertexo/database/testing';
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
 import { vi } from 'vitest';
@@ -40,7 +40,7 @@ export function delivery(
   };
 }
 
-export function projection(): PublishedWorkflowV2Projection {
+export function projection(): PublishedWorkflow {
   return {
     id: VERSION_ID,
     workspaceId: WORKSPACE_ID,
@@ -49,7 +49,6 @@ export function projection(): PublishedWorkflowV2Projection {
     schemaVersion: 1,
     checksum:
       'wf:v2:sha256:1111111111111111111111111111111111111111111111111111111111111111',
-    executableSchemaVersion: 2,
     executableJson: { schemaVersion: 2 },
   };
 }
@@ -141,10 +140,7 @@ export function executionHandler(runStore: NodeAttemptRunStore) {
     leaseDurationSeconds: 30,
     reader: {
       close: vi.fn(),
-      readForExecution: vi.fn().mockResolvedValue({
-        kind: 'v2_projection',
-        workflowVersion: projection(),
-      }),
+      readForExecution: vi.fn().mockResolvedValue(projection()),
     },
     registry: {
       execute: vi.fn().mockResolvedValue({ kind: 'succeeded', output: null }),

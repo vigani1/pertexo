@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   acceptWorkflowRun: vi.fn(),
-  classifyPublishedWorkflowVersionRow: vi.fn(),
+  parsePublishedWorkflowRow: vi.fn(),
   close: vi.fn(),
   consumeInboxMessage: vi.fn(),
   createWorkspaceDatabase: vi.fn(),
@@ -20,8 +20,7 @@ vi.mock('../src/runs/commands/acceptance.js', () => ({
   acceptWorkflowRun: mocks.acceptWorkflowRun,
 }));
 vi.mock('../src/runs/published-workflow.js', () => ({
-  classifyPublishedWorkflowVersionRow:
-    mocks.classifyPublishedWorkflowVersionRow,
+  parsePublishedWorkflowRow: mocks.parsePublishedWorkflowRow,
 }));
 
 import { canonicalOutboxPayloadChecksum } from '../src/outbox/events.js';
@@ -194,10 +193,7 @@ describe('operator run replay validation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.close.mockResolvedValue(undefined);
-    mocks.classifyPublishedWorkflowVersionRow.mockReturnValue({
-      kind: 'v2_projection',
-      workflowVersion: { workflowId },
-    });
+    mocks.parsePublishedWorkflowRow.mockReturnValue({ workflowId });
     mocks.acceptWorkflowRun.mockResolvedValue({ runId: randomUUID() });
   });
 
@@ -293,19 +289,16 @@ describe('operator run replay validation', () => {
     },
   );
 
-  it('rejects unavailable or workflow-mismatched V2 projection', async () => {
+  it('rejects an unavailable or workflow-mismatched version', async () => {
     const unavailable = storeWith();
-    mocks.classifyPublishedWorkflowVersionRow.mockReturnValueOnce({
-      kind: 'not_found',
-    });
+    mocks.parsePublishedWorkflowRow.mockReturnValueOnce(null);
     await expect(
       unavailable.store.replay(replayInput()),
     ).rejects.toBeInstanceOf(OperatorRunReplayNotExecutableError);
 
     const mismatched = storeWith();
-    mocks.classifyPublishedWorkflowVersionRow.mockReturnValueOnce({
-      kind: 'v2_projection',
-      workflowVersion: { workflowId: randomUUID() },
+    mocks.parsePublishedWorkflowRow.mockReturnValueOnce({
+      workflowId: randomUUID(),
     });
     await expect(mismatched.store.replay(replayInput())).rejects.toBeInstanceOf(
       OperatorRunReplayNotExecutableError,

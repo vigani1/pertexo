@@ -1,6 +1,6 @@
 import type {
   NodeAttemptLease,
-  PublishedWorkflowV2Projection,
+  PublishedWorkflow,
 } from '@pertexo/database/testing';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
@@ -279,7 +279,7 @@ function nestedBranchGraph() {
 function compiledProjection(
   workflowGraph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
   catalog: ReturnType<typeof composeExecutableCatalog>,
-): PublishedWorkflowV2Projection {
+): PublishedWorkflow {
   const executable = buildWorkflowExecutable({
     graph: workflowGraph,
     catalog,
@@ -291,7 +291,6 @@ function compiledProjection(
     versionNumber: 1,
     schemaVersion: 1,
     checksum: executable.checksum,
-    executableSchemaVersion: 2,
     executableJson: executable.envelope,
   };
 }
@@ -299,14 +298,13 @@ function compiledProjection(
 function fixture(nodeId: 'manual' | 'terminate') {
   const catalog = composeExecutableCatalog(CORE_NODE_CATALOG);
   const executable = buildWorkflowExecutable({ graph: graph(), catalog });
-  const projection: PublishedWorkflowV2Projection = {
+  const projection: PublishedWorkflow = {
     id: VERSION_ID,
     workspaceId: WORKSPACE_ID,
     workflowId: WORKFLOW_ID,
     versionNumber: 1,
     schemaVersion: 1,
     checksum: executable.checksum,
-    executableSchemaVersion: 2,
     executableJson: executable.envelope,
   };
   const lease: NodeAttemptLease = {
@@ -410,14 +408,13 @@ describe('node attempt execution engine', () => {
       graph: branchGraph('condition'),
       catalog,
     });
-    const projection: PublishedWorkflowV2Projection = {
+    const projection: PublishedWorkflow = {
       id: VERSION_ID,
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       versionNumber: 1,
       schemaVersion: 1,
       checksum: executable.checksum,
-      executableSchemaVersion: 2,
       executableJson: executable.envelope,
     };
     const branchPath = [{ nodeId: 'condition', outputPort: 'true' }] as const;
@@ -697,14 +694,13 @@ describe('node attempt execution engine', () => {
       catalog,
     });
     const { lease } = fixture('manual');
-    const projection: PublishedWorkflowV2Projection = {
+    const projection: PublishedWorkflow = {
       id: VERSION_ID,
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       versionNumber: 1,
       schemaVersion: 1,
       checksum: executable.checksum,
-      executableSchemaVersion: 2,
       executableJson: executable.envelope,
     };
     const engine = createNodeAttemptExecutionEngine({ catalog });
@@ -727,14 +723,13 @@ describe('node attempt execution engine', () => {
       graph: forEachGraph(),
       catalog,
     });
-    const projection: PublishedWorkflowV2Projection = {
+    const projection: PublishedWorkflow = {
       id: VERSION_ID,
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       versionNumber: 1,
       schemaVersion: 1,
       checksum: executable.checksum,
-      executableSchemaVersion: 2,
       executableJson: executable.envelope,
     };
     const iterationPath = [{ loopNodeId: 'loop', ordinal: 1 }] as const;
@@ -792,14 +787,13 @@ describe('node attempt execution engine', () => {
       graph: forEachGraph(),
       catalog,
     });
-    const projection: PublishedWorkflowV2Projection = {
+    const projection: PublishedWorkflow = {
       id: VERSION_ID,
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       versionNumber: 1,
       schemaVersion: 1,
       checksum: executable.checksum,
-      executableSchemaVersion: 2,
       executableJson: executable.envelope,
     };
 

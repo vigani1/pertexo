@@ -67,12 +67,15 @@ const portableCatalog: WorkflowPortabilityCatalog = {
     },
   ],
 };
-const options: WorkflowAuthoringDatabaseOptions = {
+const options: Partial<WorkflowAuthoringDatabaseOptions> = {
   definitionCatalog: catalog,
   portableCatalog,
 };
 const databases: ReturnType<typeof createWorkflowAuthoringDatabase>[] = [];
-function database(extra: WorkflowAuthoringDatabaseOptions = {}, url = apiUrl) {
+function database(
+  extra: Partial<WorkflowAuthoringDatabaseOptions> = {},
+  url = apiUrl,
+) {
   const result = createWorkflowAuthoringDatabase(
     parseDatabaseConfig({ connectionString: url, max: 4 }),
     { ...options, ...extra },

@@ -11,7 +11,7 @@ import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 
 import type { DatabaseConfig } from '../../config.js';
 import { WorkflowNotFoundError } from './errors.js';
-import { normalizeWorkflowAuthoringCompatibility } from './compatibility.js';
+import { authoringCatalogs } from './catalogs.js';
 import { createWorkflowPublisher } from '../publication/publisher.js';
 import { createWorkflowAuthoringReadStore } from './reads.js';
 import { lockWorkflowAuthoringAuthority } from './authority.js';
@@ -185,10 +185,9 @@ function createPreviewStore(
 
 export function createWorkflowAuthoringDatabase(
   config: DatabaseConfig,
-  options: WorkflowAuthoringDatabaseOptions = {},
+  options: WorkflowAuthoringDatabaseOptions,
 ): WorkflowAuthoringDatabase {
-  const compatibility = normalizeWorkflowAuthoringCompatibility(options);
-  const selectCompatibilityVariant = compatibility.selectLocked;
+  const catalogs = authoringCatalogs(options);
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
   const authoringOperations = new Set<Promise<unknown>>();
@@ -218,12 +217,12 @@ export function createWorkflowAuthoringDatabase(
   const authoringContext: WorkflowAuthoringWriteContext = {
     requireAuthor: requireWorkspaceAuthor,
     requirePlaceable: requirePlaceableDefinitionAdditions,
-    selectCatalogs: selectCompatibilityVariant,
+    catalogs,
     transact,
   };
   const publishWorkflow = createWorkflowPublisher({
     requireAuthor: requireWorkspaceAuthor,
-    selectVariant: selectCompatibilityVariant,
+    catalogs,
     transact,
   });
   return Object.freeze({
@@ -236,9 +235,7 @@ export function createWorkflowAuthoringDatabase(
     ...createWorkflowPortabilityStore(authoringContext),
     ...createWorkflowAuthoringReadStore({
       requireReader: requireWorkspaceReader,
-      selectDefinitionCatalog: async (client) =>
-        (await selectCompatibilityVariant(client)).definitionCatalog,
-      selectValidationVariant: selectCompatibilityVariant,
+      catalogs,
       transact,
     }),
     publishWorkflow,

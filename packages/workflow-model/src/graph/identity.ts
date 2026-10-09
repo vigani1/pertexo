@@ -1,11 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import {
-  canonicalJson,
-  canonicalizeJson,
-  type JsonValue,
-} from '../json/canonical-json.js';
+import { canonicalJson } from '../json/canonical-json.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
@@ -204,94 +200,6 @@ export function parseWorkflowGraphForPublish(
   ).slice(0, WORKFLOW_VALIDATION_MAX_ISSUES);
   if (issues.length > 0) throw new InvalidWorkflowGraphError(issues);
   return graph;
-}
-
-function executableGraphProjection(
-  graph: WorkflowGraph,
-): Readonly<Record<string, JsonValue>> {
-  return canonicalizeJson({
-    schemaVersion: graph.schemaVersion,
-    nodes: [...graph.nodes]
-      .sort((left, right) => compareOrdinal(left.id, right.id))
-      .map((node) => {
-        const projected: Record<string, JsonValue> = {
-          id: node.id,
-          definition: node.definition,
-          configVersion: node.configVersion,
-          config: node.config,
-          inputMappings: node.inputMappings,
-          connectionRefs: node.connectionRefs,
-          disabled: node.disabled ?? false,
-        };
-        if (node.structured !== undefined) {
-          projected.structured = {
-            kind: node.structured.kind,
-            maxIterations: node.structured.maxIterations,
-            maxConcurrency: node.structured.maxConcurrency,
-            body: {
-              ...executableGraphProjection(node.structured.body),
-              inputPorts: node.structured.body.inputPorts,
-              outputPorts: node.structured.body.outputPorts,
-            },
-          };
-        }
-        return projected;
-      }),
-    edges: [...graph.edges]
-      .sort((left, right) => compareOrdinal(left.id, right.id))
-      .map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-      })),
-    settings:
-      graph.settings.maxRunDurationMs === undefined
-        ? {}
-        : { maxRunDurationMs: graph.settings.maxRunDurationMs },
-  }) as Readonly<Record<string, JsonValue>>;
-}
-
-function workflowExecutableProjection(
-  input: unknown,
-  catalog: WorkflowDefinitionCatalog = EMPTY_DEFINITION_CATALOG,
-): JsonValue {
-  return executableGraphProjection(
-    parseWorkflowGraphForPublish(input, catalog),
-  );
-}
-
-export function workflowExecutableChecksum(
-  input: unknown,
-  catalog: WorkflowDefinitionCatalog = EMPTY_DEFINITION_CATALOG,
-): string {
-  return checksumExecutableProjection(
-    workflowExecutableProjection(input, catalog),
-  );
-}
-
-function checksumExecutableProjection(projection: JsonValue): string {
-  const digest = createHash('sha256')
-    .update(
-      canonicalJson({
-        domain: 'pertexo.workflow.executable',
-        checksumVersion: 1,
-        graph: projection,
-      }),
-    )
-    .digest('hex');
-  return `wf:v1:sha256:${digest}`;
-}
-
-/**
- * Recomputes a stored version's checksum without requiring its definitions to
- * still be in the current catalog. Structural and semantic corruption still
- * fails closed.
- */
-export function workflowRetainedExecutableChecksum(input: unknown): string {
-  const graph = parseWorkflowGraphDraft(input);
-  const validation = validateWorkflowGraph(graph);
-  if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
-  return checksumExecutableProjection(executableGraphProjection(graph));
 }
 
 export type WorkflowDraftRepresentationTag = `"draft-v1.${string}"`;

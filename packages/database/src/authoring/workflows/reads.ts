@@ -18,9 +18,8 @@ import type {
 } from './contracts.js';
 import type { WorkflowDraftRecord, WorkflowVersionRecord } from './records.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
-import type { WorkflowAuthoringGraphValidator } from './types.js';
 import { admitWorkflowAuthoring } from './admission.js';
+import type { AuthoringCatalogs } from './catalogs.js';
 
 type ReadStore = Pick<
   WorkflowAuthoringDatabase,
@@ -39,14 +38,9 @@ export type WorkflowAuthoringReadContext = Readonly<{
     workspaceId: string,
     actorId: string,
   ): Promise<void>;
-  selectDefinitionCatalog(
-    client: Pick<PoolClient, 'query'>,
-  ): Promise<WorkflowDefinitionCatalog>;
-  selectValidationVariant(client: Pick<PoolClient, 'query'>): Promise<
-    Readonly<{
-      definitionCatalog: WorkflowDefinitionCatalog;
-      validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
-    }>
+  catalogs: Pick<
+    AuthoringCatalogs,
+    'definitionCatalog' | 'validateAuthoringGraph'
   >;
   transact<T>(
     workspaceId: string,
@@ -74,7 +68,7 @@ export function createWorkflowAuthoringReadStore(
         actorId,
         async (client) => {
           await context.requireReader(client, workspaceId, actorId);
-          const variant = await context.selectValidationVariant(client);
+          const variant = context.catalogs;
           const result = await client.query<Record<string, unknown>>(
             'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
             [workspaceId, uuidSchema.parse(workflowId)],
@@ -162,7 +156,7 @@ export function createWorkflowAuthoringReadStore(
     ): Promise<WorkflowDraftRecord | null> =>
       context.transact(workspaceId, actorId, async (client) => {
         await context.requireReader(client, workspaceId, actorId);
-        const definitionCatalog = await context.selectDefinitionCatalog(client);
+        const { definitionCatalog } = context.catalogs;
         const result = await client.query<Record<string, unknown>>(
           'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
           [workspaceId, uuidSchema.parse(workflowId)],
