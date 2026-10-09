@@ -8,8 +8,8 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   changeAccountPassword,
   setupAccountPassword,
-} from '../../account-security.api';
-import { accountSecurityKeys } from '../../account-security.queries';
+} from '../../data/account-security.api';
+import { accountSecurityKeys } from '../../data/account-security.queries';
 import {
   confirmationProblem,
   DEFAULT_MINIMUM_PASSWORD_LENGTH,
@@ -18,7 +18,7 @@ import {
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useLatestRequest } from '@/lib/use-latest-request';
+import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { AccountCommandFailure, AccountSection } from './account-section';
 
 // The account endpoints accept new passwords of at least 12 characters.

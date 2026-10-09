@@ -21,9 +21,9 @@ import { describeCommandError } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../../model/workflow-rename';
 import { readPortableWorkflowFile } from '../../model/workflow-portability';
-import { previewWorkflowImport } from '../../workflow-portability.api';
+import { previewWorkflowImport } from '../../data/workflow-portability.api';
 import { usePortabilityLifetime } from './use-portability-lifetime';
-import { useWorkflowImportCommand } from '../../workflow-portability.mutations';
+import { useWorkflowImportCommand } from '../../data/workflow-portability.mutations';
 import { WorkflowImportLeaveGuard } from './workflow-import-leave-guard';
 import {
   WorkflowImportConnections,

@@ -8,7 +8,7 @@ import { InboxArrivalCard } from './inbox-arrival-card';
 import {
   useMarkThreadReadMutation,
   type InboxScope,
-} from '../../inbox.mutations';
+} from '../../data/inbox.mutations';
 import {
   ARRIVAL_GAP_PX,
   mergeArrivals,

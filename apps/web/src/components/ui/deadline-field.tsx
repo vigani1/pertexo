@@ -4,8 +4,8 @@ import {
   formatDateTime,
   formatRelativeTime,
   localUtcOffset,
-} from '@/lib/format-time';
-import { useNow } from '@/lib/use-now';
+} from '@/lib/format/time';
+import { useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { Calendar } from './calendar';

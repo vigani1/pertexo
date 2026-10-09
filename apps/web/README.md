@@ -160,11 +160,11 @@ feature groups, with scenario names and assertions unchanged.
 
 The current router is code-based, so there is no generated route-tree file or
 router build plugin. Define a route in its area module
-(`src/routes/public-routes.ts`, `workspace-routes.ts` or
-`workflow-hub-routes.ts`), using the shared session and workspace loaders in
-`route-context.ts`, and register it in `src/routes/route-tree.ts`. Editor,
-settings and run pages use explicit lazy route modules; loader/query public
-interfaces remain separate so static loader imports do not collapse those
+(`src/routes/root/public-routes.ts`, `workspace/routes.ts` or
+`workflow/hub-routes.ts`), using the shared session and workspace loaders in
+`root/route-context.ts`, and register it in `src/routes/root/route-tree.ts`.
+Editor, settings and run pages use explicit lazy route modules; loader/query
+public interfaces remain separate so static loader imports do not collapse those
 chunks.
 
 ## Browser contract and transport foundation

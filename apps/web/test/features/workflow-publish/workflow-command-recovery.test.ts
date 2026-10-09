@@ -4,8 +4,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
 import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
-import { useWorkflowPublication } from '@/features/workflow-publish/mutations/use-workflow-publication';
-import { useWorkflowRunSubmission } from '@/features/workflow-publish/mutations/use-workflow-run-submission';
+import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
+import { useWorkflowRunSubmission } from '@/features/workflow-publish/data/mutations/use-workflow-run-submission';
 import { normalizeRunIntent } from '@/features/workflow-runs/model/run-intent';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

@@ -4,7 +4,7 @@ import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { useScheduleCommand } from '../../mutations/use-trigger-commands';
+import { useScheduleCommand } from '../../data/mutations/use-trigger-commands';
 import { ScheduleCard } from './schedule-card';
 import { ScheduleNextRuns } from './schedule-next-runs';
 import { ScheduleOccurrences } from './schedule-occurrences';

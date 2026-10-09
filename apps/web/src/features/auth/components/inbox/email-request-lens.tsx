@@ -3,7 +3,7 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { emailProblem } from '../../forms/field-rules';
-import { useAuthRequest } from '../../use-auth-request';
+import { useAuthRequest } from '../../hooks/use-auth-request';
 import {
   AuthLens,
   AuthLensDescription,

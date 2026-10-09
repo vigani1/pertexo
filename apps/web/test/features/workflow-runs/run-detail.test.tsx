@@ -14,7 +14,7 @@ import {
   sseEvents,
   coldStart,
 } from '../../support/run-fixtures';
-import { workflowRunKeys } from '@/features/workflow-runs/workflow-runs.queries';
+import { workflowRunKeys } from '@/features/workflow-runs/data/workflow-runs.queries';
 
 const {
   workspace: workspaceId,

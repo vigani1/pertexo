@@ -15,6 +15,10 @@ work; it does not mean features or backend prerequisites already exist.
 - Cross-feature consumers use deliberate `public.ts` interfaces. A focused
   `<responsibility>.public.ts` is allowed when separating statically imported
   loader/command code from a lazy page preserves the route chunk.
+- Only public entry files sit at a feature's root. Everything else goes in the
+  folder for its role: `pages/`, `components/`, `hooks/`, `data/` (`*.api.ts`,
+  `*.queries.ts`, `*.mutations.ts`, `mutations/`), `forms/`, `model/`. Routes
+  are grouped the same way (`routes/root`, `auth`, `workspace`, `workflow`).
 - Follow ARCHITECTURE.md's function-placement and composition rules: keep helpers
   with their owner, use named `lib` modules only for genuine cross-feature reuse,
   and keep `lib/utils.ts` focused on `cn`. Pure logic is not a custom hook.
@@ -31,7 +35,7 @@ work; it does not mean features or backend prerequisites already exist.
   Implement the existing OIDC/cookie/CSRF contract, not the old app's auth code.
 - Keep semantic theme tokens and locally served fonts. Reuse old design only;
   do not copy its backend assumptions or entire feature modules.
-- Put outgoing endpoint calls in feature-local `*.api.ts`; keep generic transport
+- Put outgoing endpoint calls in feature-local `data/*.api.ts`; keep generic transport
   in `lib/api`. Never add fetch calls to presentation components or store setters.
 - Preserve opaque ETags, serialized draft saves and stable idempotency keys where
   the endpoint requires them. Keep local edits on conflict or uncertain outcome.

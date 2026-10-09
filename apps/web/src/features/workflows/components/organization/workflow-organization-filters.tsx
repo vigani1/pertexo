@@ -20,7 +20,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   workflowFoldersQueryOptions,
   workflowTagsInfiniteQueryOptions,
-} from '../../organization.queries';
+} from '../../data/organization.queries';
 import {
   updateWorkflowListSearch,
   type WorkflowListSearch,
@@ -31,7 +31,7 @@ import { workflowFolderOptions } from '../../model/workflow-folder-navigation';
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,
-} from '../../use-organization-read-lifetime';
+} from '../../hooks/use-organization-read-lifetime';
 
 function OrganizationNameFilter({
   value,

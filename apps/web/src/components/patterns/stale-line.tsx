@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { RefreshCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
-import { formatShortTime } from '@/lib/format-time';
+import { formatShortTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 
 /**

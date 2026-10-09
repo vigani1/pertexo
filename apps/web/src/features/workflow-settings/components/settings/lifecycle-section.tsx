@@ -12,7 +12,7 @@ import {
   type LifecycleIntent,
 } from '@/features/workflows/lifecycle.public';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowSettingsKeys } from '../../workflow-settings.queries';
+import { workflowSettingsKeys } from '../../data/workflow-settings.queries';
 import {
   visibleSettingsData,
   type SettingsQuery,

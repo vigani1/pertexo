@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { formatDateTime, formatElapsedTime } from '@/lib/format-time';
+import { formatDateTime, formatElapsedTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import { describeInboxThread } from '../model/inbox-thread';
 

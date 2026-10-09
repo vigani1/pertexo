@@ -3,5 +3,5 @@ export {
   connectionsInfiniteQueryOptions,
   editorConnectionsQueryOptions,
   slackChannelNamesQueryOptions,
-} from './connections.queries';
+} from './data/connections.queries';
 export { parseConnectionsSearch } from './model/connections-search';

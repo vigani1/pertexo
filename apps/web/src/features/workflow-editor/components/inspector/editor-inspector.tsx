@@ -25,11 +25,11 @@ import { stepTitle } from '../../model/graph/graph-adapter';
 import { connectWorkflowNodes } from '../../model/graph/graph-commands';
 import { findStep, levelOf } from '../../model/graph/graph-scopes';
 import { inlineOutputBytes } from '../../model/step-card';
-import type { useEditorActions } from '../../use-editor-actions';
+import type { useEditorActions } from '../../hooks/use-editor-actions';
 import { InspectorPanel } from './inspector-panel';
 import type { ChannelLookupScope } from './slack-channel-field';
-import type { InspectorTab } from '../../use-inspector-navigation';
-import type { FinishedTest } from '../../use-last-test';
+import type { InspectorTab } from '../../hooks/use-inspector-navigation';
+import type { FinishedTest } from '../../hooks/use-last-test';
 
 type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
 

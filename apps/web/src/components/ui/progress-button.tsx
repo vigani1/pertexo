@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { formatCountdown } from '@/lib/format-time';
+import { formatCountdown } from '@/lib/format/time';
 import { Button } from './button';
 import { LoadingOrb } from './loading-orb';
 

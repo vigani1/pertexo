@@ -14,7 +14,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { formatDate, localTimeZone } from '@/lib/format-time';
+import { formatDate, localTimeZone } from '@/lib/format/time';
 import {
   presetRangeLabel,
   timeRangeLabel,

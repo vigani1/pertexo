@@ -7,8 +7,8 @@ import {
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { isResetLinkInvalid, resetFailure } from '../../model/auth-failure';
-import { resetPassword } from '../../native-auth.api';
-import { useAuthRequest } from '../../use-auth-request';
+import { resetPassword } from '../../data/native-auth.api';
+import { useAuthRequest } from '../../hooks/use-auth-request';
 import {
   AuthLens,
   AuthLensDescription,

@@ -1,5 +1,5 @@
 import { useRef, type RefObject } from 'react';
-import { useCanvasRenderer } from '@/lib/use-canvas-renderer';
+import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
 import { cn } from '@/lib/utils';
 import {
   ConvergingThreadsScene,

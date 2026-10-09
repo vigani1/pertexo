@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ApiProblemIssue } from '@pertexo/contracts';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import type { ConnectionCredential } from '../../connections.api';
+import type { ConnectionCredential } from '../../data/connections.api';
 import type { ProviderKey } from '../../model/connection-providers';
 import {
   credentialErrors,

@@ -1,6 +1,6 @@
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import type { StepPresentation } from '../step-presentation';
+import type { StepPresentation } from '../model/step-presentation';
 
 // Family colours: trigger cyan, action ice, logic lavender, transform mint,
 // output neutral. The tile is decorative; the step name carries meaning.

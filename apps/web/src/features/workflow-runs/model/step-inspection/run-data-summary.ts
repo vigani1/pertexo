@@ -1,4 +1,4 @@
-import { formatByteLength } from '@/lib/format-bytes';
+import { formatByteLength } from '@/lib/format/bytes';
 
 /** "4 fields · 312 B": what a value holds, before anyone opens it. */
 export function describeValue(value: unknown): string {

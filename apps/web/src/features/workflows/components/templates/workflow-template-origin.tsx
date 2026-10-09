@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowTemplateOriginQueryOptions } from '../../workflow-origin.queries';
+import { workflowTemplateOriginQueryOptions } from '../../data/workflow-origin.queries';
 import { useTemplateOriginLifetime } from './use-template-origin-lifetime';
 
 export function WorkflowTemplateOrigin(

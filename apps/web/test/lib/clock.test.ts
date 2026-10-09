@@ -5,9 +5,9 @@ import {
   formatElapsedTime,
   formatRelativeTime,
   formatShortTime,
-} from '../../src/lib/format-time';
-import { useCountdown } from '../../src/lib/use-countdown';
-import { useNow } from '../../src/lib/use-now';
+} from '../../src/lib/format/time';
+import { useCountdown } from '../../src/lib/hooks/use-countdown';
+import { useNow } from '../../src/lib/hooks/use-now';
 
 function setHidden(hidden: boolean) {
   Object.defineProperty(document, 'hidden', {

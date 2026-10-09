@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { ChevronDownIcon } from 'lucide-react';
 import { Status } from '@/components/ui/status';
-import { formatClock, formatDurationMs } from '@/lib/format-time';
+import { formatClock, formatDurationMs } from '@/lib/format/time';
 import type { LoomModel } from '../../model/loom/loom-model';
 import { describeRunStatus } from '../../model/run-status';
 

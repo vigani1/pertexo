@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { useQuery } from '@tanstack/react-query';
 import type { RunTimelineRow } from '../../model/timeline/run-timeline-model';
-import { nodeRunOutputQueryOptions } from '../../workflow-run-data.queries';
+import { nodeRunOutputQueryOptions } from '../../data/workflow-run-data.queries';
 import {
   describeValue,
   isEmptyValue,

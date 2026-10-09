@@ -22,11 +22,11 @@ import {
   useEditorStore,
   useEditorStoreApi,
 } from '../model/editor-store-context';
-import type { useCanvasEffects } from '../use-canvas-effects';
-import type { useEditorActions } from '../use-editor-actions';
-import { useEditorShortcuts } from '../use-editor-shortcuts';
-import type { MobilePanel } from '../use-inspector-navigation';
-import { useLastTest } from '../use-last-test';
+import type { useCanvasEffects } from '../hooks/use-canvas-effects';
+import type { useEditorActions } from '../hooks/use-editor-actions';
+import { useEditorShortcuts } from '../hooks/use-editor-shortcuts';
+import type { MobilePanel } from '../hooks/use-inspector-navigation';
+import { useLastTest } from '../hooks/use-last-test';
 import { useQuickAdd } from './add-step/use-quick-add';
 import { useStepPlacement } from './add-step/use-step-placement';
 import { AddStepLens } from './add-step/add-step-lens';

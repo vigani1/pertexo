@@ -6,7 +6,7 @@ import {
 import {
   describeCron,
   describeInterval,
-} from '@/features/catalog/schedule-sentence';
+} from '@/features/catalog/model/schedule-sentence';
 
 describe('schedule sentences', () => {
   it.each([

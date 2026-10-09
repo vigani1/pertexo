@@ -15,7 +15,7 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { absorbAddresses } from '../../model/invite-addresses';
 import type { ManagedRole } from '../../model/workspace-roles';
-import type { InvitationCommand } from '../../mutations/use-invitation-command';
+import type { InvitationCommand } from '../../data/mutations/use-invitation-command';
 import { RoleSelectWithSummaries } from '../members/role-select';
 import { EmailChipsField } from './email-chips-field';
 import { InviteResults } from './invite-results';

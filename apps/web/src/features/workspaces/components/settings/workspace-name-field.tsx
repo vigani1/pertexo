@@ -4,7 +4,7 @@ import { InlineRename } from '@/components/patterns/inline-rename';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { useWorkspaceRename } from '../../mutations/use-workspace-rename';
+import { useWorkspaceRename } from '../../data/mutations/use-workspace-rename';
 
 function nameError(name: string): string | undefined {
   return workspaceRenameRequestSchema.shape.name.safeParse(name).success

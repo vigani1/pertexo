@@ -9,7 +9,7 @@ import {
   commandErrorMessage,
   isUncertainCommandError,
   parseCommandJson,
-} from '../../mutations/command-utils';
+} from '../../data/mutations/command-utils';
 import {
   observePreview,
   previewTerminalStatuses,
@@ -18,7 +18,7 @@ import {
   executeWorkflowNodePreview,
   validateWorkflowNode,
   type NodeTestInputSource,
-} from '../../node-test.api';
+} from '../../data/node-test.api';
 
 type TestAttempt = Readonly<{
   idempotencyKey: string;

@@ -2,9 +2,9 @@ import type { WebhookDeliveryResponse } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { RecentLog, RecentLogEntry } from '@/components/patterns/recent-log';
 import type { ApiClient } from '@/lib/api/client';
-import { formatByteLength } from '@/lib/format-bytes';
+import { formatByteLength } from '@/lib/format/bytes';
 import { describeDelivery } from '../../model/triggers/delivery-outcome';
-import { webhookDeliveriesInfiniteQueryOptions } from '../../workflow-settings.queries';
+import { webhookDeliveriesInfiniteQueryOptions } from '../../data/workflow-settings.queries';
 import { RunLink } from './run-link';
 
 function DeliveryEntry({

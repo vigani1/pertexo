@@ -1,7 +1,7 @@
 import { DeadlineField } from '@/components/ui/deadline-field';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import type { RunInput } from '../use-run-input';
+import type { RunInput } from '../hooks/use-run-input';
 
 /** A run's input (JSON) and optional deadline, validated as one form. */
 export function RunInputFields({

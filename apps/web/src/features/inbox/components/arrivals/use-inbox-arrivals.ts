@@ -4,8 +4,8 @@ import type {
 } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useEffectEvent, useRef } from 'react';
-import type { InboxScope } from '../../inbox.mutations';
-import { inboxThreadsInfiniteQueryOptions } from '../../inbox.queries';
+import type { InboxScope } from '../../data/inbox.mutations';
+import { inboxThreadsInfiniteQueryOptions } from '../../data/inbox.queries';
 import { arrivedThreads, isLaterRevision } from '../../model/inbox-arrival';
 
 type Seen = Readonly<{ scope: string; revision: string }>;

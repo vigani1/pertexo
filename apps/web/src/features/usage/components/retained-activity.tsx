@@ -8,7 +8,7 @@ import {
   describeRunStatus,
   shortRunId,
 } from '@/features/workflow-runs/run-labels.public';
-import { formatDateTime } from '@/lib/format-time';
+import { formatDateTime } from '@/lib/format/time';
 
 type RunStatus = WorkflowRunSummary['status'];
 

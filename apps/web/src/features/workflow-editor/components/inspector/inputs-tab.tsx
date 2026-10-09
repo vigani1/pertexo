@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useEditorStoreApi } from '../../model/editor-store-context';
-import type { EditorFocusTarget } from '../../use-editor-actions';
+import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
 import type { GraphLevel, WorkflowNode } from '../../model/graph/graph-scopes';
 import {
   directPredecessorOptions,

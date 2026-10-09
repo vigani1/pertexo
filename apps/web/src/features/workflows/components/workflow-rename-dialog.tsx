@@ -10,8 +10,8 @@ import {
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../model/workflow-rename';
-import { workflowSummaryQueryOptions } from '../workflows.queries';
-import { useWorkflowRename } from '../workflows.mutations';
+import { workflowSummaryQueryOptions } from '../data/workflows.queries';
+import { useWorkflowRename } from '../data/workflows.mutations';
 
 /**
  * Renames a workflow from its row. The form reads the workflow's current

@@ -15,8 +15,8 @@ import {
   hasRunFilters,
   type RunSearch,
 } from '../../model/list/run-search';
-import type { RunHistoryQuery } from '../../use-run-history';
-import { useNow } from '@/lib/use-now';
+import type { RunHistoryQuery } from '../../hooks/use-run-history';
+import { useNow } from '@/lib/hooks/use-now';
 import { RunLoom } from '../loom/run-loom';
 import { RunList } from './run-list';
 import {

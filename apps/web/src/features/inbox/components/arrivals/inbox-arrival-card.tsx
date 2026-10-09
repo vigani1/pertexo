@@ -6,8 +6,8 @@ import { XIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { StatusGlyph } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
-import { formatElapsedTime } from '@/lib/format-time';
-import { useNow } from '@/lib/use-now';
+import { formatElapsedTime } from '@/lib/format/time';
+import { useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/utils';
 import {
   ARRIVAL_GAP_PX,

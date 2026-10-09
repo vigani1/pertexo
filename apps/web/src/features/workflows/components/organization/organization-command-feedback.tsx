@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
-import type { useWorkflowOrganizationCommand } from '../../use-workflow-organization-command';
+import type { useWorkflowOrganizationCommand } from '../../hooks/use-workflow-organization-command';
 
 export type OrganizationCommand = ReturnType<
   typeof useWorkflowOrganizationCommand

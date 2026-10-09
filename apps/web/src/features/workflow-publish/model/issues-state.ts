@@ -1,5 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import type { WorkflowPublication } from '../mutations/use-workflow-publication';
+import type { WorkflowPublication } from '../data/mutations/use-workflow-publication';
 import {
   groupWorkflowIssues,
   issueCountsByNode,

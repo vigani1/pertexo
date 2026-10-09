@@ -13,7 +13,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LiveRunCounts, RunCount } from '@/features/workflow-runs/loom.public';
 import type { RunStatistics } from '@/features/workflow-runs/queries.public';
-import { formatClock } from '@/lib/format-time';
+import { formatClock } from '@/lib/format/time';
 import { shortcut } from '@/lib/shortcut-keys';
 
 /**

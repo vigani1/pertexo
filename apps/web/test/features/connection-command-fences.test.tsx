@@ -4,11 +4,11 @@ import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
-import { useTestConnectionMutation } from '@/features/connections/connections.mutations';
+import { useTestConnectionMutation } from '@/features/connections/data/connections.mutations';
 import {
   connectionDetailQueryOptions,
   connectionKeys,
-} from '@/features/connections/connections.queries';
+} from '@/features/connections/data/connections.queries';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

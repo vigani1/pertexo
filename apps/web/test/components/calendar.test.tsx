@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Calendar } from '@/components/ui/calendar';
-import { formatCalendarDay } from '@/lib/format-time';
+import { formatCalendarDay } from '@/lib/format/time';
 
 const day = (date: number) => formatCalendarDay(new Date(2026, 8, date));
 

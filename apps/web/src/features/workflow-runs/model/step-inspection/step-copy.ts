@@ -1,4 +1,4 @@
-import { formatClock, formatDurationMs } from '@/lib/format-time';
+import { formatClock, formatDurationMs } from '@/lib/format/time';
 import type { StepStoryEntry } from '../timeline/step-replay';
 import type { RunTimelineRow } from '../timeline/run-timeline-model';
 

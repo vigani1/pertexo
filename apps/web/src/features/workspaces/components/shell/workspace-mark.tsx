@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { formatInitials, stableIndex } from '@/lib/format-initials';
+import { formatInitials, stableIndex } from '@/lib/format/initials';
 
 // Each workspace gets a stable two-colour monogram derived from its name, so
 // people can recognize it in the switcher, picker and breadcrumb.

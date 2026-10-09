@@ -3,8 +3,8 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
-import { LegacyMigrationPage } from '@/features/auth/legacy-migration-page';
-import { LoginPage } from '@/features/auth/login-page';
+import { LegacyMigrationPage } from '@/features/auth/pages/legacy-migration';
+import { LoginPage } from '@/features/auth/pages/login';
 import { mockServer } from '../../support/mock-server';
 import {
   expectSignInPage,
