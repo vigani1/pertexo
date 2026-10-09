@@ -37,6 +37,9 @@ import {
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import type { WebhookDeliveryPosition } from '../src/triggers/webhook-trigger-deliveries.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { withWorkspaceTransaction } from '../src/tenant-access/workspace.js';
+import { claimedScheduleWorkflowPaused } from '../src/triggers/schedule-pause.js';
+import { isScheduleClaimEligible } from '../src/triggers/schedule-trigger-scanner.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -150,6 +153,15 @@ async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
   } finally {
     releaseClient();
   }
+}
+
+/** Whether a claimed schedule's workflow is paused now. */
+function pausedNow(
+  claim: Readonly<{ trigger_id: string; lease_token: string }>,
+) {
+  return withWorkspaceTransaction(workerPool, workspaceId, (transaction) =>
+    claimedScheduleWorkflowPaused(transaction, claim, new Date()),
+  );
 }
 
 async function workerQuery<Row extends QueryResultRow = QueryResultRow>(
@@ -1108,11 +1120,11 @@ describe('generic webhook database seam', () => {
     expect(claimed.rows).toHaveLength(1);
     const claim = claimed.rows[0];
     if (claim === undefined) throw new Error('Archived schedule claim missing');
-    const eligible = await workerQuery<{ eligible: boolean }>(
-      'select app.schedule_claim_is_eligible($1,$2) eligible',
-      [claim.trigger_id, claim.lease_token],
-    );
-    expect(eligible.rows[0]?.eligible).toBe(false);
+    await expect(
+      withWorkspaceTransaction(workerPool, workspaceId, (transaction) =>
+        isScheduleClaimEligible(transaction, claim),
+      ),
+    ).resolves.toBe(false);
     await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
       claim.trigger_id,
       claim.lease_token,
@@ -1757,11 +1769,7 @@ describe('generic webhook database seam', () => {
     const claim = claimed.rows[0];
     if (claim === undefined) throw new Error('Paused schedule claim missing');
     expect(claim.trigger_id).toBe(resources.scheduleId);
-    const paused = await workerQuery<{ paused: boolean }>(
-      'select app.schedule_claim_workflow_paused($1,$2) paused',
-      [claim.trigger_id, claim.lease_token],
-    );
-    expect(paused.rows[0]?.paused).toBe(true);
+    await expect(pausedNow(claim)).resolves.toBe(true);
     await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
       claim.trigger_id,
       claim.lease_token,
@@ -1793,12 +1801,7 @@ describe('generic webhook database seam', () => {
     if (resumed === undefined)
       throw new Error('Resumed schedule claim missing');
     expect(resumed.trigger_id).toBe(resources.scheduleId);
-    await expect(
-      workerQuery('select app.schedule_claim_workflow_paused($1,$2) paused', [
-        resumed.trigger_id,
-        resumed.lease_token,
-      ]),
-    ).resolves.toMatchObject({ rows: [{ paused: false }] });
+    await expect(pausedNow(resumed)).resolves.toBe(false);
     await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
       resumed.trigger_id,
       resumed.lease_token,

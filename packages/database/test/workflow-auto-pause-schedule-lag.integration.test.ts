@@ -1,9 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
 import { parseDatabaseConfig } from '../src/config.js';
+import { databaseSchema } from '../src/schema.js';
+import {
+  parseWorkspaceId,
+  withWorkspaceTransaction,
+} from '../src/tenant-access/workspace.js';
+import { claimedScheduleWorkflowPaused } from '../src/triggers/schedule-pause.js';
 import { createScheduleTriggerTestEnvironment } from './support/schedule-triggers.integration.support.js';
 
 // Every scenario is relative to PostgreSQL's clock; no occurrence-time waits,
@@ -40,6 +47,27 @@ afterAll(async () => {
   await fixture.close();
 });
 const scope = { actorId, workspaceId, workflowId };
+type Lease = Readonly<{ trigger_id: string; lease_token: string }>;
+/** Whether admission sees the instant as paused, in a new transaction. */
+function pausedAt(lease: Lease, instant: string) {
+  return withWorkspaceTransaction(fixture.worker, workspaceId, (transaction) =>
+    claimedScheduleWorkflowPaused(transaction, lease, new Date(instant)),
+  );
+}
+/** The same check in a caller's open transaction, holding its locks. */
+async function pausedIn(client: PoolClient, lease: Lease, instant: string) {
+  await client.query("select set_config('app.workspace_id',$1,true)", [
+    workspaceId,
+  ]);
+  return claimedScheduleWorkflowPaused(
+    {
+      db: drizzle(client, { schema: databaseSchema }),
+      workspaceId: parseWorkspaceId(workspaceId),
+    },
+    lease,
+    new Date(instant),
+  );
+}
 function controls() {
   const value = authoring.autoPause;
   if (value === undefined) throw new Error('Missing auto pause commands');
@@ -275,30 +303,23 @@ describe('paused schedule admission after resume and scanner lag', () => {
     const before = await runs();
     expect(await scan()).toMatchObject({ accepted: 0, paused: 1 });
     expect(await runs()).toBe(before);
-    // No broad API or worker table reads are required for the admission gate.
-    await expect(
-      fixture.worker.query('select * from app.workflow_trigger_pause_periods'),
-    ).rejects.toThrow(/permission denied/u);
-    const api = new Pool({
-      connectionString: fixture.apiConnectionString,
-      max: 1,
-    });
-    try {
-      await expect(
-        api.query('select * from app.workflow_trigger_pause_periods'),
-      ).rejects.toThrow(/permission denied/u);
-    } finally {
-      await api.end();
-    }
   });
 
-  it('uses exact SQL pause boundaries: the start is paused and the resume instant is outside', async () => {
+  it('uses exact pause boundaries: the start is paused and the resume instant is outside', async () => {
     await configure(randomUUID());
     await resume(await pause());
+    // Scheduled instants are milliseconds; align the period to them.
+    await ownerQuery(
+      `update app.workflow_trigger_pause_periods
+       set paused_at=date_trunc('milliseconds',paused_at),
+           resumed_at=date_trunc('milliseconds',resumed_at)
+       where workspace_id=$1 and workflow_id=$2`,
+      [workspaceId, workflowId],
+    );
     const period = await latestPeriod();
     const beforeFirst = (
       await ownerQuery<{ instant: string }>(
-        `select to_char((min(paused_at)-interval '1 microsecond') at time zone 'UTC',
+        `select to_char((min(paused_at)-interval '1 millisecond') at time zone 'UTC',
           'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') instant
           from app.workflow_trigger_pause_periods where workspace_id=$1 and workflow_id=$2`,
         [workspaceId, workflowId],
@@ -307,25 +328,12 @@ describe('paused schedule admission after resume and scanner lag', () => {
     if (beforeFirst === undefined) throw new Error('Missing pre-pause instant');
     const lease = await claim();
     try {
-      const client = await fixture.worker.connect();
-      try {
-        for (const [instant, expected] of [
-          [beforeFirst, false],
-          [period.paused, true],
-          [period.resumed, false],
-        ] as const) {
-          expect(
-            (
-              await client.query<{ paused: boolean }>(
-                'select app.schedule_claim_workflow_paused($1,$2,$3::timestamptz) paused',
-                [lease.trigger_id, lease.lease_token, instant],
-              )
-            ).rows[0]?.paused,
-          ).toBe(expected);
-        }
-      } finally {
-        client.release();
-      }
+      for (const [instant, expected] of [
+        [beforeFirst, false],
+        [period.paused, true],
+        [period.resumed, false],
+      ] as const)
+        expect(await pausedAt(lease, instant)).toBe(expected);
     } finally {
       await release(lease);
     }
@@ -343,26 +351,14 @@ describe('paused schedule admission after resume and scanner lag', () => {
         await admission.query<{ pid: number }>('select pg_backend_pid() pid')
       ).rows[0]?.pid;
       if (pid === undefined) throw new Error('Missing admission pid');
-      expect(
-        (
-          await admission.query<{ paused: boolean }>(
-            'select app.schedule_claim_workflow_paused($1,$2,$3::timestamptz) paused',
-            [lease.trigger_id, lease.lease_token, due],
-          )
-        ).rows[0]?.paused,
-      ).toBe(true);
+      expect(await pausedIn(admission, lease, due)).toBe(true);
       pending = resume(revision);
       await waitBlocked(pid);
       await admission.query('commit');
       expect((await pending).settings.pauseState).toBe('none');
-      expect(
-        (
-          await admission.query<{ paused: boolean }>(
-            'select app.schedule_claim_workflow_paused($1,$2,$3::timestamptz) paused',
-            [lease.trigger_id, lease.lease_token, due],
-          )
-        ).rows[0]?.paused,
-      ).toBe(true);
+      await admission.query('begin');
+      expect(await pausedIn(admission, lease, due)).toBe(true);
+      await admission.query('commit');
     } finally {
       await admission.query('rollback');
       admission.release();
@@ -375,7 +371,7 @@ describe('paused schedule admission after resume and scanner lag', () => {
     const revision = await pause();
     const lease = await claim();
     const resuming = await observer.connect();
-    let pending: Promise<{ rows: { paused: boolean }[] }> | undefined;
+    let pending: Promise<boolean> | undefined;
     try {
       await resuming.query('begin');
       await resuming.query('set local role pertexo_app');
@@ -406,13 +402,10 @@ describe('paused schedule admission after resume and scanner lag', () => {
          where workspace_id = $1 and id = $2`,
         [workspaceId, workflowId],
       );
-      pending = fixture.worker.query<{ paused: boolean }>(
-        'select app.schedule_claim_workflow_paused($1,$2,$3::timestamptz) paused',
-        [lease.trigger_id, lease.lease_token, due],
-      );
+      pending = pausedAt(lease, due);
       await waitBlocked(pid);
       await resuming.query('commit');
-      expect((await pending).rows[0]?.paused).toBe(true);
+      expect(await pending).toBe(true);
       expect((await controls().readWorkflowSettings(scope)).pauseState).toBe(
         'none',
       );

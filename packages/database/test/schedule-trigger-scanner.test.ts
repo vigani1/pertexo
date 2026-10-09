@@ -300,18 +300,15 @@ function recordAdmissionTransactions(): RecordedStatement[] {
   seams.workspaceTransaction.mockImplementation(
     (
       _pool: unknown,
-      _workspaceId: unknown,
+      workspaceId: unknown,
       operation: (transaction: unknown) => Promise<unknown>,
     ) =>
       operation({
+        workspaceId,
         db: {
           execute: (statement: SQL) => {
             const query = dialect.sqlToQuery(statement);
             statements.push(query);
-            if (query.sql.includes('schedule_claim_is_eligible'))
-              return Promise.resolve({ rows: [{ eligible: true }] });
-            if (query.sql.includes('complete_trigger_schedule_claim'))
-              return Promise.resolve({ rows: [{ completed: true }] });
             return Promise.resolve({ rows: [{}] });
           },
         },
@@ -322,14 +319,21 @@ function recordAdmissionTransactions(): RecordedStatement[] {
 
 /** Scheduled instant, disposition, run and next fire the claim completed with. */
 function completion(statements: readonly RecordedStatement[]) {
-  const completed = statements.filter(({ sql }) =>
-    sql.includes('complete_trigger_schedule_claim'),
+  const recorded = statements.filter(({ sql }) =>
+    sql.includes('insert into app.trigger_schedule_occurrences'),
   );
-  expect(completed).toHaveLength(1);
-  const [, , , scheduledAt, disposition, completedRunId, nextAt] =
-    completed[0]?.params ?? [];
+  const moved = statements.filter(({ sql }) =>
+    sql.includes('update app.trigger_schedules'),
+  );
+  expect(recorded).toHaveLength(1);
+  expect(moved).toHaveLength(1);
+  const [, , , scheduledAt, disposition, completedRunId] =
+    recorded[0]?.params ?? [];
+  const [, nextAt] = moved[0]?.params ?? [];
   return { scheduledAt, disposition, runId: completedRunId, nextAt };
 }
+
+const eligibilityCheck = 'published_version_id=trigger.workflow_version_id';
 
 function hourlyClaim(policy: 'catch_up_once' | 'skip', observedAt: string) {
   return claim(ids.triggerOne, ids.leaseOne, {
@@ -372,19 +376,17 @@ describe('schedule misfire disposition (ADR 049)', () => {
         nextAt: new Date('2026-01-01T02:00:00.000Z'),
       });
       expect(
-        statements.find(({ sql }) =>
-          sql.includes('schedule_claim_workflow_paused'),
-        )?.params,
-      ).toEqual([
-        ids.triggerOne,
-        ids.leaseOne,
-        new Date('2026-01-01T01:00:00.000Z'),
-      ]);
+        statements.find(({ sql }) => sql.includes('for share of workflow'))
+          ?.params,
+      ).toEqual([ids.triggerOne, ids.leaseOne]);
       expect(
-        statements.some(({ sql }) =>
-          sql.includes('schedule_claim_is_eligible'),
-        ),
-      ).toBe(disposition === 'accepted');
+        statements.find(({ sql }) =>
+          sql.includes('app.workflow_trigger_pause_periods'),
+        )?.params[0],
+      ).toEqual(new Date('2026-01-01T01:00:00.000Z'));
+      expect(statements.some(({ sql }) => sql.includes(eligibilityCheck))).toBe(
+        disposition === 'accepted',
+      );
       expect(seams.acceptWorkflowRun).toHaveBeenCalledTimes(
         disposition === 'accepted' ? 1 : 0,
       );
