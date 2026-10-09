@@ -1,7 +1,7 @@
 import type { Attributes, Meter } from '@opentelemetry/api';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createTriggerRuntimeTelemetry } from '../src/triggers/trigger-telemetry.js';
+import { createTriggerRuntimeTelemetry } from '../src/triggers/telemetry.js';
 
 type InstrumentCall = Readonly<{
   attributes?: Attributes;

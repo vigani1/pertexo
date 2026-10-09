@@ -376,7 +376,7 @@ mail, deployment or billing activation is authorized by this decision.
 These are inspected implementation patterns, not inbox implementation or load
 evidence:
 
-- [Worker configuration](../../apps/worker/src/config/worker-config.ts),
+- [Worker configuration](../../apps/worker/src/config/worker.ts),
   `OUTBOX_DISPATCH_*`: existing dispatcher defaults are 25 jobs, 30-second lease,
   five-second publish-operation timeout and ten attempts. They concern transport
   publication, not audience capture. `maintenanceBounds` in

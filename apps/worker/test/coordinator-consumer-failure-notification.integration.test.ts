@@ -21,9 +21,9 @@ import { Queue } from 'bullmq';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createProviderFailureNotificationDelivery } from '../src/execution/failure-notification-delivery.js';
+import { createProviderFailureNotificationDelivery } from '../src/notifications/failure-delivery.js';
 import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
   createFailureNotificationDispatcher,

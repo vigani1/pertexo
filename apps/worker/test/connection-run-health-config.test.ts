@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseWorkerConfig } from '../src/config/worker-config.js';
-import { parseConnectionRunHealthMode } from '../src/config/connection-run-health-config.js';
+import { parseWorkerConfig } from '../src/config/worker.js';
+import { parseConnectionRunHealthMode } from '../src/config/connection-health.js';
 
 const environment = {
   DATABASE_URL: 'postgresql://worker:secret@localhost:5432/pertexo',

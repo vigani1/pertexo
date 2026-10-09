@@ -18,7 +18,7 @@ import { sql } from 'drizzle-orm';
 import { Redis } from 'ioredis';
 import { Pool, type PoolClient } from 'pg';
 
-import { WorkerDrainState } from '../../src/runtime/worker-drain-state.js';
+import { WorkerDrainState } from '../../src/runtime/drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
   type DispatchConsumerCapabilityRegistry,

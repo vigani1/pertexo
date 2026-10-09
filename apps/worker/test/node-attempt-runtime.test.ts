@@ -32,7 +32,7 @@ import {
   nodeAttemptActivation,
   nodeAttemptRuntimeProvider,
 } from '../src/transport/node-attempt-runtime-provider.js';
-import type { WorkerConfig } from '../src/config/worker-config.js';
+import type { WorkerConfig } from '../src/config/worker.js';
 
 const STORED_CHECKPOINT = createCheckpoint({
   engineVersion: 'phase3-engine-v1',

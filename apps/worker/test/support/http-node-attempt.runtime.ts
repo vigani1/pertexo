@@ -28,10 +28,10 @@ import type { Attributes, Meter, Span, Tracer } from '@opentelemetry/api';
 import { Queue } from 'bullmq';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 
-import { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
-import { createProductionHttpProviderTelemetry } from '../../src/execution/http-provider-telemetry.js';
-import { createNodeAttemptRuntime } from '../../src/execution/node-attempt-runtime.js';
-import { createWorkerNodeRuntimeCapabilities } from '../../src/execution/node-runtime-capabilities.js';
+import { createCoordinatorRuntime } from '../../src/runs/runtime.js';
+import { createProductionHttpProviderTelemetry } from '../../src/providers/http-telemetry.js';
+import { createNodeAttemptRuntime } from '../../src/attempts/runtime.js';
+import { createWorkerNodeRuntimeCapabilities } from '../../src/attempts/runtime-capabilities.js';
 import {
   databaseUrl,
   redisConnection,

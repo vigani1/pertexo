@@ -15,7 +15,7 @@ import {
 import { Queue } from 'bullmq';
 import { expect } from 'vitest';
 
-import { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
+import { createCoordinatorRuntime } from '../../src/runs/runtime.js';
 import { coordinatorFixture } from '../coordinator-consumer.fixtures.js';
 import { acceptManualFixtureRun } from './manual-start.fixture.js';
 import {

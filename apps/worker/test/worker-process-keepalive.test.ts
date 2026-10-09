@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { WorkerProcessKeepalive } from '../src/runtime/worker-process-keepalive.js';
+import { WorkerProcessKeepalive } from '../src/runtime/process-keepalive.js';
 
 describe('WorkerProcessKeepalive', () => {
   beforeEach(() => {

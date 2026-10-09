@@ -11,12 +11,12 @@ import {
 } from '@pertexo/database/platform';
 import type { TransportMetrics } from '@pertexo/observability';
 
-import type { WorkerConfig } from './config/worker-config.js';
+import type { WorkerConfig } from './config/worker.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { observeWorkspaceArtifactCapacity } from './runtime/artifact-metrics.js';
-import { WorkerReadinessMonitor } from './runtime/worker-readiness-monitor.js';
-import { WorkerShutdownCoordinator } from './runtime/worker-shutdown-coordinator.js';
+import { WorkerReadinessMonitor } from './runtime/readiness-monitor.js';
+import { WorkerShutdownCoordinator } from './runtime/shutdown-coordinator.js';
 import {
   OUTBOX_DISPATCHER,
   TRANSPORT_METRICS,

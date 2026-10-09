@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isWorkerCoreMergeDefinition,
   isWorkerCoreParallelDefinition,
-} from '../src/execution/core-definition-identities.js';
+} from '../src/attempts/core-definitions.js';
 
 describe('worker core definition identities', () => {
   it.each([

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { FailureNotificationStore } from '@pertexo/database/testing';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 
-import { createFailureNotificationHandler } from '../src/execution/failure-notification-handler.js';
+import { createFailureNotificationHandler } from '../src/notifications/failure-handler.js';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method -- Vitest asymmetric matchers and injected spies */
 

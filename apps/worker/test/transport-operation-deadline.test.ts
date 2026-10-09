@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   bounded,
   TransportOperationTimeoutError,
-} from '../src/transport/transport-operation-deadline.js';
+} from '../src/transport/operation-deadline.js';
 
 /* eslint-disable @typescript-eslint/prefer-promise-reject-errors -- hostile and legacy values are the contract under test */
 

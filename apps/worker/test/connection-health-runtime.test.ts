@@ -14,11 +14,11 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createConnectionHealthObservationHandler,
   type ConnectionHealthObservationStore,
-} from '../src/execution/connection-health-runtime.js';
+} from '../src/connections/health-runtime.js';
 import { maintenanceDeliveryHandler } from '../src/maintenance/delivery-handler.js';
 import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
 import { createOwnedMaintenanceRuntime } from '../src/transport/maintenance-runtime-provider.js';
-import { parseWorkerConfig } from '../src/config/worker-config.js';
+import { parseWorkerConfig } from '../src/config/worker.js';
 
 const data = {
   schemaVersion: 1 as const,

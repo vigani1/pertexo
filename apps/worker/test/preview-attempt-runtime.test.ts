@@ -25,7 +25,7 @@ import {
 import {
   PreviewAttemptHandlerStateError,
   type PreviewNodeInvoker,
-} from '../src/execution/preview-attempt-handler.js';
+} from '../src/previews/handler.js';
 
 const ownedInvokers = new Set<PreviewNodeInvoker>();
 

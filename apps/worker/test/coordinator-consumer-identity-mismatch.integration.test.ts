@@ -3,7 +3,7 @@ import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
+import { createCoordinatorRuntime } from '../src/runs/runtime.js';
 import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import { acceptRun } from './support/coordinator-run-fixtures.js';
 

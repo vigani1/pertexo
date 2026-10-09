@@ -15,12 +15,12 @@ import {
   type QueueProducer,
 } from '@pertexo/queue';
 
-import type { WorkerConfig } from '../config/worker-config.js';
-import type { CoordinatorRuntime } from '../execution/coordinator-runtime.js';
-import type { NodeAttemptRuntime } from '../execution/node-attempt-runtime.js';
+import type { WorkerConfig } from '../config/worker.js';
+import type { CoordinatorRuntime } from '../runs/runtime.js';
+import type { NodeAttemptRuntime } from '../attempts/runtime.js';
 import type { MaintenanceRuntime } from '../maintenance/runtime.js';
-import { WorkerDrainState } from '../runtime/worker-drain-state.js';
-import type { TriggerRuntime } from '../triggers/trigger-runtime.js';
+import { WorkerDrainState } from '../runtime/drain-state.js';
+import type { TriggerRuntime } from '../triggers/runtime.js';
 import {
   createDispatchConsumerCapabilityRegistry,
   type DispatchConsumerCapability,
@@ -28,7 +28,7 @@ import {
 } from './dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from './outbox-dispatcher.js';
 import type { OutboxDispatcherOptions } from './outbox-dispatcher.js';
-import { createQueueMetricsObserver } from './transport-metrics-adapter.js';
+import { createQueueMetricsObserver } from './metrics-adapter.js';
 import {
   COORDINATOR_RUNTIME,
   DISPATCH_CONSUMER_CAPABILITIES,
@@ -39,7 +39,7 @@ import {
   TRANSPORT_METRICS,
   TRIGGER_RUNTIME,
   type TransportModuleDependencies,
-} from './transport-tokens.js';
+} from './tokens.js';
 
 export function dispatcherProvider(
   config: WorkerConfig,

@@ -19,13 +19,13 @@ import { describe, expect, it, vi } from 'vitest';
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
 import { createWorkerApplication } from '../src/app.js';
-import type { CoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
-import type { NodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import type { CoordinatorRuntime } from '../src/runs/runtime.js';
+import type { NodeAttemptRuntime } from '../src/attempts/runtime.js';
 import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';
-import type { TriggerRuntime } from '../src/triggers/trigger-runtime.js';
+import type { TriggerRuntime } from '../src/triggers/runtime.js';
 import { NestWorkspaceDatabase } from '../src/platform/database/database.module.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
-import { WorkerReadiness } from '../src/runtime/worker-readiness.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
+import { WorkerReadiness } from '../src/runtime/readiness.js';
 
 const database: WorkspaceDatabase = {
   withWorkspace: async <T>(

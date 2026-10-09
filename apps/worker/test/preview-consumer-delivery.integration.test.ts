@@ -8,8 +8,8 @@ import {
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { describe, expect, it } from 'vitest';
 
-import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import { createPlatformPreviewNodeInvoker } from '../src/execution/preview-attempt-runtime.js';
+import { createNodeAttemptRuntime } from '../src/attempts/runtime.js';
+import { createPlatformPreviewNodeInvoker } from '../src/previews/runtime.js';
 import {
   acceptDelivery,
   databaseUrl,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAuthenticationMailDeliveryConfig } from '../src/config/authentication-mail-config.js';
+import { parseAuthenticationMailDeliveryConfig } from '../src/config/authentication-mail.js';
 
 const mailKey = Buffer.alloc(32, 4).toString('base64');
 const enabledEnvironment = {

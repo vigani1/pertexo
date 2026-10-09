@@ -4,11 +4,11 @@ import type { QueueConsumer } from '@pertexo/queue';
 
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
-import type { FailureNotificationHandler } from '../execution/failure-notification-handler.js';
+import type { FailureNotificationHandler } from '../notifications/failure-handler.js';
 import type { MaintenanceRuntime } from './runtime.js';
-import type { PreviewReconciliationStore } from '../execution/preview-reconciliation-runtime.js';
-import type { UnknownOutcomeReconciliationStore } from '../execution/unknown-outcome-reconciliation-runtime.js';
-import type { ConnectionHealthObservationStore } from '../execution/connection-health-runtime.js';
+import type { PreviewReconciliationStore } from '../previews/reconciliation.js';
+import type { UnknownOutcomeReconciliationStore } from '../attempts/unknown-outcome-reconciliation.js';
+import type { ConnectionHealthObservationStore } from '../connections/health-runtime.js';
 
 export type MaintenanceOwnedStores = Readonly<{
   connectionHealthStore?: ConnectionHealthObservationStore | undefined;

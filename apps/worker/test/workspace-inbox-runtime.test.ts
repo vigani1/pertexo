@@ -5,7 +5,7 @@ import type {
 import type { WorkspaceInboxHintPublisher } from '@pertexo/queue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createWorkspaceInboxRuntime } from '../src/execution/workspace-inbox-runtime.js';
+import { createWorkspaceInboxRuntime } from '../src/notifications/inbox-runtime.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const options = {

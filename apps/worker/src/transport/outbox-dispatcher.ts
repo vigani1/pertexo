@@ -22,14 +22,14 @@ import {
 } from '@pertexo/queue';
 import { z } from 'zod';
 
-import { isSupportedDispatchCapability } from '../config/worker-config.js';
-import type { WorkerDrainState } from '../runtime/worker-drain-state.js';
+import { isSupportedDispatchCapability } from '../config/worker.js';
+import type { WorkerDrainState } from '../runtime/drain-state.js';
 import {
   DispatchConsumerCapabilityError,
   NO_DISPATCH_CONSUMER_CAPABILITIES,
   type DispatchConsumerCapabilityRegistry,
 } from './dispatch-consumer-capabilities.js';
-import { transportJobForName } from './transport-job.js';
+import { transportJobForName } from './job.js';
 import { OutboxPublicationSettlements } from './outbox-publication-settlements.js';
 import {
   recordOutboxClaim,
@@ -40,7 +40,7 @@ import {
 import {
   bounded,
   TransportOperationTimeoutError,
-} from './transport-operation-deadline.js';
+} from './operation-deadline.js';
 
 const optionsSchema = z
   .object({

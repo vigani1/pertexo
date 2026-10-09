@@ -6,9 +6,9 @@ import {
 } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
-import type { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
+import type { createCoordinatorRuntime } from '../../src/runs/runtime.js';
 import type { createMaintenanceRuntime } from '../../src/maintenance/runtime.js';
-import { WorkerDrainState } from '../../src/runtime/worker-drain-state.js';
+import { WorkerDrainState } from '../../src/runtime/drain-state.js';
 import { createDispatchConsumerCapabilityRegistry } from '../../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../../src/transport/outbox-dispatcher.js';
 import { coordinatorFixture } from '../coordinator-consumer.fixtures.js';

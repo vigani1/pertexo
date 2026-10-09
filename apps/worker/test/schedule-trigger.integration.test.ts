@@ -21,9 +21,9 @@ import {
 import type { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
-import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
-import { createTriggerRuntime } from '../src/triggers/trigger-runtime.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
+import { createCoordinatorRuntime } from '../src/runs/runtime.js';
+import { createTriggerRuntime } from '../src/triggers/runtime.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import {

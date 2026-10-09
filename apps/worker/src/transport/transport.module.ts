@@ -1,8 +1,8 @@
 import type { DynamicModule, Provider } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 
-import type { WorkerConfig } from '../config/worker-config.js';
-import { WorkerDrainState } from '../runtime/worker-drain-state.js';
+import type { WorkerConfig } from '../config/worker.js';
+import { WorkerDrainState } from '../runtime/drain-state.js';
 import { coordinatorRuntimeProvider } from './coordinator-runtime-provider.js';
 import {
   dispatchCapabilitiesProvider,
@@ -12,14 +12,14 @@ import {
 } from './dispatch-providers.js';
 import { nodeAttemptRuntimeProvider } from './node-attempt-runtime-provider.js';
 import { maintenanceRuntimeProvider } from './maintenance-runtime-provider.js';
-import { OutboxDispatcherLifecycle } from './transport-lifecycle.js';
+import { OutboxDispatcherLifecycle } from './lifecycle.js';
 import {
   COORDINATOR_RUNTIME,
   NODE_ATTEMPT_RUNTIME,
   MAINTENANCE_RUNTIME,
   TRIGGER_RUNTIME,
   type TransportModuleDependencies,
-} from './transport-tokens.js';
+} from './tokens.js';
 import { triggerRuntimeProvider } from './trigger-runtime-provider.js';
 
 export {
@@ -29,7 +29,7 @@ export {
   MAINTENANCE_RUNTIME,
   TRANSPORT_METRICS,
   TRIGGER_RUNTIME,
-} from './transport-tokens.js';
+} from './tokens.js';
 
 @Module({})
 // Nest requires a class as the module identity passed through dynamic registration.

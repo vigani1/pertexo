@@ -6,7 +6,7 @@ import {
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createWorkspaceInvitationDeliveryHandler } from '../src/execution/workspace-invitation-delivery.js';
+import { createWorkspaceInvitationDeliveryHandler } from '../src/identity/invitation-delivery.js';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 

@@ -1,7 +1,7 @@
 import type { Meter } from '@opentelemetry/api';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createCoordinatorTelemetry } from '../src/execution/coordinator-telemetry.js';
+import { createCoordinatorTelemetry } from '../src/runs/telemetry.js';
 
 describe('coordinator telemetry', () => {
   it('records schedule-to-start duration and isolates clock skew', () => {

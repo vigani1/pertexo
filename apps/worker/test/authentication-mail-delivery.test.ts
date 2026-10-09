@@ -5,7 +5,7 @@ import {
 } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAuthenticationMailDeliveryHandler } from '../src/execution/authentication-mail-delivery.js';
+import { createAuthenticationMailDeliveryHandler } from '../src/identity/authentication-mail-delivery.js';
 
 const claim = {
   id: '11111111-1111-4111-8111-111111111111',

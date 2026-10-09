@@ -28,7 +28,7 @@ import {
   createDispatchConsumerCapabilityRegistry,
   DispatchConsumerCapabilityError,
 } from '../src/transport/dispatch-consumer-capabilities.js';
-import { createQueueMetricsObserver } from '../src/transport/transport-metrics-adapter.js';
+import { createQueueMetricsObserver } from '../src/transport/metrics-adapter.js';
 import {
   closeHttpServer,
   createTransportTestCleanupStack,

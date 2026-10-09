@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/database/triggers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createWorkflowAutoPauseRuntime } from '../src/execution/workflow-auto-pause-runtime.js';
+import { createWorkflowAutoPauseRuntime } from '../src/workflows/auto-pause-runtime.js';
 
 const decision = (paused: boolean): WorkflowTriggerPauseDecision => ({
   workspaceId: '11111111-1111-4111-8111-111111111111',

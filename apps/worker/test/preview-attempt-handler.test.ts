@@ -17,7 +17,7 @@ import {
   type PreviewInvocationOutcome,
   type PreviewAttemptRunStore,
   type PreviewNodeInvoker,
-} from '../src/execution/preview-attempt-handler.js';
+} from '../src/previews/handler.js';
 
 const workspaceId = randomUUID();
 const outboxEventId = randomUUID();

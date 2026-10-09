@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
-import { WorkerResourceMonitor } from '../src/runtime/worker-resource-monitor.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
+import { WorkerResourceMonitor } from '../src/runtime/resource-monitor.js';
 
 const config = {
   maximumEventLoopDelayMillis: 200,

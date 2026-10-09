@@ -3,7 +3,7 @@ import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integratio
 import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseWorkerConfig } from '../src/config/worker-config.js';
+import { parseWorkerConfig } from '../src/config/worker.js';
 import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';
 import {
   createOwnedMaintenanceRuntime,

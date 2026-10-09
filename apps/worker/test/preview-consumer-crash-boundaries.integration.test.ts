@@ -11,7 +11,7 @@ import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { describe, expect, it } from 'vitest';
 
-import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import { createNodeAttemptRuntime } from '../src/attempts/runtime.js';
 import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
 import { spawnPreviewCrashChild } from './support/preview-consumer-crash-process.support.js';
 import {

@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
-import { createTriggerReconciliationHandler } from '../src/triggers/trigger-handler.js';
+import { createTriggerReconciliationHandler } from '../src/triggers/handler.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const WORKFLOW_ID = '22222222-2222-4222-8222-222222222222';

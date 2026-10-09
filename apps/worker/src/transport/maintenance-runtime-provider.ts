@@ -4,13 +4,13 @@ import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-
 import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
 import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 
-import type { WorkerConfig } from '../config/worker-config.js';
+import type { WorkerConfig } from '../config/worker.js';
 import {
   wrapOwnedMaintenanceRuntime,
   closeDeliveryDependencies,
 } from './maintenance-owned-delivery.js';
-import { failureNotificationDeliveryFactories } from '../execution/failure-notification-composition.js';
-import { workspaceInvitationDeliveryFactories } from '../execution/workspace-invitation-delivery.js';
+import { failureNotificationDeliveryFactories } from '../notifications/failure-composition.js';
+import { workspaceInvitationDeliveryFactories } from '../identity/invitation-delivery.js';
 import {
   createMaintenanceRuntime,
   type MaintenanceRuntime,
@@ -19,7 +19,7 @@ import {
   MAINTENANCE_RUNTIME,
   QUEUE_CONSUMER_OBSERVER,
   type TransportModuleDependencies,
-} from './transport-tokens.js';
+} from './tokens.js';
 
 export type MaintenanceProviderFactories = Readonly<{
   notificationDelivery: typeof failureNotificationDeliveryFactories;

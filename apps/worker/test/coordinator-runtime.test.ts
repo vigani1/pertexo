@@ -14,7 +14,7 @@ import {
   createCoordinatorRuntime,
   type CoordinatorCompositionFactories,
   type CoordinatorRuntimeOptions,
-} from '../src/execution/coordinator-runtime.js';
+} from '../src/runs/runtime.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '22222222-2222-4222-8222-222222222222';

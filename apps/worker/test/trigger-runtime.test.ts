@@ -17,7 +17,7 @@ import type { StructuredLogger } from '@pertexo/observability';
 import {
   createTriggerRuntime,
   type TriggerCompositionFactories,
-} from '../src/triggers/trigger-runtime.js';
+} from '../src/triggers/runtime.js';
 
 function dependencies() {
   const consumer: QueueConsumer = {

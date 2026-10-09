@@ -7,8 +7,8 @@ import { invocationKey } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
-import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import { createCoordinatorRuntime } from '../src/runs/runtime.js';
+import { createNodeAttemptRuntime } from '../src/attempts/runtime.js';
 import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
   acceptRun,

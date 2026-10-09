@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createAuthenticationMailRuntime } from '../src/execution/authentication-mail-runtime.js';
+import { createAuthenticationMailRuntime } from '../src/identity/authentication-mail-runtime.js';
 
 describe('authentication mail runtime readiness', () => {
   afterEach(() => vi.useRealTimers());

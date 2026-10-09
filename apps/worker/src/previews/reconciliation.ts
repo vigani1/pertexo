@@ -1,0 +1,107 @@
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
+import {
+  createDatabasePreviewReconciliationStore,
+  type PreviewDeliveryReconciliationResult,
+  type PreviewReconciliationStore,
+  PreviewAttemptStateError,
+  PreviewDeliveryMismatchError,
+} from '@pertexo/database/previews';
+export type { PreviewReconciliationStore } from '@pertexo/database/previews';
+export const previewReconciliationFactories = Object.freeze({
+  handler: createPreviewReconciliationHandler,
+  store: createDatabasePreviewReconciliationStore,
+});
+import {
+  unrecoverableQueueError,
+  type QueueDelivery,
+  type QueueHandlerContext,
+} from '@pertexo/queue';
+import {
+  createProductionPreviewTelemetry,
+  type PreviewTelemetry,
+} from './telemetry.js';
+
+type PreviewReconciliationDelivery = Extract<
+  QueueDelivery,
+  { readonly name: 'reconcile-preview-attempt' }
+>;
+
+export interface PreviewReconciliationHandler {
+  handle(
+    delivery: PreviewReconciliationDelivery,
+    context: QueueHandlerContext,
+  ): Promise<PreviewDeliveryReconciliationResult>;
+}
+
+export function createPreviewReconciliationHandler(
+  store: PreviewReconciliationStore,
+  telemetry: PreviewTelemetry = createProductionPreviewTelemetry(),
+): PreviewReconciliationHandler {
+  return Object.freeze({
+    handle: async (
+      delivery: PreviewReconciliationDelivery,
+      context: QueueHandlerContext,
+    ): Promise<PreviewDeliveryReconciliationResult> => {
+      const result = await store.reconcile({
+        attemptFenceToken: delivery.data.attemptFenceToken,
+        delivery: {
+          outboxEventId: delivery.data.outboxEventId,
+          payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
+        },
+        previewAttemptId: delivery.data.previewAttemptId,
+        previewRunId: delivery.data.previewRunId,
+        signal: context.signal,
+        workspaceId: delivery.data.workspaceId,
+      });
+      try {
+        telemetry.recordReconciliation({
+          decision: result.kind,
+          ...(result.kind === 'completed' ? { outcome: result.status } : {}),
+        });
+        if (result.kind === 'completed')
+          telemetry.recordTerminal({
+            mayContactProvider: result.mayContactProvider,
+            mayCauseExternalSideEffect: result.mayCauseExternalSideEffect,
+            ...(result.operationKey === undefined
+              ? {}
+              : { operationKey: result.operationKey }),
+            outcome: result.status,
+            possiblyDispatched: result.possiblyDispatched,
+            ...(result.providerKey === undefined
+              ? {}
+              : { providerKey: result.providerKey }),
+            sideEffectClass: result.sideEffectClass,
+            source: 'reconciliation',
+            usesConnection: result.usesConnection,
+          });
+      } catch {
+        // Diagnostics cannot change a committed reconciliation decision.
+      }
+      return result;
+    },
+  });
+}
+
+export function mapPreviewReconciliationError(error: unknown): unknown {
+  if (
+    isErrorInstance(error, PreviewDeliveryMismatchError) ||
+    isErrorInstance(error, PreviewAttemptStateError)
+  )
+    return unrecoverableQueueError(
+      isErrorInstance(error, PreviewDeliveryMismatchError)
+        ? 'Preview reconciliation delivery failed durable state verification'
+        : `Preview reconciliation is not recoverable: ${error.code}`,
+    );
+  return error;
+}
+
+function isErrorInstance<T extends Error>(
+  value: unknown,
+  constructor: abstract new (...arguments_: never[]) => T,
+): value is T {
+  try {
+    return value instanceof constructor;
+  } catch {
+    return false;
+  }
+}

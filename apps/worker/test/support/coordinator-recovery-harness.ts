@@ -9,8 +9,8 @@ import {
 } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 
-import { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
-import { createNodeAttemptRuntime } from '../../src/execution/node-attempt-runtime.js';
+import { createCoordinatorRuntime } from '../../src/runs/runtime.js';
+import { createNodeAttemptRuntime } from '../../src/attempts/runtime.js';
 import { coordinatorFixture } from '../coordinator-consumer.fixtures.js';
 
 const { redisConnection, redisUrl, waitFor, workerQuery, workspaceId } =

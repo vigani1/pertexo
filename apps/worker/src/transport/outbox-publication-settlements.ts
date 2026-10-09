@@ -6,7 +6,7 @@ import type {
 import {
   bounded,
   TransportOperationTimeoutError,
-} from './transport-operation-deadline.js';
+} from './operation-deadline.js';
 
 export class OutboxPublicationSettlements {
   private readonly pending = new Set<Promise<void>>();

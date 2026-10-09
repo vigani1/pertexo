@@ -15,14 +15,14 @@ import {
 } from '@pertexo/integrations/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { createConnectionHealthSlackTransport } from '../../../infrastructure/testing/connection-health-slack-transport.mjs';
-import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
-import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
+import { createCoordinatorRuntime } from '../src/runs/runtime.js';
+import { createNodeAttemptRuntime } from '../src/attempts/runtime.js';
+import { createWorkerNodeRuntimeCapabilities } from '../src/attempts/runtime-capabilities.js';
 import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import {
   createEditorBrowserWorkerLifetime,
   type EditorBrowserRuntimeConstruction,

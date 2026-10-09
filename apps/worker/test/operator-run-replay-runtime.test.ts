@@ -13,7 +13,7 @@ import {
 import { JOB_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createOperatorRunReplayHandler } from '../src/execution/operator-run-replay-runtime.js';
+import { createOperatorRunReplayHandler } from '../src/operator/run-replay.js';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected store spies */
 

@@ -5,11 +5,11 @@ import {
   createDispatchConsumerCapabilityRegistry,
   DispatchConsumerCapabilityError,
 } from '../src/transport/dispatch-consumer-capabilities.js';
-import { parseWorkerConfig } from '../src/config/worker-config.js';
-import type { CoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
-import type { NodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import { parseWorkerConfig } from '../src/config/worker.js';
+import type { CoordinatorRuntime } from '../src/runs/runtime.js';
+import type { NodeAttemptRuntime } from '../src/attempts/runtime.js';
 import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';
-import type { TriggerRuntime } from '../src/triggers/trigger-runtime.js';
+import type { TriggerRuntime } from '../src/triggers/runtime.js';
 import { dispatchCapabilitiesProvider } from '../src/transport/dispatch-providers.js';
 
 function consumer(

@@ -9,7 +9,7 @@ import {
   type SlackClient,
 } from '@pertexo/integrations/server';
 
-import { createProviderFailureNotificationDelivery } from '../src/execution/failure-notification-delivery.js';
+import { createProviderFailureNotificationDelivery } from '../src/notifications/failure-delivery.js';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method -- Vitest asymmetric matchers and injected spies */
 
