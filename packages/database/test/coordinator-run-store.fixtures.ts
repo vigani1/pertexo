@@ -23,7 +23,7 @@ import {
   NodeAttemptStateCorruptError,
   parseDatabaseConfig,
 } from '../src/testing.js';
-import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
+import { migrateDatabase } from '../src/migrations.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminBaseUrl =
@@ -61,9 +61,6 @@ const workflowA = randomUUID();
 const workflowB = randomUUID();
 const versionA = randomUUID();
 const versionB = randomUUID();
-const retainedRunId = randomUUID();
-const retainedLegacyNodeRunId = randomUUID();
-const retainedLegacyInvocationKey = 'legacy/node#1';
 const notificationConnectionId = randomUUID();
 const notificationSecretVersionId = randomUUID();
 const notificationDestinationId = randomUUID();
@@ -228,68 +225,6 @@ async function dropDatabase(): Promise<void> {
   }
   if (failures.length > 0)
     throw new AggregateError(failures, 'Coordinator fixture cleanup failed');
-}
-
-async function migrateThrough0014(): Promise<void> {
-  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0014-'));
-  try {
-    const names = (await readdir(MIGRATIONS_DIRECTORY)).filter(
-      (name) => /^\d{4}_.+\.sql$/u.test(name) && name < '0015_',
-    );
-    await Promise.all(
-      names.map((name) =>
-        copyFile(
-          path.join(MIGRATIONS_DIRECTORY, name),
-          path.join(directory, name),
-        ),
-      ),
-    );
-    await migrateDatabase(migrationConfig, directory);
-  } finally {
-    await rm(directory, { force: true, recursive: true });
-  }
-}
-
-async function migrateThrough0015(): Promise<void> {
-  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0015-'));
-  try {
-    const names = (await readdir(MIGRATIONS_DIRECTORY)).filter(
-      (name) => /^\d{4}_.+\.sql$/u.test(name) && name < '0016_',
-    );
-    await Promise.all(
-      names.map((name) =>
-        copyFile(
-          path.join(MIGRATIONS_DIRECTORY, name),
-          path.join(directory, name),
-        ),
-      ),
-    );
-    await migrateDatabase(migrationConfig, directory);
-  } finally {
-    await rm(directory, { force: true, recursive: true });
-  }
-}
-
-async function migrateThrough0030(
-  config: typeof migrationConfig,
-): Promise<void> {
-  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0030-'));
-  try {
-    const names = (await readdir(MIGRATIONS_DIRECTORY)).filter(
-      (name) => /^\d{4}_.+\.sql$/u.test(name) && name < '0031_',
-    );
-    await Promise.all(
-      names.map((name) =>
-        copyFile(
-          path.join(MIGRATIONS_DIRECTORY, name),
-          path.join(directory, name),
-        ),
-      ),
-    );
-    await migrateDatabase(config, directory);
-  } finally {
-    await rm(directory, { force: true, recursive: true });
-  }
 }
 
 async function asOwner<T>(
@@ -722,36 +657,6 @@ async function seedSucceededFact(
 
 beforeAll(async () => {
   await createDatabase();
-  await migrateThrough0014();
-  await asRuntime(apiBaseUrl, workspaceA, async (client) => {
-    await client.query(
-      `insert into app.workflow_runs
-         (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
-       values ($1,$2,$3,$4,'manual','queued')`,
-      [retainedRunId, workspaceA, randomUUID(), randomUUID()],
-    );
-    await client.query(
-      `insert into app.run_checkpoints
-         (workflow_run_id,workspace_id,revision,engine_version,scheduler_state)
-       values ($1,$2,0,'phase0','{}'::jsonb)`,
-      [retainedRunId, workspaceA],
-    );
-  });
-  await migrateThrough0015();
-  await asRuntime(workerBaseUrl, workspaceA, (client) =>
-    client.query(
-      `insert into app.node_runs (
-         id,workspace_id,workflow_run_id,node_id,invocation_key,
-         branch_context,status,side_effect_class
-       ) values ($1,$2,$3,'legacy-node',$4,'{}'::jsonb,'pending','safe')`,
-      [
-        retainedLegacyNodeRunId,
-        workspaceA,
-        retainedRunId,
-        retainedLegacyInvocationKey,
-      ],
-    ),
-  );
   await migrateDatabase(migrationConfig);
   await seedIdentityAndExecutables();
   createStores();
@@ -763,7 +668,6 @@ export {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   FailureNotificationContextV1Schema,
-  MIGRATIONS_DIRECTORY,
   NodeAttemptConnectionFenceError,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptDispatchBindingMismatchError,
@@ -793,9 +697,6 @@ export {
   dropDisconnectedDatabase,
   insertRun,
   migrateDatabase,
-  migrateThrough0014,
-  migrateThrough0015,
-  migrateThrough0030,
   migrationBaseUrl,
   migrationConfig,
   mkdtemp,
@@ -810,9 +711,6 @@ export {
   randomUUID,
   rawStore,
   readdir,
-  retainedLegacyInvocationKey,
-  retainedLegacyNodeRunId,
-  retainedRunId,
   rm,
   seedIdentityAndExecutables,
   seedSucceededFact,

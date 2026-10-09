@@ -68,6 +68,16 @@ now, as one ordered program — not "whenever we touch it".
         migrates, seeds a development account and runs the API, worker and web.
 - [ ] **5. Database foundation** — tables defined once, one baseline migration,
       three database roles, repository layout.
+  - [x] One baseline: `0000_baseline.sql` (generated from a database migrated
+        through 0137, roles templated) replaces 135 migrations. The runner
+        drops the execution plan, data-migration jobs and published checksums,
+        and refuses a database built from the old history. Migration structure
+        and upgrade-path tests are removed.
+  - [ ] Three database roles.
+  - [ ] Repository layout.
+  - Tables defined once: the 42 raw-SQL tables get Drizzle definitions as their
+    areas are ported in step 7 (tables that step 7 deletes are never typed);
+    drizzle-kit generates migrations once every table is typed (step 9).
 - [ ] **6. Execution package** — run actions and the coordinator move out of the
       database package; the engine's rules exist once.
 - [ ] **7. Database feature areas** — authoring, workspaces, connections,

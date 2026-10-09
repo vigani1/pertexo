@@ -67,23 +67,20 @@ const dispatcherBaseUrl =
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 
-const baselineMigration = readFileSync(
-  new URL(
-    '../../../../packages/database/migrations/0017_node_compatibility_releases.sql',
-    import.meta.url,
+const baselineCatalog: unknown = JSON.parse(
+  readFileSync(
+    new URL(
+      '../../../../packages/database/test/fixtures/baseline-compatibility-catalog.json',
+      import.meta.url,
+    ),
+    'utf8',
   ),
-  'utf8',
 );
-const baselineCatalogMatch = /\$catalog\$([\s\S]+?)\$catalog\$::jsonb/u.exec(
-  baselineMigration,
-);
-if (baselineCatalogMatch?.[1] === undefined)
-  throw new Error('Worker lifecycle baseline compatibility catalog is missing');
 const baselineCompatibilityExpectation = Object.freeze({
   epoch: 1,
   fingerprint:
     'node-compat:v1:sha256:cf21b2e644563beb8b031481e9d5182b361b4ae2d4abd1d7d86d7b3fe0299f59',
-  catalogJson: JSON.stringify(JSON.parse(baselineCatalogMatch[1]) as unknown),
+  catalogJson: JSON.stringify(baselineCatalog),
 });
 
 /** The fixture acquires an exclusive lease for Redis database 15 before use. */

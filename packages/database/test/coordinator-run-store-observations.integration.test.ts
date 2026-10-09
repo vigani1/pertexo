@@ -12,8 +12,6 @@ import {
   insertRun,
   parseDatabaseConfig,
   randomUUID,
-  retainedLegacyInvocationKey,
-  retainedLegacyNodeRunId,
   seedSucceededFact,
   ownedDeliveryStore,
   versionA,
@@ -553,18 +551,7 @@ describe('Coordinator observation integrity invariants', () => {
     ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
   });
 
-  it('preserves legacy invocation keys and admits only canonical engine identities', async () => {
-    const retained = await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query<{ invocation_key: string }>(
-        `select invocation_key from app.node_runs
-             where workspace_id=$1 and id=$2`,
-        [workspaceA, retainedLegacyNodeRunId],
-      ),
-    );
-    expect(retained.rows).toEqual([
-      { invocation_key: retainedLegacyInvocationKey },
-    ]);
-
+  it('admits only canonical engine invocation identities', async () => {
     const runId = await insertRun({});
     const canonicalKey = `${versionA}|manual|b:|i:`;
     await expect(

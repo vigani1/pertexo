@@ -158,7 +158,7 @@ describe('migration runner resource ownership', () => {
     );
   });
 
-  it('contains progress observer failure without changing a committed migration', async () => {
+  it('applies and records a pending migration in one transaction', async () => {
     const directory = await temporaryMigrationsDirectory();
     await writeFile(
       path.join(directory, '0001_probe.sql'),
@@ -167,57 +167,50 @@ describe('migration runner resource ownership', () => {
     );
     const client = successfulClient();
     postgres.connect.mockResolvedValue(client);
-    const onProgress = vi.fn(() => {
-      throw new Error('observer failed');
-    });
 
-    await expect(
-      migrateDatabase(config, directory, { onProgress }),
-    ).resolves.toEqual(['0001_probe.sql']);
-    expect(onProgress).toHaveBeenCalledTimes(2);
+    await expect(migrateDatabase(config, directory)).resolves.toEqual([
+      '0001_probe.sql',
+    ]);
+    const statements = client.query.mock.calls.map(([sql]) => sql);
+    const probe = statements.indexOf('select 1;\n');
+    expect(statements.slice(probe - 4, probe + 3)).toEqual([
+      'begin',
+      'set local role "owner"',
+      "select set_config('lock_timeout',$1,true)",
+      "select set_config('statement_timeout',$1,true)",
+      'select 1;\n',
+      'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
+      'commit',
+    ]);
     expect(client.release).toHaveBeenCalledOnce();
     expect(postgres.end).toHaveBeenCalledOnce();
   });
 
-  it('brackets published owner backfills without changing their SQL', async () => {
+  it('refuses a database migrated from an older migration history', async () => {
     const directory = await temporaryMigrationsDirectory();
-    await Promise.all([
-      writeFile(
-        path.join(directory, '0006_execution_vocabulary.sql'),
-        'select 6;\n',
-        'utf8',
-      ),
-      writeFile(
-        path.join(directory, '0007_execution_runtime.sql'),
-        'select 7;\n',
-        'utf8',
-      ),
-    ]);
-    const client = successfulClient();
-    postgres.connect.mockResolvedValue(client);
-
-    await expect(migrateDatabase(config, directory)).resolves.toEqual([
-      '0006_execution_vocabulary.sql',
-      '0007_execution_runtime.sql',
-    ]);
-
-    const statements = client.query.mock.calls.map(([sql]) => sql);
-    const relevant = statements.filter(
-      (sql) =>
-        sql === 'select 6;\n' ||
-        sql === 'select 7;\n' ||
-        sql.includes('force row level security'),
+    await writeFile(
+      path.join(directory, '0000_baseline.sql'),
+      'select 1;\n',
+      'utf8',
     );
-    expect(relevant).toEqual([
-      'alter table "app"."workflow_runs" no force row level security',
-      'alter table "app"."idempotency_records" no force row level security',
-      'select 6;\n',
-      'alter table "app"."workflow_runs" force row level security',
-      'alter table "app"."idempotency_records" force row level security',
-      'alter table "app"."run_events" no force row level security',
-      'select 7;\n',
-      'alter table "app"."run_events" force row level security',
-    ]);
+    const query = vi.fn(
+      (sql: string): Promise<{ rows: Record<string, string>[] }> => {
+        if (sql === 'select current_user')
+          return Promise.resolve({
+            rows: [{ current_user: config.ownerRole }],
+          });
+        if (sql.startsWith('select name,checksum'))
+          return Promise.resolve({
+            rows: [{ name: '0001_rls_probe.sql', checksum: 'retired' }],
+          });
+        return Promise.resolve({ rows: [] });
+      },
+    );
+    postgres.connect.mockResolvedValue({ query, release: vi.fn() });
+
+    await expect(migrateDatabase(config, directory)).rejects.toThrow(
+      'Database was migrated from an older migration history; recreate it',
+    );
   });
 
   it('contains hostile cleanup classification after successful migration work', async () => {

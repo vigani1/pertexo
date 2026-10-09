@@ -1,5 +1,0 @@
-{
-  "schemaVersion": 1,
-  "transactionalThrough": "0137_single_region_storage.sql",
-  "migrations": {}
-}
