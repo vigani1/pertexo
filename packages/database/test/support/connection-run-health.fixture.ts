@@ -2,10 +2,10 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher.js';
 import type { PoolClient } from 'pg';
 
-import { createApiConnectionDatabase } from '../../src/connections/connections.js';
+import { createApiConnectionDatabase } from '../../src/connections/database.js';
 import { generatePersistedId } from '../../src/platform/persisted-id.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
-import { applyConnectionHealthObservation } from '../../src/connections/health-application.js';
+import { applyConnectionHealthObservation } from '../../src/connections/health/observations.js';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,

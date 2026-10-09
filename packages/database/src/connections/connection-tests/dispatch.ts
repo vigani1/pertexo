@@ -1,13 +1,13 @@
 import type { Pool } from 'pg';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
-import { requireConnectionUser } from './connection-authority.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
+import { requireConnectionUser } from '../authority.js';
 import {
   connectionTestClaim,
   connectionTestClaimSchema,
   connectionTestScope,
-} from './connection-test-claim.js';
+} from './claim.js';
 import {
   CONNECTION_STATUS,
   ConnectionTestInProgressError,
@@ -17,8 +17,8 @@ import {
   selectConnection,
   uuidSchema,
   withConnectionTransaction,
-} from './connection-persistence.js';
-import type { MarkConnectionTestDispatchedInput } from './connection-persistence.js';
+} from '../records.js';
+import type { MarkConnectionTestDispatchedInput } from '../records.js';
 
 export async function markConnectionTestDispatched(
   pool: Pool,

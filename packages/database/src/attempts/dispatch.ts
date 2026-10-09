@@ -10,7 +10,7 @@ import {
   type NodeAttemptRunStore,
 } from './contract.js';
 import { assertNotAborted, withWorkspaceWriteClient } from './transactions.js';
-import { isConnectionFenceCurrent } from '../connections/dispatch-fence.js';
+import { isConnectionFenceCurrent } from '../connections/runtime/dispatch-fence.js';
 
 export async function markNodeAttemptDispatched(
   pool: Pool,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CONNECTION_USAGE_PAGE_SQL,
   createConnectionUsagePersistence,
-} from '../src/connections/connection-usage-persistence.js';
+} from '../src/connections/usage.queries.js';
 import {
   Pool,
   apiBaseUrl,

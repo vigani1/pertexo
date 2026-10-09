@@ -29,8 +29,8 @@ Inspected anchors (paths may move):
 - [packages/contracts/src/http/connections.ts](../../packages/contracts/src/http/connections.ts)
 - [docs/adr/023-slack-send-message-provider.md](../adr/023-slack-send-message-provider.md)
 - [accepted-completion health persistence](../../packages/database/src/attempts/connection-health.ts)
-- [connection test persistence](../../packages/database/src/connections/connection-test-persistence.ts)
-- [published usage projection](../../packages/database/src/connections/workflow-integration-usage.ts)
+- [connection test persistence](../../packages/database/src/connections/connection-tests/results.repository.ts)
+- [published usage projection](../../packages/database/src/connections/integration-usage.queries.ts)
 - [attempt dispatch](../../packages/database/src/attempts/dispatch.ts)
 - [attempt completion](../../packages/database/src/attempts/completion.ts)
 

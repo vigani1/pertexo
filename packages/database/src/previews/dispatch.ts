@@ -7,7 +7,7 @@ import {
   type PreviewAttemptLease,
 } from './contract.js';
 import { withTenantScopedClient } from '../tenant-access/transactions.js';
-import { isConnectionFenceCurrent } from '../connections/dispatch-fence.js';
+import { isConnectionFenceCurrent } from '../connections/runtime/dispatch-fence.js';
 
 export async function markPreviewDispatched(
   pool: Pool,

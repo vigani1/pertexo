@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { ConnectionRecord } from './connection-persistence.js';
+import type { ConnectionRecord } from '../records.js';
 
 const transitionSourceSchema = z.enum(['run', 'test', 'rotation', 'revoke']);
 export const connectionHealthSnapshotSchema = z.object({

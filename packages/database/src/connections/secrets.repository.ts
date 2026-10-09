@@ -19,14 +19,11 @@ import {
   selectConnection,
   decodeDurableConnectionReplay,
   serializeConnectionSnapshot,
-} from './connection-persistence.js';
-import { requireConnectionManager } from './connection-authority.js';
-import { rotateConnectionHealth } from './connection-health-transitions.js';
+} from './records.js';
+import { requireConnectionManager } from './authority.js';
+import { rotateConnectionHealth } from './health/transitions.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
-import type {
-  ConnectionDatabase,
-  ConnectionRecord,
-} from './connection-persistence.js';
+import type { ConnectionDatabase, ConnectionRecord } from './records.js';
 
 /** Owns secret rotation idempotency and current-version fencing. */
 

@@ -1,11 +1,8 @@
 import type { PoolClient } from 'pg';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { mapConnection } from './connection-persistence.js';
-import type {
-  ConnectionRecord,
-  ConnectionTestOutcome,
-} from './connection-persistence.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { mapConnection } from '../records.js';
+import type { ConnectionRecord, ConnectionTestOutcome } from '../records.js';
 
 /** Transaction-private revision transitions; callers already own the connection lock. */
 export async function revokeConnectionHealth(

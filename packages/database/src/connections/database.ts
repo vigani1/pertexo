@@ -5,23 +5,23 @@ import type { DatabaseConfig } from '../config.js';
 import {
   createConnectionLookupPersistence,
   type ConnectionLookupDatabase,
-} from './connection-lookup-persistence.js';
-import { createConnectionManagementPersistence } from './connection-management-persistence.js';
-import { createConnectionResolutionPersistence } from './connection-resolution-persistence.js';
-import { createConnectionReadPersistence } from './connection-read-persistence.js';
+} from './runtime/lookup.js';
+import { createConnectionManagementPersistence } from './management.repository.js';
+import { createConnectionResolutionPersistence } from './runtime/resolution.js';
+import { createConnectionReadPersistence } from './reads.queries.js';
 import {
   createConnectionUsagePersistence,
   type ConnectionUsageDatabase,
-} from './connection-usage-persistence.js';
-import { createConnectionSecretPersistence } from './connection-secret-persistence.js';
-import { createConnectionTestPersistence } from './connection-test-persistence.js';
+} from './usage.queries.js';
+import { createConnectionSecretPersistence } from './secrets.repository.js';
+import { createConnectionTestPersistence } from './connection-tests/results.repository.js';
 import type {
   ConnectionDatabase,
   ConnectionManagementDatabase,
   ConnectionReadDatabase,
   ConnectionResolutionDatabase,
   ConnectionTestDatabase,
-} from './connection-persistence.js';
+} from './records.js';
 
 /** API capability plus the lifecycle operation owned by its runtime factory. */
 export type ApiConnectionDatabase = ConnectionManagementDatabase &
@@ -45,15 +45,15 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from './connection-persistence.js';
-export type { ConnectionLookupDatabase } from './connection-lookup-persistence.js';
+} from './records.js';
+export type { ConnectionLookupDatabase } from './runtime/lookup.js';
 export type {
   ConnectionUsageDatabase,
   ConnectionUsageRecord,
   ConnectionUsageCursor,
   ConnectionUsagePage,
   ListConnectionUsageInput,
-} from './connection-usage-persistence.js';
+} from './usage.queries.js';
 export type {
   AbandonConnectionTestInput,
   AssertConnectionSecretCurrentInput,
@@ -83,7 +83,7 @@ export type {
   SealedConnectionSecretRecord,
   StartConnectionTestInput,
   StartConnectionTestResult,
-} from './connection-persistence.js';
+} from './records.js';
 
 export function createConnectionDatabase(
   config: DatabaseConfig,

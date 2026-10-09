@@ -20,14 +20,11 @@ import {
   databaseConstraint,
   decodeDurableConnectionReplay,
   serializeConnectionSnapshot,
-} from './connection-persistence.js';
-import { requireConnectionManager } from './connection-authority.js';
-import { revokeConnectionHealth } from './connection-health-transitions.js';
+} from './records.js';
+import { requireConnectionManager } from './authority.js';
+import { revokeConnectionHealth } from './health/transitions.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
-import type {
-  ConnectionDatabase,
-  ConnectionRecord,
-} from './connection-persistence.js';
+import type { ConnectionDatabase, ConnectionRecord } from './records.js';
 
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */
 
