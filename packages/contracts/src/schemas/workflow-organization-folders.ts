@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { utf8ByteLength } from './utf8-byte-length.js';
+import { trimSpaces, utf8ByteLength } from './text.js';
 import { strictlyAscendingIdentifiers } from './workflow-organization-order.js';
 import {
   workflowOrganizationRevisionSchema,
@@ -15,7 +15,7 @@ export const WORKFLOW_FOLDER_LIMITS = Object.freeze({
 
 /** Display casing is retained. Sibling identity is an internal server concern. */
 export function normalizeWorkflowFolderName(name: string): string {
-  return name.replace(/^ +| +$(?![\s\S])/gu, '');
+  return trimSpaces(name);
 }
 export const workflowFolderNameSchema = z
   .string()
