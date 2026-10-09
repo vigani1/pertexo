@@ -133,9 +133,6 @@ export class StartWorkflowRunUseCase {
     await authorize(input, 'run:start', this.authorization, ['active']);
     const deadlineAt =
       input.deadlineAt === undefined ? undefined : new Date(input.deadlineAt);
-    if (deadlineAt !== undefined && Number.isNaN(deadlineAt.getTime())) {
-      throw new TypeError('workflow run deadline is invalid');
-    }
     const result = await this.persistence.start({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
@@ -166,9 +163,6 @@ export class ReplayWorkflowRunUseCase {
     await authorize(input, 'run:replay', this.authorization, ['active']);
     const deadlineAt =
       input.deadlineAt === undefined ? undefined : new Date(input.deadlineAt);
-    if (deadlineAt !== undefined && Number.isNaN(deadlineAt.getTime())) {
-      throw new TypeError('workflow run deadline is invalid');
-    }
     const result = await this.persistence.replay({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,

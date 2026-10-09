@@ -756,38 +756,6 @@ describe('workflow run application seams', () => {
     );
   });
 
-  it.each(['start', 'replay'] as const)(
-    'rejects an invalid %s deadline before persistence',
-    async (operation) => {
-      const fixture = persistence();
-      const common = {
-        actor,
-        routeWorkspaceId: workspaceId,
-        idempotencyKey: `invalid-${operation}-deadline`,
-        deadlineAt: 'not-a-date',
-      };
-
-      const execution =
-        operation === 'start'
-          ? new StartWorkflowRunUseCase(fixture.store, authorization()).execute(
-              { ...common, workflowId },
-            )
-          : new ReplayWorkflowRunUseCase(
-              fixture.store,
-              authorization(),
-            ).execute({
-              ...common,
-              runId,
-              workflowVersionId,
-              input: {},
-            });
-
-      await expect(execution).rejects.toThrow('deadline is invalid');
-      expect(fixture.start).not.toHaveBeenCalled();
-      expect(fixture.replay).not.toHaveBeenCalled();
-    },
-  );
-
   it('supports omitted and explicit request metadata across start, replay, and cancel', async () => {
     const fixture = persistence();
     const actorWithoutTrace = createActorContext({

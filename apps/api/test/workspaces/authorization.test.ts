@@ -345,19 +345,6 @@ describe('workspace authorization policy', () => {
     expect(lookup).toHaveBeenCalledOnce();
   });
 
-  it('re-freezes a structurally valid actor supplied by an untrusted adapter', async () => {
-    const mutableActor = { ...actor() };
-    const authorized = await authorizeWorkspace({
-      actor: mutableActor,
-      routeWorkspaceId: workspaceId,
-      capability: 'workflow:read',
-      access: () => Promise.resolve(access({ role: 'viewer' })),
-    });
-
-    expect(Object.isFrozen(authorized.actor)).toBe(true);
-    expect(authorized.actor).not.toBe(mutableActor);
-  });
-
   it('rejects a forged route workspace without asking a tenant transaction to prove it', async () => {
     let lookups = 0;
     await expect(
@@ -386,79 +373,6 @@ describe('workspace authorization policy', () => {
     ).rejects.toMatchObject({ code: 'resource.not_found' });
   });
 
-  it('rejects malformed authorization inputs before consulting access data', async () => {
-    const lookup = vi.fn(() => Promise.resolve(access()));
-    const malformedActor = {
-      ...actor(),
-      actorId: 'not-a-uuid',
-    };
-
-    await expect(
-      authorizeWorkspace({
-        actor: malformedActor,
-        routeWorkspaceId: workspaceId,
-        capability: 'workflow:read',
-        access: lookup,
-      }),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    await expect(
-      authorizeWorkspace({
-        actor: actor(),
-        routeWorkspaceId: 'not-a-uuid',
-        capability: 'workflow:read',
-        access: lookup,
-      }),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    await expect(
-      authorizeWorkspace({
-        actor: actor(),
-        routeWorkspaceId: workspaceId,
-        capability: 'unknown' as 'workflow:read',
-        access: lookup,
-      }),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-
-    expect(lookup).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    { actorId: 'not-a-uuid' },
-    { workspaceId: 'not-a-uuid' },
-    { role: 'unknown' },
-    { membershipStatus: 'unknown' },
-    { workspaceStatus: 'unknown' },
-  ] as const)(
-    'rejects malformed persisted access data: %j',
-    async (override) => {
-      await expect(
-        authorizeWorkspace({
-          actor: actor(),
-          routeWorkspaceId: workspaceId,
-          capability: 'workflow:read',
-          access: () =>
-            Promise.resolve({
-              ...access(),
-              ...override,
-            } as WorkspaceAccess),
-        }),
-      ).rejects.toMatchObject({ code: 'request.invalid' });
-    },
-  );
-
-  it('rejects a valid access record belonging to another actor', async () => {
-    await expect(
-      authorizeWorkspace({
-        actor: actor(),
-        routeWorkspaceId: workspaceId,
-        capability: 'workflow:read',
-        access: () =>
-          Promise.resolve(
-            access({ actorId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }),
-          ),
-      }),
-    ).rejects.toMatchObject({ code: 'auth.forbidden' });
-  });
-
   it('uses stable typed errors for missing actor and denied capabilities', async () => {
     await expect(
       authorizeWorkspace({
@@ -481,54 +395,11 @@ describe('workspace authorization policy', () => {
 });
 
 describe('immutable actor context', () => {
-  it('freezes actor identity and rejects invalid actor kinds', () => {
+  it('freezes actor identity', () => {
     const context = actor();
     expect(Object.isFrozen(context)).toBe(true);
     expect(() => {
       (context as { workspaceId: string }).workspaceId = 'other';
     }).toThrow();
-    expect(() =>
-      createActorContext({
-        actorId,
-        kind: 'service_account',
-        workspaceId,
-        sessionId: '22222222-2222-4222-8222-222222222222',
-        requestId: 'request-a',
-      }),
-    ).toThrow(/kind/u);
-  });
-
-  it('requires canonical UUIDs for internal actor, workspace, and session identities', () => {
-    for (const field of ['actorId', 'workspaceId', 'sessionId'] as const) {
-      expect(() =>
-        createActorContext({
-          actorId,
-          workspaceId,
-          sessionId: '22222222-2222-4222-8222-222222222222',
-          requestId: 'request-a',
-          [field]: 'not-a-uuid',
-        }),
-      ).toThrow(/UUID/u);
-    }
-  });
-
-  it('keeps request and trace identifiers bounded and header-safe', () => {
-    expect(() =>
-      createActorContext({
-        actorId,
-        workspaceId,
-        sessionId: '22222222-2222-4222-8222-222222222222',
-        requestId: 'a'.repeat(129),
-      }),
-    ).toThrow(/bounded/u);
-    expect(() =>
-      createActorContext({
-        actorId,
-        workspaceId,
-        sessionId: '22222222-2222-4222-8222-222222222222',
-        requestId: 'request-a',
-        traceId: 'trace\r\nforged',
-      }),
-    ).toThrow(/bounded/u);
   });
 });

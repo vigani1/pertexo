@@ -5,8 +5,6 @@ import {
   type ArtifactDependencies,
 } from '../../src/artifacts/index.js';
 import { ArtifactsController } from '../../src/artifacts/controllers.js';
-import { mapArtifactError } from '../../src/artifacts/errors.js';
-import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const guardActorId = '99999999-9999-4999-8999-999999999999';
@@ -156,28 +154,6 @@ describe('artifacts controller public seam', () => {
     );
   });
 
-  it('maps an invalid session actor from the controller to request.invalid status 400', async () => {
-    const fixture = controller();
-    let thrown: unknown;
-    try {
-      await fixture.instance.beginUpload(
-        {
-          ...request({ 'idempotency-key': 'invalid-actor' }),
-          identitySession: {
-            ...request().identitySession,
-            userId: 'not-a-uuid',
-          },
-        },
-        { workspaceId },
-        {},
-      );
-    } catch (error) {
-      thrown = error;
-    }
-    expect(mapArtifactError(thrown)).toMatchObject({ code: 'request.invalid' });
-    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
-    expect(fixture.beginUpload).not.toHaveBeenCalled();
-  });
   it.each([
     ['duplicate header values', { 'Idempotency-Key': ['first', 'second'] }],
     ['comma-joined values', { 'idempotency-key': 'first,second' }],

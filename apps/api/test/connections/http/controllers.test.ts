@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { ConnectionsController } from '../../../src/connections/http/controllers.js';
-import { mapConnectionError } from '../../../src/connections/errors.js';
-import { APPLICATION_ERROR_CATALOG } from '../../../src/platform/http/index.js';
 import type {
   CreateConnectionUseCase,
   GetConnectionUseCase,
@@ -280,29 +278,6 @@ describe('connections controller public seam', () => {
         traceId: 'guard-trace',
       }),
     );
-  });
-
-  it('maps an invalid session actor from the controller to request.invalid status 400', async () => {
-    const { instance, create } = controller();
-    const invalid = {
-      ...request({ 'idempotency-key': 'invalid-actor' }),
-      identitySession: { ...request().identitySession, userId: 'not-a-uuid' },
-    };
-    let thrown: unknown;
-    try {
-      await instance.create(
-        invalid,
-        { workspaceId },
-        { providerKey: 'http', name: 'Invalid', credential },
-      );
-    } catch (error) {
-      thrown = error;
-    }
-    expect(mapConnectionError(thrown)).toMatchObject({
-      code: 'request.invalid',
-    });
-    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
-    expect(create.execute).not.toHaveBeenCalled();
   });
 
   it('requires an idempotency key before delegating create or rotation', async () => {

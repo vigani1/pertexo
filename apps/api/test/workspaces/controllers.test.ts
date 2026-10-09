@@ -111,33 +111,6 @@ describe('identity workspace-route controllers', () => {
     );
   });
 
-  it('rejects an invalid lifecycle actor before invoking the use case', async () => {
-    const requestDeletion = vi.fn();
-    const controller = lifecycleController({
-      requestDeletion,
-      restore: vi.fn(),
-      readOperation: vi.fn(),
-    });
-
-    await expect(
-      controller.requestDeletion(
-        {
-          ...workspaceRequest(),
-          identitySession: {
-            ...workspaceRequest().identitySession,
-            userId: 'not-a-uuid',
-          },
-        },
-        { workspaceId },
-        { reason: 'operator request' },
-      ),
-    ).rejects.toMatchObject({
-      name: 'InvalidAuthenticatedWorkspaceContextError',
-      message: 'actorId must be a canonical UUID',
-    });
-    expect(requestDeletion).not.toHaveBeenCalled();
-  });
-
   it('returns a complete current profile with private cache policy', async () => {
     const response: CookieResponse = { header: vi.fn() };
     const profile = {

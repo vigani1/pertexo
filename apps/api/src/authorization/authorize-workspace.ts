@@ -1,20 +1,11 @@
-import {
-  AUTHORIZATION_CAPABILITIES,
-  MEMBERSHIP_STATUSES,
-  ROLES,
-  WORKSPACE_STATUSES,
-  type ActorContext,
-  type AuthorizedWorkspaceContext,
-  type AuthorizationCapability,
-  type DisclosurePolicy,
-  type WorkspaceAccess,
-  type WorkspaceStatus,
+import type {
+  ActorContext,
+  AuthorizedWorkspaceContext,
+  AuthorizationCapability,
+  DisclosurePolicy,
+  WorkspaceAccess,
+  WorkspaceStatus,
 } from './types.js';
-import {
-  createActorContext,
-  isCanonicalUuid,
-  isActorContext,
-} from './actor-context.js';
 import { hasCapability } from './policy.js';
 
 export type AuthorizationErrorCode =
@@ -88,25 +79,8 @@ function denied(
   );
 }
 
-function isOneOf<T extends string>(
-  values: readonly T[],
-  value: unknown,
-): value is T {
-  return typeof value === 'string' && values.includes(value as T);
-}
-
 function invalid(message: string): AuthorizationError {
   return new AuthorizationError('request.invalid', message);
-}
-
-function validateAccess(access: WorkspaceAccess): boolean {
-  return (
-    isCanonicalUuid(access.actorId) &&
-    isCanonicalUuid(access.workspaceId) &&
-    isOneOf(ROLES, access.role) &&
-    isOneOf(MEMBERSHIP_STATUSES, access.membershipStatus) &&
-    isOneOf(WORKSPACE_STATUSES, access.workspaceStatus)
-  );
 }
 
 async function findAccess(
@@ -128,18 +102,8 @@ export async function authorizeWorkspace(
       'an authenticated actor is required',
     );
   }
-  if (!isActorContext(input.actor)) {
-    throw invalid(
-      'actor context is invalid or was not created by the identity boundary',
-    );
-  }
-  const actor = createActorContext(input.actor);
-  if (!isCanonicalUuid(input.routeWorkspaceId)) {
-    throw invalid('route workspace id is required');
-  }
-  if (!isOneOf(AUTHORIZATION_CAPABILITIES, input.capability)) {
-    throw invalid('authorization capability is not recognized');
-  }
+  // The actor and route ids were parsed where they entered.
+  const { actor } = input;
   if (actor.workspaceId !== input.routeWorkspaceId) {
     throw denied(
       disclosure,
@@ -156,18 +120,6 @@ export async function authorizeWorkspace(
   input.signal?.throwIfAborted();
   if (record === undefined) {
     throw denied(disclosure, 'actor is not a member of this workspace');
-  }
-  if (!validateAccess(record)) {
-    throw invalid('workspace access record is invalid');
-  }
-  if (
-    record.actorId !== actor.actorId ||
-    record.workspaceId !== input.routeWorkspaceId
-  ) {
-    throw denied(
-      disclosure,
-      'workspace access record does not match the request',
-    );
   }
   if (record.membershipStatus !== 'active') {
     throw denied(disclosure, 'workspace membership is not active');

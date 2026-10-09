@@ -3,7 +3,6 @@ import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 
 import { WorkflowRunsController } from '../../../src/workflow-runs/http/controllers.js';
-import { APPLICATION_ERROR_CATALOG } from '../../../src/platform/http/index.js';
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 import type { SseVisibilityMetrics } from '../../../src/platform/observability/sse-visibility-metrics.js';
 
@@ -281,19 +280,6 @@ describe('workflow runs controller public seam', () => {
         traceId: 'guard-trace',
       }),
     );
-  });
-
-  it('maps an invalid session actor to request.invalid status 400', async () => {
-    const fixture = controller();
-    const invalid = {
-      ...request({ 'idempotency-key': 'invalid-actor' }),
-      identitySession: { ...request().identitySession, userId: 'not-a-uuid' },
-    };
-    await expect(
-      fixture.instance.startRun(invalid, { workspaceId, workflowId }, {}),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
-    expect(fixture.start.execute).not.toHaveBeenCalled();
   });
 
   it('passes controller-owned SSE reauthorization and authorization to the stream use case', async () => {

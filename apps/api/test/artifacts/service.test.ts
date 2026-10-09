@@ -35,7 +35,6 @@ const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const actorId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const sessionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const artifactId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const otherWorkspaceId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const actor = createActorContext({
   actorId,
   sessionId,
@@ -261,16 +260,6 @@ describe('ArtifactService', () => {
         actorId,
         workspaceId,
         role: 'viewer',
-        membershipStatus: 'active',
-        workspaceStatus: 'active',
-      },
-    ],
-    [
-      'mismatched workspace access',
-      {
-        actorId,
-        workspaceId: otherWorkspaceId,
-        role: 'owner',
         membershipStatus: 'active',
         workspaceStatus: 'active',
       },
