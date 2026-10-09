@@ -33,7 +33,6 @@ import {
 } from '@pertexo/workflow-engine';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
-import type { ConnectionRunHealthMode } from '../config/connection-health.js';
 import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,
@@ -69,7 +68,7 @@ import {
 
 export interface NodeAttemptRuntime {
   readonly consumer: QueueConsumer;
-  checkReadiness?(): Promise<void>;
+  checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -87,7 +86,6 @@ type PreviewAttemptRuntimeDependency = Readonly<{
 }>;
 
 export type NodeAttemptRuntimeOptions = Readonly<{
-  connectionRunHealthMode?: ConnectionRunHealthMode;
   artifactStore?: ArtifactStoreConfig;
   connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
   database: DatabaseConfig;
@@ -96,7 +94,6 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   leaseDurationSeconds: number;
   observer?: QueueConsumerObserver;
   preview?: PreviewAttemptRuntimeDependency;
-  productionEnabled?: boolean;
   redisUrl: string;
   workerId: string;
 }>;
@@ -157,7 +154,7 @@ async function closeNodeAttemptResources(
 }
 
 function queueHandler(
-  handler: NodeAttemptHandler | undefined,
+  handler: NodeAttemptHandler,
   previewHandler: PreviewAttemptHandler | undefined,
 ): QueueJobHandler {
   return async (delivery, context): Promise<void> => {
@@ -176,10 +173,7 @@ function queueHandler(
         await previewHandler.handle(delivery, context);
         return;
       }
-      if (
-        delivery.name !== JOB_NAME.executeNodeAttempt ||
-        handler === undefined
-      )
+      if (delivery.name !== JOB_NAME.executeNodeAttempt)
         throw new InvalidQueueDeliveryError(
           `Node-attempt consumer cannot handle ${delivery.name}`,
         );
@@ -280,7 +274,6 @@ async function createProductionNodeAttemptRuntime(
   return {
     ...(capabilityRuntime === undefined ? {} : { capabilityRuntime }),
     handler: createNodeAttemptHandler({
-      connectionRunHealthMode: options.connectionRunHealthMode ?? 'off',
       engine,
       heartbeatIntervalMillis: options.heartbeatIntervalMillis,
       leaseDurationSeconds: options.leaseDurationSeconds,
@@ -336,20 +329,13 @@ export async function createNodeAttemptRuntime(
       !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(options.workerId)
     )
       throw new TypeError('Node-attempt runtime options are invalid');
-    const productionEnabled = options.productionEnabled ?? true;
-    let capabilityRuntime: WorkerNodeRuntimeCapabilities | undefined;
-    let runtimeCapabilities = dependencies.runtimeCapabilities;
-    let nodeHandler: NodeAttemptHandler | undefined;
-    if (productionEnabled) {
-      const production = await createProductionNodeAttemptRuntime(
-        options,
-        dependencies,
-        own,
-      );
-      capabilityRuntime = production.capabilityRuntime;
-      runtimeCapabilities = production.runtimeCapabilities;
-      nodeHandler = production.handler;
-    }
+    const production = await createProductionNodeAttemptRuntime(
+      options,
+      dependencies,
+      own,
+    );
+    const { capabilityRuntime, runtimeCapabilities } = production;
+    const nodeHandler = production.handler;
     const selectedPreviewCapabilities =
       options.preview?.runtimeCapabilities ?? runtimeCapabilities;
     const previewHandler =

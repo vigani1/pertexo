@@ -59,10 +59,6 @@ export type CoordinatorRuntimeOptions = Readonly<{
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
-  runTimeoutFailureContextEnabled?: boolean;
-  workspaceInboxProducerEnabled?: boolean;
-  /** ADR 056: record schedule and webhook run outcomes for failure streaks. */
-  workflowTriggerOutcomesEnabled?: boolean;
   observer?: QueueConsumerObserver;
   redisUrl: string;
 }>;
@@ -182,14 +178,7 @@ export async function createCoordinatorRuntime(
   try {
     runStore =
       dependencies.runStore ??
-      factories.runStore(options.database, options.databaseRuntime, {
-        runTimeoutFailureContextEnabled:
-          options.runTimeoutFailureContextEnabled ?? false,
-        workspaceInboxProducerEnabled:
-          options.workspaceInboxProducerEnabled ?? false,
-        workflowTriggerOutcomesEnabled:
-          options.workflowTriggerOutcomesEnabled ?? false,
-      });
+      factories.runStore(options.database, options.databaseRuntime);
     notifications =
       dependencies.notifications ?? factories.notifications(options.redisUrl);
     dueWakeupScanner =

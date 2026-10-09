@@ -2,6 +2,12 @@
 
 - **Status:** accepted for the F30 first slice
 - **Date:** 2026-10-01
+- **Amended:** 2026-10-09 under ADR 069
+
+> **Amendment note (2026-10-09, ADR 069).** Every feature switch is on: run
+> health always applies, so the off/observe/enforce mode under *Rollout and
+> trade-offs* is gone, and an observation no longer records the mode it was
+> produced under (migration 0021).
 
 Run-derived connection health is evidence about a particular credential, not
 another interpretation of a node's failure. We will persist a small observation

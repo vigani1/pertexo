@@ -230,10 +230,10 @@ async function pauseAudits(workspaceId: string) {
   );
 }
 
-async function drain(enforce = true) {
+async function drain() {
   const decisions = [];
   for (let round = 0; round < 50; round += 1) {
-    const batch = await fold.foldPending(1_000, enforce);
+    const batch = await fold.foldPending(1_000);
     decisions.push(...batch);
     if (
       (await asAdmin('select 1 from app.workflow_trigger_outcomes limit 1'))
@@ -276,7 +276,7 @@ describe('workflow trigger pause (ADR 056)', () => {
     const runs = await endMany(workspaceId, workflowId, 'failed', 12);
     const decisions = await drain();
     expect(decisions).toEqual([
-      { workspaceId, workflowId, consecutiveFailures: 10, paused: true },
+      { workspaceId, workflowId, consecutiveFailures: 10 },
     ]);
     expect(await pauseState(workspaceId, workflowId)).toEqual({
       state: 'paused',
@@ -320,25 +320,13 @@ describe('workflow trigger pause (ADR 056)', () => {
     const { workspaceId, workflowId } = await seed();
     await endMany(workspaceId, workflowId, 'failed', 40);
     const rounds = await Promise.all(
-      Array.from({ length: 4 }, () => fold.foldPending(7, true)),
+      Array.from({ length: 4 }, () => fold.foldPending(7)),
     );
     await drain();
-    expect(
-      rounds.flat().filter(({ paused }) => paused).length,
-    ).toBeLessThanOrEqual(1);
+    expect(rounds.flat().length).toBeLessThanOrEqual(1);
     expect(await pauseAudits(workspaceId)).toHaveLength(1);
     expect(await streak(workspaceId, workflowId)).toBe(40);
     expect(await pending(workspaceId)).toBe(0);
-  });
-
-  it('only reports a would-be pause while observing', async () => {
-    const { workspaceId, workflowId } = await seed();
-    await endMany(workspaceId, workflowId, 'failed', 10);
-    expect(await drain(false)).toEqual([
-      { workspaceId, workflowId, consecutiveFailures: 10, paused: false },
-    ]);
-    expect((await pauseState(workspaceId, workflowId))?.state).toBe('none');
-    expect(await pauseAudits(workspaceId)).toEqual([]);
   });
 
   it('honours the workflow override, the workspace default and opting out', async () => {

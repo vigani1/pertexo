@@ -2,7 +2,7 @@ import type { Provider } from '@nestjs/common';
 import type { FailureNotificationStore } from '@pertexo/database/notifications';
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
 import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
-import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
+import type { QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../config/worker.js';
 import {
@@ -33,14 +33,18 @@ const productionFactories: MaintenanceProviderFactories = {
   runtime: createMaintenanceRuntime,
 };
 
-type MaintenanceJobSelection = Readonly<{
-  connectionHealth: boolean;
-  notification: boolean;
-  reconciliation: boolean;
-  replay: boolean;
-  unknownOutcome: boolean;
-  workspaceInvitation: boolean;
-}>;
+/** Which deliveries this worker can make: each needs its own configuration. */
+export function maintenanceDeliveries(
+  config: WorkerConfig,
+  dependencies: TransportModuleDependencies,
+): Readonly<{ notification: boolean; invitation: boolean }> {
+  return {
+    notification:
+      dependencies.failureNotificationDelivery !== undefined ||
+      config.connectionEncryption !== undefined,
+    invitation: config.invitationDelivery !== undefined,
+  };
+}
 
 export function maintenanceRuntimeProvider(
   config: WorkerConfig,
@@ -51,7 +55,7 @@ export function maintenanceRuntimeProvider(
     inject: [QUEUE_CONSUMER_OBSERVER],
     useFactory: (
       observer: QueueConsumerObserver,
-    ): Promise<MaintenanceRuntime | undefined> =>
+    ): Promise<MaintenanceRuntime> =>
       createOwnedMaintenanceRuntime(config, dependencies, observer),
   };
 }
@@ -61,20 +65,9 @@ export async function createOwnedMaintenanceRuntime(
   dependencies: TransportModuleDependencies,
   observer: QueueConsumerObserver,
   factories: MaintenanceProviderFactories = productionFactories,
-): Promise<MaintenanceRuntime | undefined> {
+): Promise<MaintenanceRuntime> {
   if (dependencies.maintenanceRuntime !== undefined)
     return dependencies.maintenanceRuntime;
-  if (dependencies.dispatchConsumerCapabilities !== undefined) return undefined;
-  const jobs = selectMaintenanceJobs(config.outboxDispatcher.enabledJobNames);
-  if (!hasMaintenanceJobs(jobs)) return undefined;
-  if (
-    jobs.notification &&
-    dependencies.failureNotificationDelivery === undefined &&
-    config.connectionEncryption === undefined
-  )
-    throw new TypeError(
-      'Failure notification dispatch requires connection encryption',
-    );
 
   let notificationStore: FailureNotificationStore | undefined;
   let invitationStore: WorkspaceInvitationDeliveryStore | undefined;
@@ -82,16 +75,15 @@ export async function createOwnedMaintenanceRuntime(
   const deliveryFactories = factories.notificationDelivery;
   try {
     let failureNotificationDelivery = dependencies.failureNotificationDelivery;
-    if (jobs.notification && failureNotificationDelivery === undefined) {
+    const encryptionConfig = config.connectionEncryption;
+    if (
+      failureNotificationDelivery === undefined &&
+      encryptionConfig !== undefined
+    ) {
       notificationStore = deliveryFactories.store(
         config.database,
         dependencies.databaseRuntime,
       );
-      const encryptionConfig = config.connectionEncryption;
-      if (encryptionConfig === undefined)
-        throw new TypeError(
-          'Failure notification dispatch requires connection encryption',
-        );
       encryptionRuntime = deliveryFactories.encryption(encryptionConfig);
       const httpClient = deliveryFactories.httpClient();
       failureNotificationDelivery = deliveryFactories.create({
@@ -102,17 +94,9 @@ export async function createOwnedMaintenanceRuntime(
         workerId: config.nodeAttempt.workerId,
       });
     }
-    if (jobs.notification && failureNotificationDelivery === undefined)
-      throw new TypeError(
-        'Failure notification dispatch composition is incomplete',
-      );
     let workspaceInvitationDelivery;
-    if (jobs.workspaceInvitation) {
-      const invitationConfig = config.invitationDelivery;
-      if (invitationConfig === undefined)
-        throw new TypeError(
-          'Workspace invitation dispatch requires system email configuration',
-        );
+    const invitationConfig = config.invitationDelivery;
+    if (invitationConfig !== undefined) {
       const invitationFactories = factories.invitationDelivery;
       invitationStore = invitationFactories.store(
         config.database,
@@ -131,17 +115,12 @@ export async function createOwnedMaintenanceRuntime(
       });
     }
     const runtime = await factories.runtime({
-      connectionHealthApplication: jobs.connectionHealth,
-      connectionRunHealthMode: config.connectionRunHealthMode,
       database: config.database,
       ...(dependencies.databaseRuntime === undefined
         ? {}
         : { databaseRuntime: dependencies.databaseRuntime }),
       observer,
-      previewReconciliation: jobs.reconciliation,
       redisUrl: config.redisUrl,
-      unknownOutcomeReconciliation: jobs.unknownOutcome,
-      runReplay: jobs.replay,
       ...(failureNotificationDelivery === undefined
         ? {}
         : { failureNotificationDelivery }),
@@ -170,30 +149,4 @@ export async function createOwnedMaintenanceRuntime(
       );
     throw error;
   }
-}
-
-function selectMaintenanceJobs(
-  jobNames: readonly string[],
-): MaintenanceJobSelection {
-  return {
-    connectionHealth: jobNames.includes(
-      JOB_NAME.applyConnectionHealthObservation,
-    ),
-    reconciliation: jobNames.includes(JOB_NAME.reconcilePreviewAttempt),
-    notification: jobNames.includes(JOB_NAME.deliverRunFailureNotification),
-    unknownOutcome: jobNames.includes(JOB_NAME.reconcileUnknownOutcome),
-    replay: jobNames.includes(JOB_NAME.replayWorkflowRun),
-    workspaceInvitation: jobNames.includes(JOB_NAME.deliverWorkspaceInvitation),
-  };
-}
-
-function hasMaintenanceJobs(jobs: MaintenanceJobSelection): boolean {
-  return (
-    jobs.connectionHealth ||
-    jobs.reconciliation ||
-    jobs.notification ||
-    jobs.unknownOutcome ||
-    jobs.replay ||
-    jobs.workspaceInvitation
-  );
 }

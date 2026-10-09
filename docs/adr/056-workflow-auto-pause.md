@@ -2,6 +2,12 @@
 
 - **Status:** accepted
 - **Date:** 2026-09-30
+- **Amended:** 2026-10-09 under ADR 069
+
+> **Amendment note (2026-10-09, ADR 069).** Every feature switch is on: the
+> worker always records trigger outcomes and pauses workflows that reach their
+> threshold. The `WORKFLOW_AUTO_PAUSE` off/observe/enforce rollout under
+> *Rollout* is gone; people still opt a workflow out or change its threshold.
 - **Related:** ADR 014 and ADR 048 (schedules and their occurrences), ADR 026
   and ADR 045 (webhook ingress and its delivery log), ADR 033 and ADR 034
   (activation and lifecycle), ADR 055 (terminal failures folded per workflow),

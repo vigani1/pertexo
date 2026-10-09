@@ -623,15 +623,14 @@ describeIntegration('Failure notification transport resilience', () => {
         },
       );
       let drainState = new WorkerDrainState();
-      dispatcher = await createFailureNotificationDispatcher(
-        runtime.consumer,
-        drainState,
-      );
+      dispatcher = await createFailureNotificationDispatcher(drainState);
       await stopService('redis');
       await expect(dispatcher.checkReadiness()).rejects.toThrow();
-      await expect(dispatcher.dispatchOnce()).rejects.toThrow(
-        /No ready composed consumer/u,
-      );
+      // Without Redis the claimed event cannot publish; its lease is released
+      // for a later attempt.
+      await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+        published: 0,
+      });
       await expect(
         workerQuery<{ status: string }>(
           `select status from app.run_failure_notification_intents
@@ -676,10 +675,7 @@ describeIntegration('Failure notification transport resilience', () => {
         },
       );
       drainState = new WorkerDrainState();
-      dispatcher = await createFailureNotificationDispatcher(
-        runtime.consumer,
-        drainState,
-      );
+      dispatcher = await createFailureNotificationDispatcher(drainState);
       producer = createQueueProducer({ redisUrl });
       const activeProducer = producer;
       queue = new Queue(QUEUE_NAME.maintenance, {

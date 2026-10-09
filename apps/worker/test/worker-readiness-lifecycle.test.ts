@@ -30,6 +30,10 @@ function marker(): WorkerReadinessMarker & {
   return state;
 }
 
+function idleRuntime() {
+  return { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never;
+}
+
 describe('worker readiness lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -347,10 +351,10 @@ describe('worker readiness lifecycle', () => {
       { checkReadiness: () => deferred.promise } as never,
       { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never,
       drain,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
+      idleRuntime(),
+      idleRuntime(),
+      idleRuntime(),
+      idleRuntime(),
     );
     const checking = readiness.checkReadiness();
 
@@ -388,10 +392,10 @@ describe('worker readiness lifecycle', () => {
       { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never,
       { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never,
       new WorkerDrainState(),
-      undefined,
-      undefined,
-      undefined,
-      undefined,
+      idleRuntime(),
+      idleRuntime(),
+      idleRuntime(),
+      idleRuntime(),
       mail as never,
     );
     await expect(readiness.checkReadiness()).rejects.toThrow(

@@ -11,13 +11,6 @@ import {
 
 type CompletionInput = z.output<typeof completionSchema>;
 
-function expectedObservation(input: CompletionInput) {
-  const mode = input.connectionRunHealthMode ?? 'off';
-  return mode === 'off' || input.connectionHealthObservation === undefined
-    ? undefined
-    : { mode, ...input.connectionHealthObservation };
-}
-
 /** Completion replay compares evidence; absence is a meaningful identity too. */
 export async function assertConnectionHealthReplay(
   client: PoolClient,
@@ -26,19 +19,17 @@ export async function assertConnectionHealthReplay(
   const result = await client.query<{
     kind: string;
     reason_code: string | null;
-    production_mode: string;
   }>(
-    'select kind,reason_code,production_mode from app.connection_health_observations where workspace_id=$1 and attempt_id=$2',
+    'select kind,reason_code from app.connection_health_observations where workspace_id=$1 and attempt_id=$2',
     [input.lease.workspaceId, input.lease.attemptId],
   );
   const actual = result.rows[0];
-  const expected = expectedObservation(input);
+  const expected = input.connectionHealthObservation;
   if (actual === undefined && expected === undefined) return;
   if (actual === undefined || expected === undefined)
     throw new NodeAttemptStateCorruptError();
   if (
     actual.kind !== expected.kind ||
-    actual.production_mode !== expected.mode ||
     actual.reason_code !==
       (expected.kind === 'healthy' ? null : expected.reasonCode)
   )
@@ -50,26 +41,24 @@ export async function persistConnectionHealthObservation(
   client: PoolClient,
   input: CompletionInput,
 ): Promise<void> {
-  const observation = expectedObservation(input);
+  const observation = input.connectionHealthObservation;
   if (observation === undefined) return;
   const observationId = generatePersistedId();
   const outboxEventId = generatePersistedId();
   // Only an attempt that dispatched with a recorded connection can report on it.
   const recorded = await client.query(
     `insert into app.connection_health_observations
-       (id, workspace_id, attempt_id, kind, reason_code, production_mode,
-        outbox_event_id)
-     select $1, $2, $3, $4, $5, $6, $7
+       (id, workspace_id, attempt_id, kind, reason_code, outbox_event_id)
+     select $1, $2, $3, $4, $5, $6
      where exists (select 1 from app.node_attempt_connection_dispatches dispatch
        where dispatch.workspace_id=$2 and dispatch.attempt_id=$3
-         and dispatch.worker_id=$8 and dispatch.fence_token=$9)`,
+         and dispatch.worker_id=$7 and dispatch.fence_token=$8)`,
     [
       observationId,
       input.lease.workspaceId,
       input.lease.attemptId,
       observation.kind,
       observation.kind === 'healthy' ? null : observation.reasonCode,
-      observation.mode,
       outboxEventId,
       input.lease.workerId,
       input.lease.fenceToken,

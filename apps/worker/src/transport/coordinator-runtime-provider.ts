@@ -1,5 +1,5 @@
 import type { Provider } from '@nestjs/common';
-import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
+import type { QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../config/worker.js';
 import {
@@ -21,16 +21,9 @@ export function coordinatorRuntimeProvider(
     inject: [QUEUE_CONSUMER_OBSERVER],
     useFactory: async (
       observer: QueueConsumerObserver,
-    ): Promise<CoordinatorRuntime | undefined> => {
+    ): Promise<CoordinatorRuntime> => {
       if (dependencies.coordinatorRuntime !== undefined)
         return dependencies.coordinatorRuntime;
-      if (
-        dependencies.dispatchConsumerCapabilities !== undefined ||
-        !config.outboxDispatcher.enabledJobNames.includes(
-          JOB_NAME.advanceWorkflowRun,
-        )
-      )
-        return undefined;
       return createCoordinatorRuntime(
         {
           database: config.database,
@@ -41,12 +34,6 @@ export function coordinatorRuntimeProvider(
           dueWakeupPollIntervalMillis:
             config.coordinator.dueWakeupPollIntervalMillis,
           maximumAdmissions: config.coordinator.maximumAdmissions,
-          runTimeoutFailureContextEnabled:
-            config.coordinator.runTimeoutFailureContextEnabled,
-          workspaceInboxProducerEnabled:
-            config.coordinator.workspaceInboxProducerEnabled,
-          workflowTriggerOutcomesEnabled:
-            config.coordinator.workflowTriggerOutcomesEnabled,
           observer,
           redisUrl: config.redisUrl,
         },

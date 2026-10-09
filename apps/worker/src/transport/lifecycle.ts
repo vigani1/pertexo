@@ -22,13 +22,13 @@ export class OutboxDispatcherLifecycle {
     @Inject(OUTBOX_DISPATCHER)
     private readonly dispatcher: OutboxDispatcher,
     @Inject(COORDINATOR_RUNTIME)
-    private readonly coordinatorRuntime: CoordinatorRuntime | undefined,
+    private readonly coordinatorRuntime: CoordinatorRuntime,
     @Inject(NODE_ATTEMPT_RUNTIME)
-    private readonly nodeAttemptRuntime: NodeAttemptRuntime | undefined,
+    private readonly nodeAttemptRuntime: NodeAttemptRuntime,
     @Inject(MAINTENANCE_RUNTIME)
-    private readonly maintenanceRuntime: MaintenanceRuntime | undefined,
+    private readonly maintenanceRuntime: MaintenanceRuntime,
     @Inject(TRIGGER_RUNTIME)
-    private readonly triggerRuntime: TriggerRuntime | undefined,
+    private readonly triggerRuntime: TriggerRuntime,
     private readonly drainState: WorkerDrainState,
   ) {}
 
@@ -46,20 +46,14 @@ export class OutboxDispatcherLifecycle {
     const dispatcherResult = await Promise.allSettled([
       Promise.resolve().then(() => this.dispatcher.close()),
     ]);
-    const runtimeResults = await Promise.allSettled([
-      ...(this.coordinatorRuntime === undefined
-        ? []
-        : [Promise.resolve().then(() => this.coordinatorRuntime?.close())]),
-      ...(this.nodeAttemptRuntime === undefined
-        ? []
-        : [Promise.resolve().then(() => this.nodeAttemptRuntime?.close())]),
-      ...(this.maintenanceRuntime === undefined
-        ? []
-        : [Promise.resolve().then(() => this.maintenanceRuntime?.close())]),
-      ...(this.triggerRuntime === undefined
-        ? []
-        : [Promise.resolve().then(() => this.triggerRuntime?.close())]),
-    ]);
+    const runtimeResults = await Promise.allSettled(
+      [
+        this.coordinatorRuntime,
+        this.nodeAttemptRuntime,
+        this.maintenanceRuntime,
+        this.triggerRuntime,
+      ].map((runtime) => Promise.resolve().then(() => runtime.close())),
+    );
     const failures = [...dispatcherResult, ...runtimeResults].flatMap(
       (result) =>
         result.status === 'rejected' ? [result.reason as unknown] : [],

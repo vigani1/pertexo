@@ -1,7 +1,7 @@
 import type { Provider } from '@nestjs/common';
 import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
-import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
+import type { QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../config/worker.js';
 import {
@@ -15,11 +15,6 @@ import {
   type TransportModuleDependencies,
 } from './tokens.js';
 
-export type NodeAttemptActivation = Readonly<{
-  preview: boolean;
-  production: boolean;
-}>;
-
 type NodeAttemptRuntimeProviderFactories = Readonly<{
   createPreviewInvoker: typeof createPlatformPreviewNodeInvoker;
   createPreviewRunStore: typeof createDatabasePreviewAttemptRunStore;
@@ -31,15 +26,6 @@ const defaultFactories: NodeAttemptRuntimeProviderFactories = {
   createPreviewRunStore: createDatabasePreviewAttemptRunStore,
   createRuntime: createNodeAttemptRuntime,
 };
-
-export function nodeAttemptActivation(
-  enabledJobNames: readonly string[],
-): NodeAttemptActivation {
-  return Object.freeze({
-    production: enabledJobNames.includes(JOB_NAME.executeNodeAttempt),
-    preview: enabledJobNames.includes(JOB_NAME.executePreviewAttempt),
-  });
-}
 
 async function closePreviewStoreAfterFailure(
   store: ReturnType<typeof createDatabasePreviewAttemptRunStore>,
@@ -66,24 +52,9 @@ export function nodeAttemptRuntimeProvider(
     inject: [QUEUE_CONSUMER_OBSERVER],
     useFactory: async (
       observer: QueueConsumerObserver,
-    ): Promise<NodeAttemptRuntime | undefined> => {
+    ): Promise<NodeAttemptRuntime> => {
       if (dependencies.nodeAttemptRuntime !== undefined)
         return dependencies.nodeAttemptRuntime;
-      if (dependencies.dispatchConsumerCapabilities !== undefined)
-        return undefined;
-      const activation = nodeAttemptActivation(
-        config.outboxDispatcher.enabledJobNames,
-      );
-      if (!activation.production && !activation.preview) return undefined;
-      if (!activation.preview)
-        return composeNodeAttemptRuntime(
-          config,
-          observer,
-          dependencies.databaseRuntime,
-          undefined,
-          factories,
-        );
-
       const previewRunStore = factories.createPreviewRunStore(
         config.database,
         dependencies.databaseRuntime,
@@ -113,19 +84,14 @@ async function composeNodeAttemptRuntime(
   config: WorkerConfig,
   observer: QueueConsumerObserver,
   databaseRuntime: TransportModuleDependencies['databaseRuntime'],
-  preview:
-    | Readonly<{
-        invoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
-        runStore: ReturnType<typeof createDatabasePreviewAttemptRunStore>;
-      }>
-    | undefined,
+  preview: Readonly<{
+    invoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
+    runStore: ReturnType<typeof createDatabasePreviewAttemptRunStore>;
+  }>,
   factories: NodeAttemptRuntimeProviderFactories,
-): Promise<NodeAttemptRuntime | undefined> {
+): Promise<NodeAttemptRuntime> {
   return factories.createRuntime({
-    connectionRunHealthMode: config.connectionRunHealthMode,
-    ...(config.artifactStore === undefined
-      ? {}
-      : { artifactStore: config.artifactStore }),
+    artifactStore: config.artifactStore,
     ...(config.connectionEncryption === undefined
       ? {}
       : { connectionEncryption: config.connectionEncryption }),
@@ -134,17 +100,7 @@ async function composeNodeAttemptRuntime(
     heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
     leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
     observer,
-    productionEnabled: nodeAttemptActivation(
-      config.outboxDispatcher.enabledJobNames,
-    ).production,
-    ...(preview === undefined
-      ? {}
-      : {
-          preview: {
-            invoker: preview.invoker,
-            runStore: preview.runStore,
-          },
-        }),
+    preview: { invoker: preview.invoker, runStore: preview.runStore },
     redisUrl: config.redisUrl,
     workerId: config.nodeAttempt.workerId,
   });

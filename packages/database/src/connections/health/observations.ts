@@ -25,7 +25,6 @@ const inputSchema = z
   .object({
     workspaceId: z.uuid(),
     observationId: z.uuid(),
-    mode: z.enum(['off', 'observe', 'enforce']),
     delivery: z
       .object({ outboxEventId: z.uuid(), payloadChecksum: sha256HexSchema })
       .strict(),
@@ -40,8 +39,8 @@ export type ConnectionHealthApplicationResult = Readonly<{
 type Transaction = Parameters<Parameters<typeof consumeInboxMessage>[3]>[0];
 
 /**
- * Applies one run's observation once. Only an enforced observation about the
- * exact connection secret and health revision the attempt dispatched with,
+ * Applies one run's observation once. Only an observation about the exact
+ * connection secret and health revision the attempt dispatched with,
  * after the attempt ended, changes the connection: a healthy one refreshes
  * it, any other marks it as needing reauthorization.
  */
@@ -54,12 +53,11 @@ async function applyObservation(
     attempt_id: string;
     kind: string;
     reason_code: string | null;
-    production_mode: string;
     observed_at: Date;
     outbox_event_id: string;
     applied: boolean;
   }>(sql`
-    select attempt_id, kind, reason_code, production_mode, observed_at,
+    select attempt_id, kind, reason_code, observed_at,
            outbox_event_id, applied_at is not null applied
     from app.connection_health_observations
     where workspace_id=${workspaceId} and id=${input.observationId}
@@ -81,8 +79,6 @@ async function applyObservation(
   await transaction.db.execute(sql`
     update app.connection_health_observations set applied_at=clock_timestamp()
     where workspace_id=${workspaceId} and id=${input.observationId}`);
-  if (input.mode !== 'enforce' || observation.production_mode !== 'enforce')
-    return false;
   const connections = await transaction.db.execute<{
     status: string;
     current_secret_version_id: string;

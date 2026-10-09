@@ -4,13 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../src/config/worker.js';
 import { bootstrapWorker, type WorkerBootstrapModules } from '../src/main.js';
+import { workerEnvironment } from './support/worker-environment.js';
 
 const config = parseWorkerConfig({
-  DATABASE_MAINTENANCE_URL:
-    'postgresql://dispatcher:secret@localhost:5432/pertexo',
-  DATABASE_URL: 'postgresql://worker:secret@localhost:5432/pertexo',
+  ...workerEnvironment,
   NODE_ENV: 'test',
-  REDIS_URL: 'redis://:secret@localhost:6379/0',
 });
 
 function createFixture() {

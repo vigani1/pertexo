@@ -5,7 +5,6 @@ import type { WorkerConfig } from '../config/worker.js';
 import { WorkerDrainState } from '../runtime/drain-state.js';
 import { coordinatorRuntimeProvider } from './coordinator-runtime-provider.js';
 import {
-  dispatchCapabilitiesProvider,
   dispatcherProvider,
   queueObserverProvider,
   transportMetricsProvider,
@@ -50,7 +49,6 @@ export class TransportModule {
       nodeAttemptRuntimeProvider(config, dependencies),
       maintenanceRuntimeProvider(config, dependencies),
       triggerRuntimeProvider(config, dependencies),
-      dispatchCapabilitiesProvider(config, dependencies),
       provider,
       OutboxDispatcherLifecycle,
     ];

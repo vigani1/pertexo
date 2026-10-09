@@ -10,21 +10,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { parseWorkerConfig } from '../src/config/worker.js';
 import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import {
+  consumedJobNames,
   createOwnedOutboxDispatcher,
   type DispatcherCompositionFactories,
 } from '../src/transport/dispatch-providers.js';
-import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { OutboxDispatcherLifecycle } from '../src/transport/lifecycle.js';
+import { workerEnvironment } from './support/worker-environment.js';
 
 function config() {
-  return parseWorkerConfig({
-    DATABASE_MAINTENANCE_URL:
-      'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
-    DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-    REDIS_URL: 'redis://localhost:6379/0',
-    OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.advanceWorkflowRun,
-  });
+  return parseWorkerConfig(workerEnvironment);
 }
 
 function database(close: () => Promise<void> | void): OutboxDispatcherDatabase {
@@ -70,9 +65,30 @@ const consumer: QueueConsumer = {
   waitUntilReady: () => Promise.resolve(),
 };
 
-const capabilities = createDispatchConsumerCapabilityRegistry([
-  { jobName: JOB_NAME.advanceWorkflowRun, consumer },
-]);
+describe('consumed job kinds', () => {
+  it('consumes every job kind whose delivery is configured', () => {
+    const deliveries = [
+      JOB_NAME.deliverRunFailureNotification,
+      JOB_NAME.deliverWorkspaceInvitation,
+    ] as const;
+    expect(consumedJobNames(config(), {})).toEqual(
+      Object.values(JOB_NAME).filter(
+        (jobName) => !(deliveries as readonly string[]).includes(jobName),
+      ),
+    );
+    const configured = parseWorkerConfig({
+      ...workerEnvironment,
+      CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
+      CONNECTION_KMS_REGION: 'eu-central-1',
+      INVITATION_EMAIL_API_KEY: 're_test',
+      INVITATION_EMAIL_FROM: 'invites@example.test',
+      INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+      INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
+      PUBLIC_WEB_ORIGIN: 'https://app.example.test',
+    });
+    expect(consumedJobNames(configured, {})).toEqual(Object.values(JOB_NAME));
+  });
+});
 
 describe('transport composition ownership', () => {
   it('does not acquire later dispatcher resources when database construction fails', async () => {
@@ -93,7 +109,6 @@ describe('transport composition ownership', () => {
         {},
         new WorkerDrainState(),
         metrics,
-        capabilities,
         factories,
       ),
     ).rejects.toBe(constructionFailure);
@@ -118,7 +133,6 @@ describe('transport composition ownership', () => {
         {},
         new WorkerDrainState(),
         metrics,
-        capabilities,
         factories,
       ),
     ).rejects.toBe(constructionFailure);
@@ -146,7 +160,6 @@ describe('transport composition ownership', () => {
       {},
       new WorkerDrainState(),
       metrics,
-      capabilities,
       factories,
     ).catch((error: unknown) => error);
 
@@ -174,7 +187,6 @@ describe('transport composition ownership', () => {
         drain,
         options,
         selectedMetrics,
-        selectedCapabilities,
       ) =>
         new OutboxDispatcher(
           selectedDb,
@@ -182,7 +194,6 @@ describe('transport composition ownership', () => {
           drain,
           options,
           selectedMetrics,
-          selectedCapabilities,
         ),
     } as DispatcherCompositionFactories;
     const dispatcher = await createOwnedOutboxDispatcher(
@@ -190,7 +201,6 @@ describe('transport composition ownership', () => {
       {},
       new WorkerDrainState(),
       metrics,
-      capabilities,
       factories,
     );
 

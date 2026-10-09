@@ -5,7 +5,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
-import { saveRunTransition, type RunAdvanceSettings } from './commit.js';
+import { saveRunTransition } from './commit.js';
 import {
   coordinatorDeliverySchema,
   coordinatorIdentitySchema,
@@ -29,21 +29,10 @@ import {
   withCoordinatorWriteClient,
 } from './transactions.js';
 
-export type RunAdvanceStoreOptions = Readonly<{
-  runTimeoutFailureContextEnabled?: boolean;
-  /** ADR 055: record terminal failures for the workspace inbox. */
-  workspaceInboxProducerEnabled?: boolean;
-  /** ADR 056: record schedule and webhook run outcomes for failure streaks. */
-  workflowTriggerOutcomesEnabled?: boolean;
-}>;
-
 async function advance(
   pool: Pool,
   input: RunAdvanceInput,
   decide: (state: RunAdvanceState) => Promise<RunAdvanceDecision>,
-  context: Readonly<{
-    settings: RunAdvanceSettings;
-  }>,
 ): Promise<RunAdvanceResult> {
   assertCoordinatorNotAborted(input.signal);
   const workspaceId = coordinatorIdentitySchema.parse(input.workspaceId);
@@ -89,7 +78,6 @@ async function advance(
           previous: decision.previous,
           row: loaded.row,
           runId,
-          settings: context.settings,
           ...(traceparent === undefined ? {} : { traceparent }),
           workspaceId,
         });
@@ -122,21 +110,10 @@ async function advance(
 export function createRunAdvanceStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-  options: RunAdvanceStoreOptions = {},
 ): RunAdvanceStore {
-  const context = Object.freeze({
-    settings: Object.freeze({
-      runTimeoutFailureContextEnabled:
-        options.runTimeoutFailureContextEnabled ?? false,
-      workspaceInboxProducerEnabled:
-        options.workspaceInboxProducerEnabled ?? false,
-      workflowTriggerOutcomesEnabled:
-        options.workflowTriggerOutcomesEnabled ?? false,
-    }),
-  });
   const lease = acquireDatabasePool(config, runtime);
   const store: RunAdvanceStore = {
-    advance: (input, decide) => advance(lease.pool, input, decide, context),
+    advance: (input, decide) => advance(lease.pool, input, decide),
     close: () => lease.close(),
   };
   return Object.freeze(store);

@@ -24,17 +24,14 @@ const invitationDeliveryVariableNames = [
 ] as const;
 
 /**
- * Parses workspace-invitation delivery configuration. It is required when the
- * worker dispatches invitation delivery and otherwise parsed only when one of
- * its own variables is present.
+ * Parses workspace-invitation delivery configuration when any of its own
+ * variables is present; without them the worker does not deliver invitations.
  */
 export function parseInvitationDeliveryConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  enabled: boolean,
   deployed: boolean,
 ): InvitationDeliveryConfig | undefined {
   if (
-    !enabled &&
     invitationDeliveryVariableNames.every(
       (name) => environment[name] === undefined,
     )

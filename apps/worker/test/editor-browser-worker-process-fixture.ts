@@ -21,7 +21,6 @@ import {
 } from '../src/triggers/runtime.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createTransportMetrics } from '@pertexo/observability';
-import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
 import { EditorBrowserWorkerShutdownError } from './support/editor-browser-worker-cleanup.js';
 import {
@@ -439,7 +438,7 @@ async function constructRuntimes(
     coordinator.consumer.waitUntilReady(5_000),
     coordinator.checkReadiness(),
     attempts.consumer.waitUntilReady(5_000),
-    attempts.checkReadiness?.(),
+    attempts.checkReadiness(),
     ...triggers.flatMap((trigger) => [
       trigger.consumer.waitUntilReady(5_000),
       trigger.checkReadiness(),
@@ -457,7 +456,7 @@ async function constructRuntimes(
     producer,
     resources.drain,
     {
-      enabledJobNames: [
+      jobNames: [
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.executeNodeAttempt,
         ...(triggers.length === 0 ? [] : [JOB_NAME.reconcileWorkflowTriggers]),
@@ -471,18 +470,6 @@ async function constructRuntimes(
       retryDelayMillis: 100,
     },
     createTransportMetrics(),
-    createDispatchConsumerCapabilityRegistry([
-      { jobName: JOB_NAME.advanceWorkflowRun, consumer: coordinator.consumer },
-      { jobName: JOB_NAME.executeNodeAttempt, consumer: attempts.consumer },
-      ...(triggers[0] === undefined
-        ? []
-        : [
-            {
-              jobName: JOB_NAME.reconcileWorkflowTriggers,
-              consumer: triggers[0].consumer,
-            },
-          ]),
-    ]),
   );
   resources.dispatcher = dispatcher;
   dispatcher.start();

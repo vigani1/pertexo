@@ -7,15 +7,12 @@ const reasons = new Set([
 ]);
 
 /** No I/O and no exceptions: provider outcome handling is independent. */
-export function createConnectionHealthCapture(
-  enabled: boolean,
-  wasDispatched: () => boolean,
-) {
+export function createConnectionHealthCapture(wasDispatched: () => boolean) {
   let observation: NodeConnectionHealthObservation | undefined;
   let conflicting = false;
   return Object.freeze({
     observe: (value: NodeConnectionHealthObservation): void => {
-      if (!enabled || !wasDispatched() || conflicting) return;
+      if (!wasDispatched() || conflicting) return;
       try {
         const keys = Object.keys(value);
         let next: NodeConnectionHealthObservation;

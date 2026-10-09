@@ -17,9 +17,8 @@ const RETENTION_POLL_MILLIS = 1_000;
 export function configuredRetentionRuntime(
   config: WorkerConfig,
   logger: StructuredLogger,
-): RetentionRuntime | undefined {
+): RetentionRuntime {
   const { artifactStore, retention } = config;
-  if (retention === undefined || artifactStore === undefined) return undefined;
   const databaseRuntime = createDatabaseRuntime(retention.maintenanceDatabase, {
     role: 'maintenance',
   });

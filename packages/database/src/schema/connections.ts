@@ -195,7 +195,6 @@ export const connectionHealthObservations = appSchema.table(
     attemptId: uuid('attempt_id').notNull(),
     kind: varchar({ length: 32 }).notNull(),
     reasonCode: varchar('reason_code', { length: 128 }),
-    productionMode: varchar('production_mode', { length: 16 }).notNull(),
     outboxEventId: uuid('outbox_event_id').notNull(),
     observedAt: timestamp('observed_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
@@ -203,10 +202,6 @@ export const connectionHealthObservations = appSchema.table(
     appliedAt: timestamp('applied_at', { withTimezone: true, mode: 'string' }),
   },
   (table) => [
-    check(
-      'connection_health_observations_production_mode_check',
-      sql`(production_mode)::text = ANY (ARRAY[('observe'::character varying)::text, ('enforce'::character varying)::text])`,
-    ),
     check(
       'connection_health_observations_signal_valid',
       sql`(((kind)::text = 'healthy'::text) AND (reason_code IS NULL)) OR (((kind)::text = 'reauthorization_required'::text) AND (reason_code IS NOT NULL) AND ((reason_code)::text = ANY (ARRAY[('connection.slack_account_inactive'::character varying)::text, ('connection.slack_token_expired'::character varying)::text, ('connection.slack_token_revoked'::character varying)::text])))`,

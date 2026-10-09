@@ -56,7 +56,6 @@ describeIntegration('preview delivery transport', () => {
         },
         runStore: previewStore,
       },
-      productionEnabled: false,
       redisUrl,
       workerId: `preview-transport-${randomUUID().slice(0, 8)}`,
     });

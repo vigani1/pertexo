@@ -29,7 +29,6 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { WorkerDrainState } from '../src/runtime/drain-state.js';
-import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createDockerComposeServiceController } from './support/compose-service-control.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
@@ -442,34 +441,18 @@ function createDispatcher(
     readyTimeoutMs: 500,
     redisUrl,
   });
-  const consumerCapabilities = createDispatchConsumerCapabilityRegistry([
-    {
-      consumer: {
-        isReady: () => true,
-        waitUntilReady: () => Promise.resolve(),
-      },
-      jobName: JOB_NAME.deliverRunFailureNotification,
-    },
-  ]);
   return {
     database,
-    dispatcher: new OutboxDispatcher(
-      database,
-      producer,
-      drainState,
-      {
-        batchSize: 100,
-        enabledJobNames: [JOB_NAME.deliverRunFailureNotification],
-        leaseDurationMillis: 1_000,
-        leaseOwner,
-        maxAttempts: 5,
-        operationTimeoutMillis: 1_000,
-        pollIntervalMillis: 25,
-        retryDelayMillis: 100,
-      },
-      undefined,
-      consumerCapabilities,
-    ),
+    dispatcher: new OutboxDispatcher(database, producer, drainState, {
+      batchSize: 100,
+      jobNames: [JOB_NAME.deliverRunFailureNotification],
+      leaseDurationMillis: 1_000,
+      leaseOwner,
+      maxAttempts: 5,
+      operationTimeoutMillis: 1_000,
+      pollIntervalMillis: 25,
+      retryDelayMillis: 100,
+    }),
     producer,
   };
 }

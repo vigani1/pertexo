@@ -4,11 +4,7 @@ import type {
   WorkspaceTransaction,
   WorkspaceTransactionOptions,
 } from '@pertexo/database/testing';
-import {
-  JOB_NAME,
-  type QueueConsumer,
-  type QueueProducer,
-} from '@pertexo/queue';
+import type { QueueConsumer, QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -23,6 +19,8 @@ import type { CoordinatorRuntime } from '../src/runs/runtime.js';
 import type { NodeAttemptRuntime } from '../src/attempts/runtime.js';
 import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';
 import type { TriggerRuntime } from '../src/triggers/runtime.js';
+import type { RetentionRuntime } from '../src/retention/runtime.js';
+import type { WorkflowAutoPauseRuntime } from '../src/workflows/auto-pause-runtime.js';
 import { NestWorkspaceDatabase } from '../src/platform/database/database.module.js';
 import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import { WorkerReadiness } from '../src/runtime/readiness.js';
@@ -46,16 +44,12 @@ const workerConfig = {
     dueWakeupBatchSize: 25,
     dueWakeupPollIntervalMillis: 250,
     maximumAdmissions: 32,
-    runTimeoutFailureContextEnabled: false,
-    workspaceInboxProducerEnabled: false,
-    workflowTriggerOutcomesEnabled: false,
   },
   workspaceInbox: {
     foldBatchSize: 500,
     foldPollMillis: 1_000,
   },
   workflowAutoPause: {
-    mode: 'off' as const,
     foldBatchSize: 500,
     foldPollMillis: 1_000,
   },
@@ -80,7 +74,6 @@ const workerConfig = {
     ownerRole: 'pertexo_owner',
   },
   nodeEnv: 'test' as const,
-  connectionRunHealthMode: 'off' as const,
   logLevel: 'debug' as const,
   observability: {
     environment: 'test' as const,
@@ -97,7 +90,6 @@ const workerConfig = {
   },
   outboxDispatcher: {
     batchSize: 10,
-    enabledJobNames: [],
     leaseDurationMillis: 30_000,
     leaseOwner: 'outbox:test-worker',
     maxAttempts: 3,
@@ -113,6 +105,26 @@ const workerConfig = {
     pollIntervalMillis: 250,
   },
   redisUrl: 'redis://localhost:6379/0',
+  artifactStore: {
+    accessKeyId: 'local-access',
+    bucket: 'pertexo-artifacts',
+    endpoint: 'http://localhost:9090',
+    forcePathStyle: true,
+    maxObjectBytes: 10_485_760,
+    region: 'us-east-1',
+    requestTimeoutMs: 5_000,
+    secretAccessKey: 'local-secret',
+  },
+  retention: {
+    maintenanceDatabase: {
+      connectionString:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 30_000,
+      max: 2,
+      ownerRole: 'pertexo_owner',
+    },
+  },
 };
 
 const logger: StructuredLogger = {
@@ -145,6 +157,57 @@ function transportMetrics(): {
     recordWorkerProcessStart,
   } satisfies TransportMetrics;
   return { metrics, recordWorkerProcessStart };
+}
+
+function idleConsumer(): QueueConsumer {
+  return {
+    close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+    isReady: vi.fn().mockReturnValue(true),
+    waitUntilReady: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+/** Every worker runtime is always composed; these stand in for them. */
+function idleRuntimes() {
+  const coordinatorRuntime: CoordinatorRuntime = {
+    consumer: idleConsumer(),
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+  const nodeAttemptRuntime: NodeAttemptRuntime = {
+    consumer: idleConsumer(),
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+  const maintenanceRuntime: MaintenanceRuntime = {
+    consumer: idleConsumer(),
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    whenIdle: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+  const triggerRuntime: TriggerRuntime = {
+    consumer: idleConsumer(),
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+  const workflowAutoPauseRuntime = {
+    start: vi.fn(),
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  } as unknown as WorkflowAutoPauseRuntime;
+  const retentionRuntime = {
+    start: vi.fn(),
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  } as unknown as RetentionRuntime;
+  return {
+    coordinatorRuntime,
+    nodeAttemptRuntime,
+    maintenanceRuntime,
+    triggerRuntime,
+    workflowAutoPauseRuntime,
+    retentionRuntime,
+  };
 }
 
 function dependencies(
@@ -180,7 +243,9 @@ function dependencies(
     checkReadiness: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   };
+  const runtimes = idleRuntimes();
   return {
+    ...runtimes,
     database: selectedDatabase,
     dispatcherClose,
     dispatcherDatabase,
@@ -315,168 +380,26 @@ describe('worker application bootstrap', () => {
     }
   });
 
-  it('gates coordinator dispatch on the composed consumer and closes it on shutdown', async () => {
+  it('checks every composed runtime for readiness and closes each on shutdown', async () => {
     const selected = dependencies();
-    const consumer: QueueConsumer = {
-      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
-      isReady: vi.fn().mockReturnValue(true),
-      waitUntilReady: vi.fn().mockResolvedValue(undefined),
-    };
-    const coordinatorRuntime: CoordinatorRuntime = {
-      consumer,
-      checkReadiness: vi.fn().mockResolvedValue(undefined),
-      close: vi.fn().mockResolvedValue(undefined),
-    };
-    const enabledConfig = {
-      ...workerConfig,
-      outboxDispatcher: {
-        ...workerConfig.outboxDispatcher,
-        enabledJobNames: [JOB_NAME.advanceWorkflowRun],
-      },
-    };
-    const app = await createWorkerApplication(enabledConfig, {
-      ...selected,
-      coordinatorRuntime,
-    });
+    const app = await createWorkerApplication(workerConfig, selected);
+    const runtimes = [
+      selected.coordinatorRuntime,
+      selected.nodeAttemptRuntime,
+      selected.maintenanceRuntime,
+      selected.triggerRuntime,
+    ];
 
-    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
-    try {
-      expect(consumer.isReady).toHaveBeenCalled();
-    } finally {
-      await app.close();
-    }
-    expect(coordinatorRuntime.close).toHaveBeenCalledOnce();
-  });
-
-  it('gates node-attempt dispatch on the composed consumer and closes it on shutdown', async () => {
-    const selected = dependencies();
-    const consumer: QueueConsumer = {
-      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
-      isReady: vi.fn().mockReturnValue(true),
-      waitUntilReady: vi.fn().mockResolvedValue(undefined),
-    };
-    const nodeAttemptRuntime: NodeAttemptRuntime = {
-      consumer,
-      close: vi.fn().mockResolvedValue(undefined),
-    };
-    const enabledConfig = {
-      ...workerConfig,
-      outboxDispatcher: {
-        ...workerConfig.outboxDispatcher,
-        enabledJobNames: [JOB_NAME.executeNodeAttempt],
-      },
-    };
-    const app = await createWorkerApplication(enabledConfig, {
-      ...selected,
-      nodeAttemptRuntime,
-    });
-
-    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
-    try {
-      expect(consumer.isReady).toHaveBeenCalled();
-    } finally {
-      await app.close();
-    }
-    expect(nodeAttemptRuntime.close).toHaveBeenCalledOnce();
-  });
-
-  it('gates preview dispatch on the shared attempts consumer', async () => {
-    const selected = dependencies();
-    const consumer: QueueConsumer = {
-      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
-      isReady: vi.fn().mockReturnValue(true),
-      waitUntilReady: vi.fn().mockResolvedValue(undefined),
-    };
-    const nodeAttemptRuntime: NodeAttemptRuntime = {
-      consumer,
-      close: vi.fn().mockResolvedValue(undefined),
-    };
-    const enabledConfig = {
-      ...workerConfig,
-      outboxDispatcher: {
-        ...workerConfig.outboxDispatcher,
-        enabledJobNames: [JOB_NAME.executePreviewAttempt],
-      },
-    };
-    const app = await createWorkerApplication(enabledConfig, {
-      ...selected,
-      nodeAttemptRuntime,
-    });
-
-    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
-    try {
-      expect(consumer.isReady).toHaveBeenCalled();
-    } finally {
-      await app.close();
-    }
-    expect(nodeAttemptRuntime.close).toHaveBeenCalledOnce();
-  });
-
-  it('gates preview reconciliation dispatch on its maintenance consumer', async () => {
-    const selected = dependencies();
-    const consumer: QueueConsumer = {
-      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
-      isReady: vi.fn().mockReturnValue(true),
-      waitUntilReady: vi.fn().mockResolvedValue(undefined),
-    };
-    const maintenanceRuntime: MaintenanceRuntime = {
-      consumer,
-      checkReadiness: vi.fn().mockResolvedValue(undefined),
-      whenIdle: vi.fn().mockResolvedValue(undefined),
-      close: vi.fn().mockResolvedValue(undefined),
-    };
-    const enabledConfig = {
-      ...workerConfig,
-      outboxDispatcher: {
-        ...workerConfig.outboxDispatcher,
-        enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
-      },
-    };
-    const app = await createWorkerApplication(enabledConfig, {
-      ...selected,
-      maintenanceRuntime,
-    });
-
-    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
-    try {
-      expect(consumer.isReady).toHaveBeenCalled();
-    } finally {
-      await app.close();
-    }
-    expect(maintenanceRuntime.close).toHaveBeenCalledOnce();
-  });
-
-  it('gates trigger reconciliation dispatch on the trigger runtime consumer', async () => {
-    const selected = dependencies();
-    const consumer: QueueConsumer = {
-      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
-      isReady: vi.fn().mockReturnValue(true),
-      waitUntilReady: vi.fn().mockResolvedValue(undefined),
-    };
-    const triggerRuntime: TriggerRuntime = {
-      consumer,
-      checkReadiness: vi.fn().mockResolvedValue(undefined),
-      close: vi.fn().mockResolvedValue(undefined),
-    };
-    const enabledConfig = {
-      ...workerConfig,
-      outboxDispatcher: {
-        ...workerConfig.outboxDispatcher,
-        enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
-      },
-    };
-    const app = await createWorkerApplication(enabledConfig, {
-      ...selected,
-      triggerRuntime,
-    });
-
-    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
     await expect(
       app.get(WorkerReadiness).checkReadiness(),
     ).resolves.toBeUndefined();
-    expect(triggerRuntime.checkReadiness).toHaveBeenCalled();
+    for (const runtime of runtimes)
+      expect(runtime.checkReadiness).toHaveBeenCalled();
     await app.close();
-    expect(triggerRuntime.close).toHaveBeenCalledOnce();
+    for (const runtime of runtimes)
+      expect(runtime.close).toHaveBeenCalledOnce();
+    expect(selected.workflowAutoPauseRuntime.close).toHaveBeenCalledOnce();
+    expect(selected.retentionRuntime.close).toHaveBeenCalledOnce();
   });
 
   it('fails startup and closes resources when database readiness fails', async () => {

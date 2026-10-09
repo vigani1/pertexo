@@ -36,16 +36,12 @@ const config = {
     dueWakeupBatchSize: 1,
     dueWakeupPollIntervalMillis: 100,
     maximumAdmissions: 1,
-    runTimeoutFailureContextEnabled: false,
-    workspaceInboxProducerEnabled: false,
-    workflowTriggerOutcomesEnabled: false,
   },
   workspaceInbox: {
     foldBatchSize: 500,
     foldPollMillis: 1_000,
   },
   workflowAutoPause: {
-    mode: 'off',
     foldBatchSize: 500,
     foldPollMillis: 1_000,
   },
@@ -69,7 +65,6 @@ const config = {
     leaseDurationSeconds: 30,
     workerId: 'fixture',
   },
-  nodeCompatibilityCohort: 'core',
   nodeEnv: 'test',
   observability: {
     environment: 'test',
@@ -80,7 +75,6 @@ const config = {
   },
   outboxDispatcher: {
     batchSize: 1,
-    enabledJobNames: [],
     leaseDurationMillis: 30_000,
     leaseOwner: 'fixture',
     maxAttempts: 1,

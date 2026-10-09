@@ -1,6 +1,6 @@
 # F30 — Connection health and reconnection
 
-Status: first Slack slice independently reviewed, merged and qualified on natural main; production mode remains off.
+Status: first Slack slice independently reviewed, merged and qualified on natural main. Since the architecture reset (ADR 069) run health always applies; the `CONNECTION_RUN_HEALTH_MODE` mode this plan describes is gone.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: Extends existing connections. Relative size: **M–L**, not a calendar estimate.
 

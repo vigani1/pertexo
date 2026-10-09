@@ -105,9 +105,7 @@ function createStores(): void {
     max: 6,
     ownerRole: 'pertexo_owner',
   });
-  rawStore = createTestRunStore(config, undefined, {
-    runTimeoutFailureContextEnabled: true,
-  });
+  rawStore = createTestRunStore(config);
   storesToClose.push(rawStore);
   nodeAttemptStore = createNodeAttemptRunStore(config);
   storesToClose.push(nodeAttemptStore);

@@ -24,10 +24,6 @@ import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected metric boundary fakes */
 
-import {
-  createDispatchConsumerCapabilityRegistry,
-  DispatchConsumerCapabilityError,
-} from '../src/transport/dispatch-consumer-capabilities.js';
 import { createQueueMetricsObserver } from '../src/transport/metrics-adapter.js';
 import {
   closeHttpServer,
@@ -175,7 +171,7 @@ describeIntegration(
       }
     });
 
-    it('derives dispatch from a composed ready consumer and holds unsupported work', async () => {
+    it('dispatches only the job kinds the worker consumes and holds the rest', async () => {
       const enabledId = await insertRunEvent();
       const heldId = randomUUID();
       const payload = {
@@ -196,28 +192,8 @@ describeIntegration(
       );
       const consumerStarted = deferred('ready consumer started');
       const releaseConsumer = deferred('ready consumer released');
-      const cleanup = createTransportTestCleanupStack(
-        'consumer capability proof',
-      );
+      const cleanup = createTransportTestCleanupStack('consumed job kinds');
       try {
-        const noConsumerDispatcher = createDispatcher(
-          'integration-no-consumer',
-          100,
-          [],
-          createDispatchConsumerCapabilityRegistry([]),
-        );
-        cleanup.add('no-consumer dispatcher', () =>
-          noConsumerDispatcher.close(),
-        );
-        const mismatchedDispatcher = createDispatcher(
-          'integration-mismatched-consumer',
-          100,
-          [JOB_NAME.advanceWorkflowRun],
-          createDispatchConsumerCapabilityRegistry([]),
-        );
-        cleanup.add('mismatched dispatcher', () =>
-          mismatchedDispatcher.close(),
-        );
         const enabledQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
           connection: redisConnection(),
         });
@@ -237,25 +213,11 @@ describeIntegration(
         });
         cleanup.add('ready consumer', () => consumer.close());
         const dispatcher = createDispatcher(
-          'integration-phase2-allowlist',
+          'integration-consumed-job-kinds',
           100,
           [JOB_NAME.advanceWorkflowRun],
-          createDispatchConsumerCapabilityRegistry([
-            { consumer, jobName: JOB_NAME.advanceWorkflowRun },
-          ]),
         );
         cleanup.add('enabled dispatcher', () => dispatcher.close());
-        await noConsumerDispatcher.checkReadiness();
-        await expect(noConsumerDispatcher.dispatchOnce()).resolves.toEqual({
-          claimed: 0,
-          failed: 0,
-          outcomeUnknown: 0,
-          published: 0,
-          stale: 0,
-        });
-        await expect(
-          mismatchedDispatcher.checkReadiness(),
-        ).rejects.toBeInstanceOf(DispatchConsumerCapabilityError);
         await dispatcher.checkReadiness();
         await expect(
           dispatchFairRounds([dispatcher], 1),

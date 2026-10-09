@@ -1,6 +1,6 @@
 import type { FailureNotificationStore } from '@pertexo/database/notifications';
 import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
-import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
+import type { QueueConsumerObserver } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../src/config/worker.js';
@@ -9,19 +9,16 @@ import {
   createOwnedMaintenanceRuntime,
   type MaintenanceProviderFactories,
 } from '../src/transport/maintenance-runtime-provider.js';
+import { workerEnvironment } from './support/worker-environment.js';
 
 const observer = {} as QueueConsumerObserver;
 
-function config(jobNames: string = JOB_NAME.deliverRunFailureNotification) {
+function config() {
   return parseWorkerConfig({
+    ...workerEnvironment,
     CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
     CONNECTION_KMS_REGION: 'eu-central-1',
-    DATABASE_MAINTENANCE_URL:
-      'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
-    DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-    OUTBOX_DISPATCH_JOB_NAMES: jobNames,
     OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS: '100',
-    REDIS_URL: 'redis://localhost:6379/0',
   });
 }
 
@@ -86,78 +83,25 @@ function ownedFactories(options: {
   };
 }
 
-function requireRuntime(
-  selected: MaintenanceRuntime | undefined,
-): MaintenanceRuntime {
-  if (selected === undefined) throw new Error('Expected maintenance runtime');
-  return selected;
-}
-
 describe('preview maintenance provider ownership', () => {
-  it.each([
-    {
-      jobName: JOB_NAME.reconcilePreviewAttempt,
-      options: {
-        runReplay: false,
-        unknownOutcomeReconciliation: false,
-      },
-    },
-    {
-      jobName: JOB_NAME.reconcileUnknownOutcome,
-      options: { runReplay: false, unknownOutcomeReconciliation: true },
-    },
-    {
-      jobName: JOB_NAME.replayWorkflowRun,
-      options: { runReplay: true, unknownOutcomeReconciliation: false },
-    },
-    {
-      jobName: JOB_NAME.deliverRunFailureNotification,
-      options: { runReplay: false, unknownOutcomeReconciliation: false },
-    },
-  ] as const)(
-    'activates the shared maintenance runtime for $jobName',
-    async ({ jobName, options }) => {
-      const selected = ownedFactories({});
+  it('composes failure notification delivery when connection encryption is configured', async () => {
+    const selected = ownedFactories({});
+    const result = await createOwnedMaintenanceRuntime(
+      config(),
+      {},
+      observer,
+      selected.factories,
+    );
+    expect(selected.factories.notificationStore).toHaveBeenCalledOnce();
+    expect(selected.factories.runtime).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureNotificationDelivery: expect.anything() as unknown,
+      }),
+    );
+    await result.close();
+  });
 
-      const result = await createOwnedMaintenanceRuntime(
-        config(jobName),
-        {},
-        observer,
-        selected.factories,
-      );
-      expect(result).toBeDefined();
-      expect(selected.factories.runtime).toHaveBeenCalledWith(
-        expect.objectContaining(options),
-      );
-      await requireRuntime(result).close();
-    },
-  );
-
-  it('returns early without acquiring hidden dependencies when disabled or externally composed', async () => {
-    const disabled = ownedFactories({});
-    await expect(
-      createOwnedMaintenanceRuntime(
-        config(''),
-        {},
-        observer,
-        disabled.factories,
-      ),
-    ).resolves.toBeUndefined();
-    expect(disabled.factories.notificationStore).not.toHaveBeenCalled();
-    expect(disabled.factories.runtime).not.toHaveBeenCalled();
-
-    const customRegistry = ownedFactories({});
-    await expect(
-      createOwnedMaintenanceRuntime(
-        config(),
-        { dispatchConsumerCapabilities: {} as never },
-        observer,
-        customRegistry.factories,
-      ),
-    ).resolves.toBeUndefined();
-    expect(customRegistry.factories.notificationStore).not.toHaveBeenCalled();
-    expect(customRegistry.factories.runtime).not.toHaveBeenCalled();
-
+  it('returns an injected runtime without acquiring hidden dependencies', async () => {
     const selectedRuntime = runtime();
     const customRuntime = ownedFactories({});
     await expect(
@@ -172,25 +116,23 @@ describe('preview maintenance provider ownership', () => {
     expect(customRuntime.factories.runtime).not.toHaveBeenCalled();
   });
 
-  it('rejects incomplete notification composition before acquiring resources', async () => {
+  it('composes no failure notification delivery without connection encryption', async () => {
     const selected = ownedFactories({});
-    const withoutEncryption = parseWorkerConfig({
-      DATABASE_MAINTENANCE_URL:
-        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
-      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-      OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.deliverRunFailureNotification,
-      REDIS_URL: 'redis://localhost:6379/0',
-    });
+    const withoutEncryption = parseWorkerConfig(workerEnvironment);
 
-    await expect(
-      createOwnedMaintenanceRuntime(
-        withoutEncryption,
-        {},
-        observer,
-        selected.factories,
-      ),
-    ).rejects.toThrow('requires connection encryption');
+    const result = await createOwnedMaintenanceRuntime(
+      withoutEncryption,
+      {},
+      observer,
+      selected.factories,
+    );
     expect(selected.factories.notificationStore).not.toHaveBeenCalled();
+    expect(selected.factories.runtime).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        failureNotificationDelivery: expect.anything() as unknown,
+      }),
+    );
+    await result.close();
   });
 
   it('uses an injected delivery without acquiring store, encryption, or HTTP clients', async () => {
@@ -302,7 +244,7 @@ describe('preview maintenance provider ownership', () => {
     );
     expect(owned).toBeDefined();
 
-    const selectedRuntime = requireRuntime(owned);
+    const selectedRuntime = owned;
     const first = selectedRuntime.close();
     const second = selectedRuntime.close();
     expect(second).toBe(first);
@@ -338,7 +280,7 @@ describe('preview maintenance provider ownership', () => {
       selected.factories,
     );
 
-    const closing = requireRuntime(owned).close();
+    const closing = owned.close();
     await Promise.resolve();
     expect(selected.storeClose).not.toHaveBeenCalled();
     expect(selected.encryptionClose).not.toHaveBeenCalled();
@@ -370,9 +312,7 @@ describe('preview maintenance provider ownership', () => {
       selected.factories,
     );
 
-    const failure = await requireRuntime(owned)
-      .close()
-      .catch((error: unknown) => error);
+    const failure = await owned.close().catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(AggregateError);
     expect((failure as AggregateError).errors[0]).toBe(runtimeFailure);
     expect((failure as AggregateError).errors[1]).toMatchObject({

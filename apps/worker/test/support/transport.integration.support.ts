@@ -19,10 +19,6 @@ import { Redis } from 'ioredis';
 import { Pool, type PoolClient } from 'pg';
 
 import { WorkerDrainState } from '../../src/runtime/drain-state.js';
-import {
-  createDispatchConsumerCapabilityRegistry,
-  type DispatchConsumerCapabilityRegistry,
-} from '../../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../../src/transport/outbox-dispatcher.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 
@@ -472,29 +468,13 @@ export function createWorkerTransportTestEnvironment() {
     );
   };
 
-  const readyCapabilities = (
-    jobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][],
-  ): DispatchConsumerCapabilityRegistry =>
-    createDispatchConsumerCapabilityRegistry(
-      jobNames.map((jobName) => ({
-        jobName,
-        consumer: {
-          isReady: () => true,
-          waitUntilReady: () => Promise.resolve(),
-        },
-      })),
-    );
-
   const createDispatcher = (
     owner: string,
     batchSize = 100,
-    enabledJobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][] = [
+    jobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][] = [
       JOB_NAME.advanceWorkflowRun,
       JOB_NAME.executeNodeAttempt,
     ],
-    consumerCapabilities: DispatchConsumerCapabilityRegistry = readyCapabilities(
-      enabledJobNames,
-    ),
   ): OutboxDispatcher =>
     new OutboxDispatcher(
       createOutboxDispatcherDatabase(
@@ -504,15 +484,13 @@ export function createWorkerTransportTestEnvironment() {
       new WorkerDrainState(),
       {
         batchSize,
-        enabledJobNames,
+        jobNames,
         leaseDurationMillis: 1_000,
         leaseOwner: owner,
         maxAttempts: 3,
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 100,
       },
-      undefined,
-      consumerCapabilities,
     );
 
   const deferred = (

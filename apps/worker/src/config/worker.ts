@@ -9,7 +9,6 @@ import {
 } from '@pertexo/database/platform';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { parseObservabilityConfig } from '@pertexo/observability/startup';
-import { JOB_NAME, type JobName } from '@pertexo/queue';
 
 import {
   parseAuthenticationMailDeliveryConfig,
@@ -20,7 +19,6 @@ import {
   type InvitationDeliveryConfig,
 } from './invitation-delivery.js';
 import * as autoPause from './auto-pause.js';
-import * as connectionHealth from './connection-health.js';
 const workerEnvironments = [
   'development',
   'test',
@@ -36,40 +34,6 @@ const workerLogLevels = [
   'debug',
   'trace',
 ] as const;
-
-const supportedDispatchCapabilitySet = new Set<JobName>(
-  Object.values(JOB_NAME),
-);
-
-export function isSupportedDispatchCapability(jobName: JobName): boolean {
-  return supportedDispatchCapabilitySet.has(jobName);
-}
-
-const enabledJobNamesSchema = z
-  .string()
-  .transform((value) =>
-    value.trim() === ''
-      ? []
-      : value.split(',').map((jobName) => jobName.trim()),
-  )
-  .pipe(z.array(z.enum(JOB_NAME)))
-  .superRefine((jobNames, context) => {
-    if (new Set(jobNames).size !== jobNames.length) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Dispatcher job names must be unique',
-      });
-    }
-    for (const jobName of jobNames) {
-      if (!isSupportedDispatchCapability(jobName)) {
-        context.addIssue({
-          code: 'custom',
-          message: `Job kind is not supported by this dispatcher build: ${jobName}`,
-        });
-      }
-    }
-  })
-  .transform((jobNames) => Object.freeze([...jobNames]));
 
 const workerConfigSchema = z
   .object({
@@ -113,7 +77,6 @@ const workerConfigSchema = z
       .min(1)
       .max(100)
       .default(25),
-    OUTBOX_DISPATCH_JOB_NAMES: enabledJobNamesSchema.default(Object.freeze([])),
     OUTBOX_DISPATCH_LEASE_MILLIS: z.coerce
       .number()
       .int()
@@ -150,15 +113,6 @@ const workerConfigSchema = z
       .min(1)
       .max(64)
       .default(32),
-    FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((value) => value === 'true'),
-    // ADR 055: terminal failures reach the workspace inbox only when enabled.
-    WORKSPACE_INBOX_PRODUCER: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((value) => value === 'true'),
     WORKSPACE_INBOX_FOLD_BATCH_SIZE: z.coerce
       .number()
       .int()
@@ -298,15 +252,12 @@ const workerConfigSchema = z
       DATABASE_DISPATCHER_POOL_MAX,
       REDIS_URL,
       OUTBOX_DISPATCH_BATCH_SIZE,
-      OUTBOX_DISPATCH_JOB_NAMES,
       OUTBOX_DISPATCH_LEASE_MILLIS,
       OUTBOX_DISPATCH_MAX_ATTEMPTS,
       OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
       OUTBOX_DISPATCH_POLL_MILLIS,
       OUTBOX_DISPATCH_RETRY_MILLIS,
       WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
-      FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED,
-      WORKSPACE_INBOX_PRODUCER,
       WORKSPACE_INBOX_FOLD_BATCH_SIZE,
       WORKSPACE_INBOX_FOLD_POLL_MILLIS,
       WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
@@ -361,7 +312,6 @@ const workerConfigSchema = z
       },
       outboxDispatcher: {
         batchSize: OUTBOX_DISPATCH_BATCH_SIZE,
-        enabledJobNames: OUTBOX_DISPATCH_JOB_NAMES,
         leaseDurationMillis: OUTBOX_DISPATCH_LEASE_MILLIS,
         leaseOwner: `outbox:${WORKER_INSTANCE_ID}`,
         maxAttempts: OUTBOX_DISPATCH_MAX_ATTEMPTS,
@@ -373,9 +323,6 @@ const workerConfigSchema = z
         dueWakeupBatchSize: WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
         dueWakeupPollIntervalMillis: WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
         maximumAdmissions: WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
-        runTimeoutFailureContextEnabled:
-          FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED,
-        workspaceInboxProducerEnabled: WORKSPACE_INBOX_PRODUCER,
       },
       workspaceInbox: {
         foldBatchSize: WORKSPACE_INBOX_FOLD_BATCH_SIZE,
@@ -399,14 +346,12 @@ const workerConfigSchema = z
 
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
-    artifactStore?: ArtifactStoreConfig;
-    retention?: RetentionConfig;
+    artifactStore: ArtifactStoreConfig;
+    retention: RetentionConfig;
     connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
     authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
     workflowAutoPause: autoPause.WorkflowAutoPauseConfig;
-    connectionRunHealthMode: connectionHealth.ConnectionRunHealthMode;
-    coordinator: { workflowTriggerOutcomesEnabled: boolean };
   }
 >;
 
@@ -464,37 +409,11 @@ function connectionEncryptionConfig(
 function artifactStoreConfig(
   environment: Readonly<Record<string, string | undefined>>,
   deployed: boolean,
-): ArtifactStoreConfig | undefined {
-  const names = [
-    'ARTIFACT_STORE_ACCESS_KEY_ID',
-    'ARTIFACT_STORE_BUCKET',
-    'ARTIFACT_STORE_ENDPOINT',
-    'ARTIFACT_STORE_FORCE_PATH_STYLE',
-    'ARTIFACT_STORE_REGION',
-    'ARTIFACT_STORE_REQUEST_TIMEOUT_MS',
-    'ARTIFACT_STORE_SECRET_ACCESS_KEY',
-    'ARTIFACT_MAX_BYTES',
-  ] as const;
-  if (names.every((name) => environment[name] === undefined)) return undefined;
+): ArtifactStoreConfig {
   const parsed = parseArtifactStoreConfig(environment);
   if (deployed && new URL(parsed.endpoint).protocol !== 'https:')
     throw new Error('HTTPS artifact store endpoint is required when deployed');
   return parsed;
-}
-
-/** Retention runs wherever artifacts are stored; a deployed worker has both. */
-function retentionConfig(
-  environment: Readonly<Record<string, string | undefined>>,
-  deployed: boolean,
-  artifactStore: ArtifactStoreConfig | undefined,
-): RetentionConfig | undefined {
-  if (artifactStore === undefined) {
-    if (deployed) throw new Error('Retention requires artifact storage');
-    return undefined;
-  }
-  return Object.freeze({
-    maintenanceDatabase: parseMaintenanceDatabaseConfig(environment),
-  });
 }
 
 export function parseWorkerConfig(
@@ -511,35 +430,21 @@ export function parseWorkerConfig(
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
     const connectionEncryption = connectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
-    const retention = retentionConfig(raw, deployed, artifactStore);
-    const invitationDelivery = parseInvitationDeliveryConfig(
-      raw,
-      result.data.outboxDispatcher.enabledJobNames.includes(
-        JOB_NAME.deliverWorkspaceInvitation,
-      ),
-      deployed,
-    );
+    const invitationDelivery = parseInvitationDeliveryConfig(raw, deployed);
     const workflowAutoPause = autoPause.parseWorkflowAutoPauseConfig(raw);
     const authenticationMailDelivery = parseAuthenticationMailDeliveryConfig(
       raw,
       deployed,
     );
-    if (
-      result.data.outboxDispatcher.enabledJobNames.includes(
-        JOB_NAME.executeNodeAttempt,
-      ) &&
-      (artifactStore === undefined ||
-        (deployed && connectionEncryption === undefined))
-    )
-      throw new Error(
-        'Node-attempt workers require artifact storage, and connection encryption when deployed',
-      );
+    if (deployed && connectionEncryption === undefined)
+      throw new Error('A deployed worker requires connection encryption');
     return Object.freeze({
       ...result.data,
-      ...connectionHealth.parseConnectionRunHealthConfig(environment),
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),
-      ...(artifactStore === undefined ? {} : { artifactStore }),
-      ...(retention === undefined ? {} : { retention }),
+      artifactStore,
+      retention: Object.freeze({
+        maintenanceDatabase: parseMaintenanceDatabaseConfig(raw),
+      }),
       ...(invitationDelivery === undefined ? {} : { invitationDelivery }),
       ...(authenticationMailDelivery === undefined
         ? {}
@@ -547,10 +452,7 @@ export function parseWorkerConfig(
       database: Object.freeze(result.data.database),
       dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
       workflowAutoPause,
-      coordinator: Object.freeze({
-        ...result.data.coordinator,
-        workflowTriggerOutcomesEnabled: workflowAutoPause.mode !== 'off',
-      }),
+      coordinator: Object.freeze(result.data.coordinator),
       nodeAttempt: Object.freeze(result.data.nodeAttempt),
       resourceSafety: Object.freeze(result.data.resourceSafety),
       triggerRuntime: Object.freeze(result.data.triggerRuntime),

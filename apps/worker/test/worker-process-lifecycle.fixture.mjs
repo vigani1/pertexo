@@ -76,21 +76,30 @@ const activeConsumer = {
   waitUntilReady: () => Promise.resolve(),
 };
 
+const idleConsumer = {
+  close: () => Promise.resolve({ abortedJobs: 0, forced: false }),
+  isReady: () => true,
+  waitUntilReady: () => Promise.resolve(),
+};
+const idleRuntime = (consumer = idleConsumer) => ({
+  consumer,
+  start: () => undefined,
+  checkReadiness: () => Promise.resolve(),
+  whenIdle: () => Promise.resolve(),
+  close: () => consumer.close().then(() => undefined),
+});
+
 const config = {
   coordinator: {
     dueWakeupBatchSize: 25,
     dueWakeupPollIntervalMillis: 250,
     maximumAdmissions: 32,
-    runTimeoutFailureContextEnabled: false,
-    workspaceInboxProducerEnabled: false,
-    workflowTriggerOutcomesEnabled: false,
   },
   workspaceInbox: {
     foldBatchSize: 500,
     foldPollMillis: 1_000,
   },
   workflowAutoPause: {
-    mode: 'off',
     foldBatchSize: 500,
     foldPollMillis: 1_000,
   },
@@ -114,7 +123,6 @@ const config = {
     workerId: 'process-fixture',
   },
   nodeEnv: 'test',
-  nodeCompatibilityCohort: 'core',
   logLevel: 'silent',
   observability: {
     environment: 'test',
@@ -125,7 +133,6 @@ const config = {
   },
   outboxDispatcher: {
     batchSize: 10,
-    enabledJobNames: mode === 'active' ? ['advance-workflow-run'] : [],
     leaseDurationMillis: 30_000,
     leaseOwner: 'process-fixture',
     maxAttempts: 3,
@@ -162,15 +169,15 @@ try {
       checkReadiness: () => Promise.resolve(),
       close: () => Promise.resolve(),
     },
-    ...(mode === 'active'
-      ? {
-          coordinatorRuntime: {
-            checkReadiness: () => Promise.resolve(),
-            consumer: activeConsumer,
-            close: () => activeConsumer.close().then(() => undefined),
-          },
-        }
-      : {}),
+    // Every runtime is composed; only an active fixture holds a consumer open.
+    coordinatorRuntime: idleRuntime(
+      mode === 'active' ? activeConsumer : idleConsumer,
+    ),
+    nodeAttemptRuntime: idleRuntime(),
+    maintenanceRuntime: idleRuntime(),
+    triggerRuntime: idleRuntime(),
+    workflowAutoPauseRuntime: idleRuntime(),
+    retentionRuntime: idleRuntime(),
   });
   new WorkerProcessShutdown(application, logger).install();
   report('worker.ready');

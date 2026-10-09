@@ -8,15 +8,11 @@ import {
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.js';
 
-/**
- * A workflow whose failure streak reached its threshold in this fold:
- * `paused` when enforcement paused it, false when observing only.
- */
+/** A workflow whose failure streak reached its threshold in this fold. */
 export type WorkflowTriggerPauseDecision = Readonly<{
   workspaceId: string;
   workflowId: string;
   consecutiveFailures: number;
-  paused: boolean;
 }>;
 
 export interface WorkflowTriggerPauseFoldStore {
@@ -24,11 +20,10 @@ export interface WorkflowTriggerPauseFoldStore {
   checkReadiness(signal?: AbortSignal): Promise<void>;
   /**
    * Folds up to `limit` pending run outcomes into their workflows' streaks,
-   * pausing workflows that reach their threshold when `enforce` is true.
+   * pausing workflows that reach their threshold.
    */
   foldPending(
     limit: number,
-    enforce: boolean,
     signal?: AbortSignal,
   ): Promise<readonly WorkflowTriggerPauseDecision[]>;
   close(): Promise<void>;
@@ -57,16 +52,16 @@ export function createWorkflowTriggerPauseFoldStore(
       signal?.throwIfAborted();
       await checkDatabaseReadiness(pool);
     },
-    foldPending: (limit: number, enforce: boolean, signal?: AbortSignal) => {
+    foldPending: (limit: number, signal?: AbortSignal) => {
       const bounded = limitSchema.parse(limit);
-      const mode = z.boolean().parse(enforce);
       return withPlatformTransaction(
         pool,
         async (client) => {
+          // The function's second argument is the former observe-only switch.
           const result = await client.query(
             `select workspace_id,workflow_id,consecutive_failures,paused
-               from app.fold_workflow_trigger_outcomes($1,$2)`,
-            [bounded, mode],
+               from app.fold_workflow_trigger_outcomes($1,true)`,
+            [bounded],
           );
           return Object.freeze(
             result.rows.map((value) => {
@@ -75,7 +70,6 @@ export function createWorkflowTriggerPauseFoldStore(
                 workspaceId: row.workspace_id,
                 workflowId: row.workflow_id,
                 consecutiveFailures: row.consecutive_failures,
-                paused: row.paused,
               });
             }),
           );

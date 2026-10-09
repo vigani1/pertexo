@@ -64,7 +64,6 @@ import { WorkerResourceMonitor } from './runtime/resource-monitor.js';
 import { WorkerDrainState } from './runtime/drain-state.js';
 import { WorkerProcessKeepalive } from './runtime/process-keepalive.js';
 import { WorkerShutdownCoordinator } from './runtime/shutdown-coordinator.js';
-import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import { TransportModule } from './transport/transport.module.js';
 import { OutboxDispatcherLifecycle } from './transport/lifecycle.js';
 
@@ -75,12 +74,12 @@ export type WorkerModuleDependencies = Readonly<{
   triggerRuntime?: TriggerRuntime;
   database?: WorkspaceDatabase;
   databaseRuntime?: DatabaseRuntime;
-  dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   dispatcherDatabaseRuntime?: DatabaseRuntime;
   queueProducer?: QueueProducer;
   workspaceInboxRuntime?: WorkspaceInboxRuntime;
   workflowAutoPauseRuntime?: WorkflowAutoPauseRuntime;
+  retentionRuntime?: RetentionRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
   transportMetrics?: TransportMetrics;
@@ -126,12 +125,6 @@ export class WorkerModule {
           ...(dependencies.triggerRuntime === undefined
             ? {}
             : { triggerRuntime: dependencies.triggerRuntime }),
-          ...(dependencies.dispatchConsumerCapabilities === undefined
-            ? {}
-            : {
-                dispatchConsumerCapabilities:
-                  dependencies.dispatchConsumerCapabilities,
-              }),
           ...(dependencies.dispatcherDatabase === undefined
             ? {}
             : { dispatcherDatabase: dependencies.dispatcherDatabase }),
@@ -219,7 +212,8 @@ export class WorkerModule {
         },
         {
           provide: RETENTION_RUNTIME,
-          useFactory: (): RetentionRuntime | undefined =>
+          useFactory: (): RetentionRuntime =>
+            dependencies.retentionRuntime ??
             configuredRetentionRuntime(config, dependencies.logger),
         },
         {
@@ -261,18 +255,16 @@ export class WorkerModule {
             database: WorkspaceDatabase,
             authenticationMail: AuthenticationMailRuntime | undefined,
             workspaceInbox: WorkspaceInboxRuntime,
-            autoPause: WorkflowAutoPauseRuntime | undefined,
-            retention: RetentionRuntime | undefined,
+            autoPause: WorkflowAutoPauseRuntime,
+            retention: RetentionRuntime,
           ) => {
             authenticationMail?.start();
             workspaceInbox.start();
-            autoPause?.start();
-            retention?.start();
-            if (retention !== undefined)
-              shutdown.register('retention', () => retention.close());
+            autoPause.start();
+            retention.start();
+            shutdown.register('retention', () => retention.close());
             shutdown.register('workspace-inbox', () => workspaceInbox.close());
-            if (autoPause !== undefined)
-              shutdown.register('workflow-auto-pause', () => autoPause.close());
+            shutdown.register('workflow-auto-pause', () => autoPause.close());
             if (authenticationMail !== undefined)
               shutdown.register('authentication-mail', () =>
                 authenticationMail.close(),

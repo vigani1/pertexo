@@ -6,12 +6,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWorkflowAutoPauseRuntime } from '../src/workflows/auto-pause-runtime.js';
 
-const decision = (paused: boolean): WorkflowTriggerPauseDecision => ({
+const decision: WorkflowTriggerPauseDecision = {
   workspaceId: '11111111-1111-4111-8111-111111111111',
   workflowId: '22222222-2222-4222-8222-222222222222',
   consecutiveFailures: 10,
-  paused,
-});
+};
 
 function fakeStore(overrides: Partial<WorkflowTriggerPauseFoldStore> = {}) {
   return {
@@ -32,24 +31,23 @@ function meter() {
   };
 }
 
-const options = (enforce: boolean) =>
-  ({ enforce, foldBatchSize: 100, foldPollMillis: 1_000 }) as const;
+const options = { foldBatchSize: 100, foldPollMillis: 1_000 } as const;
 
 describe('workflow auto-pause runtime', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('folds a burst in the configured mode, reporting each decision', async () => {
+  it('folds a burst, reporting each pause', async () => {
     const store = fakeStore({
       foldPending: vi
         .fn<WorkflowTriggerPauseFoldStore['foldPending']>()
-        .mockResolvedValueOnce([decision(true)])
+        .mockResolvedValueOnce([decision])
         .mockResolvedValue([]),
     });
     const counter = meter();
     const decided = vi.fn();
     const runtime = createWorkflowAutoPauseRuntime(
       store,
-      options(true),
+      options,
       { cycleFailed: vi.fn(), decided },
       counter.meter,
     );
@@ -59,38 +57,12 @@ describe('workflow auto-pause runtime', () => {
     expect(store.foldPending).toHaveBeenNthCalledWith(
       1,
       100,
-      true,
       expect.any(AbortSignal),
     );
-    expect(decided).toHaveBeenCalledWith(decision(true));
+    expect(decided).toHaveBeenCalledWith(decision);
     expect(counter.add).toHaveBeenCalledWith(1, { outcome: 'paused' });
     await runtime.close();
     expect(store.close).toHaveBeenCalledOnce();
-  });
-
-  it('only observes when not enforcing', async () => {
-    const store = fakeStore({
-      foldPending: vi
-        .fn<WorkflowTriggerPauseFoldStore['foldPending']>()
-        .mockResolvedValueOnce([decision(false)])
-        .mockResolvedValue([]),
-    });
-    const counter = meter();
-    const runtime = createWorkflowAutoPauseRuntime(
-      store,
-      options(false),
-      { cycleFailed: vi.fn(), decided: vi.fn() },
-      counter.meter,
-    );
-    runtime.start();
-    await runtime.checkReadiness();
-    expect(store.foldPending).toHaveBeenCalledWith(
-      100,
-      false,
-      expect.any(AbortSignal),
-    );
-    expect(counter.add).toHaveBeenCalledWith(1, { outcome: 'would_pause' });
-    await runtime.close();
   });
 
   it('is not ready when its store check or its cycle fails', async () => {
@@ -98,7 +70,7 @@ describe('workflow auto-pause runtime', () => {
       fakeStore({
         checkReadiness: vi.fn(() => Promise.reject(new Error('changed'))),
       }),
-      options(true),
+      options,
       { cycleFailed: vi.fn(), decided: vi.fn() },
       meter().meter,
     );
@@ -113,7 +85,7 @@ describe('workflow auto-pause runtime', () => {
       fakeStore({
         foldPending: vi.fn(() => Promise.reject(new Error('database down'))),
       }),
-      options(true),
+      options,
       { cycleFailed, decided: vi.fn() },
       meter().meter,
     );
@@ -128,7 +100,7 @@ describe('workflow auto-pause runtime', () => {
   it('refuses readiness before starting and after closing', async () => {
     const runtime = createWorkflowAutoPauseRuntime(
       fakeStore(),
-      options(true),
+      options,
       { cycleFailed: vi.fn(), decided: vi.fn() },
       meter().meter,
     );

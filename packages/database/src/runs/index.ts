@@ -43,7 +43,6 @@ export type {
   RunAdvanceStore,
 } from './advance/contract.js';
 export { createRunAdvanceStore } from './advance/store.js';
-export type { RunAdvanceStoreOptions } from './advance/store.js';
 export { createDeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
 export type { DeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
 export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
