@@ -8,6 +8,10 @@ import type { ConnectionUsageDatabase } from '@pertexo/database/connections';
 import { z } from 'zod';
 
 import { SessionAuthenticationGuard } from '../../workspaces/index.js';
+import {
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+} from '../../platform/http/opaque-cursor.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
@@ -35,9 +39,7 @@ const cursorSchema = z
 export function encodeConnectionUsageCursor(
   cursor: z.output<typeof cursorSchema>,
 ): string {
-  return Buffer.from(JSON.stringify(cursorSchema.parse(cursor))).toString(
-    'base64url',
-  );
+  return encodeOpaqueCursor(cursorSchema, cursor);
 }
 
 export function decodeConnectionUsageCursor(
@@ -45,20 +47,13 @@ export function decodeConnectionUsageCursor(
   workspaceId: string,
   connectionId: string,
 ) {
-  try {
-    const cursor = cursorSchema.parse(
-      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-    );
-    if (
-      cursor.workspaceId !== workspaceId ||
-      cursor.connectionId !== connectionId ||
-      encodeConnectionUsageCursor(cursor) !== value
-    )
-      throw new InvalidConnectionCursorError();
-    return Object.freeze({ workflowVersionId: cursor.workflowVersionId });
-  } catch {
+  const cursor = decodeOpaqueCursor(cursorSchema, value);
+  if (
+    cursor?.workspaceId !== workspaceId ||
+    cursor.connectionId !== connectionId
+  )
     throw new InvalidConnectionCursorError();
-  }
+  return Object.freeze({ workflowVersionId: cursor.workflowVersionId });
 }
 
 export class ListConnectionUsageUseCase {

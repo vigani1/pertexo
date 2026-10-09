@@ -11,7 +11,6 @@ export {
   SessionAuthenticationGuard,
   WorkspaceManageGuard,
   authenticatedSession,
-  readHeader,
 } from './http/guards.js';
 export {
   CreateWorkspaceUseCase,

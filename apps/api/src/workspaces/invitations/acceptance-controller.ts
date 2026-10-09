@@ -24,9 +24,9 @@ import {
   SessionAuthenticationGuard,
   authenticatedSession,
   readCookie,
-  readHeader,
   requireSignInEvidence,
 } from '../http/guards.js';
+import { firstRequestHeader } from '../../platform/http/request-headers.js';
 import { InvitationAcceptanceUseCase } from './acceptance.js';
 import type {
   IdentitySessionAuthority,
@@ -106,7 +106,7 @@ export class InvitationAcceptanceController {
     response.header('Cache-Control', 'no-store');
     return this.acceptance.recordSessionProof({
       binding: readCookie(request, INVITATION_BINDING_COOKIE_NAME),
-      csrfToken: readHeader(request, INVITATION_CSRF_HEADER),
+      csrfToken: firstRequestHeader(request.headers, INVITATION_CSRF_HEADER),
       evidence,
     });
   }
@@ -120,11 +120,11 @@ export class InvitationAcceptanceController {
     @Body() body: unknown,
     @Res({ passthrough: true }) response: CookieResponse,
   ) {
-    const userAgent = readHeader(request, 'user-agent');
+    const userAgent = firstRequestHeader(request.headers, 'user-agent');
     const traceId = traceIdentifier(request);
     const result = await this.acceptance.complete({
       binding: readCookie(request, INVITATION_BINDING_COOKIE_NAME),
-      csrfToken: readHeader(request, INVITATION_CSRF_HEADER),
+      csrfToken: firstRequestHeader(request.headers, INVITATION_CSRF_HEADER),
       authenticatedUserId: authenticatedSession(request).userId,
       request: body,
       idempotencyKey: requiredHeader(request, 'idempotency-key'),
@@ -164,7 +164,7 @@ export class InvitationAcceptanceController {
   ): Promise<void> {
     await this.acceptance.abandon(
       readCookie(request, INVITATION_BINDING_COOKIE_NAME),
-      readHeader(request, INVITATION_CSRF_HEADER),
+      firstRequestHeader(request.headers, INVITATION_CSRF_HEADER),
     );
     response.header('Cache-Control', 'no-store');
     response.header('set-cookie', clearBindingCookie(this.cookiePolicy));
@@ -198,9 +198,10 @@ function requireResolveBoundary(
   allowedOrigin: string,
 ): void {
   if (
-    readHeader(request, 'x-pertexo-invitation-request') !== 'resolve' ||
-    readHeader(request, 'origin') !== allowedOrigin ||
-    !readHeader(request, 'content-type')
+    firstRequestHeader(request.headers, 'x-pertexo-invitation-request') !==
+      'resolve' ||
+    firstRequestHeader(request.headers, 'origin') !== allowedOrigin ||
+    !firstRequestHeader(request.headers, 'content-type')
       ?.toLowerCase()
       .startsWith('application/json')
   )
@@ -211,7 +212,7 @@ function requiredHeader(
   request: IdentityWorkspaceRequest,
   name: string,
 ): string {
-  const value = readHeader(request, name);
+  const value = firstRequestHeader(request.headers, name);
   if (value === undefined)
     return throwApplicationError(applicationError('request.invalid'));
   return value;

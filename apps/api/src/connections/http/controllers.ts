@@ -11,16 +11,18 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { idempotencyKeySchema } from '@pertexo/contracts';
 
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-  readHeader,
 } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { withRequestOperationSignal } from '../../platform/http/index.js';
+import {
+  parseIdempotencyKey,
+  withRequestOperationSignal,
+} from '../../platform/http/index.js';
+import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import {
   ConnectionManageGuard,
   ConnectionReadGuard,
@@ -229,5 +231,7 @@ function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
 }
 
 function idempotencyKey(request: ConnectionRequest): string {
-  return idempotencyKeySchema.parse(readHeader(request, 'idempotency-key'));
+  return parseIdempotencyKey(
+    requestHeaderValue(request.headers, 'idempotency-key'),
+  );
 }
