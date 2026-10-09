@@ -65,7 +65,7 @@ function assignJsonValue(
     });
 }
 
-export function parsePersistedIdentityMetadata(
+function parsePersistedIdentityMetadata(
   value: unknown,
 ): Record<string, unknown> {
   try {

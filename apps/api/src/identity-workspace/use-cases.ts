@@ -1,10 +1,4 @@
 import {
-  oidcCallbackInputSchema,
-  type OidcLoginResult,
-  type SessionCookieBoundary,
-  type SessionIssueResult,
-} from '../identity/index.js';
-import {
   authorizeWorkspaceOperation,
   capabilitiesForRole,
   type ActorContext,
@@ -68,28 +62,6 @@ type WorkspaceLifecyclePersistence = Pick<
   IdentityWorkspacePersistence,
   'requestWorkspaceLifecycleOperation' | 'readWorkspaceLifecycleOperation'
 >;
-
-export interface OidcLoginPort {
-  startLogin(continuation?: OidcLoginResult['continuation']): Promise<
-    Readonly<{
-      authorizationUrl: string;
-      expiresAt: Date;
-      browserBindingMaxAgeSeconds: number;
-      browserBinding: string;
-    }>
-  >;
-  completeLogin(
-    input: Readonly<{ code: string; state: string }>,
-    browserBinding: string | undefined,
-  ): Promise<OidcLoginResult>;
-}
-
-export interface SessionIssuePort {
-  issue(
-    input: Readonly<{ userId: string }>,
-    cookieBoundary: SessionCookieBoundary,
-  ): Promise<SessionIssueResult>;
-}
 
 export class GetCurrentUserUseCase {
   public constructor(
@@ -217,62 +189,6 @@ export class ListWorkspaceMembersUseCase {
             page.nextCursor === undefined
               ? null
               : encodeWorkspaceMemberCursor(page.nextCursor),
-        });
-      },
-    );
-  }
-}
-
-export class OidcApplicationService {
-  public constructor(
-    private readonly oidc: OidcLoginPort,
-    private readonly sessions: SessionIssuePort,
-    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
-    private readonly onVerifiedLogin?: (
-      result: OidcLoginResult,
-    ) => Promise<void>,
-  ) {}
-
-  public start(): Promise<
-    Readonly<{
-      authorizationUrl: string;
-      expiresAt: Date;
-      browserBindingMaxAgeSeconds: number;
-      browserBinding: string;
-    }>
-  > {
-    return this.telemetry.measure(IDENTITY_WORKSPACE_OPERATION.oidcStart, () =>
-      this.oidc.startLogin(),
-    );
-  }
-
-  public async complete(
-    input: unknown,
-    browserBinding: string | undefined,
-    cookieBoundary: SessionCookieBoundary,
-  ): Promise<
-    SessionIssueResult &
-      Readonly<{
-        userId: string;
-        continuation?: OidcLoginResult['continuation'];
-      }>
-  > {
-    return this.telemetry.measure(
-      IDENTITY_WORKSPACE_OPERATION.oidcCallback,
-      async () => {
-        const callback = oidcCallbackInputSchema.parse(input);
-        const result = await this.oidc.completeLogin(callback, browserBinding);
-        await this.onVerifiedLogin?.(result);
-        const session = await this.sessions.issue(
-          { userId: result.internalIdentity.userId },
-          cookieBoundary,
-        );
-        return Object.freeze({
-          ...session,
-          userId: result.internalIdentity.userId,
-          ...(result.continuation === undefined
-            ? {}
-            : { continuation: result.continuation }),
         });
       },
     );

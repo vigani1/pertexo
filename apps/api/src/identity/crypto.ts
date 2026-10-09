@@ -27,13 +27,6 @@ export function encodeBase64Url(value: Uint8Array): string {
   return Buffer.from(value).toString('base64url');
 }
 
-export function digestBase64Url(
-  value: string,
-  crypto: CryptographicHasher,
-): string {
-  return encodeBase64Url(crypto.sha256(value));
-}
-
 /** Hex is used for persisted digests so the database representation is fixed at 64 chars. */
 export function digestSha256Hex(
   value: string,

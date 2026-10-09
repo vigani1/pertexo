@@ -16,16 +16,12 @@ import {
   WrongAccountJourney,
 } from '../components/journey-states';
 import { isDeadEnd } from '../model/journey-copy';
-import type { InvitationSignInMethod } from '../model/sign-in-method';
 import { useInvitationJourney } from '../hooks/use-invitation-journey';
 
 type InvitationAcceptancePageProps = Readonly<{
   apiClient: ApiClient;
   initialToken?: string;
-  /** How the invited account is proven (ADR 043). */
-  signInMethod: InvitationSignInMethod;
   clearFragment: () => void;
-  navigateToProvider: (url: string) => void;
   openWorkspace: (workspaceId: string) => void;
   /** Sign in and come back to this invitation. */
   openSignIn: () => void;
@@ -62,9 +58,7 @@ export function InvitationAcceptancePage(props: InvitationAcceptancePageProps) {
 function InvitationJourneyPage({
   apiClient,
   initialToken,
-  signInMethod,
   clearFragment,
-  navigateToProvider,
   openWorkspace,
   openSignIn,
   openFreshSignIn = openSignIn,
@@ -75,9 +69,7 @@ function InvitationJourneyPage({
   const journey = useInvitationJourney({
     apiClient,
     routeToken: initialToken,
-    signInMethod,
     clearFragment,
-    navigateToProvider,
     openSignIn,
     openFreshSignIn,
     openWorkspace,

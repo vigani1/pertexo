@@ -6,7 +6,6 @@ import {
   completeInvitation,
   readInvitation,
   resolveInvitation,
-  startInvitationOidc,
   verifyInvitationSession,
 } from '../data/invitation-acceptance.api';
 import { isUnauthenticated } from '@/features/auth/session-identity.public';
@@ -37,7 +36,7 @@ export type JourneyRuntime = Readonly<{
   lifecycle: RefObject<number>;
   ownership: RefObject<number>;
   bootstrapController: RefObject<AbortController | undefined>;
-  oidcController: RefObject<AbortController | undefined>;
+  verifyController: RefObject<AbortController | undefined>;
   cleanupController: RefObject<AbortController | undefined>;
   completion: RefObject<CompletionAttempt | undefined>;
   setJourney: (journey: InvitationAcceptanceJourney | undefined) => void;
@@ -79,7 +78,7 @@ function replaceController(
 /** Unmounting retires the journey: nothing late may act on it any more. */
 export function retireJourney(runtime: JourneyRuntime) {
   runtime.bootstrapController.current?.abort();
-  runtime.oidcController.current?.abort();
+  runtime.verifyController.current?.abort();
   runtime.cleanupController.current?.abort();
   runtime.ownership.current += 1;
   runtime.token.current = undefined;
@@ -108,7 +107,6 @@ async function bootstrapJourney(
   runtime: JourneyRuntime,
   signal: AbortSignal,
   ownership: number,
-  verifySession: boolean,
 ) {
   // Bootstrap outlives StrictMode's effect replay, so only ownership counts.
   const owned = () =>
@@ -121,9 +119,7 @@ async function bootstrapJourney(
       token === undefined
         ? await readInvitation(runtime.apiClient, signal)
         : await resolveInvitation(runtime.apiClient, token, signal);
-    const verified = verifySession
-      ? await verifyQuietly(runtime.apiClient, read, signal)
-      : undefined;
+    const verified = await verifyQuietly(runtime.apiClient, read, signal);
     if (!owned()) return;
     const state = verified ?? read;
     runtime.token.current = undefined;
@@ -142,14 +138,10 @@ async function bootstrapJourney(
   }
 }
 
-export function startBootstrap(
-  runtime: JourneyRuntime,
-  ownership: number,
-  verifySession: boolean,
-) {
-  runtime.oidcController.current?.abort();
+export function startBootstrap(runtime: JourneyRuntime, ownership: number) {
+  runtime.verifyController.current?.abort();
   const controller = replaceController(runtime.bootstrapController);
-  void bootstrapJourney(runtime, controller.signal, ownership, verifySession);
+  void bootstrapJourney(runtime, controller.signal, ownership);
 }
 
 /**
@@ -162,7 +154,7 @@ export async function verifyJourneySession(
   navigate: Readonly<{ signIn: () => void; signInAgain: () => void }>,
 ) {
   if (journey === undefined || journey.state === 'unavailable') return;
-  const controller = replaceController(runtime.oidcController);
+  const controller = replaceController(runtime.verifyController);
   const owned = snapshot(runtime);
   runtime.setPending(true);
   runtime.setError(undefined);
@@ -185,34 +177,6 @@ export async function verifyJourneySession(
   }
 }
 
-/** Verifies the invited account through the invitation's own sign-in. */
-export async function startJourneySignIn(
-  runtime: JourneyRuntime,
-  journey: InvitationAcceptanceJourney | undefined,
-  navigateToProvider: (url: string) => void,
-) {
-  if (journey === undefined || journey.state === 'unavailable') return;
-  const controller = replaceController(runtime.oidcController);
-  const owned = snapshot(runtime);
-  runtime.setPending(true);
-  runtime.setError(undefined);
-  try {
-    const result = await startInvitationOidc(
-      runtime.apiClient,
-      journey.csrfToken,
-      controller.signal,
-    );
-    if (stillOwned(runtime, owned, controller.signal))
-      navigateToProvider(result.authorizationUrl);
-  } catch (cause) {
-    if (stillOwned(runtime, owned, controller.signal))
-      runtime.setError(acceptanceFailure(cause));
-  } finally {
-    if (stillOwned(runtime, owned, controller.signal))
-      runtime.setPending(false);
-  }
-}
-
 function reconciledFailure(
   state: InvitationAcceptanceJourney,
   retained: CompletionAttempt | undefined,
@@ -227,7 +191,7 @@ function reconciledFailure(
 /** Reads the authoritative journey after an uncertain or lost answer. */
 export async function reconcileJourney(runtime: JourneyRuntime) {
   const owned = snapshot(runtime);
-  runtime.oidcController.current?.abort();
+  runtime.verifyController.current?.abort();
   const controller = replaceController(runtime.bootstrapController);
   runtime.setPending(true);
   try {

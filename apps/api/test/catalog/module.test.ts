@@ -8,7 +8,7 @@ import {
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,
 } from '../../src/catalog/use-cases.js';
-import { OpaqueSessionService } from '../../src/identity/index.js';
+import { SESSION_AUTHORITY } from '../../src/identity-workspace/index.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
 
 // Nest dynamic modules require a class token.
@@ -16,10 +16,10 @@ import { RequestContextStore } from '../../src/platform/http/index.js';
 class FakeIdentityModule {}
 Module({
   providers: [
-    { provide: OpaqueSessionService, useValue: {} },
+    { provide: SESSION_AUTHORITY, useValue: {} },
     RequestContextStore,
   ],
-  exports: [OpaqueSessionService, RequestContextStore],
+  exports: [SESSION_AUTHORITY, RequestContextStore],
 })(FakeIdentityModule);
 
 describe('catalog Nest module', () => {

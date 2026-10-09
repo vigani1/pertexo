@@ -185,12 +185,6 @@ export function SignInLens({
           {signIn.failure}
         </Notice>
       )}
-      {capabilities.legacyMigrationAvailable ? (
-        <AuthLensFooter className="mt-2">
-          Used Pertexo before the new sign-in?{' '}
-          <Link to="/account/migrate">Move your account</Link>
-        </AuthLensFooter>
-      ) : null}
     </AuthLens>
   );
 }

@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   SessionAuthenticationGuard,
   WorkspaceManageGuard,
+  type IdentitySessionAuthority,
 } from '../../src/identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../../src/identity-workspace/types.js';
-import type { OpaqueSessionService } from '../../src/identity/index.js';
+
 import {
   ProblemDetailsFilter,
   RequestContextStore,
@@ -24,7 +25,7 @@ function executionContext(request: IdentityWorkspaceRequest): ExecutionContext {
   } as unknown as ExecutionContext;
 }
 
-function authenticatedSessions(): OpaqueSessionService {
+function authenticatedSessions(): IdentitySessionAuthority {
   return {
     authenticate: vi.fn().mockResolvedValue(
       Object.freeze({
@@ -34,7 +35,7 @@ function authenticatedSessions(): OpaqueSessionService {
         clientMetadata: Object.freeze({}),
       }),
     ),
-  } as unknown as OpaqueSessionService;
+  } as unknown as IdentitySessionAuthority;
 }
 
 function request(routeWorkspaceId = workspaceId): IdentityWorkspaceRequest {
@@ -101,7 +102,7 @@ describe('identity/workspace guard request correlation', () => {
     );
     const sessionService = {
       authenticate: authenticateSession,
-    } as unknown as OpaqueSessionService;
+    } as unknown as IdentitySessionAuthority;
     const guard = new SessionAuthenticationGuard(sessionService, contexts);
     const httpRequest = request();
     let beforeActor: unknown;
@@ -141,7 +142,7 @@ describe('identity/workspace guard request correlation', () => {
     const contexts = new RequestContextStore();
     const rejectedSessions = {
       authenticate: vi.fn().mockRejectedValue(new Error('invalid session')),
-    } as unknown as OpaqueSessionService;
+    } as unknown as IdentitySessionAuthority;
     const guard = new SessionAuthenticationGuard(rejectedSessions, contexts);
     const httpRequest = request();
 

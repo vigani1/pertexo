@@ -103,40 +103,26 @@ export async function createApiApplication(
     registerApiMetrics(fastifyInstance);
     registerAuthenticationCapabilities(fastifyInstance, {
       password: {
-        enabled: identityRuntime?.betterAuth !== undefined,
+        enabled: identityRuntime !== undefined,
         minimumLength: 12,
         verificationRequired: true,
       },
       socialProviders: Object.keys(
-        config.identity?.betterAuth?.providers ?? {},
+        config.identity?.betterAuth.providers ?? {},
       ) as ('google' | 'microsoft' | 'github' | 'apple')[],
-      legacyMigrationAvailable:
-        identityRuntime?.betterAuth !== undefined &&
-        config.identity?.oidc !== undefined,
     });
-    if (
-      identityRuntime?.betterAuth !== undefined &&
-      config.identity !== undefined
-    ) {
-      const publicOrigin =
-        config.identity.publicWebOrigin ??
-        (config.identity.oidc === undefined
-          ? undefined
-          : new URL(config.identity.oidc.redirectUri).origin);
-      if (publicOrigin === undefined)
-        throw new TypeError('Identity public web origin is not configured');
+    if (identityRuntime !== undefined && config.identity !== undefined)
       registerBetterAuthHandler(fastifyInstance, {
         handler: identityRuntime.betterAuth.auth.handler,
         rateLimitConsumer:
           application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
-        publicOrigin,
+        publicOrigin: config.identity.publicWebOrigin,
         sessionCookie: {
           secure: config.identity.session.secureCookie,
           sameSite: config.identity.session.sameSite,
           maxAgeSeconds: Math.floor(config.identity.session.ttlMillis / 1_000),
         },
       });
-    }
     await application.init();
     if (webhookRuntime !== undefined) {
       registerWebhookIngress(fastifyInstance, webhookRuntime.ingress);

@@ -1,6 +1,4 @@
 export const IDENTITY_WORKSPACE_OPERATION = Object.freeze({
-  oidcStart: 'oidc.start',
-  oidcCallback: 'oidc.callback',
   sessionLogout: 'session.logout',
   userProfileRead: 'user.profile_read',
   userProfileUpdate: 'user.profile_update',

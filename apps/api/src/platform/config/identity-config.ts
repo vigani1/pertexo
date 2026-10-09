@@ -3,35 +3,11 @@ import { z } from 'zod';
 import {
   parseAuthenticationProviders,
   parseDurableAuthenticationMail,
-  parseOidcConfig,
   parsePreviousKeys,
-  type OIDC_SIGNING_ALGORITHMS,
 } from './identity-credentials-config.js';
 
 /** Environment variables owned by browser identity and authentication. */
 export const identityEnvironmentShape = {
-  OIDC_ALLOWED_ALGORITHMS: z.string().optional(),
-  OIDC_AUTHORIZATION_ENDPOINT: z.url().optional(),
-  OIDC_CALLBACK_LANDING_PATH: z
-    .string()
-    .regex(/^\/(?:[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]*$/u)
-    .default('/'),
-  OIDC_CLIENT_ID: z.string().trim().min(1).max(256).optional(),
-  OIDC_CLIENT_SECRET: z.string().min(1).max(512).optional(),
-  OIDC_ISSUER: z.url().optional(),
-  OIDC_JWKS_URI: z.url().optional(),
-  OIDC_REDIRECT_URI: z.url().optional(),
-  OIDC_SCOPES: z.string().optional(),
-  OIDC_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(30_000)
-    .default(5_000),
-  OIDC_TOKEN_ENDPOINT: z.url().optional(),
-  OIDC_TRANSACTION_KEY: z.string().optional(),
-  OIDC_TRANSACTION_KEY_VERSION: z.string().optional(),
-  OIDC_TRANSACTION_PREVIOUS_KEYS: z.string().optional(),
   INVITATION_TOKEN_KEY: z.string().optional(),
   INVITATION_TOKEN_KEY_VERSION: z.string().optional(),
   INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),
@@ -50,12 +26,6 @@ export const identityEnvironmentShape = {
   AUTH_MICROSOFT_TENANT_ID: z.string().trim().min(1).max(512).optional(),
   AUTH_APPLE_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
   AUTH_APPLE_CLIENT_SECRET: z.string().min(1).max(4096).optional(),
-  OIDC_TRANSACTION_TTL_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(10 * 60_000)
-    .default(5 * 60_000),
   PUBLIC_WEB_ORIGIN: z.url().optional(),
   SESSION_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   SESSION_COOKIE_SECURE: z
@@ -80,30 +50,14 @@ type EncryptionKeys = Readonly<{
 }>;
 
 export type ApiIdentityConfig = Readonly<{
-  publicWebOrigin?: string;
-  oidc?: Readonly<{
-    issuer: string;
-    authorizationEndpoint: string;
-    tokenEndpoint: string;
-    jwksUri: string;
-    clientId: string;
-    clientSecret?: string;
-    callbackLandingPath?: string;
-    redirectUri: string;
-    scopes: readonly string[];
-    allowedAlgorithms: readonly (typeof OIDC_SIGNING_ALGORITHMS)[number][];
-    timeoutMillis: number;
-    transactionTtlMillis: number;
-    allowInsecureHttpForTests: boolean;
-  }>;
-  secretEncryption?: EncryptionKeys;
+  publicWebOrigin: string;
   invitationTokenEncryption?: EncryptionKeys;
   session: Readonly<{
     ttlMillis: number;
     secureCookie: boolean;
     sameSite: 'lax' | 'strict' | 'none';
   }>;
-  betterAuth?: Readonly<{
+  betterAuth: Readonly<{
     secret: string;
     mailMode: 'local' | 'durable' | 'disabled';
     /** Local development prints each local message's link to stdout. */
@@ -122,22 +76,16 @@ export type ApiIdentityConfig = Readonly<{
   }>;
 }>;
 
-export type LegacyOidcConfig = Readonly<{
-  oidc: NonNullable<ApiIdentityConfig['oidc']>;
-  secretEncryption: EncryptionKeys;
-}>;
-
 type IdentityScope = Readonly<{
   configured: boolean;
-  oidcConfigured: boolean;
   deployed: boolean;
 }>;
 
 /**
- * Parses browser identity: legacy OIDC, Better Auth, authentication mail,
- * invitation keys and the browser session boundary. Checks run in a fixed
- * order so the first violated deployment rule is the reported one, and
- * failures that could echo credentials or keys are sanitized.
+ * Parses browser identity: Better Auth, authentication mail, invitation keys
+ * and the browser session boundary. Checks run in a fixed order so the first
+ * violated deployment rule is the reported one, and failures that could echo
+ * credentials or keys are sanitized.
  */
 export function parseIdentityConfig(
   environment: IdentityEnvironment,
@@ -145,29 +93,24 @@ export function parseIdentityConfig(
 ): ApiIdentityConfig | undefined {
   const scope = identityScope(environment, rawEnvironment);
   if (!scope.configured && !scope.deployed) return undefined;
-  requireAuthenticationAuthority(environment, scope.oidcConfigured);
+  const secret = environment.BETTER_AUTH_SECRET;
+  if (secret === undefined)
+    throw new Error('Better Auth configuration is incomplete');
   requireInvitationKeyPair(environment, scope.deployed);
-  const legacyOidc = scope.oidcConfigured
-    ? parseLegacyOidc(environment, scope.deployed)
-    : undefined;
-  const publicWebOrigin = resolvePublicWebOrigin(
-    environment,
-    legacyOidc,
-    scope.deployed,
-  );
+  const publicWebOrigin = parsePublicWebOrigin(environment, scope.deployed);
   const session = parseSessionPolicy(
     environment,
     publicWebOrigin,
     scope.deployed,
   );
-  requireDeployedBetterAuth(environment, scope.deployed);
+  if (scope.deployed && environment.AUTH_MAIL_MODE !== 'durable')
+    throw new Error('Durable authentication mail is required when deployed');
   try {
     return Object.freeze({
-      ...(publicWebOrigin === undefined ? {} : { publicWebOrigin }),
-      ...(legacyOidc ?? {}),
+      publicWebOrigin,
       ...invitationTokenEncryption(environment),
       session,
-      ...betterAuthConfig(environment),
+      betterAuth: betterAuthConfig(environment, secret),
     } satisfies ApiIdentityConfig);
   } catch {
     // Configuration errors are deliberately sanitized because this boundary
@@ -186,39 +129,16 @@ function identityScope(
   return {
     configured: present.some(
       (name) =>
-        name.startsWith('OIDC_') ||
         name.startsWith('SESSION_') ||
         name.startsWith('AUTH_') ||
         name === 'BETTER_AUTH_SECRET' ||
         name === 'PUBLIC_WEB_ORIGIN' ||
         name.startsWith('INVITATION_TOKEN_'),
     ),
-    oidcConfigured: present.some((name) => name.startsWith('OIDC_')),
     deployed:
       environment.NODE_ENV === 'staging' ||
       environment.NODE_ENV === 'production',
   };
-}
-
-/** Legacy OIDC must be complete when present; otherwise Better Auth is required. */
-function requireAuthenticationAuthority(
-  environment: IdentityEnvironment,
-  oidcConfigured: boolean,
-): void {
-  const oidcValues = [
-    environment.OIDC_ISSUER,
-    environment.OIDC_AUTHORIZATION_ENDPOINT,
-    environment.OIDC_TOKEN_ENDPOINT,
-    environment.OIDC_JWKS_URI,
-    environment.OIDC_CLIENT_ID,
-    environment.OIDC_REDIRECT_URI,
-    environment.OIDC_TRANSACTION_KEY,
-    environment.OIDC_TRANSACTION_KEY_VERSION,
-  ];
-  if (oidcConfigured && oidcValues.some((value) => value === undefined))
-    throw new Error('Identity configuration is incomplete');
-  if (!oidcConfigured && environment.BETTER_AUTH_SECRET === undefined)
-    throw new Error('Better Auth configuration is incomplete');
 }
 
 function requireInvitationKeyPair(
@@ -234,41 +154,15 @@ function requireInvitationKeyPair(
     throw new Error('Invitation token encryption configuration is incomplete');
 }
 
-function parseLegacyOidc(
+/** The browser origin is required and must be HTTPS when deployed. */
+function parsePublicWebOrigin(
   environment: IdentityEnvironment,
   deployed: boolean,
-): LegacyOidcConfig {
-  try {
-    return parseOidcConfig(environment, deployed);
-  } catch (error: unknown) {
-    if (
-      error instanceof Error &&
-      error.message === 'HTTPS identity endpoints are required when deployed'
-    )
-      throw error;
-    throw new Error('Identity configuration is invalid');
-  }
-}
-
-/** The browser origin is explicit, or the legacy OIDC redirect's origin. */
-function resolvePublicWebOrigin(
-  environment: IdentityEnvironment,
-  legacyOidc: LegacyOidcConfig | undefined,
-  deployed: boolean,
-): string | undefined {
-  const legacyOrigin =
-    legacyOidc === undefined
-      ? undefined
-      : new URL(legacyOidc.oidc.redirectUri).origin;
-  const origin =
-    environment.PUBLIC_WEB_ORIGIN === undefined
-      ? legacyOrigin
-      : normalizedOrigin(environment.PUBLIC_WEB_ORIGIN);
-  if (environment.BETTER_AUTH_SECRET !== undefined && origin === undefined)
+): string {
+  if (environment.PUBLIC_WEB_ORIGIN === undefined)
     throw new Error('PUBLIC_WEB_ORIGIN is required for Better Auth');
-  if (deployed && origin === undefined)
-    throw new Error('PUBLIC_WEB_ORIGIN is required when deployed');
-  if (deployed && origin !== undefined && new URL(origin).protocol !== 'https:')
+  const origin = normalizedOrigin(environment.PUBLIC_WEB_ORIGIN);
+  if (deployed && new URL(origin).protocol !== 'https:')
     throw new Error('HTTPS public web origin is required when deployed');
   return origin;
 }
@@ -276,13 +170,10 @@ function resolvePublicWebOrigin(
 /** Cookies default to Secure on an HTTPS origin and must be Secure when deployed. */
 function parseSessionPolicy(
   environment: IdentityEnvironment,
-  publicWebOrigin: string | undefined,
+  publicWebOrigin: string,
   deployed: boolean,
 ): ApiIdentityConfig['session'] {
-  const protocol =
-    publicWebOrigin === undefined
-      ? undefined
-      : new URL(publicWebOrigin).protocol;
+  const protocol = new URL(publicWebOrigin).protocol;
   const secureCookie =
     environment.SESSION_COOKIE_SECURE ?? protocol === 'https:';
   if (protocol === 'http:' && secureCookie)
@@ -298,16 +189,6 @@ function parseSessionPolicy(
     secureCookie,
     sameSite: environment.SESSION_COOKIE_SAME_SITE,
   });
-}
-
-function requireDeployedBetterAuth(
-  environment: IdentityEnvironment,
-  deployed: boolean,
-): void {
-  if (deployed && environment.BETTER_AUTH_SECRET === undefined)
-    throw new Error('Better Auth configuration is incomplete');
-  if (deployed && environment.AUTH_MAIL_MODE !== 'durable')
-    throw new Error('Durable authentication mail is required when deployed');
 }
 
 function invitationTokenEncryption(
@@ -326,24 +207,21 @@ function invitationTokenEncryption(
 
 function betterAuthConfig(
   environment: IdentityEnvironment,
-): Pick<ApiIdentityConfig, 'betterAuth'> {
-  const providers = parseAuthenticationProviders(environment);
+  secret: string,
+): ApiIdentityConfig['betterAuth'] {
   const durableMail = parseDurableAuthenticationMail(environment);
-  if (environment.BETTER_AUTH_SECRET === undefined) return {};
   // Local mail reaches a developer only as printed links; staging and
   // production require durable mail, and tests read the sink directly.
   const printLocalMailLinks =
     environment.AUTH_MAIL_MODE === 'local' &&
     environment.NODE_ENV === 'development';
-  return {
-    betterAuth: Object.freeze({
-      secret: environment.BETTER_AUTH_SECRET,
-      mailMode: environment.AUTH_MAIL_MODE,
-      ...(printLocalMailLinks ? { printLocalMailLinks } : {}),
-      ...(durableMail === undefined ? {} : { durableMail }),
-      providers,
-    }),
-  };
+  return Object.freeze({
+    secret,
+    mailMode: environment.AUTH_MAIL_MODE,
+    ...(printLocalMailLinks ? { printLocalMailLinks } : {}),
+    ...(durableMail === undefined ? {} : { durableMail }),
+    providers: parseAuthenticationProviders(environment),
+  });
 }
 
 function normalizedOrigin(value: string): string {

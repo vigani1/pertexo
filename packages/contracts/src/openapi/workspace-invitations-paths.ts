@@ -12,7 +12,6 @@ import {
 import {
   invitationAcceptanceCompleteRequestSchema,
   invitationAcceptanceJourneySchema,
-  invitationAcceptanceOidcRequestSchema,
   invitationAcceptanceReceiptSchema,
   invitationAcceptanceResolveRequestSchema,
   invitationAcceptanceSessionRequestSchema,
@@ -48,10 +47,6 @@ export const workspaceInvitationContractSchemas = Object.freeze({
   ),
   InvitationAcceptanceResolveRequest: jsonSchema(
     invitationAcceptanceResolveRequestSchema,
-    'input',
-  ),
-  InvitationAcceptanceOidcRequest: jsonSchema(
-    invitationAcceptanceOidcRequestSchema,
     'input',
   ),
   InvitationAcceptanceSessionRequest: jsonSchema(
@@ -161,23 +156,6 @@ export const workspaceInvitationContractPaths = Object.freeze({
       responses: {
         '204': { description: 'Invitation journey abandoned' },
         '403': responseReference('Forbidden'),
-        '500': responseReference('Unexpected'),
-      },
-    },
-  },
-  '/v1/invitation-acceptance/oidc': {
-    post: {
-      operationId: 'startInvitationAcceptanceOidc',
-      security: [{ invitationBinding: [] }],
-      parameters: [invitationCsrfHeaderParameter()],
-      requestBody: jsonRequest('InvitationAcceptanceOidcRequest'),
-      responses: {
-        '200': jsonResponse(
-          'OIDC authorization transaction',
-          'OidcStartResponse',
-        ),
-        '403': responseReference('Forbidden'),
-        '409': responseReference('Conflict'),
         '500': responseReference('Unexpected'),
       },
     },

@@ -1,5 +1,2 @@
-export {
-  authenticationCapabilitiesQueryOptions,
-  currentUserQueryOptions,
-} from './data/auth.queries';
+export { currentUserQueryOptions } from './data/auth.queries';
 export { isUnauthenticated } from './model/session/session-errors';

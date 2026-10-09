@@ -2,14 +2,10 @@ import type {
   IdentityClock,
   IdentityCrypto,
   AuthenticatedSession,
-  OidcLoginTransactionStore,
-  OidcProviderPort,
-  ReplacementSessionCredential,
   SessionCookieBoundary,
   SignInEvidence,
   SessionIssueInput,
   SessionIssueResult,
-  SessionStorePort,
 } from '../identity/index.js';
 import type {
   WorkspaceAccessQuery,
@@ -19,17 +15,7 @@ import type { WorkspaceAccess, WorkspaceId } from '../workspaces/index.js';
 import type { IdentityWorkspaceTelemetry } from './telemetry.js';
 
 export type IdentityWorkspaceConfig = Readonly<{
-  publicWebOrigin?: string;
-  allowGenericOidcLogin?: boolean;
-  oidc?: Readonly<{
-    issuer: string;
-    authorizationEndpoint: string;
-    clientId: string;
-    callbackLandingPath?: string;
-    redirectUri: string;
-    scopes: readonly string[];
-    transactionTtlMillis: number;
-  }>;
+  publicWebOrigin: string;
   session?: Readonly<{
     ttlMillis?: number;
     secureCookie?: boolean;
@@ -37,17 +23,8 @@ export type IdentityWorkspaceConfig = Readonly<{
   }>;
 }>;
 
-export interface IdentityWorkspacePersistence extends SessionStorePort {
+export interface IdentityWorkspacePersistence {
   findUserById(userId: string): Promise<UserProfilePersistenceRecord | null>;
-  resolveOrCreateIdentity(
-    input: Readonly<{
-      issuer: string;
-      providerSubject: string;
-      email: string;
-      displayName: string;
-      profileMetadata?: Record<string, unknown>;
-    }>,
-  ): Promise<Readonly<{ userId: string; authenticationIdentityId?: string }>>;
   createWorkspaceWithOwner(
     input: Readonly<{
       name: string;
@@ -325,13 +302,14 @@ export type InvitationAcceptanceCompletePersistenceInput = Readonly<{
   invitationRevision: number;
   actorUserId: string;
   idempotencyKey: string;
+  /** The Better Auth session that replaces the actor's sessions. */
   replacementSession: Readonly<{
     id: string;
+    token: string;
     expiresAt: Date;
     userAgent?: string | null;
     ipAddress?: string | null;
-  }> &
-    ReplacementSessionCredential;
+  }>;
   requestId?: string;
   traceId?: string;
 }>;
@@ -438,34 +416,28 @@ export interface IdentitySessionAuthority {
     options?: Readonly<{ signal?: AbortSignal }>,
   ): Promise<AuthenticatedSession>;
   revoke(cookieValue: string): Promise<void>;
-  /**
-   * The stored form of a replacement session that persistence installs
-   * atomically with a membership change, so this authority resolves it.
-   */
-  replacementCredential(token: string): ReplacementSessionCredential;
-  deliver?(
+  /** Writes the cookies of a session another transaction installed. */
+  deliver(
     token: string,
     cookieBoundary: SessionCookieBoundary,
   ): Promise<SessionIssueResult>;
   /**
    * The verified identity behind a browser session and when its credential
-   * was last presented. Only an authority whose sign-in verifies email can
-   * supply it; invitation acceptance uses it as fresh recipient evidence.
+   * was last presented; invitation acceptance uses it as fresh recipient
+   * evidence.
    */
-  signInEvidence?(cookieValue: string): Promise<SignInEvidence>;
+  signInEvidence(cookieValue: string): Promise<SignInEvidence>;
 }
 
 export type IdentityWorkspaceDependencies = Readonly<{
   config: IdentityWorkspaceConfig;
-  provider?: OidcProviderPort;
-  transactions?: OidcLoginTransactionStore;
   persistence: IdentityWorkspacePersistence;
   authorization: WorkspaceAuthorizationSource;
   crypto?: IdentityCrypto;
   clock?: IdentityClock;
   telemetry?: IdentityWorkspaceTelemetry;
   invitationTokens?: InvitationTokenProtector;
-  sessions?: IdentitySessionAuthority;
+  sessions: IdentitySessionAuthority;
 }>;
 
 export type { WorkspaceAuthorizationSource } from '../workspaces/index.js';

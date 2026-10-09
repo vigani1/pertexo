@@ -68,16 +68,17 @@ function controller(
   evidenceUserId = actorId,
 ) {
   const sessions = {
-    ...(signedInAt === 'no evidence'
-      ? {}
-      : {
-          signInEvidence: vi.fn().mockResolvedValue({
+    signInEvidence:
+      signedInAt === 'no evidence'
+        ? vi
+            .fn()
+            .mockRejectedValue(new IdentityError('identity.session_invalid'))
+        : vi.fn().mockResolvedValue({
             userId: evidenceUserId,
             email: 'owner@example.test',
             emailVerified: true,
             signedInAt,
           }),
-        }),
   } as unknown as IdentitySessionAuthority;
   return new WorkspaceMembershipController(
     new WorkspaceMembershipLifecycleUseCase(store, { now: () => now }),
@@ -157,7 +158,6 @@ describe('membership lifecycle commands (ADR 047)', () => {
     await expect(stale).rejects.toBeInstanceOf(IdentityError);
     await expect(stale).rejects.toMatchObject({
       code: 'identity.session_not_fresh',
-      status: 403,
     });
     await expect(
       controller(store, 'no evidence').transferOwnership(
@@ -165,7 +165,7 @@ describe('membership lifecycle commands (ADR 047)', () => {
         params,
         body,
       ),
-    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    ).rejects.toMatchObject({ code: 'identity.session_invalid' });
     await expect(
       controller(store, now, targetId).transferOwnership(
         request(),

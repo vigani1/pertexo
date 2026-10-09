@@ -3,16 +3,12 @@ import {
   InvitationAcceptanceConflictError,
   WorkspaceInvitationCommandConflictError,
 } from '@pertexo/database/tenant-access';
-import { createHash } from 'node:crypto';
 
 import {
   DoubleSubmitCsrfPolicy,
   IdentityError,
-  OpaqueSessionService,
   nodeIdentityCrypto,
 } from '../../src/identity/index.js';
-import { BetterAuthSessionService } from '../../src/identity-infrastructure/index.js';
-import type { BetterAuthRuntime } from '../../src/identity-infrastructure/index.js';
 import {
   InvitationAcceptanceController,
   InvitationAcceptanceUseCase,
@@ -20,6 +16,7 @@ import {
   WorkspaceInvitationManagementUseCase,
   type CookieResponse,
   type IdentityWorkspaceRequest,
+  type IdentitySessionAuthority,
 } from '../../src/identity-workspace/index.js';
 import type {
   IdentityWorkspacePersistence,
@@ -227,7 +224,7 @@ describe('workspace invitation use cases', () => {
     const useCase = acceptanceUseCase({ resolveInvitationAcceptance });
     const controller = new InvitationAcceptanceController(
       useCase,
-      {} as OpaqueSessionService,
+      {} as IdentitySessionAuthority,
       new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
       { secure: true, sameSite: 'lax' },
       'https://web.example.test',
@@ -265,56 +262,18 @@ describe('workspace invitation use cases', () => {
     );
   });
 
-  it('does not advertise OIDC for an abandoned bound journey', async () => {
-    const readInvitationAcceptance = vi.fn().mockResolvedValue({
-      id: intentId,
-      workspaceId,
-      invitationId,
-      invitationRevision: 1,
-      status: 'abandoned',
-      expiresAt: new Date('2026-09-19T12:15:00.000Z'),
-      verifiedUserId: null,
-      verifiedEmail: null,
-      verifiedAt: null,
-      workspaceName: 'Control Operations',
-      invitationRole: 'viewer',
-      invitationStatus: 'pending',
-      acceptedUserId: null,
-      receipt: null,
+  it('reports an abandoned bound journey as unavailable', async () => {
+    const useCase = acceptanceUseCase({
+      readInvitationAcceptance: vi.fn().mockResolvedValue({
+        ...pendingIntent(),
+        status: 'abandoned',
+      }),
     });
-    const startLogin = vi.fn();
-    const useCase = new InvitationAcceptanceUseCase(
-      {
-        resolveInvitationAcceptance: vi.fn(),
-        readInvitationAcceptance,
-        recordInvitationAcceptanceProof: vi.fn(),
-        completeInvitationAcceptance: vi.fn(),
-        abandonInvitationAcceptance: vi.fn(),
-      },
-      { startLogin, completeLogin: vi.fn() },
-      nodeIdentityCrypto,
-      { now: () => now },
-      {
-        oidc: {
-          issuer: 'https://issuer.test',
-          authorizationEndpoint: 'https://issuer.test/authorize',
-          clientId: 'client',
-          redirectUri: 'https://api.test/callback',
-          scopes: ['openid', 'email'],
-          transactionTtlMillis: 300_000,
-        },
-      },
-      opaqueSessionAuthority(),
-    );
     const binding = `wb1.${workspaceId}.${intentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`;
 
     await expect(useCase.read(binding)).resolves.toEqual({
       state: 'unavailable',
     });
-    await expect(
-      useCase.startOidc(binding, 'c'.repeat(43)),
-    ).rejects.toMatchObject({ reason: 'unavailable' });
-    expect(startLogin).not.toHaveBeenCalled();
   });
 
   it('maps expired recipient proof separately from other invitation conflicts', () => {
@@ -367,95 +326,88 @@ describe('workspace invitation use cases', () => {
     });
   });
 
-  it.each([
-    ['opaque', opaqueSessionAuthority],
-    ['better_auth', betterAuthSessionAuthority],
-  ] as const)(
-    'installs the replacement session where the %s authority resolves it',
-    async (authority, sessionAuthority) => {
-      const completeInvitationAcceptance = vi.fn().mockResolvedValue({
-        intentId,
-        workspaceId,
-        role: 'viewer',
-        membershipCreated: true,
-        replayed: false,
-        replacementSessionCreated: true,
-      });
-      const useCase = acceptanceUseCase(
-        {
-          readInvitationAcceptance: vi.fn().mockResolvedValue({
-            id: intentId,
-            workspaceId,
-            invitationId,
-            invitationRevision: 1,
-            status: 'verified',
-            expiresAt: new Date('2026-09-19T12:15:00.000Z'),
-            verifiedUserId: actorId,
-            verifiedEmail: 'recipient@example.test',
-            verifiedAt: now,
-            workspaceName: 'Control Operations',
-            invitationRole: 'viewer',
-            invitationStatus: 'pending',
-            acceptedUserId: null,
-            receipt: null,
-          }),
-          completeInvitationAcceptance,
-        },
-        sessionAuthority(),
-      );
+  it('installs the Better Auth replacement session with the acceptance', async () => {
+    const completeInvitationAcceptance = vi.fn().mockResolvedValue({
+      intentId,
+      workspaceId,
+      role: 'viewer',
+      membershipCreated: true,
+      replayed: false,
+      replacementSessionCreated: true,
+    });
+    const useCase = acceptanceUseCase({
+      readInvitationAcceptance: vi.fn().mockResolvedValue({
+        ...pendingIntent(),
+        status: 'verified',
+        verifiedUserId: actorId,
+        verifiedEmail: 'recipient@example.test',
+        verifiedAt: now,
+      }),
+      completeInvitationAcceptance,
+    });
 
-      const result = await useCase.complete({
+    const result = await useCase.complete({
+      binding: `wb1.${workspaceId}.${intentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`,
+      csrfToken: 'c'.repeat(43),
+      authenticatedUserId: actorId,
+      request: { intentId, expectedRevision: 1 },
+      idempotencyKey: 'invitation-accept',
+      userAgent: 'acceptance-test',
+    });
+
+    const token = result.replacementToken ?? '';
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    expect(result.replacementExpiresAt).toEqual(
+      new Date(now.getTime() + 60_000),
+    );
+    const [command] = completeInvitationAcceptance.mock.calls[0] as [
+      { replacementSession: Record<string, unknown> },
+    ];
+    expect(command.replacementSession).toEqual({
+      id: expect.any(String) as string,
+      token,
+      expiresAt: new Date(now.getTime() + 60_000),
+      userAgent: 'acceptance-test',
+    });
+  });
+
+  it('rejects a sign-in whose email is not verified as recipient proof', async () => {
+    const useCase = acceptanceUseCase({
+      readInvitationAcceptance: vi.fn().mockResolvedValue(pendingIntent()),
+    });
+    await expect(
+      useCase.recordSessionProof({
         binding: `wb1.${workspaceId}.${intentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`,
         csrfToken: 'c'.repeat(43),
-        authenticatedUserId: actorId,
-        request: { intentId, expectedRevision: 1 },
-        idempotencyKey: 'invitation-accept',
-        userAgent: 'acceptance-test',
-      });
-
-      const token = result.replacementToken ?? '';
-      expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/u);
-      expect(result.replacementExpiresAt).toEqual(
-        new Date(now.getTime() + 60_000),
-      );
-      const [command] = completeInvitationAcceptance.mock.calls[0] as [
-        { replacementSession: Record<string, unknown> },
-      ];
-      expect(command.replacementSession).toEqual({
-        id: expect.any(String) as string,
-        expiresAt: new Date(now.getTime() + 60_000),
-        userAgent: 'acceptance-test',
-        authority,
-        ...(authority === 'opaque'
-          ? {
-              tokenDigest: createHash('sha256').update(token).digest('hex'),
-            }
-          : { token }),
-      });
-    },
-  );
-
-  it('rejects invitation proof without a provider-verified email', async () => {
-    const useCase = acceptanceUseCase({});
-    await expect(
-      useCase.recordProof({
-        externalIdentity: { issuer: 'https://issuer.test', subject: 'subject' },
-        internalIdentity: { userId: actorId },
-        verifiedProfile: {
+        evidence: {
+          userId: actorId,
           email: 'recipient@example.test',
-          displayName: 'Recipient',
           emailVerified: false,
-        },
-        continuation: {
-          kind: 'invitation_acceptance',
-          workspaceId,
-          intentId,
-          bindingDigest: 'a'.repeat(64),
+          signedInAt: now,
         },
       }),
     ).rejects.toBeInstanceOf(IdentityError);
   });
 });
+
+function pendingIntent() {
+  return {
+    id: intentId,
+    workspaceId,
+    invitationId,
+    invitationRevision: 1,
+    status: 'pending' as const,
+    expiresAt: new Date('2026-09-19T12:15:00.000Z'),
+    verifiedUserId: null,
+    verifiedEmail: null,
+    verifiedAt: null,
+    workspaceName: 'Control Operations',
+    invitationRole: 'viewer' as const,
+    invitationStatus: 'pending' as const,
+    acceptedUserId: null,
+    receipt: null,
+  };
+}
 
 function acceptanceUseCase(
   overrides: Partial<
@@ -468,8 +420,6 @@ function acceptanceUseCase(
       | 'abandonInvitationAcceptance'
     >
   >,
-  sessions:
-    OpaqueSessionService | BetterAuthSessionService = opaqueSessionAuthority(),
 ) {
   return new InvitationAcceptanceUseCase(
     {
@@ -480,36 +430,11 @@ function acceptanceUseCase(
       abandonInvitationAcceptance: vi.fn(),
       ...overrides,
     },
-    { startLogin: vi.fn(), completeLogin: vi.fn() },
     nodeIdentityCrypto,
     { now: () => now },
     {
-      oidc: {
-        issuer: 'https://issuer.test',
-        authorizationEndpoint: 'https://issuer.test/authorize',
-        clientId: 'client',
-        redirectUri: 'https://api.test/callback',
-        scopes: ['openid', 'email'],
-        transactionTtlMillis: 300_000,
-      },
+      publicWebOrigin: 'https://web.example.test',
       session: { ttlMillis: 60_000 },
     },
-    sessions,
   );
-}
-
-function opaqueSessionAuthority(): OpaqueSessionService {
-  return new OpaqueSessionService({
-    create: vi.fn(),
-    findByDigest: vi.fn(),
-    revokeByDigest: vi.fn(),
-  });
-}
-
-function betterAuthSessionAuthority(): BetterAuthSessionService {
-  return new BetterAuthSessionService({} as BetterAuthRuntime, {
-    secure: true,
-    sameSite: 'lax',
-    ttlSeconds: 60,
-  });
 }

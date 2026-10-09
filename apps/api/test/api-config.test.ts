@@ -9,15 +9,6 @@ function validDeployedEnvironment(): Record<string, string> {
     DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     NODE_ENV: 'production',
     OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
-    OIDC_ISSUER: 'https://identity.example.test',
-    OIDC_AUTHORIZATION_ENDPOINT: 'https://identity.example.test/authorize',
-    OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/token',
-    OIDC_JWKS_URI: 'https://identity.example.test/jwks',
-    OIDC_CLIENT_ID: 'pertexo-api',
-    OIDC_CALLBACK_LANDING_PATH: '/workspaces',
-    OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
-    OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-    OIDC_TRANSACTION_KEY_VERSION: 'v2',
     BETTER_AUTH_SECRET: 'better-auth-production-secret-at-least-32-characters',
     AUTH_MAIL_MODE: 'durable',
     AUTH_MAIL_FROM: 'security@example.test',
@@ -40,7 +31,7 @@ function validDeployedEnvironment(): Record<string, string> {
 }
 
 describe('parseApiConfig', () => {
-  it('enables Better Auth without requiring legacy OIDC configuration', () => {
+  it('enables Better Auth from its secret and public origin', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       BETTER_AUTH_SECRET:
@@ -54,8 +45,6 @@ describe('parseApiConfig', () => {
       betterAuth: { mailMode: 'local' },
       session: { secureCookie: false },
     });
-    expect(config.identity?.oidc).toBeUndefined();
-    expect(config.identity?.secretEncryption).toBeUndefined();
   });
 
   it('requires a public browser origin for standalone Better Auth', () => {
@@ -130,40 +119,22 @@ describe('parseApiConfig', () => {
       parseApiConfig({
         DATABASE_URL: validDeployedEnvironment().DATABASE_URL,
         NODE_ENV: 'test',
-        OIDC_ISSUER: 'http://127.0.0.1:4400',
-        OIDC_AUTHORIZATION_ENDPOINT: 'http://127.0.0.1:4400/authorize',
-        OIDC_TOKEN_ENDPOINT: 'http://127.0.0.1:4400/token',
-        OIDC_JWKS_URI: 'http://127.0.0.1:4400/jwks',
-        OIDC_CLIENT_ID: 'integration-test',
-        OIDC_REDIRECT_URI: 'http://127.0.0.1:3000/callback',
-        OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-        OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        BETTER_AUTH_SECRET:
+          'standalone-better-auth-secret-at-least-32-characters',
+        PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173',
         SESSION_COOKIE_SAME_SITE: 'none',
         SESSION_COOKIE_SECURE: 'false',
       }),
     ).toThrow('SameSite=None requires secure session cookies');
   });
 
-  it.each([
-    ['malformed previous-key JSON', { OIDC_TRANSACTION_PREVIOUS_KEYS: '{' }],
-    ['disallowed signing algorithm', { OIDC_ALLOWED_ALGORITHMS: 'HS256' }],
-  ])('sanitizes %s independently', (_name, changed) => {
-    expect(() =>
-      parseApiConfig({ ...validDeployedEnvironment(), ...changed }),
-    ).toThrow('Identity configuration is invalid');
-  });
-
-  it.each([
-    '//evil.example.test',
-    '/workspaces?next=evil',
-    'https://evil.test',
-  ])('rejects unsafe callback landing path %s', (callbackLandingPath) => {
+  it('sanitizes malformed previous-key JSON independently', () => {
     expect(() =>
       parseApiConfig({
         ...validDeployedEnvironment(),
-        OIDC_CALLBACK_LANDING_PATH: callbackLandingPath,
+        INVITATION_TOKEN_PREVIOUS_KEYS: '{',
       }),
-    ).toThrow();
+    ).toThrow('Identity configuration is invalid');
   });
 
   it('uses safe development defaults when optional values are absent', () => {
@@ -272,64 +243,23 @@ describe('parseApiConfig', () => {
 
   it('parses and freezes complete identity configuration', () => {
     const config = parseApiConfig({
-      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      ...validDeployedEnvironment(),
       NODE_ENV: 'staging',
-      OIDC_ISSUER: 'https://identity.example.test',
-      OIDC_AUTHORIZATION_ENDPOINT:
-        'https://identity.example.test/oauth2/authorize',
-      OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/oauth2/token',
-      OIDC_JWKS_URI: 'https://identity.example.test/.well-known/jwks.json',
-      OIDC_CLIENT_ID: 'pertexo-api',
-      OIDC_CALLBACK_LANDING_PATH: '/workspaces',
-      OIDC_CLIENT_SECRET: 'provider-secret',
-      OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
-      OIDC_ALLOWED_ALGORITHMS: 'RS256,ES256',
-      OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-      OIDC_TRANSACTION_KEY_VERSION: 'v2',
-      BETTER_AUTH_SECRET: 'better-auth-staging-secret-at-least-32-characters',
-      AUTH_MAIL_MODE: 'durable',
-      AUTH_MAIL_FROM: 'security@example.test',
-      AUTH_MAIL_KEY: Buffer.alloc(32, 9).toString('base64'),
-      AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
-      INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
-      INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
-      PUBLIC_WEB_ORIGIN: 'https://app.example.test',
-      OIDC_TRANSACTION_PREVIOUS_KEYS: JSON.stringify([
-        { version: 'v1', key: Buffer.alloc(32, 6).toString('base64') },
-      ]),
       CONNECTION_KMS_KEY_REFERENCE:
         'arn:aws:kms:eu-central-1:123456789012:key/example',
-      CONNECTION_KMS_REGION: 'eu-central-1',
-      REDIS_URL: 'rediss://redis.example.test:6380/0',
       TRUST_PROXY_CIDRS: '10.0.0.0/8, 2001:db8::/32',
-      ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-key',
-      ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
-      ARTIFACT_STORE_BUCKET: 'pertexo-primary',
-      ARTIFACT_STORE_ENDPOINT: 'https://objects-primary.example.test',
-      ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
-      ARTIFACT_STORE_REGION: 'eu-central-1',
     });
 
     expect(config.identity).toMatchObject({
-      oidc: {
-        issuer: 'https://identity.example.test',
-        clientId: 'pertexo-api',
-        callbackLandingPath: '/workspaces',
-        scopes: ['openid', 'profile', 'email'],
-        allowedAlgorithms: ['RS256', 'ES256'],
-        allowInsecureHttpForTests: false,
-      },
-      secretEncryption: {
-        current: { version: 'v2' },
-        previous: [{ version: 'v1' }],
-      },
+      publicWebOrigin: 'https://app.example.test',
+      invitationTokenEncryption: { current: { version: 'invite-v1' } },
       session: {
         secureCookie: true,
         sameSite: 'lax',
       },
+      betterAuth: { mailMode: 'durable' },
     });
     expect(Object.isFrozen(config.identity)).toBe(true);
-    expect(Object.isFrozen(config.identity?.oidc?.scopes)).toBe(true);
     expect(config.connections).toEqual({
       kmsKeyReference: 'arn:aws:kms:eu-central-1:123456789012:key/example',
       region: 'eu-central-1',
@@ -345,62 +275,22 @@ describe('parseApiConfig', () => {
     expect(Object.isFrozen(config.artifacts)).toBe(true);
   });
 
-  it('rejects partial local identity configuration without exposing its secret', () => {
+  it('rejects partial provider configuration without exposing its secret', () => {
     const secret = 'should-never-appear';
     let message = '';
     try {
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-        OIDC_CLIENT_SECRET: secret,
+        BETTER_AUTH_SECRET:
+          'standalone-better-auth-secret-at-least-32-characters',
+        PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173',
+        AUTH_GOOGLE_CLIENT_SECRET: secret,
       });
     } catch (error: unknown) {
       message = error instanceof Error ? error.message : String(error);
     }
-    expect(message).toBe('Identity configuration is incomplete');
+    expect(message).toBe('Identity configuration is invalid');
     expect(message).not.toContain(secret);
-  });
-
-  it('permits insecure OIDC endpoints only in the test environment', () => {
-    const config = parseApiConfig({
-      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-      NODE_ENV: 'test',
-      OIDC_ISSUER: 'http://127.0.0.1:4400',
-      OIDC_AUTHORIZATION_ENDPOINT: 'http://127.0.0.1:4400/authorize',
-      OIDC_TOKEN_ENDPOINT: 'http://127.0.0.1:4400/token',
-      OIDC_JWKS_URI: 'http://127.0.0.1:4400/jwks',
-      OIDC_CLIENT_ID: 'integration-test',
-      OIDC_REDIRECT_URI: 'http://127.0.0.1:3000/v1/auth/oidc/callback',
-      OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-      OIDC_TRANSACTION_KEY_VERSION: 'test-v1',
-      SESSION_COOKIE_SECURE: 'false',
-    });
-
-    expect(config.identity?.oidc?.allowInsecureHttpForTests).toBe(true);
-  });
-
-  it('rejects insecure identity endpoints in a deployed environment', () => {
-    expect(() =>
-      parseApiConfig({
-        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-        NODE_ENV: 'production',
-        OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
-        OIDC_ISSUER: 'http://identity.example.test',
-        OIDC_AUTHORIZATION_ENDPOINT: 'https://identity.example.test/authorize',
-        OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/token',
-        OIDC_JWKS_URI: 'https://identity.example.test/jwks',
-        OIDC_CLIENT_ID: 'pertexo-api',
-        OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
-        OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-        OIDC_TRANSACTION_KEY_VERSION: 'v1',
-        BETTER_AUTH_SECRET: 'better-auth-staging-secret-at-least-32-characters',
-        AUTH_MAIL_MODE: 'durable',
-        AUTH_MAIL_FROM: 'security@example.test',
-        AUTH_MAIL_KEY: Buffer.alloc(32, 9).toString('base64'),
-        AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
-        INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
-        INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
-      }),
-    ).toThrow('HTTPS identity endpoints are required when deployed');
   });
 
   it('rejects a port outside the TCP port range', () => {
@@ -432,15 +322,7 @@ describe('parseApiConfig', () => {
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         NODE_ENV: 'staging',
-        OIDC_ISSUER: 'https://identity.example.test',
-        OIDC_AUTHORIZATION_ENDPOINT:
-          'https://identity.example.test/oauth2/authorize',
-        OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/oauth2/token',
-        OIDC_JWKS_URI: 'https://identity.example.test/.well-known/jwks.json',
-        OIDC_CLIENT_ID: 'pertexo-api',
-        OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
-        OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-        OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        PUBLIC_WEB_ORIGIN: 'https://app.example.test',
         BETTER_AUTH_SECRET: 'better-auth-staging-secret-at-least-32-characters',
         AUTH_MAIL_MODE: 'durable',
         AUTH_MAIL_FROM: 'security@example.test',
@@ -476,14 +358,7 @@ describe('parseApiConfig', () => {
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         NODE_ENV: 'production',
         OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
-        OIDC_ISSUER: 'https://identity.example.test',
-        OIDC_AUTHORIZATION_ENDPOINT: 'https://identity.example.test/authorize',
-        OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/token',
-        OIDC_JWKS_URI: 'https://identity.example.test/jwks',
-        OIDC_CLIENT_ID: 'pertexo-api',
-        OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
-        OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-        OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        PUBLIC_WEB_ORIGIN: 'https://app.example.test',
         BETTER_AUTH_SECRET:
           'better-auth-production-secret-at-least-32-characters',
         AUTH_MAIL_MODE: 'durable',
@@ -598,7 +473,7 @@ describe('parseApiConfig identity boundary', () => {
       'Durable authentication mail is required when deployed',
     ],
     [
-      'a missing Better Auth secret beside legacy OIDC',
+      'a missing Better Auth secret',
       deployedEnvironmentWithout('BETTER_AUTH_SECRET'),
       'Better Auth configuration is incomplete',
     ],
@@ -661,26 +536,17 @@ describe('parseApiConfig identity boundary', () => {
         { version: 'invite-v0', key: Buffer.alloc(32, 5).toString('base64') },
       ],
     });
-    expect(Object.isFrozen(config.identity?.betterAuth?.providers)).toBe(true);
-    expect(Object.isFrozen(config.identity?.betterAuth?.durableMail)).toBe(
-      true,
-    );
+    expect(Object.isFrozen(config.identity?.betterAuth.providers)).toBe(true);
+    expect(Object.isFrozen(config.identity?.betterAuth.durableMail)).toBe(true);
   });
 
-  it('derives the browser origin and secure cookies from legacy OIDC', () => {
-    const config = parseApiConfig(
-      deployedEnvironmentWithout('PUBLIC_WEB_ORIGIN'),
-    );
-
-    expect(config.identity?.publicWebOrigin).toBe('https://api.example.test');
-    expect(config.identity?.session).toEqual({
-      ttlMillis: 24 * 60 * 60_000,
-      secureCookie: true,
-      sameSite: 'lax',
-    });
+  it('requires a public web origin when deployed', () => {
+    expect(() =>
+      parseApiConfig(deployedEnvironmentWithout('PUBLIC_WEB_ORIGIN')),
+    ).toThrow('PUBLIC_WEB_ORIGIN is required for Better Auth');
   });
 
-  it('secures standalone cookies on an HTTPS origin and omits legacy OIDC', () => {
+  it('secures cookies on an HTTPS origin', () => {
     const config = parseApiConfig({
       ...standaloneBetterAuthEnvironment(),
       SESSION_COOKIE_SAME_SITE: 'none',
@@ -712,7 +578,7 @@ describe('parseApiConfig identity boundary', () => {
       ...changed,
     });
 
-    expect(config.identity?.betterAuth?.printLocalMailLinks).toBe(expected);
+    expect(config.identity?.betterAuth.printLocalMailLinks).toBe(expected);
   });
 
   it('starts from the shared local example environment', () => {

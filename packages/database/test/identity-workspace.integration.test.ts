@@ -2,21 +2,17 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
-import type { DatabaseError, PoolClient } from 'pg';
+import type { DatabaseError } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   createIdentityWorkspaceDatabase,
   createWorkspaceDatabase,
-  createOidcLoginTransactionStore,
   IdentityConflictError,
   IdempotencyRequestConflictError,
-  IdentityNotFoundError,
   WorkspaceAccessDeniedError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceRenameCommandConflictError,
-  OidcTransactionCapacityError,
-  OidcTransactionSealingError,
   parseDatabaseConfig,
   auditEvents,
   workspaceMemberships,
@@ -64,11 +60,9 @@ const migrationConfig = {
 
 let identityDatabase: ReturnType<typeof createIdentityWorkspaceDatabase>;
 let tenantDatabase: ReturnType<typeof createWorkspaceDatabase>;
-let oidcStore: ReturnType<typeof createOidcLoginTransactionStore>;
 const identityResources: { close(): Promise<void> }[] = [];
 let ownerUserId: string;
 let workspaceId: string;
-let ownerSessionId: string;
 
 function pgCode(error: unknown): string | undefined {
   let current: unknown = error;
@@ -80,72 +74,19 @@ function pgCode(error: unknown): string | undefined {
   return undefined;
 }
 
-async function replaceOidcTransactions(input: {
-  active?: number;
-  consumed?: number;
-  stale?: number;
-}): Promise<void> {
-  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+async function createAuthenticationSession(userId: string): Promise<string> {
+  const pool = new Pool({ connectionString: apiUrl, max: 1 });
   try {
-    const client = await pool.connect();
-    try {
-      await client.query('begin');
-      await client.query('set local role pertexo_owner');
-      await client.query('delete from app.oidc_login_transactions');
-      const variants = [
-        {
-          count: input.active ?? 0,
-          prefix: `active-${randomUUID()}`,
-          createdAt: "clock_timestamp() - interval '1 minute'",
-          expiresAt: "clock_timestamp() + interval '1 hour'",
-          consumedAt: 'null',
-        },
-        {
-          count: input.consumed ?? 0,
-          prefix: `consumed-${randomUUID()}`,
-          createdAt: "clock_timestamp() - interval '2 minutes'",
-          expiresAt: "clock_timestamp() + interval '1 hour'",
-          consumedAt: "clock_timestamp() - interval '1 minute'",
-        },
-        {
-          count: input.stale ?? 0,
-          prefix: `stale-${randomUUID()}`,
-          createdAt: "clock_timestamp() - interval '2 hours'",
-          expiresAt: "clock_timestamp() - interval '1 hour'",
-          consumedAt: 'null',
-        },
-      ];
-      for (const variant of variants) {
-        if (variant.count === 0) continue;
-        await client.query(
-          `insert into app.oidc_login_transactions
-             (state_digest, code_verifier_ciphertext, code_verifier_nonce,
-              code_verifier_tag, code_verifier_key_version, nonce_ciphertext,
-              nonce_nonce, nonce_tag, nonce_key_version, expires_at, consumed_at,
-              created_at, browser_binding_digest)
-           select md5($1 || series::text) || md5(series::text || $1),
-                  'sealed-verifier', 'nonce', 'tag', 'test-v1',
-                  'sealed-nonce', 'nonce', 'tag', 'test-v1',
-                  ${variant.expiresAt}, ${variant.consumedAt}, ${variant.createdAt},
-                  repeat('0', 64)
-           from generate_series(1, $2::integer) as series`,
-          [variant.prefix, variant.count],
-        );
-      }
-      await client.query('commit');
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+    const token = randomUUID();
+    await pool.query(
+      `insert into app.auth_sessions(id,user_id,token,expires_at)
+       values($1,$2,$3,clock_timestamp()+interval '1 hour')`,
+      [randomUUID(), userId, token],
+    );
+    return token;
   } finally {
     await pool.end();
   }
-}
-
-async function clearOidcTransactions(): Promise<void> {
-  await replaceOidcTransactions({});
 }
 
 async function findActiveAuthenticationSession(token: string) {
@@ -163,18 +104,6 @@ async function findActiveAuthenticationSession(token: string) {
   }
 }
 
-function oidcTransaction() {
-  return {
-    stateDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-    browserBindingDigest: createHash('sha256')
-      .update(randomUUID())
-      .digest('hex'),
-    codeVerifier: `verifier-${randomUUID()}`,
-    nonce: `nonce-${randomUUID()}`,
-    expiresAt: new Date(Date.now() + 60_000),
-  };
-}
-
 beforeAll(async () => {
   await fixture.create();
   await migrateDatabase(migrationConfig);
@@ -186,47 +115,12 @@ beforeAll(async () => {
     parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
   );
   identityResources.push(tenantDatabase);
-  oidcStore = createOidcLoginTransactionStore(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-    {
-      seal: (plaintext, associatedData) => ({
-        ciphertext: Buffer.from(
-          `${associatedData}:${plaintext}`,
-          'utf8',
-        ).toString('base64url'),
-        nonce: 'test-nonce',
-        tag: 'test-tag',
-        keyVersion: 'test-v1',
-      }),
-      open: (sealed, associatedData) => {
-        const decoded = Buffer.from(sealed.ciphertext, 'base64url').toString(
-          'utf8',
-        );
-        const prefix = `${associatedData}:`;
-        if (!decoded.startsWith(prefix))
-          throw new Error('associated data mismatch');
-        return decoded.slice(prefix.length);
-      },
-    },
-  );
-  identityResources.push(oidcStore);
   const user = await identityDatabase.createUser({
     id: '00000000-0000-4000-8000-000000000001',
     email: `${randomUUID()}@example.test`,
     displayName: 'Phase One Owner',
   });
   ownerUserId = user.id;
-  await identityDatabase.linkAuthIdentity({
-    userId: ownerUserId,
-    issuer: 'https://issuer.example.test',
-    providerSubject: randomUUID(),
-  });
-  const session = await identityDatabase.createSession({
-    userId: ownerUserId,
-    tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-    expiresAt: new Date(Date.now() + 60_000),
-  });
-  ownerSessionId = session.id;
   const workspace = await identityDatabase.createWorkspaceWithOwner({
     name: 'Identity Workspace',
     slug: `identity-${randomUUID().slice(0, 12)}`,
@@ -524,154 +418,45 @@ describe('identity/workspace persistence', () => {
     ).rejects.toMatchObject({ reason: 'workspace_inactive' });
   });
 
-  it('links identities idempotently and only resolves live session digests', async () => {
-    const liveDigest = createHash('sha256').update(randomUUID()).digest('hex');
-    const live = await identityDatabase.createSession({
-      userId: ownerUserId,
-      tokenDigest: liveDigest,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    expect(
-      (await identityDatabase.findActiveSessionByDigest(liveDigest))?.id,
-    ).toBe(live.id);
-    const session = await identityDatabase.findActiveSessionByDigest(
-      createHash('sha256').update('missing').digest('hex'),
-    );
-    expect(session).toBeNull();
-    expect(await identityDatabase.revokeSession(ownerSessionId)).toBe(true);
-    expect(await identityDatabase.revokeSession(ownerSessionId)).toBe(false);
-  });
-
   it.each(['suspended', 'deleted'] as const)(
-    'fails closed across identity, session, and workspace access when a user is %s',
+    'fails closed across sessions and workspace access when a user is %s',
     async (status) => {
-      const issuer = `https://issuer-${randomUUID()}.example.test`;
-      const providerSubject = randomUUID();
-      const resolved = await identityDatabase.resolveOrCreateIdentity({
-        issuer,
-        providerSubject,
+      const user = await identityDatabase.createUser({
         email: `${randomUUID()}@example.test`,
         displayName: 'Status controlled user',
-      });
-      const sessionDigest = createHash('sha256')
-        .update(randomUUID())
-        .digest('hex');
-      await identityDatabase.createSession({
-        userId: resolved.user.id,
-        tokenDigest: sessionDigest,
-        expiresAt: new Date(Date.now() + 60_000),
       });
       const workspace = await identityDatabase.createWorkspaceWithOwner({
         name: 'Status controlled workspace',
         slug: `status-${randomUUID().slice(0, 12)}`,
-        ownerUserId: resolved.user.id,
+        ownerUserId: user.id,
       });
 
       const owner = new Pool({ connectionString: migrationUrl, max: 1 });
       try {
         await owner.query('set role pertexo_owner');
+        await owner.query(
+          `insert into app.auth_sessions(id,user_id,token,expires_at)
+           values($1,$2,$3,clock_timestamp()+interval '1 hour')`,
+          [randomUUID(), user.id, randomUUID()],
+        );
         await owner.query('update app.users set status = $2 where id = $1', [
-          resolved.user.id,
+          user.id,
           status,
         ]);
+        const sessions = await owner.query<{ count: number }>(
+          'select count(*)::int count from app.auth_sessions where user_id=$1',
+          [user.id],
+        );
+        expect(sessions.rows).toEqual([{ count: 0 }]);
       } finally {
         await owner.end();
       }
 
       await expect(
-        identityDatabase.resolveOrCreateIdentity({
-          issuer,
-          providerSubject,
-          email: resolved.user.email,
-          displayName: resolved.user.displayName,
-        }),
-      ).rejects.toBeInstanceOf(IdentityNotFoundError);
-      await expect(
-        identityDatabase.createSession({
-          userId: resolved.user.id,
-          tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-          expiresAt: new Date(Date.now() + 60_000),
-        }),
-      ).rejects.toBeInstanceOf(IdentityNotFoundError);
-      await expect(
-        identityDatabase.findActiveSessionByDigest(sessionDigest),
-      ).resolves.toBeNull();
-      await expect(
-        identityDatabase.findWorkspaceAccess(resolved.user.id, workspace.id),
+        identityDatabase.findWorkspaceAccess(user.id, workspace.id),
       ).resolves.toBeNull();
     },
   );
-
-  it('revokes a session by digest atomically with one concurrent winner', async () => {
-    const tokenDigest = createHash('sha256').update(randomUUID()).digest('hex');
-    await identityDatabase.createSession({
-      userId: ownerUserId,
-      tokenDigest,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    const outcomes = await Promise.all([
-      identityDatabase.revokeSessionByDigest(tokenDigest),
-      identityDatabase.revokeSessionByDigest(tokenDigest),
-    ]);
-    expect(outcomes.sort()).toEqual([false, true]);
-    await expect(
-      identityDatabase.revokeSessionByDigest(tokenDigest),
-    ).resolves.toBe(false);
-    await expect(
-      identityDatabase.revokeSessionByDigest('not-a-sha256-digest'),
-    ).rejects.toThrow();
-  });
-
-  it('cancels a session lookup blocked inside PostgreSQL and replaces its client', async () => {
-    const blockerPool = new Pool({ connectionString: migrationUrl, max: 1 });
-    const observerPool = new Pool({
-      connectionString: fixture.databaseUrl(adminUrl),
-      max: 1,
-    });
-    let blocker: PoolClient | undefined;
-    const controller = new AbortController();
-    const digest = createHash('sha256').update(randomUUID()).digest('hex');
-    let lookup: Promise<unknown> | undefined;
-    try {
-      blocker = await blockerPool.connect();
-      await blocker.query('begin');
-      await blocker.query('set local role pertexo_owner');
-      await blocker.query('lock table app.sessions in access exclusive mode');
-      lookup = identityDatabase.findActiveSessionByDigest(digest, {
-        signal: controller.signal,
-      });
-      void lookup.catch(() => undefined);
-      await expect
-        .poll(
-          async () => {
-            const result = await observerPool.query<{ blocked: boolean }>(
-              `select exists(
-                 select 1 from pg_stat_activity
-                 where datname = current_database()
-                   and usename = $1
-                   and wait_event_type = 'Lock'
-                   and query like '%from app.sessions s%'
-               ) as blocked`,
-              [new URL(apiUrl).username],
-            );
-            return result.rows[0]?.blocked;
-          },
-          { timeout: 5_000 },
-        )
-        .toBe(true);
-
-      controller.abort();
-      await expect(lookup).rejects.toMatchObject({ name: 'AbortError' });
-    } finally {
-      controller.abort();
-      await blocker?.query('rollback').catch(() => undefined);
-      blocker?.release();
-      await Promise.all([blockerPool.end(), observerPool.end()]);
-    }
-    await expect(
-      identityDatabase.findActiveSessionByDigest(digest),
-    ).resolves.toBeNull();
-  }, 15_000);
 
   it('creates owner membership and audit atomically under workspace RLS', async () => {
     const rows = await tenantDatabase.withWorkspace(
@@ -873,11 +658,7 @@ describe('identity/workspace persistence', () => {
         status: 'active',
       });
     });
-    const targetSession = await identityDatabase.createSession({
-      userId: target.id,
-      tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 60_000),
-    });
+    const targetSession = await createAuthenticationSession(target.id);
     const original = {
       workspaceId: commandWorkspace.id,
       actorUserId: ownerUserId,
@@ -898,7 +679,7 @@ describe('identity/workspace persistence', () => {
       replayed: false,
     });
     await expect(
-      identityDatabase.findActiveSessionByDigest(targetSession.tokenDigest),
+      findActiveAuthenticationSession(targetSession),
     ).resolves.toBeNull();
 
     await identityDatabase.changeWorkspaceMemberRole({
@@ -914,12 +695,7 @@ describe('identity/workspace persistence', () => {
       roleRevision: 2,
       replayed: true,
     });
-    const noOpDigest = createHash('sha256').update(randomUUID()).digest('hex');
-    await identityDatabase.createSession({
-      userId: target.id,
-      tokenDigest: noOpDigest,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
+    const noOpDigest = await createAuthenticationSession(target.id);
     const noOpKey = `role-${randomUUID()}`;
     await expect(
       identityDatabase.changeWorkspaceMemberRole({
@@ -935,8 +711,8 @@ describe('identity/workspace persistence', () => {
       replayed: false,
     });
     await expect(
-      identityDatabase.findActiveSessionByDigest(noOpDigest),
-    ).resolves.toMatchObject({ userId: target.id });
+      findActiveAuthenticationSession(noOpDigest),
+    ).resolves.toMatchObject({ user_id: target.id });
     await expect(
       identityDatabase.changeWorkspaceMemberRole({
         ...original,
@@ -1162,12 +938,7 @@ describe('identity/workspace persistence', () => {
         status: 'active',
       });
     });
-    const digest = createHash('sha256').update(randomUUID()).digest('hex');
-    await identityDatabase.createSession({
-      userId: target.id,
-      tokenDigest: digest,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
+    const digest = await createAuthenticationSession(target.id);
     const idempotencyKey = randomUUID();
     await expect(
       identityDatabase.changeWorkspaceMemberRole({
@@ -1191,8 +962,8 @@ describe('identity/workspace persistence', () => {
       roleRevision: 1,
     });
     await expect(
-      identityDatabase.findActiveSessionByDigest(digest),
-    ).resolves.toMatchObject({ userId: target.id });
+      findActiveAuthenticationSession(digest),
+    ).resolves.toMatchObject({ user_id: target.id });
     await expect(
       identityDatabase.changeWorkspaceMemberRole({
         workspaceId: commandWorkspace.id,
@@ -1629,69 +1400,12 @@ describe('identity/workspace persistence', () => {
     }
   });
 
-  it('resolves one exact issuer/subject identity under concurrent first login', async () => {
-    const issuer = `https://issuer-${randomUUID()}.example.test`;
-    const subject = randomUUID();
-    const results = await Promise.all([
-      identityDatabase.resolveOrCreateIdentity({
-        issuer,
-        providerSubject: subject,
-        email: `${randomUUID()}@example.test`,
-        displayName: 'First profile',
-      }),
-      identityDatabase.resolveOrCreateIdentity({
-        issuer,
-        providerSubject: subject,
-        email: `${randomUUID()}@example.test`,
-        displayName: 'Second profile',
-      }),
-    ]);
-    const first = results[0];
-    const second = results[1];
-    expect(first.user.id).toBe(second.user.id);
-    expect(first.identity.id).toBe(second.identity.id);
-
-    const sameEmail = `${randomUUID()}@example.test`;
-    const separateA = await identityDatabase.resolveOrCreateIdentity({
-      issuer: `https://issuer-a-${randomUUID()}.example.test`,
-      providerSubject: randomUUID(),
-      email: sameEmail,
-      displayName: 'Profile A',
-    });
+  it('keeps one user per email', async () => {
+    const email = `${randomUUID()}@example.test`;
+    await identityDatabase.createUser({ email, displayName: 'Profile A' });
     await expect(
-      identityDatabase.resolveOrCreateIdentity({
-        issuer: `https://issuer-b-${randomUUID()}.example.test`,
-        providerSubject: randomUUID(),
-        email: sameEmail,
-        displayName: 'Profile B',
-      }),
+      identityDatabase.createUser({ email, displayName: 'Profile B' }),
     ).rejects.toBeInstanceOf(IdentityConflictError);
-    const emailPool = new Pool({ connectionString: apiUrl, max: 1 });
-    try {
-      const persisted = await emailPool.query<{
-        identities: string;
-        sessions: string;
-        users: string;
-      }>(
-        `select
-           count(distinct u.id)::text as users,
-           count(distinct i.id)::text as identities,
-           count(distinct s.id)::text as sessions
-         from app.users u
-         left join app.auth_identities i on i.user_id = u.id
-         left join app.sessions s on s.user_id = u.id
-         where lower(u.email) = lower($1)`,
-        [sameEmail],
-      );
-      expect(separateA.user.id).toBeTruthy();
-      expect(persisted.rows[0]).toEqual({
-        users: '1',
-        identities: '1',
-        sessions: '0',
-      });
-    } finally {
-      await emailPool.end();
-    }
   });
 
   it('rejects credential-shaped audit metadata before persistence', async () => {
@@ -1703,252 +1417,6 @@ describe('identity/workspace persistence', () => {
         metadata: { tokenDigest: 'must-not-persist' },
       }),
     ).rejects.toThrow('Unsafe audit metadata key');
-  });
-
-  it('seals OIDC verifier and nonce, consumes once, and classifies expiry/replay atomically', async () => {
-    const stateDigest = createHash('sha256').update(randomUUID()).digest('hex');
-    const codeVerifier = `verifier-${randomUUID()}`;
-    const nonce = `nonce-${randomUUID()}`;
-    const browserBindingDigest = createHash('sha256')
-      .update(randomUUID())
-      .digest('hex');
-    const expiresAt = new Date(Date.now() + 60_000);
-    await oidcStore.create({
-      stateDigest,
-      browserBindingDigest,
-      codeVerifier,
-      nonce,
-      expiresAt,
-    });
-    const rawPool = new Pool({ connectionString: apiUrl, max: 1 });
-    const raw = await rawPool.connect();
-    try {
-      const row = await raw.query<{
-        code_verifier_ciphertext: string;
-        nonce_ciphertext: string;
-        consumed_at: Date | null;
-      }>(
-        `select code_verifier_ciphertext, nonce_ciphertext, consumed_at
-         from app.oidc_login_transactions where state_digest = $1`,
-        [stateDigest],
-      );
-      expect(row.rows[0]?.code_verifier_ciphertext).not.toContain(codeVerifier);
-      expect(row.rows[0]?.nonce_ciphertext).not.toContain(nonce);
-      expect(row.rows[0]?.consumed_at).toBeNull();
-    } finally {
-      raw.release();
-      await rawPool.end();
-    }
-    const wrongBindingDigest = createHash('sha256')
-      .update(randomUUID())
-      .digest('hex');
-    expect(
-      (await oidcStore.consume(stateDigest, wrongBindingDigest, new Date()))
-        .status,
-    ).toBe('binding_mismatch');
-    const [first, second] = await Promise.all([
-      oidcStore.consume(stateDigest, browserBindingDigest, new Date()),
-      oidcStore.consume(stateDigest, browserBindingDigest, new Date()),
-    ]);
-    expect([first.status, second.status].sort()).toEqual(['ok', 'replayed']);
-    const successful = first.status === 'ok' ? first : second;
-    if (successful.status !== 'ok')
-      throw new Error('Expected one successful OIDC transaction consume');
-    expect(successful.transaction.codeVerifier).toBe(codeVerifier);
-    expect(successful.transaction.nonce).toBe(nonce);
-    expect(
-      (await oidcStore.consume(stateDigest, browserBindingDigest, new Date()))
-        .status,
-    ).toBe('replayed');
-
-    const expiredDigest = createHash('sha256')
-      .update(randomUUID())
-      .digest('hex');
-    await oidcStore.create({
-      stateDigest: expiredDigest,
-      browserBindingDigest,
-      codeVerifier,
-      nonce,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    expect(
-      (
-        await oidcStore.consume(
-          expiredDigest,
-          browserBindingDigest,
-          new Date(Date.now() + 120_000),
-        )
-      ).status,
-    ).toBe('expired');
-    await expect(
-      oidcStore.consume(
-        createHash('sha256').update(randomUUID()).digest('hex'),
-        browserBindingDigest,
-        new Date(),
-      ),
-    ).resolves.toEqual({ status: 'missing' });
-  });
-
-  it.each([1, 2])(
-    'commits OIDC consumption when sealed field open %s fails',
-    async (failedOpen) => {
-      let openCount = 0;
-      const failingStore = createOidcLoginTransactionStore(
-        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-        {
-          seal: (plaintext, associatedData) => ({
-            ciphertext: Buffer.from(
-              `${associatedData}:${plaintext}`,
-              'utf8',
-            ).toString('base64url'),
-            nonce: 'test-nonce',
-            tag: 'test-tag',
-            keyVersion: 'test-v1',
-          }),
-          open: (sealed, associatedData) => {
-            openCount += 1;
-            if (openCount === failedOpen) throw new Error('open failed');
-            const decoded = Buffer.from(
-              sealed.ciphertext,
-              'base64url',
-            ).toString('utf8');
-            return decoded.slice(`${associatedData}:`.length);
-          },
-        },
-      );
-      const transaction = oidcTransaction();
-      try {
-        await failingStore.create(transaction);
-        await expect(
-          failingStore.consume(
-            transaction.stateDigest,
-            transaction.browserBindingDigest,
-            new Date(),
-          ),
-        ).rejects.toBeInstanceOf(OidcTransactionSealingError);
-        const verifier = new Pool({ connectionString: apiUrl, max: 1 });
-        try {
-          const persisted = await verifier.query<{ consumed: boolean }>(
-            `select consumed_at is not null as consumed
-             from app.oidc_login_transactions where state_digest = $1`,
-            [transaction.stateDigest],
-          );
-          expect(persisted.rows[0]?.consumed).toBe(true);
-        } finally {
-          await verifier.end();
-        }
-        await expect(
-          failingStore.consume(
-            transaction.stateDigest,
-            transaction.browserBindingDigest,
-            new Date(),
-          ),
-        ).resolves.toEqual({ status: 'replayed' });
-      } finally {
-        await failingStore.close();
-      }
-    },
-  );
-
-  it('fails closed on a corrupt stored OIDC seal and leaves it consumed', async () => {
-    const transaction = oidcTransaction();
-    await oidcStore.create(transaction);
-    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
-    try {
-      await owner.query('set role pertexo_owner');
-      await owner.query(
-        `update app.oidc_login_transactions
-         set code_verifier_ciphertext = 'corrupt' where state_digest = $1`,
-        [transaction.stateDigest],
-      );
-    } finally {
-      await owner.end();
-    }
-
-    await expect(
-      oidcStore.consume(
-        transaction.stateDigest,
-        transaction.browserBindingDigest,
-        new Date(),
-      ),
-    ).rejects.toBeInstanceOf(OidcTransactionSealingError);
-    await expect(
-      oidcStore.consume(
-        transaction.stateDigest,
-        transaction.browserBindingDigest,
-        new Date(),
-      ),
-    ).resolves.toEqual({ status: 'replayed' });
-  });
-
-  it('removes OIDC transactions 15 minutes after they end through retention', async () => {
-    await replaceOidcTransactions({ active: 2, consumed: 2, stale: 3 });
-    try {
-      await enforceRetention(maintenanceUrl);
-      const pool = new Pool({ connectionString: apiUrl, max: 1 });
-      try {
-        const kept = await pool.query<{ count: string }>(
-          'select count(*)::text as count from app.oidc_login_transactions',
-        );
-        expect(kept.rows[0]?.count).toBe('4');
-      } finally {
-        await pool.end();
-      }
-    } finally {
-      await clearOidcTransactions();
-    }
-  });
-
-  it('atomically caps active OIDC transactions under concurrent admission', async () => {
-    await replaceOidcTransactions({ active: 9_999 });
-    try {
-      const results = await Promise.allSettled([
-        oidcStore.create(oidcTransaction()),
-        oidcStore.create(oidcTransaction()),
-      ]);
-      expect(
-        results.filter((result) => result.status === 'fulfilled'),
-      ).toHaveLength(1);
-      const rejected = results.find((result) => result.status === 'rejected');
-      expect(rejected?.status).toBe('rejected');
-      if (rejected?.status === 'rejected') {
-        expect(rejected.reason).toBeInstanceOf(OidcTransactionCapacityError);
-      }
-      const pool = new Pool({ connectionString: apiUrl, max: 1 });
-      try {
-        const active = await pool.query<{ count: string }>(`
-          select count(*)::text as count
-          from app.oidc_login_transactions
-          where consumed_at is null and expires_at > clock_timestamp()
-        `);
-        expect(active.rows[0]?.count).toBe('10000');
-      } finally {
-        await pool.end();
-      }
-    } finally {
-      await clearOidcTransactions();
-    }
-  });
-
-  it('bounds retained OIDC rows even when transactions are consumed quickly', async () => {
-    await replaceOidcTransactions({ consumed: 19_999 });
-    try {
-      await oidcStore.create(oidcTransaction());
-      await expect(oidcStore.create(oidcTransaction())).rejects.toBeInstanceOf(
-        OidcTransactionCapacityError,
-      );
-      const pool = new Pool({ connectionString: apiUrl, max: 1 });
-      try {
-        const total = await pool.query<{ count: string }>(
-          'select count(*)::text as count from app.oidc_login_transactions',
-        );
-        expect(total.rows[0]?.count).toBe('20000');
-      } finally {
-        await pool.end();
-      }
-    } finally {
-      await clearOidcTransactions();
-    }
   });
 
   it('creates one pending invitation, replays exactly, and arbitrates concurrent duplicates', async () => {
@@ -2818,7 +2286,6 @@ describe('identity/workspace persistence', () => {
       actorUserId: recipient.id,
       idempotencyKey: randomUUID(),
       replacementSession: {
-        authority: 'better_auth',
         id: randomUUID(),
         token: replacementSessionToken,
         expiresAt: new Date(Date.now() + 60_000),
@@ -2971,7 +2438,6 @@ describe('identity/workspace persistence', () => {
       actorUserId: recipient.id,
       idempotencyKey: randomUUID(),
       replacementSession: {
-        authority: 'better_auth',
         id: randomUUID(),
         token: createHash('sha256').update(randomUUID()).digest('hex'),
         expiresAt: new Date(Date.now() + 60_000),
@@ -3084,7 +2550,6 @@ describe('identity/workspace persistence', () => {
       actorUserId: recipient.id,
       idempotencyKey: randomUUID(),
       replacementSession: {
-        authority: 'better_auth' as const,
         id: randomUUID(),
         token: createHash('sha256').update(randomUUID()).digest('hex'),
         expiresAt: new Date(Date.now() + 60_000),
@@ -3814,9 +3279,8 @@ describe('identity/workspace persistence', () => {
         actorUserId: recipient.id,
         idempotencyKey: randomUUID(),
         replacementSession: {
-          authority: 'opaque',
           id: randomUUID(),
-          tokenDigest: invitationTokenDigest(randomUUID()),
+          token: randomUUID(),
           expiresAt: new Date(Date.now() + 60_000),
         },
       }),
@@ -3976,12 +3440,7 @@ describe('identity/workspace persistence', () => {
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
-    const oldDigest = createHash('sha256').update(randomUUID()).digest('hex');
-    await identityDatabase.createSession({
-      userId: recipient.id,
-      tokenDigest: oldDigest,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
+    const oldToken = await createAuthenticationSession(recipient.id);
     const replacementToken = createHash('sha256')
       .update(randomUUID())
       .digest('hex');
@@ -3993,7 +3452,6 @@ describe('identity/workspace persistence', () => {
       actorUserId: recipient.id,
       idempotencyKey: key,
       replacementSession: {
-        authority: 'better_auth' as const,
         id: randomUUID(),
         token: replacementToken,
         expiresAt: new Date(Date.now() + 60_000),
@@ -4018,9 +3476,7 @@ describe('identity/workspace persistence', () => {
     } finally {
       await inspection.end();
     }
-    await expect(
-      identityDatabase.findActiveSessionByDigest(oldDigest),
-    ).resolves.toBeNull();
+    await expect(findActiveAuthenticationSession(oldToken)).resolves.toBeNull();
     await expect(
       findActiveAuthenticationSession(replacementToken),
     ).resolves.toEqual({ user_id: recipient.id });
@@ -4059,97 +3515,6 @@ describe('identity/workspace persistence', () => {
         invitationWorkspace.id,
       ),
     ).resolves.toMatchObject({ role: 'viewer', membershipStatus: 'active' });
-  });
-
-  it('installs a digest-only replacement for the legacy opaque session authority', async () => {
-    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
-      {
-        name: 'Opaque session acceptance',
-        slug: `invite-opaque-${randomUUID().slice(0, 8)}`,
-        ownerUserId,
-      },
-    );
-    const recipient = await identityDatabase.createUser({
-      email: `${randomUUID()}@example.test`,
-      displayName: 'Opaque session recipient',
-    });
-    const tokenDigest = createHash('sha256').update(randomUUID()).digest('hex');
-    const created = await identityDatabase.createWorkspaceInvitation({
-      ...invitationCreateCommand(
-        invitationWorkspace.id,
-        ownerUserId,
-        recipient.email,
-      ),
-      tokenDigest,
-    });
-    const intentId = randomUUID();
-    const bindingDigest = createHash('sha256')
-      .update(randomUUID())
-      .digest('hex');
-    await identityDatabase.resolveInvitationAcceptance({
-      workspaceId: invitationWorkspace.id,
-      invitationId: created.invitation.id,
-      tokenDigest,
-      intentId,
-      bindingDigest,
-      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
-    });
-    await identityDatabase.recordInvitationAcceptanceProof({
-      workspaceId: invitationWorkspace.id,
-      intentId,
-      bindingDigest,
-      userId: recipient.id,
-      verifiedEmail: recipient.email,
-      verifiedAt: new Date(),
-    });
-    const oldDigest = createHash('sha256').update(randomUUID()).digest('hex');
-    await identityDatabase.createSession({
-      userId: recipient.id,
-      tokenDigest: oldDigest,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    const replacementDigest = createHash('sha256')
-      .update(randomUUID())
-      .digest('hex');
-    const replacementId = randomUUID();
-
-    await expect(
-      identityDatabase.completeInvitationAcceptance({
-        workspaceId: invitationWorkspace.id,
-        intentId,
-        invitationRevision: 1,
-        actorUserId: recipient.id,
-        idempotencyKey: randomUUID(),
-        replacementSession: {
-          authority: 'opaque',
-          id: replacementId,
-          tokenDigest: replacementDigest,
-          expiresAt: new Date(Date.now() + 60_000),
-          userAgent: 'opaque-acceptance-test',
-        },
-      }),
-    ).resolves.toMatchObject({ membershipCreated: true, replayed: false });
-    await expect(
-      identityDatabase.findActiveSessionByDigest(oldDigest),
-    ).resolves.toBeNull();
-    await expect(
-      identityDatabase.findActiveSessionByDigest(replacementDigest),
-    ).resolves.toMatchObject({
-      id: replacementId,
-      userId: recipient.id,
-      userAgent: 'opaque-acceptance-test',
-    });
-    const pool = new Pool({ connectionString: apiUrl, max: 1 });
-    try {
-      const betterAuthSessions = await pool.query<{ count: number }>(
-        'select count(*)::int count from app.auth_sessions where user_id=$1',
-        [recipient.id],
-      );
-      expect(betterAuthSessions.rows).toEqual([{ count: 0 }]);
-    } finally {
-      await pool.end();
-    }
   });
 
   it('rechecks active user status under the acceptance transaction lock', async () => {
@@ -4215,7 +3580,6 @@ describe('identity/workspace persistence', () => {
         actorUserId: recipient.id,
         idempotencyKey: randomUUID(),
         replacementSession: {
-          authority: 'better_auth',
           id: randomUUID(),
           token: createHash('sha256').update(randomUUID()).digest('hex'),
           expiresAt: new Date(Date.now() + 60_000),
@@ -4279,14 +3643,7 @@ describe('identity/workspace persistence', () => {
         });
       },
     );
-    const sessionDigest = createHash('sha256')
-      .update(randomUUID())
-      .digest('hex');
-    await identityDatabase.createSession({
-      userId: recipient.id,
-      tokenDigest: sessionDigest,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
+    const sessionToken = await createAuthenticationSession(recipient.id);
     const tokenDigest = createHash('sha256')
       .update('existing-member-secret')
       .digest('hex');
@@ -4327,7 +3684,6 @@ describe('identity/workspace persistence', () => {
         actorUserId: recipient.id,
         idempotencyKey: randomUUID(),
         replacementSession: {
-          authority: 'better_auth',
           id: randomUUID(),
           token: createHash('sha256').update(randomUUID()).digest('hex'),
           expiresAt: new Date(Date.now() + 60_000),
@@ -4339,8 +3695,8 @@ describe('identity/workspace persistence', () => {
       replacementSessionCreated: false,
     });
     await expect(
-      identityDatabase.findActiveSessionByDigest(sessionDigest),
-    ).resolves.toMatchObject({ userId: recipient.id });
+      findActiveAuthenticationSession(sessionToken),
+    ).resolves.toMatchObject({ user_id: recipient.id });
   });
 
   it('serializes acceptance against revocation so exactly one lifecycle command wins', async () => {
@@ -4396,7 +3752,6 @@ describe('identity/workspace persistence', () => {
         actorUserId: recipient.id,
         idempotencyKey: randomUUID(),
         replacementSession: {
-          authority: 'better_auth',
           id: randomUUID(),
           token: createHash('sha256').update(randomUUID()).digest('hex'),
           expiresAt: new Date(Date.now() + 60_000),

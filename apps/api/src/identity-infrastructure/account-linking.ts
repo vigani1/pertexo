@@ -334,7 +334,6 @@ export class AccountLinking {
         userId: attempt.user_id,
         providerId: attempt.target_provider,
         accountId: identity.accountId,
-        auditFact: 'method.linked',
       });
       const token = await replaceBrowserSessions(
         client,

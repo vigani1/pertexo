@@ -255,7 +255,6 @@ export type { RunAdvanceStoreOptions } from './runs/advance/store.js';
 export {
   artifacts,
   auditEvents,
-  authIdentities,
   authAccounts,
   authSessions,
   authVerifications,
@@ -268,7 +267,6 @@ export {
   rlsProbeRecords,
   runCheckpoints,
   runEvents,
-  sessions,
   transportSecurityAuditFacts,
   triggerScheduleOccurrences,
   triggerSchedules,

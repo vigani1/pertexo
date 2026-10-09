@@ -25,11 +25,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
 import { createInitialCheckpoint } from '@pertexo/execution';
-import { DatabaseIdentityWorkspaceAdapter } from '../../src/identity-workspace/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
-import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
+import {
+  createApiIdentityRuntime,
+  type ApiIdentityRuntime,
+} from '../../src/platform/identity/identity-runtime.module.js';
 import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow/workflow-runtime.module.js';
 import { WebhookManagementService } from '../../src/webhooks/service.js';
+import { issueBrowserSession } from '../support/browser-session.fixture.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
 import {
   FixtureResourceOwner,
@@ -151,6 +154,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   let apiConfig!: ReturnType<typeof parseDatabaseConfig>;
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   let identity!: ReturnType<typeof createIdentityWorkspaceDatabase>;
+  let identityRuntime!: ApiIdentityRuntime;
   let authoring!: ReturnType<typeof createCoreWorkflowAuthoringDatabase>;
   let reconciliation!: ReturnType<
     typeof createWorkflowTriggerReconciliationDatabase
@@ -238,34 +242,28 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         createIdentityWorkspaceDatabase(apiConfig),
         (database) => database.close(),
       );
-      const identityPersistence = new DatabaseIdentityWorkspaceAdapter(
-        identity,
+      identityRuntime = resources.acquire(
+        'identity runtime',
+        await createApiIdentityRuntime(
+          {
+            publicWebOrigin: 'https://app.example.test',
+            session: {
+              ttlMillis: 60_000,
+              secureCookie: false,
+              sameSite: 'lax',
+            },
+            betterAuth: {
+              secret: 'webhook-integration-secret-with-32-plus-characters',
+              mailMode: 'disabled',
+              providers: {},
+            },
+          },
+          apiConfig,
+          { persistence: { database: identity } },
+        ),
+        (runtime) => runtime.close(),
       );
-      const identityRuntime = Object.freeze({
-        dependencies: Object.freeze({
-          config: Object.freeze({
-            oidc: Object.freeze({
-              issuer: 'https://identity.example.test',
-              authorizationEndpoint: 'https://identity.example.test/authorize',
-              clientId: 'webhook-integration',
-              redirectUri: 'https://api.example.test/v1/auth/oidc/callback',
-              scopes: Object.freeze(['openid']),
-              transactionTtlMillis: 300_000,
-            }),
-          }),
-          provider: Object.freeze({
-            authorizationUrl: () => 'https://identity.example.test/authorize',
-            exchangeCode: () => Promise.reject(new Error('not used')),
-          }),
-          transactions: Object.freeze({
-            create: () => Promise.resolve(),
-            consume: () => Promise.resolve(undefined),
-          }),
-          persistence: identityPersistence,
-          authorization: identityPersistence,
-        }),
-        close: () => Promise.resolve(),
-      }) satisfies ApiIdentityRuntime;
+      resources.transfer(identity);
       authoring = resources.acquire(
         'workflow authoring database',
         createCoreWorkflowAuthoringDatabase(apiConfig),
@@ -566,17 +564,15 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     );
     expect(accepted.status).toBe(202);
     const runId = String(accepted.json.runId);
-    const rawSession = `${randomUUID()}${randomUUID()}`;
-    await identity.createSession({
-      userId: actorId,
-      tokenDigest: sha256(rawSession),
-      expiresAt: new Date(Date.now() + 60_000),
-    });
+    const { cookieHeader } = await issueBrowserSession(
+      identityRuntime.dependencies.sessions,
+      actorId,
+    );
     const read = () =>
       application.inject({
         method: 'GET',
         url: `/v1/workspaces/${workspaceId}/runs/${runId}`,
-        headers: { cookie: `pertexo_session=${rawSession}` },
+        headers: { cookie: cookieHeader },
       });
     await ownerQuery(
       `update app.workflow_runs set status='waiting' where workspace_id=$1 and id=$2`,

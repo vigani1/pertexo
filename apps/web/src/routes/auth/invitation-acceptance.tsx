@@ -1,5 +1,4 @@
 import {
-  useLoaderData,
   useLocation,
   useNavigate,
   useRouteContext,
@@ -9,7 +8,6 @@ import { InvitationAcceptancePage } from '@/features/workspace-invitations/publi
 
 export function InvitationAcceptanceRoute() {
   const { apiClient } = useRouteContext({ from: '/invitations/accept' });
-  const { signInMethod } = useLoaderData({ from: '/invitations/accept' });
   const navigate = useNavigate();
   const hash = useLocation({ select: (location) => location.hash });
   const initialToken = readToken(hash);
@@ -20,9 +18,6 @@ export function InvitationAcceptanceRoute() {
       replace: true,
     });
   }, [navigate]);
-  const navigateToProvider = useCallback((url: string) => {
-    window.location.assign(url);
-  }, []);
   const openWorkspace = useCallback(
     (workspaceId: string) => {
       void navigate({
@@ -36,9 +31,7 @@ export function InvitationAcceptanceRoute() {
     <InvitationAcceptancePage
       apiClient={apiClient}
       {...(initialToken === undefined ? {} : { initialToken })}
-      signInMethod={signInMethod}
       clearFragment={clearFragment}
-      navigateToProvider={navigateToProvider}
       openWorkspace={openWorkspace}
       openSignIn={() => {
         void navigate({ to: '/login', search: RETURN_HERE });

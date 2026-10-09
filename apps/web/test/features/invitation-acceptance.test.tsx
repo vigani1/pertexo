@@ -27,8 +27,7 @@ function componentApiClient(fetchImplementation = globalThis.fetch) {
 }
 
 describe('invitation acceptance', () => {
-  // These journeys prove the recipient through legacy OIDC: the deployment
-  // offers no password or social sign-in of its own.
+  // Sign-in pages reached from a journey read the authentication capabilities.
   beforeEach(() => {
     mockServer.use(
       http.get('http://pertexo.test/v1/auth/capabilities', () =>
@@ -39,7 +38,6 @@ describe('invitation acceptance', () => {
             verificationRequired: true,
           },
           socialProviders: [],
-          legacyMigrationAvailable: false,
         }),
       ),
     );
@@ -242,12 +240,6 @@ describe('invitation acceptance', () => {
         reads += 1;
         return HttpResponse.json({ state: 'unavailable' });
       }),
-      http.post('http://pertexo.test/v1/invitation-acceptance/oidc', () =>
-        HttpResponse.json({
-          authorizationUrl: 'https://issuer.test/authorize',
-          expiresAt: '2026-09-19T18:00:00.000Z',
-        }),
-      ),
     );
     const browser = userEvent.setup();
     renderApp(
@@ -268,60 +260,6 @@ describe('invitation acceptance', () => {
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeVisible();
   });
 
-  it('does not redirect when an OIDC start completes after disposal', async () => {
-    let finishOidc: ((response: Response) => void) | undefined;
-    mockServer.use(
-      http.post('http://pertexo.test/v1/invitation-acceptance/resolve', () =>
-        HttpResponse.json(
-          {
-            state: 'sign_in_required',
-            intentId,
-            expiresAt: '2026-09-19T18:00:00.000Z',
-            csrfToken,
-          },
-          { status: 201 },
-        ),
-      ),
-      http.post(
-        'http://pertexo.test/v1/invitation-acceptance/oidc',
-        () =>
-          new Promise<Response>((resolve) => {
-            finishOidc = resolve;
-          }),
-      ),
-    );
-    const apiClient = componentApiClient();
-    const navigateToProvider = vi.fn();
-    const browser = userEvent.setup();
-    const rendered = render(
-      <InvitationAcceptancePage
-        signInMethod="oidc"
-        apiClient={apiClient}
-        initialToken={`wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`}
-        clearFragment={vi.fn()}
-        navigateToProvider={navigateToProvider}
-        openWorkspace={vi.fn()}
-        openSignIn={vi.fn()}
-        openWorkspaceDiscovery={vi.fn()}
-      />,
-    );
-    await browser.click(
-      await screen.findByRole('button', { name: 'Sign in to accept' }),
-    );
-    await waitFor(() => {
-      expect(finishOidc).toBeDefined();
-    });
-    rendered.unmount();
-    finishOidc?.(
-      HttpResponse.json({
-        authorizationUrl: 'https://issuer.test/authorize',
-        expiresAt: '2026-09-19T18:00:00.000Z',
-      }),
-    );
-    await Promise.resolve();
-    expect(navigateToProvider).not.toHaveBeenCalled();
-  });
-
   it('offers ordinary sign-in and workspace discovery after an unusable continuation reload', async () => {
     mockServer.use(
       http.get('http://pertexo.test/v1/invitation-acceptance', () =>
@@ -333,10 +271,8 @@ describe('invitation acceptance', () => {
     const browser = userEvent.setup();
     render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={vi.fn()}
         openSignIn={openSignIn}
         openWorkspaceDiscovery={openWorkspaceDiscovery}
@@ -363,10 +299,8 @@ describe('invitation acceptance', () => {
     const browser = userEvent.setup();
     render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={vi.fn()}
         openSignIn={vi.fn()}
         openWorkspaceDiscovery={vi.fn()}
@@ -638,7 +572,7 @@ describe('invitation acceptance', () => {
   });
 
   it('offers fresh verification when recipient proof expires', async () => {
-    const navigateToProvider = vi.fn();
+    const openFreshSignIn = vi.fn();
     mockServer.use(
       http.post('http://pertexo.test/v1/invitation-acceptance/resolve', () =>
         HttpResponse.json(
@@ -670,23 +604,31 @@ describe('invitation acceptance', () => {
           },
         ),
       ),
-      http.post('http://pertexo.test/v1/invitation-acceptance/oidc', () =>
-        HttpResponse.json({
-          authorizationUrl: 'https://issuer.test/authorize',
-          expiresAt: '2026-09-19T18:00:00.000Z',
-        }),
+      http.post('http://pertexo.test/v1/invitation-acceptance/session', () =>
+        HttpResponse.json(
+          {
+            type: 'https://pertexo.test/problems/workspace.invitation_proof_expired',
+            title: 'Invitation verification expired',
+            status: 409,
+            code: 'workspace.invitation_proof_expired',
+            requestId: 'request-proof-expired-again',
+          },
+          {
+            status: 409,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        ),
       ),
     );
     const browser = userEvent.setup();
     render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient()}
         initialToken={`wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`}
         clearFragment={vi.fn()}
-        navigateToProvider={navigateToProvider}
         openWorkspace={vi.fn()}
         openSignIn={vi.fn()}
+        openFreshSignIn={openFreshSignIn}
         openWorkspaceDiscovery={vi.fn()}
       />,
     );
@@ -699,9 +641,7 @@ describe('invitation acceptance', () => {
       }),
     );
     await waitFor(() => {
-      expect(navigateToProvider).toHaveBeenCalledWith(
-        'https://issuer.test/authorize',
-      );
+      expect(openFreshSignIn).toHaveBeenCalledOnce();
     });
   });
 
@@ -742,10 +682,8 @@ describe('invitation acceptance', () => {
     const browser = userEvent.setup();
     const rendered = render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient(fetchImplementation)}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={openWorkspace}
         openSignIn={vi.fn()}
         openWorkspaceDiscovery={vi.fn()}
@@ -793,10 +731,8 @@ describe('invitation acceptance', () => {
     const browser = userEvent.setup();
     render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient(fetchImplementation)}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={openWorkspace}
         openSignIn={vi.fn()}
         openWorkspaceDiscovery={vi.fn()}
@@ -868,10 +804,8 @@ describe('invitation acceptance', () => {
     const browser = userEvent.setup();
     render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient(fetchImplementation)}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={openWorkspace}
         openSignIn={vi.fn()}
         openWorkspaceDiscovery={vi.fn()}
@@ -928,10 +862,8 @@ describe('invitation acceptance', () => {
     const browser = userEvent.setup();
     const rendered = render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient(fetchImplementation)}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={openWorkspace}
         openSignIn={vi.fn()}
         openWorkspaceDiscovery={vi.fn()}
@@ -966,10 +898,8 @@ describe('invitation acceptance', () => {
       const openWorkspaceDiscovery = vi.fn();
       render(
         <InvitationAcceptancePage
-          signInMethod="oidc"
           apiClient={componentApiClient()}
           clearFragment={vi.fn()}
-          navigateToProvider={vi.fn()}
           openWorkspace={vi.fn()}
           openSignIn={vi.fn()}
           openWorkspaceDiscovery={openWorkspaceDiscovery}
@@ -1052,10 +982,8 @@ describe('invitation acceptance', () => {
     const openWorkspaceDiscovery = vi.fn();
     render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={vi.fn()}
         openSignIn={vi.fn()}
         openWorkspaceDiscovery={openWorkspaceDiscovery}
@@ -1098,10 +1026,8 @@ describe('invitation acceptance', () => {
     const openWorkspace = vi.fn();
     const automatic = render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={openWorkspace}
         openSignIn={vi.fn()}
         openWorkspaceDiscovery={vi.fn()}
@@ -1119,10 +1045,8 @@ describe('invitation acceptance', () => {
     const stayed = vi.fn();
     render(
       <InvitationAcceptancePage
-        signInMethod="oidc"
         apiClient={componentApiClient()}
         clearFragment={vi.fn()}
-        navigateToProvider={vi.fn()}
         openWorkspace={stayed}
         openSignIn={vi.fn()}
         openWorkspaceDiscovery={vi.fn()}

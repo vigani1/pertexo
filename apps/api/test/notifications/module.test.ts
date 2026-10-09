@@ -4,10 +4,8 @@ import { Test } from '@nestjs/testing';
 import type { WorkspaceInboxDatabase } from '@pertexo/database/inbox';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  DoubleSubmitCsrfPolicy,
-  OpaqueSessionService,
-} from '../../src/identity/index.js';
+import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
+import { SESSION_AUTHORITY } from '../../src/identity-workspace/index.js';
 import { NotificationsModule } from '../../src/notifications/module.js';
 import type {
   InboxHintSignal,
@@ -34,7 +32,7 @@ Module({
       useValue: { setActor: () => undefined, setWorkspace: () => undefined },
     },
     {
-      provide: OpaqueSessionService,
+      provide: SESSION_AUTHORITY,
       useValue: {
         authenticate: () =>
           Promise.resolve({
@@ -50,7 +48,7 @@ Module({
       useValue: { assertMutationAllowed: () => undefined },
     },
   ],
-  exports: [RequestContextStore, OpaqueSessionService, DoubleSubmitCsrfPolicy],
+  exports: [RequestContextStore, SESSION_AUTHORITY, DoubleSubmitCsrfPolicy],
 })(FakeIdentityModule);
 
 const thread = {

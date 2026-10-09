@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
@@ -26,13 +26,9 @@ export type IdentityCommandFixture = Readonly<{
   ) => Promise<Readonly<{ id: string; email: string }>>;
   workspace: (ownerUserId: string) => Promise<string>;
   member: (workspaceId: string, userId: string, role: Role) => Promise<void>;
-  /** One legacy opaque session and one Better Auth session for the user. */
-  sessions: (
-    userId: string,
-  ) => Promise<Readonly<{ digest: string; token: string }>>;
-  liveSessions: (
-    userId: string,
-  ) => Promise<Readonly<{ opaque: number; betterAuth: number }>>;
+  /** One Better Auth session for the user; returns its token. */
+  sessions: (userId: string) => Promise<string>;
+  liveSessions: (userId: string) => Promise<number>;
 }>;
 
 /**
@@ -132,34 +128,20 @@ export function useIdentityCommandDatabase(
       });
     },
     sessions: async (userId: string) => {
-      const digest = createHash('sha256').update(randomUUID()).digest('hex');
       const token = randomUUID();
-      await required(identity).createSession({
-        userId,
-        tokenDigest: digest,
-        expiresAt: new Date(Date.now() + 60_000),
-      });
       await required(api).query(
         `insert into app.auth_sessions(id,expires_at,token,user_id)
          values($1,clock_timestamp()+interval '1 hour',$2,$3)`,
         [randomUUID(), token, userId],
       );
-      return { digest, token };
+      return token;
     },
     liveSessions: async (userId: string) => {
-      const result = await required(owner).query<{
-        opaque: number;
-        better_auth: number;
-      }>(
-        `select
-           (select count(*)::int from app.sessions
-             where user_id=$1 and revoked_at is null) opaque,
-           (select count(*)::int from app.auth_sessions
-             where user_id=$1) better_auth`,
+      const result = await required(owner).query<{ count: number }>(
+        `select count(*)::int count from app.auth_sessions where user_id=$1`,
         [userId],
       );
-      const row = required(result.rows[0]);
-      return { opaque: row.opaque, betterAuth: row.better_auth };
+      return required(result.rows[0]).count;
     },
   });
 }

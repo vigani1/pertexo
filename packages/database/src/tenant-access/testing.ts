@@ -14,17 +14,11 @@ export {
   UserProfileCommandConflictError,
 } from './database.js';
 export type {
-  AuthIdentityRecord,
-  CreateAuthIdentityInput,
-  CreateSessionInput,
   CreateUserInput,
   IdentityWorkspaceDatabase,
   IdentityConflictReason,
   MembershipRole,
-  ResolveOrCreateIdentityInput,
   RequestWorkspaceLifecycleOperationInput,
-  ResolvedIdentity,
-  SessionRecord,
   UserStatus,
   UserRecord,
   WorkspaceAccessRecord,
@@ -38,18 +32,6 @@ export type {
   WorkspaceStatus,
   WorkspaceWithOwnerInput,
 } from './database.js';
-export {
-  createOidcLoginTransactionStore,
-  OidcTransactionCapacityError,
-  OidcTransactionSealingError,
-} from './users/oidc-login.js';
-export type {
-  OidcLoginTransaction,
-  OidcLoginTransactionStore,
-  OidcSecretEncryptionAdapter,
-  OidcTransactionConsumeResult,
-  SealedOidcSecret,
-} from './users/oidc-login.js';
 export {
   parseWorkspaceId,
   withActorScopedClient,

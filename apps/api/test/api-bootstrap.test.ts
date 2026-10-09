@@ -11,6 +11,7 @@ import {
   createApiApplication,
   type ApiApplicationDependencies,
 } from '../src/app.js';
+import { IdentityError } from '../src/identity/index.js';
 import type { IdentityWorkspaceDependencies } from '../src/identity-workspace/index.js';
 import {
   GetPreviewRunUseCase,
@@ -27,7 +28,6 @@ import type { ApiScheduleRuntime } from '../src/platform/schedules/schedule-runt
 import type { ApiNotificationRuntime } from '../src/platform/notifications/notification-runtime.module.js';
 import { WorkspaceInboxService } from '../src/notifications/service.js';
 import type { ApiArtifactRuntime } from '../src/platform/artifacts/artifact-runtime.module.js';
-import { parseApiConfig } from '../src/platform/config/api-config.js';
 import type { ApiIdentityConfig } from '../src/platform/config/identity-config.js';
 import type { BetterAuthRuntime } from '../src/identity-infrastructure/index.js';
 import { ScheduleManagementService } from '../src/schedules/service.js';
@@ -67,25 +67,9 @@ function identityRuntime(
   changeWorkspaceMemberRole: IdentityWorkspaceDependencies['persistence']['changeWorkspaceMemberRole'] = () =>
     Promise.reject(new Error('not used')),
 ): ApiIdentityRuntime {
+  const notUsed = () => Promise.reject(new Error('not used'));
   const identityDependencies: IdentityWorkspaceDependencies = {
-    config: {
-      oidc: {
-        issuer: 'https://identity.example.test',
-        authorizationEndpoint: 'https://identity.example.test/authorize',
-        clientId: 'client',
-        redirectUri: 'https://api.example.test/v1/auth/oidc/callback',
-        scopes: ['openid'],
-        transactionTtlMillis: 300_000,
-      },
-    },
-    provider: {
-      authorizationUrl: () => 'https://identity.example.test/authorize',
-      exchangeCode: () => Promise.reject(new Error('not used')),
-    },
-    transactions: {
-      create: () => Promise.resolve(),
-      consume: () => Promise.resolve({ status: 'missing' }),
-    },
+    config: { publicWebOrigin: 'https://app.example.test' },
     persistence: {
       findUserById: (userId) =>
         Promise.resolve({
@@ -100,29 +84,9 @@ function identityRuntime(
       listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
       listWorkspaceMembers: () => Promise.resolve({ items: [] }),
       changeWorkspaceMemberRole,
-      create: () => Promise.resolve(),
-      findByDigest: () =>
-        Promise.resolve(
-          authenticated
-            ? {
-                sessionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-                tokenDigest: 'a'.repeat(64),
-                userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-                expiresAt: new Date(Date.now() + 60_000),
-                clientMetadata: {},
-              }
-            : undefined,
-        ),
-      revokeByDigest: () => Promise.resolve(false),
-      resolveOrCreateIdentity: () =>
-        Promise.resolve({
-          userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        }),
-      createWorkspaceWithOwner: () => Promise.reject(new Error('not used')),
-      requestWorkspaceLifecycleOperation: () =>
-        Promise.reject(new Error('not used')),
-      readWorkspaceLifecycleOperation: () =>
-        Promise.reject(new Error('not used')),
+      createWorkspaceWithOwner: notUsed,
+      requestWorkspaceLifecycleOperation: notUsed,
+      readWorkspaceLifecycleOperation: notUsed,
     },
     authorization: {
       findAccess: () =>
@@ -138,29 +102,33 @@ function identityRuntime(
             : undefined,
         ),
     },
+    sessions: {
+      issue: notUsed,
+      authenticate: vi.fn(() =>
+        authenticated
+          ? Promise.resolve({
+              sessionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+              userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              expiresAt: new Date(Date.now() + 60_000),
+              clientMetadata: {},
+            })
+          : Promise.reject(new IdentityError('identity.session_invalid')),
+      ),
+      revoke: () => Promise.resolve(),
+      deliver: notUsed,
+      signInEvidence: notUsed,
+    },
   };
-  return Object.freeze({ dependencies: identityDependencies, close });
+  return Object.freeze({
+    dependencies: identityDependencies,
+    betterAuth: {} as BetterAuthRuntime,
+    close,
+  });
 }
 
-const betterAuthLegacyOidc: NonNullable<ApiIdentityConfig['oidc']> = {
-  issuer: 'https://identity.example.test',
-  authorizationEndpoint: 'https://identity.example.test/authorize',
-  tokenEndpoint: 'https://identity.example.test/token',
-  jwksUri: 'https://identity.example.test/jwks',
-  clientId: 'client',
-  redirectUri: 'https://api.example.test/v1/auth/oidc/callback',
-  scopes: ['openid'],
-  allowedAlgorithms: ['RS256'],
-  timeoutMillis: 1_000,
-  transactionTtlMillis: 300_000,
-  allowInsecureHttpForTests: false,
-};
-
-function betterAuthIdentityConfig(
-  origins: Pick<ApiIdentityConfig, 'publicWebOrigin' | 'oidc'>,
-): ApiIdentityConfig {
+function betterAuthIdentityConfig(publicWebOrigin: string): ApiIdentityConfig {
   return {
-    ...origins,
+    publicWebOrigin,
     session: { ttlMillis: 60_000, secureCookie: true, sameSite: 'lax' },
     betterAuth: {
       secret: 'bootstrap-better-auth-secret-at-least-32-characters',
@@ -247,26 +215,6 @@ describe('API bootstrap ownership and health', () => {
   afterEach(async () => {
     await application?.close();
     application = undefined;
-  });
-
-  it('rejects development HTTP OIDC at the real provider adapter boundary', async () => {
-    const httpIdentityConfig = parseApiConfig({
-      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-      NODE_ENV: 'development',
-      OIDC_ISSUER: 'http://127.0.0.1:4400',
-      OIDC_AUTHORIZATION_ENDPOINT: 'http://127.0.0.1:4400/authorize',
-      OIDC_TOKEN_ENDPOINT: 'http://127.0.0.1:4400/token',
-      OIDC_JWKS_URI: 'http://127.0.0.1:4400/jwks',
-      OIDC_CLIENT_ID: 'development-client',
-      OIDC_REDIRECT_URI: 'http://127.0.0.1:3000/callback',
-      OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-      OIDC_TRANSACTION_KEY_VERSION: 'v1',
-      SESSION_COOKIE_SECURE: 'false',
-    });
-
-    await expect(
-      createApiApplication(httpIdentityConfig, dependencies()),
-    ).rejects.toThrow('The identity request is invalid.');
   });
 
   it('accepts both empty and populated trusted-proxy CIDR configuration', async () => {
@@ -926,7 +874,7 @@ describe('API bootstrap ownership and health', () => {
   describe('feature composition', () => {
     it('registers an injected identity runtime and owns its close lifecycle', async () => {
       const close = vi.fn().mockResolvedValue(undefined);
-      const selectedIdentityRuntime = identityRuntime(close);
+      const selectedIdentityRuntime = identityRuntime(close, true);
       application = await createApiApplication(config, {
         ...dependencies(),
         identityRuntime: selectedIdentityRuntime,
@@ -935,7 +883,8 @@ describe('API bootstrap ownership and health', () => {
 
       const response = await application.inject({
         method: 'GET',
-        url: '/v1/auth/oidc/start',
+        url: '/v1/users/me',
+        headers: { cookie: 'pertexo_session=session' },
       });
       expect(response.statusCode).toBe(200);
 
@@ -945,25 +894,10 @@ describe('API bootstrap ownership and health', () => {
     });
 
     it('fails a composed protected route closed before application work when the limiter is unavailable', async () => {
-      const selectedIdentityRuntime = identityRuntime();
-      const selectedProvider = selectedIdentityRuntime.dependencies.provider;
-      if (selectedProvider === undefined)
-        throw new Error('OIDC provider is missing from the test runtime');
-      const authorizationUrl = vi.fn(
-        selectedProvider.authorizationUrl.bind(selectedProvider),
-      );
+      const selectedIdentityRuntime = identityRuntime(undefined, true);
       application = await createApiApplication(config, {
         ...dependencies(),
-        identityRuntime: {
-          ...selectedIdentityRuntime,
-          dependencies: {
-            ...selectedIdentityRuntime.dependencies,
-            provider: {
-              ...selectedProvider,
-              authorizationUrl,
-            },
-          },
-        },
+        identityRuntime: selectedIdentityRuntime,
         rateLimitConsumer: {
           consume: () =>
             Promise.reject(new Error('redis endpoint unavailable')),
@@ -972,7 +906,8 @@ describe('API bootstrap ownership and health', () => {
 
       const response = await application.inject({
         method: 'GET',
-        url: '/v1/auth/oidc/start',
+        url: '/v1/invitation-acceptance',
+        headers: { cookie: 'pertexo_session=session' },
       });
 
       expect(response.statusCode).toBe(503);
@@ -985,7 +920,10 @@ describe('API bootstrap ownership and health', () => {
         status: 503,
       });
       expect(response.payload).not.toContain('redis endpoint unavailable');
-      expect(authorizationUrl).not.toHaveBeenCalled();
+      expect(
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        selectedIdentityRuntime.dependencies.sessions.authenticate,
+      ).not.toHaveBeenCalled();
     });
 
     it.each([false, true])(
@@ -1993,15 +1931,12 @@ describe('API bootstrap ownership and health', () => {
       expect(acceptPreview).not.toHaveBeenCalled();
     });
 
-    it('mounts Better Auth on the public web origin beside legacy OIDC', async () => {
+    it('mounts Better Auth on the public web origin', async () => {
       const selected = betterAuthIdentityRuntime();
       application = await createApiApplication(
         {
           ...config,
-          identity: betterAuthIdentityConfig({
-            publicWebOrigin: 'https://app.example.test',
-            oidc: betterAuthLegacyOidc,
-          }),
+          identity: betterAuthIdentityConfig('https://app.example.test'),
         },
         { ...dependencies(), identityRuntime: selected.runtime },
       );
@@ -2018,7 +1953,6 @@ describe('API bootstrap ownership and health', () => {
           verificationRequired: true,
         },
         socialProviders: ['google'],
-        legacyMigrationAvailable: true,
       });
       const crossOrigin = await application.inject({
         method: 'POST',
@@ -2037,42 +1971,6 @@ describe('API bootstrap ownership and health', () => {
       expect(selected.requests).toEqual([
         'POST https://app.example.test/v1/auth/sign-in/email',
       ]);
-    });
-
-    it('derives the Better Auth origin from the legacy OIDC redirect', async () => {
-      const selected = betterAuthIdentityRuntime();
-      application = await createApiApplication(
-        {
-          ...config,
-          identity: betterAuthIdentityConfig({ oidc: betterAuthLegacyOidc }),
-        },
-        { ...dependencies(), identityRuntime: selected.runtime },
-      );
-      await application.init();
-
-      const accepted = await application.inject({
-        method: 'POST',
-        url: '/v1/auth/sign-in/email',
-        headers: { origin: 'https://api.example.test' },
-        payload: {},
-      });
-      expect(accepted.statusCode).toBe(200);
-      expect(selected.requests).toEqual([
-        'POST https://api.example.test/v1/auth/sign-in/email',
-      ]);
-    });
-
-    it('refuses to mount Better Auth without a browser origin and closes its runtime', async () => {
-      const selected = betterAuthIdentityRuntime();
-
-      await expect(
-        createApiApplication(
-          { ...config, identity: betterAuthIdentityConfig({}) },
-          { ...dependencies(), identityRuntime: selected.runtime },
-        ),
-      ).rejects.toThrow('Identity public web origin is not configured');
-      expect(selected.runtime.close).toHaveBeenCalledOnce();
-      expect(selected.requests).toEqual([]);
     });
 
     it('closes an injected identity runtime when database readiness fails', async () => {

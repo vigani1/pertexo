@@ -5,10 +5,7 @@ import { ConnectionsController } from '../../src/connections/controllers.js';
 import { ArtifactsController } from '../../src/artifacts/controllers.js';
 import { CatalogController } from '../../src/catalog/controllers.js';
 import { FailureNotificationDestinationsController } from '../../src/connections/failure-notification-destinations.controller.js';
-import {
-  OidcController,
-  SessionController,
-} from '../../src/identity-workspace/auth-controllers.js';
+import { SessionController } from '../../src/identity-workspace/auth-controllers.js';
 import {
   UserController,
   WorkspaceMembersController,
@@ -36,8 +33,6 @@ const routes: readonly (readonly [
   string,
   ExpectedClassification,
 ])[] = [
-  [OidcController, 'start', 'identity_start'],
-  [OidcController, 'callback', 'identity_callback'],
   [SessionController, 'logout', 'actor_mutation'],
   [UserController, 'me', 'authenticated_read'],
   [UserController, 'updateMe', 'actor_mutation'],

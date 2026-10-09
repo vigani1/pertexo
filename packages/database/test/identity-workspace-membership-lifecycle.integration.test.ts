@@ -93,10 +93,7 @@ describe('leaving a workspace (ADR 047)', () => {
       role: 'builder',
       role_revision: 2,
     });
-    await expect(database.liveSessions(leaver)).resolves.toEqual({
-      opaque: 0,
-      betterAuth: 0,
-    });
+    await expect(database.liveSessions(leaver)).resolves.toBe(0);
     await expect(
       database.identity().listAccessibleWorkspaces(leaver),
     ).resolves.toMatchObject({ items: [] });
@@ -153,10 +150,7 @@ describe('leaving a workspace (ADR 047)', () => {
       status: 'active',
       role_revision: 1,
     });
-    await expect(database.liveSessions(leaver)).resolves.toEqual({
-      opaque: 1,
-      betterAuth: 1,
-    });
+    await expect(database.liveSessions(leaver)).resolves.toBe(1);
 
     const leave = { workspaceId, actorUserId: leaver, idempotencyKey: 'once' };
     const receipts = await Promise.all([
@@ -188,10 +182,7 @@ describe('suspending and reactivating members (ADR 047)', () => {
       membershipStatus: 'suspended',
       replayed: false,
     });
-    await expect(database.liveSessions(builder)).resolves.toEqual({
-      opaque: 0,
-      betterAuth: 0,
-    });
+    await expect(database.liveSessions(builder)).resolves.toBe(0);
     await expect(
       database.identity().findWorkspaceAccess(builder, workspaceId),
     ).resolves.toMatchObject({ membershipStatus: 'suspended' });
@@ -237,10 +228,7 @@ describe('suspending and reactivating members (ADR 047)', () => {
       role: 'builder',
       role_revision: 3,
     });
-    await expect(database.liveSessions(builder)).resolves.toEqual({
-      opaque: 0,
-      betterAuth: 0,
-    });
+    await expect(database.liveSessions(builder)).resolves.toBe(0);
     await expect(
       database
         .identity()
@@ -338,10 +326,7 @@ describe('transferring ownership (ADR 047)', () => {
       role_revision: 2,
     });
     for (const person of [owner, builder])
-      await expect(database.liveSessions(person)).resolves.toEqual({
-        opaque: 0,
-        betterAuth: 0,
-      });
+      await expect(database.liveSessions(person)).resolves.toBe(0);
     await expect(
       database.identity().transferWorkspaceOwnership(handover),
     ).resolves.toMatchObject({ replayed: true, ownerUserId: builder });

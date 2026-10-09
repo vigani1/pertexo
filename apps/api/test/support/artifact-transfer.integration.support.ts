@@ -9,7 +9,6 @@ import {
 
 import {
   createIdentityWorkspaceDatabase,
-  createOidcLoginTransactionStore,
   createWorkspaceDatabase,
   parseDatabaseConfig,
   type IdentityWorkspaceDatabase,
@@ -23,7 +22,6 @@ import { Pool, type PoolClient } from 'pg';
 import { expect } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
-import { createOidcSecretEncryptionAdapter } from '../../src/identity-infrastructure/index.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import {
   createApiArtifactRuntime,
@@ -31,10 +29,9 @@ import {
 } from '../../src/platform/artifacts/artifact-runtime.module.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import {
-  createFakeOidcProvider,
-  loginThroughOidc,
+  issueBrowserSession,
   type HttpSessionCookies,
-} from './real-oidc-http.fixture.js';
+} from './browser-session.fixture.js';
 import {
   FixtureResourceOwner,
   rethrowFixtureSetupFailure,
@@ -47,9 +44,7 @@ const migrationUrl =
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 const redisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
-const issuer = `https://${randomUUID()}.artifact-transfer.integration.test`;
-const clientId = 'artifact-transfer-real-api';
-const encryptionKey = Buffer.alloc(32, 0x7a).toString('base64');
+const emailDomain = 'artifact-transfer.integration.test';
 
 const requiredArtifactEnvironment = {
   ARTIFACT_STORE_ACCESS_KEY_ID: process.env.ARTIFACT_STORE_ACCESS_KEY_ID,
@@ -206,25 +201,10 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
   const resources = new FixtureResourceOwner();
   const logs = createFixtureLogCapture();
   try {
-    const provider = createFakeOidcProvider({
-      issuer,
-      clientId,
-      displayNamePrefix: 'Artifact',
-    });
     const identityDatabase = resources.acquire(
       'identity database',
       createIdentityWorkspaceDatabase(artifactTransferDatabaseConfig),
       (database) => database.close(),
-    );
-    const transactions = resources.acquire(
-      'OIDC transactions',
-      createOidcLoginTransactionStore(
-        artifactTransferDatabaseConfig,
-        createOidcSecretEncryptionAdapter({
-          current: { version: 'artifact-transfer-v1', key: encryptionKey },
-        }),
-      ),
-      (store) => store.close(),
     );
     const workspaceDatabase = resources.acquire(
       'workspace database',
@@ -351,13 +331,11 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
     const identityRuntime = resources.acquire(
       'identity runtime',
       await createApiIdentityRuntime(config.identity, config.database, {
-        provider,
-        persistence: { database: identityDatabase, transactions },
+        persistence: { database: identityDatabase },
       }),
       (runtime) => runtime.close(),
     );
     resources.transfer(identityDatabase);
-    resources.transfer(transactions);
     const createdArtifactRuntime = createApiArtifactRuntime(
       config.artifacts,
       config.database,
@@ -434,7 +412,10 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       readLogText: logs.readText,
       readStorageCalls: () => Object.freeze({ ...storageCalls }),
       login: (subject: 'owner' | 'operator' | 'viewer') =>
-        loginThroughOidc(application, subject),
+        issueBrowserSession(
+          identityRuntime.dependencies.sessions,
+          subjects[subject].user.id,
+        ),
       withOwner,
       withApi,
       setCapacity: (input) =>
@@ -579,12 +560,12 @@ async function resolveIdentity(
   database: IdentityWorkspaceDatabase,
   subject: string,
 ) {
-  return database.resolveOrCreateIdentity({
-    issuer,
-    providerSubject: subject,
-    email: `${subject}@${new URL(issuer).hostname}`,
-    displayName: `Artifact ${subject}`,
-  });
+  return {
+    user: await database.createUser({
+      email: `${subject}-${randomUUID()}@${emailDomain}`,
+      displayName: `Artifact ${subject}`,
+    }),
+  };
 }
 
 function artifactApiConfig(): ApiConfig {
@@ -593,27 +574,16 @@ function artifactApiConfig(): ApiConfig {
     database: artifactTransferDatabaseConfig,
     host: '127.0.0.1',
     identity: {
-      oidc: {
-        issuer,
-        authorizationEndpoint: `${issuer}/authorize`,
-        tokenEndpoint: `${issuer}/token`,
-        jwksUri: `${issuer}/jwks`,
-        clientId,
-        redirectUri: 'https://api.integration.test/v1/auth/oidc/callback',
-        scopes: ['openid', 'profile', 'email'],
-        allowedAlgorithms: ['RS256'],
-        timeoutMillis: 5_000,
-        transactionTtlMillis: 30_000,
-        allowInsecureHttpForTests: false,
-      },
-      secretEncryption: {
-        current: { version: 'artifact-transfer-v1', key: encryptionKey },
-        previous: [],
-      },
+      publicWebOrigin: 'https://api.integration.test',
       session: {
         ttlMillis: 300_000,
         secureCookie: true,
         sameSite: 'lax',
+      },
+      betterAuth: {
+        secret: 'artifact-transfer-integration-secret-with-32-plus-characters',
+        mailMode: 'disabled',
+        providers: {},
       },
     },
     nodeEnv: 'test',

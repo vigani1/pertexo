@@ -6,8 +6,7 @@ import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
 import { problem } from '../support/team-fixtures';
 
-// A deployment whose own sign-in (Better Auth) is the session authority:
-// the invited account is proven by a fresh sign-in, not legacy OIDC.
+// The invited account is proven by a fresh sign-in (ADR 043).
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const intentId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -57,7 +56,6 @@ describe('invitation acceptance from a session sign-in', () => {
             verificationRequired: true,
           },
           socialProviders: [],
-          legacyMigrationAvailable: false,
         }),
       ),
       http.get('http://pertexo.test/v1/users/me', () =>

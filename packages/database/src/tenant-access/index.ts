@@ -35,7 +35,6 @@ export type {
   RenameWorkspaceInput,
   ResolveInvitationAcceptanceInput,
   SealedInvitationToken,
-  SessionRecord,
   TransferWorkspaceOwnershipInput,
   UpdateUserProfileInput,
   UserProfileUpdateResult,
@@ -55,12 +54,6 @@ export type {
   WorkspaceOwnershipTransferResult,
   WorkspaceRenameResult,
 } from './database.js';
-export { createOidcLoginTransactionStore } from './users/oidc-login.js';
-export type {
-  OidcLoginTransactionStore,
-  OidcSecretEncryptionAdapter,
-  SealedOidcSecret,
-} from './users/oidc-login.js';
 export { createWorkspaceInvitationDeliveryStore } from './invitations/delivery.js';
 export type {
   WorkspaceInvitationDeliveryClaim,

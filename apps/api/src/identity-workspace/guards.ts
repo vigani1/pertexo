@@ -1,10 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
-import {
-  DoubleSubmitCsrfPolicy,
-  OpaqueSessionService,
-} from '../identity/index.js';
+import { DoubleSubmitCsrfPolicy } from '../identity/index.js';
 import {
   applicationError,
   throwApplicationError,
@@ -28,17 +25,17 @@ import type {
 import type { SignInEvidence } from '../identity/index.js';
 import { mapIdentityWorkspaceError } from './errors.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
-import { WORKSPACE_AUTHORIZATION } from './tokens.js';
+import { SESSION_AUTHORITY, WORKSPACE_AUTHORIZATION } from './tokens.js';
 
 export const SESSION_COOKIE_NAME = 'pertexo_session';
 export const CSRF_COOKIE_NAME = 'pertexo_csrf';
-export const OIDC_BROWSER_BINDING_COOKIE_NAME = 'pertexo_oidc_binding';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 
 @Injectable()
 export class SessionAuthenticationGuard implements CanActivate {
   public constructor(
-    private readonly sessions: OpaqueSessionService,
+    @Inject(SESSION_AUTHORITY)
+    private readonly sessions: IdentitySessionAuthority,
     private readonly contexts: RequestContextStore,
   ) {}
 
@@ -262,14 +259,10 @@ export async function requireSignInEvidence(
   request: IdentityWorkspaceRequest,
   sessions: Pick<IdentitySessionAuthority, 'signInEvidence'>,
 ): Promise<SignInEvidence> {
-  const evidence = await sessions.signInEvidence?.(
+  const evidence = await sessions.signInEvidence(
     readCookie(request, SESSION_COOKIE_NAME) ?? '',
   );
-  if (evidence?.userId !== authenticatedSession(request).userId)
-    return throwApplicationError(
-      applicationError(
-        evidence === undefined ? 'resource.not_found' : 'auth.unauthenticated',
-      ),
-    );
+  if (evidence.userId !== authenticatedSession(request).userId)
+    return throwApplicationError(applicationError('auth.unauthenticated'));
   return evidence;
 }

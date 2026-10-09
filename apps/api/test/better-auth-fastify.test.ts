@@ -268,7 +268,6 @@ describe('Better Auth Fastify bridge', () => {
         verificationRequired: true,
       },
       socialProviders: ['google'],
-      legacyMigrationAvailable: false,
     });
     registerBetterAuthHandler(application, {
       publicOrigin: 'https://pertexo.test',
@@ -299,7 +298,6 @@ describe('Better Auth Fastify bridge', () => {
         verificationRequired: true,
       },
       socialProviders: ['google'],
-      legacyMigrationAvailable: false,
     });
 
     const response = await application.inject({

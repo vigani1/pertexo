@@ -4,14 +4,11 @@ import { recordIdentitySecurityFact } from '@pertexo/database/identity';
 import type { Pool, PoolClient } from 'pg';
 
 /*
- * Primitives shared by the browser-bound authentication-method journeys:
- * account linking and legacy-method migration. A journey binds one browser
- * with a short-lived HttpOnly cookie and single-use state digests, and ends by
- * attaching a freshly proven provider method while every browser session of
- * the user is replaced in the same commit.
+ * Primitives of the browser-bound account-linking journey. A journey binds
+ * one browser with a short-lived HttpOnly cookie and single-use state
+ * digests, and ends by attaching a freshly proven provider method while every
+ * browser session of the user is replaced in the same commit.
  */
-
-type MethodAuditFact = 'method.linked' | 'legacy.method_migrated';
 
 /** 256 bits of URL-safe random proof material. */
 export function newJourneyToken(): string {
@@ -78,7 +75,6 @@ export async function attachProviderMethod(
     userId: string;
     providerId: string;
     accountId: string;
-    auditFact: MethodAuditFact;
   }>,
 ): Promise<void> {
   await client.query(
@@ -86,7 +82,7 @@ export async function attachProviderMethod(
      values($1,$2,$3,$4)`,
     [randomUUID(), input.accountId, input.providerId, input.userId],
   );
-  await recordIdentitySecurityFact(client, input.userId, input.auditFact);
+  await recordIdentitySecurityFact(client, input.userId, 'method.linked');
 }
 
 /**

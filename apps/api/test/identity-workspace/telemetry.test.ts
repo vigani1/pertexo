@@ -67,20 +67,20 @@ describe('identity/workspace telemetry', () => {
   it('records a bounded failed outcome and preserves the original error', async () => {
     const fixture = telemetryFixture([500, 510]);
     const telemetry = createIdentityWorkspaceTelemetry(fixture.options);
-    const failure = new Error('provider payload must not become telemetry');
+    const failure = new Error('session payload must not become telemetry');
 
     await expect(
-      telemetry.measure(IDENTITY_WORKSPACE_OPERATION.oidcCallback, () =>
+      telemetry.measure(IDENTITY_WORKSPACE_OPERATION.sessionLogout, () =>
         Promise.reject(failure),
       ),
     ).rejects.toBe(failure);
 
     expect(fixture.counter.add).toHaveBeenCalledWith(1, {
-      operation: 'oidc.callback',
+      operation: 'session.logout',
       outcome: 'failed',
     });
     expect(fixture.histogram.record).toHaveBeenCalledWith(0.01, {
-      operation: 'oidc.callback',
+      operation: 'session.logout',
       outcome: 'failed',
     });
     expect(JSON.stringify(fixture.span.setAttribute.mock.calls)).not.toContain(
@@ -91,8 +91,6 @@ describe('identity/workspace telemetry', () => {
 
   it('exposes only the reviewed operation label values', () => {
     expect(Object.values(IDENTITY_WORKSPACE_OPERATION)).toEqual([
-      'oidc.start',
-      'oidc.callback',
       'session.logout',
       'user.profile_read',
       'user.profile_update',
@@ -270,14 +268,10 @@ function telemetryFixture(nowValues: readonly number[]) {
 
 function workspacePersistence(): IdentityWorkspacePersistence {
   return {
-    create: vi.fn(),
-    findByDigest: vi.fn(),
-    revokeByDigest: vi.fn(),
     findUserById: vi.fn(),
     listAccessibleWorkspaces: vi.fn(),
     listWorkspaceMembers: vi.fn(),
     changeWorkspaceMemberRole: vi.fn(),
-    resolveOrCreateIdentity: vi.fn(),
     createWorkspaceWithOwner: vi.fn().mockResolvedValue({
       id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
       name: 'Operations',

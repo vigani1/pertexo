@@ -37,8 +37,7 @@ import {
   readWorkspaceLifecycleOperation,
 } from '../lifecycle/workspace-deletion.js';
 import { mapWorkspace } from './rows.js';
-import { createIdentityWorkspaceSessionStore } from './users/sessions.js';
-import { createIdentityWorkspaceIdentityStore } from './users/identities.js';
+import { createUserStore } from './users/store.js';
 import {
   parseIdentityMetadata,
   parseIdentityUuid,
@@ -75,19 +74,13 @@ export {
   MEMBERSHIP_ROLE,
   USER_STATUS,
   WORKSPACE_STATUS,
-  type AuthIdentityRecord,
   type AccessibleWorkspaceRecord,
   type AccessibleWorkspacesPage,
-  type CreateAuthIdentityInput,
   type ChangeWorkspaceMemberRoleInput,
-  type CreateSessionInput,
   type CreateUserInput,
   type IdentityWorkspaceDatabase,
   type MembershipRole,
   type RequestWorkspaceLifecycleOperationInput,
-  type ResolveOrCreateIdentityInput,
-  type ResolvedIdentity,
-  type SessionRecord,
   type UserRecord,
   type UserStatus,
   type WorkspaceAccessRecord,
@@ -124,10 +117,8 @@ export {
 
 type WorkspaceCreationResult = PublicWorkspaceCreationResult;
 
-// This is the historical idempotency snapshot for workspace creation, not a
-// general workspace-row codec. A newly created workspace cannot be `purging`.
-// revokedSessionCount remains required so existing result_ref values retain
-// their original shape even though the public create method returns workspace.
+// The idempotency snapshot for workspace creation, not a general
+// workspace-row codec. A newly created workspace cannot be `purging`.
 const durableWorkspaceResultSchema = z
   .object({
     workspace: z
@@ -151,13 +142,11 @@ const durableWorkspaceResultSchema = z
         updatedAt: z.iso.datetime(),
       })
       .strict(),
-    revokedSessionCount: z.number().int().nonnegative(),
   })
   .strict();
 
 function durableWorkspaceResult(
   workspace: WorkspaceRecord,
-  revokedSessionCount: number,
 ): z.output<typeof durableWorkspaceResultSchema> {
   return durableWorkspaceResultSchema.parse({
     workspace: {
@@ -168,7 +157,6 @@ function durableWorkspaceResult(
       createdAt: workspace.createdAt.toISOString(),
       updatedAt: workspace.updatedAt.toISOString(),
     },
-    revokedSessionCount,
   });
 }
 
@@ -188,7 +176,6 @@ function parseDurableWorkspaceResult(value: unknown): WorkspaceCreationResult {
       createdAt: new Date(workspace.createdAt),
       updatedAt: new Date(workspace.updatedAt),
     }),
-    revokedSessionCount: result.data.revokedSessionCount,
   });
 }
 
@@ -277,9 +264,7 @@ async function completeWorkspaceCreationCommand(
     [
       claimId,
       result.workspace.id,
-      JSON.stringify(
-        durableWorkspaceResult(result.workspace, result.revokedSessionCount),
-      ),
+      JSON.stringify(durableWorkspaceResult(result.workspace)),
     ],
   );
   if (completed.rowCount !== 1) throw new IdempotencyRecordCorruptError();
@@ -293,7 +278,7 @@ export function createIdentityWorkspaceDatabase(
   const { pool } = lease;
 
   const database = {
-    ...createIdentityWorkspaceIdentityStore(pool),
+    ...createUserStore(pool),
     ...createIdentityWorkspaceMemberStore(pool),
     ...createIdentityWorkspaceRoleCommandStore(pool),
     ...createIdentityWorkspaceMemberRemovalStore(pool),
@@ -302,8 +287,6 @@ export function createIdentityWorkspaceDatabase(
     ...createIdentityWorkspaceRenameStore(pool),
     ...createIdentityWorkspaceInvitationStore(pool),
     ...createIdentityWorkspaceInvitationAcceptanceStore(pool),
-
-    ...createIdentityWorkspaceSessionStore(pool),
 
     createWorkspaceWithOwner: async (
       input: WorkspaceWithOwnerInput,
@@ -373,7 +356,6 @@ export function createIdentityWorkspaceDatabase(
             );
             await completeWorkspaceCreationCommand(client, claim.id, {
               workspace,
-              revokedSessionCount: 0,
             });
             return workspace;
           },

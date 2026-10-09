@@ -1,5 +1,5 @@
 export { IdentityWorkspaceModule } from './module.js';
-export { OidcController, SessionController } from './auth-controllers.js';
+export { SessionController } from './auth-controllers.js';
 export {
   UserController,
   WorkspaceDiscoveryController,
@@ -19,15 +19,11 @@ export {
   GetCurrentUserUseCase,
   ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
-  OidcApplicationService,
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
 export { DatabaseIdentityWorkspaceAdapter } from './database-adapter.js';
 export { WorkspaceInvitationManagementUseCase } from './invitation-management-use-cases.js';
-export {
-  InvitationAcceptanceController,
-  InvitationAcceptanceOidcController,
-} from './invitation-acceptance-controller.js';
+export { InvitationAcceptanceController } from './invitation-acceptance-controller.js';
 export { RemoveWorkspaceMemberUseCase } from './member-removal-use-case.js';
 export { WorkspaceMembershipLifecycleUseCase } from './membership-lifecycle-use-case.js';
 export { WorkspaceMembershipController } from './membership-lifecycle-controller.js';

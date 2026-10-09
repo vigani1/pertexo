@@ -14,7 +14,7 @@ describe('workflow organization cursor configuration', () => {
   it('leaves only the new capability absent with no identity-secret fallback', () => {
     expect(parseWorkflowOrganizationConfig({})).toBeUndefined();
     expect(
-      parseWorkflowOrganizationConfig({ OIDC_TRANSACTION_KEY: key }),
+      parseWorkflowOrganizationConfig({ INVITATION_TOKEN_KEY: key }),
     ).toBeUndefined();
     expect(parseApiConfig(baseEnvironment)).not.toHaveProperty(
       'workflowOrganization',
@@ -76,19 +76,17 @@ describe('workflow organization cursor configuration', () => {
     },
   );
 
-  it.each([
-    'OIDC_TRANSACTION_KEY',
-    'INVITATION_TOKEN_KEY',
-    'AUTH_MAIL_KEY',
-    'BETTER_AUTH_SECRET',
-  ])('rejects direct reuse of %s', (name) => {
-    expect(() =>
-      parseWorkflowOrganizationConfig({
-        [name]: key,
-        WORKFLOW_ORGANIZATION_CURSOR_KEY: key,
-      }),
-    ).toThrow('Workflow organization configuration is invalid');
-  });
+  it.each(['INVITATION_TOKEN_KEY', 'AUTH_MAIL_KEY', 'BETTER_AUTH_SECRET'])(
+    'rejects direct reuse of %s',
+    (name) => {
+      expect(() =>
+        parseWorkflowOrganizationConfig({
+          [name]: key,
+          WORKFLOW_ORGANIZATION_CURSOR_KEY: key,
+        }),
+      ).toThrow('Workflow organization configuration is invalid');
+    },
+  );
 
   it('rejects equivalent key bytes and previous identity key material', () => {
     expect(() =>

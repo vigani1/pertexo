@@ -64,14 +64,6 @@ async function applyDeletionSideEffects(
 ): Promise<void> {
   const workspace = [workspaceId];
   await client.query(
-    `update app.sessions session set revoked_at = clock_timestamp()
-     where session.revoked_at is null and exists (
-       select 1 from app.workspace_memberships membership
-       where membership.workspace_id = $1 and membership.user_id = session.user_id
-         and membership.status <> 'removed')`,
-    workspace,
-  );
-  await client.query(
     `update app.connections
      set status = 'reauthorization_required', health_revision = health_revision + 1,
          last_health_transition_at = null, last_health_transition_source = null,

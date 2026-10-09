@@ -60,10 +60,7 @@ describe('workspace member removal (ADR 042)', () => {
     await expect(
       database.identity().removeWorkspaceMember(command),
     ).resolves.toEqual({ userId: target.id, roleRevision: 2, replayed: false });
-    await expect(database.liveSessions(target.id)).resolves.toEqual({
-      opaque: 0,
-      betterAuth: 0,
-    });
+    await expect(database.liveSessions(target.id)).resolves.toBe(0);
     await expect(membership(workspaceId, target.id)).resolves.toEqual({
       status: 'removed',
       role: 'viewer',
@@ -210,10 +207,7 @@ describe('workspace member removal (ADR 042)', () => {
       status: 'active',
       role_revision: 1,
     });
-    await expect(database.liveSessions(target.id)).resolves.toEqual({
-      opaque: 1,
-      betterAuth: 1,
-    });
+    await expect(database.liveSessions(target.id)).resolves.toBe(1);
 
     const command = removal(workspaceId, owner.id, target.id);
     const receipts = await Promise.all([
@@ -338,7 +332,6 @@ async function acceptInvitation(
     actorUserId: recipient.id,
     idempotencyKey: randomUUID(),
     replacementSession: {
-      authority: 'better_auth',
       id: randomUUID(),
       token: randomUUID(),
       expiresAt: new Date(Date.now() + 60_000),

@@ -13,7 +13,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { APPLICATION_ERROR_MAPPERS } from '../../src/application-error-mappers.js';
 import { IdentityWorkspaceModule } from '../../src/identity-workspace/module.js';
-import type { IdentityWorkspaceDependencies } from '../../src/identity-workspace/ports.js';
+import { IdentityError } from '../../src/identity/index.js';
+import type {
+  IdentitySessionAuthority,
+  IdentityWorkspaceDependencies,
+} from '../../src/identity-workspace/ports.js';
 import { HttpPlatformModule } from '../../src/platform/http/http.module.js';
 import { ScheduleModule } from '../../src/schedules/module.js';
 import { ScheduleManagementService } from '../../src/schedules/service.js';
@@ -32,21 +36,17 @@ const sessionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 let authenticated = false;
 
-const sessionLookup = vi.fn<
-  IdentityWorkspaceDependencies['persistence']['findByDigest']
->(() =>
-  Promise.resolve(
-    authenticated
-      ? {
-          sessionId,
-          tokenDigest: 'a'.repeat(64),
-          userId,
-          expiresAt: new Date(Date.now() + 60_000),
-          clientMetadata: {},
-        }
-      : undefined,
-  ),
+const sessionLookup = vi.fn<IdentitySessionAuthority['authenticate']>(() =>
+  authenticated
+    ? Promise.resolve({
+        sessionId,
+        userId,
+        expiresAt: new Date(Date.now() + 60_000),
+        clientMetadata: {},
+      })
+    : Promise.reject(new IdentityError('identity.session_invalid')),
 );
+const notExercised = () => Promise.reject(new Error('not exercised'));
 const authorizationLookup = vi.fn<
   (query: WorkspaceAccessQuery) => Promise<WorkspaceAccess | undefined>
 >(() =>
@@ -65,40 +65,26 @@ const authorizationLookup = vi.fn<
 
 const identityDependencies: IdentityWorkspaceDependencies = {
   config: {
-    oidc: {
-      issuer: 'https://issuer.example.test',
-      authorizationEndpoint: 'https://issuer.example.test/authorize',
-      clientId: 'client',
-      redirectUri: 'https://app.example.test/callback',
-      scopes: ['openid'],
-      transactionTtlMillis: 300_000,
-    },
+    publicWebOrigin: 'https://app.example.test',
     session: { secureCookie: false },
   },
-  provider: {
-    authorizationUrl: () => 'https://issuer.example.test/authorize',
-    exchangeCode: () => Promise.reject(new Error('not exercised')),
-  },
-  transactions: {
-    create: () => Promise.resolve(),
-    consume: () => Promise.resolve({ status: 'missing' as const }),
-  },
   persistence: {
-    create: () => Promise.resolve(),
-    findByDigest: sessionLookup,
-    revokeByDigest: () => Promise.resolve(false),
     findUserById: () => Promise.resolve(null),
     listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
     listWorkspaceMembers: () => Promise.resolve({ items: [] }),
-    changeWorkspaceMemberRole: () => Promise.reject(new Error('not exercised')),
-    resolveOrCreateIdentity: () => Promise.resolve({ userId }),
-    createWorkspaceWithOwner: () => Promise.reject(new Error('not exercised')),
-    requestWorkspaceLifecycleOperation: () =>
-      Promise.reject(new Error('not exercised')),
-    readWorkspaceLifecycleOperation: () =>
-      Promise.reject(new Error('not exercised')),
+    changeWorkspaceMemberRole: notExercised,
+    createWorkspaceWithOwner: notExercised,
+    requestWorkspaceLifecycleOperation: notExercised,
+    readWorkspaceLifecycleOperation: notExercised,
   },
   authorization: { findAccess: authorizationLookup },
+  sessions: {
+    issue: notExercised,
+    authenticate: sessionLookup,
+    revoke: notExercised,
+    deliver: notExercised,
+    signInEvidence: notExercised,
+  },
 };
 
 const scheduleDatabase = {

@@ -7,11 +7,9 @@ import {
   reconcileJourney,
   retireJourney,
   startBootstrap,
-  startJourneySignIn,
   verifyJourneySession,
   type JourneyRuntime,
 } from '../model/invitation-journey-operations';
-import type { InvitationSignInMethod } from '../model/sign-in-method';
 import {
   CLEANUP_UNFINISHED,
   NOT_SET_ASIDE,
@@ -27,9 +25,7 @@ import {
 export function useInvitationJourney({
   apiClient,
   routeToken,
-  signInMethod,
   clearFragment,
-  navigateToProvider,
   openSignIn,
   openFreshSignIn,
   openWorkspace,
@@ -37,9 +33,7 @@ export function useInvitationJourney({
 }: Readonly<{
   apiClient: ApiClient;
   routeToken: string | undefined;
-  signInMethod: InvitationSignInMethod;
   clearFragment: () => void;
-  navigateToProvider: (url: string) => void;
   /** Sign in, then come back to this invitation. */
   openSignIn: () => void;
   /** Sign out and in again with a fresh session, then come back. */
@@ -59,7 +53,7 @@ export function useInvitationJourney({
   const lifecycle = useRef(0);
   const ownership = useRef(1);
   const bootstrapController = useRef<AbortController | undefined>(undefined);
-  const oidcController = useRef<AbortController | undefined>(undefined);
+  const verifyController = useRef<AbortController | undefined>(undefined);
   const cleanupController = useRef<AbortController | undefined>(undefined);
   const completion = useRef<JourneyRuntime['completion']['current']>(undefined);
   const runtime = useMemo<JourneyRuntime>(
@@ -69,7 +63,7 @@ export function useInvitationJourney({
       lifecycle,
       ownership,
       bootstrapController,
-      oidcController,
+      verifyController,
       cleanupController,
       completion,
       setJourney,
@@ -82,9 +76,9 @@ export function useInvitationJourney({
 
   const bootstrap = useCallback(
     (owned = ownership.current) => {
-      startBootstrap(runtime, owned, signInMethod === 'session');
+      startBootstrap(runtime, owned);
     },
-    [runtime, signInMethod],
+    [runtime],
   );
 
   useEffect(() => {
@@ -112,17 +106,12 @@ export function useInvitationJourney({
       bootstrap();
     },
     signIn: () =>
-      void (signInMethod === 'session'
-        ? verifyJourneySession(runtime, journey, {
-            signIn: openSignIn,
-            signInAgain: openFreshSignIn,
-          })
-        : startJourneySignIn(runtime, journey, navigateToProvider)),
+      void verifyJourneySession(runtime, journey, {
+        signIn: openSignIn,
+        signInAgain: openFreshSignIn,
+      }),
     /** A different account is signed in: sign in again as the invited one. */
-    switchAccount: () => {
-      if (signInMethod === 'session') openFreshSignIn();
-      else void startJourneySignIn(runtime, journey, navigateToProvider);
-    },
+    switchAccount: openFreshSignIn,
     accept: () => void acceptJourney(runtime, journey),
     reconcile: () => void reconcileJourney(runtime),
     /** After completion: clear the binding, then open the workspace. */

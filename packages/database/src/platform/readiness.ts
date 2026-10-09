@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0019_one_executable_format.sql';
+export const EXPECTED_MIGRATION_HEAD = '0020_remove_legacy_authentication.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

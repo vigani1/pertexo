@@ -9,7 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { OpaqueSessionService } from '../identity/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { memberCommand, selfCommand } from './request-command-context.js';
 import {
@@ -22,6 +21,7 @@ import {
 } from './guards.js';
 import { WorkspaceMembershipLifecycleUseCase } from './membership-lifecycle-use-case.js';
 import type { IdentitySessionAuthority } from './ports.js';
+import { SESSION_AUTHORITY } from './tokens.js';
 import type { IdentityWorkspaceRequest } from './types.js';
 
 /**
@@ -33,7 +33,7 @@ import type { IdentityWorkspaceRequest } from './types.js';
 export class WorkspaceMembershipController {
   public constructor(
     private readonly lifecycle: WorkspaceMembershipLifecycleUseCase,
-    @Inject(OpaqueSessionService)
+    @Inject(SESSION_AUTHORITY)
     private readonly sessions: IdentitySessionAuthority,
   ) {}
 

@@ -7,8 +7,6 @@ import {
   allowlistedReturnPath,
   returnToSearch,
 } from '@/features/auth/return-path.public';
-import { authenticationCapabilitiesQueryOptions } from '@/features/auth/queries.public';
-import { invitationSignInMethod } from '@/features/workspace-invitations/public';
 import { landingWorkspace } from '@/features/workspaces/last-workspace.public';
 import { pageTitle } from './page-title';
 import {
@@ -102,17 +100,6 @@ export const signUpRoute = createRoute({
   component: lazyRouteComponent(() => import('../auth/sign-up'), 'SignUpRoute'),
 });
 
-export const legacyMigrationRoute = createRoute({
-  getParentRoute: () => authStageRoute,
-  path: 'account/migrate',
-  pendingComponent: AuthLensPending,
-  head: () => ({ meta: [{ title: pageTitle('Move your sign-in') }] }),
-  component: lazyRouteComponent(
-    () => import('../auth/legacy-migration'),
-    'LegacyMigrationRoute',
-  ),
-});
-
 export const passwordRecoveryRoute = createRoute({
   getParentRoute: () => authStageRoute,
   path: 'forgot-password',
@@ -171,14 +158,6 @@ export const invitationAcceptanceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/invitations/accept',
   pendingComponent: BootPage,
-  // Unreadable capabilities fall back to the session authority's sign-in.
-  loader: async ({ context }) => ({
-    signInMethod: invitationSignInMethod(
-      await context.queryClient
-        .query(authenticationCapabilitiesQueryOptions(context.apiClient))
-        .catch(() => undefined),
-    ),
-  }),
   head: () => ({ meta: [{ title: pageTitle('Workspace invitation') }] }),
   component: lazyRouteComponent(
     () => import('../auth/invitation-acceptance'),

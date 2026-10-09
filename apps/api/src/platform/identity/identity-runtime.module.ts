@@ -26,40 +26,23 @@ import {
   type IdentityWorkspaceTelemetry,
   type IdentityWorkspaceDependencies,
 } from '../../identity-workspace/index.js';
-import type {
-  IdentityClock,
-  OidcLoginTransactionStore,
-  OidcProviderPort,
-} from '../../identity/index.js';
+import type { IdentityClock } from '../../identity/index.js';
 import type { ApiIdentityConfig } from '../config/identity-config.js';
-import {
-  assertStandaloneCutoverReady,
-  composeBetterAuthRuntime,
-  countLegacyOnlyUsers,
-} from './better-auth-composition.js';
-import {
-  adaptTransactionStore,
-  genericOidcProvider,
-  openOidcTransactionStore,
-  type OidcTransactionOverrides,
-} from './oidc-runtime.js';
+import { composeBetterAuthRuntime } from './better-auth-composition.js';
 
 export type ApiIdentityRuntime = Readonly<{
   dependencies: IdentityWorkspaceDependencies;
-  betterAuth?: BetterAuthRuntime;
+  betterAuth: BetterAuthRuntime;
   close(): Promise<void>;
 }>;
 
 export type ApiIdentityRuntimeOverrides = Readonly<{
-  provider?: OidcProviderPort;
   clock?: IdentityClock;
   authenticationMail?: AuthenticationMail;
-  legacyOnlyUserCount?: () => Promise<number>;
-  persistence?: OidcTransactionOverrides &
-    Readonly<{
-      database?: IdentityWorkspaceDatabase;
-      databaseFactory?: typeof createIdentityWorkspaceDatabase;
-    }>;
+  persistence?: Readonly<{
+    database?: IdentityWorkspaceDatabase;
+    databaseFactory?: typeof createIdentityWorkspaceDatabase;
+  }>;
   telemetry?: Readonly<{
     value?: IdentityWorkspaceTelemetry;
     factory?: () => IdentityWorkspaceTelemetry;
@@ -70,7 +53,7 @@ type ClosableResource = Readonly<{ close(): unknown }>;
 
 /**
  * Composes the server-only identity infrastructure while retaining narrow
- * injection seams for real-database/fake-provider integration tests.
+ * injection seams for real-database integration tests.
  */
 export async function createApiIdentityRuntime(
   config: ApiIdentityConfig,
@@ -79,25 +62,12 @@ export async function createApiIdentityRuntime(
   runtime?: DatabaseRuntime,
 ): Promise<ApiIdentityRuntime> {
   const persistenceOverrides = overrides.persistence ?? {};
-  assertOidcComposition(config, overrides);
-  const provider =
-    config.oidc === undefined
-      ? undefined
-      : (overrides.provider ??
-        genericOidcProvider(config.oidc, config.oidc.redirectUri));
-  const invitationEncryptionConfig =
-    config.invitationTokenEncryption ?? config.secretEncryption;
   const invitationEncryption =
-    invitationEncryptionConfig === undefined
+    config.invitationTokenEncryption === undefined
       ? undefined
-      : createApplicationSecretEnvelope(invitationEncryptionConfig);
+      : createApplicationSecretEnvelope(config.invitationTokenEncryption);
   const resources = new IdentityResourceScope();
   try {
-    if (config.betterAuth !== undefined && config.oidc === undefined)
-      await assertStandaloneCutoverReady(
-        overrides.legacyOnlyUserCount ??
-          (() => countLegacyOnlyUsers(databaseConfig)),
-      );
     const identityDatabase = resources.own(
       persistenceOverrides.database ??
         (
@@ -105,46 +75,26 @@ export async function createApiIdentityRuntime(
           createIdentityWorkspaceDatabase
         )(databaseConfig, runtime),
     );
-    const transactionDatabase = openOidcTransactionStore(
+    const persistence = new DatabaseIdentityWorkspaceAdapter(identityDatabase);
+    const betterAuth = composeBetterAuthRuntime({
       config,
       databaseConfig,
-      persistenceOverrides,
       runtime,
-    );
-    if (transactionDatabase !== undefined) resources.own(transactionDatabase);
-    const transactions =
-      transactionDatabase === undefined
-        ? undefined
-        : adaptTransactionStore(transactionDatabase);
-    const persistence = new DatabaseIdentityWorkspaceAdapter(identityDatabase);
-    const telemetry = identityTelemetry(overrides.telemetry);
-    const betterAuth =
-      config.betterAuth === undefined
-        ? undefined
-        : composeBetterAuthRuntime({
-            config,
-            betterAuth: config.betterAuth,
-            databaseConfig,
-            runtime,
-            transactions,
-            provider: overrides.provider,
-            authenticationMail: overrides.authenticationMail,
-            acquire: (resource) => resources.own(resource),
-          });
+      authenticationMail: overrides.authenticationMail,
+      acquire: (resource) => resources.own(resource),
+    });
     let closePromise: Promise<void> | undefined;
 
     return Object.freeze({
       dependencies: identityDependencies({
         config,
-        provider,
-        transactions,
         persistence,
         invitationEncryption,
         clock: overrides.clock,
-        telemetry,
+        telemetry: identityTelemetry(overrides.telemetry),
         betterAuth,
       }),
-      ...(betterAuth === undefined ? {} : { betterAuth }),
+      betterAuth,
       close: (): Promise<void> => (closePromise ??= resources.close()),
     });
   } catch (error: unknown) {
@@ -156,18 +106,6 @@ export async function createApiIdentityRuntime(
       );
     throw error;
   }
-}
-
-function assertOidcComposition(
-  config: ApiIdentityConfig,
-  overrides: ApiIdentityRuntimeOverrides,
-): void {
-  if ((config.oidc === undefined) !== (config.secretEncryption === undefined))
-    throw new TypeError(
-      'OIDC configuration and transaction encryption must be supplied together',
-    );
-  if (config.oidc === undefined && overrides.provider !== undefined)
-    throw new TypeError('An OIDC provider requires OIDC configuration');
 }
 
 function identityTelemetry(
@@ -185,47 +123,23 @@ function productionIdentityTelemetry(): IdentityWorkspaceTelemetry {
   });
 }
 
-/** Browser-session authority is Better Auth when configured, else OIDC. */
+/** Better Auth is the one browser-session authority (ADR 039). */
 function identityDependencies(
   input: Readonly<{
     config: ApiIdentityConfig;
-    provider: OidcProviderPort | undefined;
-    transactions: OidcLoginTransactionStore | undefined;
     persistence: DatabaseIdentityWorkspaceAdapter;
     invitationEncryption: ApplicationSecretEnvelope | undefined;
     clock: IdentityClock | undefined;
     telemetry: IdentityWorkspaceTelemetry;
-    betterAuth: BetterAuthRuntime | undefined;
+    betterAuth: BetterAuthRuntime;
   }>,
 ): IdentityWorkspaceDependencies {
-  const { config, betterAuth } = input;
+  const { config } = input;
   return Object.freeze({
     config: Object.freeze({
-      allowGenericOidcLogin: config.betterAuth === undefined,
-      ...(config.publicWebOrigin === undefined
-        ? {}
-        : { publicWebOrigin: config.publicWebOrigin }),
-      ...(config.oidc === undefined
-        ? {}
-        : {
-            oidc: Object.freeze({
-              issuer: config.oidc.issuer,
-              authorizationEndpoint: config.oidc.authorizationEndpoint,
-              clientId: config.oidc.clientId,
-              ...(config.oidc.callbackLandingPath === undefined
-                ? {}
-                : { callbackLandingPath: config.oidc.callbackLandingPath }),
-              redirectUri: config.oidc.redirectUri,
-              scopes: config.oidc.scopes,
-              transactionTtlMillis: config.oidc.transactionTtlMillis,
-            }),
-          }),
+      publicWebOrigin: config.publicWebOrigin,
       session: config.session,
     }),
-    ...(input.provider === undefined ? {} : { provider: input.provider }),
-    ...(input.transactions === undefined
-      ? {}
-      : { transactions: input.transactions }),
     persistence: input.persistence,
     authorization: input.persistence,
     ...(input.invitationEncryption === undefined
@@ -233,15 +147,11 @@ function identityDependencies(
       : { invitationTokens: input.invitationEncryption }),
     ...(input.clock === undefined ? {} : { clock: input.clock }),
     telemetry: input.telemetry,
-    ...(betterAuth === undefined
-      ? {}
-      : {
-          sessions: new BetterAuthSessionService(betterAuth, {
-            secure: config.session.secureCookie,
-            sameSite: config.session.sameSite,
-            ttlSeconds: Math.floor(config.session.ttlMillis / 1_000),
-          }),
-        }),
+    sessions: new BetterAuthSessionService(input.betterAuth, {
+      secure: config.session.secureCookie,
+      sameSite: config.session.sameSite,
+      ttlSeconds: Math.floor(config.session.ttlMillis / 1_000),
+    }),
   });
 }
 

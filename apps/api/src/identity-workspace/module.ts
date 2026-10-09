@@ -3,8 +3,6 @@ import type { DynamicModule, Provider } from '@nestjs/common';
 
 import {
   DoubleSubmitCsrfPolicy,
-  OidcLoginService,
-  OpaqueSessionService,
   nodeIdentityCrypto,
 } from '../identity/index.js';
 import type { IdentityClock, IdentityCrypto } from '../identity/index.js';
@@ -15,13 +13,10 @@ import {
   WorkspaceMembersController,
   WorkspaceController,
 } from './controllers.js';
-import { OidcController, SessionController } from './auth-controllers.js';
+import { SessionController } from './auth-controllers.js';
 import { WorkspaceInvitationsController } from './invitation-management-controller.js';
 import { WorkspaceInvitationManagementUseCase } from './invitation-management-use-cases.js';
-import {
-  InvitationAcceptanceController,
-  InvitationAcceptanceOidcController,
-} from './invitation-acceptance-controller.js';
+import { InvitationAcceptanceController } from './invitation-acceptance-controller.js';
 import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
 import { RemoveWorkspaceMemberUseCase } from './member-removal-use-case.js';
 import { WorkspaceMembershipController } from './membership-lifecycle-controller.js';
@@ -62,12 +57,9 @@ import {
   CSRF_POLICY,
   IDENTITY_CLOCK,
   IDENTITY_CRYPTO,
-  IDENTITY_WORKSPACE_CONFIG,
   IDENTITY_WORKSPACE_PERSISTENCE,
-  OIDC_PROVIDER,
-  OIDC_CALLBACK_LANDING_PATH,
-  OIDC_TRANSACTIONS,
   WORKSPACE_AUTHORIZATION,
+  SESSION_AUTHORITY,
   SESSION_COOKIE_POLICY,
   IDENTITY_WORKSPACE_TELEMETRY,
   INVITATION_TOKEN_PROTECTOR,
@@ -84,16 +76,14 @@ export class IdentityWorkspaceModule {
   public static register(
     dependencies: IdentityWorkspaceDependencies,
   ): DynamicModule {
-    const oidc = completeOidcDependencies(dependencies);
     const crypto: IdentityCrypto = dependencies.crypto ?? nodeIdentityCrypto;
     const clock: IdentityClock = dependencies.clock ?? {
       now: (): Date => new Date(),
     };
     const providers: Provider[] = [
-      { provide: IDENTITY_WORKSPACE_CONFIG, useValue: dependencies.config },
       {
         provide: INVITATION_ALLOWED_ORIGIN,
-        useValue: identityPublicOrigin(dependencies.config),
+        useValue: dependencies.config.publicWebOrigin,
       },
       { provide: IDENTITY_CRYPTO, useValue: crypto },
       { provide: IDENTITY_CLOCK, useValue: clock },
@@ -121,27 +111,7 @@ export class IdentityWorkspaceModule {
           sameSite: dependencies.config.session?.sameSite ?? 'lax',
         },
       },
-      {
-        provide: OpaqueSessionService,
-        useFactory: (
-          persistence: IdentityWorkspaceDependencies['persistence'],
-          config: IdentityWorkspaceDependencies['config'],
-          crypto: IdentityCrypto,
-          clock: IdentityClock,
-        ): IdentitySessionAuthority =>
-          dependencies.sessions ??
-          new OpaqueSessionService(persistence, {
-            ...config.session,
-            crypto,
-            clock,
-          }),
-        inject: [
-          IDENTITY_WORKSPACE_PERSISTENCE,
-          IDENTITY_WORKSPACE_CONFIG,
-          IDENTITY_CRYPTO,
-          IDENTITY_CLOCK,
-        ],
-      },
+      { provide: SESSION_AUTHORITY, useValue: dependencies.sessions },
       {
         provide: CSRF_POLICY,
         useFactory: (crypto: IdentityCrypto) =>
@@ -205,15 +175,32 @@ export class IdentityWorkspaceModule {
           IDENTITY_CLOCK,
         ],
       },
-      ...(oidc === undefined ? [] : oidcProviders(dependencies, oidc)),
-      invitationAcceptanceProvider(dependencies, oidc !== undefined),
+      {
+        provide: InvitationAcceptanceUseCase,
+        useFactory: (
+          persistence: IdentityWorkspaceDependencies['persistence'],
+          identityCrypto: IdentityCrypto,
+          identityClock: IdentityClock,
+        ) =>
+          new InvitationAcceptanceUseCase(
+            acceptancePersistence(persistence),
+            identityCrypto,
+            identityClock,
+            dependencies.config,
+          ),
+        inject: [
+          IDENTITY_WORKSPACE_PERSISTENCE,
+          IDENTITY_CRYPTO,
+          IDENTITY_CLOCK,
+        ],
+      },
       {
         provide: SessionAuthenticationGuard,
         useFactory: (
-          sessions: OpaqueSessionService,
+          sessions: IdentitySessionAuthority,
           contexts: RequestContextStore,
         ) => new SessionAuthenticationGuard(sessions, contexts),
-        inject: [OpaqueSessionService, RequestContextStore],
+        inject: [SESSION_AUTHORITY, RequestContextStore],
       },
       {
         provide: CsrfProtectionGuard,
@@ -237,13 +224,10 @@ export class IdentityWorkspaceModule {
         WorkspaceInvitationsController,
         WorkspaceController,
         InvitationAcceptanceController,
-        ...(oidc === undefined
-          ? []
-          : [OidcController, InvitationAcceptanceOidcController]),
       ],
       providers,
       exports: [
-        OpaqueSessionService,
+        SESSION_AUTHORITY,
         CSRF_POLICY,
         DoubleSubmitCsrfPolicy,
         CreateWorkspaceUseCase,
@@ -264,126 +248,9 @@ export class IdentityWorkspaceModule {
         WorkspaceMemberManageGuard,
         WorkspaceMemberReadGuard,
         WorkspaceMembershipGuard,
-        ...(oidc === undefined ? [] : [OidcLoginService]),
       ],
     };
   }
-}
-
-function identityPublicOrigin(
-  config: IdentityWorkspaceDependencies['config'],
-): string {
-  if (config.publicWebOrigin !== undefined) return config.publicWebOrigin;
-  if (config.oidc !== undefined) return new URL(config.oidc.redirectUri).origin;
-  throw new TypeError('Identity public web origin is not configured');
-}
-
-type OidcDependencies = Readonly<{
-  oidc: NonNullable<IdentityWorkspaceDependencies['config']['oidc']>;
-  provider: NonNullable<IdentityWorkspaceDependencies['provider']>;
-  transactions: NonNullable<IdentityWorkspaceDependencies['transactions']>;
-}>;
-
-/** Generic OIDC is wired only as a whole; a partial set is a composition error. */
-function completeOidcDependencies(
-  dependencies: IdentityWorkspaceDependencies,
-): OidcDependencies | undefined {
-  const { provider, transactions } = dependencies;
-  const oidc = dependencies.config.oidc;
-  if (
-    oidc !== undefined &&
-    provider !== undefined &&
-    transactions !== undefined
-  )
-    return { oidc, provider, transactions };
-  if (
-    oidc !== undefined ||
-    provider !== undefined ||
-    transactions !== undefined
-  )
-    throw new TypeError(
-      'OIDC configuration, provider, and transaction store must be supplied together',
-    );
-  return undefined;
-}
-
-function oidcProviders(
-  dependencies: IdentityWorkspaceDependencies,
-  { oidc, provider, transactions }: OidcDependencies,
-): Provider[] {
-  return [
-    { provide: OIDC_PROVIDER, useValue: provider },
-    {
-      provide: OIDC_CALLBACK_LANDING_PATH,
-      useValue: oidc.callbackLandingPath ?? '/',
-    },
-    { provide: OIDC_TRANSACTIONS, useValue: transactions },
-    {
-      provide: OidcLoginService,
-      useFactory: (
-        persistence: IdentityWorkspaceDependencies['persistence'],
-        crypto: IdentityCrypto,
-        clock: IdentityClock,
-      ): OidcLoginService =>
-        new OidcLoginService(
-          oidc,
-          transactions,
-          provider,
-          {
-            mapExternalIdentity: async (identity, profile) =>
-              persistence.resolveOrCreateIdentity({
-                issuer: identity.issuer,
-                providerSubject: identity.subject,
-                email: profile.email,
-                displayName: profile.displayName,
-              }),
-          },
-          {
-            crypto,
-            clock,
-            allowGenericLogin:
-              dependencies.config.allowGenericOidcLogin !== false,
-          },
-        ),
-      inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_CRYPTO, IDENTITY_CLOCK],
-    },
-  ];
-}
-
-/**
- * Invitation acceptance runs under the active session authority. Legacy
- * OIDC verification is one optional way to prove the recipient; a fresh
- * sign-in by that authority is the other (ADR 043).
- */
-function invitationAcceptanceProvider(
-  dependencies: IdentityWorkspaceDependencies,
-  withOidc: boolean,
-): Provider {
-  return {
-    provide: InvitationAcceptanceUseCase,
-    useFactory: (
-      persistence: IdentityWorkspaceDependencies['persistence'],
-      identityCrypto: IdentityCrypto,
-      identityClock: IdentityClock,
-      sessions: IdentitySessionAuthority,
-      login?: OidcLoginService,
-    ) =>
-      new InvitationAcceptanceUseCase(
-        acceptancePersistence(persistence),
-        login,
-        identityCrypto,
-        identityClock,
-        dependencies.config,
-        sessions,
-      ),
-    inject: [
-      IDENTITY_WORKSPACE_PERSISTENCE,
-      IDENTITY_CRYPTO,
-      IDENTITY_CLOCK,
-      OpaqueSessionService,
-      ...(withOidc ? [OidcLoginService] : []),
-    ],
-  };
 }
 
 function identityReadProviders(): Provider[] {

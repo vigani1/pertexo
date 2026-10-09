@@ -224,13 +224,8 @@ function mapProfileConflict(
 }
 
 function mapIdentityError(error: IdentityError): ApplicationError {
-  if (
-    error.code === 'identity.session_invalid' ||
-    error.code === 'identity.session_expired' ||
-    error.code === 'identity.session_revoked'
-  ) {
+  if (error.code === 'identity.session_invalid')
     return applicationError('auth.unauthenticated');
-  }
   if (error.code === 'identity.session_not_fresh')
     return applicationError('auth.session_not_fresh', {
       safeDetail: 'Sign in again, then retry within five minutes.',
@@ -238,12 +233,6 @@ function mapIdentityError(error: IdentityError): ApplicationError {
   if (error.code === 'identity.csrf_failed') {
     return applicationError('auth.forbidden', {
       safeDetail: 'The request could not be verified.',
-    });
-  }
-  if (error.code === 'identity.provider_unavailable') {
-    return applicationError('provider.unavailable', {
-      safeDetail: 'The identity provider is temporarily unavailable.',
-      cause: error,
     });
   }
   return applicationError('request.invalid', { safeDetail: error.message });

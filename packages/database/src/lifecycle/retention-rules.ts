@@ -214,19 +214,6 @@ export const RETENTION_RULES = Object.freeze([
   },
   {
     // Sessions are kept 30 days after they end, for sign-in history.
-    name: 'sessions',
-    statement: `
-      with page as (
-        select id from app.sessions
-        where coalesce(revoked_at, expires_at) <= clock_timestamp() - interval '30 days'
-        order by coalesce(revoked_at, expires_at), id limit $1
-      )
-      delete from app.sessions session using page
-      where session.id = page.id
-        and coalesce(session.revoked_at, session.expires_at)
-          <= clock_timestamp() - interval '30 days'`,
-  },
-  {
     name: 'auth_sessions',
     statement: `
       with page as (
@@ -247,17 +234,6 @@ export const RETENTION_RULES = Object.freeze([
         order by expires_at, id limit $1
       )
       delete from app.auth_method_link_attempts attempt using page
-      where attempt.id = page.id`,
-  },
-  {
-    name: 'auth_legacy_method_migration_attempts',
-    statement: `
-      with page as (
-        select id from app.auth_legacy_method_migration_attempts
-        where expires_at <= clock_timestamp() - interval '30 days'
-        order by expires_at, id limit $1
-      )
-      delete from app.auth_legacy_method_migration_attempts attempt using page
       where attempt.id = page.id`,
   },
   {
@@ -283,19 +259,6 @@ export const RETENTION_RULES = Object.freeze([
       delete from app.workspace_inbox_threads thread using page
       where (thread.workspace_id, thread.workflow_id)
         = (page.workspace_id, page.workflow_id)`,
-  },
-  {
-    // A sign-in transaction goes 15 minutes after it was used or expired.
-    name: 'oidc_login_transactions',
-    statement: `
-      with page as (
-        select state_digest from app.oidc_login_transactions
-        where expires_at <= clock_timestamp() - interval '15 minutes'
-           or consumed_at <= clock_timestamp() - interval '15 minutes'
-        order by coalesce(consumed_at, expires_at), state_digest limit $1
-      )
-      delete from app.oidc_login_transactions login using page
-      where login.state_digest = page.state_digest`,
   },
   {
     name: 'identity_security_audit_facts',

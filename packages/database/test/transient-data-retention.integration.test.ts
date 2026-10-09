@@ -3,16 +3,11 @@ import { createHash } from 'node:crypto';
 import type { QueryResultRow } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { parseDatabaseConfig } from '../src/config.js';
-import { createRetentionDatabase } from '../src/lifecycle/retention.js';
 import {
-  maintenanceUrl,
   owner,
   randomUUID,
   retention,
   userId,
-  waitForPostgresLock,
-  withApplicationName,
   workspaceId,
 } from './support/retention.integration.support.js';
 
@@ -57,33 +52,6 @@ describe('transient data retention', () => {
     expect(second.removed.auth_method_link_attempts).toBe(1);
     const remaining = await asOwner<{ count: number }>(
       `select count(*)::integer count from app.auth_method_link_attempts
-        where id=any($1::uuid[])`,
-      [ids],
-    );
-    expect(remaining.rows).toEqual([{ count: 0 }]);
-  });
-
-  it('prunes expired legacy-migration attempts without erasing durable mapping facts', async () => {
-    const ids = [randomUUID(), randomUUID(), randomUUID()];
-    for (const [index, id] of ids.entries())
-      await asOwner(
-        `insert into app.auth_legacy_method_migration_attempts
-          (id,browser_digest,oidc_state_digest,target_provider,expires_at,created_at)
-         values($1,decode($2,'hex'),decode($3,'hex'),'google',
-                clock_timestamp()-interval '39 days',
-                clock_timestamp()-interval '40 days')`,
-        [
-          id,
-          digest(`legacy-browser-${String(index)}`),
-          digest(`legacy-state-${String(index)}`),
-        ],
-      );
-    const first = await retention.enforce();
-    expect(first.removed.auth_legacy_method_migration_attempts).toBe(2);
-    const second = await retention.enforce();
-    expect(second.removed.auth_legacy_method_migration_attempts).toBe(1);
-    const remaining = await asOwner<{ count: number }>(
-      `select count(*)::integer count from app.auth_legacy_method_migration_attempts
         where id=any($1::uuid[])`,
       [ids],
     );
@@ -192,89 +160,25 @@ describe('transient data retention', () => {
     ).resolves.toBeDefined();
   });
 
-  it('keeps active sessions and a session revoked while retention waits for it', async () => {
+  it('keeps active sessions and removes a session 30 days after it ends', async () => {
     const activeId = randomUUID();
     const expiredId = randomUUID();
-    const concurrentLogoutId = randomUUID();
-    const activeAuthId = randomUUID();
-    const expiredAuthId = randomUUID();
-    await asOwner(
-      `insert into app.sessions
-        (id,user_id,token_digest,created_at,expires_at)
-       values
-        ($1,$4,$5,clock_timestamp()-interval '1 day',clock_timestamp()+interval '1 day'),
-        ($2,$4,$6,clock_timestamp()-interval '40 days',clock_timestamp()-interval '31 days'),
-        ($3,$4,$7,clock_timestamp()-interval '40 days',clock_timestamp()-interval '31 days')`,
-      [
-        activeId,
-        expiredId,
-        concurrentLogoutId,
-        userId,
-        digest(activeId),
-        digest(expiredId),
-        digest(concurrentLogoutId),
-      ],
-    );
     await asOwner(
       `insert into app.auth_sessions
         (id,user_id,token,created_at,updated_at,expires_at)
        values
         ($1,$3,$4,clock_timestamp()-interval '1 day',clock_timestamp()-interval '1 day',clock_timestamp()+interval '1 day'),
         ($2,$3,$5,clock_timestamp()-interval '40 days',clock_timestamp()-interval '40 days',clock_timestamp()-interval '31 days')`,
-      [
-        activeAuthId,
-        expiredAuthId,
-        userId,
-        `token-${activeAuthId}`,
-        `token-${expiredAuthId}`,
-      ],
+      [activeId, expiredId, userId, `token-${activeId}`, `token-${expiredId}`],
     );
 
-    const applicationName = 'retention-concurrent-logout';
-    const waiting = createRetentionDatabase(
-      parseDatabaseConfig({
-        connectionString: withApplicationName(maintenanceUrl, applicationName),
-        max: 1,
-      }),
-      { pageSize: 2 },
-    );
-    try {
-      await owner.query('begin');
-      try {
-        await owner.query('set local role pertexo_owner');
-        await owner.query(
-          `update app.sessions set revoked_at=clock_timestamp()
-           where id=$1`,
-          [concurrentLogoutId],
-        );
-        const pass = waiting.enforce();
-        await waitForPostgresLock(applicationName);
-        await owner.query('commit');
-        const { removed } = await pass;
-        expect(removed.sessions).toBe(1);
-        expect(removed.auth_sessions).toBe(1);
-      } catch (error: unknown) {
-        await owner.query('rollback').catch(() => undefined);
-        throw error;
-      }
-    } finally {
-      await waiting.close();
-    }
-
-    const retained = await asOwner<{ id: string; revoked: boolean }>(
-      `select id,revoked_at is not null revoked
-       from app.sessions where id=any($1::uuid[]) order by id`,
-      [[activeId, concurrentLogoutId]],
-    );
-    expect(retained.rows).toHaveLength(2);
-    expect(retained.rows.find((row) => row.id === concurrentLogoutId)).toEqual(
-      expect.objectContaining({ revoked: true }),
-    );
-    const retainedAuth = await asOwner<{ id: string }>(
+    const { removed } = await retention.enforce();
+    expect(removed.auth_sessions).toBe(1);
+    const retained = await asOwner<{ id: string }>(
       `select id from app.auth_sessions where id=any($1::uuid[]) order by id`,
-      [[activeAuthId, expiredAuthId]],
+      [[activeId, expiredId]],
     );
-    expect(retainedAuth.rows).toEqual([{ id: activeAuthId }]);
+    expect(retained.rows).toEqual([{ id: activeId }]);
   });
 
   it('minimizes terminal invitation recipient data after 90 days', async () => {

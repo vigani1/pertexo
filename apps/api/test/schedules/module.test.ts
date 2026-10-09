@@ -3,10 +3,8 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  DoubleSubmitCsrfPolicy,
-  OpaqueSessionService,
-} from '../../src/identity/index.js';
+import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
+import { SESSION_AUTHORITY } from '../../src/identity-workspace/index.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
 import { ScheduleManagementController } from '../../src/schedules/controllers.js';
 import {
@@ -35,13 +33,13 @@ Module({
       provide: RequestContextStore,
       useValue: { setActor: () => undefined, setWorkspace: () => undefined },
     },
-    { provide: OpaqueSessionService, useValue: sessions },
+    { provide: SESSION_AUTHORITY, useValue: sessions },
     {
       provide: DoubleSubmitCsrfPolicy,
       useValue: { assertMutationAllowed: () => undefined },
     },
   ],
-  exports: [RequestContextStore, OpaqueSessionService, DoubleSubmitCsrfPolicy],
+  exports: [RequestContextStore, SESSION_AUTHORITY, DoubleSubmitCsrfPolicy],
 })(FakeIdentityModule);
 
 const scheduleOperations = {

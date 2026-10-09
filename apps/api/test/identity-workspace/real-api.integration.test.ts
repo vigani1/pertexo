@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   request as httpRequest,
   type ClientRequest,
@@ -8,7 +8,6 @@ import {
 import {
   auditEvents,
   createIdentityWorkspaceDatabase,
-  createOidcLoginTransactionStore,
   createWorkspaceDatabase,
   parseDatabaseConfig,
   outboxEvents,
@@ -33,11 +32,11 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
-import { createOidcSecretEncryptionAdapter } from '../../src/identity-infrastructure/index.js';
-import type {
-  OidcAuthorizationRequest,
-  OidcProviderPort,
-} from '../../src/identity/index.js';
+import { LocalAuthenticationMailSink } from '../../src/identity-infrastructure/index.js';
+import {
+  SESSION_AUTHORITY,
+  type IdentitySessionAuthority,
+} from '../../src/identity-workspace/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { createActorContext } from '../../src/workspaces/index.js';
@@ -53,9 +52,15 @@ const redisUrl =
 const enabled =
   process.env.API_IDENTITY_INTEGRATION === 'true' && apiUrl !== undefined;
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
-const issuer = 'https://identity.integration.test';
-const clientId = 'phase1-real-api';
-const encryptionKey = Buffer.alloc(32, 0x5a).toString('base64');
+const publicOrigin = 'https://api.integration.test';
+const password = 'a long enough integration password';
+const invitationKeys = {
+  current: {
+    version: 'integration-v1',
+    key: Buffer.alloc(32, 0x5a).toString('base64'),
+  },
+  previous: [],
+};
 const databaseConfig = parseDatabaseConfig({
   connectionString: apiUrl ?? 'postgresql://invalid:invalid@localhost/invalid',
   connectionTimeoutMillis: 5_000,
@@ -79,57 +84,6 @@ const telemetry: TelemetryLifecycle = {
   shutdown: () => Promise.resolve(),
 };
 
-class FakeOidcProvider implements OidcProviderPort {
-  public latestRequest: OidcAuthorizationRequest | undefined;
-  public latestVerifier: string | undefined;
-  public exchangeCount = 0;
-  public profile = {
-    subject: 'phase1-real-stack-user',
-    email: 'phase1-real-stack@example.test',
-    displayName: 'Phase One Real Stack',
-    emailVerified: true,
-  };
-
-  public authorizationUrl(request: OidcAuthorizationRequest): string {
-    this.latestRequest = request;
-    const url = new URL(`${issuer}/authorize`);
-    url.searchParams.set('client_id', request.clientId);
-    url.searchParams.set('redirect_uri', request.redirectUri);
-    url.searchParams.set('scope', request.scopes.join(' '));
-    url.searchParams.set('state', request.state);
-    url.searchParams.set('nonce', request.nonce);
-    url.searchParams.set('code_challenge', request.codeChallenge);
-    url.searchParams.set('code_challenge_method', request.codeChallengeMethod);
-    return url.toString();
-  }
-
-  public exchangeCode(input: {
-    code: string;
-    codeVerifier: string;
-    redirectUri: string;
-  }) {
-    this.exchangeCount += 1;
-    this.latestVerifier = input.codeVerifier;
-    if (input.code === 'provider-failure') {
-      throw new Error('provider-secret-must-never-leak');
-    }
-    const request = this.latestRequest;
-    if (request === undefined) throw new Error('authorization was not started');
-    return Promise.resolve({
-      issuer,
-      subject: this.profile.subject,
-      audience: clientId,
-      nonce:
-        input.code === 'bad-nonce'
-          ? 'forged-nonce-that-does-not-match'
-          : request.nonce,
-      email: this.profile.email,
-      displayName: this.profile.displayName,
-      emailVerified: this.profile.emailVerified,
-    });
-  }
-}
-
 type SessionCookies = Readonly<{
   rawSession: string;
   csrf: string;
@@ -137,13 +91,13 @@ type SessionCookies = Readonly<{
 }>;
 
 describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
-  const provider = new FakeOidcProvider();
+  const mail = new LocalAuthenticationMailSink();
+  const ownerEmail = `${randomUUID()}@example.test`;
   let application: Awaited<ReturnType<typeof createApiApplication>>;
   let identityDatabase: IdentityWorkspaceDatabase;
   let workspaceDatabase: WorkspaceDatabase;
   let resources: FixtureResourceOwner | undefined;
-  let identityNow = new Date();
-  let loginAttempt = 0;
+  let requestAddress = 0;
 
   beforeAll(async () => {
     const owner = new FixtureResourceOwner();
@@ -154,16 +108,6 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         createIdentityWorkspaceDatabase(databaseConfig),
         (database) => database.close(),
       );
-      const transactionStore = owner.acquire(
-        'OIDC transaction store',
-        createOidcLoginTransactionStore(
-          databaseConfig,
-          createOidcSecretEncryptionAdapter({
-            current: { version: 'integration-v1', key: encryptionKey },
-          }),
-        ),
-        (store) => store.close(),
-      );
       workspaceDatabase = owner.acquire(
         'workspace database',
         createWorkspaceDatabase(databaseConfig),
@@ -173,21 +117,16 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       if (identityConfig === undefined)
         throw new Error('Identity integration configuration is missing');
       owner.transfer(identityDatabase);
-      owner.transfer(transactionStore);
       const identityRuntime = owner.acquire(
         'identity runtime',
         await createApiIdentityRuntime(identityConfig, databaseConfig, {
-          provider,
-          persistence: {
-            database: identityDatabase,
-            transactions: transactionStore,
-          },
-          clock: { now: () => new Date(identityNow.getTime()) },
+          authenticationMail: mail,
+          persistence: { database: identityDatabase },
         }),
         (runtime) => runtime.close(),
       );
       const borrowedIdentityRuntime = Object.freeze({
-        dependencies: identityRuntime.dependencies,
+        ...identityRuntime,
         close: () => Promise.resolve(),
       });
       application = owner.acquire(
@@ -201,6 +140,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         (app) => app.close(),
       );
       await application.init();
+      await signUp(ownerEmail, 'Phase One Real Stack');
     } catch (error: unknown) {
       await rethrowFixtureSetupFailure(owner, error);
     }
@@ -210,82 +150,13 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     await resources?.close();
   });
 
-  it('persists state, nonce, and PKCE and establishes only secure opaque cookies', async () => {
-    const start = await startLogin();
-    const request = requireAuthorizationRequest();
-    const authorizationUrl = new URL(start.authorizationUrl);
-    expect(authorizationUrl.searchParams.get('state')).toBe(request.state);
-    expect(authorizationUrl.searchParams.get('nonce')).toBe(request.nonce);
-    expect(authorizationUrl.searchParams.get('code_challenge_method')).toBe(
-      'S256',
-    );
-    expect(start.browserCookie).toMatch(/^pertexo_oidc_binding=[^;]+$/u);
-
-    const exchangeCountBeforeBindingChecks = provider.exchangeCount;
-    const missingBinding = await application.inject({
-      method: 'GET',
-      url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
-    });
-    expectProblem(missingBinding, 400, 'request.invalid');
-    expect(String(missingBinding.headers['set-cookie'])).toContain(
-      'pertexo_oidc_binding=; Path=/v1/auth/oidc/callback; Max-Age=0',
-    );
-    const wrongBinding = await application.inject({
-      method: 'GET',
-      url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
-      headers: { cookie: 'pertexo_oidc_binding=wrong-browser' },
-    });
-    expectProblem(wrongBinding, 400, 'request.invalid');
-    expect(provider.exchangeCount).toBe(exchangeCountBeforeBindingChecks);
-
-    const callback = await application.inject({
-      method: 'GET',
-      url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
-      headers: { cookie: start.browserCookie },
-    });
-    expect(callback.statusCode).toBe(303);
-    expect(callback.headers.location).toBe('/workspaces');
-    const cookies = sessionCookies(callback.headers['set-cookie']);
-    expect(String(callback.headers['set-cookie'])).toContain('HttpOnly');
-    expect(String(callback.headers['set-cookie'])).toContain('Secure');
-    expect(String(callback.headers['set-cookie'])).toContain('SameSite=Lax');
-    expect(cookies.rawSession).not.toBe(cookies.csrf);
-    expect(provider.latestVerifier).toBeDefined();
-    expect(sha256Base64Url(provider.latestVerifier ?? '')).toBe(
-      request.codeChallenge,
-    );
-
-    const digest = sha256Hex(cookies.rawSession);
-    const stored = await identityDatabase.findActiveSessionByDigest(digest);
-    expect(stored).not.toBeNull();
-    expect(stored?.tokenDigest).toBe(digest);
-    expect(JSON.stringify(stored)).not.toContain(cookies.rawSession);
-
-    const exchangeCount = provider.exchangeCount;
-    const replay = await application.inject({
-      method: 'GET',
-      url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
-      headers: { cookie: start.browserCookie },
-    });
-    expectProblem(replay, 400, 'request.invalid');
-    expect(provider.exchangeCount).toBe(exchangeCount);
-
-    const tampered = await application.inject({
-      method: 'GET',
-      url: `/v1/auth/oidc/callback?code=valid&state=${'x'.repeat(43)}`,
-      headers: { cookie: start.browserCookie },
-    });
-    expectProblem(tampered, 400, 'request.invalid');
-    expect(provider.exchangeCount).toBe(exchangeCount);
-  });
-
   it('authors and publishes a workflow through real auth, RLS, and ETags', async () => {
     const cookies = await login();
     await createPublishedWorkflow(cookies);
   });
 
   it('starts, replays, reads, cancels, and streams a durable workflow run', async () => {
-    const cookies = await login();
+    let cookies = await login();
     const { workspace, base, createdBody, publishedBody } =
       await createPublishedWorkflow(cookies);
 
@@ -407,10 +278,13 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         client.query(denial.statement, [workspace.id, denial.denied]),
       );
       try {
+        // Suspension revokes members' sessions (ADR 013); a fresh sign-in
+        // still finds the workspace hidden.
+        const denied = await login();
         const forbiddenReplay = await application.inject({
           method: 'POST',
           url: `${runUrl}/replay`,
-          headers: mutationHeaders(cookies, {
+          headers: mutationHeaders(denied, {
             'idempotency-key': `replay-denied-${denial.denied}`,
           }),
           payload: {
@@ -425,6 +299,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         );
       }
     }
+    cookies = await login();
 
     const missingReplayCsrf = await application.inject({
       method: 'POST',
@@ -581,16 +456,15 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       outbox: 2,
     });
 
-    const storedSession = await identityDatabase.findActiveSessionByDigest(
-      sha256Hex(cookies.rawSession),
-    );
-    if (storedSession === null) throw new Error('Expected active session');
+    const storedSession = await application
+      .get<IdentitySessionAuthority>(SESSION_AUTHORITY)
+      .authenticate(cookies.rawSession);
     const streamAbort = new AbortController();
     const frames = await application.get(StreamRunEventsUseCase).execute({
       actor: createActorContext({
         actorId: storedSession.userId,
         workspaceId: workspace.id,
-        sessionId: storedSession.id,
+        sessionId: storedSession.sessionId,
         requestId: 'workflow-run-stream-proof',
       }),
       routeWorkspaceId: workspace.id,
@@ -600,7 +474,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       reauthorizeSession: () =>
         Promise.resolve({
           userId: storedSession.userId,
-          sessionId: storedSession.id,
+          sessionId: storedSession.sessionId,
           expiresAt: storedSession.expiresAt,
         }),
       abortStream: (reason?: unknown) => {
@@ -641,35 +515,6 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       headers: { cookie: cookies.cookieHeader },
     });
     expectProblem(hidden, 404, 'resource.not_found');
-  });
-
-  it('rejects nonce mismatch and sanitizes provider failures as RFC 9457 problems', async () => {
-    const nonceStart = await startLogin();
-    const nonceState = new URL(nonceStart.authorizationUrl).searchParams.get(
-      'state',
-    );
-    expect(nonceState).not.toBeNull();
-    const nonceFailure = await application.inject({
-      method: 'GET',
-      url: `/v1/auth/oidc/callback?code=bad-nonce&state=${encodeURIComponent(nonceState ?? '')}`,
-      headers: { cookie: nonceStart.browserCookie },
-    });
-    expectProblem(nonceFailure, 400, 'request.invalid');
-    expect(nonceFailure.payload).not.toContain('forged-nonce');
-
-    const providerStart = await startLogin();
-    const providerState = new URL(
-      providerStart.authorizationUrl,
-    ).searchParams.get('state');
-    const providerFailure = await application.inject({
-      method: 'GET',
-      url: `/v1/auth/oidc/callback?code=provider-failure&state=${encodeURIComponent(providerState ?? '')}`,
-      headers: { cookie: providerStart.browserCookie },
-    });
-    expectProblem(providerFailure, 503, 'provider.unavailable');
-    expect(providerFailure.payload).not.toContain(
-      'provider-secret-must-never-leak',
-    );
   });
 
   it('enforces CSRF and atomically creates an owner membership and correlated audit fact', async () => {
@@ -969,7 +814,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(profile.statusCode).toBe(200);
     expect(profile.headers['cache-control']).toBe('private, no-store');
     expect(profile.json()).toMatchObject({
-      email: 'phase1-real-stack@example.test',
+      email: ownerEmail,
       displayName: 'Phase One Real Stack',
       status: 'active',
     });
@@ -1038,13 +883,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const runId = started.json<{ run: { id: string } }>().run.id;
     const runUrl = `/v1/workspaces/${primaryWorkspaceId}/runs/${runId}`;
 
-    const rawTargetSession = `${randomUUID()}${randomUUID()}`;
-    await identityDatabase.createSession({
-      userId: memberA.id,
-      tokenDigest: sha256Hex(rawTargetSession),
-      expiresAt: new Date(identityNow.getTime() + 60_000),
-    });
-    const targetCookie = `pertexo_session=${rawTargetSession}`;
+    const targetCookie = (await issueSession(memberA.id)).cookieHeader;
     const beforeChange = await application.inject({
       method: 'GET',
       url: runUrl,
@@ -1080,9 +919,6 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         changed: true,
         replayed: false,
       });
-      await expect(
-        identityDatabase.findActiveSessionByDigest(sha256Hex(rawTargetSession)),
-      ).resolves.toBeNull();
       const afterChange = await application.inject({
         method: 'GET',
         url: runUrl,
@@ -1110,7 +946,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expectProblem(stale, 409, 'workspace.member_role_revision_conflict');
   }, 15_000);
 
-  it('rejects explicitly revoked and expired sessions without exposing cookie values', async () => {
+  it('rejects a revoked session without exposing its cookie value', async () => {
     const logoutCookies = await login();
     const logout = await application.inject({
       method: 'POST',
@@ -1122,32 +958,12 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const afterLogout = await authenticatedMutation(logoutCookies);
     expectProblem(afterLogout, 401, 'auth.unauthenticated');
     expect(afterLogout.payload).not.toContain(logoutCookies.rawSession);
-
-    const expiringCookies = await login();
-    identityNow = new Date(identityNow.getTime() + 120_100);
-    const expired = await authenticatedMutation(expiringCookies);
-    expectProblem(expired, 401, 'auth.unauthenticated');
-    expect(expired.payload).not.toContain(expiringCookies.rawSession);
   });
 
   it('accepts a delivered invitation once, rotates the recipient session, and closes an existing SSE stream', async () => {
-    const ownerProfile = provider.profile;
-    const manager = await identityDatabase.createUser({
-      email: `${randomUUID()}@example.test`,
-      displayName: 'Invitation integration manager',
-    });
-    const managerRawSession = `${randomUUID()}${randomUUID()}`;
-    await identityDatabase.createSession({
-      userId: manager.id,
-      tokenDigest: sha256Hex(managerRawSession),
-      expiresAt: new Date(identityNow.getTime() + 120_000),
-    });
-    const managerCsrf = sha256Base64Url(randomUUID());
-    const managerCookies = {
-      rawSession: managerRawSession,
-      csrf: managerCsrf,
-      cookieHeader: `pertexo_session=${managerRawSession}; pertexo_csrf=${managerCsrf}`,
-    };
+    const managerEmail = `${randomUUID()}@example.test`;
+    await signUp(managerEmail, 'Invitation integration manager');
+    const managerCookies = await signIn(managerEmail);
     const invitedWorkspaceId = await createWorkspace(
       managerCookies,
       'Invitation acceptance proof',
@@ -1201,17 +1017,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       const row = delivery.rows[0];
       if (row === undefined)
         throw new Error('Invitation delivery was not stored');
-      const identityConfig = config().identity;
-      if (identityConfig === undefined)
-        throw new Error('Identity configuration is missing');
-      const invitationEncryption =
-        identityConfig.invitationTokenEncryption ??
-        identityConfig.secretEncryption;
-      if (invitationEncryption === undefined)
-        throw new Error('Invitation token encryption is missing');
-      invitationToken = createApplicationSecretEnvelope(
-        invitationEncryption,
-      ).open(
+      invitationToken = createApplicationSecretEnvelope(invitationKeys).open(
         {
           ciphertext: row.token_ciphertext,
           nonce: row.token_nonce,
@@ -1294,56 +1100,20 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     );
     expect(invitationBinding).toBe(lostReplacementBinding);
     resolvedBody = lostReplacementBody;
-    const oidcStart = await application.inject({
-      method: 'POST',
-      url: '/v1/invitation-acceptance/oidc',
-      remoteAddress: '198.51.100.25',
-      headers: {
-        cookie: `pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
-        'x-invitation-csrf-token': resolvedBody.csrfToken,
-      },
-      payload: {},
-    });
-    expect(oidcStart.statusCode, oidcStart.payload).toBe(200);
-    const oidcState = new URL(
-      oidcStart.json<{ authorizationUrl: string }>().authorizationUrl,
-    ).searchParams.get('state');
-    if (oidcState === null) throw new Error('Invitation OIDC state is missing');
-    const oidcBinding = cookieValue(
-      Array.isArray(oidcStart.headers['set-cookie'])
-        ? oidcStart.headers['set-cookie']
-        : [String(oidcStart.headers['set-cookie'])],
-      'pertexo_oidc_binding',
-    );
-
-    provider.profile = {
-      subject: `invited-${randomUUID()}`,
-      email: recipientEmail,
-      displayName: 'Invited integration recipient',
-      emailVerified: true,
-    };
+    await signUp(recipientEmail, 'Invited integration recipient');
     let openStream: ReturnType<typeof openHttpEventStream> | undefined;
     try {
-      const callback = await application.inject({
-        method: 'GET',
-        url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(oidcState)}`,
-        headers: {
-          cookie: `pertexo_oidc_binding=${encodeURIComponent(oidcBinding)}`,
-        },
-      });
-      expect(callback.statusCode, callback.payload).toBe(303);
-      expect(callback.headers.location).toBe('/invitations/accept');
-      const recipientCookies = sessionCookies(callback.headers['set-cookie']);
-      const recipientSession = await identityDatabase.findActiveSessionByDigest(
-        sha256Hex(recipientCookies.rawSession),
-      );
-      if (recipientSession === null)
-        throw new Error('Invitation recipient session is unavailable');
+      const recipientCookies = await signIn(recipientEmail);
+      const recipientId = (
+        await application
+          .get<IdentitySessionAuthority>(SESSION_AUTHORITY)
+          .authenticate(recipientCookies.rawSession)
+      ).userId;
       await withOwnerWorkspace(streamWorkspaceId, (client) =>
         client.query(
           `insert into app.workspace_memberships(workspace_id,user_id,role,status)
            values($1,$2,'viewer','active')`,
-          [streamWorkspaceId, recipientSession.userId],
+          [streamWorkspaceId, recipientId],
         ),
       );
       const beforeAcceptance = await application.inject({
@@ -1364,11 +1134,13 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       await withTimeout(openStream.started, 2_000);
 
       const ready = await application.inject({
-        method: 'GET',
-        url: '/v1/invitation-acceptance',
-        headers: {
+        method: 'POST',
+        url: '/v1/invitation-acceptance/session',
+        headers: mutationHeaders(recipientCookies, {
           cookie: `${recipientCookies.cookieHeader}; pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
-        },
+          'x-invitation-csrf-token': resolvedBody.csrfToken,
+        }),
+        payload: {},
       });
       expect(ready.statusCode, ready.payload).toBe(200);
       const readyBody = ready.json<{
@@ -1442,38 +1214,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         intentId: readyBody.intentId,
       });
 
-      const recoveryStart = await application.inject({
-        method: 'POST',
-        url: '/v1/invitation-acceptance/oidc',
-        headers: {
-          cookie: `pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
-          'x-invitation-csrf-token': readyBody.csrfToken,
-        },
-        payload: {},
-      });
-      expect(recoveryStart.statusCode, recoveryStart.payload).toBe(200);
-      const recoveryState = new URL(
-        recoveryStart.json<{ authorizationUrl: string }>().authorizationUrl,
-      ).searchParams.get('state');
-      if (recoveryState === null)
-        throw new Error('Invitation recovery OIDC state is missing');
-      const recoveryBinding = cookieValue(
-        Array.isArray(recoveryStart.headers['set-cookie'])
-          ? recoveryStart.headers['set-cookie']
-          : [String(recoveryStart.headers['set-cookie'])],
-        'pertexo_oidc_binding',
-      );
-      const recoveryCallback = await application.inject({
-        method: 'GET',
-        url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(recoveryState)}`,
-        headers: {
-          cookie: `pertexo_oidc_binding=${encodeURIComponent(recoveryBinding)}`,
-        },
-      });
-      expect(recoveryCallback.statusCode, recoveryCallback.payload).toBe(303);
-      const recoveredCookies = sessionCookies(
-        recoveryCallback.headers['set-cookie'],
-      );
+      const recoveredCookies = await signIn(recipientEmail);
       const reconciledAfterLostCookies = await application.inject({
         method: 'GET',
         url: '/v1/invitation-acceptance',
@@ -1539,52 +1280,76 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       ).toHaveLength(1);
     } finally {
       openStream?.request.destroy();
-      provider.profile = ownerProfile;
     }
   }, 20_000);
 
-  async function startLogin(): Promise<{
-    authorizationUrl: string;
-    expiresAt: string;
-    browserCookie: string;
-  }> {
-    loginAttempt += 1;
-    const response = await application.inject({
-      method: 'GET',
-      url: '/v1/auth/oidc/start',
-      remoteAddress: `198.51.100.${String(30 + loginAttempt)}`,
+  function send(
+    url: string,
+    payload: object,
+  ): ReturnType<typeof application.inject> {
+    requestAddress += 1;
+    return application.inject({
+      method: 'POST',
+      url,
+      remoteAddress: `198.51.100.${String(30 + (requestAddress % 200))}`,
+      headers: { origin: publicOrigin },
+      payload,
     });
-    expect(response.statusCode).toBe(200);
-    const payload = response.json<{
-      authorizationUrl: string;
-      expiresAt: string;
-    }>();
-    const setCookie = String(response.headers['set-cookie']);
-    expect(setCookie).toContain('Path=/v1/auth/oidc/callback');
-    expect(setCookie).toContain('HttpOnly');
-    expect(setCookie).toContain('Secure');
-    expect(setCookie).toContain('SameSite=Lax');
-    expect(setCookie).toContain('Max-Age=30');
-    const browserBinding = cookieValue([setCookie], 'pertexo_oidc_binding');
-    expect(response.payload).not.toContain(browserBinding);
-    return {
-      ...payload,
-      browserCookie: `pertexo_oidc_binding=${encodeURIComponent(browserBinding)}`,
-    };
   }
 
-  async function login(): Promise<SessionCookies> {
-    const start = await startLogin();
-    const state = new URL(start.authorizationUrl).searchParams.get('state');
-    if (state === null) throw new Error('OIDC state was not returned');
-    const response = await application.inject({
-      method: 'GET',
-      url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(state)}`,
-      headers: { cookie: start.browserCookie },
+  /** Signs up and follows the mailed verification link. */
+  async function signUp(email: string, name: string): Promise<void> {
+    const created = await send('/v1/auth/sign-up/email', {
+      name,
+      email,
+      password,
+      callbackURL: '/login?verified=true',
     });
-    expect(response.statusCode).toBe(303);
-    expect(response.headers.location).toBe('/workspaces');
-    return sessionCookies(response.headers['set-cookie']);
+    expect(created.statusCode, created.payload).toBe(200);
+    const message = mail
+      .readForTesting(email)
+      .filter((item) => item.purpose === 'verification')
+      .at(-1);
+    if (message === undefined) throw new Error('No verification mail');
+    const link = new URL(message.url);
+    const verified = await application.inject({
+      method: 'GET',
+      url: link.pathname + link.search,
+    });
+    expect(verified.statusCode).toBe(302);
+  }
+
+  async function signIn(email: string): Promise<SessionCookies> {
+    const signedIn = await send('/v1/auth/sign-in/email', {
+      email,
+      password,
+      callbackURL: '/workspaces',
+    });
+    expect(signedIn.statusCode, signedIn.payload).toBe(200);
+    return sessionCookies(signedIn.headers['set-cookie']);
+  }
+
+  function login(): Promise<SessionCookies> {
+    return signIn(ownerEmail);
+  }
+
+  /** A server-issued session for a user who never signs in through HTTP. */
+  async function issueSession(userId: string): Promise<SessionCookies> {
+    const setCookies: string[] = [];
+    await application.get<IdentitySessionAuthority>(SESSION_AUTHORITY).issue(
+      { userId },
+      {
+        writeSessionCookieHeaders: (values) => {
+          setCookies.push(...values);
+        },
+      },
+    );
+    const session = rawCookieValue(setCookies, 'pertexo_session');
+    return {
+      rawSession: session,
+      csrf: '',
+      cookieHeader: `pertexo_session=${session}`,
+    };
   }
 
   async function createPublishedWorkflow(
@@ -1771,12 +1536,6 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     });
   }
 
-  function requireAuthorizationRequest(): OidcAuthorizationRequest {
-    const request = provider.latestRequest;
-    if (request === undefined) throw new Error('OIDC request was not captured');
-    return request;
-  }
-
   async function archiveWorkflow(
     workspaceId: string,
     workflowId: string,
@@ -1828,28 +1587,17 @@ function config(): ApiConfig {
     database: databaseConfig,
     host: '127.0.0.1',
     identity: {
-      oidc: {
-        issuer,
-        authorizationEndpoint: `${issuer}/authorize`,
-        tokenEndpoint: `${issuer}/token`,
-        jwksUri: `${issuer}/jwks`,
-        clientId,
-        callbackLandingPath: '/workspaces',
-        redirectUri: 'https://api.integration.test/v1/auth/oidc/callback',
-        scopes: ['openid', 'profile', 'email'],
-        allowedAlgorithms: ['RS256'],
-        timeoutMillis: 5_000,
-        transactionTtlMillis: 30_000,
-        allowInsecureHttpForTests: false,
-      },
-      secretEncryption: {
-        current: { version: 'integration-v1', key: encryptionKey },
-        previous: [],
-      },
+      publicWebOrigin: publicOrigin,
+      invitationTokenEncryption: invitationKeys,
       session: {
         ttlMillis: 120_000,
         secureCookie: true,
         sameSite: 'lax',
+      },
+      betterAuth: {
+        secret: 'phase1-real-api-integration-secret-with-32-plus-characters',
+        mailMode: 'local',
+        providers: {},
       },
     },
     nodeEnv: 'test',
@@ -1865,26 +1613,29 @@ function config(): ApiConfig {
   };
 }
 
+/** The session cookie stays encoded, as a browser would send it back. */
 function sessionCookies(header: string | string[] | undefined): SessionCookies {
   const values = Array.isArray(header) ? header : [header ?? ''];
-  const flattened = values.flatMap((value) => value.split(/,(?=[^;]+?=)/u));
-  const session = cookieValue(flattened, 'pertexo_session');
-  const csrf = cookieValue(flattened, 'pertexo_csrf');
+  const session = rawCookieValue(values, 'pertexo_session');
+  const csrf = cookieValue(values, 'pertexo_csrf');
   return {
     rawSession: session,
     csrf,
-    cookieHeader: `pertexo_session=${session}; pertexo_csrf=${csrf}`,
+    cookieHeader: `pertexo_session=${session}; pertexo_csrf=${encodeURIComponent(csrf)}`,
   };
 }
 
-function cookieValue(values: readonly string[], name: string): string {
+function rawCookieValue(values: readonly string[], name: string): string {
   const prefix = `${name}=`;
   for (const value of values) {
     const pair = value.split(';', 1)[0]?.trim();
-    if (pair?.startsWith(prefix))
-      return decodeURIComponent(pair.slice(prefix.length));
+    if (pair?.startsWith(prefix)) return pair.slice(prefix.length);
   }
   throw new Error(`${name} cookie was not returned`);
+}
+
+function cookieValue(values: readonly string[], name: string): string {
+  return decodeURIComponent(rawCookieValue(values, name));
 }
 
 function mutationHeaders(
@@ -1933,14 +1684,6 @@ function emptyWorkflowGraph() {
       },
     ],
   } as const;
-}
-
-function sha256Hex(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-function sha256Base64Url(value: string): string {
-  return createHash('sha256').update(value).digest('base64url');
 }
 
 function withTimeout<T>(

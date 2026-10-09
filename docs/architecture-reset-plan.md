@@ -357,10 +357,12 @@ now, as one ordered program — not "whenever we touch it".
           workspace database, the artifact upload store and both Nest
           database modules; the API and worker check readiness at startup.
   - [ ] api
-    - [ ] Decide the legacy authentication migration (legacy OIDC
-          identities and opaque sessions, the method-migration journey,
-          `auth_legacy_method_migration_attempts`, the cutover preflight and
-          gate): nothing is launched, so it is a removal candidate.
+    - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
+          sessions and their identities, the legacy-method migration
+          journey, the cutover preflight and gate, and the web migration
+          page go (migration 0020, ADR 039 amendment). Better Auth is the
+          one session authority; tests sign in through it or receive a
+          server-issued session for an existing user.
   - [ ] web
     - [x] Feature folders by role: only public entry files stay at a
           feature's root; screens go to `pages/`, hooks to `hooks/`, server

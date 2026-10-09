@@ -20,10 +20,6 @@ import {
   authenticationCapabilitiesResponseSchema,
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
-  legacyMethodMigrationStartRequestSchema,
-  legacyMethodMigrationStartResponseSchema,
-  oidcCallbackRequestSchema,
-  oidcStartResponseSchema,
   workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
   workspaceLifecycleOperationResponseSchema,
@@ -49,7 +45,6 @@ import {
   workspaceInvitationCommandResponseSchema,
   workspaceInvitationsResponseSchema,
   invitationAcceptanceResolveRequestSchema,
-  invitationAcceptanceOidcRequestSchema,
   invitationAcceptanceSessionRequestSchema,
   invitationAcceptanceCompleteRequestSchema,
   invitationAcceptanceJourneySchema,
@@ -122,16 +117,6 @@ describe('identity/workspace generated contracts', () => {
           authenticationCapabilitiesResponseSchema,
           'output',
         ),
-        LegacyMethodMigrationStartRequest: generated(
-          legacyMethodMigrationStartRequestSchema,
-          'input',
-        ),
-        LegacyMethodMigrationStartResponse: generated(
-          legacyMethodMigrationStartResponseSchema,
-          'output',
-        ),
-        OidcCallbackRequest: generated(oidcCallbackRequestSchema, 'input'),
-        OidcStartResponse: generated(oidcStartResponseSchema, 'output'),
         WorkspaceCreateRequest: generated(
           workspaceCreateRequestSchema,
           'input',
@@ -223,10 +208,6 @@ describe('identity/workspace generated contracts', () => {
           invitationAcceptanceResolveRequestSchema,
           'input',
         ),
-        InvitationAcceptanceOidcRequest: generated(
-          invitationAcceptanceOidcRequestSchema,
-          'input',
-        ),
         InvitationAcceptanceSessionRequest: generated(
           invitationAcceptanceSessionRequestSchema,
           'input',
@@ -258,11 +239,8 @@ describe('identity/workspace generated contracts', () => {
       '/v1/auth/account-security/password/setup',
       '/v1/auth/account-security/methods/unlink',
       '/v1/auth/account-security/methods/link/start',
-      '/v1/auth/legacy-migration/start',
       '/v1/auth/account-security/sessions/revoke',
       '/v1/auth/account-security/sessions/revoke-others',
-      '/v1/auth/oidc/start',
-      '/v1/auth/oidc/callback',
       '/v1/auth/logout',
       '/v1/workspaces',
       '/v1/workspaces/{workspaceId}/deletion',
@@ -280,7 +258,6 @@ describe('identity/workspace generated contracts', () => {
       '/v1/workspaces/{workspaceId}/invitations/{invitationId}/revoke',
       '/v1/invitation-acceptance/resolve',
       '/v1/invitation-acceptance',
-      '/v1/invitation-acceptance/oidc',
       '/v1/invitation-acceptance/session',
       '/v1/invitation-acceptance/complete',
     ]);
@@ -348,13 +325,11 @@ describe('identity/workspace generated contracts', () => {
     );
   });
 
-  it('preserves strict writes and the extension-tolerant bounded callback contract', () => {
+  it('preserves strict writes', () => {
     const create =
       identityWorkspaceClientContract.schemas.WorkspaceCreateRequest;
     const deletion =
       identityWorkspaceClientContract.schemas.WorkspaceDeletionRequest;
-    const callback =
-      identityWorkspaceClientContract.schemas.OidcCallbackRequest;
 
     expect(create).toMatchObject({
       additionalProperties: false,
@@ -368,24 +343,6 @@ describe('identity/workspace generated contracts', () => {
       additionalProperties: false,
       required: ['reason'],
       properties: { reason: { maxLength: 512, minLength: 1 } },
-    });
-    expect(callback).toMatchObject({
-      required: ['code', 'state'],
-      properties: {
-        code: { maxLength: 4_096, minLength: 1 },
-        state: { maxLength: 512, minLength: 16 },
-      },
-    });
-    expect(callback).not.toHaveProperty('additionalProperties');
-    expect(
-      oidcCallbackRequestSchema.parse({
-        code: 'authorization-code',
-        state: 'state-value-123456',
-        provider_extension: 'ignored',
-      }),
-    ).toEqual({
-      code: 'authorization-code',
-      state: 'state-value-123456',
     });
   });
 });
