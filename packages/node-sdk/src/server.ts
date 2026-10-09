@@ -22,8 +22,6 @@ import {
   type NodeSdkError,
 } from './executor-errors.js';
 import { canonicalizeBoundedJson, isJsonObject } from './json-boundary.js';
-import { assertDefinitionExecutorBinding } from './registry-binding.js';
-export { bindNodeCatalog } from './registry-binding.js';
 
 import {
   type DefinitionIdentity,
@@ -80,7 +78,7 @@ export {
   canonicalizeBoundedJson,
   NODE_EXECUTION_LIMITS_V1,
 } from './json-boundary.js';
-import { compareIdentity, identityToken, sameIdentity } from './identity.js';
+import { identityToken, sameIdentity } from './identity.js';
 
 export const DISPATCH_AWARE_EXECUTOR_ABI_VERSION = 2 as const;
 const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
@@ -97,7 +95,7 @@ interface PinnedNodeDefinition {
 
 interface PinnedNodeExecutor {
   readonly manifest: ExecutorManifest;
-  readonly registration: NodeExecutorRegistration;
+  readonly execute: NodeExecutorRegistration['execute'];
 }
 
 interface PinnedRegistrations {
@@ -118,19 +116,6 @@ const connectionRefsSchema = z
   .record(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u), z.uuid())
   .refine((value) => Object.keys(value).length <= 16)
   .transform((value) => Object.freeze({ ...value }));
-
-function sameIdentitySet(
-  left: readonly (DefinitionIdentity | ExecutorIdentity | PolicyReference)[],
-  right: readonly (DefinitionIdentity | ExecutorIdentity | PolicyReference)[],
-): boolean {
-  if (left.length !== right.length) return false;
-  const normalizedLeft = [...left].sort(compareIdentity);
-  const normalizedRight = [...right].sort(compareIdentity);
-  return normalizedLeft.every((identity, index) => {
-    const candidate = normalizedRight[index];
-    return candidate !== undefined && sameIdentity(identity, candidate);
-  });
-}
 
 function stableComparable(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
@@ -198,13 +183,10 @@ function safeNodeCatalogFailureCause(error: unknown): string {
 
 function validateDefinitionRegistration(
   registration: NodeDefinitionRegistration,
-  catalog: NodeCatalog,
+  catalogManifest: NodeManifest,
 ): PinnedNodeDefinition {
   const parsed = nodeManifestSchema.parse(registration.manifest);
-  const catalogManifest = catalog.definitions.find((candidate) =>
-    sameIdentity(candidate.definition, parsed.definition),
-  );
-  if (catalogManifest === undefined || !sameManifest(catalogManifest, parsed))
+  if (!sameManifest(catalogManifest, parsed))
     throw new NodeRegistryCompatibilityError(
       `definition ${parsed.definition.key}@${String(parsed.definition.version)} does not match the catalog`,
     );
@@ -231,6 +213,11 @@ function validateDefinitionRegistration(
   };
 }
 
+/**
+ * Pair every catalog definition with its runtime schemas and every catalog
+ * executor with its implementation. The catalog owns the executor metadata;
+ * registrations outside the catalog are not served.
+ */
 function pinRegistrations(
   catalog: NodeCatalog,
   options: Pick<NodeRegistryOptions, 'definitions' | 'executors'>,
@@ -243,122 +230,59 @@ function pinRegistrations(
     'executor',
     options.executors.map(({ executor }) => executor),
   );
-  validateUnique(
-    'catalog definition',
-    catalog.definitions.map(({ definition }) => definition),
-  );
-  validateUnique(
-    'catalog executor',
-    catalog.executors.map(({ executor }) => executor),
-  );
-  validateUnique('catalog policy', catalog.policies);
-
-  const pinnedDefinitions = options.definitions.map((definition) =>
-    validateDefinitionRegistration(definition, catalog),
-  );
-  const definitionMap = new Map(
-    pinnedDefinitions.map((definition) => [
-      identityToken(definition.manifest.definition),
-      definition,
+  const definitions = new Map(
+    options.definitions.map((registration) => [
+      identityToken(registration.manifest.definition),
+      registration,
     ]),
   );
-  const executorMap = new Map<string, PinnedNodeExecutor>();
-  for (const registration of options.executors) {
-    const parsedExecutor = executorIdentitySchema.parse(registration.executor);
-    if (!SUPPORTED_EXECUTOR_ABI_VERSIONS.has(registration.abiVersion))
-      throw new NodeRegistryCompatibilityError(
-        `executor ${parsedExecutor.key}@${String(parsedExecutor.version)} uses unsupported ABI ${String(registration.abiVersion)}`,
-      );
-    if (executorMap.has(identityToken(parsedExecutor)))
-      throw new NodeRegistryCompatibilityError(
-        `duplicate executor identity ${parsedExecutor.key}@${String(parsedExecutor.version)}`,
-      );
-    const catalogExecutor = catalog.executors.find((candidate) =>
-      sameIdentity(candidate.executor, parsedExecutor),
-    );
-    if (catalogExecutor === undefined)
-      throw new NodeRegistryCompatibilityError(
-        `executor ${parsedExecutor.key}@${String(parsedExecutor.version)} is not in the catalog`,
-      );
-    if (
-      catalogExecutor.abiVersion !== registration.abiVersion ||
-      !sameIdentitySet(catalogExecutor.definitions, registration.definitions) ||
-      !sameIdentitySet(
-        catalogExecutor.policyReferences,
-        registration.policyReferences,
-      )
-    )
-      throw new NodeRegistryCompatibilityError(
-        `executor ${parsedExecutor.key}@${String(parsedExecutor.version)} does not match the catalog`,
-      );
-    for (const definition of registration.definitions) {
-      if (!definitionMap.has(identityToken(definition)))
-        throw new NodeRegistryCompatibilityError(
-          `executor ${parsedExecutor.key}@${String(parsedExecutor.version)} declares an unknown definition`,
-        );
-    }
-    executorMap.set(identityToken(parsedExecutor), {
-      manifest: catalogExecutor,
-      registration: Object.freeze({
-        abiVersion: registration.abiVersion,
-        definitions: Object.freeze(
-          registration.definitions.map((identity) =>
-            Object.freeze({ ...identity }),
-          ),
-        ),
-        executor: Object.freeze({ ...parsedExecutor }),
-        policyReferences: Object.freeze(
-          registration.policyReferences.map((identity) =>
-            Object.freeze({ ...identity }),
-          ),
-        ),
-        execute: registration.execute,
-      }),
-    });
-  }
-
+  const executors = new Map(
+    options.executors.map((registration) => [
+      identityToken(executorIdentitySchema.parse(registration.executor)),
+      registration,
+    ]),
+  );
+  const definitionMap = new Map<string, PinnedNodeDefinition>();
   for (const manifest of catalog.definitions) {
-    const definition = definitionMap.get(identityToken(manifest.definition));
-    if (definition === undefined)
+    const token = identityToken(manifest.definition);
+    const registration = definitions.get(token);
+    if (registration === undefined)
       throw new NodeRegistryCompatibilityError(
         `catalog definition ${manifest.definition.key}@${String(manifest.definition.version)} has no server schema registration`,
       );
-    const executor = executorMap.get(identityToken(manifest.executor));
-    if (executor === undefined)
-      throw new NodeRegistryCompatibilityError(
-        `definition ${manifest.definition.key}@${String(manifest.definition.version)} has no exact executor registration`,
-      );
-    const executorManifest = catalog.executors.find((candidate) =>
-      sameIdentity(candidate.executor, manifest.executor),
+    definitionMap.set(
+      token,
+      validateDefinitionRegistration(registration, manifest),
     );
-    if (executorManifest === undefined)
-      throw new NodeRegistryCompatibilityError(
-        `executor ${manifest.executor.key}@${String(manifest.executor.version)} does not declare definition ${manifest.definition.key}@${String(manifest.definition.version)}`,
-      );
-    if (
-      !executorManifest.definitions.some((candidate) =>
-        sameIdentity(candidate, manifest.definition),
-      )
-    )
-      throw new NodeRegistryCompatibilityError(
-        `executor ${manifest.executor.key}@${String(manifest.executor.version)} does not declare definition ${manifest.definition.key}@${String(manifest.definition.version)}`,
-      );
-    if (manifest.executorAbi !== executor.registration.abiVersion)
-      throw new NodeRegistryCompatibilityError(
-        `definition ${manifest.definition.key}@${String(manifest.definition.version)} requires an incompatible executor ABI`,
-      );
-    if (
-      !sameIdentitySet(
-        manifest.policyReferences,
-        executor.registration.policyReferences,
-      )
-    )
-      throw new NodeRegistryCompatibilityError(
-        `definition ${manifest.definition.key}@${String(manifest.definition.version)} has incompatible policy references`,
-      );
   }
-
+  const executorMap = new Map<string, PinnedNodeExecutor>();
+  for (const manifest of catalog.executors) {
+    const label = `${manifest.executor.key}@${String(manifest.executor.version)}`;
+    if (!SUPPORTED_EXECUTOR_ABI_VERSIONS.has(manifest.abiVersion))
+      throw new NodeRegistryCompatibilityError(
+        `executor ${label} uses unsupported ABI ${String(manifest.abiVersion)}`,
+      );
+    const registration = executors.get(identityToken(manifest.executor));
+    if (registration === undefined)
+      throw new NodeRegistryCompatibilityError(
+        `catalog executor ${label} has no implementation`,
+      );
+    executorMap.set(identityToken(manifest.executor), {
+      manifest,
+      execute: registration.execute,
+    });
+  }
   return { definitionMap, executorMap };
+}
+
+function assertDefinitionExecutorBinding(
+  manifest: Pick<NodeManifest, 'definition' | 'executor'>,
+  requestedExecutor: ExecutorIdentity,
+): void {
+  if (!sameIdentity(manifest.executor, requestedExecutor))
+    throw new NodeRegistryCompatibilityError(
+      `definition ${manifest.definition.key}@${String(manifest.definition.version)} is not bound to executor ${requestedExecutor.key}@${String(requestedExecutor.version)}`,
+    );
 }
 
 export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
@@ -391,8 +315,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     const executor = resolveExecutor(request.executor);
     const definition = resolveDefinition(request.definition);
     assertDefinitionExecutorBinding(definition.manifest, request.executor);
-    return executor.registration.abiVersion ===
-      DISPATCH_AWARE_EXECUTOR_ABI_VERSION
+    return executor.manifest.abiVersion === DISPATCH_AWARE_EXECUTOR_ABI_VERSION
       ? 'executor_controlled'
       : 'before_execute';
   };
@@ -429,7 +352,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       throw mapSchemaError(error, 'config');
     }
     const dispatchAware =
-      executor.registration.abiVersion === DISPATCH_AWARE_EXECUTOR_ABI_VERSION;
+      executor.manifest.abiVersion === DISPATCH_AWARE_EXECUTOR_ABI_VERSION;
     if (dispatchAware && request.runtime === undefined)
       throw new NodeExecutionRuntimeRequiredError();
     const dispatchState: {
@@ -455,7 +378,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
               }
             },
           });
-    const result = await executor.registration.execute({
+    const result = await executor.execute({
       config,
       input,
       connectionRefs,

@@ -1,17 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createNodeCatalog } from '@pertexo/node-sdk';
-import { createNodeRegistry } from '@pertexo/node-sdk/server';
 
 import {
-  CORE_BOUNDED_JSON_POLICY,
   CORE_CONDITION_DEFINITION,
   CORE_CONDITION_EXECUTOR,
   CORE_FOR_EACH_DEFINITION,
   CORE_FOR_EACH_EXECUTOR,
-  CORE_JSONATA_POLICY,
   CORE_MERGE_DEFINITION,
   CORE_MERGE_EXECUTOR,
-  CORE_NODE_DEFINITION_REGISTRATIONS,
   CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_EXECUTOR,
   CORE_SCHEDULE_DEFINITION,
@@ -23,26 +18,9 @@ import {
   CORE_WEBHOOK_DEFINITION,
   CORE_WEBHOOK_EXECUTOR,
 } from '../src/index.js';
-import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '../src/server.js';
+import { createCoreNodeRegistry } from '../src/server.js';
 
-const catalog = createNodeCatalog({
-  definitions: CORE_NODE_DEFINITION_REGISTRATIONS.map(
-    ({ manifest }) => manifest,
-  ),
-  executors: CORE_NODE_EXECUTOR_REGISTRATIONS.map((registration) => ({
-    abiVersion: registration.abiVersion,
-    definitions: registration.definitions,
-    executor: registration.executor,
-    policyReferences: registration.policyReferences,
-  })),
-  policies: [CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY],
-});
-
-const registry = createNodeRegistry({
-  catalog,
-  definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
-  executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
-});
+const registry = createCoreNodeRegistry();
 const signal = new AbortController().signal;
 
 describe('core node public execution contracts', () => {

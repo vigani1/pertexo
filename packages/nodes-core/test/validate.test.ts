@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createNodeCatalog } from '@pertexo/node-sdk';
-import {
-  NodeExecutionAbortedError,
-  createNodeRegistry,
-} from '@pertexo/node-sdk/server';
+import { NodeExecutionAbortedError } from '@pertexo/node-sdk/server';
 
 import {
-  CORE_BOUNDED_JSON_POLICY,
-  CORE_JSONATA_POLICY,
-  CORE_NODE_DEFINITION_REGISTRATIONS,
   CORE_VALIDATE_CONFIG_SCHEMA,
   CORE_VALIDATE_DEFINITION,
   CORE_VALIDATE_EXECUTOR,
@@ -23,26 +16,12 @@ import {
   type CoreValidateInput,
   evaluateCoreValidate,
 } from '../src/index.js';
-import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '../src/server.js';
+import {
+  CORE_NODE_EXECUTOR_REGISTRATIONS,
+  createCoreNodeRegistry,
+} from '../src/server.js';
 
-const catalog = createNodeCatalog({
-  definitions: CORE_NODE_DEFINITION_REGISTRATIONS.map(
-    ({ manifest }) => manifest,
-  ),
-  executors: CORE_NODE_EXECUTOR_REGISTRATIONS.map((registration) => ({
-    abiVersion: registration.abiVersion,
-    definitions: registration.definitions,
-    executor: registration.executor,
-    policyReferences: registration.policyReferences,
-  })),
-  policies: [CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY],
-});
-
-const registry = createNodeRegistry({
-  catalog,
-  definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
-  executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
-});
+const registry = createCoreNodeRegistry();
 
 function config(rules: readonly Record<string, unknown>[]) {
   return CORE_VALIDATE_CONFIG_SCHEMA.parse({ rules });

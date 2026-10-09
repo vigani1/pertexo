@@ -1,7 +1,6 @@
 import { Buffer } from 'node:buffer';
 
 import {
-  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
@@ -22,10 +21,7 @@ import { inspectSecureHttpError } from '../http/secure-http-error.js';
 import { errorNameIs, safeInstanceOf } from '../http/unknown-error.js';
 import {
   HTTP_REQUEST_CONNECTION_SLOT,
-  HTTP_REQUEST_DEFINITION,
   HTTP_REQUEST_EXECUTOR,
-  HTTP_REQUEST_NETWORK_POLICY,
-  HTTP_REQUEST_VALUE_POLICY,
 } from './definition.js';
 import {
   httpRequestConfigSchema,
@@ -439,13 +435,7 @@ export function createHttpRequestExecutorRegistration(
   dependencies: HttpRequestExecutorDependencies,
 ): NodeExecutorRegistration {
   return Object.freeze({
-    abiVersion: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
-    definitions: Object.freeze([HTTP_REQUEST_DEFINITION]),
     executor: HTTP_REQUEST_EXECUTOR,
-    policyReferences: Object.freeze([
-      HTTP_REQUEST_NETWORK_POLICY,
-      HTTP_REQUEST_VALUE_POLICY,
-    ]),
     execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
       (dependencies.telemetry ?? NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY).measure(
         () => executeHttpRequest(dependencies, invocation),
