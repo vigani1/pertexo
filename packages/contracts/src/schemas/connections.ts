@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { utf8ByteLength } from './text.js';
+import { utf8ByteLength } from './shared/text.js';
 
-import { isSupportedHttpFieldValue } from './http-field-value.js';
+import { isSupportedHttpFieldValue } from './shared/http-field-value.js';
 
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();

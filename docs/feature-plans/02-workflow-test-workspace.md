@@ -95,7 +95,7 @@ unauthorized.
   edits refetch and require new confirmation. Atomically commit payload/quota,
   revision, safe audit and receipt; deletion never resurrects a case.
 - Add optional `expectedPublishedVersionId` to
-  [workflow-runs HTTP contracts](../../packages/contracts/src/http/workflow-runs.ts).
+  [workflow-runs HTTP contracts](../../packages/contracts/src/schemas/execution/runs.ts).
   Thread it through existing controller, use case, persistence port/adapter and
   [database manual acceptance](../../packages/database/src/runs/runs.repository.ts).
   Omission preserves old manual-start semantics and hash bytes; checked requests

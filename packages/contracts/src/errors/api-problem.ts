@@ -2,16 +2,16 @@ import { z } from 'zod';
 import {
   WORKFLOW_PORTABILITY_PROBLEM_CODES,
   WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
-} from './workflow-portability-problems.js';
+} from './workflow-portability.js';
 import {
   checkedStartProblems,
   workflowInputCaseProblems,
-} from './workflow-input-case-problems.js';
+} from './workflow-input-cases.js';
 import {
   WORKFLOW_ORGANIZATION_PROBLEM_CODES,
   workflowOrganizationProblems,
-} from './workflow-organization-problems.js';
-import { workflowConcurrencyProblems } from './workflow-concurrency-problems.js';
+} from './workflow-organization.js';
+import { workflowConcurrencyProblems } from './workflow-concurrency.js';
 
 export const API_PROBLEM_CODES = [
   'auth.unauthenticated',

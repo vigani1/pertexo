@@ -287,6 +287,11 @@ now, as one ordered program — not "whenever we touch it".
           documents and client contracts, projected at import). Folders
           `schemas/` (was `http/`), `errors/`, `openapi/`; 28 subpath exports
           and the duplicated root re-exports go.
+    - [x] Schemas, OpenAPI documents and tests grouped by area
+          (`identity/`, `workflows/`, `execution/`, `triggers/`, `shared/`);
+          files drop the prefix their folder names (the `-paths` fragments
+          sit beside the document that composes them) and problem files
+          drop `-problems`.
   - [x] queue
     - [x] No runtime guard; plain export map; structure-only surface tests
           go.
