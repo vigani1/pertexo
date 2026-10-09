@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+} from '../platform/http/opaque-cursor.js';
+
 const memberCursorPayloadSchema = z
   .object({
     kind: z.literal('workspace_members'),
@@ -35,31 +40,21 @@ export function encodeWorkspaceMemberCursor(
     userId: string;
   }>,
 ): string {
-  return Buffer.from(
-    JSON.stringify(
-      memberCursorPayloadSchema.parse({
-        kind: 'workspace_members',
-        ...input,
-      }),
-    ),
-    'utf8',
-  ).toString('base64url');
+  return encodeOpaqueCursor(memberCursorPayloadSchema, {
+    kind: 'workspace_members',
+    ...input,
+  });
 }
 
 export function decodeWorkspaceMemberCursor(
   value: string,
 ): Readonly<{ createdAt: string; userId: string }> {
-  try {
-    const payload = memberCursorPayloadSchema.parse(
-      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-    );
-    return Object.freeze({
-      createdAt: payload.createdAt,
-      userId: payload.userId,
-    });
-  } catch {
-    throw new InvalidWorkspaceMemberCursorError();
-  }
+  const payload = decodeOpaqueCursor(memberCursorPayloadSchema, value);
+  if (payload === undefined) throw new InvalidWorkspaceMemberCursorError();
+  return Object.freeze({
+    createdAt: payload.createdAt,
+    userId: payload.userId,
+  });
 }
 
 class InvalidWorkspaceInvitationCursorError extends TypeError {
@@ -73,29 +68,19 @@ class InvalidWorkspaceInvitationCursorError extends TypeError {
 export function encodeWorkspaceInvitationCursor(
   input: Readonly<{ createdAt: string; invitationId: string }>,
 ): string {
-  return Buffer.from(
-    JSON.stringify(
-      invitationCursorPayloadSchema.parse({
-        kind: 'workspace_invitations',
-        ...input,
-      }),
-    ),
-    'utf8',
-  ).toString('base64url');
+  return encodeOpaqueCursor(invitationCursorPayloadSchema, {
+    kind: 'workspace_invitations',
+    ...input,
+  });
 }
 
 export function decodeWorkspaceInvitationCursor(
   value: string,
 ): Readonly<{ createdAt: string; invitationId: string }> {
-  try {
-    const payload = invitationCursorPayloadSchema.parse(
-      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-    );
-    return Object.freeze({
-      createdAt: payload.createdAt,
-      invitationId: payload.invitationId,
-    });
-  } catch {
-    throw new InvalidWorkspaceInvitationCursorError();
-  }
+  const payload = decodeOpaqueCursor(invitationCursorPayloadSchema, value);
+  if (payload === undefined) throw new InvalidWorkspaceInvitationCursorError();
+  return Object.freeze({
+    createdAt: payload.createdAt,
+    invitationId: payload.invitationId,
+  });
 }

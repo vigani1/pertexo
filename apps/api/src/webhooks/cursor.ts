@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+} from '../platform/http/opaque-cursor.js';
+
 const deliveryCursorPayloadSchema = z
   .object({
     kind: z.literal('webhook_deliveries'),
@@ -25,32 +30,20 @@ export function encodeWebhookDeliveryCursor(
   triggerId: string,
   position: WebhookDeliveryPosition,
 ): string {
-  return Buffer.from(
-    JSON.stringify(
-      deliveryCursorPayloadSchema.parse({
-        kind: 'webhook_deliveries',
-        triggerId,
-        receivedAt: position.receivedAt,
-        id: position.id,
-      }),
-    ),
-    'utf8',
-  ).toString('base64url');
+  return encodeOpaqueCursor(deliveryCursorPayloadSchema, {
+    kind: 'webhook_deliveries',
+    triggerId,
+    receivedAt: position.receivedAt,
+    id: position.id,
+  });
 }
 
 export function decodeWebhookDeliveryCursor(
   value: string,
   triggerId: string,
 ): WebhookDeliveryPosition {
-  let payload: z.output<typeof deliveryCursorPayloadSchema>;
-  try {
-    payload = deliveryCursorPayloadSchema.parse(
-      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-    );
-  } catch {
-    throw new InvalidWebhookDeliveryCursorError();
-  }
-  if (payload.triggerId !== triggerId)
+  const payload = decodeOpaqueCursor(deliveryCursorPayloadSchema, value);
+  if (payload?.triggerId !== triggerId)
     throw new InvalidWebhookDeliveryCursorError();
   return Object.freeze({ receivedAt: payload.receivedAt, id: payload.id });
 }
