@@ -4,7 +4,10 @@
 - **Date:** 2026-09-25
 - **Related:** ADR 004, ADR 038 (amended below), ADR 039, ADR 040
 - **Amended:** 2026-09-25 by [ADR 047](047-workspace-membership-lifecycle.md),
-  which adds `/w/{workspaceId}/team` to the return allowlist
+  which adds `/w/{workspaceId}/team` to the return allowlist; 2026-10-09 by
+  the [ADR 039](039-better-auth-and-session-authority.md) amendment, which
+  removes legacy OIDC: the `oidc` route below and the `404` for an authority
+  without sign-in evidence no longer exist
 
 ## Context
 

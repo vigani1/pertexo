@@ -12,6 +12,10 @@
 > [ADR 042](042-workspace-member-removal.md) lets a later invitation make a
 > _removed_ membership active again at the invited role; a suspended
 > membership remains a conflict. The rest of this record is unchanged.
+>
+> **Amendment note (2026-10-09).** The OIDC result is gone with the legacy
+> sign-in ([ADR 039](039-better-auth-and-session-authority.md) amendment): a
+> fresh Better Auth sign-in is the only recipient proof.
 
 ## Decision
 
