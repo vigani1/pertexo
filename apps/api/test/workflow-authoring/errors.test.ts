@@ -8,9 +8,9 @@ import {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
   WorkflowTemplateOriginUnavailableError,
+  IdempotencyConflictError,
 } from '@pertexo/database/api';
 import {
-  WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
@@ -103,7 +103,7 @@ describe('workflow authoring error mapping', () => {
     ],
     [
       'idempotency conflict',
-      new WorkflowIdempotencyConflictError(),
+      new IdempotencyConflictError(),
       {
         code: 'request.idempotency_conflict',
         safeDetail: 'The idempotency key was already used for another request.',

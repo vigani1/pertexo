@@ -52,7 +52,6 @@ export const API_PROBLEM_CODES = [
   'workflow.concurrency_limit_unavailable',
   'workflow.input_case_revision_conflict',
   'workflow.input_case_limit_exceeded',
-  'workflow.input_cases_unavailable',
   ...WORKFLOW_ORGANIZATION_PROBLEM_CODES,
   'workspace.auto_pause_settings_conflict',
   'workflow.invalid',

@@ -5,7 +5,6 @@ import { createWorkflowInputCaseTag } from '@pertexo/contracts/workflow-authorin
 import {
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
-  WorkflowInputCaseUnavailableError,
   type WorkflowInputCaseDatabase,
 } from '@pertexo/database/api';
 import { WorkflowInputCasesUseCase } from '../../src/workflow-authoring/input-case-use-case.js';
@@ -319,9 +318,6 @@ describe('workflow input case application interface', () => {
         new WorkflowInputCaseLimitError('retained_bytes'),
       ),
     ).toMatchObject({ code: 'workflow.input_case_limit_exceeded' });
-    expect(
-      mapWorkflowAuthoringError(new WorkflowInputCaseUnavailableError()),
-    ).toMatchObject({ code: 'workflow.input_cases_unavailable' });
   });
 });
 describe('workflow input case HTTP interface', () => {
@@ -364,7 +360,7 @@ describe('workflow input case HTTP interface', () => {
     }
   });
   it('passes commands and emits current GET ETag while rejecting malformed routes/headers', async () => {
-    const { cases, persistence } = fixture();
+    const { cases } = fixture();
     const controller = new WorkflowInputCasesController(cases);
     const request = {
       headers: {
@@ -434,11 +430,5 @@ describe('workflow input case HTTP interface', () => {
         response,
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
-    persistence.listCases.mockRejectedValue(
-      new WorkflowInputCaseUnavailableError(),
-    );
-    await expect(
-      controller.list(request, { workspaceId, workflowId }, {}),
-    ).rejects.toMatchObject({ code: 'workflow.input_cases_unavailable' });
   });
 });

@@ -185,7 +185,11 @@ now, as one ordered program — not "whenever we touch it".
         idempotency helper. The SQL copies that re-validated imports, the
         database copy of the curated templates (templates live in code) and
         the import rollout switches go.
-  - [ ] Authoring: input cases.
+  - [x] Input cases: commands check authority, limits and revisions once,
+        in TypeScript, with keys in `idempotency_records`. The write trigger
+        that re-checked them, the case receipt table and the rollout switch
+        go, with the checked-start gate that read it; the web no longer has
+        an "input cases not enabled" state.
   - [ ] Workspaces and access: memberships, invitations (including the
         replacement-claim scan's unused purge mode), ownership, identity.
   - [ ] Connections.

@@ -20,7 +20,6 @@ import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fi
 import { IdempotencyConflictError } from '../../src/platform/idempotency.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
 import {
-  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   type WorkflowAuthoringDatabase,
@@ -534,7 +533,6 @@ export {
   BASELINE_COMPATIBILITY_EXPECTATION,
   IdempotencyConflictError,
   Pool,
-  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   checkDatabaseReadiness,

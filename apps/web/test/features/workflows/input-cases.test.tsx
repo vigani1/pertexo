@@ -69,42 +69,6 @@ function open(canWrite = true) {
 }
 
 describe('shared workflow input cases', () => {
-  it('retains a dispatched command across rollout-unavailable responses without allowing replacement', async () => {
-    const writes: { body: unknown; key: string | null }[] = [];
-    mockServer.use(
-      http.put(`${path}/${caseId}`, async ({ request }) => {
-        writes.push({
-          body: await request.json(),
-          key: request.headers.get('idempotency-key'),
-        });
-        return writes.length === 1
-          ? problem(503, 'workflow.input_cases_unavailable')
-          : HttpResponse.json({ caseId, revision: 2, replayed: true });
-      }),
-    );
-    const { event } = open();
-    await event.click(
-      await screen.findByRole('button', { name: 'Edit Synthetic customer' }),
-    );
-    await screen.findByLabelText('Case name');
-    await event.click(screen.getByRole('button', { name: 'Save input case' }));
-    await screen.findByText(/command’s result cannot be confirmed/u);
-    expect(screen.getByLabelText('Case input (JSON)')).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: 'Cancel case edit' }),
-    ).toBeDisabled();
-    await event.click(
-      screen.getByRole('button', { name: 'Retry exact case change' }),
-    );
-    await waitFor(() => {
-      expect(writes).toHaveLength(2);
-    });
-    expect(writes[1]).toEqual(writes[0]);
-    expect(
-      await screen.findByRole('button', { name: 'New input case' }),
-    ).toBeEnabled();
-  });
-
   it('does not load a held payload after its component owner is disposed', async () => {
     const { event, onLoad, unmount } = open(false);
     let release!: () => void;
@@ -244,16 +208,5 @@ describe('shared workflow input cases', () => {
       expect(writes).toHaveLength(2);
     });
     expect(writes[1]).toEqual(writes[0]);
-  });
-
-  it('truthfully hides case controls when rollout is unavailable', async () => {
-    open();
-    mockServer.use(
-      http.get(path, () => problem(503, 'workflow.input_cases_unavailable')),
-    );
-    await screen.findByText(/Input cases aren’t enabled/u);
-    expect(
-      screen.queryByRole('button', { name: 'New input case' }),
-    ).not.toBeInTheDocument();
   });
 });

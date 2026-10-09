@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -10,14 +9,13 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../platform/database-runtime.js';
+import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
+import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
 import { rolesForCapability } from '../tenant-access/workspace-policy.js';
-import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
-import {
-  WorkflowNotFoundError,
-  WorkflowIdempotencyConflictError,
-} from './workflow-authoring-errors.js';
+import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
+import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
 
 export type WorkflowInputCaseMetadata = Readonly<{
   id: string;
@@ -87,30 +85,16 @@ export class WorkflowInputCaseLimitError extends Error {
     super('Run-input case storage limit reached');
   }
 }
-export class WorkflowInputCaseUnavailableError extends Error {
-  override readonly name = 'WorkflowInputCaseUnavailableError';
-  constructor() {
-    super('Run-input cases are not enabled');
-  }
-}
 const scopeSchema = z.object({
   workspaceId: z.uuid(),
   actorId: z.uuid(),
   workflowId: z.uuid(),
   signal: z.instanceof(AbortSignal).optional(),
 });
-const keySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u)
-  .refine((value) => !value.includes(','));
 const revisionSchema = z.number().int().positive().max(2_147_483_646);
-const receiptSchema = z
+const resultSchema = z
   .object({ caseId: z.uuid(), revision: revisionSchema })
   .strict();
-const hash = (value: string): string =>
-  createHash('sha256').update(value).digest('hex');
 const metadataColumns =
   'id,workspace_id,workflow_id,workflow_version_id,version_checksum,name,revision,created_at,updated_at';
 function metadata(row: Record<string, unknown>): WorkflowInputCaseMetadata {
@@ -138,34 +122,6 @@ function payload(value: unknown): { text: string; bytes: number } {
   const text = canonicalJson(value);
   return { text, bytes: inspection.bytes };
 }
-async function authority(
-  client: PoolClient,
-  input: Scope,
-  write: boolean,
-): Promise<void> {
-  const workspace = await client.query(
-    "select id from app.workspaces where id=$1 and status='active' for share",
-    [input.workspaceId],
-  );
-  if (workspace.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const actor = await client.query(
-    "select id from app.users where id=$1 and status='active' for share",
-    [input.actorId],
-  );
-  if (actor.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const membership = await client.query(
-    "select user_id from app.workspace_memberships where workspace_id=$1 and user_id=$2 and status='active' and role=any($3::text[]) for share",
-    [
-      input.workspaceId,
-      input.actorId,
-      [...rolesForCapability(write ? 'workflow:update' : 'workflow:read')],
-    ],
-  );
-  if (membership.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-}
 async function workflow(
   client: PoolClient,
   input: Scope,
@@ -192,66 +148,30 @@ async function mutate(
   transact: CaseTransaction,
   input: Command,
   kind: 'create' | 'update' | 'delete',
+  caseId: string,
   intent: Record<string, unknown>,
   work: (client: PoolClient) => Promise<{ caseId: string; revision: number }>,
 ): Promise<WorkflowInputCaseResult> {
-  const keyHash = hash(keySchema.parse(input.idempotencyKey));
-  const requestHash = hash(
-    canonicalJson({
-      domain: 'pertexo.workflow-input-case.command',
-      version: 1,
-      actorId: input.actorId,
-      workflowId: input.workflowId,
-      workspaceId: input.workspaceId,
-      kind,
-      ...intent,
-    }),
-  );
+  const command = {
+    workspaceId: input.workspaceId,
+    operation: `workflow.inputcase.${kind}`,
+    scope: `${input.actorId}:${input.workflowId}`,
+    idempotencyKey: input.idempotencyKey,
+  };
   return transact(input, true, async (client) => {
-    await client.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [
-      `workflow-input-case:${input.workspaceId}:${input.actorId}:${input.workflowId}:${kind}:${keyHash}`,
-    ]);
-    const prior = await client.query<{
-      request_hash: string;
-      case_id: string;
-      revision: number;
-    }>(
-      'select request_hash,case_id,revision from app.workflow_input_case_receipts where workspace_id=$1 and actor_id=$2 and workflow_id=$3 and operation=$4 and key_hash=$5',
-      [input.workspaceId, input.actorId, input.workflowId, kind, keyHash],
-    );
-    if (prior.rows[0]) {
-      if (prior.rows[0].request_hash !== requestHash)
-        throw new WorkflowIdempotencyConflictError(
-          'Idempotency key request mismatch',
-        );
-      const result = receiptSchema.parse({
-        caseId: prior.rows[0].case_id,
-        revision: prior.rows[0].revision,
-      });
-      return Object.freeze({ ...result, replayed: true });
-    }
+    const stored = await claimCommand(client, {
+      ...command,
+      request: intent,
+      resourceId: caseId,
+    });
+    if (stored !== null)
+      return Object.freeze({ ...resultSchema.parse(stored), replayed: true });
     await workflow(client, input, true);
+    // Case counts and retained bytes are checked under one lock per workspace.
     await client.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [
       `workflow-input-case-quota:${input.workspaceId}`,
     ]);
-    await client.query(
-      "select set_config('app.workflow_input_case_writer',$1,true)",
-      [`${input.workspaceId}:${input.workflowId}`],
-    );
     const result = await work(client);
-    await client.query(
-      'insert into app.workflow_input_case_receipts(workspace_id,actor_id,workflow_id,operation,key_hash,request_hash,case_id,revision) values($1,$2,$3,$4,$5,$6,$7,$8)',
-      [
-        input.workspaceId,
-        input.actorId,
-        input.workflowId,
-        kind,
-        keyHash,
-        requestHash,
-        result.caseId,
-        result.revision,
-      ],
-    );
     await client.query(
       "insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,$4,'workflow_input_case',$5,$6,$7,$8::jsonb)",
       [
@@ -268,6 +188,7 @@ async function mutate(
         }),
       ],
     );
+    await completeCommand(client, command, result);
     return Object.freeze({ ...result, replayed: false });
   });
 }
@@ -332,21 +253,12 @@ export function createWorkflowInputCaseDatabase(
       lease.pool,
       { workspaceId: input.workspaceId, actorId: input.actorId },
       async (client) => {
-        await authority(client, input, write);
-        try {
-          await client.query(
-            'select app.assert_workflow_input_cases_enabled()',
-          );
-        } catch (error: unknown) {
-          if (
-            typeof error === 'object' &&
-            error !== null &&
-            'code' in error &&
-            error.code === '55000'
-          )
-            throw new WorkflowInputCaseUnavailableError();
-          throw error;
-        }
+        await lockWorkflowAuthoringAuthority(
+          client,
+          input.workspaceId,
+          input.actorId,
+          rolesForCapability(write ? 'workflow:update' : 'workflow:read'),
+        );
         return work(client);
       },
       input.signal === undefined ? {} : { signal: input.signal },
@@ -405,10 +317,12 @@ export function createWorkflowInputCaseDatabase(
       const name = z.string().trim().min(1).max(128).parse(input.name);
       z.uuid().parse(input.workflowVersionId);
       const json = payload(input.input);
+      const caseId = generatePersistedId();
       return mutate(
         transact,
         input,
         'create',
+        caseId,
         {
           workflowVersionId: input.workflowVersionId,
           name,
@@ -422,7 +336,6 @@ export function createWorkflowInputCaseDatabase(
           if (!version.rows[0])
             throw new WorkflowNotFoundError('Workflow version is not visible');
           await quota(client, input, json.bytes, true);
-          const caseId = generatePersistedId();
           await client.query(
             'insert into app.workflow_input_cases(id,workspace_id,workflow_id,workflow_version_id,version_checksum,name) values($1,$2,$3,$4,$5,$6)',
             [
@@ -449,6 +362,7 @@ export function createWorkflowInputCaseDatabase(
         transact,
         input,
         'update',
+        z.uuid().parse(input.caseId),
         {
           caseId: input.caseId,
           expectedRevision: input.expectedRevision,
@@ -471,11 +385,12 @@ export function createWorkflowInputCaseDatabase(
         },
       );
     },
-    deleteCase: (input) =>
+    deleteCase: async (input) =>
       mutate(
         transact,
         input,
         'delete',
+        z.uuid().parse(input.caseId),
         { caseId: input.caseId, expectedRevision: input.expectedRevision },
         async (client) => {
           const item = await lockedCase(client, input);

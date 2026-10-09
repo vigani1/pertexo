@@ -20,12 +20,6 @@ describe.runIf(betterAuthIntegrationEnabled)(
   () => {
     const api = useBetterAuthRealApi('workflow_input_cases');
     async function fixture() {
-      // This pool is exclusively the disposable test database owned by this fixture.
-      await api
-        .database()
-        .query(
-          'update app.workflow_input_case_rollout set enabled=true where singleton',
-        );
       const email = `${randomUUID()}@example.test`;
       await api.signUp(email, '/login?verified=true');
       const owner = await api.signIn(email);
@@ -212,10 +206,11 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const receipts = await api
         .database()
         .query(
-          'select request_hash,case_id,revision from app.workflow_input_case_receipts where workspace_id=$1',
+          "select request_hash,resource_id,result_ref from app.idempotency_records where workspace_id=$1 and operation like 'workflow.inputcase.%'",
           [workspaceId],
         );
       expect(receipts.rows).toHaveLength(3);
+      expect(JSON.stringify(receipts.rows)).not.toContain('Synthetic');
       const audit = await api
         .database()
         .query(
@@ -381,33 +376,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
         } else expectProblem(created, 404, 'resource.not_found');
       }
     });
-    it('fails closed before rollout enablement and for foreign workflow/version identifiers', async () => {
-      const { owner, route, versionId, workspaceId, workflowId } =
-        await fixture();
-      await api
-        .database()
-        .query(
-          'update app.workflow_input_case_rollout set enabled=false where singleton',
-        );
-      expectProblem(
-        await api.send('GET', route, { browser: owner }),
-        503,
-        'workflow.input_cases_unavailable',
-      );
-      expectProblem(
-        await api.send('POST', route, {
-          browser: owner,
-          headers: { 'idempotency-key': randomUUID() },
-          payload: { workflowVersionId: versionId, name: 'x', input: {} },
-        }),
-        503,
-        'workflow.input_cases_unavailable',
-      );
-      await api
-        .database()
-        .query(
-          'update app.workflow_input_case_rollout set enabled=true where singleton',
-        );
+    it('fails closed for foreign workflow identifiers', async () => {
+      const { owner, workspaceId, workflowId } = await fixture();
       expectProblem(
         await api.send(
           'GET',

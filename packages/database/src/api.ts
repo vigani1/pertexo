@@ -54,7 +54,6 @@ export {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
-  WorkflowInputCaseUnavailableError,
 } from './authoring/workflow-input-cases.js';
 export type {
   WorkflowInputCaseDatabase,
@@ -259,7 +258,6 @@ export type {
 } from './triggers/webhook-trigger-deliveries.js';
 export { IdempotencyConflictError } from './platform/idempotency.js';
 export {
-  WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowLifecycleRevisionConflictError,
   WorkflowNameRevisionConflictError,
@@ -289,7 +287,6 @@ export type {
   TransitionWorkflowLifecycleResult,
   WorkflowLifecycleCommand,
 } from './authoring/workflow-authoring.js';
-export { WorkflowManualStartUnavailableError } from './runs/errors.js';
 export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,

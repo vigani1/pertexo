@@ -26,10 +26,6 @@ export class WorkflowNameRevisionConflictError extends Error {
   }
 }
 
-export class WorkflowIdempotencyConflictError extends Error {
-  public override readonly name = 'WorkflowIdempotencyConflictError';
-}
-
 export class WorkflowPortabilityUnavailableError extends Error {
   public override readonly name = 'WorkflowPortabilityUnavailableError';
 }

@@ -11,12 +11,6 @@ export const workflowInputCaseProblems = {
     severity: 'warn',
     exposeDetail: true,
   },
-  'workflow.input_cases_unavailable': {
-    status: 503,
-    title: 'Run-input cases unavailable',
-    severity: 'warn',
-    exposeDetail: true,
-  },
 } as const;
 
 export const checkedStartProblems = {

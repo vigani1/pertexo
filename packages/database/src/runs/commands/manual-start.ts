@@ -2,10 +2,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import { IdempotencyRequestConflictError } from './acceptance.js';
-import {
-  WorkflowManualStartUnavailableError,
-  WorkflowRunNotFoundError,
-} from '../errors.js';
+import { WorkflowRunNotFoundError } from '../errors.js';
 
 export type ManualStartIdentity = Readonly<{
   actorId: string;
@@ -26,30 +23,6 @@ export type ManualStartRejection = Readonly<{
   expectedPublishedVersionId: string;
   observedPublishedVersionId: string;
 }>;
-
-/** Disable new checked intent during rollout/rollback, never retained recovery. */
-export async function assertCheckedManualStartEnabled(
-  transaction: WorkspaceTransaction,
-): Promise<void> {
-  try {
-    await transaction.db.execute(
-      sql`select app.assert_workflow_input_cases_enabled()`,
-    );
-  } catch (error: unknown) {
-    let current: unknown = error;
-    for (let depth = 0; depth < 8; depth++) {
-      const parsed = z
-        .object({ code: z.string().optional(), cause: z.unknown().optional() })
-        .loose()
-        .safeParse(current);
-      if (!parsed.success) break;
-      if (parsed.data.code === '55000')
-        throw new WorkflowManualStartUnavailableError();
-      current = parsed.data.cause;
-    }
-    throw error;
-  }
-}
 
 /** Workspace/actor/membership authority precedes key serialization and all receipts. */
 export async function lockManualStartCommand(

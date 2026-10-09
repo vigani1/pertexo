@@ -1,6 +1,5 @@
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
   char,
   foreignKey,
   index,
@@ -13,13 +12,6 @@ import { appSchema } from './app-schema.js';
 import { workflows } from './authoring.js';
 import { workspaces } from './foundation.js';
 
-export const workflowInputCaseRollout = appSchema.table(
-  'workflow_input_case_rollout',
-  {
-    singleton: boolean('singleton').primaryKey().default(true),
-    enabled: boolean('enabled').notNull().default(false),
-  },
-);
 export const workflowManualStartRejections = appSchema.table(
   'workflow_manual_start_rejections',
   {

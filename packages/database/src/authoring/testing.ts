@@ -2,7 +2,6 @@ export {
   createWorkflowAuthoringDatabase,
   reconcileWorkflowTriggersPayload,
   WorkflowNotFoundError,
-  WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring.js';

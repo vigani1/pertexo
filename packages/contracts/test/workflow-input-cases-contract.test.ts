@@ -233,8 +233,5 @@ describe('bounded version-contextual input case contracts', () => {
     expect(
       API_PROBLEM_MANIFEST['workflow.input_case_limit_exceeded'].status,
     ).toBe(409);
-    expect(
-      API_PROBLEM_MANIFEST['workflow.input_cases_unavailable'].status,
-    ).toBe(503);
   });
 });

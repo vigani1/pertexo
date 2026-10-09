@@ -1,6 +1,6 @@
 import {
   WorkflowFolderConflictError,
-  WorkflowIdempotencyConflictError,
+  IdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
@@ -113,7 +113,7 @@ describe('workflow organization error mapping', () => {
 
   it.each([
     new WorkflowNotFoundError(),
-    new WorkflowIdempotencyConflictError(),
+    new IdempotencyConflictError(),
     new AuthorizationError('resource.not_found', 'not authorized'),
     new Error('unrelated failure'),
     { name: 'WorkflowOrganizationUnavailableError' },

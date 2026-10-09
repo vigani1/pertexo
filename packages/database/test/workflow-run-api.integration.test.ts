@@ -17,7 +17,6 @@ import {
   WorkspaceRunAdmissionDeniedError,
 } from '../src/runs/commands/acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
-import { WorkflowManualStartUnavailableError } from '../src/runs/errors.js';
 import {
   createWorkflowRunDatabase,
   WorkflowRunNotFoundError,
@@ -225,7 +224,6 @@ async function apiQueryWithIndexPreference(
 }
 
 async function resetFixture(): Promise<void> {
-  await ownerQuery('update app.workflow_input_case_rollout set enabled=true');
   await ownerQuery(`
     truncate table
       app.audit_events,
@@ -746,28 +744,6 @@ describe('workflow run API persistence', () => {
     expect(measured.noMatch?.rejectedRowInstances).toBeGreaterThan(0);
   }, 15_000);
 
-  it('disables new checked commands during rollback while preserving unchecked manual admission', async () => {
-    await ownerQuery(
-      'update app.workflow_input_case_rollout set enabled=false',
-    );
-    await expect(
-      database.start({
-        ...startInput(),
-        expectedPublishedVersionId: workflowVersionId,
-      }),
-    ).rejects.toBeInstanceOf(WorkflowManualStartUnavailableError);
-    await expect(database.start(startInput())).resolves.toMatchObject({
-      replayed: false,
-    });
-    expect(
-      (
-        await ownerQuery(
-          'select count(*)::int count from app.workflow_manual_start_rejections',
-        )
-      ).rows,
-    ).toEqual([{ count: 0 }]);
-  });
-
   it('commits a stale rejection, preserves it after republication, and conflicts on changed intent', async () => {
     const input = {
       ...startInput(),
@@ -779,9 +755,6 @@ describe('workflow run API persistence', () => {
     await ownerQuery(
       'update app.workflows set published_version_id=$2 where id=$1',
       [workflowId, retainedWorkflowVersionId],
-    );
-    await ownerQuery(
-      'update app.workflow_input_case_rollout set enabled=false',
     );
     await expect(database.start(input)).rejects.toBeInstanceOf(
       WorkflowPublishedVersionConflictError,
@@ -808,9 +781,6 @@ describe('workflow run API persistence', () => {
     await ownerQuery(
       'update app.workflows set published_version_id=$2 where id=$1',
       [workflowId, retainedWorkflowVersionId],
-    );
-    await ownerQuery(
-      'update app.workflow_input_case_rollout set enabled=false',
     );
     const duplicates = await Promise.all(
       Array.from({ length: 4 }, () => database.start(input)),

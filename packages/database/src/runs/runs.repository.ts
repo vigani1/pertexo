@@ -14,7 +14,6 @@ import {
 } from '../compatibility/compatibility-release.js';
 import { readWorkflowRunAcceptanceReplay } from './commands/acceptance.js';
 import {
-  assertCheckedManualStartEnabled,
   lockManualStartCommand,
   readManualStartRejection,
   recordManualStartRejection,
@@ -312,8 +311,6 @@ async function startInTransaction(
   }
   const rejection = await readManualStartRejection(transaction, input);
   if (rejection !== null) return rejection;
-  if (input.expectedPublishedVersionId !== undefined)
-    await assertCheckedManualStartEnabled(transaction);
 
   const currentCompatibilityRelease = selectServingCompatibilityRelease(
     compatibilityReleases,

@@ -1,6 +1,6 @@
 # ADR 061: Version-contextual run-input cases and checked manual starts
 
-- **Status:** accepted — manager-reviewed first F02 slice; planning record only
+- **Status:** accepted — manager-reviewed first F02 slice; planning record only; superseded in part by [ADR 069](069-architecture-reset.md) (no rollout switch, write trigger or case receipt table)
 - **Date:** 2026-10-01
 - **Related:** ADR 002, ADR 011, ADR 012, ADR 013, ADR 057, ADR 058, ADR 060
 

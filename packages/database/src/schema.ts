@@ -7,14 +7,10 @@ import {
   oidcLoginTransactions,
 } from './schema/authentication.js';
 import { workflowTemplateOrigins } from './schema/curated-template-origin.js';
-import {
-  workflowInputCaseRollout,
-  workflowManualStartRejections,
-} from './schema/manual-start.js';
+import { workflowManualStartRejections } from './schema/manual-start.js';
 import {
   workflowInputCases,
   workflowInputCasePayloads,
-  workflowInputCaseReceipts,
 } from './schema/workflow-input-cases.js';
 import {
   users,
@@ -140,11 +136,9 @@ export {
 
 export const databaseSchema = {
   workflowTemplateOrigins,
-  workflowInputCaseRollout,
   workflowManualStartRejections,
   workflowInputCases,
   workflowInputCasePayloads,
-  workflowInputCaseReceipts,
   workflowConcurrencyPolicies,
   artifactLinks,
   artifacts,

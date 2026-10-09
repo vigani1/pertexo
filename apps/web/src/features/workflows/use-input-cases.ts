@@ -36,19 +36,9 @@ function caseCommandError(cause: unknown) {
     return 'This case changed elsewhere. Your edits are still here. Read the current case and review before confirming a new change.';
   if (code === 'workflow.input_case_limit_exceeded')
     return 'This workspace or workflow has reached its input-case limit. Remove an unneeded case and try again.';
-  if (code === 'workflow.input_cases_unavailable')
-    return 'Input-case changes are unavailable. This command’s result cannot be confirmed; its original key is retained. Retry the exact change when access resumes, within the original 24-hour window.';
-  if (caseOutcomeUncertain(cause))
+  if (isUncertainOutcome(cause))
     return 'We couldn’t confirm this change. Retry the exact change within 24 hours; other changes are blocked until it is resolved.';
   return describeCommandError(cause, 'changing this input case');
-}
-
-function caseOutcomeUncertain(cause: unknown) {
-  return (
-    isUncertainOutcome(cause) ||
-    (isApiError(cause) &&
-      cause.problem?.code === 'workflow.input_cases_unavailable')
-  );
 }
 
 function evictCases(cache: QueryClient, key: ReturnType<typeof inputCasesKey>) {
@@ -129,12 +119,10 @@ export function useInputCases(
   const [uncertain, setUncertain] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [accessLost, setAccessLost] = useState(false);
-  const [unavailable, setUnavailable] = useState(false);
   const onRetire = useCallback(() => {
     setSelected(undefined);
     setUncertain(false);
     setConflict(false);
-    setUnavailable(false);
     setAccessLost(true);
     setPending(false);
   }, []);
@@ -226,7 +214,6 @@ export function useInputCases(
       setUncertain(false);
       setSelected(undefined);
       setConflict(false);
-      setUnavailable(false);
       await cache.invalidateQueries({
         queryKey: inputCasesKey(userId, workspaceId, workflowId),
       });
@@ -234,7 +221,7 @@ export function useInputCases(
     } catch (cause) {
       if (ownerRef.current !== token) return false;
       if (dispatched) {
-        const unknown = caseOutcomeUncertain(cause);
+        const unknown = isUncertainOutcome(cause);
         setUncertain(unknown);
         if (!unknown) retainedRef.current = undefined;
       }
@@ -243,7 +230,6 @@ export function useInputCases(
       }
       const code = isApiError(cause) ? cause.problem?.code : undefined;
       setConflict(code === 'workflow.input_case_revision_conflict');
-      setUnavailable(code === 'workflow.input_cases_unavailable');
       setError(caseCommandError(cause));
       return false;
     } finally {
@@ -258,7 +244,6 @@ export function useInputCases(
     uncertain,
     conflict,
     accessLost,
-    unavailable,
     read,
     send,
     clearSelection: () => {

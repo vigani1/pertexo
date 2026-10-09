@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';
 import {
   workflowDraftResponseSchema,
@@ -40,17 +40,6 @@ async function csrf(page: Page) {
   return { 'x-csrf-token': decodeURIComponent(cookie.value) };
 }
 
-async function setCaseRollout(
-  request: APIRequestContext,
-  mailOrigin: string,
-  enabled: boolean,
-) {
-  const response = await request.post(`${mailOrigin}/input-cases-rollout`, {
-    data: { enabled },
-  });
-  expect(response.status()).toBe(204);
-}
-
 async function openWorkflowList(page: Page) {
   // SPA navigation preserves the browser session and app lifetime. The feature
   // still owns case-query eviction when its panel closes.
@@ -62,74 +51,6 @@ async function openWorkflowList(page: Page) {
     .getByRole('navigation', { name: 'Workspace', exact: true })
     .getByRole('link', { name: 'Workflows', exact: true });
   await editorBack.or(workspaceWorkflows).first().click();
-}
-
-async function openOrdinaryWorkflow(page: Page) {
-  await openWorkflowList(page);
-  await page
-    .getByRole('region', { name: 'Workspace workflows', exact: true })
-    .getByRole('link', { name: 'Ordinary rollout runs', exact: true })
-    .click();
-}
-
-/** Both ordinary menu actions remain usable without the checked-start rollout. */
-async function ordinaryMenuStarts(
-  page: Page,
-  workspaceId: string,
-  path: string,
-  expectedVersionId: string,
-  screenshotPath: string,
-) {
-  const workflowId = path.split('/').at(-1);
-  if (workflowId === undefined) throw new Error('Workflow identity missing');
-  const runIds: string[] = [];
-  for (const action of ['Run published version', 'Run with input…']) {
-    await openOrdinaryWorkflow(page);
-    const unavailable = await page.request.get(`${path}/input-cases`);
-    expect(unavailable.status()).toBe(503);
-    expect(apiProblemSchema.parse(await unavailable.json()).code).toBe(
-      'workflow.input_cases_unavailable',
-    );
-    await page.getByRole('button', { name: 'Run', exact: true }).click();
-    await page.getByRole('menuitem', { name: action, exact: true }).click();
-    const dialog = page.getByRole('dialog', {
-      name: 'Run with input',
-      exact: true,
-    });
-    await dialog
-      .getByLabel('Run input (JSON)', { exact: true })
-      .fill('{"proof":"f02-unchecked"}');
-    const start = dialog.getByRole('button', {
-      name: 'Start published version',
-      exact: true,
-    });
-    await expect(start).toBeEnabled();
-    await expect(dialog).toContainText(
-      'Checked starts aren’t enabled in this installation.',
-    );
-    if (action === 'Run published version')
-      await page.screenshot({ path: screenshotPath, fullPage: true });
-    const response = page.waitForResponse(
-      (result) =>
-        result.request().method() === 'POST' &&
-        new URL(result.url()).pathname === `${path}/runs`,
-    );
-    await start.click();
-    const accepted = await response;
-    expect(accepted.status()).toBe(202);
-    expect(accepted.request().postDataJSON() as unknown).not.toHaveProperty(
-      'expectedPublishedVersionId',
-    );
-    const runId = workflowRunStartResponseSchema.parse(await accepted.json())
-      .run.id;
-    await expect(page).toHaveURL(new RegExp(`/runs/${runId}$`, 'u'));
-    expect(
-      (await waitForRun(page, workspaceId, runId, 'succeeded')).run
-        .workflowVersionId,
-    ).toBe(expectedVersionId);
-    runIds.push(runId);
-  }
-  return runIds;
 }
 
 /** Every publication goes through the ordinary draft/validate/publish API. */
@@ -213,26 +134,6 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
     page,
     'Input cases qualification',
   );
-  const ordinaryPath = await createEditorWorkflow(
-    page,
-    workspaceId,
-    'Ordinary rollout runs',
-  );
-  const ordinaryVersion = await publish(
-    page,
-    ordinaryPath,
-    'Unchecked input proof',
-  );
-  await page.reload();
-  await setCaseRollout(request, mailOrigin, false);
-  const ordinaryRunIds = await ordinaryMenuStarts(
-    page,
-    workspaceId,
-    ordinaryPath,
-    ordinaryVersion.versionId,
-    info.outputPath('input-cases-off-ordinary.png'),
-  );
-  await setCaseRollout(request, mailOrigin, true);
   const path = await createEditorWorkflow(
     page,
     workspaceId,
@@ -242,21 +143,6 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
   if (workflowId === undefined) throw new Error('Workflow identity missing');
   const first = await publish(page, path, 'Initial input proof');
   await page.reload();
-  await openOrdinaryWorkflow(page);
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
-  await page
-    .getByRole('menuitem', { name: 'Run with input…', exact: true })
-    .click();
-  const warmedDialog = page.getByRole('dialog', {
-    name: 'Run with input',
-    exact: true,
-  });
-  await expect(
-    warmedDialog.getByRole('button', { name: 'New input case' }),
-  ).toBeEnabled();
-  await warmedDialog
-    .getByRole('button', { name: 'Cancel', exact: true })
-    .click();
   await openWorkflowList(page);
   await page
     .getByRole('region', { name: 'Workspace workflows', exact: true })
@@ -423,14 +309,9 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
   expect(
     new Set([first.versionId, second.versionId, third.versionId]).size,
   ).toBe(3);
-  // Operator rollback changes only availability, never the retained command.
-  await setCaseRollout(request, mailOrigin, false);
+  // A later publication never changes the retained command.
   await expect(retryButton).toBeEnabled();
   await expect(runDialog).toContainText('Original submitted version');
-  await page.screenshot({
-    path: info.outputPath('input-cases-rollback-recovery-mobile.png'),
-    fullPage: true,
-  });
   await retryButton.click();
   await expect(page).toHaveURL(/\/runs\/[^/]+$/u);
   expect(submitted).toHaveLength(2);
@@ -470,26 +351,4 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
     },
   });
   expect(evidence.status()).toBe(204);
-  await page.setViewportSize({ width: 1280, height: 900 });
-  ordinaryRunIds.push(
-    ...(await ordinaryMenuStarts(
-      page,
-      workspaceId,
-      ordinaryPath,
-      ordinaryVersion.versionId,
-      info.outputPath('input-cases-rollback-ordinary.png'),
-    )),
-  );
-  const rolloutEvidence = await request.post(
-    `${mailOrigin}/input-cases-rollout-evidence`,
-    {
-      data: {
-        workspaceId,
-        workflowId: ordinaryPath.split('/').at(-1),
-        workflowVersionId: ordinaryVersion.versionId,
-        runIds: ordinaryRunIds,
-      },
-    },
-  );
-  expect(rolloutEvidence.status()).toBe(204);
 });

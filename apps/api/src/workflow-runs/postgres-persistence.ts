@@ -7,7 +7,6 @@ import {
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
-  WorkflowManualStartUnavailableError,
   createWorkflowRunDatabase,
   type DatabaseConfig,
   type DatabaseRuntime,
@@ -225,10 +224,6 @@ async function publishHint(
 }
 
 function mapPersistenceError(error: unknown): never {
-  if (error instanceof WorkflowManualStartUnavailableError)
-    return throwWorkflowRunError(
-      applicationError('workflow.input_cases_unavailable'),
-    );
   if (error instanceof WorkflowPublishedVersionConflictError)
     return throwWorkflowRunError(
       applicationError('workflow.published_version_conflict', {

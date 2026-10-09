@@ -4,10 +4,8 @@ import {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
 } from '../src/authoring/workflow-input-cases.js';
-import {
-  WorkflowIdempotencyConflictError,
-  WorkflowNotFoundError,
-} from '../src/authoring/workflow-authoring-errors.js';
+import { WorkflowNotFoundError } from '../src/authoring/workflow-authoring-errors.js';
+import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import { createRetentionDatabase } from '../src/lifecycle/retention.js';
 import {
   actorId,
@@ -69,14 +67,8 @@ async function fixture(selectedWorkspaceId = workspaceId) {
     workflowVersionId: publication.version.id,
   };
 }
-async function enable() {
-  await executeAsOwner(
-    'update app.workflow_input_case_rollout set enabled=true where singleton',
-  );
-}
 describe('bounded version-contextual run-input cases', () => {
   it('lists metadata only, gets detached canonical input and replays identifiers without names or JSON in receipts/audits', async () => {
-    await enable();
     const scope = await fixture();
     const command = {
       ...scope,
@@ -101,14 +93,14 @@ describe('bounded version-contextual run-input cases', () => {
       (await database.getCase({ ...scope, caseId: created.caseId })).case.input,
     ).toEqual({ a: 1, b: 2 });
     const facts = await queryAsOwner<{ receipt: unknown; metadata: unknown }>(
-      `select to_jsonb(r) receipt,a.metadata from app.workflow_input_case_receipts r join app.audit_events a on a.target_id=r.case_id where r.case_id=$1`,
+      `select to_jsonb(r) receipt,a.metadata from app.idempotency_records r join app.audit_events a on a.target_id=r.resource_id where r.resource_id=$1`,
       [created.caseId],
     );
     expect(JSON.stringify(facts)).not.toContain('Synthetic input');
     expect(JSON.stringify(facts)).not.toContain('"input"');
     await expect(
       database.createCase({ ...command, input: { changed: true } }),
-    ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     const duplicated = await authoring.duplicateWorkflow({
       workspaceId: scope.workspaceId,
       workflowId: scope.workflowId,
@@ -322,7 +314,7 @@ describe('bounded version-contextual run-input cases', () => {
       }),
     ).rejects.toBeInstanceOf(TypeError);
   });
-  it('forces tenant RLS and denies app physical erasure', async () => {
+  it('forces tenant RLS, keeps a case on its workflow version and denies app physical erasure', async () => {
     const scope = await fixture();
     const created = await database.createCase({
       ...scope,
@@ -339,10 +331,10 @@ describe('bounded version-contextual run-input cases', () => {
       );
       await expect(
         client.query(
-          'update app.workflow_input_cases set revision=revision+1 where id=$1',
-          [created.caseId],
+          'update app.workflow_input_cases set workflow_version_id=$2 where id=$1',
+          [created.caseId, randomUUID()],
         ),
-      ).rejects.toMatchObject({ code: '55000' });
+      ).rejects.toMatchObject({ code: '42501' });
     } finally {
       await client.query('rollback');
       client.release();
@@ -495,7 +487,7 @@ describe('bounded version-contextual run-input cases', () => {
       idempotencyKey: randomUUID(),
     });
     await executeAsOwner(
-      "update app.workflow_input_case_receipts set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day' where workspace_id=$1",
+      "update app.idempotency_records set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day' where workspace_id=$1 and operation like 'workflow.inputcase.%'",
       [workspaceId],
     );
     expect((await enforceTestRetention()).manual_start_rejections).toBe(1);
@@ -570,7 +562,7 @@ describe('bounded version-contextual run-input cases', () => {
       negative: string;
       versions: string;
     }>(
-      `select (select count(*) from app.workflow_input_cases where workspace_id=$1) cases,(select count(*) from app.workflow_input_case_receipts where workspace_id=$1) receipts,(select count(*) from app.workflow_manual_start_rejections where workspace_id=$1) negative,(select count(*) from app.workflow_versions where workspace_id=$1) versions`,
+      `select (select count(*) from app.workflow_input_cases where workspace_id=$1) cases,(select count(*) from app.idempotency_records where workspace_id=$1) receipts,(select count(*) from app.workflow_manual_start_rejections where workspace_id=$1) negative,(select count(*) from app.workflow_versions where workspace_id=$1) versions`,
       [scope.workspaceId],
       scope.workspaceId,
     );

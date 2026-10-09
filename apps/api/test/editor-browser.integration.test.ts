@@ -158,14 +158,6 @@ let portabilityEvidence:
   z.infer<typeof workflowPortabilityBrowserEvidenceSchema> | undefined;
 let inputCasesEvidence:
   z.infer<typeof workflowInputCasesEvidenceSchema> | undefined;
-const inputCasesRolloutEvidenceSchema = z.strictObject({
-  workspaceId: z.uuid(),
-  workflowId: z.uuid(),
-  workflowVersionId: z.uuid(),
-  runIds: z.array(z.uuid()).length(4),
-});
-let inputCasesRolloutEvidence:
-  z.infer<typeof inputCasesRolloutEvidenceSchema> | undefined;
 let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
 let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
 let expressionEvidence:
@@ -568,40 +560,6 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         return;
       }
       if (
-        scenario === 'input-cases' &&
-        request.method === 'POST' &&
-        url.pathname === '/input-cases-rollout'
-      ) {
-        let body = '';
-        request.on('data', (chunk: Buffer) => {
-          body += chunk.toString();
-          if (body.length > 128) request.destroy();
-        });
-        request.on('end', () => {
-          void (async () => {
-            try {
-              const { enabled: casesEnabled } = z
-                .strictObject({ enabled: z.boolean() })
-                .parse(JSON.parse(body) as unknown);
-              await recheckOwnership();
-              // Test-only operator control on the attested disposable database;
-              // never a route or entitlement on the application API.
-              const changed = await api
-                .database()
-                .query(
-                  'update app.workflow_input_case_rollout set enabled=$1 where singleton',
-                  [casesEnabled],
-                );
-              expect(changed.rowCount).toBe(1);
-              response.writeHead(204).end();
-            } catch {
-              response.writeHead(400).end();
-            }
-          })();
-        });
-        return;
-      }
-      if (
         request.method === 'POST' &&
         (url.pathname === '/browser-opened' ||
           url.pathname === '/browser-disposed')
@@ -749,7 +707,6 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           url.pathname === '/evidence/portability' ||
           url.pathname === '/evidence/curated-templates' ||
           url.pathname === '/input-cases-evidence' ||
-          url.pathname === '/input-cases-rollout-evidence' ||
           url.pathname === '/evidence/readonly' ||
           url.pathname === '/evidence/schedule')
       ) {
@@ -806,12 +763,6 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             )
               inputCasesEvidence =
                 workflowInputCasesEvidenceSchema.parse(value);
-            else if (
-              url.pathname === '/input-cases-rollout-evidence' &&
-              scenario === 'input-cases'
-            )
-              inputCasesRolloutEvidence =
-                inputCasesRolloutEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/readonly' &&
               scenario === 'readonly'
@@ -1025,41 +976,8 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         api.database(),
         inputCasesEvidence,
       );
-      if (inputCasesRolloutEvidence === undefined)
-        throw new Error(
-          'Default-off and rollback ordinary run evidence missing',
-        );
-      expect(new Set(inputCasesRolloutEvidence.runIds).size).toBe(4);
-      const ordinaryRuns = await api.database().query<{
-        id: string;
-        workflow_version_id: string;
-        status: string;
-        input_ref: unknown;
-      }>('select id,workflow_version_id,status,input_ref from app.workflow_runs where workspace_id=$1 and workflow_id=$2 order by id', [inputCasesRolloutEvidence.workspaceId, inputCasesRolloutEvidence.workflowId]);
-      expect(ordinaryRuns.rows).toHaveLength(4);
-      expect(ordinaryRuns.rows.map((run) => run.id).sort()).toEqual(
-        [...inputCasesRolloutEvidence.runIds].sort(),
-      );
-      for (const run of ordinaryRuns.rows)
-        expect(run).toMatchObject({
-          workflow_version_id: inputCasesRolloutEvidence.workflowVersionId,
-          status: 'succeeded',
-          input_ref: { kind: 'inline', value: { proof: 'f02-unchecked' } },
-        });
-      expect(
-        (
-          await api
-            .database()
-            .query<{ enabled: boolean }>(
-              'select enabled from app.workflow_input_case_rollout where singleton',
-            )
-        ).rows,
-      ).toEqual([{ enabled: false }]);
       process.stdout.write(
         `Live browser workflow input cases verified identities ${JSON.stringify(inputCasesEvidence)}\n`,
-      );
-      process.stdout.write(
-        `Live browser default-off and rollback ordinary runs verified identities ${JSON.stringify(inputCasesRolloutEvidence)}\n`,
       );
       return;
     }

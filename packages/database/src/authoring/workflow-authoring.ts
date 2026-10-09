@@ -48,7 +48,6 @@ export type {
 const uuidSchema = z.uuid();
 
 export {
-  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   WorkflowLifecycleRevisionConflictError,
