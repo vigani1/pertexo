@@ -39,17 +39,7 @@ const outcomes = [
 ] as const;
 
 describe('connection test completion classification', () => {
-  it('decodes legacy pointers without accepting malformed snapshots as legacy', () => {
-    expect(
-      decodeDurableConnectionReplay({
-        connectionId: secretVersionId,
-        secretVersionId: '22222222-2222-4222-8222-222222222222',
-      }),
-    ).toEqual({
-      kind: 'legacy_pointer',
-      connectionId: secretVersionId,
-      secretVersionId: '22222222-2222-4222-8222-222222222222',
-    });
+  it('rejects a malformed stored connection', () => {
     expect(() =>
       decodeDurableConnectionReplay({
         id: secretVersionId,

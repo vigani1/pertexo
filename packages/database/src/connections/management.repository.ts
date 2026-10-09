@@ -95,19 +95,9 @@ export function createConnectionManagementPersistence(
               );
             if (claimed.status === 'completed') {
               const replay = decodeDurableConnectionReplay(claimed.result_ref);
-              if (replay.kind === 'snapshot') {
-                if (replay.connection.workspaceId !== workspaceId)
-                  throw new Error('Connection idempotency result is corrupt');
-                return replay.connection;
-              }
-              const existing = await selectConnection(
-                client,
-                workspaceId,
-                replay.connectionId,
-              );
-              if (existing === null)
+              if (replay.workspaceId !== workspaceId)
                 throw new Error('Connection idempotency result is corrupt');
-              return existing;
+              return replay;
             }
             if (insertedClaim.rowCount !== 1)
               throw new Error('Connection idempotency record is not resumable');
@@ -244,19 +234,9 @@ export function createConnectionManagementPersistence(
             );
           if (record.status !== 'completed') return null;
           const replay = decodeDurableConnectionReplay(record.result_ref);
-          if (replay.kind === 'snapshot') {
-            if (replay.connection.workspaceId !== workspaceId)
-              throw new Error('Connection idempotency result is corrupt');
-            return replay.connection;
-          }
-          const connection = await selectConnection(
-            client,
-            workspaceId,
-            replay.connectionId,
-          );
-          if (connection === null)
+          if (replay.workspaceId !== workspaceId)
             throw new Error('Connection idempotency result is corrupt');
-          return connection;
+          return replay;
         },
       );
     },
