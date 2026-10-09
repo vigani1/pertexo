@@ -7,7 +7,7 @@ import {
 import {
   CURATED_WORKFLOW_TEMPLATES,
   validateCuratedTemplateSetupValue,
-  isCuratedHttpsEndpointV1,
+  isCuratedHttpsEndpoint,
 } from '@pertexo/templates';
 import {
   PLATFORM_REGISTRY_RELEASE_HISTORY,
@@ -30,7 +30,7 @@ function endpointOfBytes(bytes: number): string {
 }
 
 function configuredTemplate(
-  kind: 'curated_https_endpoint_v1' | 'slack_channel_id',
+  kind: 'https_endpoint' | 'slack_channel_id',
   value: unknown,
 ) {
   const descriptor = required(CURATED_WORKFLOW_TEMPLATES[2]);
@@ -41,7 +41,7 @@ function configuredTemplate(
     templateVersion: descriptor.templateVersion,
     baseManifestDigest: descriptor.baseManifestDigest,
   };
-  if (kind === 'curated_https_endpoint_v1') {
+  if (kind === 'https_endpoint') {
     Object.assign(
       required(
         manifest.graph.nodes.find((node) => node.id === 'controlled-http'),
@@ -109,8 +109,7 @@ describe('browser template setup versus registered server policy', () => {
         }).success,
       ).toBe(accepted);
       expect(
-        validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value)
-          .ok,
+        validateCuratedTemplateSetupValue('https_endpoint', value).ok,
       ).toBe(false);
     },
   );
@@ -131,9 +130,9 @@ describe('browser template setup versus registered server policy', () => {
         url: value,
       }).success,
     ).toBe(accepted);
-    expect(
-      validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value).ok,
-    ).toBe(false);
+    expect(validateCuratedTemplateSetupValue('https_endpoint', value).ok).toBe(
+      false,
+    );
   });
 
   it.each([
@@ -191,12 +190,11 @@ describe('browser template setup versus registered server policy', () => {
         HTTP_REQUEST_DEFINITION_REGISTRATION.configSchema.safeParse(candidate);
       const ordinaryMatches =
         registered.success && http.validateConfig(candidate);
-      const matches = ordinaryMatches && isCuratedHttpsEndpointV1(value);
+      const matches = ordinaryMatches && isCuratedHttpsEndpoint(value);
       expect(
-        validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value)
-          .ok,
+        validateCuratedTemplateSetupValue('https_endpoint', value).ok,
       ).toBe(matches);
-      const configured = configuredTemplate('curated_https_endpoint_v1', value);
+      const configured = configuredTemplate('https_endpoint', value);
       expect(
         policy.validateTemplateSetup(configured.manifest, configured.origin),
       ).toBe(matches);
@@ -212,10 +210,8 @@ describe('browser template setup versus registered server policy', () => {
     );
     expect(endpointOfBytes(2049).length).toBeLessThan(2048);
     expect(
-      validateCuratedTemplateSetupValue(
-        'curated_https_endpoint_v1',
-        endpointOfBytes(2048),
-      ).ok,
+      validateCuratedTemplateSetupValue('https_endpoint', endpointOfBytes(2048))
+        .ok,
     ).toBe(false);
     expect(
       http.validateConfig({ ...httpConfig, url: endpointOfBytes(2048) }),
@@ -224,10 +220,8 @@ describe('browser template setup versus registered server policy', () => {
       http.validateConfig({ ...httpConfig, url: endpointOfBytes(2049) }),
     ).toBe(false);
     expect(
-      validateCuratedTemplateSetupValue(
-        'curated_https_endpoint_v1',
-        endpointOfBytes(2049),
-      ).ok,
+      validateCuratedTemplateSetupValue('https_endpoint', endpointOfBytes(2049))
+        .ok,
     ).toBe(false);
   });
 
@@ -235,10 +229,9 @@ describe('browser template setup versus registered server policy', () => {
     'shared curated HTTPS corpus in model and registered server: $name',
     ({ value, accepted }) => {
       expect(
-        validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value)
-          .ok,
+        validateCuratedTemplateSetupValue('https_endpoint', value).ok,
       ).toBe(accepted);
-      const configured = configuredTemplate('curated_https_endpoint_v1', value);
+      const configured = configuredTemplate('https_endpoint', value);
       expect(
         policy.validateTemplateSetup(configured.manifest, configured.origin),
       ).toBe(accepted);

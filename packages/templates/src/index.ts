@@ -4,10 +4,7 @@ export {
   type CuratedTemplateSetupValueKind,
   type CuratedWorkflowTemplate,
 } from './catalog.js';
-export {
-  CURATED_HTTPS_ENDPOINT_V1_LIMITS,
-  isCuratedHttpsEndpointV1,
-} from './https-endpoint.js';
+export { isCuratedHttpsEndpoint } from './https-endpoint.js';
 export {
   workflowTemplateOriginRequestSchema,
   workflowTemplateOriginSchema,

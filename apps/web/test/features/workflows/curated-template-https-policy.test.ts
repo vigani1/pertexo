@@ -13,7 +13,7 @@ const controlled = CURATED_WORKFLOW_TEMPLATES.find(
 if (controlled === undefined)
   throw new Error('Missing reviewed controlled template');
 const endpoint = controlled.setupTargets.find(
-  (target) => target.valueKind === 'curated_https_endpoint_v1',
+  (target) => target.valueKind === 'https_endpoint',
 );
 if (endpoint === undefined)
   throw new Error('Missing reviewed curated HTTPS v1 target');
