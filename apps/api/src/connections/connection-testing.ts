@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { ConnectionTestOutcome } from '@pertexo/database/api';
+import type { ConnectionTestOutcome } from '@pertexo/database/connections';
 import {
   ConnectionSecretEncryptionError,
   classifySlackConnectionHealth,

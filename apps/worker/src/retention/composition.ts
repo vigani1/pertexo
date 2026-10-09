@@ -1,11 +1,11 @@
 import { createArtifactStore } from '@pertexo/artifact-store';
+import { createDatabaseRuntime } from '@pertexo/database/platform';
 import {
-  createDatabaseRuntime,
   createPreviewRetentionCoordinator,
   createRetentionDatabase,
   createRunArtifactRetentionCoordinator,
   createWorkspacePurgeCoordinator,
-} from '@pertexo/database/maintenance';
+} from '@pertexo/database/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WorkerConfig } from '../config/worker-config.js';

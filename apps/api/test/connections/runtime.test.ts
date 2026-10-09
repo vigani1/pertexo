@@ -1,8 +1,8 @@
+import type { ApiConnectionDatabase } from '@pertexo/database/connections';
 import type {
-  ApiConnectionDatabase,
   DatabaseConfig,
   DatabaseRuntime,
-} from '@pertexo/database/api';
+} from '@pertexo/database/platform';
 import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 

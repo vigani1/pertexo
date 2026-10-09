@@ -1,5 +1,5 @@
 import type { Provider } from '@nestjs/common';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/execution';
+import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews';
 import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';

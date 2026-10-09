@@ -3,10 +3,12 @@ import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
   createIdentityWorkspaceDatabase,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type IdentityWorkspaceDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/tenant-access';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import {
   createApplicationSecretEnvelope,
   type ApplicationSecretEnvelope,

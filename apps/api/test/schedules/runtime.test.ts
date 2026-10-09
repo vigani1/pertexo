@@ -1,9 +1,11 @@
 import type {
   createScheduleTriggerDatabase,
+  ScheduleTriggerDatabase,
+} from '@pertexo/database/triggers';
+import type {
   DatabaseConfig,
   DatabaseRuntime,
-  ScheduleTriggerDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/platform';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createApiScheduleRuntime } from '../../src/platform/schedules/schedule-runtime.module.js';

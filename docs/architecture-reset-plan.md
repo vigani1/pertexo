@@ -221,8 +221,11 @@ now, as one ordered program — not "whenever we touch it".
         inbox threads are a retention rule. The cross-workspace fold and
         notification recovery claims stay in SQL, as does the recipient check
         the inbox row policies use.
-  - [ ] Consumer-named entry points (`/api`, `/worker`, `/maintenance`,
-        `/lifecycle`).
+  - [x] Consumer-named entry points go: the `api`, `execution`,
+        `maintenance` and `operator` barrels are replaced by one entry point
+        per area folder (`@pertexo/database/runs`, `/authoring`,
+        `/connections`, `/triggers`, `/tenant-access`, `/platform`, …), each
+        an `index.ts` in that folder, plus `/testing`.
 - [ ] **8. Package-by-package pass** — read every file of every package and app,
       bottom of the dependency graph first, and redo, remove or improve using
       the checklist below. One PR per package (several for the large ones):
@@ -328,7 +331,7 @@ itself does not change.
 `@pertexo/<name>` (safe anywhere, including the browser) and
 `@pertexo/<name>/server` (Node only). Areas get their own subpath only when
 they are large (`@pertexo/database/runs`, `@pertexo/contracts/workflow-runs`).
-No consumer-named barrels (today `@pertexo/database/api` re-exports 227 names).
+No consumer-named barrels (`@pertexo/database/api` re-exported 227 names until step 7).
 ESLint enforces the doors at build time; the 36 runtime `server-only.ts` throws
 and the custom import allowlist script go away.
 

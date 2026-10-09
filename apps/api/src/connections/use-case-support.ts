@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type {
   ConnectionRecord,
   ConnectionTestResult,
-} from '@pertexo/database/api';
+} from '@pertexo/database/connections';
 
 import type {
   ActorContext,

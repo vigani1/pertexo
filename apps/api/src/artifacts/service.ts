@@ -7,7 +7,7 @@ import {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/artifacts';
 import {
   artifactFinalizeRequestSchema,
   artifactUploadRequestSchema,

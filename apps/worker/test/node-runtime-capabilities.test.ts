@@ -4,10 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { PutArtifactRequest } from '@pertexo/artifact-store';
-import {
-  ConnectionUnavailableError,
-  createDatabaseRuntime,
-} from '@pertexo/database/execution';
+import { ConnectionUnavailableError } from '@pertexo/database/connections';
+import { createDatabaseRuntime } from '@pertexo/database/platform';
 import type { ConnectionDatabase } from '@pertexo/database/testing';
 import {
   ProviderCredentialInvalidError,

@@ -1,7 +1,5 @@
-import type {
-  NodeAttemptLease,
-  PublishedWorkflowV2Projection,
-} from '@pertexo/database/execution';
+import type { NodeAttemptLease } from '@pertexo/database/attempts';
+import type { PublishedWorkflowV2Projection } from '@pertexo/database/runs';
 import type {
   ExecuteNodeAttemptInput,
   NodeExecutionRegistry,

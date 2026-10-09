@@ -14,7 +14,7 @@ import {
   type ScheduleOccurrenceRecord,
   type ScheduleTriggerDatabase,
   type ScheduleTriggerRecord,
-} from '@pertexo/database/api';
+} from '@pertexo/database/triggers';
 
 import {
   applicationError,

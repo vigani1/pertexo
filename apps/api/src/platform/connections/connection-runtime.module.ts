@@ -3,11 +3,13 @@ import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
   createApiConnectionDatabase,
-  createFailureNotificationDestinationDatabase,
   type ApiConnectionDatabase,
-  type DatabaseConfig,
-  type DatabaseRuntime,
-} from '@pertexo/database/api';
+} from '@pertexo/database/connections';
+import { createFailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import {
   createAwsConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,

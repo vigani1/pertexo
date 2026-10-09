@@ -8,7 +8,7 @@ import type {
   WorkflowOrganizationReadDatabase,
   WorkflowFolderDatabase,
   WorkflowOrganizationBatchDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,

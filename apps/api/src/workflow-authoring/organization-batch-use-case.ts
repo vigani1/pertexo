@@ -7,15 +7,15 @@ import {
   workflowTagCleanupDetachResponseSchema,
   type WorkflowOrganizationBulkItemOutcome,
 } from '@pertexo/contracts/schemas/workflow-authoring';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
-  IdempotencyConflictError,
   WorkflowFolderConflictError,
   WorkflowNotFoundError,
   WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
   type WorkflowOrganizationBatchDatabase,
   type WorkflowOrganizationBatchRequest,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import {
   AuthorizationError,
   type WorkspaceAuthorizationSource,

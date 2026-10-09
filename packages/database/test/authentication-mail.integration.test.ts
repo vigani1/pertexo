@@ -3,12 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  createAuthenticationMailEnqueueStore,
-  type DatabaseConfig,
-} from '../src/api.js';
-import { createAuthenticationMailDeliveryStore } from '../src/execution.js';
-import { createRetentionDatabase } from '../src/maintenance.js';
+import { createAuthenticationMailEnqueueStore } from '../src/identity/index.js';
+import type { DatabaseConfig } from '../src/platform/index.js';
+import { createAuthenticationMailDeliveryStore } from '../src/identity/index.js';
+import { createRetentionDatabase } from '../src/lifecycle/index.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 

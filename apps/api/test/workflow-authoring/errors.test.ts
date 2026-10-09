@@ -8,8 +8,8 @@ import {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
   WorkflowTemplateOriginUnavailableError,
-  IdempotencyConflictError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,

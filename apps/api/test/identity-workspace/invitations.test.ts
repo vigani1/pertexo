@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   InvitationAcceptanceConflictError,
   WorkspaceInvitationCommandConflictError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/tenant-access';
 import { createHash } from 'node:crypto';
 
 import {

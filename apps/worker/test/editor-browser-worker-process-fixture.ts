@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createOutboxDispatcherDatabase } from '@pertexo/database/execution';
+import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';

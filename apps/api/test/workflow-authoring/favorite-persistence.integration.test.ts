@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createIdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
 import {
-  createIdentityWorkspaceDatabase,
   createWorkflowFavoriteDatabase,
   createWorkflowOrganizationReadDatabase,
   type WorkflowFavoriteDatabase,
   type WorkflowOrganizationReadDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import {
   parseDatabaseConfig,
   WorkflowNotFoundError,

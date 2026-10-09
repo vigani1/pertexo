@@ -1,4 +1,4 @@
-import { IdempotencyConflictError } from '@pertexo/database/api';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   IdentityConflictError,
   IdempotencyRequestConflictError,

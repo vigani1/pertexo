@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/execution';
+import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews';
 
 import {
   parseDatabaseConfig,

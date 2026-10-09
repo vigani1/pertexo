@@ -6,7 +6,7 @@ import {
 import {
   parseMaintenanceDatabaseConfig,
   type DatabaseConfig,
-} from '@pertexo/database/maintenance';
+} from '@pertexo/database/platform';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { platformServingReleaseRequiresHttpCapabilities } from '@pertexo/node-catalog';
 import { parseObservabilityConfig } from '@pertexo/observability/config';

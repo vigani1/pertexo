@@ -1,7 +1,7 @@
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/previews';
 import {
   platformExecutableRegistryHistory,
   resolvePlatformNodeDefinitionForRelease,

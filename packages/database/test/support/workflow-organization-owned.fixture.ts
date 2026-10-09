@@ -14,7 +14,7 @@ import { createWorkflowTagDatabase } from '../../src/authoring/organization/tags
 import {
   createWorkflowFolderDatabase,
   createWorkflowOrganizationBatchDatabase,
-} from '../../src/api.js';
+} from '../../src/authoring/index.js';
 import { createWorkflowOrganizationReadDatabase } from '../../src/authoring/organization/workflows.queries.js';
 import { createWorkflowFavoriteDatabase } from '../../src/authoring/organization/favorites.repository.js';
 

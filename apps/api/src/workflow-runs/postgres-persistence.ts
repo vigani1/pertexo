@@ -3,15 +3,17 @@ import {
   IdempotencyRequestConflictError,
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
-  WorkspaceAccessDeniedError,
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
   createWorkflowRunDatabase,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type WorkflowRunDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/runs';
+import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

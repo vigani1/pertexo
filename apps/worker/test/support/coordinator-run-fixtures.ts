@@ -4,7 +4,7 @@ import {
   createRunAdvanceStore,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
-import { createWorkflowRunDatabase } from '@pertexo/database/api';
+import { createWorkflowRunDatabase } from '@pertexo/database/runs';
 import { platformRegistryReleaseSupport } from '@pertexo/node-catalog';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {

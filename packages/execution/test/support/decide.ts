@@ -1,7 +1,7 @@
 import type {
   PublishedWorkflowV2Projection,
   RunAdvanceDecision,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/runs';
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 
 import { advanceRun } from '../../src/runs/advance-run.js';

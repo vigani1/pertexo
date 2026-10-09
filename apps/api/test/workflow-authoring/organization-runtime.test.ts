@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import type { WorkflowInputCaseDatabase } from '@pertexo/database/api';
+import type { WorkflowInputCaseDatabase } from '@pertexo/database/authoring';
 import { createApiWorkflowMetadataRuntime } from '../../src/platform/workflow/workflow-metadata-runtime.js';
 
 // Construction/ownership tests use lazy real stores and never send a query.

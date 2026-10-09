@@ -20,7 +20,7 @@ import {
 } from '@pertexo/node-catalog';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
 import { describe, expect, it, vi } from 'vitest';
-import { WorkflowPublishedVersionConflictError } from '@pertexo/database/api';
+import { WorkflowPublishedVersionConflictError } from '@pertexo/database/runs';
 
 import { createInitialCheckpoint, ENGINE_VERSION } from '@pertexo/execution';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';

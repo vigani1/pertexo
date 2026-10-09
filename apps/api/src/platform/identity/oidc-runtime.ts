@@ -1,9 +1,11 @@
 import {
   createOidcLoginTransactionStore,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type OidcLoginTransactionStore as DatabaseOidcLoginTransactionStore,
-} from '@pertexo/database/api';
+} from '@pertexo/database/tenant-access';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 
 import {
   GenericOidcProviderAdapter,

@@ -1,7 +1,5 @@
 import {
   IdentityConflictError,
-  IdempotencyConflictError,
-  IdempotencyRequestConflictError,
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
@@ -13,7 +11,9 @@ import {
   UserProfileCommandConflictError,
   type WorkspaceMemberRoleCommandConflictReason,
   type WorkspaceMemberRemovalCommandConflictReason,
-} from '@pertexo/database/api';
+} from '@pertexo/database/tenant-access';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { IdempotencyRequestConflictError } from '@pertexo/database/runs';
 import {
   applicationError,
   type ApplicationError,

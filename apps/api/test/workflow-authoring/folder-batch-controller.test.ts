@@ -18,7 +18,7 @@ import {
   WorkflowNotFoundError,
   type WorkflowFolderDatabase,
   type WorkflowOrganizationBatchDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import { WorkflowFoldersController } from '../../src/workflow-authoring/folder-controller.js';
 import { WorkflowOrganizationBatchesController } from '../../src/workflow-authoring/organization-batch-controller.js';
 import { WorkflowOrganizationController } from '../../src/workflow-authoring/organization-controller.js';

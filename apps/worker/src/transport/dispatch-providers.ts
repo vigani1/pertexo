@@ -2,7 +2,7 @@ import type { Provider } from '@nestjs/common';
 import {
   createOutboxDispatcherDatabase,
   type OutboxDispatcherDatabase,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/outbox';
 import {
   createTransportMetrics,
   type TransportMetrics,

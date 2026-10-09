@@ -1,7 +1,7 @@
 import type {
   InitialCheckpointFactory,
   PublishedWorkflowV2Projection,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/runs';
 import {
   createCheckpoint,
   createCheckpointV2,

@@ -5,7 +5,7 @@ import {
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import type { WorkspaceDatabase } from '@pertexo/database/api';
+import type { WorkspaceDatabase } from '@pertexo/database/platform';
 
 import { WORKSPACE_DATABASE } from '../database/database.module.js';
 import { RateLimitExempt } from '../rate-limit/metadata.js';

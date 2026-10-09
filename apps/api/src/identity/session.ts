@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { generatePersistedId } from '@pertexo/database/api';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import {
   encodeBase64Url,

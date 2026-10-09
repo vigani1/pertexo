@@ -5,10 +5,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { ArtifactStore } from '@pertexo/artifact-store';
-import {
-  artifactStorageKey,
-  generatePersistedId,
-} from '@pertexo/database/execution';
+import { artifactStorageKey } from '@pertexo/database/artifacts';
+import { generatePersistedId } from '@pertexo/database/platform';
 import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
 
 import type { NodeExecutionCapabilityContext } from './node-execution-capabilities.js';

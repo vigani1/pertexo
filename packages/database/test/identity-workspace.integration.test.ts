@@ -23,7 +23,7 @@ import {
 } from '../src/testing.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { IdempotencyConflictError } from '../src/platform/idempotency.js';
-import { createWorkspaceInvitationDeliveryStore } from '../src/execution.js';
+import { createWorkspaceInvitationDeliveryStore } from '../src/tenant-access/index.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { enforceRetention } from './support/retention.js';
 

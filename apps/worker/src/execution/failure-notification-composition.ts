@@ -1,4 +1,4 @@
-import { createFailureNotificationStore } from '@pertexo/database/execution';
+import { createFailureNotificationStore } from '@pertexo/database/notifications';
 import {
   createAwsConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,

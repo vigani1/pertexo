@@ -1,4 +1,4 @@
-import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/execution';
+import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
 import {
   createResendClient,
   type ResendClient,

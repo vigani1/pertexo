@@ -1,7 +1,5 @@
-import {
-  ConnectionNotFoundError,
-  generatePersistedId,
-} from '@pertexo/database/api';
+import { ConnectionNotFoundError } from '@pertexo/database/connections';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/index.js';
 import { authorizeConnectionOperation } from './authorization.js';

@@ -7,7 +7,7 @@ import {
   workspaceAutoPauseSettingsRequestSchema,
   workspaceAutoPauseCommandResponseSchema,
 } from '@pertexo/contracts/workflow-authoring';
-import type { WorkflowAutoPauseDatabase } from '@pertexo/database/api';
+import type { WorkflowAutoPauseDatabase } from '@pertexo/database/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import type { WorkspaceInboxDatabase } from '@pertexo/database/api';
+import type { WorkspaceInboxDatabase } from '@pertexo/database/inbox';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {

@@ -2,7 +2,7 @@ import {
   UserProfileCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
   type IdentityWorkspaceDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/tenant-access';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

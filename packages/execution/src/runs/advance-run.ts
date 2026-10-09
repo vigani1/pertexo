@@ -4,7 +4,7 @@ import type {
   RunAdvanceInput,
   RunAdvanceResult,
   RunAdvanceStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/runs';
 import { advanceWorkflow, parseCheckpoint } from '@pertexo/workflow-engine';
 
 import {

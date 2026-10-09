@@ -9,7 +9,7 @@ import {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/artifacts';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

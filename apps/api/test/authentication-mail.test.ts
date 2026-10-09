@@ -1,4 +1,4 @@
-import type { AuthenticationMailEnqueueStore } from '@pertexo/database/api';
+import type { AuthenticationMailEnqueueStore } from '@pertexo/database/identity';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

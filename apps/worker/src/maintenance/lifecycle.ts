@@ -1,7 +1,5 @@
-import type {
-  FailureNotificationStore,
-  OperatorRunReplayStore,
-} from '@pertexo/database/execution';
+import type { FailureNotificationStore } from '@pertexo/database/notifications';
+import type { OperatorRunReplayStore } from '@pertexo/database/operator';
 import type { QueueConsumer } from '@pertexo/queue';
 
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';

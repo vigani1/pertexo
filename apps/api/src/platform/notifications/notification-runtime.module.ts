@@ -1,9 +1,11 @@
 import {
   createWorkspaceInboxDatabase,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type WorkspaceInboxDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/inbox';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 
 import {
   RedisInboxHintHub,

@@ -2,7 +2,7 @@ import {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,
   type ConnectionResolutionDatabase,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/connections';
 import type { ConnectionEnvelopeEncryption } from '@pertexo/integrations/server';
 import {
   ProviderCredentialInvalidError,

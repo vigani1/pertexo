@@ -4,7 +4,7 @@ import { authenticationReturnPathSchema } from '@pertexo/contracts/schemas/ident
 import {
   insertAuthenticationMail,
   recordIdentitySecurityFact,
-} from '@pertexo/database/api';
+} from '@pertexo/database/identity';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 

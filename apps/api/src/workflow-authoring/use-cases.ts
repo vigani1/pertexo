@@ -30,11 +30,11 @@ import type {
   WorkflowAuthoringPersistence,
   WorkflowApplicationInput,
 } from './ports.js';
-import type { WorkflowDraftRecord } from '@pertexo/database/api';
+import type { WorkflowDraftRecord } from '@pertexo/database/authoring';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 
 import {
   serializeWorkflowCreate,

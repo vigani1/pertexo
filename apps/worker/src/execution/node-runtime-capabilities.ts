@@ -5,15 +5,19 @@ import {
 } from '@pertexo/artifact-store';
 import {
   createWorkerConnectionResolutionDatabase,
+  type WorkerConnectionResolutionDatabase,
+} from '@pertexo/database/connections';
+import {
   createPendingArtifact,
   createPendingPreviewArtifact,
-  createWorkspaceDatabase,
   finalizeArtifactUpload,
-  type WorkerConnectionResolutionDatabase,
+} from '@pertexo/database/artifacts';
+import {
+  createWorkspaceDatabase,
   type DatabaseConfig,
   type DatabaseRuntime,
   type WorkspaceDatabase,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/platform';
 import {
   createAwsConnectionEnvelopeEncryption,
   type AwsConnectionEnvelopeEncryptionConfig,

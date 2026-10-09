@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { InvitationAcceptanceConflictError } from '@pertexo/database/api';
+import { InvitationAcceptanceConflictError } from '@pertexo/database/tenant-access';
 
 import {
   digestSha256Hex,

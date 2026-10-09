@@ -1,14 +1,18 @@
 import {
   canonicalOutboxPayloadChecksum,
-  createOperatorRunReplayStore,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
+} from '@pertexo/database/outbox';
+import {
+  createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type OperatorRunReplayStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/operator';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

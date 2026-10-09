@@ -1,15 +1,17 @@
 import {
   canonicalOutboxPayloadChecksum,
-  createWorkspaceDatabase,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
   reconcileUnknownOutcomeEvidence,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type UnknownOutcomeReconciliationResult,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/outbox';
+import {
+  createWorkspaceDatabase,
+  type DatabaseConfig,
+  type DatabaseRuntime,
+} from '@pertexo/database/platform';
 import {
   unrecoverableQueueError,
   type QueueDelivery,

@@ -1,8 +1,8 @@
 import {
   createWebhookTriggerDatabase,
   type WebhookTriggerDatabase,
-  type DatabaseRuntime,
-} from '@pertexo/database/api';
+} from '@pertexo/database/triggers';
+import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { createAwsWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import {
   platformExecutableRegistryHistory,

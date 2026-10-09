@@ -4,9 +4,11 @@ import {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
   WebhookWorkflowPausedError,
+} from '@pertexo/database/triggers';
+import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/runs';
 import type { FastifyReply } from 'fastify';
 
 import { REJECTED_ATTEMPT, type RejectedAttempt } from './delivery-log.js';

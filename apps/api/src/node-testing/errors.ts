@@ -1,8 +1,8 @@
+import { PriorPreviewInputUnavailableError } from '@pertexo/database/previews';
 import {
-  PriorPreviewInputUnavailableError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,

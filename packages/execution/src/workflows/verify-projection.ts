@@ -1,4 +1,4 @@
-import type { PublishedWorkflowV2Projection } from '@pertexo/database/execution';
+import type { PublishedWorkflowV2Projection } from '@pertexo/database/runs';
 import {
   verifyWorkflowExecutableV2,
   WorkflowEngineError,

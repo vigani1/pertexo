@@ -1,10 +1,12 @@
 import { metrics } from '@opentelemetry/api';
 import {
   createScheduleTriggerDatabase,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type ScheduleTriggerDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/triggers';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 
 import { ScheduleManagementService } from '../../schedules/service.js';
 import {

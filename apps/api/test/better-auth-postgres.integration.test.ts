@@ -1,10 +1,10 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
+import { createAuthenticationMailEnqueueStore } from '@pertexo/database/identity';
 import {
-  createAuthenticationMailEnqueueStore,
   createIdentityWorkspaceDatabase,
   createOidcLoginTransactionStore,
-} from '@pertexo/database/api';
+} from '@pertexo/database/tenant-access';
 import {
   migrateDatabase,
   parseDatabaseConfig,

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   WorkflowFolderConflictError,
   type WorkflowFolderDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import {
   createActorContext,
   AuthorizationError,

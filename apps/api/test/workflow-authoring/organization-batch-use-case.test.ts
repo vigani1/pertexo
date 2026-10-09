@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   WorkflowFolderConflictError,
-  IdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
   type WorkflowOrganizationBatchDatabase,
   type WorkflowOrganizationBatchInput,
   type WorkflowOrganizationBatchItemResult,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   AuthorizationError,
   authorizeWorkspace,

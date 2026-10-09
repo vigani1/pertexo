@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { IdempotencyConflictError } from '../src/platform/index.js';
 import {
-  IdempotencyConflictError,
   WorkflowFolderConflictError,
   type WorkflowOrganizationBatchRequest,
-} from '../src/api.js';
+} from '../src/authoring/index.js';
 import {
   createOrganizationOwnedFixture,
   organizationFixtureEnabled,

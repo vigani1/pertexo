@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import type { WorkspaceDatabase } from '@pertexo/database/execution';
+import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import {
   AUTHENTICATION_MAIL_RUNTIME,
   type AuthenticationMailRuntime,

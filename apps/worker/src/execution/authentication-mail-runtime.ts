@@ -1,4 +1,4 @@
-import type { AuthenticationMailDeliveryStore } from '@pertexo/database/execution';
+import type { AuthenticationMailDeliveryStore } from '@pertexo/database/identity';
 
 import type { AuthenticationMailDeliveryHandler } from './authentication-mail-delivery.js';
 

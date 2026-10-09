@@ -1,7 +1,7 @@
 import type {
   PreviewAttemptLease,
   PreviewHeartbeatResult,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/previews';
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 
 export type PreviewRaceOutcome<T> =

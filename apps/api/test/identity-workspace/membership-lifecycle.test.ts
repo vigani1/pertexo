@@ -1,7 +1,7 @@
 import {
   WorkspaceMembershipCommandConflictError,
   type IdentityWorkspaceDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/tenant-access';
 import { describe, expect, it, vi } from 'vitest';
 
 import { IdentityError } from '../../src/identity/index.js';

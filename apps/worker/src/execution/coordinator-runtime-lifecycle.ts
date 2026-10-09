@@ -2,7 +2,7 @@ import type {
   DeadlineWakeupScanner,
   DueNodeWakeupScanner,
   RunAdvanceStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 import type {
   QueueConsumer,
