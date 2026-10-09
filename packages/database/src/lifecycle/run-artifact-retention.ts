@@ -2,8 +2,8 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { inRetentionTransaction } from './retention-transaction.js';
 
 export interface RunArtifactRetentionStore {

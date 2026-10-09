@@ -6,13 +6,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
-import { createDatabasePreviewAttemptRunStore } from '../src/previews/attempt-store.js';
-import { createDatabasePreviewReconciliationStore } from '../src/previews/reconciliation-store.js';
+import { createDatabasePreviewAttemptRunStore } from '../src/previews/attempts/store.js';
+import { createDatabasePreviewReconciliationStore } from '../src/previews/reconciliation/store.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
   acquireDatabasePool,
   createDatabaseRuntime,
-} from '../src/platform/database-runtime.js';
+} from '../src/platform/pool/runtime.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =

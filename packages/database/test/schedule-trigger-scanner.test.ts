@@ -28,7 +28,7 @@ vi.mock('../src/runs/published-workflow.js', async (importOriginal) => ({
   }),
 }));
 
-vi.mock('../src/platform/database-runtime.js', () => ({
+vi.mock('../src/platform/pool/runtime.js', () => ({
   acquireDatabasePool: () => {
     const pool = seams.pools.shift();
     if (pool === undefined) throw new Error('Unexpected pool acquisition');

@@ -1,4 +1,4 @@
-import { acquireDatabasePool } from '../../platform/database-runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';

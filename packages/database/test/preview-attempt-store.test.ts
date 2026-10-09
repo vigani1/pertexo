@@ -8,14 +8,14 @@ const database = vi.hoisted(() => ({
   markDispatched: vi.fn(() => Promise.resolve('committed' as const)),
 }));
 
-vi.mock('../src/platform/database-runtime.js', () => ({
+vi.mock('../src/platform/pool/runtime.js', () => ({
   acquireDatabasePool: database.acquire,
 }));
-vi.mock('../src/previews/dispatch.js', () => ({
+vi.mock('../src/previews/attempts/dispatch.js', () => ({
   markPreviewDispatched: database.markDispatched,
 }));
 
-import { createDatabasePreviewAttemptRunStore } from '../src/previews/attempt-store.js';
+import { createDatabasePreviewAttemptRunStore } from '../src/previews/attempts/store.js';
 
 const config = {
   connectionString: 'postgresql://worker:password@localhost/pertexo',

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 

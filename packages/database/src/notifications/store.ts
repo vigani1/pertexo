@@ -1,5 +1,5 @@
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 

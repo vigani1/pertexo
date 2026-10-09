@@ -1,6 +1,6 @@
-import { acquireDatabasePool } from '../../platform/database-runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';

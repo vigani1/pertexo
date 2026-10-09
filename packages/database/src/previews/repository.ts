@@ -6,19 +6,19 @@ export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
   acceptPreviewRun,
-} from './acceptance.js';
+} from './runs/acceptance.js';
 export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
   PreviewRunRecord,
   PreviewStatus,
-} from './acceptance.js';
-export { readPreviewRun } from './read.js';
-export { resolvePreviewReplay } from './replay.js';
+} from './runs/acceptance.js';
+export { readPreviewRun } from './runs/read.js';
+export { resolvePreviewReplay } from './runs/replay.js';
 export type {
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
-} from './replay.js';
+} from './runs/replay.js';
 
 // ---------------------------------------------------------------------------
 // Worker-side execution seam.
@@ -40,19 +40,19 @@ export type {
   PreviewTerminalOutcome,
 } from './contract.js';
 
-export { claimPreviewDelivery } from './claim.js';
-export type { PreviewClaimResult } from './claim.js';
+export { claimPreviewDelivery } from './attempts/claim.js';
+export type { PreviewClaimResult } from './attempts/claim.js';
 
-export { heartbeatPreviewLease } from './heartbeat.js';
-export type { PreviewHeartbeatResult } from './heartbeat.js';
+export { heartbeatPreviewLease } from './attempts/heartbeat.js';
+export type { PreviewHeartbeatResult } from './attempts/heartbeat.js';
 
-export { markPreviewDispatched } from './dispatch.js';
+export { markPreviewDispatched } from './attempts/dispatch.js';
 
-export { completePreviewAttempt } from './completion.js';
-export type { PreviewCompletionResult } from './completion.js';
+export { completePreviewAttempt } from './attempts/completion.js';
+export type { PreviewCompletionResult } from './attempts/completion.js';
 
 export {
   isValidStoredExecutionOutput,
   reconcilePreviewDelivery,
-} from './reconciliation.js';
-export type { PreviewDeliveryReconciliationResult } from './reconciliation.js';
+} from './reconciliation/deliveries.js';
+export type { PreviewDeliveryReconciliationResult } from './reconciliation/deliveries.js';

@@ -1,6 +1,6 @@
 import type { InitialCheckpointFactory } from './initial-checkpoint.js';
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 

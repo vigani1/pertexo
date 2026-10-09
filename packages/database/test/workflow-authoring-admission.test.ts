@@ -22,7 +22,7 @@ import { createWorkflowPublisher } from '../src/authoring/publication/publisher.
 import { WorkflowRevisionConflictError } from '../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflows/database.js';
-import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
+import { createDatabaseRuntime } from '../src/platform/pool/runtime.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

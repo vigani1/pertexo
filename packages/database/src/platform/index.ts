@@ -3,14 +3,11 @@ export {
   parseMaintenanceDatabaseConfig,
   parseOperatorDatabaseConfig,
 } from '../config.js';
-export {
-  acquireDatabasePool,
-  createDatabaseRuntime,
-} from './database-runtime.js';
+export { acquireDatabasePool, createDatabaseRuntime } from './pool/runtime.js';
 export type {
   DatabaseRuntime,
   DatabaseRuntimeOptions,
-} from './database-runtime.js';
+} from './pool/runtime.js';
 export { generatePersistedId } from './persisted-id.js';
 export { IdempotencyConflictError } from './idempotency.js';
 export type { DatabaseReadiness } from './readiness.js';

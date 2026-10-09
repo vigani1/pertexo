@@ -7,7 +7,7 @@ import type { DatabaseConfig } from '../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
+} from '../platform/pool/runtime.js';
 
 const purpose = z.enum([
   'verification',

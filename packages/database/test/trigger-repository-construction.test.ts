@@ -8,7 +8,7 @@ const database = vi.hoisted(() => ({
   }[],
 }));
 
-vi.mock('../src/platform/postgres-telemetry.js', () => ({
+vi.mock('../src/platform/pool/telemetry.js', () => ({
   createDatabasePool: () => {
     const pool = {
       connect: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock('../src/platform/postgres-telemetry.js', () => ({
 }));
 
 import type { DatabaseConfig } from '../src/config.js';
-import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
+import { createDatabaseRuntime } from '../src/platform/pool/runtime.js';
 import { createPublishedWorkflowReader } from '../src/runs/published-workflow.js';
 import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher/database.js';
 import { createWorkflowRunDatabase } from '../src/runs/runs.repository.js';

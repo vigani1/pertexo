@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { acquireAbortablePoolClient } from '../src/platform/abortable-pool-checkout.js';
+import { acquireAbortablePoolClient } from '../src/platform/pool/abortable-checkout.js';
 
 describe('abortable pool checkout', () => {
   it('does not start checkout when already aborted', async () => {

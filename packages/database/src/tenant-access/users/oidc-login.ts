@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { acquireDatabasePool } from '../../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { withPlatformTransaction } from '../transactions.js';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';

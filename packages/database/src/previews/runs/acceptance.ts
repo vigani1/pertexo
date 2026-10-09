@@ -5,15 +5,15 @@ import { z } from 'zod';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../outbox/events.js';
-import { executableNodeSchema } from './executable-node.js';
+} from '../../outbox/events.js';
+import { executableNodeSchema } from '../executable-node.js';
 import {
   PREVIEW_STATUS,
   traceparentSchema,
   type PreviewStatus,
-} from './contract.js';
-export { PREVIEW_STATUS } from './contract.js';
-export type { PreviewStatus } from './contract.js';
+} from '../contract.js';
+export { PREVIEW_STATUS } from '../contract.js';
+export type { PreviewStatus } from '../contract.js';
 import {
   auditEvents,
   idempotencyRecords,
@@ -22,13 +22,13 @@ import {
   workflowDrafts,
   workspaceMemberships,
   workspaces,
-} from '../schema.js';
+} from '../../schema.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionValueV1,
-} from '../platform/stored-execution-value.js';
-import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { sha256HexSchema } from '../platform/persisted-primitives.js';
+} from '../../platform/stored-execution-value.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
+import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
 const identityKeySchema = z
   .string()

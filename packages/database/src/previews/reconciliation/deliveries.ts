@@ -1,8 +1,8 @@
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { PREVIEW_STATUS } from './acceptance.js';
-import { appendPreviewTerminalFacts } from './completion.js';
+import { PREVIEW_STATUS } from '../runs/acceptance.js';
+import { appendPreviewTerminalFacts } from '../attempts/completion.js';
 import {
   TERMINAL_PREVIEW_STATUSES,
   PreviewAttemptStateError,
@@ -11,20 +11,20 @@ import {
   previewPairConsistent,
   previewReconcilerConsumerName,
   type PreviewDelivery,
-} from './contract.js';
+} from '../contract.js';
 import {
   auditPreviewDeliveryMismatch,
   claimPreviewReceipt,
   completePreviewReceipt,
   insertPreviewOutboxDelivery,
   validatePreviewReconciliationDelivery,
-} from './delivery.js';
+} from '../attempts/delivery.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionValueV1,
   type StoredExecutionValueV1,
-} from '../platform/stored-execution-value.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
+} from '../../platform/stored-execution-value.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 export type PreviewDeliveryReconciliationResult =
   | Readonly<{ kind: 'duplicate' }>

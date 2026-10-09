@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';

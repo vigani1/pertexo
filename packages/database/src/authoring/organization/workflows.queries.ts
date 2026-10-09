@@ -4,7 +4,7 @@ import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../../platform/database-runtime.js';
+} from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { ROLES } from '../../tenant-access/policy.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';

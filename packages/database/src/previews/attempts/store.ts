@@ -1,8 +1,8 @@
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
-import type { DatabaseConfig } from '../config.js';
+} from '../../platform/pool/runtime.js';
+import type { DatabaseConfig } from '../../config.js';
 import { z } from 'zod';
 import { claimPreviewDelivery } from './claim.js';
 import { completePreviewAttempt } from './completion.js';

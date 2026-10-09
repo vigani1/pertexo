@@ -4,7 +4,7 @@ import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../../platform/database-runtime.js';
+} from '../../platform/pool/runtime.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.js';
 
