@@ -1,4 +1,4 @@
-export { lockManualStartCommand } from './runs/manual-start-command.js';
+export { lockManualStartCommand } from '../runs/commands/manual-start.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
@@ -80,7 +80,7 @@ export {
   RUN_STATUS_VALUES,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './runs/execution-acceptance.js';
+} from '../runs/commands/acceptance.js';
 export {
   acceptPreviewRun,
   readPreviewRun,
@@ -118,22 +118,22 @@ export type {
   IdempotencyStatus,
   RunStatus,
   WorkflowRunAcceptanceReplayInput,
-} from './runs/execution-acceptance.js';
+} from '../runs/commands/acceptance.js';
 export {
   appendRunEvent,
   readRunEventsAfter,
   RUN_EVENT_TYPE,
-} from './runs/run-events.js';
+} from '../runs/events.js';
 export type {
   PersistedRunEvent,
   RunEventPage,
   RunEventType,
-} from './runs/run-events.js';
+} from '../runs/events.js';
 export {
   ExecutionStateConflictError,
   RunEventGapError,
-} from './runs/execution-state.js';
-export { requestWorkflowRunCancellation } from './runs/workflow-run-cancellation.js';
+} from '../runs/state-errors.js';
+export { requestWorkflowRunCancellation } from '../runs/commands/cancel.js';
 export {
   createPublishedWorkflowReader,
   PublishedWorkflowVersionCorruptError,
@@ -205,7 +205,7 @@ export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
-} from './runs/workflow-run-api.js';
+} from '../runs/runs.repository.js';
 export type {
   CancelWorkflowRunInput,
   GetWorkflowRunInput,
@@ -215,4 +215,4 @@ export type {
   WorkflowRunDatabase,
   WorkflowRunReadModel as ApiWorkflowRunReadModel,
   WorkflowRunRecord as ApiWorkflowRunRecord,
-} from './runs/workflow-run-api.js';
+} from '../runs/runs.repository.js';

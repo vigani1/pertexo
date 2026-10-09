@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { ExecutionStateConflictError } from './execution-state.js';
-import { appendLockedRunEvent, RUN_EVENT_TYPE } from './run-events.js';
+import { ExecutionStateConflictError } from '../state-errors.js';
+import { appendLockedRunEvent, RUN_EVENT_TYPE } from '../events.js';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 
 const actorSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);

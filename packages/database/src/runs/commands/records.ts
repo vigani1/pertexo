@@ -6,8 +6,8 @@ import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import {
   acceptWorkflowRun,
   type AcceptWorkflowRunInput,
-} from './execution-acceptance.js';
-import { WorkflowRunNotFoundError } from './workflow-run-errors.js';
+} from './acceptance.js';
+import { WorkflowRunNotFoundError } from '../errors.js';
 
 export const runStatusSchema = z.enum([
   'queued',

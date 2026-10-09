@@ -1,11 +1,11 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
-import { IdempotencyRequestConflictError } from './execution-acceptance.js';
+import { IdempotencyRequestConflictError } from './acceptance.js';
 import {
   WorkflowManualStartUnavailableError,
   WorkflowRunNotFoundError,
-} from './workflow-run-errors.js';
+} from '../errors.js';
 
 export type ManualStartIdentity = Readonly<{
   actorId: string;

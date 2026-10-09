@@ -6,11 +6,11 @@ import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
 } from '../../tenant-access/workspace.js';
-import { WorkflowRunReadCapacityError } from './workflow-run-errors.js';
+import { WorkflowRunReadCapacityError } from '../errors.js';
 import {
   readWorkflowRunReadRecord,
   type WorkflowRunReadRecord,
-} from './workflow-run-persistence-support.js';
+} from '../commands/records.js';
 
 const getInputSchema = z
   .object({

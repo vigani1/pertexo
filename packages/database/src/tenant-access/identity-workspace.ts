@@ -31,7 +31,7 @@ import {
   IDEMPOTENCY_STATUS,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-} from '../execution/runs/execution-acceptance.js';
+} from '../runs/commands/acceptance.js';
 import {
   mapWorkspace,
   mapWorkspaceLifecycleOperation,

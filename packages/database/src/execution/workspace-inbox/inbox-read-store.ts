@@ -17,7 +17,7 @@ import {
 import {
   readWorkflowRunFailedSteps,
   type WorkflowRunFailedStep,
-} from '../runs/workflow-run-data.js';
+} from '../../runs/queries/run-data.js';
 
 export type WorkspaceInboxFailureKind =
   'failed' | 'timed_out' | 'outcome_unknown';

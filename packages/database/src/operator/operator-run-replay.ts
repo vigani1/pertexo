@@ -11,7 +11,7 @@ import {
 import type { DatabaseConfig } from '../config.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createWorkspaceDatabase } from '../database.js';
-import { acceptWorkflowRun } from '../execution/runs/execution-acceptance.js';
+import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { consumeInboxMessage } from '../execution/transport/inbox.js';
 import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
 import {

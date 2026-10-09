@@ -19,7 +19,7 @@ import {
 import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
-} from '../execution/runs/execution-acceptance.js';
+} from '../runs/commands/acceptance.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,

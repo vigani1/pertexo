@@ -7,7 +7,7 @@ const fixture = vi.hoisted(() => ({ execute: vi.fn(), transaction: vi.fn() }));
 vi.mock('../src/tenant-access/workspace.js', () => ({
   withWorkspaceReadTransaction: fixture.transaction,
 }));
-import { readWorkspaceUsageCapacity } from '../src/execution/runs/workspace-usage-capacity.js';
+import { readWorkspaceUsageCapacity } from '../src/runs/queries/usage-capacity.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const pool = {} as Pool;

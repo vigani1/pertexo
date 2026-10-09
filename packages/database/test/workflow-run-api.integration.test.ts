@@ -15,17 +15,17 @@ import { parseDatabaseConfig } from '../src/config.js';
 import {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
-} from '../src/execution/runs/execution-acceptance.js';
+} from '../src/runs/commands/acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
-import { WorkflowManualStartUnavailableError } from '../src/execution/runs/workflow-run-errors.js';
+import { WorkflowManualStartUnavailableError } from '../src/runs/errors.js';
 import {
   createWorkflowRunDatabase,
   WorkflowRunNotFoundError,
   WorkflowRunNotExecutableError,
   WorkflowRunReadCapacityError,
   WorkflowPublishedVersionConflictError,
-} from '../src/execution/runs/workflow-run-api.js';
-import type { ExecutionStateConflictError } from '../src/execution/runs/execution-state.js';
+} from '../src/runs/runs.repository.js';
+import type { ExecutionStateConflictError } from '../src/runs/state-errors.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { explainDocument, explainWork } from './support/query-plan.js';
