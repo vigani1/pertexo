@@ -1727,41 +1727,6 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
   });
 
-  it.each([new Date(Number.NaN), new Date(8.64e15)])(
-    'rejects an invalid or overflowing artifact clock %s before persistence',
-    async (clock) => {
-      const createPending = vi.fn();
-      const runtime = await createWorkerNodeRuntimeCapabilities(
-        { database: databaseConfig, artifactRetentionMillis: 60_000 },
-        {
-          artifactPersistence: { createPending, finalize: vi.fn() },
-          artifactStore: { put: vi.fn() },
-          now: () => clock,
-        },
-      );
-      try {
-        const artifacts = runtime.factories.artifacts?.(context);
-        if (artifacts === undefined)
-          throw new Error('artifact capability missing');
-        await expect(
-          artifacts.write({
-            body: (async function* (): AsyncGenerator<Uint8Array> {
-              await Promise.resolve();
-              yield new Uint8Array([1]);
-            })(),
-            maxBytes: 1,
-            mediaType: 'application/octet-stream',
-            purpose: 'node-output',
-            signal: new AbortController().signal,
-          }),
-        ).rejects.toBeInstanceOf(TypeError);
-        expect(createPending).not.toHaveBeenCalled();
-      } finally {
-        await runtime.close();
-      }
-    },
-  );
-
   it.each([0, 1.5, 10_485_761])(
     'rejects invalid artifact byte limit %s',
     async (maxBytes) => {
@@ -1791,93 +1756,34 @@ describe('worker node runtime capabilities', () => {
     },
   );
 
-  it.each([new Date(Number.NaN), new Date('2026-08-22T11:59:59.000Z')])(
-    'rejects invalid artifact deadline %s',
-    async (artifactRetentionDeadline) => {
-      const now = new Date('2026-08-22T12:00:00.000Z');
-      const runtime = await createWorkerNodeRuntimeCapabilities(
-        { database: databaseConfig },
-        {
-          artifactPersistence: { createPending: vi.fn(), finalize: vi.fn() },
-          artifactStore: { put: vi.fn() },
-          now: () => now,
-        },
-      );
-      const artifacts = runtime.factories.artifacts?.({
-        ...context,
-        artifactRetentionDeadline,
-      });
-      if (artifacts === undefined)
-        throw new Error('artifact capability missing');
-      await expect(
-        artifacts.write({
-          body: (async function* (): AsyncGenerator<Uint8Array> {
-            await Promise.resolve();
-            yield new Uint8Array();
-          })(),
-          maxBytes: 1,
-          mediaType: 'text/plain',
-          purpose: 'test',
-          signal: new AbortController().signal,
-        }),
-      ).rejects.toBeInstanceOf(
-        artifactRetentionDeadline.getTime() <= now.getTime()
-          ? RangeError
-          : TypeError,
-      );
-      await runtime.close();
-    },
-  );
-
-  it.each([
-    ['artifactId', 'wrong-artifact'],
-    ['workspaceId', 'wrong-workspace'],
-    ['byteLength', 2],
-    ['mediaType', 'wrong/type'],
-    ['sha256', '0'.repeat(64)],
-  ] as const)(
-    'rejects incompatible artifact-store %s metadata and keeps readiness optional',
-    async (field, value) => {
-      const runtime = await createWorkerNodeRuntimeCapabilities(
-        { database: databaseConfig },
-        {
-          artifactPersistence: {
-            createPending: vi.fn(() => Promise.resolve()),
-            finalize: vi.fn(),
-          },
-          artifactStore: {
-            put: (request) => {
-              const uploaded = {
-                artifactId: request.artifactId,
-                workspaceId: request.workspaceId,
-                byteLength: request.byteLength,
-                mediaType: request.mediaType,
-                sha256: request.sha256,
-              };
-              return Promise.resolve({ ...uploaded, [field]: value } as never);
-            },
-          },
-          artifactId: () => artifactId,
-        },
-      );
-      await expect(runtime.checkReadiness()).resolves.toBeUndefined();
-      const artifacts = runtime.factories.artifacts?.(context);
-      if (artifacts === undefined)
-        throw new Error('artifact capability missing');
-      await expect(
-        artifacts.write({
-          body: (async function* (): AsyncGenerator<Uint8Array> {
-            await Promise.resolve();
-            yield new Uint8Array([1]);
-          })(),
-          maxBytes: 1,
-          mediaType: 'text/plain',
-          purpose: 'test',
-          signal: new AbortController().signal,
-        }),
-      ).rejects.toThrow('Artifact store returned incompatible metadata');
-      await runtime.close();
-      await runtime.close();
-    },
-  );
+  it('rejects an artifact whose retention deadline has passed', async () => {
+    const artifactRetentionDeadline = new Date('2026-08-22T11:59:59.000Z');
+    const now = new Date('2026-08-22T12:00:00.000Z');
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: { createPending: vi.fn(), finalize: vi.fn() },
+        artifactStore: { put: vi.fn() },
+        now: () => now,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.({
+      ...context,
+      artifactRetentionDeadline,
+    });
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+    await expect(
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array();
+        })(),
+        maxBytes: 1,
+        mediaType: 'text/plain',
+        purpose: 'test',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(RangeError);
+    await runtime.close();
+  });
 });

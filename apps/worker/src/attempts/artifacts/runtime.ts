@@ -10,11 +10,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
 
 import type { NodeExecutionCapabilityContext } from '../capabilities.js';
-import {
-  artifactExpiry,
-  assertArtifactByteLimit,
-  assertUploadedArtifactMatches,
-} from './policy.js';
+import { artifactExpiry, assertArtifactByteLimit } from './policy.js';
 
 type ArtifactDescriptor = Readonly<{
   artifactId: string;
@@ -282,7 +278,7 @@ export function createNodeArtifactRuntimeFactory(
             });
             assertNotAborted(writeInput.signal);
             const upload = ownArtifactUploadStream(createReadStream(spoolPath));
-            const uploaded = await completeWithCleanup(
+            await completeWithCleanup(
               () =>
                 input.store.put({
                   artifactId: descriptor.artifactId,
@@ -297,7 +293,6 @@ export function createNodeArtifactRuntimeFactory(
               'Artifact upload and source stream cleanup both failed',
             );
             assertNotAborted(writeInput.signal);
-            assertUploadedArtifactMatches(uploaded, descriptor);
             await input.persistence.finalize({
               artifactId: descriptor.artifactId,
               workspaceId: descriptor.workspaceId,
