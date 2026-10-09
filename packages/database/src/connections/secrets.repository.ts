@@ -9,10 +9,9 @@ import {
   CONNECTION_STATUS,
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
-  ConnectionIdempotencyConflictError,
   ConnectionUnavailableError,
   ConnectionSecretVersionConflictError,
-  keyDigest,
+  connectionCommand,
   mapConnection,
   withConnectionTransaction,
   parseRequestMetadata,
@@ -22,7 +21,11 @@ import {
 } from './records.js';
 import { requireConnectionManager } from './authority.js';
 import { rotateConnectionHealth } from './health/transitions.js';
-import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
+import {
+  claimCommand,
+  completeCommand,
+  findCommandResult,
+} from '../platform/idempotency.js';
 import type { ConnectionDatabase, ConnectionRecord } from './records.js';
 
 /** Owns secret rotation idempotency and current-version fencing. */
@@ -47,35 +50,23 @@ export function createConnectionSecretPersistence(
     ): Promise<ConnectionRecord | null> => {
       const actorId = uuidSchema.parse(input.actorId);
       const connectionId = uuidSchema.parse(input.connectionId);
-      const requestHash = digestSchema.parse(input.requestHash);
-      const digest = keyDigest(input.idempotencyKey);
       return withConnectionTransaction(
         pool,
         input.workspaceId,
         actorId,
         async (client, workspaceId) => {
           await requireConnectionManager(client, workspaceId, actorId);
-          const scope = `${actorId}:${connectionId}`;
-          const result = await client.query<{
-            request_hash: string;
-            status: string;
-            result_ref: unknown;
-          }>(
-            `select request_hash, status, result_ref
-             from app.idempotency_records
-             where workspace_id = $1
-               and operation = 'connection.secret.rotate'
-               and scope = $2 and key_hash = $3`,
-            [workspaceId, scope, digest],
+          const stored = await findCommandResult(
+            client,
+            connectionCommand(
+              input,
+              workspaceId,
+              'connection.secret.rotate',
+              `${actorId}:${connectionId}`,
+            ),
           );
-          const record = result.rows[0];
-          if (record === undefined) return null;
-          if (record.request_hash !== requestHash)
-            throw new ConnectionIdempotencyConflictError(
-              'Idempotency key request mismatch',
-            );
-          if (record.status !== 'completed') return null;
-          const replay = decodeDurableConnectionReplay(record.result_ref);
+          if (stored === null) return null;
+          const replay = decodeDurableConnectionReplay(stored);
           if (replay.id !== connectionId || replay.workspaceId !== workspaceId)
             throw new Error(
               'Connection rotation idempotency result is corrupt',
@@ -90,8 +81,6 @@ export function createConnectionSecretPersistence(
       const secretVersionId = uuidSchema.parse(input.secretVersionId);
       const expected = uuidSchema.parse(input.expectedCurrentSecretVersionId);
       const sealed = sealedSecretSchema.parse(input.sealed);
-      const requestHash = digestSchema.parse(input.requestHash);
-      const digest = keyDigest(input.idempotencyKey);
       const metadata = parseRequestMetadata(input);
       return withConnectionTransaction(
         pool,
@@ -99,47 +88,18 @@ export function createConnectionSecretPersistence(
         actorId,
         async (client, workspaceId) => {
           await requireConnectionManager(client, workspaceId, actorId);
-          const scope = `${actorId}:${connectionId}`;
-          const insertedClaim = await client.query(
-            `insert into app.idempotency_records
-               (id, workspace_id, operation, scope, key_hash, request_hash,
-                status, resource_id, result_ref)
-             values ($1, $2, 'connection.secret.rotate', $3, $4, $5,
-                     'in_progress', $6, '{}'::jsonb)
-             on conflict (workspace_id, operation, scope, key_hash) do nothing
-             returning id`,
-            [
-              generatePersistedId(),
-              workspaceId,
-              scope,
-              digest,
-              requestHash,
-              connectionId,
-            ],
+          const command = connectionCommand(
+            input,
+            workspaceId,
+            'connection.secret.rotate',
+            `${actorId}:${connectionId}`,
           );
-          const claim = await client.query<{
-            request_hash: string;
-            status: string;
-            result_ref: unknown;
-          }>(
-            `select request_hash, status, result_ref
-             from app.idempotency_records
-             where workspace_id = $1
-               and operation = 'connection.secret.rotate'
-               and scope = $2 and key_hash = $3 for update`,
-            [workspaceId, scope, digest],
-          );
-          const claimed = claim.rows[0];
-          if (claimed === undefined)
-            throw new Error(
-              'Connection rotation idempotency claim is unavailable',
-            );
-          if (claimed.request_hash !== requestHash)
-            throw new ConnectionIdempotencyConflictError(
-              'Idempotency key request mismatch',
-            );
-          if (claimed.status === 'completed') {
-            const replay = decodeDurableConnectionReplay(claimed.result_ref);
+          const stored = await claimCommand(client, {
+            ...command,
+            resourceId: connectionId,
+          });
+          if (stored !== null) {
+            const replay = decodeDurableConnectionReplay(stored);
             if (
               replay.id !== connectionId ||
               replay.workspaceId !== workspaceId
@@ -149,10 +109,6 @@ export function createConnectionSecretPersistence(
               );
             return replay;
           }
-          if (insertedClaim.rowCount !== 1)
-            throw new Error(
-              'Connection rotation idempotency record is not resumable',
-            );
           const connection = await selectConnection(
             client,
             workspaceId,
@@ -222,19 +178,10 @@ export function createConnectionSecretPersistence(
           if (row === undefined)
             throw new Error('Connection rotation returned no row');
           const rotated = mapConnection(row);
-          await client.query(
-            `update app.idempotency_records
-             set status = 'completed', result_ref = $1::jsonb,
-                 updated_at = transaction_timestamp()
-             where workspace_id = $2
-               and operation = 'connection.secret.rotate'
-               and scope = $3 and key_hash = $4`,
-            [
-              JSON.stringify(serializeConnectionSnapshot(rotated)),
-              workspaceId,
-              scope,
-              digest,
-            ],
+          await completeCommand(
+            client,
+            command,
+            serializeConnectionSnapshot(rotated),
           );
           return rotated;
         },

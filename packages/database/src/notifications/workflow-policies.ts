@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   audit,
   authorize,
-  claimCommand,
-  completeCommand,
+  claimNotificationCommand,
+  completeNotificationCommand,
   destinationError,
   type CommandMetadata,
   type DestinationTransaction,
@@ -32,7 +32,7 @@ export function setWorkflowFailureNotificationPolicy(
     const workflowId = z.uuid().parse(input.workflowId);
     const operation = 'workflow.failure.notification.policy.set';
     const scope = `${input.actorId}:${workflowId}`;
-    const replay = await claimCommand(
+    const replay = await claimNotificationCommand(
       client,
       input,
       operation,
@@ -68,7 +68,7 @@ export function setWorkflowFailureNotificationPolicy(
       { id: workflowId, type: 'workflow' },
       { destinationId: input.destinationId },
     );
-    await completeCommand(client, input, operation, scope, null);
+    await completeNotificationCommand(client, input, operation, scope, null);
   });
 }
 
@@ -81,7 +81,7 @@ export function clearWorkflowFailureNotificationPolicy(
     const workflowId = z.uuid().parse(input.workflowId);
     const operation = 'workflow.failure.notification.policy.clear';
     const scope = `${input.actorId}:${workflowId}`;
-    const replay = await claimCommand(
+    const replay = await claimNotificationCommand(
       client,
       input,
       operation,
@@ -108,7 +108,7 @@ export function clearWorkflowFailureNotificationPolicy(
         { id: workflowId, type: 'workflow' },
         {},
       );
-    await completeCommand(client, input, operation, scope, null);
+    await completeNotificationCommand(client, input, operation, scope, null);
   });
 }
 

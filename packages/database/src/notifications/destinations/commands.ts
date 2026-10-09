@@ -1,6 +1,5 @@
-import { createHash } from 'node:crypto';
-
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -53,13 +52,21 @@ const replaySchema = z
   })
   .strict();
 
-function keyDigest(value: string): string {
-  return createHash('sha256')
-    .update(z.string().min(1).max(256).parse(value))
-    .digest('hex');
+function commandIdentity(
+  input: IdempotentCommandMetadata,
+  operation: string,
+  scope: string,
+) {
+  return {
+    workspaceId: input.workspaceId,
+    operation,
+    scope,
+    idempotencyKey: z.string().min(1).max(256).parse(input.idempotencyKey),
+  };
 }
 
-export async function claimCommand(
+/** Claims the command's key; a replay carries the stored result. */
+export async function claimNotificationCommand(
   client: PoolClient,
   input: IdempotentCommandMetadata,
   operation: string,
@@ -68,67 +75,34 @@ export async function claimCommand(
 ): Promise<
   Readonly<{ kind: 'new' }> | Readonly<{ kind: 'replay'; result: unknown }>
 > {
-  const keyHash = keyDigest(input.idempotencyKey);
-  const requestHash = digestSchema.parse(input.requestHash);
-  await client.query(
-    `insert into app.idempotency_records
-       (id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref)
-     values ($1,$2,$3,$4,$5,$6,'in_progress',$7,'{}'::jsonb)
-     on conflict (workspace_id,operation,scope,key_hash) do nothing`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      operation,
-      scope,
-      keyHash,
-      requestHash,
-      resourceId,
-    ],
-  );
-  const result = await client.query<{
-    request_hash: string;
-    status: string;
-    result_ref: unknown;
-  }>(
-    `select request_hash,status,result_ref from app.idempotency_records
-      where workspace_id=$1 and operation=$2 and scope=$3 and key_hash=$4
-      for update`,
-    [input.workspaceId, operation, scope, keyHash],
-  );
-  const claim = result.rows[0];
-  if (claim === undefined)
-    throw new Error('Destination idempotency claim is unavailable');
-  if (claim.request_hash !== requestHash)
-    throw destinationError(
-      'idempotency_conflict',
-      'Idempotency key request mismatch',
-    );
-  if (claim.status !== 'completed') return Object.freeze({ kind: 'new' });
+  const stored = await claimCommand(client, {
+    ...commandIdentity(input, operation, scope),
+    requestHash: digestSchema.parse(input.requestHash),
+    resourceId,
+    conflict: () =>
+      destinationError(
+        'idempotency_conflict',
+        'Idempotency key request mismatch',
+      ),
+  });
+  if (stored === null) return Object.freeze({ kind: 'new' });
   return Object.freeze({
     kind: 'replay',
-    result: replaySchema.parse(claim.result_ref).result,
+    result: replaySchema.parse(stored).result,
   });
 }
 
-export async function completeCommand(
+export async function completeNotificationCommand(
   client: PoolClient,
   input: IdempotentCommandMetadata,
   operation: string,
   scope: string,
   result: unknown,
 ): Promise<void> {
-  await client.query(
-    `update app.idempotency_records
-        set status='completed',result_ref=$1::jsonb,updated_at=transaction_timestamp()
-      where workspace_id=$2 and operation=$3 and scope=$4 and key_hash=$5`,
-    [
-      JSON.stringify({ schemaVersion: 1, result }),
-      input.workspaceId,
-      operation,
-      scope,
-      keyDigest(input.idempotencyKey),
-    ],
-  );
+  await completeCommand(client, commandIdentity(input, operation, scope), {
+    schemaVersion: 1,
+    result,
+  });
 }
 
 export async function authorize(

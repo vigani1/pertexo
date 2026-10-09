@@ -113,7 +113,7 @@ describe('failure notification destination decoding', () => {
         return Promise.resolve(result([{}]));
       if (text.includes('insert into app.idempotency_records'))
         return Promise.resolve(result([], 1));
-      if (text.includes('select request_hash,status,result_ref'))
+      if (text.includes('select request_hash, status, result_ref'))
         return Promise.resolve(
           result([
             {

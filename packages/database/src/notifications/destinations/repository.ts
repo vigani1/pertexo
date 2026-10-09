@@ -13,8 +13,8 @@ import type { DatabaseConfig } from '../../config.js';
 import {
   audit,
   authorize,
-  claimCommand,
-  completeCommand,
+  claimNotificationCommand,
+  completeNotificationCommand,
   destinationError,
   type CommandMetadata,
   type DestinationTransaction,
@@ -140,7 +140,7 @@ async function setDestinationStatus(
     const destinationId = z.uuid().parse(input.destinationId);
     const operation = 'failure.notification.destination.status';
     const scope = `${input.actorId}:${destinationId}`;
-    const replay = await claimCommand(
+    const replay = await claimNotificationCommand(
       client,
       input,
       operation,
@@ -156,7 +156,7 @@ async function setDestinationStatus(
       true,
     );
     if (current.status === input.status) {
-      await completeCommand(
+      await completeNotificationCommand(
         client,
         input,
         operation,
@@ -181,7 +181,7 @@ async function setDestinationStatus(
       input.workspaceId,
       current.id,
     );
-    await completeCommand(
+    await completeNotificationCommand(
       client,
       input,
       operation,
@@ -222,7 +222,7 @@ export function createFailureNotificationDestinationDatabase(
         );
         const operation = 'failure.notification.destination.create';
         const scope = input.actorId;
-        const replay = await claimCommand(
+        const replay = await claimNotificationCommand(
           client,
           input,
           operation,
@@ -257,7 +257,7 @@ export function createFailureNotificationDestinationDatabase(
           input.workspaceId,
           destinationId,
         );
-        await completeCommand(
+        await completeNotificationCommand(
           client,
           input,
           operation,
@@ -308,7 +308,7 @@ export function createFailureNotificationDestinationDatabase(
         const destinationId = z.uuid().parse(input.destinationId);
         const operation = 'failure.notification.destination.version.append';
         const scope = `${input.actorId}:${destinationId}`;
-        const replay = await claimCommand(
+        const replay = await claimNotificationCommand(
           client,
           input,
           operation,
@@ -358,7 +358,7 @@ export function createFailureNotificationDestinationDatabase(
           input.workspaceId,
           current.id,
         );
-        await completeCommand(
+        await completeNotificationCommand(
           client,
           input,
           operation,
