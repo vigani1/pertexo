@@ -180,8 +180,6 @@ jobs:
           pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts
-          pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
-          pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             --exclude test/editor-browser.integration.test.ts \
             --exclude test/usage-browser.integration.test.ts \
@@ -196,6 +194,11 @@ jobs:
             test/workflow-authoring/organization/organization.integration.test.ts \
             test/workflow-authoring/organization/favorite-persistence.integration.test.ts \
             test/workflow-authoring/organization/folders-bulk.integration.test.ts
+          # Last: these stop and restart Redis.
+          WORKER_TRANSPORT_RESILIENCE=true \
+            pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
+          API_SSE_RESILIENCE_INTEGRATION=true \
+            pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
       - name: Service logs
         if: failure()
         run: docker compose logs --no-color --timestamps

@@ -36,37 +36,17 @@ const repositoryRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 const apiUrl = process.env.DATABASE_URL;
 const workerUrl = process.env.DATABASE_URL;
 const redisUrl = process.env.REDIS_URL;
-const composeProject = process.env.API_SSE_RESILIENCE_COMPOSE_PROJECT;
+// Destructive: stops and restarts Redis in this Compose project. The suite
+// first checks that REDIS_URL is that project's Redis.
+const composeProject = process.env.COMPOSE_PROJECT_NAME;
 const redisPort = process.env.REDIS_PORT ?? '6379';
-
-function hasDisposableRedisTarget(): boolean {
-  if (
-    process.env.API_SSE_RESILIENCE_DISPOSABLE_TARGET !== 'true' ||
-    composeProject === undefined ||
-    !/^pertexo-(?:local-quality-[a-z0-9-]+|ci-[0-9]+-[0-9]+-recovery)$/.test(
-      composeProject,
-    ) ||
-    redisUrl === undefined
-  ) {
-    return false;
-  }
-  try {
-    const target = new URL(redisUrl);
-    return (
-      (target.hostname === '127.0.0.1' || target.hostname === 'localhost') &&
-      (target.port || '6379') === redisPort
-    );
-  } catch {
-    return false;
-  }
-}
 
 const enabled =
   process.env.API_SSE_RESILIENCE_INTEGRATION === 'true' &&
   apiUrl !== undefined &&
   workerUrl !== undefined &&
   redisUrl !== undefined &&
-  hasDisposableRedisTarget();
+  composeProject !== undefined;
 
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 const redisPassword = process.env.REDIS_PASSWORD ?? 'pertexo-local-redis';
@@ -105,12 +85,7 @@ function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
 async function compose(...arguments_: readonly string[]): Promise<string> {
   const result = await execFileAsync(
     'docker',
-    [
-      'compose',
-      '--project-name',
-      composeProject ?? 'invalid-nondisposable-project',
-      ...arguments_,
-    ],
+    ['compose', '--project-name', composeProject ?? '', ...arguments_],
     {
       cwd: repositoryRoot,
       encoding: 'utf8',
