@@ -702,7 +702,7 @@ describe('current workflow concurrency and ordered production admission', () => 
           [workspaceA, expiredHash],
         );
       });
-      expect(await reapConcurrencyReceipts(1)).toBe(1);
+      expect(await reapConcurrencyReceipts()).toBe(1);
       expect(
         await withOwner(
           async (client) =>

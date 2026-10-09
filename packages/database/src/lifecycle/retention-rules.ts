@@ -3,6 +3,9 @@
  * of rows per call, and one worker at a time runs a given rule. Later rules
  * depend on earlier ones: a run summary is deleted only once its details are
  * gone and no trigger record or replay still refers to it.
+ *
+ * A rule that deletes rows someone may still change repeats its condition on
+ * the deleted row, so a row changed while the delete waited for it is kept.
  */
 export const RETENTION_RULES = Object.freeze([
   {
@@ -172,6 +175,415 @@ export const RETENTION_RULES = Object.freeze([
       )
       delete from app.transport_security_audit_facts fact using page
       where fact.id = page.id`,
+  },
+  {
+    // A command's stored result answers retries until its key expires.
+    name: 'idempotency_records',
+    statement: `
+      with page as (
+        select id from app.idempotency_records
+        where status = 'completed' and expires_at <= clock_timestamp()
+        order by expires_at, id limit $1
+      )
+      delete from app.idempotency_records record using page
+      where record.id = page.id`,
+  },
+  {
+    name: 'workspace_creation_records',
+    statement: `
+      with page as (
+        select id from app.workspace_creation_idempotency_records
+        where status in ('completed', 'failed') and expires_at <= clock_timestamp()
+        order by expires_at, id limit $1
+      )
+      delete from app.workspace_creation_idempotency_records record using page
+      where record.id = page.id`,
+  },
+  {
+    name: 'concurrency_command_receipts',
+    statement: `
+      with page as (
+        select workspace_id, actor_id, workflow_id, key_hash
+        from app.workflow_concurrency_command_receipts
+        where result is not null and expires_at <= clock_timestamp()
+        order by expires_at limit $1
+      )
+      delete from app.workflow_concurrency_command_receipts receipt using page
+      where (receipt.workspace_id, receipt.actor_id, receipt.workflow_id, receipt.key_hash)
+        = (page.workspace_id, page.actor_id, page.workflow_id, page.key_hash)`,
+  },
+  {
+    name: 'auto_pause_command_receipts',
+    statement: `
+      with page as (
+        select workspace_id, actor_id, resource_id, operation, key_hash
+        from app.workflow_auto_pause_command_receipts
+        where result is not null and expires_at <= clock_timestamp()
+        order by expires_at limit $1
+      )
+      delete from app.workflow_auto_pause_command_receipts receipt using page
+      where (receipt.workspace_id, receipt.actor_id, receipt.resource_id,
+             receipt.operation, receipt.key_hash)
+        = (page.workspace_id, page.actor_id, page.resource_id,
+           page.operation, page.key_hash)`,
+  },
+  {
+    name: 'manual_start_rejections',
+    statement: `
+      with page as (
+        select workspace_id, scope, key_hash
+        from app.workflow_manual_start_rejections
+        where expires_at <= clock_timestamp()
+        order by expires_at limit $1
+      )
+      delete from app.workflow_manual_start_rejections rejection using page
+      where (rejection.workspace_id, rejection.scope, rejection.key_hash)
+        = (page.workspace_id, page.scope, page.key_hash)`,
+  },
+  {
+    // Sessions are kept 30 days after they end, for sign-in history.
+    name: 'sessions',
+    statement: `
+      with page as (
+        select id from app.sessions
+        where coalesce(revoked_at, expires_at) <= clock_timestamp() - interval '30 days'
+        order by coalesce(revoked_at, expires_at), id limit $1
+      )
+      delete from app.sessions session using page
+      where session.id = page.id
+        and coalesce(session.revoked_at, session.expires_at)
+          <= clock_timestamp() - interval '30 days'`,
+  },
+  {
+    name: 'auth_sessions',
+    statement: `
+      with page as (
+        select id from app.auth_sessions
+        where expires_at <= clock_timestamp() - interval '30 days'
+        order by expires_at, id limit $1
+      )
+      delete from app.auth_sessions session using page
+      where session.id = page.id
+        and session.expires_at <= clock_timestamp() - interval '30 days'`,
+  },
+  {
+    name: 'auth_method_link_attempts',
+    statement: `
+      with page as (
+        select id from app.auth_method_link_attempts
+        where expires_at <= clock_timestamp() - interval '30 days'
+        order by expires_at, id limit $1
+      )
+      delete from app.auth_method_link_attempts attempt using page
+      where attempt.id = page.id`,
+  },
+  {
+    name: 'auth_legacy_method_migration_attempts',
+    statement: `
+      with page as (
+        select id from app.auth_legacy_method_migration_attempts
+        where expires_at <= clock_timestamp() - interval '30 days'
+        order by expires_at, id limit $1
+      )
+      delete from app.auth_legacy_method_migration_attempts attempt using page
+      where attempt.id = page.id`,
+  },
+  {
+    name: 'auth_email_proofs',
+    statement: `
+      with page as (
+        select id from app.auth_email_proofs
+        where expires_at <= clock_timestamp() - interval '30 days'
+        order by expires_at, id limit $1
+      )
+      delete from app.auth_email_proofs proof using page
+      where proof.id = page.id`,
+  },
+  {
+    name: 'identity_security_audit_facts',
+    statement: `
+      with page as (
+        select id from app.identity_security_audit_facts
+        where occurred_at <= clock_timestamp() - interval '365 days'
+        order by occurred_at, id limit $1
+      )
+      delete from app.identity_security_audit_facts fact using page
+      where fact.id = page.id`,
+  },
+  {
+    // Mail that was not sent within a day, or after 12 attempts, is given up:
+    // its sealed payload is dropped and an operator reconciles it.
+    name: 'unsent_authentication_mail',
+    statement: `
+      with page as (
+        select id from app.authentication_mail_deliveries
+        where status in ('queued', 'outcome_unknown', 'retry')
+          and (expires_at <= clock_timestamp()
+            or created_at + interval '24 hours' <= clock_timestamp()
+            or attempt_count >= 12)
+          and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
+        order by created_at, id limit $1 for update skip locked
+      )
+      update app.authentication_mail_deliveries delivery
+      set status = case when delivery.expires_at <= clock_timestamp()
+                        then 'expired' else 'reconciliation_required' end,
+          payload_ciphertext = null, payload_nonce = null, payload_tag = null,
+          payload_key_version = null, lease_owner = null, lease_token = null,
+          lease_expires_at = null, completed_at = clock_timestamp(),
+          updated_at = clock_timestamp()
+      from page where delivery.id = page.id`,
+  },
+  {
+    name: 'authentication_mail',
+    statement: `
+      with page as (
+        select id from app.authentication_mail_deliveries
+        where status in ('submitted', 'failed', 'reconciliation_required', 'expired')
+          and completed_at <= clock_timestamp() - interval '30 days'
+        order by completed_at, id limit $1
+      )
+      delete from app.authentication_mail_deliveries delivery using page
+      where delivery.id = page.id`,
+  },
+  {
+    // An unanswered invitation expires: its sealed tokens are dropped and
+    // pending deliveries and acceptances stop.
+    name: 'invitation_expiry',
+    statement: `
+      with page as (
+        select workspace_id, id from app.workspace_invitations
+        where status = 'pending' and expires_at <= clock_timestamp()
+        order by expires_at, id limit $1 for update skip locked
+      ), expired as (
+        update app.workspace_invitations invitation
+        set status = 'expired', delivery_status = 'canceled',
+            updated_at = clock_timestamp()
+        from page
+        where invitation.workspace_id = page.workspace_id and invitation.id = page.id
+        returning invitation.workspace_id, invitation.id
+      ), attempts as (
+        update app.workspace_invitation_delivery_attempts attempt
+        set status = case when attempt.status in ('queued', 'failed')
+                          then 'canceled' else attempt.status end,
+            token_ciphertext = null, token_nonce = null, token_tag = null,
+            token_key_version = null, updated_at = clock_timestamp()
+        from expired
+        where attempt.workspace_id = expired.workspace_id
+          and attempt.invitation_id = expired.id
+          and attempt.status in ('queued', 'failed', 'unknown')
+      ), intents as (
+        update app.workspace_invitation_acceptance_intents intent
+        set status = 'superseded', updated_at = clock_timestamp()
+        from expired
+        where intent.workspace_id = expired.workspace_id
+          and intent.invitation_id = expired.id
+          and intent.status in ('pending', 'verified', 'wrong_account')
+      )
+      select 1 from expired`,
+  },
+  {
+    name: 'invitation_acceptance_intents',
+    statement: `
+      with page as (
+        select workspace_id, id from app.workspace_invitation_acceptance_intents
+        where expires_at <= clock_timestamp() or status = 'abandoned'
+        order by expires_at, id limit $1 for update skip locked
+      )
+      delete from app.workspace_invitation_acceptance_intents intent using page
+      where intent.workspace_id = page.workspace_id and intent.id = page.id`,
+  },
+  {
+    // A replacement claim stays while any acceptance further down its chain
+    // is live. Checking the claim's own successor first keeps the chain walk
+    // to claims that are likely due.
+    name: 'invitation_replacement_claims',
+    statement: `
+      with page as (
+        select claim.prior_workspace_id, claim.prior_intent_id,
+               claim.prior_binding_digest
+        from app.workspace_invitation_binding_replacement_claims claim
+        where not exists (select 1 from app.workspace_invitation_acceptance_intents intent
+            where intent.workspace_id = claim.successor_workspace_id
+              and intent.id = claim.successor_intent_id
+              and intent.binding_digest = claim.successor_binding_digest
+              and intent.status not in ('abandoned', 'superseded')
+              and intent.expires_at > clock_timestamp())
+          and app.workspace_invitation_replacement_claim_is_reapable(
+            claim.prior_workspace_id, claim.prior_intent_id, claim.prior_binding_digest)
+        limit $1
+      )
+      delete from app.workspace_invitation_binding_replacement_claims claim using page
+      where (claim.prior_workspace_id, claim.prior_intent_id, claim.prior_binding_digest)
+        = (page.prior_workspace_id, page.prior_intent_id, page.prior_binding_digest)`,
+  },
+  {
+    // A finished invitation keeps its recipient's address for 90 days.
+    name: 'invitation_recipients',
+    statement: `
+      with page as (
+        select id, 'minimized+' || id::text || '@invalid.pertexo' address
+        from app.workspace_invitations
+        where status in ('accepted', 'revoked', 'expired')
+          and recipient_email not like 'minimized+%@invalid.pertexo'
+          and coalesce(accepted_at, revoked_at, updated_at)
+            <= clock_timestamp() - interval '90 days'
+        order by coalesce(accepted_at, revoked_at, updated_at), id
+        limit $1 for update skip locked
+      ), intents as (
+        update app.workspace_invitation_acceptance_intents intent
+        set verified_user_id = null, verified_email = null, verified_at = null,
+            updated_at = clock_timestamp()
+        from page
+        where intent.invitation_id = page.id and intent.verified_email is not null
+      ), receipts as (
+        update app.workspace_invitation_command_receipts receipt
+        set result_ref = jsonb_set(receipt.result_ref, '{invitation,email}',
+              to_jsonb(page.address), false),
+            updated_at = clock_timestamp()
+        from page
+        where receipt.result_ref -> 'invitation' ? 'email'
+          and receipt.result_ref -> 'invitation' ->> 'id' = page.id::text
+      )
+      update app.workspace_invitations invitation
+      set recipient_email = page.address, normalized_email = page.address,
+          updated_at = clock_timestamp()
+      from page where invitation.id = page.id`,
+  },
+  {
+    // Payloads of deleted cases and of earlier case revisions.
+    name: 'input_case_payloads',
+    statement: `
+      with page as (
+        select payload.workspace_id, payload.case_id, payload.revision
+        from app.workflow_input_case_payloads payload
+        join app.workflow_input_cases input_case
+          on input_case.workspace_id = payload.workspace_id
+         and input_case.id = payload.case_id
+        where input_case.deleted_at is not null
+           or payload.revision < input_case.revision
+        order by payload.workspace_id, payload.case_id, payload.revision limit $1
+      )
+      delete from app.workflow_input_case_payloads payload using page
+      where (payload.workspace_id, payload.case_id, payload.revision)
+        = (page.workspace_id, page.case_id, page.revision)`,
+  },
+  {
+    name: 'input_case_receipts',
+    statement: `
+      with page as (
+        select workspace_id, actor_id, workflow_id, operation, key_hash
+        from app.workflow_input_case_receipts
+        where expires_at <= clock_timestamp()
+        order by expires_at limit $1
+      )
+      delete from app.workflow_input_case_receipts receipt using page
+      where (receipt.workspace_id, receipt.actor_id, receipt.workflow_id,
+             receipt.operation, receipt.key_hash)
+        = (page.workspace_id, page.actor_id, page.workflow_id,
+           page.operation, page.key_hash)`,
+  },
+  {
+    // A deleted case goes once its payloads are gone.
+    name: 'deleted_input_cases',
+    statement: `
+      with page as (
+        select input_case.workspace_id, input_case.id
+        from app.workflow_input_cases input_case
+        where input_case.deleted_at is not null
+          and not exists (select 1 from app.workflow_input_case_payloads payload
+            where payload.workspace_id = input_case.workspace_id
+              and payload.case_id = input_case.id)
+        order by input_case.workspace_id, input_case.id limit $1
+      )
+      delete from app.workflow_input_cases input_case using page
+      where input_case.workspace_id = page.workspace_id and input_case.id = page.id`,
+  },
+  {
+    // An unfavorited workflow's row answers retries for a day.
+    name: 'unfavorited_workflows',
+    statement: `
+      with page as (
+        select workspace_id, actor_id, workflow_id from app.workflow_favorites
+        where not favorite and expires_at <= clock_timestamp()
+        order by expires_at limit $1
+      )
+      delete from app.workflow_favorites favorite using page
+      where (favorite.workspace_id, favorite.actor_id, favorite.workflow_id)
+          = (page.workspace_id, page.actor_id, page.workflow_id)
+        and not favorite.favorite and favorite.expires_at <= clock_timestamp()`,
+  },
+  {
+    // A member who left and came back starts with no favorites: the ones from
+    // an earlier membership go. Two range tests seek past the current
+    // generation instead of reading every current favorite.
+    name: 'earlier_membership_favorites',
+    statement: `
+      with page as (
+        select favorite.workspace_id, favorite.actor_id, favorite.workflow_id,
+               membership.generation
+        from app.workflow_favorite_membership_generations membership
+        join app.workflow_favorites favorite
+          on favorite.workspace_id = membership.workspace_id
+         and favorite.actor_id = membership.actor_id
+        where membership.retired_at is not null
+          and (favorite.generation < membership.generation
+            or favorite.generation > membership.generation)
+        limit $1
+      )
+      delete from app.workflow_favorites favorite using page
+      where (favorite.workspace_id, favorite.actor_id, favorite.workflow_id)
+          = (page.workspace_id, page.actor_id, page.workflow_id)
+        and favorite.generation <> page.generation`,
+  },
+  {
+    // Once those favorites are gone, the membership no longer needs a look.
+    name: 'favorite_memberships',
+    statement: `
+      with page as (
+        select membership.workspace_id, membership.actor_id, membership.generation
+        from app.workflow_favorite_membership_generations membership
+        where membership.retired_at is not null
+          and not exists (select 1 from app.workflow_favorites favorite
+            where favorite.workspace_id = membership.workspace_id
+              and favorite.actor_id = membership.actor_id
+              and (favorite.generation < membership.generation
+                or favorite.generation > membership.generation))
+        order by membership.retired_at limit $1
+      )
+      update app.workflow_favorite_membership_generations membership
+      set retired_at = null
+      from page
+      where (membership.workspace_id, membership.actor_id)
+          = (page.workspace_id, page.actor_id)
+        and membership.generation = page.generation`,
+  },
+  {
+    name: 'favorite_receipts',
+    statement: `
+      with page as (
+        select workspace_id, actor_id, workflow_id, key_hash
+        from app.workflow_favorite_receipts
+        where expires_at <= clock_timestamp()
+        order by expires_at limit $1
+      )
+      delete from app.workflow_favorite_receipts receipt using page
+      where (receipt.workspace_id, receipt.actor_id, receipt.workflow_id, receipt.key_hash)
+        = (page.workspace_id, page.actor_id, page.workflow_id, page.key_hash)`,
+  },
+  {
+    name: 'organization_receipts',
+    statement: `
+      with page as (
+        select workspace_id, actor_id, operation, target_id, key_hash
+        from app.workflow_organization_receipts
+        where expires_at <= clock_timestamp()
+        order by expires_at limit $1
+      )
+      delete from app.workflow_organization_receipts receipt using page
+      where (receipt.workspace_id, receipt.actor_id, receipt.operation,
+             receipt.target_id, receipt.key_hash)
+        = (page.workspace_id, page.actor_id, page.operation,
+           page.target_id, page.key_hash)`,
   },
 ] as const);
 

@@ -1,6 +1,8 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { parseDatabaseConfig } from '../src/config.js';
+import { createRetentionDatabase } from '../src/lifecycle/retention.js';
 import {
   commandKey,
   createOrganizationOwnedFixture,
@@ -183,12 +185,17 @@ function favorite(
     favoriteOn(client, workflow, value, expected, proof, key),
   );
 }
-async function reap(limit = 100) {
-  const result = await fixture.maintenance.query<Record<string, number>>(
-    'select * from app.reap_workflow_organization($1)',
-    [limit],
+/** One retention pass; returns the rows each rule removed. */
+async function reap(pageSize = 100) {
+  const retention = createRetentionDatabase(
+    parseDatabaseConfig({ connectionString: fixture.urls.maintenance, max: 1 }),
+    { pageSize },
   );
-  return result.rows[0] ?? {};
+  try {
+    return (await retention.enforce()).removed;
+  } finally {
+    await retention.close();
+  }
 }
 async function removeAndRejoin(s: Scope) {
   await fixture.identity.removeWorkspaceMember({
@@ -789,7 +796,6 @@ describe.skipIf(!organizationFixtureEnabled)(
         "update app.workflow_tags set key='forged' where id=$1",
         'delete from app.workflow_tag_assignments where tag_id=$1',
         'select * from app.workflow_favorite_held_evidence',
-        'select app.reap_workflow_organization(1)',
       ])
         await expect(
           api(s, s.actor, (client) =>
@@ -915,7 +921,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).toEqual([]);
     });
 
-    it('bounds total cleanup work and preserves unexpired tombstones', async () => {
+    it('pages cleanup and keeps unexpired unfavorites', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow(),
         proof = await absence(s, workflow);
@@ -936,11 +942,9 @@ describe.skipIf(!organizationFixtureEnabled)(
         [s.workspace],
       );
       for (let index = 0; index < 40; index++) {
-        const counts = await reap(2);
-        expect(
-          Object.values(counts).reduce((a, b) => a + b, 0),
-        ).toBeLessThanOrEqual(2);
-        if (Object.values(counts).every((count) => count === 0)) break;
+        const counts = Object.values(await reap(2));
+        expect(Math.max(...counts)).toBeLessThanOrEqual(2);
+        if (counts.every((count) => count === 0)) break;
       }
       expect(
         (
@@ -951,7 +955,6 @@ describe.skipIf(!organizationFixtureEnabled)(
           )
         ).rows,
       ).toEqual([]);
-      await expect(reap(101)).rejects.toMatchObject({ code: '22023' });
     });
 
     it('purges organization children in bounded maintenance pages only after lease and high-water authorization', async () => {

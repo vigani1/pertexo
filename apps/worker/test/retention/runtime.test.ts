@@ -3,28 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RetentionMetrics } from '../../src/retention/metrics.js';
 import { createRetentionRuntime } from '../../src/retention/runtime.js';
 
-const idleReap = {
-  authenticationLegacyAttemptsDeleted: 0,
-  authenticationLinkAttemptsDeleted: 0,
-  authenticationMailDeleted: 0,
-  authenticationMailExpired: 0,
-  authenticationProofsDeleted: 0,
-  identitySecurityAuditDeleted: 0,
-  idempotencyRecordsDeleted: 0,
-  invitationAcceptanceIntentsDeleted: 0,
-  invitationReplacementClaimsDeleted: 0,
-  invitationsExpired: 0,
-  sessionsDeleted: 0,
-  workspaceCreationRecordsDeleted: 0,
-};
-
 function setup() {
   const resources = {
     database: {
       checkReadiness: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
       enforce: vi.fn().mockResolvedValue({ removed: {}, more: false }),
-      reapTransientData: vi.fn().mockResolvedValue(idleReap),
     },
     preview: {
       close: vi.fn().mockResolvedValue(undefined),
@@ -45,7 +29,6 @@ function setup() {
     recordPreview: vi.fn(),
     recordRetention: vi.fn(),
     recordRunArtifact: vi.fn(),
-    recordTransientDataReap: vi.fn(),
     recordWorkspacePurge: vi.fn(),
   } satisfies RetentionMetrics;
   const logger = { error: vi.fn() };

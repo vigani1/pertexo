@@ -12,6 +12,7 @@ import {
 } from '../src/lifecycle/workspace-purge.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { enforceRetention } from './support/retention.js';
 import {
   emptyObjectStore,
   makeWorkspaceDueForPurge,
@@ -36,7 +37,6 @@ const maintenanceUrl = withDatabase(
   process.env.DATABASE_MAINTENANCE_URL ??
     'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
-let maintenance: Pool | undefined;
 let owner: Pool | undefined;
 
 /** Holds each object page until released. */
@@ -95,12 +95,10 @@ beforeAll(async () => {
     appRole: 'pertexo_app',
     maintenanceRole: 'pertexo_maintenance',
   });
-  maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
   owner = new Pool({ connectionString: databaseUrl, max: 1 });
 });
 
 afterAll(async () => {
-  await maintenance?.end();
   await owner?.end();
   const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
   try {
@@ -112,8 +110,7 @@ afterAll(async () => {
 
 describe('workspace purge', () => {
   it('purges every workspace table, keeps scrubbed facts and leaves a tombstone', async () => {
-    if (maintenance === undefined || owner === undefined)
-      throw new Error('Database pools unavailable');
+    if (owner === undefined) throw new Error('Owner pool unavailable');
     const workspaceId = randomUUID();
     const userId = randomUUID();
     const artifactId = randomUUID();
@@ -532,16 +529,16 @@ describe('workspace purge', () => {
           where id=$1`,
         [externalIntentId],
       );
+      await enforceRetention(maintenanceUrl);
+      const claims = await admin.query<{ count: string }>(
+        `select count(*) from app.workspace_invitation_binding_replacement_claims
+         where prior_workspace_id = $1 or successor_workspace_id = $1`,
+        [workspaceId],
+      );
+      expect(claims.rows[0]?.count).toBe('0');
     } finally {
       await admin.end();
     }
-    await expect(
-      maintenance.query(
-        'select * from app.reap_workspace_invitation_transients(10)',
-      ),
-    ).resolves.toMatchObject({
-      rows: [expect.objectContaining({ replacement_claims_deleted: 1 })],
-    });
   });
 
   it('names every workspace table as purged or kept', async () => {

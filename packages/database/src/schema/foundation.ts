@@ -376,38 +376,6 @@ export const workspaceInvitationBindingReplacementClaims = appSchema.table(
     ),
   ],
 );
-export const workspaceInvitationClaimCleanupCursors = appSchema.table(
-  'workspace_invitation_claim_cleanup_cursors',
-  {
-    scanKind: varchar('scan_kind', { length: 32 }).notNull(),
-    scanId: uuid('scan_id').notNull(),
-    workspaceId: uuid('workspace_id'),
-    purgeJobId: uuid('purge_job_id'),
-    cursorUpdatedAt: timestamp('cursor_updated_at', {
-      withTimezone: true,
-      mode: 'date',
-    }),
-    cursorPriorWorkspaceId: uuid('cursor_prior_workspace_id'),
-    cursorPriorIntentId: uuid('cursor_prior_intent_id'),
-    cursorPriorBindingDigest: char('cursor_prior_binding_digest', {
-      length: 64,
-    }),
-    highWaterUpdatedAt: timestamp('high_water_updated_at', {
-      withTimezone: true,
-      mode: 'date',
-    }),
-    highWaterPriorWorkspaceId: uuid('high_water_prior_workspace_id'),
-    highWaterPriorIntentId: uuid('high_water_prior_intent_id'),
-    highWaterPriorBindingDigest: char('high_water_prior_binding_digest', {
-      length: 64,
-    }),
-    cycleCompleted: boolean('cycle_completed').default(false).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.scanKind, table.scanId] })],
-);
 export const auditEvents = appSchema.table(
   'audit_events',
   {

@@ -247,7 +247,6 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'workspace_member_removal_command_receipts',
     'workspace_member_role_command_receipts',
     'workspace_memberships',
-    'workspace_invitation_claim_cleanup_cursors',
     'workspace_legal_holds',
     'rls_probe_records',
   ].map(deleteRows),

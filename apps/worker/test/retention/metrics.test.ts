@@ -67,7 +67,6 @@ describe('retention metrics', () => {
         [RETENTION_METRIC_NAME.purgeCount, '{attempt}'],
         [RETENTION_METRIC_NAME.purgeDuration, 's'],
         [RETENTION_METRIC_NAME.rowCount, '{row}'],
-        [RETENTION_METRIC_NAME.transientDataReapCount, '{row}'],
       ].sort(([left], [right]) => String(left).localeCompare(String(right))),
     );
   });
@@ -95,98 +94,6 @@ describe('retention metrics', () => {
     expect(
       callsFor(instruments, RETENTION_METRIC_NAME.purgeDuration, 'record'),
     ).toEqual([[0.5, { outcome: 'progressed' }]]);
-  });
-
-  it('records each transient data class and idle versus deleted duration', () => {
-    const { instruments, metrics } = setupMetrics();
-    metrics.recordTransientDataReap(
-      {
-        authenticationMailDeleted: 0,
-        authenticationMailExpired: 0,
-        authenticationProofsDeleted: 0,
-        authenticationLinkAttemptsDeleted: 0,
-        authenticationLegacyAttemptsDeleted: 0,
-        identitySecurityAuditDeleted: 0,
-        invitationAcceptanceIntentsDeleted: 0,
-        invitationReplacementClaimsDeleted: 0,
-        invitationsExpired: 0,
-        idempotencyRecordsDeleted: 0,
-        invitationPiiMinimized: 0,
-        sessionsDeleted: 0,
-        workspaceCreationRecordsDeleted: 0,
-      },
-      0.7,
-    );
-    metrics.recordTransientDataReap(
-      {
-        authenticationMailDeleted: 1,
-        authenticationMailExpired: 2,
-        authenticationProofsDeleted: 3,
-        authenticationLinkAttemptsDeleted: 2,
-        authenticationLegacyAttemptsDeleted: 1,
-        identitySecurityAuditDeleted: 4,
-        invitationAcceptanceIntentsDeleted: 4,
-        invitationReplacementClaimsDeleted: 6,
-        invitationsExpired: 1,
-        idempotencyRecordsDeleted: 2,
-        invitationPiiMinimized: 0,
-        sessionsDeleted: 3,
-        workspaceCreationRecordsDeleted: 5,
-      },
-      0.8,
-    );
-    expect(
-      callsFor(
-        instruments,
-        RETENTION_METRIC_NAME.transientDataReapCount,
-        'add',
-      ),
-    ).toEqual([
-      [0, { data_class: 'idempotency_record' }],
-      [0, { data_class: 'workspace_creation_idempotency_record' }],
-      [0, { data_class: 'session' }],
-      [0, { data_class: 'authentication_mail' }],
-      [0, { data_class: 'authentication_mail_expiry' }],
-      [0, { data_class: 'authentication_email_proof' }],
-      [0, { data_class: 'authentication_method_link_attempt' }],
-      [0, { data_class: 'authentication_legacy_migration_attempt' }],
-      [0, { data_class: 'identity_security_audit_fact' }],
-      [0, { data_class: 'workspace_invitation_acceptance_intent' }],
-      [0, { data_class: 'workspace_invitation_replacement_claim' }],
-      [0, { data_class: 'workspace_invitation_expiry' }],
-      [2, { data_class: 'idempotency_record' }],
-      [5, { data_class: 'workspace_creation_idempotency_record' }],
-      [3, { data_class: 'session' }],
-      [1, { data_class: 'authentication_mail' }],
-      [2, { data_class: 'authentication_mail_expiry' }],
-      [3, { data_class: 'authentication_email_proof' }],
-      [2, { data_class: 'authentication_method_link_attempt' }],
-      [1, { data_class: 'authentication_legacy_migration_attempt' }],
-      [4, { data_class: 'identity_security_audit_fact' }],
-      [4, { data_class: 'workspace_invitation_acceptance_intent' }],
-      [6, { data_class: 'workspace_invitation_replacement_claim' }],
-      [1, { data_class: 'workspace_invitation_expiry' }],
-    ]);
-    expect(
-      callsFor(instruments, RETENTION_METRIC_NAME.batchDuration, 'record'),
-    ).toEqual([
-      [
-        0.7,
-        {
-          mode: 'transient_data_reap',
-          outcome: 'idle',
-          retention_kind: 'transient_data',
-        },
-      ],
-      [
-        0.8,
-        {
-          mode: 'transient_data_reap',
-          outcome: 'deleted',
-          retention_kind: 'transient_data',
-        },
-      ],
-    ]);
   });
 
   it('records each rule of a retention pass and the pass duration', () => {

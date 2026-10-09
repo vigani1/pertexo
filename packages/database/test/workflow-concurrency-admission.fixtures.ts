@@ -16,6 +16,7 @@ import {
   workspaceCreatorId,
   workflowId,
 } from './execution-acceptance.fixtures.js';
+import { enforceRetention } from './support/retention.js';
 
 export async function setLimit(limit: number | null, id = workflowId) {
   await withOwner(async (client) => {
@@ -134,24 +135,15 @@ export async function withDispatcher<T>(
   }
 }
 
-export async function reapConcurrencyReceipts(limit: number) {
+/** Runs retention and returns how many concurrency receipts it removed. */
+export async function reapConcurrencyReceipts() {
   const url = new URL(process.env.DATABASE_MAINTENANCE_URL ?? migrationUrl);
   if (process.env.DATABASE_MAINTENANCE_URL === undefined) {
     url.username = 'pertexo_maintenance';
     url.password = 'pertexo-local-maintenance';
   }
   url.pathname = new URL(migrationUrl).pathname;
-  const pool = new Pool({ connectionString: url.toString(), max: 1 });
-  try {
-    return (
-      await pool.query<{ idempotency_records_deleted: number }>(
-        'select * from app.reap_transient_data($1)',
-        [limit],
-      )
-    ).rows[0]?.idempotency_records_deleted;
-  } finally {
-    await pool.end();
-  }
+  return (await enforceRetention(url.toString())).concurrency_command_receipts;
 }
 
 export async function acceptRun(

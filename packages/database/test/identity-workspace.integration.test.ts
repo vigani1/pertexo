@@ -24,6 +24,7 @@ import {
 import { migrateDatabase } from '../src/migrations.js';
 import { createWorkspaceInvitationDeliveryStore } from '../src/execution.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
+import { enforceRetention } from './support/retention.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -34,13 +35,16 @@ const migrationBaseUrl =
 const apiBaseUrl =
   process.env.DATABASE_URL ??
   'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const maintenanceBaseUrl =
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const workerBaseUrl =
   process.env.DATABASE_URL ??
   'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_identity_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_app'],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -48,6 +52,7 @@ const adminDatabaseUrl = fixture.databaseUrl(adminUrl);
 const migrationUrl = fixture.databaseUrl(migrationBaseUrl);
 const apiUrl = fixture.databaseUrl(apiBaseUrl);
 const workerUrl = fixture.databaseUrl(workerBaseUrl);
+const maintenanceUrl = fixture.databaseUrl(maintenanceBaseUrl);
 
 const migrationConfig = {
   appRole: 'pertexo_app',
@@ -2828,25 +2833,15 @@ describe('identity/workspace persistence', () => {
       priorBinding: first.priorBinding,
     };
 
-    const cleanupPool = new Pool({ connectionString: migrationUrl, max: 1 });
-    const cleanupClient = await cleanupPool.connect();
-    try {
-      await cleanupClient.query('set role pertexo_owner');
-      const [cleanup, resolution] = await Promise.allSettled([
-        cleanupClient.query(
-          'select * from app.reap_workspace_invitation_transients(100)',
-        ),
-        identityDatabase.resolveInvitationAcceptance(final),
-      ]);
-      expect(cleanup.status).toBe('fulfilled');
-      expect(resolution).toMatchObject({
-        status: 'fulfilled',
-        value: { id: final.intentId, status: 'pending' },
-      });
-    } finally {
-      cleanupClient.release();
-      await cleanupPool.end();
-    }
+    const [cleanup, resolution] = await Promise.allSettled([
+      enforceRetention(maintenanceUrl),
+      identityDatabase.resolveInvitationAcceptance(final),
+    ]);
+    expect(cleanup.status).toBe('fulfilled');
+    expect(resolution).toMatchObject({
+      status: 'fulfilled',
+      value: { id: final.intentId, status: 'pending' },
+    });
     await expect(
       identityDatabase.readInvitationAcceptance(
         firstTarget.id,
@@ -3181,25 +3176,15 @@ describe('identity/workspace persistence', () => {
         expiresAt: new Date(Date.now() + 60_000),
       },
     };
-    const cleanupPool = new Pool({ connectionString: migrationUrl, max: 1 });
-    const cleanupClient = await cleanupPool.connect();
-    try {
-      await cleanupClient.query('set role pertexo_owner');
-      const [cleanup, accepted] = await Promise.allSettled([
-        cleanupClient.query(
-          'select * from app.reap_workspace_invitation_transients(100)',
-        ),
-        identityDatabase.completeInvitationAcceptance(command),
-      ]);
-      expect(cleanup.status).toBe('fulfilled');
-      expect(accepted).toMatchObject({
-        status: 'fulfilled',
-        value: { membershipCreated: true, replayed: false },
-      });
-    } finally {
-      cleanupClient.release();
-      await cleanupPool.end();
-    }
+    const [cleanup, accepted] = await Promise.allSettled([
+      enforceRetention(maintenanceUrl),
+      identityDatabase.completeInvitationAcceptance(command),
+    ]);
+    expect(cleanup.status).toBe('fulfilled');
+    expect(accepted).toMatchObject({
+      status: 'fulfilled',
+      value: { membershipCreated: true, replayed: false },
+    });
     await expect(
       identityDatabase.completeInvitationAcceptance(command),
     ).resolves.toMatchObject({ membershipCreated: true, replayed: true });

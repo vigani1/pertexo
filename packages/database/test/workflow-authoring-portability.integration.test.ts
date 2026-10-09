@@ -23,6 +23,7 @@ import {
   otherWorkspaceId,
   otherVersionId,
   apiUrl,
+  enforceTestRetention,
   apiPool,
   migrationUrl,
   createWorkflowAuthoringDatabase,
@@ -927,7 +928,7 @@ describe('portable workflow persistence under the API role', () => {
       [scoped],
       scoped,
     );
-    await queryAsOwner('select * from app.reap_transient_data(1000)');
+    await enforceTestRetention();
     expect(
       await queryAsOwner(
         "select id from app.idempotency_records where workspace_id=$1 and operation='workflow.import'",
@@ -952,7 +953,7 @@ describe('portable workflow persistence under the API role', () => {
     );
   });
 
-  it('skips an expired completed receipt while an exact retry holds its claim lock', async () => {
+  it('answers an exact retry holding an expired receipt before retention removes it', async () => {
     const db = database();
     const input = command();
     const accepted = await db.importWorkflow(input);
@@ -981,17 +982,11 @@ describe('portable workflow persistence under the API role', () => {
         pending,
         'locked expired import receipt',
       );
-      await queryAsOwner('select * from app.reap_transient_data(1000)');
-      expect(
-        await queryAsOwner(
-          "select resource_id::text from app.idempotency_records where workspace_id=$1 and operation='workflow.import' and resource_id=$2",
-          [workspaceId, accepted.workflowId],
-          workspaceId,
-        ),
-      ).toEqual([{ resource_id: accepted.workflowId }]);
+      // Retention waits for the retry's lock on the receipt.
+      const reaping = enforceTestRetention();
       released.resolve();
       expect(await pending).toEqual(accepted);
-      await queryAsOwner('select * from app.reap_transient_data(1000)');
+      await reaping;
       expect(
         await queryAsOwner(
           "select resource_id from app.idempotency_records where workspace_id=$1 and operation='workflow.import' and resource_id=$2",

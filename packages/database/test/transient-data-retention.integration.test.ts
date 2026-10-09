@@ -3,11 +3,16 @@ import { createHash } from 'node:crypto';
 import type { QueryResultRow } from 'pg';
 import { describe, expect, it } from 'vitest';
 
+import { parseDatabaseConfig } from '../src/config.js';
+import { createRetentionDatabase } from '../src/lifecycle/retention.js';
 import {
+  maintenanceUrl,
   owner,
   randomUUID,
   retention,
   userId,
+  waitForPostgresLock,
+  withApplicationName,
   workspaceId,
 } from './support/retention.integration.support.js';
 
@@ -46,10 +51,10 @@ describe('transient data retention', () => {
                  clock_timestamp()-interval '40 days')`,
         [id, userId, randomUUID(), digest(`old-link-${String(index)}`)],
       );
-    const first = await retention.reapTransientData();
-    expect(first.authenticationLinkAttemptsDeleted).toBe(2);
-    const second = await retention.reapTransientData();
-    expect(second.authenticationLinkAttemptsDeleted).toBe(1);
+    const first = await retention.enforce();
+    expect(first.removed.auth_method_link_attempts).toBe(2);
+    const second = await retention.enforce();
+    expect(second.removed.auth_method_link_attempts).toBe(1);
     const remaining = await asOwner<{ count: number }>(
       `select count(*)::integer count from app.auth_method_link_attempts
         where id=any($1::uuid[])`,
@@ -73,10 +78,10 @@ describe('transient data retention', () => {
           digest(`legacy-state-${String(index)}`),
         ],
       );
-    const first = await retention.reapTransientData();
-    expect(first.authenticationLegacyAttemptsDeleted).toBe(2);
-    const second = await retention.reapTransientData();
-    expect(second.authenticationLegacyAttemptsDeleted).toBe(1);
+    const first = await retention.enforce();
+    expect(first.removed.auth_legacy_method_migration_attempts).toBe(2);
+    const second = await retention.enforce();
+    expect(second.removed.auth_legacy_method_migration_attempts).toBe(1);
     const remaining = await asOwner<{ count: number }>(
       `select count(*)::integer count from app.auth_legacy_method_migration_attempts
         where id=any($1::uuid[])`,
@@ -85,9 +90,9 @@ describe('transient data retention', () => {
     expect(remaining.rows).toEqual([{ count: 0 }]);
   });
 
-  it('bounds owned proof and 365-day security-audit cleanup while preserving holds', async () => {
+  it('pages expired proof and 365-day security-audit cleanup', async () => {
     const proofIds = [randomUUID(), randomUUID(), randomUUID()];
-    const auditIds = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+    const auditIds = [randomUUID(), randomUUID(), randomUUID()];
     for (const [index, id] of proofIds.entries())
       await asOwner(
         `insert into app.auth_email_proofs
@@ -102,46 +107,34 @@ describe('transient data retention', () => {
           `${userId}@example.test`,
         ],
       );
-    for (const [index, id] of auditIds.entries())
+    for (const id of auditIds)
       await asOwner(
         `insert into app.identity_security_audit_facts
-          (id,user_id,event_type,occurred_at,legal_hold_until)
+          (id,user_id,event_type,occurred_at)
          values($1,$2,'email.initial_verified',
-                clock_timestamp()-interval '366 days',$3)`,
-        [id, userId, index === 0 ? new Date(Date.now() + 86_400_000) : null],
+                clock_timestamp()-interval '366 days')`,
+        [id, userId],
       );
-    const first = await retention.reapTransientData();
-    expect(first.authenticationProofsDeleted).toBe(2);
-    expect(first.identitySecurityAuditDeleted).toBe(2);
-    const second = await retention.reapTransientData();
-    expect(second.authenticationProofsDeleted).toBe(1);
-    expect(second.identitySecurityAuditDeleted).toBe(1);
-    const held = await asOwner<{ id: string }>(
-      `select id from app.identity_security_audit_facts
-        where id=any($1::uuid[])`,
-      [auditIds],
-    );
-    expect(held.rows).toEqual([{ id: auditIds[0] }]);
-    await asOwner(
-      `update app.identity_security_audit_facts
-          set legal_hold_until=clock_timestamp()-interval '1 second'
-        where id=$1`,
-      [auditIds[0]],
-    );
-    const released = await retention.reapTransientData();
-    expect(released.identitySecurityAuditDeleted).toBe(1);
+    const first = await retention.enforce();
+    expect(first.removed.auth_email_proofs).toBe(2);
+    expect(first.removed.identity_security_audit_facts).toBe(2);
+    const second = await retention.enforce();
+    expect(second.removed.auth_email_proofs).toBe(1);
+    expect(second.removed.identity_security_audit_facts).toBe(1);
     expect(
       (
         await asOwner<{ count: number }>(
-          `select count(*)::integer count from app.auth_email_proofs
-        where id=any($1::uuid[])`,
-          [proofIds],
+          `select (select count(*)::integer from app.auth_email_proofs
+                    where id=any($1::uuid[]))
+                + (select count(*)::integer from app.identity_security_audit_facts
+                    where id=any($2::uuid[])) count`,
+          [proofIds, auditIds],
         )
       ).rows,
     ).toEqual([{ count: 0 }]);
   });
 
-  it('reaps only bounded terminal replay records and permits defined key reuse', async () => {
+  it('pages completed expired replay records and permits key reuse', async () => {
     const keyHashes = [
       'expired-1',
       'expired-2',
@@ -167,10 +160,10 @@ describe('transient data retention', () => {
       );
     }
 
-    const first = await retention.reapTransientData();
-    expect(first.idempotencyRecordsDeleted).toBe(2);
-    const second = await retention.reapTransientData();
-    expect(second.idempotencyRecordsDeleted).toBe(1);
+    const first = await retention.enforce();
+    expect(first.removed.idempotency_records).toBe(2);
+    const second = await retention.enforce();
+    expect(second.removed.idempotency_records).toBe(1);
 
     const remaining = await asOwner(
       `select status,count(*)::integer count
@@ -199,7 +192,7 @@ describe('transient data retention', () => {
     ).resolves.toBeDefined();
   });
 
-  it('preserves active sessions and lock-safe concurrent logout metadata', async () => {
+  it('keeps active sessions and a session revoked while retention waits for it', async () => {
     const activeId = randomUUID();
     const expiredId = randomUUID();
     const concurrentLogoutId = randomUUID();
@@ -237,23 +230,35 @@ describe('transient data retention', () => {
       ],
     );
 
-    await owner.query('begin');
+    const applicationName = 'retention-concurrent-logout';
+    const waiting = createRetentionDatabase(
+      parseDatabaseConfig({
+        connectionString: withApplicationName(maintenanceUrl, applicationName),
+        max: 1,
+      }),
+      { pageSize: 2 },
+    );
     try {
-      await owner.query('set local role pertexo_owner');
-      await owner.query("select set_config('app.workspace_id',$1,true)", [
-        workspaceId,
-      ]);
-      await owner.query(
-        `update app.sessions set revoked_at=clock_timestamp()
-         where id=$1`,
-        [concurrentLogoutId],
-      );
-      const duringLogout = await retention.reapTransientData();
-      expect(duringLogout.sessionsDeleted).toBe(2);
-      await owner.query('commit');
-    } catch (error: unknown) {
-      await owner.query('rollback').catch(() => undefined);
-      throw error;
+      await owner.query('begin');
+      try {
+        await owner.query('set local role pertexo_owner');
+        await owner.query(
+          `update app.sessions set revoked_at=clock_timestamp()
+           where id=$1`,
+          [concurrentLogoutId],
+        );
+        const pass = waiting.enforce();
+        await waitForPostgresLock(applicationName);
+        await owner.query('commit');
+        const { removed } = await pass;
+        expect(removed.sessions).toBe(1);
+        expect(removed.auth_sessions).toBe(1);
+      } catch (error: unknown) {
+        await owner.query('rollback').catch(() => undefined);
+        throw error;
+      }
+    } finally {
+      await waiting.close();
     }
 
     const retained = await asOwner<{ id: string; revoked: boolean }>(
@@ -304,8 +309,8 @@ describe('transient data retention', () => {
       ],
     );
 
-    const result = await retention.reapTransientData();
-    expect(result.invitationPiiMinimized).toBe(1);
+    const { removed } = await retention.enforce();
+    expect(removed.invitation_recipients).toBe(1);
     const minimized = await asOwner<{
       recipient_email: string;
       receipt_email: string;
@@ -324,7 +329,7 @@ describe('transient data retention', () => {
     });
   });
 
-  it('expires unattended invitations and reaps bounded abandoned intents safely', async () => {
+  it('expires unanswered invitations and removes ended acceptances and their claims', async () => {
     const invitationId = randomUUID();
     const attemptId = randomUUID();
     const expiredIntentId = randomUUID();
@@ -381,10 +386,10 @@ describe('transient data retention', () => {
       ],
     );
 
-    const result = await retention.reapTransientData();
-    expect(result.invitationsExpired).toBe(1);
-    expect(result.invitationAcceptanceIntentsDeleted).toBe(2);
-    expect(result.invitationReplacementClaimsDeleted).toBe(1);
+    const { removed } = await retention.enforce();
+    expect(removed.invitation_expiry).toBe(1);
+    expect(removed.invitation_acceptance_intents).toBe(2);
+    expect(removed.invitation_replacement_claims).toBe(1);
     const state = await asOwner<{
       delivery_status: string;
       invitation_status: string;
@@ -419,7 +424,7 @@ describe('transient data retention', () => {
     });
   });
 
-  it('retains a pruned intermediate claim while its descendant is live and reaps the terminal lineage', async () => {
+  it('keeps a claim while an acceptance further down its chain is live', async () => {
     const invitationId = randomUUID();
     const intentA = randomUUID();
     const intentB = randomUUID();
@@ -471,8 +476,8 @@ describe('transient data retention', () => {
       ],
     );
 
-    const retained = await retention.reapTransientData();
-    expect(retained.invitationReplacementClaimsDeleted).toBe(0);
+    const retained = await retention.enforce();
+    expect(retained.removed.invitation_replacement_claims).toBe(0);
     await expect(
       asOwner<{ count: number }>(
         `select count(*)::integer count
@@ -488,8 +493,8 @@ describe('transient data retention', () => {
         where id=$1`,
       [intentC],
     );
-    const reaped = await retention.reapTransientData();
-    expect(reaped.invitationReplacementClaimsDeleted).toBe(2);
+    const reaped = await retention.enforce();
+    expect(reaped.removed.invitation_replacement_claims).toBe(2);
     await expect(
       asOwner<{ count: number }>(
         `select count(*)::integer count

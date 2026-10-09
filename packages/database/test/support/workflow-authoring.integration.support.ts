@@ -28,6 +28,7 @@ import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDataba
 import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/workflow-integration-usage.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 import { purgeWorkspace } from './workspace-purge.js';
+import { enforceRetention } from './retention.js';
 
 const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -79,6 +80,12 @@ export function purgeTestWorkspace(
     maintenanceUrl: dispatcherUrl,
     workspaceId,
   });
+}
+/** Runs retention through the maintenance role until nothing more is due. */
+export function enforceTestRetention(
+  pageSize?: number,
+): ReturnType<typeof enforceRetention> {
+  return enforceRetention(dispatcherUrl, pageSize);
 }
 export const migrationConfig = {
   appRole: 'pertexo_app',

@@ -14,13 +14,14 @@ import {
 } from '../src/testing.js';
 import { createWorkflowTriggerPauseFoldStore } from '../src/triggers/pause/fold-store.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
+import { enforceRetention } from './support/retention.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
   'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_app'],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName: `pertexo_test_pause_controls_${randomUUID().replaceAll('-', '')}`,
   ownerRole: 'pertexo_owner',
 });
@@ -37,6 +38,10 @@ const apiUrl = url(
 const workerUrl = url(
   'DATABASE_URL',
   'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+);
+const maintenanceUrl = url(
+  'DATABASE_MAINTENANCE_URL',
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
 let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
@@ -658,7 +663,7 @@ describe('workflow auto pause operational controls', () => {
     expect(await failures(scope)).toBe(0);
     expect(await pausePeriodCount(scope)).toBe(1);
   });
-  it('reaps completed expired control receipts in the existing bounded transient reaper', async () => {
+  it('removes completed expired control receipts through retention', async () => {
     const scope = await seed();
     const command = {
       ...scope,
@@ -672,19 +677,8 @@ describe('workflow auto pause operational controls', () => {
       "update app.workflow_auto_pause_command_receipts set expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1",
       [scope.workspaceId],
     );
-    const client = await admin.connect();
-    try {
-      await client.query('begin');
-      await client.query('set local role pertexo_maintenance');
-      const result = await client.query<{
-        idempotency_records_deleted: number;
-      }>('select * from app.reap_transient_data(1)');
-      expect(result.rows[0]?.idempotency_records_deleted).toBe(1);
-      await client.query('commit');
-    } finally {
-      await client.query('rollback');
-      client.release();
-    }
+    const removed = await enforceRetention(maintenanceUrl);
+    expect(removed.auto_pause_command_receipts).toBe(1);
     expect(
       (
         await admin.query(

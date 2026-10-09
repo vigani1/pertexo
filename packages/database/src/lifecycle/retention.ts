@@ -6,12 +6,6 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { checkDatabaseReadiness } from '../platform/readiness.js';
 import { RETENTION_RULES, type RetentionRuleName } from './retention-rules.js';
 import { inRetentionTransaction } from './retention-transaction.js';
-import {
-  reapTransientData,
-  type TransientDataReapResult,
-} from './transient-data-retention.js';
-
-export type { TransientDataReapResult } from './transient-data-retention.js';
 export type { RetentionRuleName } from './retention-rules.js';
 
 /** Advisory lock class for the rules; the rule's index is the second key. */
@@ -29,7 +23,6 @@ export interface RetentionDatabase {
   close(): Promise<void>;
   /** Runs every rule once, one page each. */
   enforce(signal?: AbortSignal): Promise<RetentionPassResult>;
-  reapTransientData(signal?: AbortSignal): Promise<TransientDataReapResult>;
 }
 
 const optionsSchema = z
@@ -87,7 +80,5 @@ export function createRetentionDatabase(
         more: Object.values(removed).some((count) => count >= options.pageSize),
       });
     },
-    reapTransientData: (signal?: AbortSignal) =>
-      reapTransientData(pool, options, signal),
   });
 }

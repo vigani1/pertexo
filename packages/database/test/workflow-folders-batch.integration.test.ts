@@ -6,6 +6,7 @@ import {
   organizationFixtureEnabled,
   type OrganizationOwnedFixture,
 } from './support/workflow-organization-owned.fixture.js';
+import { enforceRetention } from './support/retention.js';
 
 type Scope = Awaited<ReturnType<OrganizationOwnedFixture['scope']>>;
 interface Folder {
@@ -595,7 +596,7 @@ describe.skipIf(!organizationFixtureEnabled)(
         ).rows,
       ).toEqual([{ folder_id: target.id }]);
     });
-    it('expires parent authority and reaps it within the shared budget', async () => {
+    it('expires parent authority and removes it through retention', async () => {
       const scope = await fixture.scope(),
         workflow = await scope.workflow(),
         key = commandKey(),
@@ -621,18 +622,10 @@ describe.skipIf(!organizationFixtureEnabled)(
           )
         ).rows,
       ).toEqual([{ result: { admitted: true } }]);
-      const reap = async () => {
-        const result = await fixture.maintenance.query<Record<string, number>>(
-          'select * from app.reap_workflow_organization(1)',
-        );
-        const count = Object.values(result.rows[0] ?? {}).reduce(
-          (total, value) => total + value,
-          0,
-        );
-        expect(count).toBeLessThanOrEqual(1);
-        return count;
-      };
-      expect(await reap()).toBe(1);
+      expect(
+        (await enforceRetention(fixture.urls.maintenance))
+          .organization_receipts,
+      ).toBeGreaterThanOrEqual(1);
       expect(
         (
           await owner(
