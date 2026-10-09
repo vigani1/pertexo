@@ -2,7 +2,7 @@ import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
 } from '../graph/contract.js';
-import { validateWorkflowGraphWithIssueAdmission } from '../graph/validation.js';
+import { validateWorkflowGraph } from '../graph/validation.js';
 import type {
   GraphValidationIssue,
   GraphValidationResult,
@@ -63,11 +63,7 @@ export function validateAuthoringBatch(
     if (issueBytes > AUTHORING_VALIDATION_BUDGET.reportBytes)
       throw new AuthoringValidationUnavailableError('report_limit');
   };
-  const structural = validateWorkflowGraphWithIssueAdmission(
-    graph,
-    {},
-    admitIssue,
-  );
+  const structural = validateWorkflowGraph(graph, {}, admitIssue);
   if (!structural.ok) {
     assertReportBudget(structural);
     return structural;

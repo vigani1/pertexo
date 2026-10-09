@@ -292,66 +292,15 @@ function checksumExecutableProjection(projection: JsonValue): string {
 }
 
 /**
- * Recomputes the canonical identity of a retained V1 version without requiring
- * its pinned definitions to remain in the active publication catalog.
- * Structural and graph-semantic corruption still fails closed.
+ * Recomputes a stored version's checksum without requiring its definitions to
+ * still be in the current catalog. Structural and semantic corruption still
+ * fails closed.
  */
 export function workflowRetainedExecutableChecksum(input: unknown): string {
-  return checksumRetainedGraph(parseWorkflowGraphDraft(input));
-}
-
-function checksumRetainedGraph(graph: WorkflowGraph): string {
+  const graph = parseWorkflowGraphDraft(input);
   const validation = validateWorkflowGraph(graph);
   if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
   return checksumExecutableProjection(executableGraphProjection(graph));
-}
-
-export interface RetainedWorkflowVersionV1 {
-  readonly format: 'v1';
-  readonly executable: false;
-  readonly graphSchemaVersion: 1;
-  readonly graph: WorkflowGraph;
-  readonly checksum: `wf:v1:sha256:${string}`;
-}
-
-type WorkflowChecksumV1 = `wf:v1:sha256:${string}`;
-const workflowChecksumV1Pattern = /^wf:v1:sha256:[a-f0-9]{64}$/u;
-const workflowChecksumV1Schema = z.custom<WorkflowChecksumV1>(
-  (value) => typeof value === 'string' && workflowChecksumV1Pattern.test(value),
-  'invalid workflow V1 checksum',
-);
-
-const retainedWorkflowVersionV1Schema = z
-  .object({
-    schemaVersion: z.literal(1),
-    graphJson: z.unknown(),
-    checksum: workflowChecksumV1Schema,
-    executableSchemaVersion: z.null(),
-    executableJson: z.null(),
-    compatibilityReleaseEpoch: z.null(),
-  })
-  .strict();
-
-/**
- * Verifies a retained Phase 2 row under its original V1 identity rules.
- * V1 remains readable for diagnosis and migration, but deliberately cannot be
- * admitted for execution because it has no pinned executor or runtime policy.
- */
-export function parseRetainedWorkflowVersionV1(
-  input: unknown,
-): RetainedWorkflowVersionV1 {
-  const retained = retainedWorkflowVersionV1Schema.parse(input);
-  const graph = parseWorkflowGraphDraft(retained.graphJson);
-  const checksum = checksumRetainedGraph(graph);
-  if (checksum !== retained.checksum)
-    throw new Error('retained workflow V1 checksum does not match its graph');
-  return Object.freeze({
-    format: 'v1',
-    executable: false,
-    graphSchemaVersion: 1,
-    graph,
-    checksum: retained.checksum,
-  });
 }
 
 export type WorkflowDraftRepresentationTag = `"draft-v1.${string}"`;

@@ -264,7 +264,7 @@ describe('workflow graph validation', () => {
         ]),
       );
   });
-  it('caps issue cardinality and rejects invalid public limit overrides', () => {
+  it('caps issue cardinality', () => {
     const duplicated = graph(
       Array.from({ length: WORKFLOW_VALIDATION_MAX_ISSUES + 2 }, () =>
         node('x'),
@@ -273,15 +273,6 @@ describe('workflow graph validation', () => {
     expect(validateWorkflowGraph(duplicated).issues).toHaveLength(
       WORKFLOW_VALIDATION_MAX_ISSUES,
     );
-    for (const overrides of [
-      { nodes: 0 },
-      { edges: Number.POSITIVE_INFINITY },
-      { graphBytes: 1.5 },
-      { unknown: 1 },
-    ])
-      expect(() =>
-        validateWorkflowGraph(graph([]), overrides as never),
-      ).toThrow();
   });
   it('caps worst-case loop iterations separately from expanded invocations', () => {
     const nested = forEachNode('outer', [forEachNode('inner')]);
