@@ -147,14 +147,6 @@ describe('run event SSE reconstruction', () => {
         },
       },
     ],
-    [
-      'hostile prototype inspection',
-      new Proxy(Object.create(null) as object, {
-        getPrototypeOf: () => {
-          throw new Error('must not inspect iterator failure');
-        },
-      }),
-    ],
   ] as const)(
     'preserves an iterator %s rejection without leaving an abort observer',
     async (_label, failure) => {

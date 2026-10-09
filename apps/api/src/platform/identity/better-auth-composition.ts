@@ -9,7 +9,6 @@ import {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,
   createBetterAuthRuntime,
-  disabledAuthenticationMail,
   printLocalAuthenticationMail,
   type AuthenticationMail,
   type BetterAuthRuntime,
@@ -70,8 +69,6 @@ function selectAuthenticationMail(
         ? printLocalAuthenticationMail
         : undefined,
     );
-  if (input.betterAuth.mailMode !== 'durable')
-    return disabledAuthenticationMail;
   const durable = input.betterAuth.durableMail;
   if (durable === undefined)
     throw new TypeError('Durable authentication mail is not configured');

@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,
-  disabledAuthenticationMail,
   type AuthenticationMail,
   type BetterAuthRuntime,
 } from '../../src/authentication/index.js';
@@ -39,7 +38,7 @@ const session = {
   sameSite: 'lax' as const,
 };
 function betterAuth(
-  mailMode: 'local' | 'durable' | 'disabled',
+  mailMode: 'local' | 'durable',
 ): ApiIdentityConfig['betterAuth'] {
   return {
     secret: 'composition-runtime-secret-at-least-32-characters',
@@ -101,12 +100,6 @@ describe('Better Auth runtime composition', () => {
       sessionTtlSeconds: 90,
     });
     expect(acquired).toEqual([runtime]);
-  });
-
-  it('refuses authentication mail delivery when mail is disabled', () => {
-    compose({ betterAuth: betterAuth('disabled') });
-
-    expect(created[0]?.mail).toBe(disabledAuthenticationMail);
   });
 
   it.each([

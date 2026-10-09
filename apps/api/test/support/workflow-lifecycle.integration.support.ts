@@ -356,7 +356,7 @@ function apiConfig(): ApiConfig {
       },
       betterAuth: {
         secret: 'workflow-lifecycle-integration-secret-with-32-plus-characters',
-        mailMode: 'disabled',
+        mailMode: 'local',
         providers: {},
       },
     },

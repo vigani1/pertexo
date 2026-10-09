@@ -12,7 +12,7 @@ export const identityEnvironmentShape = {
   INVITATION_TOKEN_KEY_VERSION: z.string().optional(),
   INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32).max(512).optional(),
-  AUTH_MAIL_MODE: z.enum(['local', 'durable', 'disabled']).default('disabled'),
+  AUTH_MAIL_MODE: z.enum(['local', 'durable']).default('local'),
   AUTH_MAIL_FROM: z.email().max(320).optional(),
   AUTH_MAIL_KEY: z.string().optional(),
   AUTH_MAIL_KEY_VERSION: z.string().optional(),
@@ -59,7 +59,7 @@ export type ApiIdentityConfig = Readonly<{
   }>;
   betterAuth: Readonly<{
     secret: string;
-    mailMode: 'local' | 'durable' | 'disabled';
+    mailMode: 'local' | 'durable';
     /** Local development prints each local message's link to stdout. */
     printLocalMailLinks?: true;
     durableMail?: Readonly<{ fromEmail: string; encryption: EncryptionKeys }>;

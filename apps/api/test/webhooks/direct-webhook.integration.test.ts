@@ -254,7 +254,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
             },
             betterAuth: {
               secret: 'webhook-integration-secret-with-32-plus-characters',
-              mailMode: 'disabled',
+              mailMode: 'local',
               providers: {},
             },
           },

@@ -582,7 +582,7 @@ function artifactApiConfig(): ApiConfig {
       },
       betterAuth: {
         secret: 'artifact-transfer-integration-secret-with-32-plus-characters',
-        mailMode: 'disabled',
+        mailMode: 'local',
         providers: {},
       },
     },

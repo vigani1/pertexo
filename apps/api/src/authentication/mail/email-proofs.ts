@@ -8,10 +8,9 @@ import {
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import {
-  disabledAuthenticationMail,
-  type AuthenticationMail,
-  type PreparedAuthenticationProofMail,
+import type {
+  AuthenticationMail,
+  PreparedAuthenticationProofMail,
 } from './delivery.js';
 
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
@@ -130,8 +129,6 @@ export class OwnedEmailProofs {
     newEmail?: string,
     returnTo?: string,
   ): Promise<void> {
-    if (this.mail === disabledAuthenticationMail)
-      throw new Error('Authentication mail delivery is not configured');
     const token = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + 55 * 60_000);
     const url = this.url(token, returnTo);
@@ -227,8 +224,7 @@ export class OwnedEmailProofs {
     let nextMail: PreparedAuthenticationProofMail | undefined;
     let nextUrl: string | undefined;
     if (proof.purpose === 'change_old') {
-      if (proof.new_email === null || this.mail === disabledAuthenticationMail)
-        return 'invalid';
+      if (proof.new_email === null) return 'invalid';
       nextToken = randomBytes(32).toString('base64url');
       nextExpiresAt = new Date(Date.now() + 55 * 60_000);
       nextUrl = this.url(nextToken);

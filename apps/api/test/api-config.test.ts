@@ -571,7 +571,6 @@ describe('parseApiConfig identity boundary', () => {
   it.each([
     ['local mail in development', {}, true],
     ['local mail in tests', { NODE_ENV: 'test' }, undefined],
-    ['disabled mail in development', { AUTH_MAIL_MODE: 'disabled' }, undefined],
   ])('prints links for %s: %s', (_name, changed, expected) => {
     const config = parseApiConfig({
       ...standaloneBetterAuthEnvironment(),
