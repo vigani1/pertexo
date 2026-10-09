@@ -394,13 +394,19 @@ now, as one ordered program — not "whenever we touch it".
           are constants. Values from the worker's own modules are trusted:
           errors are checked with plain `instanceof` (no guards against
           trap-throwing proxies), a resolved connection is not re-matched to
-          the workspace and id it was resolved by, and failure-notification
-          delivery does not re-check the intent's side-effect class.
+          the workspace and id it was resolved by, failure-notification
+          delivery does not re-check the intent's side-effect class, and the
+          artifact store's verified upload is not compared with the request
+          again.
     - [x] One provider telemetry: HTTP, Slack and email calls share one
           OpenTelemetry measurement, classified by `NodeExecutorFailure`
           (HTTP adds its response storage). The separate HTTP
           implementation, the per-provider classifiers and the guards around
           OpenTelemetry calls, which never throw, go.
+    - [x] Two loop shapes: the trigger and coordinator runtimes share one
+          scanner runtime (a queue consumer plus a polled scan) instead of
+          two copied lifecycles, and authentication mail delivery uses the
+          polling runtime the inbox, auto-pause and retention loops use.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration

@@ -85,8 +85,8 @@ export class WorkerReadiness {
       this.workspaceInboxRuntime.checkReadiness(),
       this.workflowAutoPauseRuntime.checkReadiness(),
       this.retentionRuntime.checkReadiness(),
+      this.authenticationMailRuntime?.checkReadiness(),
     ]);
-    this.authenticationMailRuntime?.checkReadiness();
     this.assertCanAcceptWork();
   }
 }
