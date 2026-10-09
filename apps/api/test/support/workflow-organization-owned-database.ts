@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Pool } from 'pg';
 import { migrateDatabase } from '@pertexo/database/testing';
 import {
@@ -61,16 +62,23 @@ export function createWorkflowOrganizationOwnedDatabase() {
         max: 1,
       });
       try {
-        const state = await admin.query<{ owner: string; sessions: number }>(
-          `select pg_get_userbyid(datdba) owner,
-            (select count(*)::int from pg_stat_activity where datname=$1) sessions
-           from pg_database where datname=$1`,
-          [name],
-        );
-        if (
-          state.rows[0]?.owner !== 'pertexo_owner' ||
-          state.rows[0].sessions !== 0
-        )
+        const read = async () =>
+          (
+            await admin.query<{ owner: string; sessions: number }>(
+              `select pg_get_userbyid(datdba) owner,
+                (select count(*)::int from pg_stat_activity where datname=$1) sessions
+               from pg_database where datname=$1`,
+              [name],
+            )
+          ).rows[0];
+        // A closed pool's backends leave pg_stat_activity a moment after the
+        // client disconnects; only a session still there after that is a leak.
+        let state = await read();
+        for (let wait = 0; wait < 50 && state?.sessions !== 0; wait += 1) {
+          await delay(100);
+          state = await read();
+        }
+        if (state?.owner !== 'pertexo_owner' || state.sessions !== 0)
           throw new Error('F07 fixture cleanup ownership/session check failed');
         // No force: any leaked connection blocks destruction instead of being killed.
         await admin.query(`drop database "${name}"`);
