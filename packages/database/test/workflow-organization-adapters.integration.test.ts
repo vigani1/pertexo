@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  IdempotencyConflictError,
   WorkflowFolderConflictError,
-  WorkflowIdempotencyConflictError,
   type WorkflowOrganizationBatchRequest,
 } from '../src/api.js';
 import {
@@ -21,9 +21,6 @@ describe.skipIf(!organizationFixtureEnabled)(
       fixture = await createOrganizationOwnedFixture();
       closeFixture = fixture.close;
       stores = fixture.folderStores();
-      await fixture.owner.query(
-        'update app.workflow_organization_rollout set writes_enabled=true',
-      );
     }, 60_000);
     afterAll(async () => {
       await closeFixture?.();
@@ -112,7 +109,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).toEqual({ folderId, deleted: true, replayed: false });
     });
 
-    it('commits admission separately, binds the full parent and derives item recovery keys', async () => {
+    it('claims the batch key for the whole request and replays each item', async () => {
       const scope = await fixture.scope();
       const context = { workspaceId: scope.workspace, actorId: scope.actor };
       const workflowId = await scope.workflow();
@@ -122,9 +119,6 @@ describe.skipIf(!organizationFixtureEnabled)(
         items: [{ workflowId, expectedOrganizationRevision: 1 }],
       };
       const input = { ...context, request, idempotencyKey: randomUUID() };
-      await expect(
-        stores.batches.executeBatchItem({ ...input, workflowId }),
-      ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
       expect(await stores.batches.admitBatch(input)).toEqual({
         admitted: true,
       });
@@ -137,7 +131,7 @@ describe.skipIf(!organizationFixtureEnabled)(
             items: request.items,
           },
         }),
-      ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+      ).rejects.toBeInstanceOf(IdempotencyConflictError);
       expect(
         await stores.batches.executeBatchItem({ ...input, workflowId }),
       ).toEqual({
@@ -154,7 +148,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       });
     });
 
-    it('shares parent admission with replacement and administrator cleanup without losing placement', async () => {
+    it('retags and cleans up through batches without losing placement', async () => {
       const scope = await fixture.scope();
       const context = { workspaceId: scope.workspace, actorId: scope.actor };
       const workflowId = await scope.workflow();

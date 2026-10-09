@@ -163,8 +163,17 @@ now, as one ordered program — not "whenever we touch it".
         last checks of it: the favorite command and its held evidence
         (Authoring), replacement-claim reapability (Workspaces and access) and
         inbox expiry (Notifications and inbox).
-  - [ ] Authoring: organization (folders, tags, favorites, batches), drafts,
-        publication, portability, input cases, concurrency and auto-pause.
+  - [x] Organization commands (folders, tags, placement, batches) run in
+        TypeScript (`authoring/organization/`). An advisory lock per workspace
+        orders them, and their keys use `idempotency_records` through the
+        shared `platform/idempotency.ts`; the organization receipt table goes.
+        Every other area moves to the same helper and drops its receipt table
+        when it is ported.
+  - [ ] Favorites: a simple idempotent on/off (no revisions, absence tokens,
+        membership generations, receipts or held evidence); then the
+        organization rollout flag and coordination table go.
+  - [ ] Authoring: drafts, publication, portability, input cases, concurrency
+        and auto-pause.
   - [ ] Workspaces and access: memberships, invitations (including the
         replacement-claim scan's unused purge mode), ownership, identity.
   - [ ] Connections.

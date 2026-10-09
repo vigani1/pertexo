@@ -1,20 +1,21 @@
-import { createHash } from 'node:crypto';
-import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import type { DatabaseConfig } from '../../config.js';
-import {
-  acquireDatabasePool,
-  type DatabaseRuntime,
-} from '../../platform/database-runtime.js';
-import { withTenantScopedClient } from '../../tenant-access/workspace.js';
-import { workflowFolderDatabaseFailure } from './folders.repository.js';
-import { WorkflowOrganizationValidationError } from './errors.js';
 
-type Scope = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  signal?: AbortSignal;
-}>;
+import type { DatabaseConfig } from '../../config.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import { lockWorkflowAuthoringAuthority } from '../workflow-authoring-authority.js';
+import { runOrganizationCommand } from './command.js';
+import { WorkflowOrganizationValidationError } from './errors.js';
+import {
+  checkOrganizationReplay,
+  organizeWorkflow,
+  type OrganizationChange,
+} from './organize-workflow.js';
+import {
+  createOrganizationSession,
+  type OrganizationRequestScope,
+} from './session.js';
+
 export type WorkflowOrganizationBatchItem = Readonly<{
   workflowId: string;
   expectedOrganizationRevision: number;
@@ -26,7 +27,7 @@ export type WorkflowOrganizationBatchRequest = Selection &
     | Readonly<{ operation: 'replace_tags'; tagIds: readonly string[] }>
     | Readonly<{ operation: 'tag_cleanup'; tagId: string }>
   );
-export type WorkflowOrganizationBatchInput = Scope &
+export type WorkflowOrganizationBatchInput = OrganizationRequestScope &
   Readonly<{
     idempotencyKey: string;
     request: WorkflowOrganizationBatchRequest;
@@ -38,14 +39,20 @@ export type WorkflowOrganizationBatchItemResult = Readonly<{
   folderId?: string | null;
 }>;
 export interface WorkflowOrganizationBatchDatabase {
+  /** Claims the batch's key for its whole request, before any item runs. */
   admitBatch(
     input: WorkflowOrganizationBatchInput,
   ): Promise<Readonly<{ admitted: true }>>;
+  /** Applies the batch to one of its workflows, as its own command. */
   executeBatchItem(
     input: WorkflowOrganizationBatchInput & Readonly<{ workflowId: string }>,
   ): Promise<WorkflowOrganizationBatchItemResult>;
   close(): Promise<void>;
 }
+
+const ADMINISTRATORS = ['owner', 'admin'] as const;
+const EDITORS = ['owner', 'admin', 'builder'] as const;
+
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const item = z
@@ -75,93 +82,128 @@ const request = z.discriminatedUnion('operation', [
     .object({ operation: z.literal('tag_cleanup'), tagId: uuid, items })
     .strict(),
 ]);
-const scopeSchema = z.object({
-  workspaceId: uuid,
-  actorId: uuid,
-  signal: z.instanceof(AbortSignal).optional(),
-});
-const key = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$(?![\s\S])/u)
-  .refine((value) => !value.includes(','));
-const admitted = z.object({ admitted: z.literal(true) }).strict();
-const baseResult = z
+const itemResult = z
   .object({
     workflowId: uuid,
     organizationRevision: revision,
-    replayed: z.boolean(),
+    folderId: uuid.nullable().optional(),
   })
   .strict();
-const moveResult = baseResult.extend({ folderId: uuid.nullable() }).strict();
-const hash = (value: string) =>
-  createHash('sha256').update(value).digest('hex');
 
-/** Admission and each item are deliberately separate tenant transactions.
- * This module never auto-admits, retries, rotates keys or executes other items. */
+type BatchRequest = z.output<typeof request>;
+
+const rolesFor = (body: BatchRequest) =>
+  body.operation === 'tag_cleanup' ? ADMINISTRATORS : EDITORS;
+
+function changeOf(body: BatchRequest): OrganizationChange {
+  switch (body.operation) {
+    case 'move':
+      return { kind: 'move', folderId: body.folderId };
+    case 'replace_tags':
+      return { kind: 'replace_tags', tagIds: body.tagIds };
+    case 'tag_cleanup':
+      return { kind: 'detach_tag', tagId: body.tagId };
+  }
+}
+
+/** A batch moves, retags or untags up to 50 workflows. Each workflow is its
+ * own short transaction, so one conflict does not undo the others. */
 export function createWorkflowOrganizationBatchDatabase(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
 ): WorkflowOrganizationBatchDatabase {
-  const lease = acquireDatabasePool(config, options.runtime);
-  async function transact<T>(
-    input: Scope,
-    work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const { signal, ...ids } = scopeSchema.parse(input);
-    const scope = signal === undefined ? ids : { ...ids, signal };
-    try {
-      return await withTenantScopedClient(
-        lease.pool,
-        scope,
-        work,
-        signal === undefined ? {} : { signal },
-      );
-    } catch (error: unknown) {
-      return workflowFolderDatabaseFailure(error);
-    }
-  }
+  const session = createOrganizationSession(config, options.runtime);
   return Object.freeze({
-    async admitBatch(input: WorkflowOrganizationBatchInput) {
-      const body = request.parse(input.request),
-        parentKeyHash = hash(key.parse(input.idempotencyKey));
-      return transact(input, async (client) => {
-        const result = await client.query<{ result: unknown }>(
-          'select app.admit_workflow_organization_batch($1,$2::jsonb) result',
-          [parentKeyHash, JSON.stringify(body)],
+    admitBatch: async (input: WorkflowOrganizationBatchInput) => {
+      const body = request.parse(input.request);
+      return session.transact(input, async (client, scope) => {
+        await lockWorkflowAuthoringAuthority(
+          client,
+          scope.workspaceId,
+          scope.actorId,
+          rolesFor(body),
         );
-        return Object.freeze(admitted.parse(result.rows[0]?.result));
+        const identity = {
+          workspaceId: scope.workspaceId,
+          operation: 'organization.batch',
+          scope: `${scope.actorId}:${scope.workspaceId}`,
+          idempotencyKey: input.idempotencyKey,
+        };
+        const stored = await claimCommand(client, {
+          ...identity,
+          request: body,
+          resourceId: scope.workspaceId,
+        });
+        if (stored === null)
+          await completeCommand(client, identity, { admitted: true });
+        return Object.freeze({ admitted: true as const });
       });
     },
-    async executeBatchItem(
+
+    executeBatchItem: async (
       input: WorkflowOrganizationBatchInput & Readonly<{ workflowId: string }>,
-    ) {
-      const body = request.parse(input.request),
-        workflowId = uuid.parse(input.workflowId);
-      if (!body.items.some((entry) => entry.workflowId === workflowId))
-        throw new WorkflowOrganizationValidationError();
-      const parentKeyHash = hash(key.parse(input.idempotencyKey));
-      const itemKeyHash = hash(
-        JSON.stringify({
-          v: 1,
-          p: 'organization.batch.item',
-          k: parentKeyHash,
-          id: workflowId,
-        }),
+    ) => {
+      const body = request.parse(input.request);
+      const workflowId = uuid.parse(input.workflowId);
+      const selected = body.items.find(
+        (entry) => entry.workflowId === workflowId,
       );
-      return transact(input, async (client) => {
-        const result = await client.query<{ result: unknown }>(
-          'select app.execute_workflow_organization_batch_item($1,$2::jsonb,$3,$4) result',
-          [parentKeyHash, JSON.stringify(body), workflowId, itemKeyHash],
+      if (selected === undefined)
+        throw new WorkflowOrganizationValidationError();
+      const change = changeOf(body);
+      return session.transact(input, async (client, scope) => {
+        const { result, replayed } = await runOrganizationCommand(
+          client,
+          scope,
+          {
+            operation: 'organization.batch.item',
+            target: workflowId,
+            idempotencyKey: input.idempotencyKey,
+            request: {
+              change,
+              expectedOrganizationRevision:
+                selected.expectedOrganizationRevision,
+            },
+            roles: rolesFor(body),
+            replay: () =>
+              checkOrganizationReplay(client, scope, workflowId, change.kind),
+            apply: async () => {
+              const organizationRevision = await organizeWorkflow(
+                client,
+                scope,
+                {
+                  workflowId,
+                  change,
+                  expectedOrganizationRevision:
+                    selected.expectedOrganizationRevision,
+                },
+              );
+              return {
+                result: {
+                  workflowId,
+                  organizationRevision,
+                  ...(change.kind === 'move'
+                    ? { folderId: change.folderId }
+                    : {}),
+                },
+                audit: {
+                  action: `workflow.organization.${body.operation}`,
+                  targetId: workflowId,
+                  metadata: { organizationRevision },
+                },
+              };
+            },
+          },
         );
-        return Object.freeze(
-          (body.operation === 'move' ? moveResult : baseResult).parse(
-            result.rows[0]?.result,
-          ),
-        );
+        const { folderId, ...parsed } = itemResult.parse(result);
+        return Object.freeze({
+          ...parsed,
+          ...(folderId === undefined ? {} : { folderId }),
+          replayed,
+        });
       });
     },
-    close: lease.close,
+
+    close: session.close,
   });
 }

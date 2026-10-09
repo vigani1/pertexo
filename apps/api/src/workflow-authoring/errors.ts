@@ -1,4 +1,5 @@
 import {
+  IdempotencyConflictError,
   WorkflowIdempotencyConflictError,
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
@@ -139,7 +140,10 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
         'The workspace default has changed; reload it before retrying.',
       details: { currentRevision: error.currentRevision },
     });
-  if (error instanceof WorkflowIdempotencyConflictError)
+  if (
+    error instanceof WorkflowIdempotencyConflictError ||
+    error instanceof IdempotencyConflictError
+  )
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
     });

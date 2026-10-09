@@ -570,21 +570,6 @@ export const RETENTION_RULES = Object.freeze([
       where (receipt.workspace_id, receipt.actor_id, receipt.workflow_id, receipt.key_hash)
         = (page.workspace_id, page.actor_id, page.workflow_id, page.key_hash)`,
   },
-  {
-    name: 'organization_receipts',
-    statement: `
-      with page as (
-        select workspace_id, actor_id, operation, target_id, key_hash
-        from app.workflow_organization_receipts
-        where expires_at <= clock_timestamp()
-        order by expires_at limit $1
-      )
-      delete from app.workflow_organization_receipts receipt using page
-      where (receipt.workspace_id, receipt.actor_id, receipt.operation,
-             receipt.target_id, receipt.key_hash)
-        = (page.workspace_id, page.actor_id, page.operation,
-           page.target_id, page.key_hash)`,
-  },
 ] as const);
 
 export type RetentionRuleName = (typeof RETENTION_RULES)[number]['name'];

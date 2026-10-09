@@ -1,26 +1,28 @@
-import { createHash } from 'node:crypto';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
+
 import type { DatabaseConfig } from '../../config.js';
 import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import { ROLES } from '../../tenant-access/workspace-policy.js';
 import { lockWorkflowAuthoringAuthority } from '../workflow-authoring-authority.js';
+import { WorkflowNotFoundError } from '../workflow-authoring-errors.js';
+import { runOrganizationCommand } from './command.js';
+import { WorkflowFolderConflictError } from './errors.js';
 import {
-  WorkflowIdempotencyConflictError,
-  WorkflowNotFoundError,
-} from '../workflow-authoring-errors.js';
+  checkOrganizationReplay,
+  organizeWorkflow,
+} from './organize-workflow.js';
 import {
-  WorkflowOrganizationUnavailableError,
-  WorkflowOrganizationValidationError,
-} from './errors.js';
-import { WorkflowTagConflictError } from './tags.repository.js';
-import { createOrganizationDatabaseSession } from './session.js';
+  createOrganizationSession,
+  type OrganizationRequestScope,
+} from './session.js';
 
-type Scope = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  signal?: AbortSignal;
-}>;
-type Command = Scope & Readonly<{ idempotencyKey: string }>;
+export {
+  WorkflowFolderConflictError,
+  type WorkflowFolderConflictKind,
+} from './errors.js';
+
+type Command = OrganizationRequestScope & Readonly<{ idempotencyKey: string }>;
 type FolderCommand = Command &
   Readonly<{ folderId: string; expectedFolderRevision: number }>;
 export type WorkflowFolderRecord = Readonly<{
@@ -47,7 +49,7 @@ export type WorkflowFolderPlacementResult = Readonly<{
 }>;
 export interface WorkflowFolderDatabase {
   listFolders(
-    input: Scope,
+    input: OrganizationRequestScope,
   ): Promise<Readonly<{ items: readonly WorkflowFolderRecord[] }>>;
   createFolder(
     input: Command & Readonly<{ name: string; parentId: string | null }>,
@@ -69,14 +71,12 @@ export interface WorkflowFolderDatabase {
   ): Promise<WorkflowFolderPlacementResult>;
   close(): Promise<void>;
 }
-export type WorkflowFolderConflictKind =
-  'name' | 'limit' | 'revision' | 'hierarchy' | 'not_empty' | 'not_visible';
-export class WorkflowFolderConflictError extends Error {
-  override readonly name = 'WorkflowFolderConflictError';
-  constructor(readonly kind: WorkflowFolderConflictKind) {
-    super('Workflow folder command conflicts');
-  }
-}
+
+const FOLDER_LIMIT = 256;
+const FOLDER_DEPTH_LIMIT = 4;
+const ADMINISTRATORS = ['owner', 'admin'] as const;
+const EDITORS = ['owner', 'admin', 'builder'] as const;
+
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const canonicalName = z
@@ -103,116 +103,164 @@ const folder = z
     name: canonicalName,
     parentId: uuid.nullable(),
     revision,
-    depth: z.number().int().min(1).max(4),
+    depth: z.number().int().min(1).max(FOLDER_DEPTH_LIMIT),
   })
   .strict()
   .refine((value) =>
     value.parentId === null ? value.depth === 1 : value.depth > 1,
   );
-const commandResult = z.object({ folder, replayed: z.boolean() }).strict();
+const folderResult = z.object({ folder }).strict();
 const deleteResult = z
-  .object({ folderId: uuid, deleted: z.literal(true), replayed: z.boolean() })
+  .object({ folderId: uuid, deleted: z.literal(true) })
   .strict();
 const placementResult = z
   .object({
     workflowId: uuid,
     folderId: uuid.nullable(),
     organizationRevision: revision,
-    replayed: z.boolean(),
   })
   .strict();
-const scopeSchema = z.object({
-  workspaceId: uuid,
-  actorId: uuid,
-  signal: z.instanceof(AbortSignal).optional(),
-});
-const key = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$(?![\s\S])/u)
-  .refine((value) => !value.includes(','));
-function digest(input: Command) {
-  return createHash('sha256')
-    .update(key.parse(input.idempotencyKey))
-    .digest('hex');
+
+/** Sibling names are unique regardless of ASCII letter case. */
+const nameKey = (value: string): string =>
+  value.replace(/[A-Z]/gu, (letter) => letter.toLowerCase());
+
+type FolderRow = Readonly<{
+  id: string;
+  name: string;
+  parent_id: string | null;
+  revision: string;
+}>;
+
+async function readFolder(
+  client: PoolClient,
+  workspaceId: string,
+  folderId: string,
+): Promise<FolderRow> {
+  const result = await client.query<FolderRow>(
+    `select id, name, parent_id, revision from app.workflow_folders
+     where workspace_id = $1 and id = $2`,
+    [workspaceId, folderId],
+  );
+  const row = result.rows[0];
+  if (row === undefined)
+    throw new WorkflowNotFoundError('Folder is not visible');
+  return row;
 }
 
-/** Internal shared SQL error translation for the folder/batch adapter leaves. */
-export function workflowFolderDatabaseFailure(error: unknown): never {
-  const parsed = z.object({ code: z.string() }).safeParse(error);
-  if (!parsed.success) throw error;
-  const kinds: Readonly<Record<string, WorkflowFolderConflictKind>> = {
-    P7011: 'name',
-    P7012: 'limit',
-    P7013: 'revision',
-    P7014: 'hierarchy',
-    P7015: 'not_empty',
-    P7016: 'not_visible',
+/** How many folders deep a folder sits; a top-level folder is 1. */
+async function folderDepth(
+  client: PoolClient,
+  workspaceId: string,
+  folderId: string | null,
+): Promise<number> {
+  if (folderId === null) return 0;
+  const result = await client.query<{
+    depth: number | null;
+    rooted: boolean | null;
+  }>(
+    `with recursive ancestors as (
+       select parent_id, 1 depth from app.workflow_folders
+       where workspace_id = $1 and id = $2
+       union all
+       select folder.parent_id, ancestors.depth + 1 from ancestors
+       join app.workflow_folders folder
+         on folder.workspace_id = $1 and folder.id = ancestors.parent_id
+       where ancestors.depth <= $3
+     )
+     select max(depth)::int depth, bool_or(parent_id is null) rooted from ancestors`,
+    [workspaceId, folderId, FOLDER_DEPTH_LIMIT],
+  );
+  const row = result.rows[0];
+  if (
+    row?.rooted !== true ||
+    row.depth === null ||
+    row.depth > FOLDER_DEPTH_LIMIT
+  )
+    throw new WorkflowFolderConflictError('hierarchy');
+  return row.depth;
+}
+
+async function requireFreeName(
+  client: PoolClient,
+  workspaceId: string,
+  parentId: string | null,
+  folderName: string,
+  folderId: string | null,
+): Promise<void> {
+  const taken = await client.query(
+    `select 1 from app.workflow_folders
+     where workspace_id = $1 and parent_id is not distinct from $2::uuid
+       and name_key = $3 and id is distinct from $4::uuid`,
+    [workspaceId, parentId, nameKey(folderName), folderId],
+  );
+  if (taken.rowCount !== 0) throw new WorkflowFolderConflictError('name');
+}
+
+function requireRevision(row: FolderRow, expected: number): void {
+  if (Number(row.revision) !== expected)
+    throw new WorkflowFolderConflictError('revision');
+}
+
+async function folderRecord(
+  client: PoolClient,
+  workspaceId: string,
+  row: FolderRow,
+): Promise<WorkflowFolderRecord> {
+  return {
+    id: row.id,
+    name: row.name,
+    parentId: row.parent_id,
+    revision: Number(row.revision),
+    depth: await folderDepth(client, workspaceId, row.id),
   };
-  const kind = kinds[parsed.data.code];
-  if (kind !== undefined) throw new WorkflowFolderConflictError(kind);
-  switch (parsed.data.code) {
-    case 'P7008':
-      throw new WorkflowTagConflictError('organization_revision');
-    case 'P7009':
-      throw new WorkflowTagConflictError('lifecycle');
-    case '42501':
-      throw new WorkflowNotFoundError('Workflow is not visible');
-    case 'P7001':
-      throw new WorkflowOrganizationUnavailableError();
-    case 'P7002':
-      throw new WorkflowIdempotencyConflictError(
-        'Idempotency key request mismatch',
-      );
-    case '22023':
-      throw new WorkflowOrganizationValidationError();
-    default:
-      throw error;
-  }
 }
 
 export function createWorkflowFolderDatabase(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
 ): WorkflowFolderDatabase {
-  const { transact, close } = createOrganizationDatabaseSession(
-    config,
-    options.runtime,
-    (input) => {
-      const { signal, ...ids } = scopeSchema.parse(input);
-      return signal === undefined ? ids : { ...ids, signal };
-    },
-    workflowFolderDatabaseFailure,
-  );
-  async function command<T>(
+  const session = createOrganizationSession(config, options.runtime);
+
+  function folderCommand(
     input: Command,
     operation: string,
     target: string | null,
-    body: object,
-    schema: z.ZodType<T>,
-  ): Promise<T> {
-    const hash = digest(input);
-    return transact(input, async (client) => {
-      const result = await client.query<{ result: unknown }>(
-        'select app.execute_workflow_folder_command($1,$2,$3,$4::jsonb) result',
-        [operation, target, hash, JSON.stringify(body)],
-      );
-      const value = schema.parse(result.rows[0]?.result);
-      return Object.freeze(value);
+    request: unknown,
+    apply: (client: PoolClient, workspaceId: string) => Promise<FolderRow>,
+  ): Promise<WorkflowFolderCommandResult> {
+    return session.transact(input, async (client, scope) => {
+      const { result, replayed } = await runOrganizationCommand(client, scope, {
+        operation,
+        target,
+        idempotencyKey: input.idempotencyKey,
+        request,
+        roles: ADMINISTRATORS,
+        apply: async () => {
+          const row = await apply(client, scope.workspaceId);
+          return {
+            result: {
+              folder: await folderRecord(client, scope.workspaceId, row),
+            },
+            audit: { action: `workflow.${operation}`, targetId: row.id },
+          };
+        },
+      });
+      return Object.freeze({ ...folderResult.parse(result), replayed });
     });
   }
-  return Object.freeze({
-    async listFolders(input: Scope) {
-      return transact(input, async (client, scope) => {
+
+  const store: WorkflowFolderDatabase = {
+    listFolders: (input: OrganizationRequestScope) =>
+      session.transact(input, async (client, scope) => {
         await lockWorkflowAuthoringAuthority(
           client,
           scope.workspaceId,
           scope.actorId,
           ROLES,
         );
-        // One bounded statement snapshot derives the hierarchy under tenant RLS.
-        // Count parity fails closed for missing roots, cycles or excessive depth.
+        // One statement derives the whole hierarchy. Count parity fails
+        // closed for missing roots, cycles or excessive depth.
         const result = await client.query<{ items: unknown; total: number }>(
           `with recursive bounded as materialized (
           select id,name,parent_id,revision from app.workflow_folders where workspace_id=$1 order by id limit 257
@@ -225,92 +273,257 @@ export function createWorkflowFolderDatabase(
           [scope.workspaceId],
         );
         const row = result.rows[0];
-        const items = z.array(folder).max(256).parse(row?.items);
+        const items = z.array(folder).max(FOLDER_LIMIT).parse(row?.items);
         if (row?.total !== items.length)
           throw new Error('Workflow folder hierarchy is incompatible');
-        if (
-          !items.every(
-            (item, index) =>
-              index === 0 || (items[index - 1]?.id ?? '') < item.id,
-          )
-        )
-          throw new Error('Workflow folder order is incompatible');
         return Object.freeze({
           items: Object.freeze(items.map((item) => Object.freeze(item))),
         });
-      });
-    },
-    createFolder: (
-      input: Command & Readonly<{ name: string; parentId: string | null }>,
-    ) =>
-      command(
+      }),
+
+    createFolder: async (input) => {
+      const request = {
+        name: name.parse(input.name),
+        parentId: uuid.nullable().parse(input.parentId),
+      };
+      return folderCommand(
         input,
         'folder.create',
         null,
-        {
-          name: name.parse(input.name),
-          parentId: uuid.nullable().parse(input.parentId),
+        request,
+        async (client, workspaceId) => {
+          if (request.parentId !== null)
+            await readFolder(client, workspaceId, request.parentId);
+          await requireFreeName(
+            client,
+            workspaceId,
+            request.parentId,
+            request.name,
+            null,
+          );
+          const count = await client.query<{ count: number }>(
+            'select count(*)::int count from app.workflow_folders where workspace_id = $1',
+            [workspaceId],
+          );
+          if ((count.rows[0]?.count ?? 0) >= FOLDER_LIMIT)
+            throw new WorkflowFolderConflictError('limit');
+          if (
+            (await folderDepth(client, workspaceId, request.parentId)) + 1 >
+            FOLDER_DEPTH_LIMIT
+          )
+            throw new WorkflowFolderConflictError('hierarchy');
+          const created = await client.query<FolderRow>(
+            `insert into app.workflow_folders (workspace_id, id, parent_id, name, name_key)
+             values ($1, uuidv7(), $2, $3, $4)
+             returning id, name, parent_id, revision`,
+            [
+              workspaceId,
+              request.parentId,
+              request.name,
+              nameKey(request.name),
+            ],
+          );
+          const row = created.rows[0];
+          if (row === undefined) throw new Error('Folder was not created');
+          return row;
         },
-        commandResult,
-      ),
-    renameFolder: (input: FolderCommand & Readonly<{ name: string }>) =>
-      command(
+      );
+    },
+
+    renameFolder: async (input) => {
+      const folderId = uuid.parse(input.folderId);
+      const request = {
+        name: name.parse(input.name),
+        expectedFolderRevision: revision.parse(input.expectedFolderRevision),
+      };
+      return folderCommand(
         input,
         'folder.rename',
-        uuid.parse(input.folderId),
-        {
-          name: name.parse(input.name),
-          expectedFolderRevision: revision.parse(input.expectedFolderRevision),
+        folderId,
+        request,
+        async (client, workspaceId) => {
+          const current = await readFolder(client, workspaceId, folderId);
+          requireRevision(current, request.expectedFolderRevision);
+          await requireFreeName(
+            client,
+            workspaceId,
+            current.parent_id,
+            request.name,
+            folderId,
+          );
+          const renamed = await client.query<FolderRow>(
+            `update app.workflow_folders
+             set name = $3, name_key = $4, revision = revision + 1
+             where workspace_id = $1 and id = $2
+             returning id, name, parent_id, revision`,
+            [workspaceId, folderId, request.name, nameKey(request.name)],
+          );
+          return renamed.rows[0] ?? current;
         },
-        commandResult,
-      ),
-    moveFolder: (
-      input: FolderCommand & Readonly<{ parentId: string | null }>,
-    ) =>
-      command(
+      );
+    },
+
+    moveFolder: async (input) => {
+      const folderId = uuid.parse(input.folderId);
+      const request = {
+        parentId: uuid.nullable().parse(input.parentId),
+        expectedFolderRevision: revision.parse(input.expectedFolderRevision),
+      };
+      return folderCommand(
         input,
         'folder.move',
-        uuid.parse(input.folderId),
-        {
-          parentId: uuid.nullable().parse(input.parentId),
-          expectedFolderRevision: revision.parse(input.expectedFolderRevision),
+        folderId,
+        request,
+        async (client, workspaceId) => {
+          if (request.parentId !== null)
+            await readFolder(client, workspaceId, request.parentId);
+          const current = await readFolder(client, workspaceId, folderId);
+          requireRevision(current, request.expectedFolderRevision);
+          await requireFreeName(
+            client,
+            workspaceId,
+            request.parentId,
+            current.name,
+            folderId,
+          );
+          // The moved folder and everything under it must stay within the
+          // depth limit, and it cannot move under itself.
+          const subtree = await client.query<{
+            height: number;
+            cycle: boolean;
+          }>(
+            `with recursive descendants as (
+               select id, 1 height from app.workflow_folders
+               where workspace_id = $1 and id = $2
+               union all
+               select folder.id, descendants.height + 1 from descendants
+               join app.workflow_folders folder
+                 on folder.workspace_id = $1 and folder.parent_id = descendants.id
+               where descendants.height <= $4
+             )
+             select max(height)::int height,
+                    coalesce(bool_or(id = $3::uuid), false) cycle
+             from descendants`,
+            [workspaceId, folderId, request.parentId, FOLDER_DEPTH_LIMIT],
+          );
+          const { height = 1, cycle = false } = subtree.rows[0] ?? {};
+          if (
+            cycle ||
+            height +
+              (await folderDepth(client, workspaceId, request.parentId)) >
+              FOLDER_DEPTH_LIMIT
+          )
+            throw new WorkflowFolderConflictError('hierarchy');
+          const moved = await client.query<FolderRow>(
+            `update app.workflow_folders
+             set parent_id = $3, revision = revision + 1
+             where workspace_id = $1 and id = $2
+             returning id, name, parent_id, revision`,
+            [workspaceId, folderId, request.parentId],
+          );
+          return moved.rows[0] ?? current;
         },
-        commandResult,
-      ),
-    deleteFolder: (input: FolderCommand) =>
-      command(
-        input,
-        'folder.delete',
-        uuid.parse(input.folderId),
-        {
-          expectedFolderRevision: revision.parse(input.expectedFolderRevision),
-        },
-        deleteResult,
-      ),
-    async placeWorkflow(
-      input: Command &
-        Readonly<{
-          workflowId: string;
-          folderId: string | null;
-          expectedOrganizationRevision: number;
-        }>,
-    ) {
-      const workflowId = uuid.parse(input.workflowId),
-        hash = digest(input);
-      const body = {
+      );
+    },
+
+    deleteFolder: async (input) => {
+      const folderId = uuid.parse(input.folderId);
+      const request = {
+        expectedFolderRevision: revision.parse(input.expectedFolderRevision),
+      };
+      return session.transact(input, async (client, scope) => {
+        const { result, replayed } = await runOrganizationCommand(
+          client,
+          scope,
+          {
+            operation: 'folder.delete',
+            target: folderId,
+            idempotencyKey: input.idempotencyKey,
+            request,
+            roles: ADMINISTRATORS,
+            apply: async () => {
+              const current = await readFolder(
+                client,
+                scope.workspaceId,
+                folderId,
+              );
+              requireRevision(current, request.expectedFolderRevision);
+              const used = await client.query(
+                `select 1 from app.workflow_folders where workspace_id = $1 and parent_id = $2
+                 union all
+                 select 1 from app.workflow_organization_state
+                 where workspace_id = $1 and folder_id = $2
+                 limit 1`,
+                [scope.workspaceId, folderId],
+              );
+              if (used.rowCount !== 0)
+                throw new WorkflowFolderConflictError('not_empty');
+              await client.query(
+                'delete from app.workflow_folders where workspace_id = $1 and id = $2',
+                [scope.workspaceId, folderId],
+              );
+              return {
+                result: { folderId, deleted: true },
+                audit: { action: 'workflow.folder.delete', targetId: folderId },
+              };
+            },
+          },
+        );
+        return Object.freeze({ ...deleteResult.parse(result), replayed });
+      });
+    },
+
+    placeWorkflow: async (input) => {
+      const workflowId = uuid.parse(input.workflowId);
+      const request = {
         folderId: uuid.nullable().parse(input.folderId),
         expectedOrganizationRevision: revision.parse(
           input.expectedOrganizationRevision,
         ),
       };
-      return transact(input, async (client) => {
-        const result = await client.query<{ result: unknown }>(
-          'select app.execute_workflow_folder_placement($1,$2,$3::jsonb) result',
-          [workflowId, hash, JSON.stringify(body)],
+      return session.transact(input, async (client, scope) => {
+        const { result, replayed } = await runOrganizationCommand(
+          client,
+          scope,
+          {
+            operation: 'folder.place',
+            target: workflowId,
+            idempotencyKey: input.idempotencyKey,
+            request,
+            roles: EDITORS,
+            replay: () =>
+              checkOrganizationReplay(client, scope, workflowId, 'move'),
+            apply: async () => {
+              const organizationRevision = await organizeWorkflow(
+                client,
+                scope,
+                {
+                  workflowId,
+                  change: { kind: 'move', folderId: request.folderId },
+                  expectedOrganizationRevision:
+                    request.expectedOrganizationRevision,
+                },
+              );
+              return {
+                result: {
+                  workflowId,
+                  organizationRevision,
+                  folderId: request.folderId,
+                },
+                audit: {
+                  action: 'workflow.organization.move',
+                  targetId: workflowId,
+                  metadata: { organizationRevision },
+                },
+              };
+            },
+          },
         );
-        return Object.freeze(placementResult.parse(result.rows[0]?.result));
+        return Object.freeze({ ...placementResult.parse(result), replayed });
       });
     },
-    close,
-  });
+
+    close: session.close,
+  };
+  return Object.freeze(store);
 }

@@ -48,10 +48,7 @@ describe.skipIf(!organizationFixtureEnabled)(
           created_at,expires_at)
         select $1,$2,$3,workflow_id,repeat('a',64),repeat('b',64),clock_timestamp(),clock_timestamp()+interval '1 day'
         from favorites returning workflow_id
-      ) insert into app.workflow_organization_receipts(workspace_id,actor_id,operation,target_id,key_hash,request_hash,
-          created_at,expires_at)
-        select $1,$2,'tag.create',workflow_id,repeat('a',64),repeat('b',64),clock_timestamp(),clock_timestamp()+interval '1 day'
-        from private_receipts`,
+      ) select count(*) from private_receipts`,
             [scope.workspace, scope.actor, generation],
           );
           await client.query(
@@ -66,7 +63,6 @@ describe.skipIf(!organizationFixtureEnabled)(
         earlier_membership_favorites: 0,
         favorite_memberships: 1,
         favorite_receipts: 0,
-        organization_receipts: 0,
         unfavorited_workflows: 0,
       });
       expect(

@@ -107,8 +107,6 @@ async function transitionWorkflowLifecycle(
       return Object.freeze({ replayed: true, workflow: claim.replay });
     }
 
-    await client.query('select app.lock_workflow_organization_for_lifecycle()');
-
     const currentResult = await client.query<Record<string, unknown>>(
       `select ${workflowRowSelection} from app.workflows
        where workspace_id=$1 and id=$2 for update`,

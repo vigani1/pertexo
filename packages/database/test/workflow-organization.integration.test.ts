@@ -59,19 +59,29 @@ async function command(client: PoolClient, text: string, values: unknown[]) {
 }
 function tag(
   s: Scope,
-  operation: string,
+  operation: 'tag.create' | 'tag.rename' | 'tag.delete',
   id: string | null,
-  body: object,
+  body: Readonly<{ key?: string; expectedTagRevision?: number }>,
   key = commandKey(),
   actor = s.actor,
-) {
-  return api(s, actor, (client) =>
-    command(
-      client,
-      'select app.execute_workflow_tag_command($1,$2,$3,$4::jsonb) result',
-      [operation, id, key, JSON.stringify(body)],
-    ),
-  );
+): Promise<Result> {
+  const command = {
+    workspaceId: s.workspace,
+    actorId: actor,
+    idempotencyKey: key,
+  };
+  if (operation === 'tag.create')
+    return fixture.tags.createTag({ ...command, key: body.key ?? '' });
+  const tagId = required(id ?? undefined);
+  const expectedTagRevision = body.expectedTagRevision ?? 0;
+  return operation === 'tag.rename'
+    ? fixture.tags.renameTag({
+        ...command,
+        tagId,
+        key: body.key ?? '',
+        expectedTagRevision,
+      })
+    : fixture.tags.deleteTag({ ...command, tagId, expectedTagRevision });
 }
 async function createTag(
   s: Scope,
@@ -88,18 +98,15 @@ function assignment(
   revision = 1,
   key = commandKey(),
   actor = s.actor,
-) {
-  return api(s, actor, (client) =>
-    command(
-      client,
-      "select app.execute_workflow_tag_assignment_command('tags.replace',$1,$2,$3::jsonb) result",
-      [
-        workflow,
-        key,
-        JSON.stringify({ tagIds: ids, expectedOrganizationRevision: revision }),
-      ],
-    ),
-  );
+): Promise<Result> {
+  return fixture.tags.replaceTags({
+    workspaceId: s.workspace,
+    actorId: actor,
+    idempotencyKey: key,
+    workflowId: workflow,
+    tagIds: ids,
+    expectedOrganizationRevision: revision,
+  });
 }
 function absenceBody(
   s: Scope,
@@ -270,7 +277,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       });
       await expect(
         tag(s, 'tag.create', null, { key: 'Ops-2' }),
-      ).rejects.toMatchObject({ code: 'P7003' });
+      ).rejects.toMatchObject({ kind: 'key' });
       if (!first.tag) throw new Error('Missing tag');
       const renamed = await tag(s, 'tag.rename', first.tag.id, {
         key: 'ops-new',
@@ -286,10 +293,10 @@ describe.skipIf(!organizationFixtureEnabled)(
           key: 'lost',
           expectedTagRevision: 1,
         }),
-      ).rejects.toMatchObject({ code: 'P7006' });
+      ).rejects.toMatchObject({ kind: 'tag_revision' });
       await expect(
         tag(s, 'tag.create', null, { key: 'different' }, key),
-      ).rejects.toMatchObject({ code: 'P7002' });
+      ).rejects.toMatchObject({ name: 'IdempotencyConflictError' });
     });
 
     it.each([
@@ -304,20 +311,20 @@ describe.skipIf(!organizationFixtureEnabled)(
     ])('rejects noncanonical tag input %j', async (key) => {
       const s = await fixture.scope();
       await expect(tag(s, 'tag.create', null, { key })).rejects.toMatchObject({
-        code: '22023',
+        name: 'ZodError',
       });
       expect(
         (
           await owner(
             s,
-            'select * from app.workflow_organization_receipts where workspace_id=$1',
+            'select * from app.idempotency_records where workspace_id=$1',
             [s.workspace],
           )
         ).rows,
       ).toEqual([]);
     });
 
-    it('canonicalizes tag selections, bounds sixteen, bumps no-ops once, and replays before current selection/writer', async () => {
+    it('canonicalizes tag selections, bounds sixteen, bumps no-ops once and replays after the selection changes', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow();
       const tags = await Promise.all(
@@ -331,10 +338,10 @@ describe.skipIf(!organizationFixtureEnabled)(
           workflow,
           tags.map(({ id }) => id),
         ),
-      ).rejects.toMatchObject({ code: '22023' });
+      ).rejects.toMatchObject({ name: 'ZodError' });
       await expect(
         assignment(s, workflow, [required(tags[0]).id, required(tags[0]).id]),
-      ).rejects.toMatchObject({ code: '22023' });
+      ).rejects.toMatchObject({ name: 'ZodError' });
       const key = commandKey(),
         selected = tags.slice(0, 16).map(({ id }) => id);
       expect(
@@ -348,31 +355,17 @@ describe.skipIf(!organizationFixtureEnabled)(
         organizationRevision: 2,
       });
       await expect(assignment(s, workflow, [], 1)).rejects.toMatchObject({
-        code: 'P7008',
+        kind: 'organization_revision',
       });
       expect(await assignment(s, workflow, selected, 2)).toMatchObject({
         organizationRevision: 3,
       });
       const deleted = required(tags[0]);
       await tag(s, 'tag.delete', deleted.id, { expectedTagRevision: 1 });
-      await owner(
-        s,
-        'update app.workflow_organization_rollout set writes_enabled=false',
-      );
-      try {
-        expect(await assignment(s, workflow, selected, 1, key)).toMatchObject({
-          replayed: true,
-          organizationRevision: 2,
-        });
-        await expect(assignment(s, workflow, [], 4)).rejects.toMatchObject({
-          code: 'P7001',
-        });
-      } finally {
-        await owner(
-          s,
-          'update app.workflow_organization_rollout set writes_enabled=true',
-        );
-      }
+      expect(await assignment(s, workflow, selected, 1, key)).toMatchObject({
+        replayed: true,
+        organizationRevision: 2,
+      });
     });
 
     it('deletes exactly fifty assignments atomically; fifty-first conflicts without any revision mutation; archived cleanup works', async () => {
@@ -393,7 +386,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).rows;
       await expect(
         tag(s, 'tag.delete', t.id, { expectedTagRevision: 1 }),
-      ).rejects.toMatchObject({ code: 'P7007' });
+      ).rejects.toMatchObject({ kind: 'delete_overflow' });
       expect(
         (
           await owner(
@@ -422,19 +415,16 @@ describe.skipIf(!organizationFixtureEnabled)(
         idempotencyKey: randomUUID(),
       });
       await expect(assignment(s, archived, [], 2)).rejects.toMatchObject({
-        code: 'P7009',
+        kind: 'lifecycle',
       });
-      const detached = await api(s, s.actor, (client) =>
-        command(
-          client,
-          "select app.execute_workflow_tag_assignment_command('tag.detach',$1,$2,$3::jsonb) result",
-          [
-            archived,
-            commandKey(),
-            JSON.stringify({ tagId: t.id, expectedOrganizationRevision: 2 }),
-          ],
-        ),
-      );
+      const detached = await fixture.tags.detachTag({
+        workspaceId: s.workspace,
+        actorId: s.actor,
+        idempotencyKey: commandKey(),
+        workflowId: archived,
+        tagId: t.id,
+        expectedOrganizationRevision: 2,
+      });
       expect(detached).toMatchObject({ organizationRevision: 3 });
       expect(
         await tag(s, 'tag.delete', t.id, { expectedTagRevision: 1 }),
@@ -468,7 +458,7 @@ describe.skipIf(!organizationFixtureEnabled)(
         foreignTag = await createTag(other);
       await expect(
         tag(s, 'tag.create', null, { key: 'denied' }, commandKey(), s.viewer),
-      ).rejects.toMatchObject({ code: '42501' });
+      ).rejects.toMatchObject({ name: 'WorkflowNotFoundError' });
       await expect(
         tag(
           s,
@@ -478,18 +468,18 @@ describe.skipIf(!organizationFixtureEnabled)(
           commandKey(),
           s.builder,
         ),
-      ).rejects.toMatchObject({ code: '42501' });
+      ).rejects.toMatchObject({ name: 'WorkflowNotFoundError' });
       await expect(
         assignment(s, workflow, [t.id], 1, commandKey(), s.viewer),
-      ).rejects.toMatchObject({ code: '42501' });
+      ).rejects.toMatchObject({ name: 'WorkflowNotFoundError' });
       expect(
         await assignment(s, workflow, [t.id], 1, commandKey(), s.builder),
       ).toMatchObject({ organizationRevision: 2 });
       await expect(
         assignment(s, workflow, [foreignTag.id], 2),
-      ).rejects.toMatchObject({ code: 'P7005' });
+      ).rejects.toMatchObject({ name: 'WorkflowNotFoundError' });
       await expect(assignment(s, foreign, [])).rejects.toMatchObject({
-        code: '42501',
+        name: 'WorkflowNotFoundError',
       });
       const key = commandKey();
       await assignment(s, workflow, [], 2, key, s.builder);
@@ -500,7 +490,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       );
       await expect(
         assignment(s, workflow, [], 2, key, s.builder),
-      ).rejects.toMatchObject({ code: '42501' });
+      ).rejects.toMatchObject({ name: 'WorkflowNotFoundError' });
     });
 
     it('serializes the workspace vocabulary cap of 256 and keeps other-workspace keys independent', async () => {
@@ -509,7 +499,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       for (let index = 0; index < 256; index++)
         await createTag(s, `quota-${String(index)}`);
       await expect(createTag(s, 'overflow')).rejects.toMatchObject({
-        code: 'P7004',
+        kind: 'limit',
       });
       expect(await createTag(other, 'quota-0')).toMatchObject({
         key: 'quota-0',
@@ -782,26 +772,15 @@ describe.skipIf(!organizationFixtureEnabled)(
       },
     );
 
-    it('denies raw mutations, held evidence access, maintenance execution and missing tenant scope', async () => {
+    it('denies held evidence access and favorites outside the workspace, and scopes tags to it', async () => {
       const s = await fixture.scope(),
-        workflow = await s.workflow(),
-        t = await createTag(s);
+        workflow = await s.workflow();
+      await createTag(s);
       await expect(
-        fixture.dispatcher.query(
-          'select app.execute_workflow_tag_command($1,null,$2,$3)',
-          ['tag.create', commandKey(), JSON.stringify({ key: 'maintenance' })],
+        api(s, s.actor, (client) =>
+          client.query('select * from app.workflow_favorite_held_evidence'),
         ),
       ).rejects.toMatchObject({ code: '42501' });
-      for (const statement of [
-        "update app.workflow_tags set key='forged' where id=$1",
-        'delete from app.workflow_tag_assignments where tag_id=$1',
-        'select * from app.workflow_favorite_held_evidence',
-      ])
-        await expect(
-          api(s, s.actor, (client) =>
-            client.query(statement, statement.includes('$1') ? [t.id] : []),
-          ),
-        ).rejects.toMatchObject({ code: '42501' });
       await expect(
         fixture.api.query('select app.read_workflow_favorite_generation()'),
       ).rejects.toMatchObject({ code: '42501' });
@@ -813,53 +792,30 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).rejects.toMatchObject({ code: '42501' });
       expect(
         (
-          await api(s, other.actor, (client) =>
+          await api(other, other.actor, (client) =>
             client.query('select * from app.workflow_tags'),
           )
         ).rows,
       ).toEqual([]);
     });
 
-    it('serializes competing tag replacements with one revision winner, without lost assignments', async () => {
+    it('lets one of two concurrent tag replacements win, without lost assignments', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow(),
         firstTag = await createTag(s),
         secondTag = await createTag(s);
-      const first = await fixture.api.connect(),
-        second = await fixture.api.connect();
-      let pending: Promise<{ result?: Result; error?: unknown }> | undefined;
-      try {
-        const firstPid = await begin(first, s, s.builder),
-          secondPid = await begin(second, s, s.builder);
-        const statement =
-          "select app.execute_workflow_tag_assignment_command('tags.replace',$1,$2,$3::jsonb) result";
-        await command(first, statement, [
-          workflow,
-          commandKey(),
-          JSON.stringify({
-            tagIds: [firstTag.id],
-            expectedOrganizationRevision: 1,
-          }),
-        ]);
-        pending = command(second, statement, [
-          workflow,
-          commandKey(),
-          JSON.stringify({
-            tagIds: [secondTag.id],
-            expectedOrganizationRevision: 1,
-          }),
-        ]).then(
-          (result) => ({ result }),
-          (error: unknown) => ({ error }),
-        );
-        await fixture.waitForBlocker(firstPid, secondPid);
-        await first.query('commit');
-        expect((await pending).error).toMatchObject({ code: 'P7008' });
-      } finally {
-        await rollbackRelease(first);
-        await pending;
-        await rollbackRelease(second);
-      }
+      const results = await Promise.allSettled([
+        assignment(s, workflow, [firstTag.id], 1, commandKey(), s.builder),
+        assignment(s, workflow, [secondTag.id], 1, commandKey(), s.builder),
+      ]);
+      const won = results.findIndex((result) => result.status === 'fulfilled');
+      expect(
+        results.filter((result) => result.status === 'fulfilled'),
+      ).toHaveLength(1);
+      const lost = results[1 - won];
+      expect(
+        lost?.status === 'rejected' ? lost.reason : undefined,
+      ).toMatchObject({ kind: 'organization_revision' });
       expect(
         (
           await owner(
@@ -868,7 +824,7 @@ describe.skipIf(!organizationFixtureEnabled)(
             [s.workspace, workflow],
           )
         ).rows,
-      ).toEqual([{ tag_id: firstTag.id }]);
+      ).toEqual([{ tag_id: (won === 0 ? firstTag : secondTag).id }]);
     });
 
     it('membership removal wins before a queued favorite write; locked authority denies rather than resurrecting private state', async () => {
@@ -957,53 +913,43 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).toEqual([]);
     });
 
-    it('purges organization children in bounded maintenance pages only after lease and high-water authorization', async () => {
+    it('purges organization records in pages before the workflows they describe', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow(),
         t = await createTag(s),
         old = await absence(s, workflow);
       await assignment(s, workflow, [t.id]);
+      const stores = fixture.folderStores();
+      const command = () => ({
+        workspaceId: s.workspace,
+        actorId: s.actor,
+        idempotencyKey: commandKey(),
+      });
       const folders: string[] = [];
-      for (const name of ['root', 'child', 'leaf']) {
-        const created = await api(s, s.actor, (client) =>
-          client.query<{ result: { folder: { id: string } } }>(
-            "select app.execute_workflow_folder_command('folder.create',null,$1,$2::jsonb) result",
-            [
-              commandKey(),
-              JSON.stringify({ name, parentId: folders.at(-1) ?? null }),
-            ],
-          ),
+      for (const name of ['root', 'child', 'leaf'])
+        folders.push(
+          (
+            await stores.folders.createFolder({
+              ...command(),
+              name,
+              parentId: folders.at(-1) ?? null,
+            })
+          ).folder.id,
         );
-        folders.push(required(created.rows[0]).result.folder.id);
-      }
-      await api(s, s.actor, (client) =>
-        client.query(
-          'select app.execute_workflow_folder_placement($1,$2,$3::jsonb)',
-          [
-            workflow,
-            commandKey(),
-            JSON.stringify({
-              folderId: folders.at(-1),
-              expectedOrganizationRevision: 2,
-            }),
-          ],
-        ),
-      );
-      await api(s, s.actor, (client) =>
-        client.query(
-          'select app.admit_workflow_organization_batch($1,$2::jsonb)',
-          [
-            commandKey(),
-            JSON.stringify({
-              operation: 'move',
-              folderId: null,
-              items: [
-                { workflowId: workflow, expectedOrganizationRevision: 3 },
-              ],
-            }),
-          ],
-        ),
-      );
+      await stores.folders.placeWorkflow({
+        ...command(),
+        workflowId: workflow,
+        folderId: required(folders.at(-1)),
+        expectedOrganizationRevision: 2,
+      });
+      await stores.batches.admitBatch({
+        ...command(),
+        request: {
+          operation: 'move',
+          folderId: null,
+          items: [{ workflowId: workflow, expectedOrganizationRevision: 3 }],
+        },
+      });
       await favorite(s, workflow, true, old.token, old);
       await removeAndRejoin(s);
       const fresh = await absence(s, workflow);
@@ -1012,7 +958,6 @@ describe.skipIf(!organizationFixtureEnabled)(
       const surfaces = [
         'workflow_favorite_receipts',
         'workflow_favorites',
-        'workflow_organization_receipts',
         'workflow_tag_assignments',
         'workflow_organization_state',
         'workflow_folders',

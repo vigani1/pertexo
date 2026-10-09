@@ -128,23 +128,19 @@ describe.skipIf(!organizationFixtureEnabled)(
     });
     it('projects placement and intersects exact folder/root filters before pagination', async () => {
       const scope = await fixture.scope();
-      const createFolder = (name: string, parentId: string | null = null) =>
-        fixture.transaction(
-          fixture.api,
-          scope.workspace,
-          scope.actor,
-          async (client) => {
-            const result = await client.query<{
-              result: { folder: { id: string } };
-            }>(
-              "select app.execute_workflow_folder_command('folder.create',null,$1,$2::jsonb) result",
-              [commandKey(), JSON.stringify({ name, parentId })],
-            );
-            const id = result.rows[0]?.result.folder.id;
-            if (id === undefined) throw new Error('Missing owned folder');
-            return id;
-          },
-        );
+      const { folders } = fixture.folderStores();
+      const createFolder = async (
+        name: string,
+        parentId: string | null = null,
+      ) =>
+        (
+          await folders.createFolder({
+            ...context(scope),
+            name,
+            parentId,
+            idempotencyKey: commandKey(),
+          })
+        ).folder.id;
       const parent = await createFolder('parent'),
         child = await createFolder('child', parent);
       const unfiled = await scope.workflow('match unfiled'),
@@ -154,23 +150,13 @@ describe.skipIf(!organizationFixtureEnabled)(
         [inParent, parent],
         [inChild, child],
       ])
-        await fixture.transaction(
-          fixture.api,
-          scope.workspace,
-          scope.actor,
-          (client) =>
-            client.query(
-              'select app.execute_workflow_folder_placement($1,$2,$3::jsonb)',
-              [
-                workflow,
-                commandKey(),
-                JSON.stringify({
-                  folderId: folder,
-                  expectedOrganizationRevision: 1,
-                }),
-              ],
-            ),
-        );
+        await folders.placeWorkflow({
+          ...context(scope),
+          workflowId: workflow,
+          folderId: folder,
+          expectedOrganizationRevision: 1,
+          idempotencyKey: commandKey(),
+        });
       expect(
         (
           await stores.reader.listWorkflows({

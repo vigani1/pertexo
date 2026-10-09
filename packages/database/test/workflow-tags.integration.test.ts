@@ -1,11 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { WorkflowTagConflictError } from '../src/authoring/organization/tags.repository.js';
-import {
-  WorkflowIdempotencyConflictError,
-  WorkflowNotFoundError,
-} from '../src/authoring/workflow-authoring-errors.js';
-import { WorkflowOrganizationUnavailableError } from '../src/authoring/organization/favorites.repository.js';
+import { WorkflowNotFoundError } from '../src/authoring/workflow-authoring-errors.js';
+import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import {
   createOrganizationOwnedFixture,
   organizationFixtureEnabled,
@@ -37,9 +34,6 @@ describe.skipIf(!organizationFixtureEnabled)(
     beforeAll(async () => {
       fixture = await createOrganizationOwnedFixture();
       closeFixture = fixture.close;
-      await fixture.owner.query(
-        'update app.workflow_organization_rollout set writes_enabled=true',
-      );
     }, 60_000);
     afterAll(async () => {
       await closeFixture?.();
@@ -226,7 +220,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     });
 
-    it('bump no-op replacement once, maps stale/collision errors and recovers before writer/selection checks', async () => {
+    it('bumps a no-op replacement once, maps stale and collision errors and replays after the tag is gone', async () => {
       const s = await fixture.scope(),
         workflowId = await s.workflow(),
         selected = await tag(s),
@@ -270,38 +264,18 @@ describe.skipIf(!organizationFixtureEnabled)(
       });
       await expect(
         fixture.tags.replaceTags({ ...command, tagIds: [] }),
-      ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+      ).rejects.toBeInstanceOf(IdempotencyConflictError);
       await fixture.tags.deleteTag({
         ...context(s),
         tagId: selected.id,
         expectedTagRevision: 1,
         idempotencyKey: randomUUID(),
       });
-      await owner(
-        s,
-        'update app.workflow_organization_rollout set writes_enabled=false',
-      );
-      try {
-        expect(await fixture.tags.replaceTags(command)).toEqual({
-          ...first,
-          replayed: true,
-        });
-        await expect(
-          fixture.tags.createTag({
-            ...context(s),
-            key: 'disabled',
-            idempotencyKey: randomUUID(),
-          }),
-        ).rejects.toBeInstanceOf(WorkflowOrganizationUnavailableError);
-        expect((await fixture.tags.listTags(context(s))).items).toEqual([
-          other,
-        ]);
-      } finally {
-        await owner(
-          s,
-          'update app.workflow_organization_rollout set writes_enabled=true',
-        );
-      }
+      expect(await fixture.tags.replaceTags(command)).toEqual({
+        ...first,
+        replayed: true,
+      });
+      expect((await fixture.tags.listTags(context(s))).items).toEqual([other]);
     });
 
     it('rejects overflow delete without changing assignments, then explicit detach permits bounded deletion', async () => {

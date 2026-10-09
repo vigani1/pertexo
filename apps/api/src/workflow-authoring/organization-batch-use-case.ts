@@ -8,8 +8,8 @@ import {
   type WorkflowOrganizationBulkItemOutcome,
 } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
+  IdempotencyConflictError,
   WorkflowFolderConflictError,
-  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
@@ -158,7 +158,7 @@ export class WorkflowOrganizationBatchesUseCase {
         status: 'unavailable',
         code: 'workflow.organization_unavailable',
       };
-    if (error instanceof WorkflowIdempotencyConflictError)
+    if (error instanceof IdempotencyConflictError)
       return {
         workflowId,
         status: 'conflict',
