@@ -396,44 +396,6 @@ describe('trigger runtime', () => {
     expect(selected.reconciliation.close).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    { batchSize: 0 },
-    { batchSize: 101 },
-    { batchSize: 1.5 },
-    { leaseDurationSeconds: 0 },
-    { leaseDurationSeconds: 301 },
-    { leaseDurationSeconds: Number.NaN },
-    { pollIntervalMillis: 9 },
-    { pollIntervalMillis: 60_001 },
-    { pollIntervalMillis: 10.5 },
-    { onTimeWindowSeconds: 59 },
-    { onTimeWindowSeconds: 3_601 },
-    { onTimeWindowSeconds: 300.5 },
-    { leaseOwner: '' },
-    { leaseOwner: 'x'.repeat(129) },
-    { backgroundTaskShutdownTimeoutMillis: 0 },
-    { backgroundTaskShutdownTimeoutMillis: 120_001 },
-  ])(
-    'rejects invalid scanner bounds before constructing resources',
-    async (override) => {
-      const selected = dependencies();
-      await expect(
-        createTriggerRuntime(
-          { ...options, ...override },
-          {
-            ...selected,
-            checkpointFactory: () => ({
-              engineVersion: 'test',
-              checkpoint: {},
-            }),
-          },
-        ),
-      ).rejects.toThrow(/trigger runtime/i);
-      expect(selected.consumerFactory).not.toHaveBeenCalled();
-      expect(selected.scanner.scanDue).not.toHaveBeenCalled();
-    },
-  );
-
   it('uses the public queue handler for reconciliation deliveries', async () => {
     const selected = dependencies();
     vi.mocked(selected.reader.readForExecution).mockResolvedValue(null);

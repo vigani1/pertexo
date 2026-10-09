@@ -386,65 +386,7 @@ describe('node attempt execution engine', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('rejects a branch scope without executable ancestry', () => {
-    const { catalog, projection, lease } = fixture('manual');
-    const scopedLease: NodeAttemptLease = {
-      ...lease,
-      invocationKey: `${VERSION_ID}|manual|b:condition%3Atrue|i:`,
-      branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
-    };
-    const engine = createNodeAttemptExecutionEngine({
-      catalog: catalog,
-    });
-
-    expect(() => engine.prepare({ projection, lease: scopedLease })).toThrow(
-      'branch scope',
-    );
-  });
-
-  it('uses the parent scope for the branch node that introduces a selected path', () => {
-    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-    const executable = buildWorkflowExecutable({
-      graph: branchGraph('condition'),
-      catalog,
-    });
-    const projection: PublishedWorkflow = {
-      id: VERSION_ID,
-      workspaceId: WORKSPACE_ID,
-      workflowId: WORKFLOW_ID,
-      versionNumber: 1,
-      schemaVersion: 1,
-      checksum: executable.checksum,
-      executableJson: executable.envelope,
-    };
-    const branchPath = [{ nodeId: 'condition', outputPort: 'true' }] as const;
-    const lease: NodeAttemptLease = {
-      ...fixture('manual').lease,
-      nodeId: 'selected',
-      branchPath,
-      invocationKey: invocationKey({
-        workflowVersionId: VERSION_ID,
-        nodeId: 'selected',
-        branchPath: ['condition:true'],
-      }),
-    };
-
-    expect(
-      createNodeAttemptExecutionEngine({
-        catalog: catalog,
-      }).prepare({ projection, lease }).upstreamNodeOutputs,
-    ).toEqual([
-      {
-        nodeId: 'condition',
-        invocationKey: invocationKey({
-          workflowVersionId: VERSION_ID,
-          nodeId: 'condition',
-        }),
-      },
-    ]);
-  });
-
-  it('derives the exact direct-upstream set and rejects a changed side-effect pin', () => {
+  it('derives the exact direct-upstream set', () => {
     const { catalog, projection, lease } = fixture('terminate');
     const engine = createNodeAttemptExecutionEngine({
       catalog: catalog,
@@ -453,26 +395,14 @@ describe('node attempt execution engine', () => {
     expect(engine.prepare({ projection, lease }).upstreamNodeOutputs).toEqual([
       { nodeId: 'manual', invocationKey: `${VERSION_ID}|manual|b:|i:` },
     ]);
-    expect(() =>
-      engine.prepare({
-        projection,
-        lease: { ...lease, sideEffectClass: 'unsafe' },
-      }),
-    ).toThrow('side-effect');
   });
 
-  it('rejects projection drift, a missing node, and a forged invocation pin independently', () => {
+  it('rejects a node that is not in the workflow', () => {
     const { catalog, projection, lease } = fixture('manual');
     const engine = createNodeAttemptExecutionEngine({
       catalog: catalog,
     });
 
-    expect(() =>
-      engine.prepare({
-        projection: { ...projection, id: ATTEMPT_ID },
-        lease,
-      }),
-    ).toThrow('workflow version identity');
     expect(() =>
       engine.prepare({
         projection,
@@ -486,32 +416,23 @@ describe('node attempt execution engine', () => {
         },
       }),
     ).toThrow('not in workflow');
-    expect(() =>
-      engine.prepare({
-        projection,
-        lease: { ...lease, invocationKey: `${lease.invocationKey}-forged` },
-      }),
-    ).toThrow('invocation scope');
   });
 
   it.each([
-    ['condition', PLATFORM_NODE_CATALOG, 'true', 'false'],
-    ['switch', PLATFORM_NODE_CATALOG, 'case-01', 'default'],
+    ['condition', 'true'],
+    ['switch', 'case-01'],
   ] as const)(
-    'requires the exact %s branch path without omissions or duplicates',
-    (kind, nodeCatalog, selectedPort, wrongPort) => {
-      const catalog = composeExecutableCatalog(nodeCatalog);
+    'reads the %s that introduces a selected path from the parent scope',
+    (kind, selectedPort) => {
+      const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
       const projection = compiledProjection(branchGraph(kind), catalog);
       const engine = createNodeAttemptExecutionEngine({
         catalog: catalog,
       });
-      const selectedPath = [
-        { nodeId: kind, outputPort: selectedPort },
-      ] as const;
       const selectedLease: NodeAttemptLease = {
         ...fixture('manual').lease,
         nodeId: 'selected',
-        branchPath: selectedPath,
+        branchPath: [{ nodeId: kind, outputPort: selectedPort }],
         invocationKey: invocationKey({
           workflowVersionId: VERSION_ID,
           nodeId: 'selected',
@@ -530,31 +451,10 @@ describe('node attempt execution engine', () => {
           }),
         },
       ]);
-      for (const branchPath of [
-        [],
-        [{ nodeId: kind, outputPort: wrongPort }],
-        [...selectedPath, ...selectedPath],
-      ])
-        expect(() =>
-          engine.prepare({
-            projection,
-            lease: {
-              ...selectedLease,
-              branchPath,
-              invocationKey: invocationKey({
-                workflowVersionId: VERSION_ID,
-                nodeId: 'selected',
-                branchPath: branchPath.map(
-                  ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-                ),
-              }),
-            },
-          }),
-        ).toThrow('branch scope');
     },
   );
 
-  it('preserves ordered nested branch ancestry and only removes the introducing source scope', () => {
+  it('keeps nested branch ancestry and removes only the introducing scope', () => {
     const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const projection = compiledProjection(nestedBranchGraph(), catalog);
     const engine = createNodeAttemptExecutionEngine({
@@ -587,23 +487,6 @@ describe('node attempt execution engine', () => {
         }),
       },
     ]);
-    for (const invalidPath of [branchPath.slice(1), [...branchPath].reverse()])
-      expect(() =>
-        engine.prepare({
-          projection,
-          lease: {
-            ...selectedLease,
-            branchPath: invalidPath,
-            invocationKey: invocationKey({
-              workflowVersionId: VERSION_ID,
-              nodeId: 'selected',
-              branchPath: invalidPath.map(
-                ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-              ),
-            }),
-          },
-        }),
-      ).toThrow('branch scope');
   });
 
   it('pins Parallel branches while treating Merge and its downstream as unbranched', () => {
@@ -779,49 +662,5 @@ describe('node attempt execution engine', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({ nodeId: 'body-sink', kind: 'succeeded' });
-  });
-
-  it('rejects body preparation outside its exact iteration ancestry', () => {
-    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-    const executable = buildWorkflowExecutable({
-      graph: forEachGraph(),
-      catalog,
-    });
-    const projection: PublishedWorkflow = {
-      id: VERSION_ID,
-      workspaceId: WORKSPACE_ID,
-      workflowId: WORKFLOW_ID,
-      versionNumber: 1,
-      schemaVersion: 1,
-      checksum: executable.checksum,
-      executableJson: executable.envelope,
-    };
-
-    const engine = createNodeAttemptExecutionEngine({
-      catalog: catalog,
-    });
-    for (const iterationPath of [
-      undefined,
-      [{ loopNodeId: 'wrong-loop', ordinal: 1 }],
-      [
-        { loopNodeId: 'loop', ordinal: 1 },
-        { loopNodeId: 'extra-loop', ordinal: 0 },
-      ],
-    ] as const)
-      expect(() =>
-        engine.prepare({
-          projection,
-          lease: {
-            ...fixture('manual').lease,
-            nodeId: 'body-first',
-            invocationKey: invocationKey({
-              workflowVersionId: VERSION_ID,
-              nodeId: 'body-first',
-              ...(iterationPath === undefined ? {} : { iterationPath }),
-            }),
-            ...(iterationPath === undefined ? {} : { iterationPath }),
-          },
-        }),
-      ).toThrow('structured scope');
   });
 });

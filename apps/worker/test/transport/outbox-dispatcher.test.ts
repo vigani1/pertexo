@@ -837,50 +837,6 @@ describe('outbox dispatcher', () => {
     },
   );
 
-  it('releases a hostile publication rejection without inspecting or exposing it', async () => {
-    const selected = boundaries();
-    const hostile = new Proxy(
-      {},
-      {
-        getPrototypeOf() {
-          throw new Error('hostile prototype trap');
-        },
-      },
-    );
-    vi.mocked(selected.producer.publish).mockRejectedValue(hostile);
-
-    await expect(createDispatcher(selected).dispatchOnce()).resolves.toEqual(
-      expect.objectContaining({ failed: 1, published: 0 }),
-    );
-    expect(selected.database.releaseOrFail).toHaveBeenCalledWith(
-      expect.objectContaining({ errorCode: 'queue.publish_failed' }),
-    );
-  });
-
-  it('treats a hostile mark rejection as definite failure and releases its exact lease', async () => {
-    const selected = boundaries();
-    const hostile = new Proxy(
-      {},
-      {
-        getPrototypeOf() {
-          throw new Error('hostile mark prototype trap');
-        },
-      },
-    );
-    vi.mocked(selected.database.markPublished).mockRejectedValue(hostile);
-
-    await expect(createDispatcher(selected).dispatchOnce()).resolves.toEqual(
-      expect.objectContaining({ failed: 1, published: 0 }),
-    );
-    expect(selected.database.releaseOrFail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorCode: 'queue.publish_failed',
-        id: EVENT_ID,
-        leaseToken: LEASE_TOKEN,
-      }),
-    );
-  });
-
   it('stops claiming as soon as drain begins', async () => {
     const selected = boundaries();
     const drainState = new WorkerDrainState();

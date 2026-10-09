@@ -86,9 +86,6 @@ type MaintenanceOptions = Readonly<{
   observer?: QueueConsumerObserver;
   redisUrl: string;
   failureNotificationDelivery?: FailureNotificationDeliveryCapability;
-  failureNotificationDeliveryTimeoutMillis?: number;
-  failureNotificationMaxAttempts?: number;
-  failureNotificationRetryDelaySeconds?: number;
   workspaceInvitationDelivery?: WorkspaceInvitationDeliveryHandler;
 }>;
 
@@ -106,74 +103,35 @@ type MaintenanceDependencies = Readonly<{
   runReplayStore?: OperatorRunReplayStore;
 }>;
 
-type MaintenanceBounds = Readonly<{
-  backgroundTaskShutdownTimeoutMillis: number;
-  failureNotificationDeliveryTimeoutMillis: number;
-  failureNotificationMaxAttempts: number;
-  failureNotificationRetryDelaySeconds: number;
-}>;
+// Each provider call gets 30 seconds; a failed one retries twice, 30 seconds
+// apart.
+const FAILURE_NOTIFICATION_DELIVERY = Object.freeze({
+  timeoutMillis: 30_000,
+  maxAttempts: 3,
+  retryDelaySeconds: 30,
+});
 
 export async function createMaintenanceRuntime(
   options: MaintenanceOptions,
   dependencies: MaintenanceDependencies = {},
   factories: MaintenanceRuntimeFactories = productionFactories,
 ): Promise<MaintenanceRuntime> {
-  const bounds = maintenanceBounds(options);
+  const shutdownTimeoutMillis =
+    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
   const composition = await composeMaintenanceRuntime(
     options,
     dependencies,
     factories,
-    bounds,
+    shutdownTimeoutMillis,
   );
-  return createMaintenanceLifecycle(
-    composition,
-    bounds.backgroundTaskShutdownTimeoutMillis,
-  );
-}
-
-function maintenanceBounds(options: MaintenanceOptions): MaintenanceBounds {
-  const backgroundTaskShutdownTimeoutMillis =
-    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
-  const failureNotificationDeliveryTimeoutMillis =
-    options.failureNotificationDeliveryTimeoutMillis ?? 30_000;
-  const failureNotificationMaxAttempts =
-    options.failureNotificationMaxAttempts ?? 3;
-  const failureNotificationRetryDelaySeconds =
-    options.failureNotificationRetryDelaySeconds ?? 30;
-  if (
-    !Number.isSafeInteger(backgroundTaskShutdownTimeoutMillis) ||
-    backgroundTaskShutdownTimeoutMillis < 1 ||
-    backgroundTaskShutdownTimeoutMillis > 120_000
-  )
-    throw new TypeError(
-      'Background task shutdown timeout must be between 1 and 120000',
-    );
-  if (
-    !Number.isSafeInteger(failureNotificationDeliveryTimeoutMillis) ||
-    failureNotificationDeliveryTimeoutMillis < 1 ||
-    failureNotificationDeliveryTimeoutMillis > 120_000 ||
-    !Number.isSafeInteger(failureNotificationMaxAttempts) ||
-    failureNotificationMaxAttempts < 1 ||
-    failureNotificationMaxAttempts > 100 ||
-    !Number.isSafeInteger(failureNotificationRetryDelaySeconds) ||
-    failureNotificationRetryDelaySeconds < 1 ||
-    failureNotificationRetryDelaySeconds > 86_400
-  )
-    throw new TypeError('Failure notification delivery bounds are invalid');
-
-  return {
-    backgroundTaskShutdownTimeoutMillis,
-    failureNotificationDeliveryTimeoutMillis,
-    failureNotificationMaxAttempts,
-    failureNotificationRetryDelaySeconds,
-  };
+  return createMaintenanceLifecycle(composition, shutdownTimeoutMillis);
 }
 
 async function composeMaintenanceRuntime(
   options: MaintenanceOptions,
   dependencies: MaintenanceDependencies,
   factories: MaintenanceRuntimeFactories,
-  bounds: MaintenanceBounds,
+  shutdownTimeoutMillis: number,
 ): Promise<MaintenanceComposition> {
   const traceRunner = factories.traceRunner();
   let reconciliationStore:
@@ -217,9 +175,7 @@ async function composeMaintenanceRuntime(
       failureNotification = factories.notifications.handler({
         store: failureNotificationStore,
         delivery: options.failureNotificationDelivery,
-        timeoutMillis: bounds.failureNotificationDeliveryTimeoutMillis,
-        maxAttempts: bounds.failureNotificationMaxAttempts,
-        retryDelaySeconds: bounds.failureNotificationRetryDelaySeconds,
+        ...FAILURE_NOTIFICATION_DELIVERY,
       });
     const handlers: MaintenanceHandlers = {
       connectionHealth: factories.connectionHealth.handler(
@@ -252,7 +208,7 @@ async function composeMaintenanceRuntime(
         failureNotificationStore,
         connectionHealthStore,
       },
-      bounds.backgroundTaskShutdownTimeoutMillis,
+      shutdownTimeoutMillis,
     );
     if (cleanup.length > 0)
       throw new AggregateError(

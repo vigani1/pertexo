@@ -131,42 +131,11 @@ export async function createCoordinatorRuntime(
   dependencies: CoordinatorRuntimeDependencies = {},
   factories: CoordinatorCompositionFactories = productionFactories,
 ): Promise<CoordinatorRuntime> {
-  if (
-    !Number.isSafeInteger(options.maximumAdmissions) ||
-    options.maximumAdmissions < 1 ||
-    options.maximumAdmissions > 64
-  ) {
-    throw new TypeError(
-      'Coordinator maximum admissions must be between 1 and 64',
-    );
-  }
   const dueWakeupBatchSize = options.dueWakeupBatchSize ?? 25;
   const dueWakeupPollIntervalMillis =
     options.dueWakeupPollIntervalMillis ?? 250;
   const backgroundTaskShutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
-  if (
-    !Number.isSafeInteger(dueWakeupBatchSize) ||
-    dueWakeupBatchSize < 1 ||
-    dueWakeupBatchSize > 100
-  )
-    throw new TypeError('Due wakeup batch size must be between 1 and 100');
-  if (
-    !Number.isSafeInteger(dueWakeupPollIntervalMillis) ||
-    dueWakeupPollIntervalMillis < 10 ||
-    dueWakeupPollIntervalMillis > 60_000
-  )
-    throw new TypeError(
-      'Due wakeup poll interval must be between 10 and 60000',
-    );
-  if (
-    !Number.isSafeInteger(backgroundTaskShutdownTimeoutMillis) ||
-    backgroundTaskShutdownTimeoutMillis < 1 ||
-    backgroundTaskShutdownTimeoutMillis > 120_000
-  )
-    throw new TypeError(
-      'Background task shutdown timeout must be between 1 and 120000',
-    );
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();

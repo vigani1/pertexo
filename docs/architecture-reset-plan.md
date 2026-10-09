@@ -383,6 +383,13 @@ now, as one ordered program — not "whenever we touch it".
           support is grouped by what it supports. `transport/` splits into
           `outbox/` and `providers/`, `runtime/` into `health/` and
           `shutdown/`.
+    - [x] Validated once: attempt preparation trusts the lease the engine
+          admitted (no recomputed branch ancestry, iteration scope,
+          invocation key or side-effect pin, and no re-check that the version
+          read by workspace and id has that workspace and id). Runtimes,
+          handlers and the outbox dispatcher trust the parsed config instead
+          of re-checking its bounds; failure-notification delivery limits
+          are constants.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration

@@ -272,9 +272,6 @@ describe('preview reconciliation handler', () => {
             'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         }),
         failureNotificationDelivery: { deliver: vi.fn() },
-        failureNotificationDeliveryTimeoutMillis: 1_000,
-        failureNotificationMaxAttempts: 5,
-        failureNotificationRetryDelaySeconds: 45,
         redisUrl: 'redis://localhost:6379/0',
       },
       {
@@ -295,13 +292,6 @@ describe('preview reconciliation handler', () => {
         },
       },
       factories,
-    );
-    expect(factories.notifications.handler).toHaveBeenCalledWith(
-      expect.objectContaining({
-        timeoutMillis: 1_000,
-        maxAttempts: 5,
-        retryDelaySeconds: 45,
-      }),
     );
     const cases = [
       [JOB_NAME.reconcilePreviewAttempt, handles.preview],
@@ -651,32 +641,6 @@ describe('preview reconciliation handler', () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it.each([
-    { failureNotificationDeliveryTimeoutMillis: 0 },
-    { failureNotificationDeliveryTimeoutMillis: 120_001 },
-    { failureNotificationMaxAttempts: 0 },
-    { failureNotificationMaxAttempts: 101 },
-    { failureNotificationRetryDelaySeconds: 0 },
-    { failureNotificationRetryDelaySeconds: 86_401 },
-  ])('rejects invalid notification composition bounds %#', async (override) => {
-    const consumerFactory = vi.fn();
-    await expect(
-      createMaintenanceRuntime(
-        {
-          database: parseDatabaseConfig({
-            connectionString:
-              'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-          }),
-          failureNotificationDelivery: { deliver: vi.fn() },
-          redisUrl: 'redis://localhost:6379/0',
-          ...override,
-        },
-        { consumerFactory },
-      ),
-    ).rejects.toThrow(/delivery bounds/u);
-    expect(consumerFactory).not.toHaveBeenCalled();
   });
 
   it('reports a bounded recovery shutdown failure and closes stores after late settlement', async () => {

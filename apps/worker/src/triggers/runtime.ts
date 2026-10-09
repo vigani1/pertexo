@@ -85,36 +85,11 @@ export type TriggerRuntimeDependencies = Readonly<{
   telemetry?: TriggerRuntimeTelemetry;
 }>;
 
-function validateOptions(options: TriggerRuntimeOptions): void {
-  if (
-    !Number.isSafeInteger(options.batchSize) ||
-    options.batchSize < 1 ||
-    options.batchSize > 100 ||
-    !Number.isSafeInteger(options.leaseDurationSeconds) ||
-    options.leaseDurationSeconds < 1 ||
-    options.leaseDurationSeconds > 300 ||
-    !Number.isSafeInteger(options.pollIntervalMillis) ||
-    options.pollIntervalMillis < 10 ||
-    options.pollIntervalMillis > 60_000 ||
-    !Number.isSafeInteger(options.onTimeWindowSeconds) ||
-    options.onTimeWindowSeconds < 60 ||
-    options.onTimeWindowSeconds > 3_600 ||
-    (options.backgroundTaskShutdownTimeoutMillis !== undefined &&
-      (!Number.isSafeInteger(options.backgroundTaskShutdownTimeoutMillis) ||
-        options.backgroundTaskShutdownTimeoutMillis < 1 ||
-        options.backgroundTaskShutdownTimeoutMillis > 120_000)) ||
-    options.leaseOwner.length < 1 ||
-    options.leaseOwner.length > 128
-  )
-    throw new TypeError('Trigger runtime scanner configuration is invalid');
-}
-
 export async function createTriggerRuntime(
   options: TriggerRuntimeOptions,
   dependencies: TriggerRuntimeDependencies = {},
   factories: TriggerCompositionFactories = productionFactories,
 ): Promise<TriggerRuntime> {
-  validateOptions(options);
   const backgroundTaskShutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
   const checkpointFactory: InitialCheckpointFactory =

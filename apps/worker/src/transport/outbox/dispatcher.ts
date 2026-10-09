@@ -20,7 +20,6 @@ import {
   type JobName,
   type QueueProducer,
 } from '@pertexo/queue';
-import { z } from 'zod';
 
 import type { WorkerDrainState } from '../../runtime/shutdown/drain-state.js';
 import { transportJobForName } from '../job.js';
@@ -36,32 +35,18 @@ import {
   TransportOperationTimeoutError,
 } from './operation-deadline.js';
 
-const optionsSchema = z
-  .object({
-    batchSize: z.number().int().min(1).max(100),
-    jobNames: z
-      .array(z.enum(JOB_NAME))
-      .refine((values) => new Set(values).size === values.length),
-    leaseDurationMillis: z.number().int().min(1_000).max(300_000),
-    leaseOwner: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
-    maxAttempts: z.number().int().min(1).max(1_000),
-    operationTimeoutMillis: z
-      .number()
-      .int()
-      .min(100)
-      .max(120_000)
-      .default(5_000),
-    pollIntervalMillis: z.number().int().min(10).max(60_000).default(250),
-    retryDelayMillis: z.number().int().min(1).max(300_000),
-  })
-  .strict();
-
-export type OutboxDispatcherOptions = Readonly<
-  Omit<z.input<typeof optionsSchema>, 'jobNames'> & {
-    /** The job kinds this worker consumes; only those are dispatched. */
-    jobNames: readonly JobName[];
-  }
->;
+/** Bounds are validated once, by the worker config. */
+export type OutboxDispatcherOptions = Readonly<{
+  batchSize: number;
+  /** The job kinds this worker consumes; only those are dispatched. */
+  jobNames: readonly JobName[];
+  leaseDurationMillis: number;
+  leaseOwner: string;
+  maxAttempts: number;
+  operationTimeoutMillis?: number;
+  pollIntervalMillis?: number;
+  retryDelayMillis: number;
+}>;
 
 export type OutboxDispatcherRuntimeHooks = Readonly<{
   observeWorkspaceCapacity(
@@ -93,27 +78,27 @@ class OutboxDispatcherClosedError extends Error {
   }
 }
 
-const transportJobNameSchema = z.enum(JOB_NAME);
 const WORKSPACE_CAPACITY_SAMPLE_INTERVAL_MILLIS = 5 * 60_000;
 const MAX_TRACKED_WORKSPACE_CAPACITY_SAMPLES = 1_000;
 const MAX_PENDING_WORKSPACE_CAPACITY_SAMPLES = 100;
 
 function transportJobName(jobName: string): TransportJob | undefined {
-  const parsed = transportJobNameSchema.safeParse(jobName);
-  return parsed.success ? transportJobForName(parsed.data) : undefined;
+  return Object.values<string>(JOB_NAME).includes(jobName)
+    ? transportJobForName(jobName as JobName)
+    : undefined;
 }
 
 function transportErrorClass(error: unknown): TransportErrorClass {
   if (
-    isErrorInstance(error, OutboxPayloadChecksumError) ||
-    isErrorInstance(error, OutboxContractError)
+    error instanceof OutboxPayloadChecksumError ||
+    error instanceof OutboxContractError
   ) {
     return 'contract';
   }
-  if (isErrorInstance(error, TransportOperationTimeoutError)) {
+  if (error instanceof TransportOperationTimeoutError) {
     return 'timeout';
   }
-  if (isErrorInstance(error, QueueNotReadyError)) {
+  if (error instanceof QueueNotReadyError) {
     return 'unavailable';
   }
   return 'redis';
@@ -150,24 +135,13 @@ function toQueueJob(event: LeasedOutboxEvent): QueueJob {
 }
 
 function errorCode(error: unknown): string {
-  if (isErrorInstance(error, OutboxPayloadChecksumError)) {
+  if (error instanceof OutboxPayloadChecksumError) {
     return 'outbox.checksum_mismatch';
   }
-  if (isErrorInstance(error, OutboxContractError)) {
+  if (error instanceof OutboxContractError) {
     return 'outbox.invalid_contract';
   }
   return 'queue.publish_failed';
-}
-
-function isErrorInstance<T extends Error>(
-  value: unknown,
-  constructor: abstract new (...arguments_: never[]) => T,
-): value is T {
-  try {
-    return value instanceof constructor;
-  } catch {
-    return false;
-  }
 }
 
 const EMPTY_RESULT: OutboxDispatchResult = Object.freeze({
@@ -179,11 +153,7 @@ const EMPTY_RESULT: OutboxDispatchResult = Object.freeze({
 });
 
 export class OutboxDispatcher {
-  private readonly options: Readonly<
-    Omit<z.output<typeof optionsSchema>, 'jobNames'> & {
-      jobNames: readonly JobName[];
-    }
-  >;
+  private readonly options: Required<OutboxDispatcherOptions>;
   private readonly enabledQueueNames: ReadonlySet<string>;
   private readonly capacitySampledAtByWorkspace = new Map<string, number>();
   private readonly pendingCapacityWorkspaces = new Set<string>();
@@ -203,13 +173,11 @@ export class OutboxDispatcher {
     options: OutboxDispatcherOptions,
     private readonly metrics: TransportMetrics = createTransportMetrics(),
   ) {
-    const parsed = optionsSchema.parse({
-      ...options,
-      jobNames: [...options.jobNames],
-    });
     this.options = Object.freeze({
-      ...parsed,
-      jobNames: Object.freeze([...parsed.jobNames]),
+      operationTimeoutMillis: 5_000,
+      pollIntervalMillis: 250,
+      ...options,
+      jobNames: Object.freeze([...options.jobNames]),
     });
     this.publicationSettlements = new OutboxPublicationSettlements(
       database,

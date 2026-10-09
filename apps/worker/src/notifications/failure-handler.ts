@@ -51,18 +51,6 @@ export function createFailureNotificationHandler(
     retryDelaySeconds: number;
   }>,
 ): FailureNotificationHandler {
-  if (
-    !Number.isSafeInteger(dependencies.timeoutMillis) ||
-    dependencies.timeoutMillis < 1 ||
-    dependencies.timeoutMillis > 120_000 ||
-    !Number.isSafeInteger(dependencies.maxAttempts) ||
-    dependencies.maxAttempts < 1 ||
-    dependencies.maxAttempts > 100 ||
-    !Number.isSafeInteger(dependencies.retryDelaySeconds) ||
-    dependencies.retryDelaySeconds < 1 ||
-    dependencies.retryDelaySeconds > 86_400
-  )
-    throw new TypeError('Failure notification delivery bounds are invalid');
   const pendingOperations = new Set<Promise<void>>();
   const trackPending = (operation: Promise<unknown>): void => {
     const observed = operation
