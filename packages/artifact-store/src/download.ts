@@ -6,7 +6,7 @@ import {
   artifactIdentitySchema,
   artifactStorageKey,
   type ArtifactIdentity,
-} from './artifact-identity.js';
+} from './identity.js';
 import {
   observePresign,
   type ObjectStoreObserver,
@@ -26,10 +26,7 @@ export function createArtifactDownloadPresigner(
   return (request) =>
     observePresign(observer, () => presign(request), 'presign_get_object');
 }
-import {
-  awaitWithSignal,
-  requestSignal,
-} from './artifact-request-lifecycle.js';
+import { awaitWithSignal, requestSignal } from './request-lifecycle.js';
 
 export interface BeginDirectDownloadRequest extends ArtifactIdentity {
   readonly expiresInSeconds: number;

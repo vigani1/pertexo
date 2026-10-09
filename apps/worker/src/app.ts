@@ -9,7 +9,7 @@ import {
   type DatabaseRuntime,
   type WorkspaceDatabase,
 } from '@pertexo/database/platform';
-import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
+import type { TransportMetrics } from '@pertexo/observability';
 
 import type { WorkerConfig } from './config/worker-config.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';

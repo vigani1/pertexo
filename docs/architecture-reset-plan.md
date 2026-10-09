@@ -286,8 +286,17 @@ now, as one ordered program — not "whenever we touch it".
           `schemas/` (was `http/`), `errors/`, `openapi/`; 28 subpath exports
           and the duplicated root re-exports go.
   - [ ] queue
+    - [x] No runtime guard; plain export map; structure-only surface tests
+          go.
   - [ ] artifact-store
+    - [x] No runtime guard; files no longer repeat the package name
+          (`download.ts`, `errors.ts`, `identity.ts`, `metadata.ts`,
+          `request-lifecycle.ts`).
   - [ ] observability
+    - [x] Two doors instead of nine: `@pertexo/observability/startup`
+          (config, process-error classification, telemetry; loaded before
+          pino, pg and HTTP so OpenTelemetry can instrument them) and
+          `@pertexo/observability`. No runtime guard.
   - [ ] rate-limit
   - [ ] database
   - [ ] execution

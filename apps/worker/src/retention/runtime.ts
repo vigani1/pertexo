@@ -4,7 +4,7 @@ import type {
   RunArtifactRetentionCoordinator,
   WorkspacePurgeCoordinator,
 } from '@pertexo/database/lifecycle';
-import type { StructuredLogger } from '@pertexo/observability/logging';
+import type { StructuredLogger } from '@pertexo/observability';
 
 import {
   createPollingRuntime,

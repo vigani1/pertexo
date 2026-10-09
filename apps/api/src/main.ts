@@ -1,9 +1,11 @@
 import { fileURLToPath } from 'node:url';
 
-import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
-import { classifyProcessError } from '@pertexo/observability/process-error-classification';
-import type { StructuredLogger } from '@pertexo/observability/logging';
-import type * as LoggingModule from '@pertexo/observability/logging';
+import {
+  createTelemetryLifecycle,
+  classifyProcessError,
+} from '@pertexo/observability/startup';
+import type { StructuredLogger } from '@pertexo/observability';
+import type * as LoggingModule from '@pertexo/observability';
 
 import type * as ApiApplicationModule from './app.js';
 import {
@@ -31,7 +33,7 @@ export interface ApiBootstrapDependencies {
 
 async function loadModules(): Promise<ApiBootstrapModules> {
   const [logging, application] = await Promise.all([
-    import('@pertexo/observability/logging'),
+    import('@pertexo/observability'),
     import('./app.js'),
   ]);
   return { application, logging };
@@ -77,7 +79,7 @@ export async function bootstrapApi(
         const logging =
           loadedLogging ??
           (dependencies.loadModules === undefined
-            ? await import('@pertexo/observability/logging')
+            ? await import('@pertexo/observability')
             : undefined);
         logger = logging?.createStructuredLogger(config.observability);
       } catch {

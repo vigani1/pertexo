@@ -17,7 +17,7 @@ import {
   parseDatabaseConfig,
   parseMigrationConfig,
 } from '@pertexo/database/testing';
-import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
+import type { TransportMetrics } from '@pertexo/observability';
 import type { NodeArtifactReference } from '@pertexo/node-sdk/server';
 import {
   createQueueConsumer,

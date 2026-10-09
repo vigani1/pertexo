@@ -1,4 +1,4 @@
-import type { TransportJob } from '@pertexo/observability/transport-metrics';
+import type { TransportJob } from '@pertexo/observability';
 import { JOB_NAME, QUEUE_FOR_JOB } from '@pertexo/queue';
 import type { JobName, QueueHandlerObservation } from '@pertexo/queue';
 

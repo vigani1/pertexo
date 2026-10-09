@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import { z } from 'zod';
 
 import { JOB_NAME, QUEUE_FOR_JOB, type JobName } from './names.js';

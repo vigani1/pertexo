@@ -19,7 +19,7 @@ import {
 } from '../src/store.js';
 import type { S3ClientLike } from '../src/store.js';
 import type { PutObjectPresignRequest } from '../src/store.js';
-import type { GetObjectPresignRequest } from '../src/artifact-download.js';
+import type { GetObjectPresignRequest } from '../src/download.js';
 
 const WORKSPACE_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01';
 const ARTIFACT_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02';

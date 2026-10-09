@@ -1,4 +1,4 @@
-import { awaitWithSignal } from '../src/artifact-request-lifecycle.js';
+import { awaitWithSignal } from '../src/request-lifecycle.js';
 
 const unhandled: unknown[] = [];
 process.on('unhandledRejection', (reason: unknown) => {

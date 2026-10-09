@@ -1,4 +1,4 @@
-import type { StructuredLogger } from '@pertexo/observability/logging';
+import type { StructuredLogger } from '@pertexo/observability';
 
 interface CloseableWorkerApplication {
   close(signal?: string): Promise<void>;

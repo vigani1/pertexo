@@ -4,7 +4,7 @@ import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
-import { NestLoggerAdapter } from '@pertexo/observability/nest-runtime';
+import { NestLoggerAdapter } from '@pertexo/observability';
 
 export { NestLoggerAdapter };
 

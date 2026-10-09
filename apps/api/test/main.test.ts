@@ -1,5 +1,5 @@
-import type { StructuredLogger } from '@pertexo/observability/logging';
-import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
+import type { StructuredLogger } from '@pertexo/observability';
+import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import { describe, expect, it, vi } from 'vitest';
 
 import { bootstrapApi, type ApiBootstrapModules } from '../src/main.js';

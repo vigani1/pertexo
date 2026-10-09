@@ -21,8 +21,8 @@ import {
 import type {
   StructuredLogger,
   TelemetryLifecycle,
+  TransportMetrics,
 } from '@pertexo/observability';
-import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 
 import type { WorkerConfig } from './config/worker-config.js';
 import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';

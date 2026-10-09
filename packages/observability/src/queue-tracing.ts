@@ -10,8 +10,6 @@ import {
   type Tracer,
 } from '@opentelemetry/api';
 
-import './server-only.js';
-
 export interface QueueTraceObservation {
   readonly jobName: string;
   readonly queueName: string;

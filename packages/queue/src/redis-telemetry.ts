@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import { metrics, type Attributes, type Meter } from '@opentelemetry/api';
 
 import type {

@@ -7,7 +7,7 @@ import type {
 import {
   createNestObservabilityRegistration,
   NestLoggerAdapter,
-} from '@pertexo/observability/nest-runtime';
+} from '@pertexo/observability';
 
 export { NestLoggerAdapter };
 

@@ -1,5 +1,3 @@
-import './server-only.js';
-
 export const QUEUE_NAME = Object.freeze({
   workflowCoordinator: 'workflow-coordinator',
   nodeAttempts: 'node-attempts',

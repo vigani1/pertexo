@@ -9,8 +9,8 @@ import {
   outboxEvents,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
-import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
-import { createQueueTraceRunner } from '@pertexo/observability/queue-tracing';
+import type { TransportMetrics } from '@pertexo/observability';
+import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
   createQueueProducer,
