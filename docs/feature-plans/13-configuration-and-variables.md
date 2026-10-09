@@ -14,7 +14,7 @@ Node configuration, workflow inputs and encrypted connections exist. A first-cla
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [packages/workflow-model/src/graph-contract.ts](../../packages/workflow-model/src/graph-contract.ts)
+- [packages/workflow-model/src/graph/contract.ts](../../packages/workflow-model/src/graph/contract.ts)
 - [apps/api/src/connections](../../apps/api/src/connections)
 - [apps/web/src/features/connections](../../apps/web/src/features/connections)
 

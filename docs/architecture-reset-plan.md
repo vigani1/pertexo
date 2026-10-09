@@ -232,7 +232,15 @@ now, as one ordered program — not "whenever we touch it".
 - [ ] **8. Package-by-package pass** — read every file of every package and app,
       bottom of the dependency graph first, and redo, remove or improve using
       the checklist below. One PR per package (several for the large ones):
-  - [ ] workflow-model
+  - [x] workflow-model — two doors (`@pertexo/workflow-model` browser-safe,
+        `/server` for checksums, expressions and authoring validation) replace
+        fifteen subpaths and the runtime server-only guards; ESLint keeps Node
+        out of the browser door. Area folders `graph/`, `json/`,
+        `portability/`. The invocation key has one format, owned by the
+        engine. The "worker runtime helpers" are worker-thread scripts used by
+        both the API and the worker, so they stay next to the code that starts
+        them. Dead code (retained V1 reader, for-each bounds selection, policy
+        schema) and version suffixes go.
   - [ ] workflow-engine
   - [ ] node-sdk
   - [ ] nodes-core
