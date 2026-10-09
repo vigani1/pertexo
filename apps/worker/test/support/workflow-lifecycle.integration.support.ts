@@ -31,10 +31,6 @@ import {
 
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { WorkerDrainState } from '../../src/runtime/drain-state.js';
-import {
-  createDispatchConsumerCapabilityRegistry,
-  type DispatchConsumerCapabilityRegistry,
-} from '../../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../../src/transport/outbox-dispatcher.js';
 import {
   createTriggerRuntime,
@@ -174,11 +170,7 @@ export type WorkflowLifecycleWorkerEnvironment = Readonly<{
   readOutboxEvent(id: string): Promise<LifecycleOutboxEvent>;
   makeDue(id: string): Promise<void>;
   createRuntime(leaseOwner: string): Promise<TriggerRuntime>;
-  createDispatcher(
-    leaseOwner: string,
-    capabilities: DispatchConsumerCapabilityRegistry,
-  ): OutboxDispatcher;
-  readyCapabilities(): DispatchConsumerCapabilityRegistry;
+  createDispatcher(leaseOwner: string): OutboxDispatcher;
   close(): Promise<void>;
 }>;
 
@@ -973,21 +965,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     return runtime;
   };
 
-  const readyCapabilities = () =>
-    createDispatchConsumerCapabilityRegistry([
-      {
-        jobName: JOB_NAME.reconcileWorkflowTriggers,
-        consumer: {
-          isReady: () => true,
-          waitUntilReady: () => Promise.resolve(),
-        },
-      },
-    ]);
-
-  const createDispatcher = (
-    leaseOwner: string,
-    capabilities: DispatchConsumerCapabilityRegistry,
-  ): OutboxDispatcher => {
+  const createDispatcher = (leaseOwner: string): OutboxDispatcher => {
     const dispatcherDatabase = registerCloseable(
       'outbox dispatcher database',
       createOutboxDispatcherDatabase(dispatcherConfig),
@@ -1002,15 +980,13 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       new WorkerDrainState(),
       {
         batchSize: 10,
-        enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
+        jobNames: [JOB_NAME.reconcileWorkflowTriggers],
         leaseDurationMillis: 1_000,
         leaseOwner,
         maxAttempts: 3,
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 10,
       },
-      undefined,
-      capabilities,
     );
     transferResource(dispatcherDatabase);
     transferResource(producer);
@@ -1100,7 +1076,6 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     },
     createRuntime,
     createDispatcher,
-    readyCapabilities,
     close,
   });
 }

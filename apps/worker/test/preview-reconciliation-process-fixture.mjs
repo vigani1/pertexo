@@ -150,7 +150,6 @@ async function runComposedConsumer() {
           runStore,
         },
         redisUrl: input.redisUrl,
-        releaseCohort: 'core',
         workerId: input.workerId,
       });
       await runtime.consumer.waitUntilReady(5_000);

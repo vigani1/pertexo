@@ -1045,79 +1045,7 @@ describe('Coordinator scheduling and notification invariants', () => {
     }
   });
 
-  it('keeps R1 run-timeout context production disabled while committing terminal truth', async () => {
-    const runId = await insertRun({
-      failureNotificationPolicy: {
-        destinationId: notificationDestinationId,
-        destinationConfigVersion: 1,
-        sideEffectClass: 'idempotent_with_key',
-        connectionSecretVersionId: notificationSecretVersionId,
-      },
-    });
-    const r1Store = createTestRunStore(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(workerBaseUrl),
-        max: 2,
-        ownerRole: 'pertexo_owner',
-      }),
-    );
-    try {
-      await expect(
-        r1Store.commitAdvancePlan({
-          workspaceId: workspaceA,
-          runId,
-          workflowVersionId: versionA,
-          delivery: await testDelivery(workspaceA, runId, 0),
-          signal: new AbortController().signal,
-          plan: {
-            expectedRevision: 0,
-            expectedNextEventSequence: 2,
-            consumedThroughEventSequence: 1,
-            checkpoint: checkpoint({
-              revision: 1,
-              runStatus: 'timed_out',
-              nextEventSequence: 3,
-              invocations: [],
-            }),
-            events: [
-              {
-                schemaVersion: 1,
-                sequence: 2,
-                name: 'run.timed_out',
-                occurredAt: '2026-08-24T10:01:00.000Z',
-                reasonCode: 'execution.deadline_exceeded',
-              },
-            ],
-            nodeRunAdmissions: [],
-            attempts: [],
-          },
-        }),
-      ).resolves.toMatchObject({ kind: 'committed' });
-    } finally {
-      await r1Store.close();
-    }
-
-    await expect(
-      asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query<{ intent_count: number; run_status: string }>(
-          `select run.status run_status,
-                  count(intent.id)::int intent_count
-             from app.workflow_runs run
-             left join app.run_failure_notification_intents intent
-               on intent.workspace_id=run.workspace_id
-              and intent.workflow_run_id=run.id
-            where run.workspace_id=$1 and run.id=$2
-            group by run.status`,
-          [workspaceA, runId],
-        ),
-      ),
-    ).resolves.toMatchObject({
-      rows: [{ run_status: 'timed_out', intent_count: 0 }],
-    });
-    await expect(inboxEvents(runId)).resolves.toEqual([]);
-  });
-
-  it('records one workspace inbox failure only when the producer is enabled', async () => {
+  it('records one workspace inbox failure', async () => {
     const runId = await insertRun({
       status: 'running',
       schedulerState: checkpoint({ runStatus: 'running' }),
@@ -1128,8 +1056,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         max: 2,
         ownerRole: 'pertexo_owner',
       }),
-      undefined,
-      { workspaceInboxProducerEnabled: true },
     );
     const input = {
       workspaceId: workspaceA,

@@ -9,10 +9,7 @@ import {
   type WorkflowAutoPauseRuntime,
 } from './auto-pause-runtime.js';
 
-/**
- * ADR 056: an injected runtime, else the configured fold loop, or none while
- * auto-pause is off.
- */
+/** ADR 056: an injected runtime, else the fold loop. */
 export function configuredWorkflowAutoPauseRuntime(
   { workflowAutoPause: config, database }: WorkerConfig,
   dependencies: Readonly<{
@@ -20,15 +17,13 @@ export function configuredWorkflowAutoPauseRuntime(
     databaseRuntime?: DatabaseRuntime;
     logger: StructuredLogger;
   }>,
-): WorkflowAutoPauseRuntime | undefined {
+): WorkflowAutoPauseRuntime {
   if (dependencies.workflowAutoPauseRuntime !== undefined)
     return dependencies.workflowAutoPauseRuntime;
-  if (config.mode === 'off') return undefined;
   const { logger } = dependencies;
   return createWorkflowAutoPauseRuntime(
     createWorkflowTriggerPauseFoldStore(database, dependencies.databaseRuntime),
     {
-      enforce: config.mode === 'enforce',
       foldBatchSize: config.foldBatchSize,
       foldPollMillis: config.foldPollMillis,
     },
@@ -37,16 +32,11 @@ export function configuredWorkflowAutoPauseRuntime(
         logger.error('workflow_auto_pause.cycle_failed');
       },
       decided: (decision) => {
-        logger.warn(
-          decision.paused
-            ? 'workflow_auto_pause.paused'
-            : 'workflow_auto_pause.would_pause',
-          {
-            workspaceId: decision.workspaceId,
-            workflowId: decision.workflowId,
-            consecutiveFailures: decision.consecutiveFailures,
-          },
-        );
+        logger.warn('workflow_auto_pause.paused', {
+          workspaceId: decision.workspaceId,
+          workflowId: decision.workflowId,
+          consecutiveFailures: decision.consecutiveFailures,
+        });
       },
     },
   );

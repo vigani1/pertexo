@@ -24,7 +24,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import { createCoordinatorRuntime } from '../src/runs/runtime.js';
 import { createTriggerRuntime } from '../src/triggers/runtime.js';
-import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import {
   createBenchmarkScanGate,
@@ -266,34 +265,18 @@ describeIntegration('direct Schedule worker integration gate', () => {
       createQueueProducer({ redisUrl }),
     );
     const dispatcher = registerResource(
-      new OutboxDispatcher(
-        dispatcherDatabase,
-        dispatcherProducer,
-        drain,
-        {
-          batchSize: 10,
-          enabledJobNames: [
-            JOB_NAME.reconcileWorkflowTriggers,
-            JOB_NAME.advanceWorkflowRun,
-          ],
-          leaseDurationMillis: 1_000,
-          leaseOwner: 'schedule-publication-dispatcher',
-          maxAttempts: 3,
-          operationTimeoutMillis: 5_000,
-          retryDelayMillis: 10,
-        },
-        undefined,
-        createDispatchConsumerCapabilityRegistry([
-          {
-            jobName: JOB_NAME.reconcileWorkflowTriggers,
-            consumer: runtime.consumer,
-          },
-          {
-            jobName: JOB_NAME.advanceWorkflowRun,
-            consumer: coordinator.consumer,
-          },
-        ]),
-      ),
+      new OutboxDispatcher(dispatcherDatabase, dispatcherProducer, drain, {
+        batchSize: 10,
+        jobNames: [
+          JOB_NAME.reconcileWorkflowTriggers,
+          JOB_NAME.advanceWorkflowRun,
+        ],
+        leaseDurationMillis: 1_000,
+        leaseOwner: 'schedule-publication-dispatcher',
+        maxAttempts: 3,
+        operationTimeoutMillis: 5_000,
+        retryDelayMillis: 10,
+      }),
     );
     transferResource(dispatcherDatabase);
     transferResource(dispatcherProducer);
@@ -604,20 +587,13 @@ describeIntegration('direct Schedule worker integration gate', () => {
         new WorkerDrainState(),
         {
           batchSize: 10,
-          enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
+          jobNames: [JOB_NAME.reconcileWorkflowTriggers],
           leaseDurationMillis: 1_000,
           leaseOwner: 'schedule-recovery-dispatcher',
           maxAttempts: 3,
           operationTimeoutMillis: 5_000,
           retryDelayMillis: 10,
         },
-        undefined,
-        createDispatchConsumerCapabilityRegistry([
-          {
-            jobName: JOB_NAME.reconcileWorkflowTriggers,
-            consumer: runtime.consumer,
-          },
-        ]),
       ),
     );
     transferResource(recoveryDatabase);

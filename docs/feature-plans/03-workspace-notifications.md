@@ -2,9 +2,9 @@
 
 Status: delivered under accepted
 [ADR055](../adr/055-workspace-inbox-failure-threads.md). All four slices are
-merged, the integrated acceptance run on the local stack is recorded below, and
-the deployment and local configuration turn the producer on
-(`WORKSPACE_INBOX_PRODUCER=true`; the code default stays off).
+merged and the integrated acceptance run on the local stack is recorded below.
+Since the architecture reset (ADR 069) the producer always runs; the
+`WORKSPACE_INBOX_PRODUCER` flag this plan describes is gone.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New frontend + backend product. Relative size: **L**, not a calendar estimate.
 

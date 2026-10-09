@@ -31,7 +31,6 @@ import {
 } from './execution-environment.js';
 export { NodeAttemptHandlerStateError } from './handler-state-error.js';
 import { NodeAttemptHandlerStateError } from './handler-state-error.js';
-import type { ConnectionRunHealthMode } from '../config/connection-health.js';
 import { connectionHealthCompletionFields } from '../connections/health-completion.js';
 import { completionResult } from './completion-result.js';
 
@@ -79,7 +78,6 @@ export interface NodeAttemptHandler {
 }
 
 export type NodeAttemptHandlerDependencies = Readonly<{
-  connectionRunHealthMode?: ConnectionRunHealthMode;
   engine: NodeAttemptExecutionEngine;
   heartbeatIntervalMillis: number;
   leaseDurationSeconds: number;
@@ -102,7 +100,7 @@ async function completeControlOutcome(
 ): Promise<NodeAttemptHandlerResult> {
   const outcomeUnknown = lease.sideEffectClass !== 'safe' && dispatched;
   const completed = await dependencies.runStore.complete({
-    ...connectionHealthCompletionFields(dependencies, environment),
+    ...connectionHealthCompletionFields(environment),
     lease,
     outcome: {
       status: outcomeUnknown ? 'outcome_unknown' : reason,
@@ -244,7 +242,7 @@ async function executePreparedNodeAttempt(
     if (interruption !== undefined) return interruption;
     if (error instanceof NodeExecutorFailure) {
       const completed = await dependencies.runStore.complete({
-        ...connectionHealthCompletionFields(dependencies, environment),
+        ...connectionHealthCompletionFields(environment),
         lease,
         outcome: {
           status: 'executor_failure',
@@ -263,7 +261,7 @@ async function executePreparedNodeAttempt(
       error.code === 'attempt_invalid'
     ) {
       const completed = await dependencies.runStore.complete({
-        ...connectionHealthCompletionFields(dependencies, environment),
+        ...connectionHealthCompletionFields(environment),
         lease,
         outcome: {
           status: 'failed',
@@ -335,7 +333,7 @@ async function persistPreparedOutcome(
 ): Promise<NodeAttemptHandlerResult> {
   try {
     const completed = await dependencies.runStore.complete({
-      ...connectionHealthCompletionFields(dependencies, environment),
+      ...connectionHealthCompletionFields(environment),
       lease,
       outcome:
         prepared.suspensionDurationSeconds === undefined
@@ -352,7 +350,7 @@ async function persistPreparedOutcome(
   } catch (error: unknown) {
     if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
     const completed = await dependencies.runStore.complete({
-      ...connectionHealthCompletionFields(dependencies, environment),
+      ...connectionHealthCompletionFields(environment),
       lease,
       outcome: {
         status: 'failed',
@@ -454,8 +452,6 @@ export function createNodeAttemptHandler(
           lease: claimed.lease,
           registry: dependencies.registry,
           runStore: dependencies.runStore,
-          connectionRunHealthMode:
-            dependencies.connectionRunHealthMode ?? 'off',
           ...(dependencies.runtimeCapabilities === undefined
             ? {}
             : { runtimeCapabilities: dependencies.runtimeCapabilities }),

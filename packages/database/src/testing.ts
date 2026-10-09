@@ -251,7 +251,6 @@ export type {
   RunAdvanceStore,
 } from './runs/advance/contract.js';
 export { createRunAdvanceStore } from './runs/advance/store.js';
-export type { RunAdvanceStoreOptions } from './runs/advance/store.js';
 export {
   artifacts,
   auditEvents,

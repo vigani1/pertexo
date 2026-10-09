@@ -252,7 +252,6 @@ export const completionSchema = ownedLeaseSchema
     outcome: completionOutcomeSchema,
     traceparent: traceparentSchema,
     connectionHealthObservation: connectionHealthObservationSchema.optional(),
-    connectionRunHealthMode: z.enum(['off', 'observe', 'enforce']).optional(),
   })
   .strict();
 
@@ -364,7 +363,6 @@ export interface NodeAttemptRunStore {
       connectionHealthObservation?: z.output<
         typeof connectionHealthObservationSchema
       >;
-      connectionRunHealthMode?: 'off' | 'observe' | 'enforce';
       traceparent?: string;
       signal: AbortSignal;
     }>,

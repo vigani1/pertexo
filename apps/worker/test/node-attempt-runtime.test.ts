@@ -28,10 +28,7 @@ import {
   type PreparedNodeAttempt,
   type PreviewAttemptRunStore,
 } from '../src/testing.js';
-import {
-  nodeAttemptActivation,
-  nodeAttemptRuntimeProvider,
-} from '../src/transport/node-attempt-runtime-provider.js';
+import { nodeAttemptRuntimeProvider } from '../src/transport/node-attempt-runtime-provider.js';
 import type { WorkerConfig } from '../src/config/worker.js';
 
 const STORED_CHECKPOINT = createCheckpoint({
@@ -57,7 +54,7 @@ const database = {
   ownerRole: 'pertexo_owner',
 } as const;
 
-function activationConfig(enabledJobNames: readonly string[]): WorkerConfig {
+function providerConfig(): WorkerConfig {
   return {
     database,
     nodeAttempt: {
@@ -65,8 +62,6 @@ function activationConfig(enabledJobNames: readonly string[]): WorkerConfig {
       leaseDurationSeconds: 30,
       workerId: 'worker-1',
     },
-    nodeCompatibilityCohort: 'core',
-    outboxDispatcher: { enabledJobNames },
     redisUrl: 'redis://localhost:6379/0',
   } as unknown as WorkerConfig;
 }
@@ -74,7 +69,7 @@ function activationConfig(enabledJobNames: readonly string[]): WorkerConfig {
 function providerFactory(provider: FactoryProvider) {
   return provider.useFactory as (
     observer: QueueConsumerOptions['observer'],
-  ) => Promise<NodeAttemptRuntime | undefined>;
+  ) => Promise<NodeAttemptRuntime>;
 }
 
 function delivery(): Extract<QueueDelivery, { name: 'execute-node-attempt' }> {
@@ -174,81 +169,40 @@ async function capturedHandler(
 }
 
 describe('node-attempt runtime', () => {
-  it.each([
-    { jobs: [], expected: { preview: false, production: false } },
-    {
-      jobs: [JOB_NAME.executeNodeAttempt],
-      expected: { preview: false, production: true },
-    },
-    {
-      jobs: [JOB_NAME.executePreviewAttempt],
-      expected: { preview: true, production: false },
-    },
-    {
-      jobs: [JOB_NAME.executeNodeAttempt, JOB_NAME.executePreviewAttempt],
-      expected: { preview: true, production: true },
-    },
-  ])(
-    'describes the four node-attempt activation modes',
-    ({ jobs, expected }) => {
-      expect(nodeAttemptActivation(jobs)).toEqual(expected);
-    },
-  );
+  it('composes production and preview attempts through one shared runtime and transfers preview ownership', async () => {
+    const closePreview = vi.fn().mockResolvedValue(undefined);
+    const createRuntime = vi.fn().mockResolvedValue({
+      consumer: {},
+      close: vi.fn(),
+    });
+    const provider = nodeAttemptRuntimeProvider(
+      providerConfig(),
+      {},
+      {
+        createPreviewInvoker: vi.fn().mockReturnValue({
+          close: vi.fn(),
+          invoke: vi.fn(),
+        }),
+        createPreviewRunStore: vi.fn().mockReturnValue({
+          claim: vi.fn(),
+          close: closePreview,
+          complete: vi.fn(),
+          heartbeat: vi.fn(),
+          readLoopDeclaration: vi.fn(),
+          markDispatched: vi.fn(),
+        }),
+        createRuntime,
+      },
+    ) as FactoryProvider;
 
-  it.each([
-    {
-      jobs: [JOB_NAME.executeNodeAttempt],
-      productionEnabled: true,
-      preview: false,
-    },
-    {
-      jobs: [JOB_NAME.executePreviewAttempt],
-      productionEnabled: false,
-      preview: true,
-    },
-    {
-      jobs: [JOB_NAME.executeNodeAttempt, JOB_NAME.executePreviewAttempt],
-      productionEnabled: true,
-      preview: true,
-    },
-  ])(
-    'composes enabled modes through one shared runtime and transfers preview ownership',
-    async ({ jobs, productionEnabled, preview }) => {
-      const closePreview = vi.fn().mockResolvedValue(undefined);
-      const createRuntime = vi.fn().mockResolvedValue({
-        consumer: {},
-        close: vi.fn(),
-      });
-      const provider = nodeAttemptRuntimeProvider(
-        activationConfig(jobs),
-        {},
-        {
-          createPreviewInvoker: vi.fn().mockReturnValue({
-            close: vi.fn(),
-            invoke: vi.fn(),
-          }),
-          createPreviewRunStore: vi.fn().mockReturnValue({
-            claim: vi.fn(),
-            close: closePreview,
-            complete: vi.fn(),
-            heartbeat: vi.fn(),
-            readLoopDeclaration: vi.fn(),
-            markDispatched: vi.fn(),
-          }),
-          createRuntime,
-        },
-      ) as FactoryProvider;
-
-      await expect(providerFactory(provider)(undefined)).resolves.toBeDefined();
-      expect(createRuntime).toHaveBeenCalledOnce();
-      const [runtimeOptions] = createRuntime.mock.lastCall as unknown as [
-        NodeAttemptRuntimeOptions,
-      ];
-      expect(runtimeOptions.productionEnabled).toBe(productionEnabled);
-      expect(runtimeOptions.preview !== undefined).toBe(preview);
-      expect(closePreview).not.toHaveBeenCalled();
-    },
-  );
+    await expect(providerFactory(provider)(undefined)).resolves.toBeDefined();
+    expect(createRuntime).toHaveBeenCalledOnce();
+    const [runtimeOptions] = createRuntime.mock.lastCall as unknown as [
+      NodeAttemptRuntimeOptions,
+    ];
+    expect(runtimeOptions.preview).toBeDefined();
+    expect(closePreview).not.toHaveBeenCalled();
+  });
 
   it('forwards configured artifact, encryption, and shared database resources', async () => {
     const artifactStore = { put: vi.fn() };
@@ -260,14 +214,14 @@ describe('node-attempt runtime', () => {
     });
     const provider = nodeAttemptRuntimeProvider(
       {
-        ...activationConfig([JOB_NAME.executeNodeAttempt]),
+        ...providerConfig(),
         artifactStore,
         connectionEncryption,
       } as unknown as WorkerConfig,
       { databaseRuntime },
       {
-        createPreviewInvoker: vi.fn(),
-        createPreviewRunStore: vi.fn(),
+        createPreviewInvoker: vi.fn().mockReturnValue({ invoke: vi.fn() }),
+        createPreviewRunStore: vi.fn().mockReturnValue({ close: vi.fn() }),
         createRuntime,
       },
     ) as FactoryProvider;
@@ -283,33 +237,11 @@ describe('node-attempt runtime', () => {
     );
   });
 
-  it('returns no runtime for disabled mode or an external dispatch registry', async () => {
-    const createRuntime = vi.fn();
-    const factories = {
-      createPreviewInvoker: vi.fn(),
-      createPreviewRunStore: vi.fn(),
-      createRuntime,
-    } as never;
-    const disabled = nodeAttemptRuntimeProvider(
-      activationConfig([]),
-      {},
-      factories,
-    ) as FactoryProvider;
-    await expect(providerFactory(disabled)(undefined)).resolves.toBeUndefined();
-    const external = nodeAttemptRuntimeProvider(
-      activationConfig([JOB_NAME.executeNodeAttempt]),
-      { dispatchConsumerCapabilities: {} as never },
-      factories,
-    ) as FactoryProvider;
-    await expect(providerFactory(external)(undefined)).resolves.toBeUndefined();
-    expect(createRuntime).not.toHaveBeenCalled();
-  });
-
   it('closes a preview store created before invoker failure and preserves cleanup failure', async () => {
     const primary = new Error('preview invoker failed');
     const cleanup = new Error('preview store close failed');
     const provider = nodeAttemptRuntimeProvider(
-      activationConfig([JOB_NAME.executePreviewAttempt]),
+      providerConfig(),
       {},
       {
         createPreviewInvoker: () => {
@@ -327,66 +259,6 @@ describe('node-attempt runtime', () => {
     );
     expect(result).toBeInstanceOf(AggregateError);
     expect((result as AggregateError).errors).toEqual([primary, cleanup]);
-  });
-
-  it('preview-only HTTP-cohort activation acquires no production dispatch resources', async () => {
-    const consumer: QueueConsumer = {
-      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
-      isReady: vi.fn().mockReturnValue(true),
-      waitUntilReady: vi.fn().mockResolvedValue(undefined),
-    };
-    const previewClose = vi.fn().mockResolvedValue(undefined);
-    const invokerClose = vi.fn().mockResolvedValue(undefined);
-    const productionClose = vi.fn().mockResolvedValue(undefined);
-    const runtime = await createNodeAttemptRuntime(
-      {
-        database,
-        heartbeatIntervalMillis: 10,
-        leaseDurationSeconds: 30,
-        preview: {
-          invoker: { close: invokerClose, invoke: vi.fn() },
-          runStore: {
-            claim: vi.fn(),
-            close: previewClose,
-            complete: vi.fn(),
-            heartbeat: vi.fn(),
-            markDispatched: vi.fn(),
-          },
-        },
-        productionEnabled: false,
-        redisUrl: 'redis://localhost:6379/0',
-        workerId: 'worker-1',
-      },
-      {
-        consumerFactory: () => consumer,
-        engine: { prepare: vi.fn() },
-        notifications: {
-          close: productionClose,
-          publish: vi.fn(),
-          resync: vi.fn(),
-        },
-        reader: {
-          close: productionClose,
-          readForExecution: vi.fn(),
-        },
-        registry: { execute: vi.fn() },
-        runStore: {
-          claimDelivery: vi.fn(),
-          close: productionClose,
-          complete: vi.fn(),
-          heartbeat: vi.fn(),
-          loadInputs: vi.fn(),
-          readLoopDeclaration: vi.fn(),
-          markDispatched: vi.fn(),
-        },
-      },
-    );
-
-    await runtime.close();
-    expect(consumer.close).toHaveBeenCalledOnce();
-    expect(previewClose).toHaveBeenCalledOnce();
-    expect(invokerClose).toHaveBeenCalledOnce();
-    expect(productionClose).not.toHaveBeenCalled();
   });
 
   it.each(['fallback', 'override'] as const)(
@@ -412,11 +284,30 @@ describe('node-attempt runtime', () => {
               ? { runtimeCapabilities: override }
               : {}),
           },
-          productionEnabled: false,
           redisUrl: 'redis://localhost:6379/0',
           workerId: 'worker-1',
         },
         {
+          engine: { prepare: vi.fn() },
+          notifications: {
+            close: vi.fn().mockResolvedValue(undefined),
+            publish: vi.fn(),
+            resync: vi.fn(),
+          },
+          reader: {
+            close: vi.fn().mockResolvedValue(undefined),
+            readForExecution: vi.fn(),
+          },
+          registry: { execute: vi.fn() },
+          runStore: {
+            claimDelivery: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+            complete: vi.fn(),
+            heartbeat: vi.fn(),
+            loadInputs: vi.fn(),
+            readLoopDeclaration: vi.fn(),
+            markDispatched: vi.fn(),
+          },
           consumerFactory: () => ({
             close: vi.fn().mockResolvedValue({
               abortedJobs: 0,
@@ -583,7 +474,7 @@ describe('node-attempt runtime', () => {
     ]);
     expect(consumerClose).toHaveBeenCalledOnce();
     expect(storeClose).toHaveBeenCalledOnce();
-    await expect(runtime.checkReadiness?.()).rejects.toThrow(
+    await expect(runtime.checkReadiness()).rejects.toThrow(
       'Node-attempt runtime is closed',
     );
   });
@@ -634,7 +525,7 @@ describe('node-attempt runtime', () => {
       },
     );
 
-    const pendingReadiness = runtime.checkReadiness?.();
+    const pendingReadiness = runtime.checkReadiness();
     const closing = runtime.close();
     readiness.resolve(undefined);
     await expect(pendingReadiness).rejects.toThrow(

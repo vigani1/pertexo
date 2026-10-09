@@ -11,11 +11,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected boundary fakes */
 
 import {
-  createDispatchConsumerCapabilityRegistry,
-  DispatchConsumerCapabilityError,
-  type DispatchConsumerCapabilityRegistry,
-} from '../src/transport/dispatch-consumer-capabilities.js';
-import {
   OutboxDispatcher,
   OutboxPayloadChecksumError,
 } from '../src/transport/outbox-dispatcher.js';
@@ -129,10 +124,6 @@ function createDispatcher(
   selected = boundaries(),
   drainState = new WorkerDrainState(),
   metrics = transportMetrics(),
-  consumerCapabilities: DispatchConsumerCapabilityRegistry = readyCapabilities([
-    JOB_NAME.advanceWorkflowRun,
-    JOB_NAME.reconcileWorkflowTriggers,
-  ]),
   operationTimeoutMillis = 5_000,
 ): OutboxDispatcher {
   return new OutboxDispatcher(
@@ -141,7 +132,7 @@ function createDispatcher(
     drainState,
     {
       batchSize: 10,
-      enabledJobNames: [
+      jobNames: [
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.reconcileWorkflowTriggers,
       ],
@@ -153,21 +144,6 @@ function createDispatcher(
       retryDelayMillis: 1_000,
     },
     metrics,
-    consumerCapabilities,
-  );
-}
-
-function readyCapabilities(
-  jobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][],
-): DispatchConsumerCapabilityRegistry {
-  return createDispatchConsumerCapabilityRegistry(
-    jobNames.map((jobName) => ({
-      jobName,
-      consumer: {
-        isReady: () => true,
-        waitUntilReady: () => Promise.resolve(),
-      },
-    })),
   );
 }
 
@@ -176,28 +152,7 @@ describe('outbox dispatcher', () => {
     vi.useRealTimers();
   });
 
-  it('accepts trigger reconciliation as a dispatcher build capability', () => {
-    const selected = boundaries([]);
-
-    expect(
-      new OutboxDispatcher(
-        selected.database,
-        selected.producer,
-        new WorkerDrainState(),
-        {
-          batchSize: 10,
-          enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
-          leaseDurationMillis: 30_000,
-          leaseOwner: 'worker-a',
-          maxAttempts: 3,
-          pollIntervalMillis: 10,
-          retryDelayMillis: 1_000,
-        },
-      ),
-    ).toBeInstanceOf(OutboxDispatcher);
-  });
-
-  it('holds every row when no dispatch kind or consumer is composed', async () => {
+  it('holds every row when the worker consumes no job kind', async () => {
     const selected = boundaries([event()]);
     const dispatcher = new OutboxDispatcher(
       selected.database,
@@ -205,7 +160,7 @@ describe('outbox dispatcher', () => {
       new WorkerDrainState(),
       {
         batchSize: 10,
-        enabledJobNames: [],
+        jobNames: [],
         leaseDurationMillis: 30_000,
         leaseOwner: 'worker-a',
         maxAttempts: 3,
@@ -222,33 +177,6 @@ describe('outbox dispatcher', () => {
       published: 0,
       stale: 0,
     });
-    expect(selected.database.claimBatch).not.toHaveBeenCalled();
-    expect(selected.producer.publish).not.toHaveBeenCalled();
-  });
-
-  it('fails readiness and refuses claims when configuration lacks a ready consumer', async () => {
-    const selected = boundaries([event()]);
-    const dispatcher = new OutboxDispatcher(
-      selected.database,
-      selected.producer,
-      new WorkerDrainState(),
-      {
-        batchSize: 10,
-        enabledJobNames: [JOB_NAME.advanceWorkflowRun],
-        leaseDurationMillis: 30_000,
-        leaseOwner: 'worker-a',
-        maxAttempts: 3,
-        pollIntervalMillis: 10,
-        retryDelayMillis: 1_000,
-      },
-    );
-
-    await expect(dispatcher.checkReadiness()).rejects.toBeInstanceOf(
-      DispatchConsumerCapabilityError,
-    );
-    await expect(dispatcher.dispatchOnce()).rejects.toBeInstanceOf(
-      DispatchConsumerCapabilityError,
-    );
     expect(selected.database.claimBatch).not.toHaveBeenCalled();
     expect(selected.producer.publish).not.toHaveBeenCalled();
   });
@@ -447,10 +375,6 @@ describe('outbox dispatcher', () => {
         selected,
         new WorkerDrainState(),
         transportMetrics(),
-        readyCapabilities([
-          JOB_NAME.advanceWorkflowRun,
-          JOB_NAME.reconcileWorkflowTriggers,
-        ]),
         100,
       );
 
@@ -667,10 +591,6 @@ describe('outbox dispatcher', () => {
       selected,
       new WorkerDrainState(),
       transportMetrics(),
-      readyCapabilities([
-        JOB_NAME.advanceWorkflowRun,
-        JOB_NAME.reconcileWorkflowTriggers,
-      ]),
       100,
     );
     dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
@@ -705,10 +625,6 @@ describe('outbox dispatcher', () => {
       selected,
       new WorkerDrainState(),
       transportMetrics(),
-      readyCapabilities([
-        JOB_NAME.advanceWorkflowRun,
-        JOB_NAME.reconcileWorkflowTriggers,
-      ]),
       100,
     );
     dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
@@ -744,10 +660,6 @@ describe('outbox dispatcher', () => {
       selected,
       new WorkerDrainState(),
       transportMetrics(),
-      readyCapabilities([
-        JOB_NAME.advanceWorkflowRun,
-        JOB_NAME.reconcileWorkflowTriggers,
-      ]),
       100,
     );
     dispatcher.configureRuntimeHooks({
@@ -1143,41 +1055,18 @@ describe('outbox dispatcher', () => {
     const selected = boundaries([]);
     const databaseReady = Promise.withResolvers<undefined>();
     const producerReady = Promise.withResolvers<undefined>();
-    const consumerReady = Promise.withResolvers<undefined>();
     vi.mocked(selected.database.checkReadiness).mockReturnValue(
       databaseReady.promise,
     );
     vi.mocked(selected.producer.waitUntilReady).mockReturnValue(
       producerReady.promise,
     );
-    const capabilities = createDispatchConsumerCapabilityRegistry([
-      {
-        consumer: {
-          isReady: () => true,
-          waitUntilReady: () => consumerReady.promise,
-        },
-        jobName: JOB_NAME.advanceWorkflowRun,
-      },
-      {
-        consumer: {
-          isReady: () => true,
-          waitUntilReady: () => Promise.resolve(),
-        },
-        jobName: JOB_NAME.reconcileWorkflowTriggers,
-      },
-    ]);
-    const dispatcher = createDispatcher(
-      selected,
-      new WorkerDrainState(),
-      transportMetrics(),
-      capabilities,
-    );
+    const dispatcher = createDispatcher(selected);
 
     const readiness = dispatcher.checkReadiness();
     await dispatcher.close();
     databaseReady.resolve(undefined);
     producerReady.resolve(undefined);
-    consumerReady.resolve(undefined);
     await expect(readiness).rejects.toThrow('closed');
   });
 

@@ -6,10 +6,7 @@ import type { DatabaseRuntime } from '../../src/platform/pool/runtime.js';
 import type { CoordinatorAdvanceDelivery } from '../../src/runs/advance/contract.js';
 import type { RunTransitionPlan } from '../../src/runs/advance/plan.js';
 import { loadRunForAdvance } from '../../src/runs/advance/state.js';
-import {
-  createRunAdvanceStore,
-  type RunAdvanceStoreOptions,
-} from '../../src/runs/advance/store.js';
+import { createRunAdvanceStore } from '../../src/runs/advance/store.js';
 
 type AdvanceInput = Readonly<{
   delivery: CoordinatorAdvanceDelivery;
@@ -43,9 +40,8 @@ function withAdmissionKinds(plan: RunTransitionPlan): RunTransitionPlan {
 export function createTestRunStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-  options: RunAdvanceStoreOptions = {},
 ) {
-  const store = createRunAdvanceStore(config, runtime, options);
+  const store = createRunAdvanceStore(config, runtime);
   const readPool = new Pool({
     connectionString: config.connectionString,
     max: 1,

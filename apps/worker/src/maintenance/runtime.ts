@@ -3,7 +3,6 @@ import {
   connectionHealthObservationFactories,
   type ConnectionHealthObservationStore,
 } from '../connections/health-runtime.js';
-import type { ConnectionRunHealthMode } from '../config/connection-health.js';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -81,21 +80,16 @@ const productionFactories: MaintenanceRuntimeFactories = {
 };
 
 type MaintenanceOptions = Readonly<{
-  connectionHealthApplication?: boolean;
-  connectionRunHealthMode?: ConnectionRunHealthMode;
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
   backgroundTaskShutdownTimeoutMillis?: number;
   observer?: QueueConsumerObserver;
-  previewReconciliation?: boolean;
   redisUrl: string;
   failureNotificationDelivery?: FailureNotificationDeliveryCapability;
   failureNotificationDeliveryTimeoutMillis?: number;
   failureNotificationMaxAttempts?: number;
   failureNotificationRetryDelaySeconds?: number;
   workspaceInvitationDelivery?: WorkspaceInvitationDeliveryHandler;
-  unknownOutcomeReconciliation?: boolean;
-  runReplay?: boolean;
 }>;
 
 type MaintenanceDependencies = Readonly<{
@@ -193,17 +187,15 @@ async function composeMaintenanceRuntime(
   let failureNotification: FailureNotificationHandler | undefined;
   let consumer: QueueConsumer | undefined;
   try {
-    if (options.connectionHealthApplication === true)
-      connectionHealthStore =
-        dependencies.connectionHealthStore ??
-        factories.connectionHealth.store(
-          options.database,
-          options.databaseRuntime,
-        );
-    if (options.previewReconciliation !== false)
-      reconciliationStore =
-        dependencies.reconciliationStore ??
-        factories.preview.store(options.database, options.databaseRuntime);
+    connectionHealthStore =
+      dependencies.connectionHealthStore ??
+      factories.connectionHealth.store(
+        options.database,
+        options.databaseRuntime,
+      );
+    reconciliationStore =
+      dependencies.reconciliationStore ??
+      factories.preview.store(options.database, options.databaseRuntime);
     if (options.failureNotificationDelivery !== undefined)
       failureNotificationStore =
         dependencies.failureNotificationStore ??
@@ -211,17 +203,12 @@ async function composeMaintenanceRuntime(
           options.database,
           options.databaseRuntime,
         );
-    if (options.unknownOutcomeReconciliation === true)
-      unknownOutcomeStore =
-        dependencies.unknownOutcomeStore ??
-        factories.unknownOutcome.store(
-          options.database,
-          options.databaseRuntime,
-        );
-    if (options.runReplay === true)
-      runReplayStore =
-        dependencies.runReplayStore ??
-        factories.replay.store(options.database, options.databaseRuntime);
+    unknownOutcomeStore =
+      dependencies.unknownOutcomeStore ??
+      factories.unknownOutcome.store(options.database, options.databaseRuntime);
+    runReplayStore =
+      dependencies.runReplayStore ??
+      factories.replay.store(options.database, options.databaseRuntime);
 
     if (
       options.failureNotificationDelivery !== undefined &&
@@ -235,31 +222,15 @@ async function composeMaintenanceRuntime(
         retryDelaySeconds: bounds.failureNotificationRetryDelaySeconds,
       });
     const handlers: MaintenanceHandlers = {
-      ...(connectionHealthStore === undefined
-        ? {}
-        : {
-            connectionHealth: factories.connectionHealth.handler(
-              connectionHealthStore,
-              options.connectionRunHealthMode ?? 'off',
-            ),
-          }),
-      ...(reconciliationStore === undefined
-        ? {}
-        : {
-            reconciliation: factories.preview.handler(
-              reconciliationStore,
-              dependencies.previewTelemetry,
-            ),
-          }),
-      ...(unknownOutcomeStore === undefined
-        ? {}
-        : {
-            unknownOutcome:
-              factories.unknownOutcome.handler(unknownOutcomeStore),
-          }),
-      ...(runReplayStore === undefined
-        ? {}
-        : { replay: factories.replay.handler(runReplayStore) }),
+      connectionHealth: factories.connectionHealth.handler(
+        connectionHealthStore,
+      ),
+      reconciliation: factories.preview.handler(
+        reconciliationStore,
+        dependencies.previewTelemetry,
+      ),
+      unknownOutcome: factories.unknownOutcome.handler(unknownOutcomeStore),
+      replay: factories.replay.handler(runReplayStore),
       ...(failureNotification === undefined ? {} : { failureNotification }),
       ...(options.workspaceInvitationDelivery === undefined
         ? {}
@@ -295,13 +266,13 @@ async function composeMaintenanceRuntime(
     consumer,
     ...(failureNotification === undefined ? {} : { failureNotification }),
     stores: {
-      ...(connectionHealthStore === undefined ? {} : { connectionHealthStore }),
-      ...(reconciliationStore === undefined ? {} : { reconciliationStore }),
+      connectionHealthStore,
+      reconciliationStore,
       ...(failureNotificationStore === undefined
         ? {}
         : { failureNotificationStore }),
-      ...(unknownOutcomeStore === undefined ? {} : { unknownOutcomeStore }),
-      ...(runReplayStore === undefined ? {} : { runReplayStore }),
+      unknownOutcomeStore,
+      runReplayStore,
     },
   };
 }

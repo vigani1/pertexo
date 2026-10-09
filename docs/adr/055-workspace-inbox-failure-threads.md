@@ -2,6 +2,11 @@
 
 - **Status:** accepted
 - **Date:** 2026-09-29
+- **Amended:** 2026-10-09 under ADR 069
+
+> **Amendment note (2026-10-09, ADR 069).** Every feature switch is on: the
+> worker always records terminal failures for the inbox, and the
+> `WORKSPACE_INBOX_PRODUCER` flag described below is gone.
 - **Supersedes:** ADR 054's delivery model — audience capture, per-recipient
   fan-out, per-entry retention, resumable read-all and source resume. ADR 054's
   product rules below remain.

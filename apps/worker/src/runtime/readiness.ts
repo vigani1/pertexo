@@ -47,18 +47,14 @@ export class WorkerReadiness {
     @Inject(OUTBOX_DISPATCHER)
     private readonly dispatcher: OutboxDispatcher,
     private readonly drainState: WorkerDrainState,
-    @Optional()
     @Inject(TRIGGER_RUNTIME)
-    private readonly triggerRuntime: TriggerRuntime | undefined,
-    @Optional()
+    private readonly triggerRuntime: TriggerRuntime,
     @Inject(NODE_ATTEMPT_RUNTIME)
-    private readonly nodeAttemptRuntime: NodeAttemptRuntime | undefined,
-    @Optional()
+    private readonly nodeAttemptRuntime: NodeAttemptRuntime,
     @Inject(COORDINATOR_RUNTIME)
-    private readonly coordinatorRuntime: CoordinatorRuntime | undefined,
-    @Optional()
+    private readonly coordinatorRuntime: CoordinatorRuntime,
     @Inject(MAINTENANCE_RUNTIME)
-    private readonly maintenanceRuntime: MaintenanceRuntime | undefined,
+    private readonly maintenanceRuntime: MaintenanceRuntime,
     @Optional()
     @Inject(AUTHENTICATION_MAIL_RUNTIME)
     private readonly authenticationMailRuntime?: AuthenticationMailRuntime,
@@ -84,10 +80,10 @@ export class WorkerReadiness {
     await Promise.all([
       this.database.checkReadiness(),
       this.dispatcher.checkReadiness(),
-      this.triggerRuntime?.checkReadiness(),
-      this.nodeAttemptRuntime?.checkReadiness?.(),
-      this.coordinatorRuntime?.checkReadiness(),
-      this.maintenanceRuntime?.checkReadiness(),
+      this.triggerRuntime.checkReadiness(),
+      this.nodeAttemptRuntime.checkReadiness(),
+      this.coordinatorRuntime.checkReadiness(),
+      this.maintenanceRuntime.checkReadiness(),
       this.workspaceInboxRuntime?.checkReadiness(),
       this.workflowAutoPauseRuntime?.checkReadiness(),
       this.retentionRuntime?.checkReadiness(),

@@ -83,9 +83,6 @@ export async function persistCoordinatorRunTransition(
     authoritativeCancellation: boolean;
     plan: RunTransitionPlan;
     row: CoordinatorCommitRow;
-    runTimeoutFailureContextEnabled: boolean;
-    workspaceInboxProducerEnabled: boolean;
-    workflowTriggerOutcomesEnabled: boolean;
     runId: string;
     traceparent?: string;
     workflowVersionId: string;
@@ -96,9 +93,6 @@ export async function persistCoordinatorRunTransition(
     authoritativeCancellation,
     plan,
     row,
-    runTimeoutFailureContextEnabled,
-    workspaceInboxProducerEnabled,
-    workflowTriggerOutcomesEnabled,
     runId,
     traceparent,
     workflowVersionId,
@@ -118,27 +112,24 @@ export async function persistCoordinatorRunTransition(
       row.failure_notification_destination_config_version,
     sideEffectClass: row.failure_notification_side_effect_class,
     cancellationRequested: authoritativeCancellation,
-    runTimeoutFailureContextEnabled,
     plan,
     ...(traceparent === undefined ? {} : { traceparent }),
   });
-  if (workspaceInboxProducerEnabled)
-    await persistWorkspaceInboxEvent(client, {
-      workspaceId,
-      workflowId: row.workflow_id,
-      runId,
-      cancellationRequested: authoritativeCancellation,
-      plan,
-    });
-  if (workflowTriggerOutcomesEnabled)
-    await persistWorkflowTriggerOutcome(client, {
-      workspaceId,
-      workflowId: row.workflow_id,
-      runId,
-      triggerType: row.trigger_type,
-      cancellationRequested: authoritativeCancellation,
-      plan,
-    });
+  await persistWorkspaceInboxEvent(client, {
+    workspaceId,
+    workflowId: row.workflow_id,
+    runId,
+    cancellationRequested: authoritativeCancellation,
+    plan,
+  });
+  await persistWorkflowTriggerOutcome(client, {
+    workspaceId,
+    workflowId: row.workflow_id,
+    runId,
+    triggerType: row.trigger_type,
+    cancellationRequested: authoritativeCancellation,
+    plan,
+  });
 
   const checkpointUpdate = await client.query(
     `update app.run_checkpoints

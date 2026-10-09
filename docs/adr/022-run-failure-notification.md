@@ -2,6 +2,12 @@
 
 - **Status:** accepted
 - **Date:** 2026-08-24
+- **Amended:** 2026-10-09 under ADR 069
+
+> **Amendment note (2026-10-09, ADR 069).** There is one worker version, so
+> the R0–R2 rollout below is gone with `FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED`:
+> the coordinator always records run-level timeout context, and the consumer
+> reads both shapes because both occur.
 
 ## Context
 

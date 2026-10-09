@@ -21,8 +21,8 @@ Health application takes workspace shared authority, authoritative delivery
 receipt, observation, then connection update lock. Source attempt and published
 binding checks are reads. It takes no run, checkpoint, policy or admission-counter
 write lock. Mutation, transition event and receipt commit atomically. Stale
-version/revision, revoked, legitimately purged source, or non-enforcing mode
-finishes without mutation.
+version/revision, revoked or legitimately purged source finishes without
+mutation.
 
 Manual tests take workspace/actor/membership shared authority, idempotency claim,
 then connection update lock. Dispatch captures revision; completion rechecks
@@ -44,7 +44,7 @@ transaction. Delivered commands after a purge are receipted no-ops. Workspace
 purge removes observations before attempts and connections. Neither evidence
 nor command extends source retention.
 
-## Schema, ACL and mixed versions
+## Schema and ACL
 
 Migration 0128 is additive; published migrations remain unchanged. Readiness must
 verify the exact schema head, constraints, indexes, narrow function bodies and
@@ -59,35 +59,22 @@ a concurrent rotation commits. API and worker admission share this bounded read
 capability; neither gains worker connection UPDATE. Delivery credential access
 uses the narrow audit function rather than direct event INSERT.
 
-`CONNECTION_RUN_HEALTH_MODE=off|observe|enforce` defaults to off. Production mode
-is persisted on each accepted observation. Both produced and consumed mode must
-be enforce to mutate. Observe evidence never becomes enforcing retroactively.
-Off stops new automatic observations but does not reactivate connections.
+Run health always applies (ADR 069, ADR 059 amendment): there is no rollout
+mode, and an observation no longer records one.
 
 The SDK callback is optional synchronous capture only. Executor outcomes, retries,
-provider idempotency and published ABI identities remain unchanged. Old artifacts
-are not enforcing-capable: install migration, quiesce old consumers, verify the new
-readiness/capture/application path, then explicitly enable upgraded artifacts.
-Old manual-test claims without revision can record results but cannot mutate health.
+provider idempotency and published ABI identities remain unchanged.
 
-Rollback requires stopping automatic production and draining or explicitly
-non-enforcing consumption of the bounded health backlog; retain the new schema.
 Recovery is an authorized newly dispatched current-credential test or rotation;
 revocation is absorbing. Use existing outbox age/retry/poison/recovery signals.
 Never replay a provider request merely to update health.
 
-The ECS worker manifest explicitly retains `off`; changing the closed runtime
-mode alone does not select the health consumer. Its existing
-`OUTBOX_DISPATCH_JOB_NAMES` must also include
-`apply-connection-health-observation`. Diagnose the persisted observation mode,
-current consumer mode, authoritative outbox delivery, receipt and revision/version
-fences before treating a stale disposition as a fault. Use existing dispatcher
+Diagnose the authoritative outbox delivery, receipt and revision/version fences
+before treating a stale disposition as a fault. Use existing dispatcher
 retry, poison-job inspection and recovery paths, never direct connection updates.
 
 Full database restore retains the dispatch evidence, observations and commands.
-Run the normal migration and readiness checks before serving; verify supported
-artifacts and mode-preserving backlog handling again. Restore does not activate enforcement or make observe evidence
-eligible. There is no current user-data export endpoint to extend; safe public
+Run the normal migration and readiness checks before serving. There is no current user-data export endpoint to extend; safe public
 connection/usage exports exclude revision, dispatch identity, credentials and
 provider bodies. The private source-owned tables are registered as raw SQL.
 
@@ -102,6 +89,4 @@ acknowledgment or release. The unchanged 30-second lease remains authoritative
 across runtime recreation and expires naturally before recovery. Exactly one
 receipt/transition, unchanged accepted run/attempt state and no provider resend
 are asserted. This is not an OS process-kill proof. Frozen-source broad qualification
-passes; independent review/release remain open in the implementation tracker. Local
-enforce mode is permitted only for owned fixtures; production activation is not
-authorized.
+passes; independent review/release remain open in the implementation tracker.

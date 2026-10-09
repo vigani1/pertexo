@@ -15,8 +15,6 @@ import {
   type QueueHandlerContext,
 } from '@pertexo/queue';
 
-import type { ConnectionRunHealthMode } from '../config/connection-health.js';
-
 type HealthDelivery = Extract<
   QueueDelivery,
   { readonly name: 'apply-connection-health-observation' }
@@ -50,7 +48,6 @@ function createDatabaseConnectionHealthObservationStore(
 
 export function createConnectionHealthObservationHandler(
   store: ConnectionHealthObservationStore,
-  mode: ConnectionRunHealthMode,
 ) {
   return Object.freeze({
     handle: async (delivery: HealthDelivery, context: QueueHandlerContext) => {
@@ -62,7 +59,6 @@ export function createConnectionHealthObservationHandler(
             outboxEventId: delivery.data.outboxEventId,
             payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
           },
-          mode,
           signal: context.signal,
         });
       } catch (error: unknown) {

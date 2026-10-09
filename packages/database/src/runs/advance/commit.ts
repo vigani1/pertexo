@@ -24,12 +24,6 @@ import type {
   PendingCoordinatorFailure,
 } from './state.js';
 
-export type RunAdvanceSettings = Readonly<{
-  runTimeoutFailureContextEnabled: boolean;
-  workspaceInboxProducerEnabled: boolean;
-  workflowTriggerOutcomesEnabled: boolean;
-}>;
-
 /** Saves the engine's transition for a run locked by `loadRunForAdvance`. */
 export async function saveRunTransition(
   client: PoolClient,
@@ -40,7 +34,6 @@ export async function saveRunTransition(
     previous: WorkflowCheckpoint;
     row: CoordinatorCommitRow;
     runId: string;
-    settings: RunAdvanceSettings;
     traceparent?: string;
     workspaceId: string;
   }>,
@@ -109,11 +102,6 @@ export async function saveRunTransition(
       previous.cancelRequested || row.cancel_requested_at !== null,
     plan,
     row,
-    runTimeoutFailureContextEnabled:
-      input.settings.runTimeoutFailureContextEnabled,
-    workspaceInboxProducerEnabled: input.settings.workspaceInboxProducerEnabled,
-    workflowTriggerOutcomesEnabled:
-      input.settings.workflowTriggerOutcomesEnabled,
     runId,
     ...(traceparent === undefined ? {} : { traceparent }),
     workflowVersionId: row.workflow_version_id,

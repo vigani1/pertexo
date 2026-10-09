@@ -4,26 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { createConnectionHealthCapture } from '../src/connections/health-capture.js';
 
 describe('capture-only run connection health', () => {
-  it.each([false, true])(
-    'captures nothing before a durable dispatch (enabled %s)',
-    (enabled) => {
-      const capture = createConnectionHealthCapture(enabled, () => false);
-      capture.observe({ kind: 'healthy' });
-      expect(capture.read()).toBeUndefined();
-    },
-  );
-
-  it('mode off captures nothing even after dispatch', () => {
-    const capture = createConnectionHealthCapture(false, () => true);
-    capture.observe({
-      kind: 'reauthorization_required',
-      reasonCode: 'connection.slack_token_revoked',
-    });
+  it('captures nothing before a durable dispatch', () => {
+    const capture = createConnectionHealthCapture(() => false);
+    capture.observe({ kind: 'healthy' });
     expect(capture.read()).toBeUndefined();
   });
 
   it('clones one bounded observation and accepts identical capture only', () => {
-    const capture = createConnectionHealthCapture(true, () => true);
+    const capture = createConnectionHealthCapture(() => true);
     const value = {
       kind: 'reauthorization_required',
       reasonCode: 'connection.slack_token_revoked',
@@ -60,7 +48,7 @@ describe('capture-only run connection health', () => {
       },
     ),
   ])('malformed caller %# never throws or retains evidence', (value) => {
-    const capture = createConnectionHealthCapture(true, () => true);
+    const capture = createConnectionHealthCapture(() => true);
     expect(() => {
       capture.observe(value as NodeConnectionHealthObservation);
     }).not.toThrow();

@@ -14,7 +14,6 @@ import type { NodeExecutionCapabilityFactories } from './capabilities.js';
 import { nodeExecutionOptionalFields } from './runtime-fields.js';
 import { NodeAttemptHandlerStateError } from './handler-state-error.js';
 import { createConnectionHealthCapture } from '../connections/health-capture.js';
-import type { ConnectionRunHealthMode } from '../config/connection-health.js';
 
 export type NodeExecutionEnvironment = Readonly<{
   registry: NodeExecutionRegistry;
@@ -30,13 +29,11 @@ export function createNodeExecutionEnvironment(
     registry: NodeExecutionRegistry;
     runStore: NodeAttemptRunStore;
     runtimeCapabilities?: NodeExecutionCapabilityFactories;
-    connectionRunHealthMode?: ConnectionRunHealthMode;
   }>,
 ): NodeExecutionEnvironment {
   const { executionSignal, lease, registry: sourceRegistry, runStore } = input;
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const healthCapture = createConnectionHealthCapture(
-    (input.connectionRunHealthMode ?? 'off') !== 'off',
     () => dispatchState === 'marked',
   );
   const capabilityContext = Object.freeze({

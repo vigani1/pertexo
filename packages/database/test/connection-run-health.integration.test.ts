@@ -276,14 +276,13 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
     },
   );
 
-  it('off completion accepts original outcome without an observation or health command', async () => {
+  it('a completion without health evidence records no observation or health command', async () => {
     const connection = await createHealthConnection();
     const lease = await claimHealthAttempt(connection);
     await markHealthDispatched(lease, connection);
     const { connectionHealthObservation: ignored, ...input } = healthCompletion(
       lease,
       'healthy',
-      'off',
     );
     expect(ignored).toEqual({ kind: 'healthy' });
     await expect(nodeAttemptStore.complete(input)).resolves.toMatchObject({
@@ -383,34 +382,6 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
       });
       expect(await readHealth(connection.connectionId)).toEqual(expected);
       expect(await countHealthTransitions(connection.connectionId)).toBe(0);
-    },
-  );
-
-  it.each([
-    ['observe', 'enforce'],
-    ['enforce', 'observe'],
-    ['enforce', 'off'],
-  ] as const)(
-    'production %s consumed under %s never mutates or replays later',
-    async (production, consumption) => {
-      const connection = await createHealthConnection();
-      const lease = await claimHealthAttempt(connection);
-      await markHealthDispatched(lease, connection);
-      await nodeAttemptStore.complete(
-        healthCompletion(lease, 'reauthorization_required', production),
-      );
-      const command = await healthCommand(lease);
-      await expect(applyHealthCommand(command, consumption)).resolves.toEqual({
-        kind: 'stale',
-      });
-      await expect(applyHealthCommand(command, 'enforce')).resolves.toEqual({
-        kind: 'duplicate',
-      });
-      expect(await readHealth(connection.connectionId)).toMatchObject({
-        status: 'active',
-        health_revision: '1',
-        last_error_code: null,
-      });
     },
   );
 

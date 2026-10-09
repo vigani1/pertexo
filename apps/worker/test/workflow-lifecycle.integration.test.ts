@@ -14,7 +14,7 @@ import {
   JOB_NAME,
   jobIdForOutboxEvent,
 } from './support/workflow-lifecycle.integration.support.js';
-import { createQueueProducer, type QueueConsumer } from '@pertexo/queue';
+import { createQueueProducer } from '@pertexo/queue';
 
 const describeIntegration = workflowLifecycleIntegrationEnabled
   ? describe
@@ -61,7 +61,6 @@ describeIntegration(
       const archiveEvent = await latestEventForWorkflow(environment);
       const archiveDispatcher = environment.createDispatcher(
         'workflow-lifecycle-dispatcher-archive-one',
-        capabilityFor(firstRuntime.consumer),
       );
       await expect(archiveDispatcher.dispatchOnce()).resolves.toMatchObject({
         claimed: 1,
@@ -107,7 +106,6 @@ describeIntegration(
       const restoreEvent = await latestEventForWorkflow(environment);
       const stoppedDispatcher = environment.createDispatcher(
         'workflow-lifecycle-dispatcher-restore-one-stopped-worker',
-        environment.readyCapabilities(),
       );
       await expect(stoppedDispatcher.dispatchOnce()).resolves.toMatchObject({
         claimed: 1,
@@ -116,9 +114,7 @@ describeIntegration(
 
       // The event is already durable in Redis while the first worker is closed.
       // A newly constructed runtime must consume it and rebuild the projection.
-      const restartedRuntime = await environment.createRuntime(
-        'workflow-lifecycle-worker-restarted',
-      );
+      await environment.createRuntime('workflow-lifecycle-worker-restarted');
       await waitForProjection(environment, (projection) => {
         expect(projection.workflow).toEqual({
           lifecycleStatus: 'active',
@@ -186,7 +182,6 @@ describeIntegration(
       const restoreTwoEvent = await latestEventForWorkflow(environment);
       const restoreTwoDispatcher = environment.createDispatcher(
         'workflow-lifecycle-dispatcher-restore-two',
-        capabilityFor(restartedRuntime.consumer),
       );
       await expect(restoreTwoDispatcher.dispatchOnce()).resolves.toMatchObject({
         claimed: 1,
@@ -200,7 +195,6 @@ describeIntegration(
       await environment.makeDue(archiveTwoEvent.id);
       const reorderedDispatcher = environment.createDispatcher(
         'workflow-lifecycle-dispatcher-archive-two-reordered',
-        capabilityFor(restartedRuntime.consumer),
       );
       await expect(reorderedDispatcher.dispatchOnce()).resolves.toMatchObject({
         claimed: 1,
@@ -215,18 +209,6 @@ describeIntegration(
     });
   },
 );
-
-function capabilityFor(
-  consumer: Pick<QueueConsumer, 'isReady' | 'waitUntilReady'>,
-) {
-  return {
-    assertReady: async (): Promise<void> => {
-      await consumer.waitUntilReady(5_000);
-      if (!consumer.isReady()) throw new Error('lifecycle worker is not ready');
-    },
-    readyJobNames: () => [JOB_NAME.reconcileWorkflowTriggers] as const,
-  };
-}
 
 function expectRunSnapshotIsNonEmpty(snapshot: RunSnapshot): void {
   for (const status of ['queued', 'running', 'waiting', 'succeeded'] as const) {

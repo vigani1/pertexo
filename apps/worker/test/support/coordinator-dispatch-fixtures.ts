@@ -6,17 +6,13 @@ import {
 } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
-import type { createCoordinatorRuntime } from '../../src/runs/runtime.js';
-import type { createMaintenanceRuntime } from '../../src/maintenance/runtime.js';
 import { WorkerDrainState } from '../../src/runtime/drain-state.js';
-import { createDispatchConsumerCapabilityRegistry } from '../../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../../src/transport/outbox-dispatcher.js';
 import { coordinatorFixture } from '../coordinator-consumer.fixtures.js';
 
 const { databaseUrl, dispatcherUrl, redisUrl } = coordinatorFixture;
 
 export async function createCoordinatorDispatcher(
-  consumer: Awaited<ReturnType<typeof createCoordinatorRuntime>>['consumer'],
   dispatcherRedisUrl: string = redisUrl,
 ): Promise<OutboxDispatcher> {
   const database = createOutboxDispatcherDatabase(
@@ -28,25 +24,16 @@ export async function createCoordinatorDispatcher(
   let producer: ReturnType<typeof createQueueProducer> | undefined;
   try {
     producer = createQueueProducer({ redisUrl: dispatcherRedisUrl });
-    return new OutboxDispatcher(
-      database,
-      producer,
-      new WorkerDrainState(),
-      {
-        batchSize: 10,
-        enabledJobNames: [JOB_NAME.advanceWorkflowRun],
-        leaseDurationMillis: 1_000,
-        leaseOwner: `due-wakeup-${randomUUID()}`,
-        maxAttempts: 3,
-        operationTimeoutMillis: 2_000,
-        pollIntervalMillis: 25,
-        retryDelayMillis: 25,
-      },
-      undefined,
-      createDispatchConsumerCapabilityRegistry([
-        { jobName: JOB_NAME.advanceWorkflowRun, consumer },
-      ]),
-    );
+    return new OutboxDispatcher(database, producer, new WorkerDrainState(), {
+      batchSize: 10,
+      jobNames: [JOB_NAME.advanceWorkflowRun],
+      leaseDurationMillis: 1_000,
+      leaseOwner: `due-wakeup-${randomUUID()}`,
+      maxAttempts: 3,
+      operationTimeoutMillis: 2_000,
+      pollIntervalMillis: 25,
+      retryDelayMillis: 25,
+    });
   } catch (startupError: unknown) {
     const errors: unknown[] = [startupError];
     if (producer !== undefined)
@@ -58,7 +45,6 @@ export async function createCoordinatorDispatcher(
 }
 
 export async function createFailureNotificationDispatcher(
-  consumer: Awaited<ReturnType<typeof createMaintenanceRuntime>>['consumer'],
   drainState: WorkerDrainState = new WorkerDrainState(),
 ): Promise<OutboxDispatcher> {
   const database = createOutboxDispatcherDatabase(
@@ -70,25 +56,16 @@ export async function createFailureNotificationDispatcher(
   let producer: ReturnType<typeof createQueueProducer> | undefined;
   try {
     producer = createQueueProducer({ redisUrl });
-    return new OutboxDispatcher(
-      database,
-      producer,
-      drainState,
-      {
-        batchSize: 10,
-        enabledJobNames: [JOB_NAME.deliverRunFailureNotification],
-        leaseDurationMillis: 1_000,
-        leaseOwner: `failure-notification-${randomUUID()}`,
-        maxAttempts: 3,
-        operationTimeoutMillis: 2_000,
-        pollIntervalMillis: 25,
-        retryDelayMillis: 25,
-      },
-      undefined,
-      createDispatchConsumerCapabilityRegistry([
-        { jobName: JOB_NAME.deliverRunFailureNotification, consumer },
-      ]),
-    );
+    return new OutboxDispatcher(database, producer, drainState, {
+      batchSize: 10,
+      jobNames: [JOB_NAME.deliverRunFailureNotification],
+      leaseDurationMillis: 1_000,
+      leaseOwner: `failure-notification-${randomUUID()}`,
+      maxAttempts: 3,
+      operationTimeoutMillis: 2_000,
+      pollIntervalMillis: 25,
+      retryDelayMillis: 25,
+    });
   } catch (startupError: unknown) {
     const errors: unknown[] = [startupError];
     if (producer !== undefined)

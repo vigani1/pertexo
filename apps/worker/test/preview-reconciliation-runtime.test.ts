@@ -63,8 +63,8 @@ function maintenanceRuntime(
         isReady: vi.fn().mockReturnValue(true),
         waitUntilReady: vi.fn().mockResolvedValue(undefined),
       }),
+      ...idleStores(),
       failureNotificationStore,
-      reconciliationStore: { close: vi.fn(), reconcile: vi.fn() },
     },
   );
 }
@@ -88,6 +88,26 @@ function routedDelivery(name: string) {
     transport: { attemptsMade: 0, jobId: `outbox-${outboxEventId}` },
   };
 }
+
+/** Stores every maintenance runtime composes; these tests do not exercise them. */
+function idleStores() {
+  return {
+    connectionHealthStore: { apply: vi.fn() },
+    reconciliationStore: { close: vi.fn(), reconcile: vi.fn() },
+    unknownOutcomeStore: { close: vi.fn(), reconcile: vi.fn() },
+    runReplayStore: {
+      close: vi.fn().mockResolvedValue(undefined),
+      fail: vi.fn(),
+      replay: vi.fn(),
+    },
+  };
+}
+
+/** Connection health is always composed; these tests do not exercise it. */
+const idleConnectionHealth = {
+  handler: vi.fn(() => ({ handle: vi.fn() })),
+  store: vi.fn(() => ({ apply: vi.fn() })),
+};
 
 describe('preview reconciliation handler', () => {
   it.each([
@@ -184,6 +204,7 @@ describe('preview reconciliation handler', () => {
             acquire('unknownOutcomeStore', unknownOutcomeStore),
           ),
         },
+        connectionHealth: idleConnectionHealth,
       } as unknown as MaintenanceRuntimeFactories;
 
       await expect(
@@ -194,10 +215,7 @@ describe('preview reconciliation handler', () => {
                 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
             }),
             failureNotificationDelivery: { deliver: vi.fn() },
-            previewReconciliation: true,
             redisUrl: 'redis://localhost:6379/0',
-            runReplay: true,
-            unknownOutcomeReconciliation: true,
           },
           {},
           factories,
@@ -245,6 +263,7 @@ describe('preview reconciliation handler', () => {
         handler: vi.fn(() => ({ handle: handles.unknown })),
         store: vi.fn(),
       },
+      connectionHealth: idleConnectionHealth,
     } as unknown as MaintenanceRuntimeFactories;
     const runtime = await createMaintenanceRuntime(
       {
@@ -256,10 +275,7 @@ describe('preview reconciliation handler', () => {
         failureNotificationDeliveryTimeoutMillis: 1_000,
         failureNotificationMaxAttempts: 5,
         failureNotificationRetryDelaySeconds: 45,
-        previewReconciliation: true,
         redisUrl: 'redis://localhost:6379/0',
-        runReplay: true,
-        unknownOutcomeReconciliation: true,
       },
       {
         reconciliationStore: { close: vi.fn(), reconcile: vi.fn() },
@@ -304,7 +320,7 @@ describe('preview reconciliation handler', () => {
     await runtime.close();
   });
 
-  it('keeps disabled maintenance stores resource-free and rejects their jobs', async () => {
+  it('rejects jobs it has no delivery for, without acquiring their stores', async () => {
     let consumerOptions: QueueConsumerOptions | undefined;
     const factories = {
       consumer: vi.fn((input: QueueConsumerOptions) => {
@@ -320,6 +336,7 @@ describe('preview reconciliation handler', () => {
       replay: { handler: vi.fn(), store: vi.fn() },
       traceRunner: vi.fn(() => ({})),
       unknownOutcome: { handler: vi.fn(), store: vi.fn() },
+      connectionHealth: idleConnectionHealth,
     } as unknown as MaintenanceRuntimeFactories;
     const runtime = await createMaintenanceRuntime(
       {
@@ -327,20 +344,15 @@ describe('preview reconciliation handler', () => {
           connectionString:
             'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         }),
-        previewReconciliation: false,
         redisUrl: 'redis://localhost:6379/0',
-        runReplay: false,
-        unknownOutcomeReconciliation: false,
       },
       {},
       factories,
     );
 
     for (const name of [
-      JOB_NAME.reconcilePreviewAttempt,
       JOB_NAME.deliverRunFailureNotification,
-      JOB_NAME.reconcileUnknownOutcome,
-      JOB_NAME.replayWorkflowRun,
+      JOB_NAME.deliverWorkspaceInvitation,
       JOB_NAME.advanceWorkflowRun,
     ])
       await expect(
@@ -348,10 +360,7 @@ describe('preview reconciliation handler', () => {
           signal: new AbortController().signal,
         }),
       ).rejects.toMatchObject({ name: 'InvalidQueueDeliveryError' });
-    expect(factories.preview.store).not.toHaveBeenCalled();
     expect(factories.notifications.store).not.toHaveBeenCalled();
-    expect(factories.unknownOutcome.store).not.toHaveBeenCalled();
-    expect(factories.replay.store).not.toHaveBeenCalled();
     await expect(runtime.checkReadiness()).resolves.toBeUndefined();
     await runtime.close();
   });
@@ -624,21 +633,15 @@ describe('preview reconciliation handler', () => {
             connectionString:
               'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           }),
-          previewReconciliation: false,
-          runReplay: true,
           redisUrl: 'redis://localhost:6379/0',
         },
         {
+          ...idleStores(),
           consumerFactory: vi.fn().mockReturnValue({
             close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
             isReady: vi.fn().mockReturnValue(true),
             waitUntilReady: vi.fn().mockResolvedValue(undefined),
           }),
-          runReplayStore: {
-            close: vi.fn().mockResolvedValue(undefined),
-            fail: vi.fn(),
-            replay: vi.fn(),
-          },
         },
       );
 
@@ -750,6 +753,7 @@ describe('preview reconciliation handler', () => {
       replay: { handler: vi.fn(), store: vi.fn() },
       traceRunner: vi.fn(() => ({})),
       unknownOutcome: { handler: vi.fn(), store: vi.fn() },
+      connectionHealth: idleConnectionHealth,
     } as unknown as MaintenanceRuntimeFactories;
     const runtime = await createMaintenanceRuntime(
       {
@@ -759,7 +763,6 @@ describe('preview reconciliation handler', () => {
             'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         }),
         failureNotificationDelivery: { deliver: vi.fn() },
-        previewReconciliation: false,
         redisUrl: 'redis://localhost:6379/0',
       },
       { failureNotificationStore: notificationStore },

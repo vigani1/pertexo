@@ -242,12 +242,10 @@ export type HealthCompletionInput = Parameters<
 export function healthCompletion(
   lease: NodeAttemptLease,
   kind: 'healthy' | 'reauthorization_required' = 'reauthorization_required',
-  mode: 'off' | 'observe' | 'enforce' = 'enforce',
 ): HealthCompletionInput {
   return {
     lease,
     signal: new AbortController().signal,
-    connectionRunHealthMode: mode,
     connectionHealthObservation:
       kind === 'healthy'
         ? { kind }
@@ -274,9 +272,8 @@ export async function healthCommand(lease: NodeAttemptLease) {
       observation_id: string;
       outbox_event_id: string;
       payload_checksum: string;
-      production_mode: string;
     }>(
-      `select observation.id observation_id,observation.outbox_event_id,outbox.payload_checksum,observation.production_mode
+      `select observation.id observation_id,observation.outbox_event_id,outbox.payload_checksum
       from app.connection_health_observations observation join app.outbox_events outbox on outbox.id=observation.outbox_event_id
       where observation.workspace_id=$1 and observation.attempt_id=$2`,
       [workspaceA, lease.attemptId],
@@ -296,13 +293,12 @@ export async function healthCommand(lease: NodeAttemptLease) {
 
 export async function applyHealthCommand(
   input: Awaited<ReturnType<typeof healthCommand>>,
-  mode: 'off' | 'observe' | 'enforce' = 'enforce',
 ) {
   const database = createWorkspaceDatabase(
     parseDatabaseConfig({ connectionString: databaseUrl(workerBaseUrl) }),
   );
   try {
-    return await applyConnectionHealthObservation(database, { ...input, mode });
+    return await applyConnectionHealthObservation(database, input);
   } finally {
     await database.close();
   }

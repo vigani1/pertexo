@@ -1,5 +1,5 @@
 import type { Provider } from '@nestjs/common';
-import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
+import type { QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../config/worker.js';
 import {
@@ -21,16 +21,9 @@ export function triggerRuntimeProvider(
     inject: [QUEUE_CONSUMER_OBSERVER],
     useFactory: async (
       observer: QueueConsumerObserver,
-    ): Promise<TriggerRuntime | undefined> => {
+    ): Promise<TriggerRuntime> => {
       if (dependencies.triggerRuntime !== undefined)
         return dependencies.triggerRuntime;
-      if (
-        dependencies.dispatchConsumerCapabilities !== undefined ||
-        !config.outboxDispatcher.enabledJobNames.includes(
-          JOB_NAME.reconcileWorkflowTriggers,
-        )
-      )
-        return undefined;
       return createTriggerRuntime(
         {
           ...config.triggerRuntime,

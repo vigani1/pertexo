@@ -20,7 +20,6 @@ import { createNodeAttemptRuntime } from '../src/attempts/runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../src/attempts/runtime-capabilities.js';
 import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
-import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
 import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import {
@@ -220,9 +219,6 @@ async function abandonHealthPublication() {
     const maintenance = await createMaintenanceRuntime({
       database,
       redisUrl: namespace.redisUrl,
-      connectionHealthApplication: true,
-      connectionRunHealthMode: 'enforce',
-      previewReconciliation: false,
     });
     cleanup.push(() => maintenance.close());
     const store = createOutboxDispatcherDatabase(
@@ -271,7 +267,7 @@ async function abandonHealthPublication() {
       },
       new WorkerDrainState(),
       {
-        enabledJobNames: [JOB_NAME.applyConnectionHealthObservation],
+        jobNames: [JOB_NAME.applyConnectionHealthObservation],
         batchSize: 1,
         leaseDurationMillis: PUBLICATION_LEASE_MILLIS,
         leaseOwner: `health-abandoned-${randomUUID()}`,
@@ -281,12 +277,6 @@ async function abandonHealthPublication() {
         retryDelayMillis: 100,
       },
       createTransportMetrics(),
-      createDispatchConsumerCapabilityRegistry([
-        {
-          jobName: JOB_NAME.applyConnectionHealthObservation,
-          consumer: maintenance.consumer,
-        },
-      ]),
     );
     cleanup.splice(1, 2, () => dispatcher.close());
     await maintenance.consumer.waitUntilReady(5000);
@@ -407,7 +397,6 @@ async function construct(
       workerId: `health-${randomUUID()}`,
       heartbeatIntervalMillis: 1000,
       leaseDurationSeconds: 10,
-      connectionRunHealthMode: 'enforce',
       observer: {
         handlerStarted: () =>
           process.send?.({ phase: 'health-handler-started' }),
@@ -443,9 +432,6 @@ async function construct(
     ? await createMaintenanceRuntime({
         database,
         redisUrl: namespace.redisUrl,
-        connectionHealthApplication: true,
-        connectionRunHealthMode: 'enforce',
-        previewReconciliation: false,
       })
     : undefined;
   resources.triggers = maintenance === undefined ? [] : [maintenance];
@@ -454,7 +440,7 @@ async function construct(
     coordinator.consumer.waitUntilReady(5000),
     coordinator.checkReadiness(),
     attempts.consumer.waitUntilReady(5000),
-    attempts.checkReadiness?.(),
+    attempts.checkReadiness(),
     ...(maintenance === undefined
       ? []
       : [
@@ -478,7 +464,7 @@ async function construct(
     producer,
     resources.drain,
     {
-      enabledJobNames: [
+      jobNames: [
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.executeNodeAttempt,
         ...healthJobs,
@@ -492,18 +478,6 @@ async function construct(
       retryDelayMillis: 100,
     },
     createTransportMetrics(),
-    createDispatchConsumerCapabilityRegistry([
-      { jobName: JOB_NAME.advanceWorkflowRun, consumer: coordinator.consumer },
-      { jobName: JOB_NAME.executeNodeAttempt, consumer: attempts.consumer },
-      ...(maintenance === undefined
-        ? []
-        : [
-            {
-              jobName: JOB_NAME.applyConnectionHealthObservation,
-              consumer: maintenance.consumer,
-            },
-          ]),
-    ]),
   );
   resources.dispatcher = dispatcher;
   dispatcher.start();

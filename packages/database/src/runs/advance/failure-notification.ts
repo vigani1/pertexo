@@ -31,7 +31,6 @@ export async function persistFailureNotificationIntent(
     destinationConfigVersion: number | null;
     sideEffectClass: string | null;
     cancellationRequested: boolean;
-    runTimeoutFailureContextEnabled: boolean;
     plan: RunTransitionPlan;
     traceparent?: string;
   }>,
@@ -69,7 +68,6 @@ export async function persistFailureNotificationIntent(
   if (primary === undefined) {
     if (input.plan.checkpoint.runStatus !== 'timed_out')
       throw new CoordinatorRunStateCorruptError();
-    if (!input.runTimeoutFailureContextEnabled) return;
     primaryFailure = {
       source: 'run',
       runStatus: 'timed_out',

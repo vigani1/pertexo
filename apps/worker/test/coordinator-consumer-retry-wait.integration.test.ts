@@ -387,7 +387,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
       const unavailableDispatcher = await createCoordinatorDispatcher(
-        afterClaim.consumer,
         unavailableRedis.toString(),
       );
       let unavailableCloseError: unknown;
@@ -430,7 +429,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
         (rows) => rows[0]?.available === '2',
       );
 
-      const dispatcher = await createCoordinatorDispatcher(afterClaim.consumer);
+      const dispatcher = await createCoordinatorDispatcher();
       try {
         await dispatcher.checkReadiness();
         await expect(dispatchFairRounds(dispatcher, 2)).resolves.toMatchObject({

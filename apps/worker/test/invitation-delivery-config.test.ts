@@ -12,15 +12,14 @@ const invitationEnvironment = {
 } as const;
 
 describe('parseInvitationDeliveryConfig', () => {
-  it('stays absent when invitation delivery is neither enabled nor configured', () => {
-    expect(parseInvitationDeliveryConfig({}, false, true)).toBeUndefined();
+  it('stays absent when invitation delivery is not configured', () => {
+    expect(parseInvitationDeliveryConfig({}, true)).toBeUndefined();
   });
 
   it('ignores the public web origin the API shares with the worker', () => {
     expect(
       parseInvitationDeliveryConfig(
         { PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173' },
-        false,
         false,
       ),
     ).toBeUndefined();
@@ -30,9 +29,7 @@ describe('parseInvitationDeliveryConfig', () => {
     const { PUBLIC_WEB_ORIGIN: _origin, ...withoutOrigin } =
       invitationEnvironment;
 
-    expect(() =>
-      parseInvitationDeliveryConfig(withoutOrigin, false, false),
-    ).toThrow();
+    expect(() => parseInvitationDeliveryConfig(withoutOrigin, false)).toThrow();
   });
 
   it('parses configured delivery into a normalized origin and key ring', () => {
@@ -43,7 +40,6 @@ describe('parseInvitationDeliveryConfig', () => {
           { version: 'invite-v0', key: 'retired-key' },
         ]),
       },
-      false,
       true,
     );
 
@@ -61,10 +57,6 @@ describe('parseInvitationDeliveryConfig', () => {
     expect(Object.isFrozen(config?.tokenEncryption)).toBe(true);
   });
 
-  it('requires complete configuration once invitation delivery is enabled', () => {
-    expect(() => parseInvitationDeliveryConfig({}, true, false)).toThrow();
-  });
-
   it('rejects a public web origin with a path', () => {
     expect(() =>
       parseInvitationDeliveryConfig(
@@ -72,7 +64,6 @@ describe('parseInvitationDeliveryConfig', () => {
           ...invitationEnvironment,
           PUBLIC_WEB_ORIGIN: 'https://app.example.test/invitations',
         },
-        true,
         false,
       ),
     ).toThrow('PUBLIC_WEB_ORIGIN must be an origin without a path');
@@ -85,10 +76,10 @@ describe('parseInvitationDeliveryConfig', () => {
     };
 
     expect(
-      parseInvitationDeliveryConfig(localEnvironment, true, false)?.webOrigin,
+      parseInvitationDeliveryConfig(localEnvironment, false)?.webOrigin,
     ).toBe('http://localhost:5173');
-    expect(() =>
-      parseInvitationDeliveryConfig(localEnvironment, true, true),
-    ).toThrow('HTTPS public web origin is required when deployed');
+    expect(() => parseInvitationDeliveryConfig(localEnvironment, true)).toThrow(
+      'HTTPS public web origin is required when deployed',
+    );
   });
 });

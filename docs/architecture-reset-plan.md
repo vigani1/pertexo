@@ -369,6 +369,18 @@ now, as one ordered program — not "whenever we touch it".
     - [x] One database readiness check: `checkCompatibility` goes from the
           workspace database, the artifact upload store and both Nest
           database modules; the API and worker check readiness at startup.
+    - [x] Every feature switch is on, as step 3 intended. The worker
+          consumes every job kind: failure notifications once connection
+          encryption is configured, invitations once invitation email is.
+          `OUTBOX_DISPATCH_JOB_NAMES`, the dispatch consumer registry and
+          the per-handler maintenance switches go. The inbox producer,
+          run-timeout notification context, trigger outcomes, auto-pause and
+          connection run health always run; their env switches go, and
+          migration 0021 drops the stored health mode. Artifact storage and
+          retention are required.
+    - [ ] One message format: queue jobs, outbox rows and run events drop
+          their `schemaVersion: 1`, and the outbox payload checksum goes
+          with the re-checks built on it.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration
@@ -405,7 +417,8 @@ now, as one ordered program — not "whenever we touch it".
   - [ ] Numbered stored formats go with the re-squash: digest prefixes
         (`wf:v2:sha256:`, `wf-compat:v1:`, `trigger:v1:`, `email:v1:`) lose
         their versions with the check constraints that pin them, and the
-        failure-notification `policy_version` (always 1) goes.
+        failure-notification `policy_version` (always 1) goes. The trigger
+        outcome fold loses its always-true `p_enforce` argument.
 
 **Package pass checklist** (every package, every file):
 1. Purpose: the package does one clear job; anything else moves to its owner.

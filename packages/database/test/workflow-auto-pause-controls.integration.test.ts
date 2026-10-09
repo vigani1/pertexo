@@ -169,7 +169,7 @@ async function pause(scope: Scope) {
     idempotencyKey: randomUUID(),
   });
   for (let index = 0; index < 3; index++) await outcome(scope);
-  await fold.foldPending(1000, true);
+  await fold.foldPending(1000);
   expect((await controls().readWorkflowSettings(scope)).pauseState).toBe(
     'paused',
   );
@@ -284,11 +284,11 @@ describe('workflow auto pause operational controls', () => {
     });
     expect(await failures(scope)).toBe(0);
     expect(await auditCount(scope, 'workflow.triggers_resumed')).toBe(1);
-    await fold.foldPending(1000, true);
+    await fold.foldPending(1000);
     expect(await failures(scope)).toBe(0);
     for (let index = 0; index < 3; index++)
       await outcome(scope, new Date(Date.now() + 1000 + index).toISOString());
-    await fold.foldPending(1000, true);
+    await fold.foldPending(1000);
     expect((await controls().readWorkflowSettings(scope)).pauseRevision).toBe(
       '4',
     );
@@ -305,7 +305,7 @@ describe('workflow auto pause operational controls', () => {
   it('keeps a non-paused resume a no-op even with a live streak, and preserves bigint revisions', async () => {
     const scope = await seed();
     await outcome(scope);
-    await fold.foldPending(1000, true);
+    await fold.foldPending(1000);
     await controls().resumeWorkflow({
       ...scope,
       expectedPauseRevision: '1',
@@ -415,7 +415,7 @@ describe('workflow auto pause operational controls', () => {
         "select pg_advisory_xact_lock(hashtextextended('auto-pause-workflow:'||$1::text||':'||$2::text,0))",
         [scope.workspaceId, scope.workflowId],
       );
-      const pendingFold = fold.foldPending(1000, true);
+      const pendingFold = fold.foldPending(1000);
       await waitForBlocked(pid);
       await blocker.query(
         "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
@@ -508,7 +508,7 @@ describe('workflow auto pause operational controls', () => {
       });
       expect(resumed.settings.pauseState).toBe('none');
       await producer.query('commit');
-      await fold.foldPending(1000, true);
+      await fold.foldPending(1000);
       expect(await failures(scope)).toBe(0);
     } finally {
       await producer.query('rollback');
@@ -537,7 +537,7 @@ describe('workflow auto pause operational controls', () => {
           'select id from app.workflows where workspace_id=$1 and id=$2 for no key update',
           [scope.workspaceId, scope.workflowId],
         );
-        const pending = fold.foldPending(1000, true);
+        const pending = fold.foldPending(1000);
         await waitForBlocked(pid);
         await blocker.query(
           change === 'opt_out'

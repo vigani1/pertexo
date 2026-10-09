@@ -98,10 +98,9 @@ The example environment is for local development only; do not commit credentials
 or production configuration. Local authentication mail is never sent: the API
 prints each verification or reset link to its log. The example leaves connection
 encryption (`CONNECTION_KMS_*`) unset, so the connections API is off and the
-workflow editor offers no connections. The worker dispatches only the job kinds
-in `OUTBOX_DISPATCH_JOB_NAMES`, which the example sets to run workflows started
-manually, and runs retention because the maintenance and lifecycle-command
-database URLs are set.
+workflow editor offers no connections. The worker runs every job kind and
+retention; failure notifications and invitation emails wait in the outbox until
+connection encryption and invitation email are configured.
 
 To run one process on its own, load `.env` into the shell first
 (`set -a; . ./.env; set +a`) and use `pnpm dev:api`, `pnpm dev:worker` or

@@ -17,8 +17,6 @@ export const WORKFLOW_AUTO_PAUSE_RUNTIME = Symbol(
 );
 
 export type WorkflowAutoPauseRuntimeOptions = Readonly<{
-  /** True pauses workflows; false only reports would-be pauses. */
-  enforce: boolean;
   foldBatchSize: number;
   foldPollMillis: number;
 }>;
@@ -33,8 +31,8 @@ const MAX_FOLDS_PER_CYCLE = 20;
 
 /**
  * ADR 056: folds schedule and webhook run outcomes into failure streaks and
- * pauses, or while observing reports, workflows that reach their threshold.
- * Every worker may run it; the database command takes disjoint work.
+ * pauses workflows that reach their threshold. Every worker may run it; the
+ * database command takes disjoint work.
  */
 export function createWorkflowAutoPauseRuntime(
   store: WorkflowTriggerPauseFoldStore,
@@ -45,7 +43,7 @@ export function createWorkflowAutoPauseRuntime(
   const decisions = meter.createCounter(
     'pertexo.workflow.auto_pause.decision.count',
     {
-      description: 'Workflows paused, or that would pause while observing',
+      description: 'Workflows paused after consecutive failures',
       unit: '{workflow}',
     },
   );
@@ -55,15 +53,9 @@ export function createWorkflowAutoPauseRuntime(
     checkStore: (signal) => store.checkReadiness(signal),
     cycle: async (signal) => {
       for (let round = 0; round < MAX_FOLDS_PER_CYCLE; round += 1) {
-        const decided = await store.foldPending(
-          options.foldBatchSize,
-          options.enforce,
-          signal,
-        );
+        const decided = await store.foldPending(options.foldBatchSize, signal);
         for (const decision of decided) {
-          decisions.add(1, {
-            outcome: decision.paused ? 'paused' : 'would_pause',
-          });
+          decisions.add(1, { outcome: 'paused' });
           reportDiagnostic(() => {
             diagnostics.decided(decision);
           });

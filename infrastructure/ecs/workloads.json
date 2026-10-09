@@ -64,18 +64,14 @@
       ],
       "environment": {
         "AUTH_MAIL_DELIVERY_ENABLED": "true",
-        "CONNECTION_RUN_HEALTH_MODE": "off",
         "DATABASE_DISPATCHER_POOL_MAX": "2",
         "DATABASE_MAINTENANCE_POOL_MAX": "2",
         "DATABASE_POOL_MAX": "5",
-        "FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED": "false",
         "NODE_ENV": "production",
         "WORKER_MAX_EVENT_LOOP_DELAY_MILLIS": "200",
         "WORKER_MAX_RSS_BYTES": "805306368",
         "WORKER_RESOURCE_SAMPLE_MILLIS": "5000",
-        "WORKER_RESOURCE_UNHEALTHY_SAMPLES": "3",
-        "WORKFLOW_AUTO_PAUSE": "observe",
-        "WORKSPACE_INBOX_PRODUCER": "true"
+        "WORKER_RESOURCE_UNHEALTHY_SAMPLES": "3"
       },
       "configuration": [
         "ARTIFACT_STORE_BUCKET",
@@ -85,7 +81,6 @@
         "CONNECTION_KMS_KEY_REFERENCE",
         "CONNECTION_KMS_REGION",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
-        "OUTBOX_DISPATCH_JOB_NAMES",
         "SERVICE_VERSION"
       ],
       "secrets": [

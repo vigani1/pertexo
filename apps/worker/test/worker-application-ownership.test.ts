@@ -9,13 +9,9 @@ import { parseWorkerConfig } from '../src/config/worker.js';
 import { WORKSPACE_DATABASE } from '../src/platform/database/database.module.js';
 import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import { WorkerShutdownCoordinator } from '../src/runtime/shutdown-coordinator.js';
+import { workerEnvironment } from './support/worker-environment.js';
 
-const config = parseWorkerConfig({
-  DATABASE_MAINTENANCE_URL:
-    'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
-  DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-  REDIS_URL: 'redis://localhost:6379/0',
-});
+const config = parseWorkerConfig(workerEnvironment);
 
 const dependencies = {
   logger: {
