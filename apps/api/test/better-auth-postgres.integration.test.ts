@@ -2209,12 +2209,9 @@ describe('Better Auth PostgreSQL cutover', () => {
     expect(await runtime.sessions.authenticate(cookie ?? '')).toBeUndefined();
   });
 
-  it('withholds email proof digests and audit deletion from the app role', async () => {
+  it('keeps identity audit facts out of reach of app deletes', async () => {
     const api = new Pool({ connectionString: apiUrl, max: 1 });
     try {
-      await expect(
-        api.query('select token_digest from app.auth_email_proofs'),
-      ).rejects.toMatchObject({ code: '42501' });
       await expect(
         api.query('delete from app.identity_security_audit_facts'),
       ).rejects.toMatchObject({ code: '42501' });

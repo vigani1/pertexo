@@ -109,9 +109,17 @@ export type {
   ResolvedConnectionSecretRecord,
 } from './connections/connections.js';
 export type { DatabaseConfig } from './config.js';
-export { createAuthenticationMailEnqueueStore } from './identity/authentication-mail.js';
+export {
+  createAuthenticationMailEnqueueStore,
+  insertAuthenticationMail,
+} from './identity/authentication-mail.js';
+export {
+  recordIdentitySecurityFact,
+  type IdentitySecurityEvent,
+} from './identity/security-facts.js';
 export type {
   AuthenticationMailEnqueueStore,
+  AuthenticationMailInput,
   AuthenticationMailPurpose,
   SealedAuthenticationMailPayload,
 } from './identity/authentication-mail.js';

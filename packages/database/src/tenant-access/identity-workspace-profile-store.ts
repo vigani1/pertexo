@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
+import { recordIdentitySecurityFact } from '../identity/security-facts.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   commandKeySchema,
@@ -144,9 +145,10 @@ export function createIdentityWorkspaceProfileStore(pool: Pool): ProfileStore {
             [actorUserId, displayName],
           );
           user = mapUser(updated.rows[0] as Record<string, unknown>);
-          await client.query(
-            'select app.record_identity_profile_audit_fact($1)',
-            [actorUserId],
+          await recordIdentitySecurityFact(
+            client,
+            actorUserId,
+            'profile.display_name_changed',
           );
         }
         const completed = await client.query(

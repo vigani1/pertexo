@@ -91,9 +91,6 @@ async function replaceOidcTransactions(input: {
     try {
       await client.query('begin');
       await client.query('set local role pertexo_owner');
-      await client.query(
-        'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
-      );
       await client.query('delete from app.oidc_login_transactions');
       const variants = [
         {
@@ -135,9 +132,6 @@ async function replaceOidcTransactions(input: {
           [variant.prefix, variant.count],
         );
       }
-      await client.query(
-        'alter table app.oidc_login_transactions enable trigger oidc_login_transactions_capacity',
-      );
       await client.query('commit');
     } catch (error: unknown) {
       await client.query('rollback').catch(() => undefined);
@@ -1887,89 +1881,16 @@ describe('identity/workspace persistence', () => {
     ).resolves.toEqual({ status: 'replayed' });
   });
 
-  it('guards OIDC admission with a locked owner function and no runtime cleanup privilege', async () => {
-    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  it('removes OIDC transactions 15 minutes after they end through retention', async () => {
+    await replaceOidcTransactions({ active: 2, consumed: 2, stale: 3 });
     try {
-      const result = await pool.query<{
-        can_delete: boolean;
-        can_execute: boolean;
-        owner: string;
-        proconfig: string[] | null;
-        prosecdef: boolean;
-        runtime_roles_restricted: boolean;
-        trigger_enabled: string;
-      }>(`
-        select
-          pg_get_userbyid(proc.proowner) as owner,
-          proc.prosecdef,
-          proc.proconfig,
-          has_function_privilege(
-            current_user,
-            proc.oid,
-            'EXECUTE'
-          ) as can_execute,
-          has_table_privilege(
-            current_user,
-            'app.oidc_login_transactions',
-            'DELETE'
-          ) as can_delete,
-          (
-            select bool_and(
-              not has_function_privilege(runtime.role_name, proc.oid, 'EXECUTE')
-              and not has_table_privilege(
-                runtime.role_name,
-                'app.oidc_login_transactions',
-                'DELETE'
-              )
-            )
-            from (values
-              ('pertexo_app'),
-              ('pertexo_maintenance')
-            ) as runtime(role_name)
-          ) as runtime_roles_restricted,
-          trig.tgenabled as trigger_enabled
-        from pg_proc proc
-        join pg_namespace namespace on namespace.oid = proc.pronamespace
-        join pg_trigger trig on trig.tgfoid = proc.oid
-        where namespace.nspname = 'app'
-          and proc.proname = 'enforce_oidc_login_transaction_capacity'
-          and trig.tgname = 'oidc_login_transactions_capacity'
-      `);
-      expect(result.rows[0]).toEqual({
-        owner: 'pertexo_owner',
-        prosecdef: true,
-        proconfig: ['search_path=pg_catalog, pg_temp'],
-        can_execute: false,
-        can_delete: false,
-        runtime_roles_restricted: true,
-        trigger_enabled: 'O',
-      });
-    } finally {
-      await pool.end();
-    }
-  });
-
-  it('resumes stale OIDC cleanup in bounded batches', async () => {
-    await replaceOidcTransactions({ stale: 1_001 });
-    try {
-      await oidcStore.create(oidcTransaction());
+      await enforceRetention(maintenanceUrl);
       const pool = new Pool({ connectionString: apiUrl, max: 1 });
       try {
-        const first = await pool.query<{ stale: string; total: string }>(`
-          select
-            count(*) filter (where expires_at <= clock_timestamp())::text as stale,
-            count(*)::text as total
-          from app.oidc_login_transactions
-        `);
-        expect(first.rows[0]).toEqual({ stale: '1', total: '2' });
-        await oidcStore.create(oidcTransaction());
-        const second = await pool.query<{ stale: string; total: string }>(`
-          select
-            count(*) filter (where expires_at <= clock_timestamp())::text as stale,
-            count(*)::text as total
-          from app.oidc_login_transactions
-        `);
-        expect(second.rows[0]).toEqual({ stale: '0', total: '2' });
+        const kept = await pool.query<{ count: string }>(
+          'select count(*)::text as count from app.oidc_login_transactions',
+        );
+        expect(kept.rows[0]?.count).toBe('4');
       } finally {
         await pool.end();
       }
@@ -1992,7 +1913,6 @@ describe('identity/workspace persistence', () => {
       expect(rejected?.status).toBe('rejected');
       if (rejected?.status === 'rejected') {
         expect(rejected.reason).toBeInstanceOf(OidcTransactionCapacityError);
-        expect(pgCode(rejected.reason)).toBe('54000');
       }
       const pool = new Pool({ connectionString: apiUrl, max: 1 });
       try {

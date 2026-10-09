@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 
+import { recordIdentitySecurityFact } from '@pertexo/database/api';
 import type { Pool, PoolClient } from 'pg';
 
 /*
@@ -85,10 +86,7 @@ export async function attachProviderMethod(
      values($1,$2,$3,$4)`,
     [randomUUID(), input.accountId, input.providerId, input.userId],
   );
-  await client.query('select app.record_identity_method_audit_fact($1,$2)', [
-    input.userId,
-    input.auditFact,
-  ]);
+  await recordIdentitySecurityFact(client, input.userId, input.auditFact);
 }
 
 /**
