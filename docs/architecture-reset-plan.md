@@ -423,7 +423,10 @@ now, as one ordered program — not "whenever we touch it".
           module-cycle, complexity and duplication gates removed in step 2
           are no longer claimed, and the grouping rules join section 2. The
           README and AGENTS lose their OIDC references.
-  - [ ] ops
+  - [x] ops — one operator command runner for one-off tasks: it reads the
+        command from the environment, checks database readiness, runs it
+        under the maintenance role with a timeout and bounded cleanup, and
+        prints the result. Read in full; nothing to cut.
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
   - [ ] Numbered stored formats go with the re-squash: digest prefixes
