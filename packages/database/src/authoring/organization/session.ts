@@ -1,40 +1,40 @@
 import type { PoolClient } from 'pg';
+import { z } from 'zod';
+
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/database-runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/workspace.js';
+import type { OrganizationScope } from './command.js';
 
-type Scope = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  signal?: AbortSignal;
-}>;
+export type OrganizationRequestScope = OrganizationScope &
+  Readonly<{ signal?: AbortSignal }>;
 
-/** Owns the tenant transaction and pool lease, not command identity or results. */
-export function createOrganizationDatabaseSession(
+const uuid = z.uuid().overwrite((value) => value.toLowerCase());
+const scopeSchema = z.object({ workspaceId: uuid, actorId: uuid });
+
+/** Tenant transactions for organization reads and commands on a leased pool. */
+export function createOrganizationSession(
   config: DatabaseConfig,
-  runtime: DatabaseRuntime | undefined,
-  parseScope: (input: Scope) => Scope,
-  failure: (error: unknown) => never,
+  runtime?: DatabaseRuntime,
 ) {
   const lease = acquireDatabasePool(config, runtime);
-  async function transact<T>(
-    input: Scope,
-    work: (client: PoolClient, scope: Scope) => Promise<T>,
-  ): Promise<T> {
-    const scope = parseScope(input);
-    try {
-      return await withTenantScopedClient(
+  return Object.freeze({
+    transact<T>(
+      input: OrganizationRequestScope,
+      work: (client: PoolClient, scope: OrganizationScope) => Promise<T>,
+    ): Promise<T> {
+      const scope = scopeSchema.parse(input);
+      const { signal } = input;
+      return withTenantScopedClient(
         lease.pool,
         scope,
         (client) => work(client, scope),
-        scope.signal === undefined ? {} : { signal: scope.signal },
+        signal === undefined ? {} : { signal },
       );
-    } catch (error: unknown) {
-      return failure(error);
-    }
-  }
-  return { transact, close: lease.close };
+    },
+    close: () => lease.close(),
+  });
 }

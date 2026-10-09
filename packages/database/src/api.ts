@@ -260,6 +260,7 @@ export type {
   WebhookDeliveryPosition,
   WebhookDeliveryRecord,
 } from './triggers/webhook-trigger-deliveries.js';
+export { IdempotencyConflictError } from './platform/idempotency.js';
 export {
   WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,

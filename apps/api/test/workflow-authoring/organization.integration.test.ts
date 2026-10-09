@@ -423,52 +423,5 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
         );
       }
     });
-
-    it('keeps compatible organization reads and exact accepted retries while the SQL writer is off', async () => {
-      const f = await fixture();
-      const key = randomUUID(),
-        payload = { key: 'off-reader' };
-      const first = await api.send('POST', `${f.route}/workflow-tags`, {
-        browser: f.browser,
-        headers: { 'idempotency-key': key },
-        payload,
-      });
-      expect(first.statusCode, first.payload).toBe(201);
-      await api
-        .database()
-        .query(
-          'update app.workflow_organization_rollout set writes_enabled=false',
-        );
-      try {
-        expect(
-          (
-            await api.send('GET', `${f.route}/workflows?include=organization`, {
-              browser: f.browser,
-            })
-          ).statusCode,
-        ).toBe(200);
-        const replay = await api.send('POST', `${f.route}/workflow-tags`, {
-          browser: f.browser,
-          headers: { 'idempotency-key': key },
-          payload,
-        });
-        expect(replay.json()).toMatchObject({ replayed: true });
-        expectProblem(
-          await api.send('POST', `${f.route}/workflow-tags`, {
-            browser: f.browser,
-            headers: { 'idempotency-key': randomUUID() },
-            payload: { key: 'new-off' },
-          }),
-          503,
-          'workflow.organization_unavailable',
-        );
-      } finally {
-        await api
-          .database()
-          .query(
-            'update app.workflow_organization_rollout set writes_enabled=true',
-          );
-      }
-    });
   },
 );

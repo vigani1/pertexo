@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   WorkflowFolderConflictError,
-  WorkflowIdempotencyConflictError,
+  IdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
@@ -182,7 +182,7 @@ describe('workflow organization full-parent batch orchestration', () => {
   });
 
   it.each([
-    new WorkflowIdempotencyConflictError(),
+    new IdempotencyConflictError(),
     new WorkflowOrganizationUnavailableError(),
     new Error('admission transport outcome unknown'),
   ])(
@@ -214,7 +214,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       .mockRejectedValueOnce(
         new WorkflowTagConflictError('organization_revision'),
       )
-      .mockRejectedValueOnce(new WorkflowIdempotencyConflictError())
+      .mockRejectedValueOnce(new IdempotencyConflictError())
       .mockRejectedValueOnce(new WorkflowTagConflictError('lifecycle'))
       .mockRejectedValueOnce(new WorkflowFolderConflictError('not_visible'))
       .mockRejectedValueOnce(new WorkflowOrganizationUnavailableError())
@@ -385,7 +385,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       const identity = JSON.stringify(input.request);
       const previous = parents.get(key);
       if (previous !== undefined && previous !== identity)
-        return Promise.reject(new WorkflowIdempotencyConflictError());
+        return Promise.reject(new IdempotencyConflictError());
       parents.set(key, identity);
       return Promise.resolve({ admitted: true });
     });
@@ -424,12 +424,12 @@ describe('workflow organization full-parent batch orchestration', () => {
       f.batches.executeBatchItem.mockClear();
       await expect(
         f.useCase.bulk({ ...base, request: changed }),
-      ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+      ).rejects.toBeInstanceOf(IdempotencyConflictError);
       expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
     }
     await expect(
       f.useCase.cleanup({ ...base, request: cleanup }),
-    ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
     const cleanupInput = f.batches.admitBatch.mock.calls.at(-1)?.[0];
     expect(cleanupInput).toEqual({

@@ -66,7 +66,6 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'workflow_favorite_receipts',
     'workflow_favorite_held_evidence',
     'workflow_favorites',
-    'workflow_organization_receipts',
     'workflow_tag_assignments',
     'workflow_organization_state',
   ].map(deleteRows),

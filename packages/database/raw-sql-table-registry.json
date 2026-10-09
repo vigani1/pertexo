@@ -63,13 +63,6 @@
     "reason": "Retired-generation evidence is retained atomically under legal hold with no serving-role read grant and bounded post-hold deletion."
   },
   {
-    "name": "workflow_organization_receipts",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Function-only shared command receipts recover exact retries under current authority and bounded retention."
-  },
-  {
     "name": "workflow_favorite_receipts",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role", "maintenance_role"],
