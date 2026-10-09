@@ -7,15 +7,15 @@ import {
 } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseWorkerConfig } from '../src/config/worker-config.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import { parseWorkerConfig } from '../src/config/worker.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import {
   createOwnedOutboxDispatcher,
   type DispatcherCompositionFactories,
 } from '../src/transport/dispatch-providers.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
-import { OutboxDispatcherLifecycle } from '../src/transport/transport-lifecycle.js';
+import { OutboxDispatcherLifecycle } from '../src/transport/lifecycle.js';
 
 function config() {
   return parseWorkerConfig({

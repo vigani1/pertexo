@@ -14,7 +14,7 @@ import {
   createUnknownOutcomeReconciliationHandler,
   mapUnknownOutcomeReconciliationError,
   type UnknownOutcomeReconciliationStore,
-} from '../src/execution/unknown-outcome-reconciliation-runtime.js';
+} from '../src/attempts/unknown-outcome-reconciliation.js';
 
 function delivery() {
   const data = {

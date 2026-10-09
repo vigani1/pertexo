@@ -13,7 +13,7 @@ import {
 } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createNodeAttemptExecutionEngine } from '../src/execution/node-attempt-engine.js';
+import { createNodeAttemptExecutionEngine } from '../src/attempts/engine.js';
 
 const NODE_RUN_ID = '55555555-5555-4555-8555-555555555555';
 const ATTEMPT_ID = '66666666-6666-4666-8666-666666666666';

@@ -19,8 +19,8 @@ import {
   OutboxDispatcher,
   OutboxPayloadChecksumError,
 } from '../src/transport/outbox-dispatcher.js';
-import { TransportOperationTimeoutError } from '../src/transport/transport-operation-deadline.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import { TransportOperationTimeoutError } from '../src/transport/operation-deadline.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
 
 const EVENT_ID = '11111111-1111-4111-8111-111111111111';
 const LEASE_TOKEN = '22222222-2222-4222-8222-222222222222';

@@ -7,7 +7,7 @@ import {
 import { SlackSendMessageExecutorError } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createProductionSlackProviderTelemetry } from '../src/execution/slack-provider-telemetry.js';
+import { createProductionSlackProviderTelemetry } from '../src/providers/slack-telemetry.js';
 
 describe('Slack provider telemetry', () => {
   it('records only bounded success and rate-limit attributes', async () => {

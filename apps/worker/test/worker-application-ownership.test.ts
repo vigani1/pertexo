@@ -5,10 +5,10 @@ import {
   createWorkerApplication,
   type WorkerApplicationCompositionFactories,
 } from '../src/app.js';
-import { parseWorkerConfig } from '../src/config/worker-config.js';
+import { parseWorkerConfig } from '../src/config/worker.js';
 import { WORKSPACE_DATABASE } from '../src/platform/database/database.module.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
-import { WorkerShutdownCoordinator } from '../src/runtime/worker-shutdown-coordinator.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
+import { WorkerShutdownCoordinator } from '../src/runtime/shutdown-coordinator.js';
 
 const config = parseWorkerConfig({
   DATABASE_MAINTENANCE_URL:

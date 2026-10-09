@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { PreviewAttemptLease } from '@pertexo/database/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { startPreviewAttemptSupervisor } from '../src/execution/preview-attempt-supervisor.js';
+import { startPreviewAttemptSupervisor } from '../src/previews/supervisor.js';
 
 function leaseFixture(deadlineAt = new Date(Date.now() + 4 * 60_000)) {
   return {

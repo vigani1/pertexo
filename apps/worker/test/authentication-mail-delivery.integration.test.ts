@@ -7,7 +7,7 @@ import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 
-import { createAuthenticationMailDeliveryHandler } from '../src/execution/authentication-mail-delivery.js';
+import { createAuthenticationMailDeliveryHandler } from '../src/identity/authentication-mail-delivery.js';
 
 const databaseName = `pertexo_test_auth_delivery_${randomUUID().replaceAll('-', '')}`;
 const adminUrl =

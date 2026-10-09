@@ -3,17 +3,17 @@ import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 
-import type { WorkerConfig } from '../config/worker-config.js';
+import type { WorkerConfig } from '../config/worker.js';
 import {
   createNodeAttemptRuntime,
   type NodeAttemptRuntime,
-} from '../execution/node-attempt-runtime.js';
-import { createPlatformPreviewNodeInvoker } from '../execution/preview-attempt-runtime.js';
+} from '../attempts/runtime.js';
+import { createPlatformPreviewNodeInvoker } from '../previews/runtime.js';
 import {
   NODE_ATTEMPT_RUNTIME,
   QUEUE_CONSUMER_OBSERVER,
   type TransportModuleDependencies,
-} from './transport-tokens.js';
+} from './tokens.js';
 
 export type NodeAttemptActivation = Readonly<{
   preview: boolean;

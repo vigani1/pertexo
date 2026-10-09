@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   WorkerReadinessMonitor,
   type WorkerReadinessMarker,
-} from '../src/runtime/worker-readiness-monitor.js';
-import { WorkerReadiness } from '../src/runtime/worker-readiness.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+} from '../src/runtime/readiness-monitor.js';
+import { WorkerReadiness } from '../src/runtime/readiness.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
 
 const logger = {
   debug: vi.fn(),

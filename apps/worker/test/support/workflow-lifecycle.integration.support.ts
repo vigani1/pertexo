@@ -30,7 +30,7 @@ import {
 } from 'pg';
 
 import { dropDisconnectedDatabase } from './disposable-database.js';
-import { WorkerDrainState } from '../../src/runtime/worker-drain-state.js';
+import { WorkerDrainState } from '../../src/runtime/drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
   type DispatchConsumerCapabilityRegistry,
@@ -39,7 +39,7 @@ import { OutboxDispatcher } from '../../src/transport/outbox-dispatcher.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,
-} from '../../src/triggers/trigger-runtime.js';
+} from '../../src/triggers/runtime.js';
 import { createRedisTestNamespace } from './redis-test-namespace.js';
 
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';

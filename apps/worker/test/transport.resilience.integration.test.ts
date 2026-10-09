@@ -28,7 +28,7 @@ import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import { WorkerDrainState } from '../src/runtime/drain-state.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createDockerComposeServiceController } from './support/compose-service-control.js';

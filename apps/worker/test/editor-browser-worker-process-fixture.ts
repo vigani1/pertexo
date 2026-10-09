@@ -2,9 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
-import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
-import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
+import { createCoordinatorRuntime } from '../src/runs/runtime.js';
+import { createNodeAttemptRuntime } from '../src/attempts/runtime.js';
+import { createWorkerNodeRuntimeCapabilities } from '../src/attempts/runtime-capabilities.js';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   ConnectionEnvelopeEncryption,
@@ -18,7 +18,7 @@ import { createEditorControlledHttpTarget } from './support/editor-controlled-ht
 import {
   createTriggerRuntime,
   type TriggerRuntime,
-} from '../src/triggers/trigger-runtime.js';
+} from '../src/triggers/runtime.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createTransportMetrics } from '@pertexo/observability';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';

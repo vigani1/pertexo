@@ -2,7 +2,7 @@ import type { StructuredLogger } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseWorkerConfig } from '../src/config/worker-config.js';
+import { parseWorkerConfig } from '../src/config/worker.js';
 import { bootstrapWorker, type WorkerBootstrapModules } from '../src/main.js';
 
 const config = parseWorkerConfig({

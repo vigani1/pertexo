@@ -1,5 +1,5 @@
 import { createWorkerApplication } from '../dist/app.js';
-import { WorkerProcessShutdown } from '../dist/runtime/worker-process-shutdown.js';
+import { WorkerProcessShutdown } from '../dist/runtime/process-shutdown.js';
 import process from 'node:process';
 import { clearInterval, setInterval } from 'node:timers';
 

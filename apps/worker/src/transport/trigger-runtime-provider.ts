@@ -1,16 +1,16 @@
 import type { Provider } from '@nestjs/common';
 import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 
-import type { WorkerConfig } from '../config/worker-config.js';
+import type { WorkerConfig } from '../config/worker.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,
-} from '../triggers/trigger-runtime.js';
+} from '../triggers/runtime.js';
 import {
   QUEUE_CONSUMER_OBSERVER,
   TRIGGER_RUNTIME,
   type TransportModuleDependencies,
-} from './transport-tokens.js';
+} from './tokens.js';
 
 export function triggerRuntimeProvider(
   config: WorkerConfig,

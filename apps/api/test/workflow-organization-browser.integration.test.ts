@@ -193,7 +193,7 @@ describe
       }>;
       const compiled: unknown = await import(
         new URL(
-          '../../worker/dist/execution/workspace-invitation-delivery.js',
+          '../../worker/dist/identity/invitation-delivery.js',
           import.meta.url,
         ).href
       );

@@ -6,7 +6,7 @@ import {
 } from '@opentelemetry/api';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createProductionProviderTelemetry } from '../src/execution/provider-telemetry.js';
+import { createProductionProviderTelemetry } from '../src/providers/telemetry.js';
 
 type DiagnosticStage =
   | 'start_before_callback'

@@ -7,7 +7,7 @@ import {
 import { EmailSendNotificationExecutorError } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createProductionEmailProviderTelemetry } from '../src/execution/email-provider-telemetry.js';
+import { createProductionEmailProviderTelemetry } from '../src/providers/email-telemetry.js';
 
 describe('email provider telemetry', () => {
   it('records only fixed-cardinality attributes and no email content', async () => {

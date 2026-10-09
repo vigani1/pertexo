@@ -11,7 +11,7 @@ import {
   createHttpProviderTelemetry,
   createProductionHttpProviderTelemetry,
   type HttpProviderRequestMeasurement,
-} from '../src/execution/http-provider-telemetry.js';
+} from '../src/providers/http-telemetry.js';
 
 const artifactOutput = Object.freeze({
   status: 200,

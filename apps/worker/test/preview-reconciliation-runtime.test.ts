@@ -18,7 +18,7 @@ import {
   createPreviewReconciliationHandler,
   mapPreviewReconciliationError,
   type PreviewReconciliationStore,
-} from '../src/execution/preview-reconciliation-runtime.js';
+} from '../src/previews/reconciliation.js';
 import {
   createMaintenanceRuntime,
   type MaintenanceRuntimeFactories,

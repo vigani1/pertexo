@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createPreviewTelemetry,
   createProductionPreviewTelemetry,
-} from '../src/execution/preview-telemetry.js';
+} from '../src/previews/telemetry.js';
 
 type Measurement = Readonly<{
   attributes?: Attributes;

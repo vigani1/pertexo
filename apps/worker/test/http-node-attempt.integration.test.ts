@@ -18,7 +18,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
 import { createHttpNodeAttemptProofRuntime } from './support/http-node-attempt.runtime.js';
-import { createDatabaseOperatorRunReplayStore } from '../src/execution/operator-run-replay-runtime.js';
+import { createDatabaseOperatorRunReplayStore } from '../src/operator/run-replay.js';
 
 import {
   acceptRun,

@@ -6,15 +6,15 @@ import {
 import {
   mapPreviewReconciliationError,
   type createPreviewReconciliationHandler,
-} from '../execution/preview-reconciliation-runtime.js';
+} from '../previews/reconciliation.js';
 import {
   mapUnknownOutcomeReconciliationError,
   type createUnknownOutcomeReconciliationHandler,
-} from '../execution/unknown-outcome-reconciliation-runtime.js';
-import type { createOperatorRunReplayHandler } from '../execution/operator-run-replay-runtime.js';
-import type { FailureNotificationHandler } from '../execution/failure-notification-handler.js';
-import type { WorkspaceInvitationDeliveryHandler } from '../execution/workspace-invitation-delivery.js';
-import type { createConnectionHealthObservationHandler } from '../execution/connection-health-runtime.js';
+} from '../attempts/unknown-outcome-reconciliation.js';
+import type { createOperatorRunReplayHandler } from '../operator/run-replay.js';
+import type { FailureNotificationHandler } from '../notifications/failure-handler.js';
+import type { WorkspaceInvitationDeliveryHandler } from '../identity/invitation-delivery.js';
+import type { createConnectionHealthObservationHandler } from '../connections/health-runtime.js';
 
 export type MaintenanceHandlers = Readonly<{
   failureNotification?: FailureNotificationHandler;

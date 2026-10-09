@@ -24,27 +24,27 @@ import type {
   TransportMetrics,
 } from '@pertexo/observability';
 
-import type { WorkerConfig } from './config/worker-config.js';
-import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
-import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
+import type { WorkerConfig } from './config/worker.js';
+import type { CoordinatorRuntime } from './runs/runtime.js';
+import type { NodeAttemptRuntime } from './attempts/runtime.js';
 import type { MaintenanceRuntime } from './maintenance/runtime.js';
-import type { TriggerRuntime } from './triggers/trigger-runtime.js';
-import { createAuthenticationMailDeliveryHandler } from './execution/authentication-mail-delivery.js';
+import type { TriggerRuntime } from './triggers/runtime.js';
+import { createAuthenticationMailDeliveryHandler } from './identity/authentication-mail-delivery.js';
 import {
   AUTHENTICATION_MAIL_RUNTIME,
   createAuthenticationMailRuntime,
   type AuthenticationMailRuntime,
-} from './execution/authentication-mail-runtime.js';
+} from './identity/authentication-mail-runtime.js';
 import {
   createWorkspaceInboxRuntime,
   WORKSPACE_INBOX_RUNTIME,
   type WorkspaceInboxRuntime,
-} from './execution/workspace-inbox-runtime.js';
+} from './notifications/inbox-runtime.js';
 import {
   WORKFLOW_AUTO_PAUSE_RUNTIME,
   type WorkflowAutoPauseRuntime,
-} from './execution/workflow-auto-pause-runtime.js';
-import { configuredWorkflowAutoPauseRuntime } from './execution/workflow-auto-pause-provider.js';
+} from './workflows/auto-pause-runtime.js';
+import { configuredWorkflowAutoPauseRuntime } from './workflows/auto-pause-provider.js';
 import {
   DatabaseModule,
   WORKSPACE_DATABASE,
@@ -55,18 +55,18 @@ import {
   RETENTION_RUNTIME,
   type RetentionRuntime,
 } from './retention/runtime.js';
-import { WorkerReadiness } from './runtime/worker-readiness.js';
+import { WorkerReadiness } from './runtime/readiness.js';
 import {
   WorkerReadinessMonitor,
   type WorkerReadinessMarker,
-} from './runtime/worker-readiness-monitor.js';
-import { WorkerResourceMonitor } from './runtime/worker-resource-monitor.js';
-import { WorkerDrainState } from './runtime/worker-drain-state.js';
-import { WorkerProcessKeepalive } from './runtime/worker-process-keepalive.js';
-import { WorkerShutdownCoordinator } from './runtime/worker-shutdown-coordinator.js';
+} from './runtime/readiness-monitor.js';
+import { WorkerResourceMonitor } from './runtime/resource-monitor.js';
+import { WorkerDrainState } from './runtime/drain-state.js';
+import { WorkerProcessKeepalive } from './runtime/process-keepalive.js';
+import { WorkerShutdownCoordinator } from './runtime/shutdown-coordinator.js';
 import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import { TransportModule } from './transport/transport.module.js';
-import { OutboxDispatcherLifecycle } from './transport/transport-lifecycle.js';
+import { OutboxDispatcherLifecycle } from './transport/lifecycle.js';
 
 export type WorkerModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;

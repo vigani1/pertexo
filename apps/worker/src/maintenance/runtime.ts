@@ -1,9 +1,9 @@
-import { operatorRunReplayFactories } from '../execution/operator-run-replay-runtime.js';
+import { operatorRunReplayFactories } from '../operator/run-replay.js';
 import {
   connectionHealthObservationFactories,
   type ConnectionHealthObservationStore,
-} from '../execution/connection-health-runtime.js';
-import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
+} from '../connections/health-runtime.js';
+import type { ConnectionRunHealthMode } from '../config/connection-health.js';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -19,23 +19,23 @@ import {
   type QueueConsumerObserver,
 } from '@pertexo/queue';
 
-import { previewReconciliationFactories } from '../execution/preview-reconciliation-runtime.js';
-import type { PreviewTelemetry } from '../execution/preview-telemetry.js';
+import { previewReconciliationFactories } from '../previews/reconciliation.js';
+import type { PreviewTelemetry } from '../previews/telemetry.js';
 import {
   unknownOutcomeReconciliationFactories,
   type UnknownOutcomeReconciliationStore,
-} from '../execution/unknown-outcome-reconciliation-runtime.js';
+} from '../attempts/unknown-outcome-reconciliation.js';
 import type {
   FailureNotificationDeliveryCapability,
   FailureNotificationHandler,
-} from '../execution/failure-notification-handler.js';
-import { failureNotificationFactories } from '../execution/failure-notification-composition.js';
+} from '../notifications/failure-handler.js';
+import { failureNotificationFactories } from '../notifications/failure-composition.js';
 import {
   closeMaintenanceDependencies,
   createMaintenanceLifecycle,
   type MaintenanceComposition,
 } from './lifecycle.js';
-import type { WorkspaceInvitationDeliveryHandler } from '../execution/workspace-invitation-delivery.js';
+import type { WorkspaceInvitationDeliveryHandler } from '../identity/invitation-delivery.js';
 import {
   maintenanceDeliveryHandler,
   type MaintenanceHandlers,

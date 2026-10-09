@@ -1,16 +1,16 @@
 import type { Provider } from '@nestjs/common';
 import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 
-import type { WorkerConfig } from '../config/worker-config.js';
+import type { WorkerConfig } from '../config/worker.js';
 import {
   createCoordinatorRuntime,
   type CoordinatorRuntime,
-} from '../execution/coordinator-runtime.js';
+} from '../runs/runtime.js';
 import {
   COORDINATOR_RUNTIME,
   QUEUE_CONSUMER_OBSERVER,
   type TransportModuleDependencies,
-} from './transport-tokens.js';
+} from './tokens.js';
 
 export function coordinatorRuntimeProvider(
   config: WorkerConfig,

@@ -1,7 +1,7 @@
 import type { NodeConnectionHealthObservation } from '@pertexo/node-sdk/server';
 import { describe, expect, it } from 'vitest';
 
-import { createConnectionHealthCapture } from '../src/execution/connection-health-capture.js';
+import { createConnectionHealthCapture } from '../src/connections/health-capture.js';
 
 describe('capture-only run connection health', () => {
   it.each([false, true])(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseInvitationDeliveryConfig } from '../src/config/invitation-delivery-config.js';
+import { parseInvitationDeliveryConfig } from '../src/config/invitation-delivery.js';
 
 const tokenKey = Buffer.alloc(32, 8).toString('base64');
 const invitationEnvironment = {

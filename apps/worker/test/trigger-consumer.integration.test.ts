@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
-import { createTriggerRuntime } from '../src/triggers/trigger-runtime.js';
+import { createTriggerRuntime } from '../src/triggers/runtime.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
 import { runWithCleanup } from './support/test-operation.js';
 

@@ -8,7 +8,7 @@ import {
 } from '@pertexo/database/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability';
 
-import type { WorkerConfig } from '../config/worker-config.js';
+import type { WorkerConfig } from '../config/worker.js';
 import { createRetentionMetrics } from './metrics.js';
 import { createRetentionRuntime, type RetentionRuntime } from './runtime.js';
 

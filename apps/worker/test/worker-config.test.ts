@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 import { JOB_NAME } from '@pertexo/queue';
 
-import { parseWorkerConfig } from '../src/config/worker-config.js';
+import { parseWorkerConfig } from '../src/config/worker.js';
 
 const requiredEnvironment = {
   DATABASE_MAINTENANCE_URL:

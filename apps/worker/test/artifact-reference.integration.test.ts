@@ -24,7 +24,7 @@ import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { observeWorkspaceArtifactCapacity } from '../src/runtime/artifact-metrics.js';
-import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../src/attempts/runtime-capabilities.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import { runWithCleanup } from './support/test-operation.js';
 

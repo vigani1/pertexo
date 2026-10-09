@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { WorkerProcessShutdown } from '../src/runtime/worker-process-shutdown.js';
+import { WorkerProcessShutdown } from '../src/runtime/process-shutdown.js';
 
 const logger = {
   debug: vi.fn(),

@@ -15,7 +15,7 @@ import { Redis } from 'ioredis';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 
-import { createWorkspaceInboxRuntime } from '../src/execution/workspace-inbox-runtime.js';
+import { createWorkspaceInboxRuntime } from '../src/notifications/inbox-runtime.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const databaseName = `pertexo_test_inbox_runtime_${randomUUID().replaceAll('-', '')}`;
