@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import {
   workflowGraphSchema,
-  workflowGraphStructuralSchemaV1,
+  workflowGraphStructuralSchema,
   type WorkflowGraph,
 } from '../graph/contract.js';
 import { inspectWorkflowGraphAdmission } from '../graph/admission.js';
@@ -192,11 +192,9 @@ const manifestObject = z
   })
   .strict();
 
-export const workflowPortableManifestStructuralSchemaV1 = manifestObject.extend(
-  {
-    graph: workflowGraphStructuralSchemaV1,
-  },
-);
+export const workflowPortableManifestStructuralSchema = manifestObject.extend({
+  graph: workflowGraphStructuralSchema,
+});
 export const workflowPortableManifestSchema = z
   .unknown()
   .transform((input) => portableSnapshot(input))

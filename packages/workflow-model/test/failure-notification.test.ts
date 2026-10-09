@@ -2,9 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import {
-  FailureNotificationContextV1Schema,
+  FailureNotificationContextSchema,
   FailureNotificationDestinationConfigSchema,
-  FailureNotificationDeliveryResultV1Schema,
+  FailureNotificationDeliveryResultSchema,
 } from '../src/failure-notification.js';
 
 const id = (digit: string): string =>
@@ -22,9 +22,9 @@ async function contextFixture(): Promise<Record<string, unknown>> {
 describe('failure notification contracts', () => {
   it('reads a stored context and refuses another schema version', async () => {
     const context = await contextFixture();
-    expect(FailureNotificationContextV1Schema.parse(context)).toEqual(context);
+    expect(FailureNotificationContextSchema.parse(context)).toEqual(context);
     expect(
-      FailureNotificationContextV1Schema.safeParse({
+      FailureNotificationContextSchema.safeParse({
         ...context,
         schemaVersion: 2,
       }).success,
@@ -47,7 +47,7 @@ describe('failure notification contracts', () => {
 
   it('accepts bounded channel-neutral context and results', () => {
     expect(
-      FailureNotificationContextV1Schema.parse({
+      FailureNotificationContextSchema.parse({
         schemaVersion: 1,
         runId: id('2'),
         workflowId: id('3'),
@@ -68,7 +68,7 @@ describe('failure notification contracts', () => {
       }),
     ).toMatchObject({ totalFailureCount: 1 });
     expect(
-      FailureNotificationContextV1Schema.parse({
+      FailureNotificationContextSchema.parse({
         schemaVersion: 1,
         runId: id('2'),
         workflowId: id('3'),
@@ -87,7 +87,7 @@ describe('failure notification contracts', () => {
       }),
     ).toMatchObject({ primaryFailure: { source: 'run' } });
     expect(
-      FailureNotificationDeliveryResultV1Schema.parse({
+      FailureNotificationDeliveryResultSchema.parse({
         schemaVersion: 1,
         kind: 'delivered',
         possiblyDispatched: true,
@@ -123,12 +123,12 @@ describe('failure notification contracts', () => {
       { connectionId: id('6') },
     ]) {
       expect(
-        FailureNotificationContextV1Schema.safeParse({ ...base, ...extra })
+        FailureNotificationContextSchema.safeParse({ ...base, ...extra })
           .success,
       ).toBe(false);
     }
     expect(
-      FailureNotificationDeliveryResultV1Schema.safeParse({
+      FailureNotificationDeliveryResultSchema.safeParse({
         schemaVersion: 1,
         kind: 'definite_failure',
         possiblyDispatched: false,
@@ -136,7 +136,7 @@ describe('failure notification contracts', () => {
       }).success,
     ).toBe(false);
     expect(
-      FailureNotificationContextV1Schema.safeParse({
+      FailureNotificationContextSchema.safeParse({
         ...base,
         terminalStatus: 'timed_out',
         primaryFailure: {
@@ -158,7 +158,7 @@ describe('failure notification contracts', () => {
     'rejects contradictory delivery state: %s',
     (_name, kind, possiblyDispatched, safeErrorCode) => {
       expect(
-        FailureNotificationDeliveryResultV1Schema.safeParse({
+        FailureNotificationDeliveryResultSchema.safeParse({
           schemaVersion: 1,
           kind,
           possiblyDispatched,

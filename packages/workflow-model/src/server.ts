@@ -8,12 +8,12 @@ export { WorkflowAuthoringValidator } from './authoring-validation/validator.js'
 export { JsonataEvaluator } from './expressions/evaluator.js';
 export type { ExpressionEvaluator } from './expressions/policy.js';
 export {
-  EMPTY_DEFINITION_CATALOG_V1,
+  EMPTY_DEFINITION_CATALOG,
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,
   workflowIntegrationUsage,
   workflowRetainedExecutableChecksum,
-  type WorkflowDefinitionCatalogV1,
+  type WorkflowDefinitionCatalog,
 } from './graph/identity.js';

@@ -1,8 +1,8 @@
 import {
   AuthoringValidationUnavailableError,
-  EMPTY_DEFINITION_CATALOG_V1,
+  EMPTY_DEFINITION_CATALOG,
   WorkflowAuthoringValidator,
-  type WorkflowDefinitionCatalogV1,
+  type WorkflowDefinitionCatalog,
 } from '@pertexo/workflow-model/server';
 import type { DatabaseConfig } from '../../src/config.js';
 import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflow-authoring.js';
@@ -22,7 +22,7 @@ export function createWorkflowAuthoringFixtureDatabase(
   let validator: WorkflowAuthoringValidator | undefined;
   let closed = false;
   function admission(
-    catalog: WorkflowDefinitionCatalogV1,
+    catalog: WorkflowDefinitionCatalog,
     fingerprint: string,
   ): WorkflowAuthoringGraphValidator {
     const projection = {
@@ -47,7 +47,7 @@ export function createWorkflowAuthoringFixtureDatabase(
           validateAuthoringGraph:
             options.validateAuthoringGraph ??
             admission(
-              options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG_V1,
+              options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG,
               options.compatibilityRelease?.fingerprint ??
                 'synthetic-authoring-fixture',
             ),

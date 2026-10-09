@@ -2,7 +2,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 
 import { z } from 'zod';
 import {
-  EMPTY_WORKFLOW_GRAPH_V1,
+  EMPTY_WORKFLOW_GRAPH,
   parseWorkflowGraphDraft,
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -49,7 +49,7 @@ async function createWorkflow(
     const { definitionCatalog, placementDefinitionCatalog } =
       await context.selectCatalogs(client);
     context.requirePlaceable(
-      EMPTY_WORKFLOW_GRAPH_V1,
+      EMPTY_WORKFLOW_GRAPH,
       graph,
       placementDefinitionCatalog,
     );

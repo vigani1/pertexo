@@ -7,7 +7,7 @@ import {
 } from '@pertexo/templates';
 import {
   canonicalWorkflowPortableJson,
-  EMPTY_WORKFLOW_GRAPH_V1,
+  EMPTY_WORKFLOW_GRAPH,
   inspectWorkflowPortableManifest,
   portableConnectionBindingSchema,
   portableGraphDigest,
@@ -178,7 +178,7 @@ async function inspectImport(
     catalog,
   );
   context.requirePlaceable(
-    EMPTY_WORKFLOW_GRAPH_V1,
+    EMPTY_WORKFLOW_GRAPH,
     inspected.graph,
     selection.placementDefinitionCatalog ?? selection.definitionCatalog,
   );

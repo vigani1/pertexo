@@ -4,12 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PoolClient } from 'pg';
 import { Pool } from 'pg';
 import {
-  EMPTY_WORKFLOW_GRAPH_V1,
+  EMPTY_WORKFLOW_GRAPH,
   InvalidWorkflowGraphError,
 } from '@pertexo/workflow-model';
 import {
   AuthoringValidationUnavailableError,
-  EMPTY_DEFINITION_CATALOG_V1,
+  EMPTY_DEFINITION_CATALOG,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
@@ -27,8 +27,8 @@ import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const actorId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const graph = EMPTY_WORKFLOW_GRAPH_V1;
-const catalog = EMPTY_DEFINITION_CATALOG_V1;
+const graph = EMPTY_WORKFLOW_GRAPH;
+const catalog = EMPTY_DEFINITION_CATALOG;
 const row = {
   workspace_id: workspaceId,
   workflow_id: workflowId,

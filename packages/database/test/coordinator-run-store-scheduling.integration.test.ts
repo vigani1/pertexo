@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Pool as PgPool, PoolClient, QueryResult } from 'pg';
 
 import {
-  FailureNotificationContextV1Schema,
+  FailureNotificationContextSchema,
   Pool,
   actorId,
   apiBaseUrl,
@@ -42,7 +42,7 @@ const predecessorPrimaryFailureSchema = z
   })
   .strict();
 const predecessorFailureNotificationContextV1Schema =
-  FailureNotificationContextV1Schema.extend({
+  FailureNotificationContextSchema.extend({
     primaryFailure: predecessorPrimaryFailureSchema,
   });
 
@@ -878,7 +878,7 @@ describe('Coordinator scheduling and notification invariants', () => {
       outbox_count: 1,
     });
     expect(
-      FailureNotificationContextV1Schema.parse(proof.rows[0]?.context),
+      FailureNotificationContextSchema.parse(proof.rows[0]?.context),
     ).toMatchObject({
       terminalStatus: 'timed_out',
       primaryFailure: {
@@ -1196,7 +1196,7 @@ describe('Coordinator scheduling and notification invariants', () => {
       ),
     );
     expect(proof.rows[0]).toMatchObject({ intent_count: 1, outbox_count: 1 });
-    const persistedContext = FailureNotificationContextV1Schema.parse(
+    const persistedContext = FailureNotificationContextSchema.parse(
       proof.rows[0]?.context,
     );
     expect(persistedContext.terminalStatus).toBe('failed');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model';
+import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
 import {
   buildWorkflowExecutableV2,
@@ -53,7 +53,7 @@ describe('persisted control-output selection', () => {
       const persisted = JSON.parse(
         JSON.stringify(executable.envelope),
       ) as unknown;
-      expect(workflowControlOutputNodeIdsV2(persisted)).toEqual(
+      expect(workflowControlOutputNodeIds(persisted)).toEqual(
         new Set(expected),
       );
     },

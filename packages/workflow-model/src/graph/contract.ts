@@ -82,7 +82,7 @@ export const WORKFLOW_GRAPH_CONTRACT_LIMITS = Object.freeze({
   structuredDepth: 32,
   inputDepth: 256,
 });
-export const WORKFLOW_EXECUTION_LIMITS_V1 = Object.freeze({
+export const WORKFLOW_EXECUTION_LIMITS = Object.freeze({
   maxRunDurationMs: 3_600_000,
 });
 export const WORKFLOW_VALIDATION_MAX_ISSUES = 100;
@@ -119,13 +119,13 @@ const valueSourceSchema = z.discriminatedUnion('kind', [
     })
     .strict(),
 ]);
-const workflowSettingsSchemaV1 = z
+const workflowSettingsSchema = z
   .object({
     maxRunDurationMs: z
       .number()
       .int()
       .positive()
-      .max(WORKFLOW_EXECUTION_LIMITS_V1.maxRunDurationMs)
+      .max(WORKFLOW_EXECUTION_LIMITS.maxRunDurationMs)
       .optional(),
   })
   .strict();
@@ -183,7 +183,7 @@ const structuredBodySchema: z.ZodType<StructuredBody> = z.lazy(() =>
       schemaVersion: z.literal(1),
       nodes: z.array(workflowNodeSchema),
       edges: z.array(workflowEdgeSchema),
-      settings: workflowSettingsSchemaV1,
+      settings: workflowSettingsSchema,
       inputPorts: z.array(identifierSchema),
       outputPorts: z.array(identifierSchema),
     })
@@ -196,7 +196,7 @@ const structuredBodySchema: z.ZodType<StructuredBody> = z.lazy(() =>
  * and aggregate preflight; the server parser applies equivalent guards before
  * calling this structural parser.
  */
-export const workflowGraphStructuralSchemaV1: z.ZodType<WorkflowGraph> = z.lazy(
+export const workflowGraphStructuralSchema: z.ZodType<WorkflowGraph> = z.lazy(
   () =>
     z
       .object({
@@ -207,7 +207,7 @@ export const workflowGraphStructuralSchemaV1: z.ZodType<WorkflowGraph> = z.lazy(
         edges: z
           .array(workflowEdgeSchema)
           .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.edges),
-        settings: workflowSettingsSchemaV1,
+        settings: workflowSettingsSchema,
       })
       .strict(),
 );
@@ -239,10 +239,10 @@ const workflowGraphPreflightSchema = z.unknown().transform((input, context) => {
 
 export const workflowGraphSchema: z.ZodType<WorkflowGraph> =
   workflowGraphPreflightSchema
-    .pipe(workflowGraphStructuralSchemaV1)
+    .pipe(workflowGraphStructuralSchema)
     .transform(restoreDroppedInputMappingKeys);
 
-export const EMPTY_WORKFLOW_GRAPH_V1: WorkflowGraph = Object.freeze({
+export const EMPTY_WORKFLOW_GRAPH: WorkflowGraph = Object.freeze({
   schemaVersion: 1,
   nodes: Object.freeze([]),
   edges: Object.freeze([]),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorkflowGraph, WorkflowNode } from '../src/graph/contract.js';
 import { workflowDefinitionPlacementIssues } from '../src/graph/definition-placement.js';
-import { EMPTY_DEFINITION_CATALOG_V1 } from '../src/graph/identity.js';
+import { EMPTY_DEFINITION_CATALOG } from '../src/graph/identity.js';
 
 const unavailable = { key: 'legacy.unavailable', version: 1 } as const;
 const node = (id: string): WorkflowNode => ({
@@ -28,14 +28,14 @@ describe('definition placement', () => {
       workflowDefinitionPlacementIssues(
         previous,
         previous,
-        EMPTY_DEFINITION_CATALOG_V1,
+        EMPTY_DEFINITION_CATALOG,
       ),
     ).toEqual([]);
     expect(
       workflowDefinitionPlacementIssues(
         previous,
         graph(node('old'), node('new')),
-        EMPTY_DEFINITION_CATALOG_V1,
+        EMPTY_DEFINITION_CATALOG,
       ),
     ).toMatchObject([
       { code: 'definition_not_placeable', path: '$.nodes.new.definition' },
@@ -62,14 +62,14 @@ describe('definition placement', () => {
       workflowDefinitionPlacementIssues(
         previous,
         moved,
-        EMPTY_DEFINITION_CATALOG_V1,
+        EMPTY_DEFINITION_CATALOG,
       ),
     ).toMatchObject([{ path: '$.nodes.loop.definition' }]);
     expect(
       workflowDefinitionPlacementIssues(
         previous,
         graph(node('old'), loop),
-        EMPTY_DEFINITION_CATALOG_V1,
+        EMPTY_DEFINITION_CATALOG,
       ),
     ).toMatchObject([
       { path: '$.nodes.old.definition' },

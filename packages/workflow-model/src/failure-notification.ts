@@ -35,7 +35,7 @@ export type FailureNotificationDestinationConfig = z.output<
   typeof FailureNotificationDestinationConfigSchema
 >;
 
-export const FailureNotificationContextV1Schema = z
+export const FailureNotificationContextSchema = z
   .object({
     schemaVersion: z.literal(1),
     runId: z.uuid(),
@@ -68,7 +68,7 @@ export const FailureNotificationContextV1Schema = z
   })
   .strict();
 
-export const FailureNotificationDeliveryResultV1Schema = z.discriminatedUnion(
+export const FailureNotificationDeliveryResultSchema = z.discriminatedUnion(
   'kind',
   [
     z
@@ -106,9 +106,9 @@ export const FailureNotificationDeliveryResultV1Schema = z.discriminatedUnion(
   ],
 );
 
-export type FailureNotificationContextV1 = Readonly<
-  z.output<typeof FailureNotificationContextV1Schema>
+export type FailureNotificationContext = Readonly<
+  z.output<typeof FailureNotificationContextSchema>
 >;
-export type FailureNotificationDeliveryResultV1 = Readonly<
-  z.output<typeof FailureNotificationDeliveryResultV1Schema>
+export type FailureNotificationDeliveryResult = Readonly<
+  z.output<typeof FailureNotificationDeliveryResultSchema>
 >;

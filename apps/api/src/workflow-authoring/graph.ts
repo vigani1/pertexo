@@ -1,5 +1,5 @@
 export {
-  EMPTY_WORKFLOW_GRAPH_V1,
+  EMPTY_WORKFLOW_GRAPH,
   InvalidWorkflowGraphError,
   parseWorkflowGraphDraft,
   validateWorkflowGraph,

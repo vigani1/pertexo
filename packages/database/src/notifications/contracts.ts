@@ -1,6 +1,6 @@
 import type {
-  FailureNotificationContextV1,
-  FailureNotificationDeliveryResultV1,
+  FailureNotificationContext,
+  FailureNotificationDeliveryResult,
 } from '@pertexo/workflow-model';
 
 export type FailureNotificationDelivery = Readonly<{
@@ -13,7 +13,7 @@ export type FailureNotificationClaimResult =
   | Readonly<{
       kind: 'ready';
       attemptNumber: number;
-      context: FailureNotificationContextV1;
+      context: FailureNotificationContext;
       destinationId: string;
       destinationConfigVersion: number;
       idempotencyKey: string;
@@ -60,7 +60,7 @@ export interface FailureNotificationStore {
       attemptNumber: number;
       maxAttempts: number;
       retryDelaySeconds: number;
-      result: FailureNotificationDeliveryResultV1;
+      result: FailureNotificationDeliveryResult;
       signal?: AbortSignal;
     }>,
   ): Promise<'completed' | 'stale'>;

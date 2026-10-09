@@ -34,10 +34,10 @@ import { ScheduleManagementService } from '../src/schedules/service.js';
 import { createApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
 import { createBetterAuthFixtureApplication } from './support/better-auth-fixture-application.js';
 import { FixtureResourceOwner } from './support/fixture-resource-owner.js';
-import { EMPTY_WORKFLOW_GRAPH_V1 } from '@pertexo/workflow-model';
+import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import {
   AuthoringValidationUnavailableError,
-  EMPTY_DEFINITION_CATALOG_V1,
+  EMPTY_DEFINITION_CATALOG,
   workflowCompatibilityReport,
 } from '@pertexo/workflow-model/server';
 import { createDraftRepresentationTag } from '../src/workflow-authoring/etag.js';
@@ -1169,10 +1169,10 @@ describe('API bootstrap ownership and health', () => {
       const baseRuntime = createStubApiWorkflowRuntime(
         selectedIdentity.dependencies.authorization,
       );
-      const graph = EMPTY_WORKFLOW_GRAPH_V1;
+      const graph = EMPTY_WORKFLOW_GRAPH;
       const compatibility = workflowCompatibilityReport(
         graph,
-        EMPTY_DEFINITION_CATALOG_V1,
+        EMPTY_DEFINITION_CATALOG,
       );
       const draft = {
         workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',

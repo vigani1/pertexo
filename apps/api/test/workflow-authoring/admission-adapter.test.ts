@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import {
-  EMPTY_WORKFLOW_GRAPH_V1,
+  EMPTY_WORKFLOW_GRAPH,
   InvalidWorkflowGraphError,
 } from '@pertexo/workflow-model';
 import {
@@ -23,7 +23,7 @@ const valid = {
   expandedInvocations: 0,
   worstCaseLoopIterations: 0,
 };
-const graph = EMPTY_WORKFLOW_GRAPH_V1;
+const graph = EMPTY_WORKFLOW_GRAPH;
 const draft = {
   workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

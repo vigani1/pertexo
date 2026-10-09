@@ -7,7 +7,7 @@ import {
   workflowDefinitionPlacementIssues,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/server';
+import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 
 import type { DatabaseConfig } from '../config.js';
 import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
@@ -103,7 +103,7 @@ export { reconcileWorkflowTriggersPayload } from './workflow-publication.js';
 function requirePlaceableDefinitionAdditions(
   previous: WorkflowGraph,
   next: WorkflowGraph,
-  placementCatalog: WorkflowDefinitionCatalogV1 | undefined,
+  placementCatalog: WorkflowDefinitionCatalog | undefined,
 ): void {
   if (placementCatalog === undefined) return;
   const issues = workflowDefinitionPlacementIssues(

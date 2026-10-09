@@ -1,12 +1,12 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
-  EMPTY_WORKFLOW_GRAPH_V1,
+  EMPTY_WORKFLOW_GRAPH,
   parseWorkflowGraphDraft,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import {
-  type WorkflowDefinitionCatalogV1,
+  type WorkflowDefinitionCatalog,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 
@@ -53,7 +53,7 @@ const resultSchema = z.object({ workflowId: uuid }).strict();
 async function selectedGraph(
   client: PoolClient,
   input: DuplicateWorkflowInput,
-  catalog: WorkflowDefinitionCatalogV1,
+  catalog: WorkflowDefinitionCatalog,
 ): Promise<WorkflowGraph> {
   if (input.source.kind === 'version') {
     const result = await client.query<{ graph_json: unknown }>(
@@ -174,7 +174,7 @@ export function createWorkflowDuplicationStore(
             await context.selectCatalogs(client);
           const graph = await selectedGraph(client, input, definitionCatalog);
           context.requirePlaceable(
-            EMPTY_WORKFLOW_GRAPH_V1,
+            EMPTY_WORKFLOW_GRAPH,
             graph,
             placementDefinitionCatalog ?? definitionCatalog,
           );

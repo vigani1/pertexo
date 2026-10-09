@@ -2,9 +2,9 @@ import type { FailureNotificationStore } from '@pertexo/database/notifications';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 import {
-  type FailureNotificationContextV1,
-  type FailureNotificationDeliveryResultV1,
-  FailureNotificationDeliveryResultV1Schema,
+  type FailureNotificationContext,
+  type FailureNotificationDeliveryResult,
+  FailureNotificationDeliveryResultSchema,
 } from '@pertexo/workflow-model';
 
 type Delivery = Extract<
@@ -15,7 +15,7 @@ type Delivery = Extract<
 export interface FailureNotificationDeliveryCapability {
   deliver(
     input: Readonly<{
-      context: FailureNotificationContextV1;
+      context: FailureNotificationContext;
       workspaceId: string;
       intentId: string;
       attemptNumber: number;
@@ -28,7 +28,7 @@ export interface FailureNotificationDeliveryCapability {
       deliveryUnresolved: boolean;
       signal: AbortSignal;
     }>,
-  ): Promise<FailureNotificationDeliveryResultV1>;
+  ): Promise<FailureNotificationDeliveryResult>;
 }
 
 export interface FailureNotificationHandler {
@@ -121,7 +121,7 @@ export function createFailureNotificationHandler(
         const timeout = setTimeout(() => {
           controller.abort(new Error('failure notification delivery timeout'));
         }, dependencies.timeoutMillis);
-        let result: FailureNotificationDeliveryResultV1;
+        let result: FailureNotificationDeliveryResult;
         try {
           let deliveryPromise: Promise<unknown>;
           try {
@@ -160,7 +160,7 @@ export function createFailureNotificationHandler(
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (queueContext.signal.aborted) return;
           if (settlement.kind === 'rejected') throw settlement.reason;
-          result = FailureNotificationDeliveryResultV1Schema.parse(
+          result = FailureNotificationDeliveryResultSchema.parse(
             settlement.value,
           );
         } catch {

@@ -3,9 +3,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 import {
-  EMPTY_DEFINITION_CATALOG_V1,
+  EMPTY_DEFINITION_CATALOG,
   workflowCompatibilityReport,
-  type WorkflowDefinitionCatalogV1,
+  type WorkflowDefinitionCatalog,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 
@@ -325,7 +325,7 @@ export async function currentRepresentationTag(
   scopedWorkspaceId: string,
   scopedWorkflowId: string,
   scopedActorId: string,
-  definitionCatalog?: WorkflowDefinitionCatalogV1,
+  definitionCatalog?: WorkflowDefinitionCatalog,
 ): Promise<string> {
   const draft = await database.getDraft(
     scopedWorkspaceId,
@@ -529,7 +529,7 @@ afterAll(async () => {
 
 export {
   CONNECTION_AUTH_TYPE,
-  EMPTY_DEFINITION_CATALOG_V1,
+  EMPTY_DEFINITION_CATALOG,
   BASELINE_COMPATIBILITY_EXPECTATION,
   IdempotencyConflictError,
   Pool,

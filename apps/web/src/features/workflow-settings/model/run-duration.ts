@@ -2,7 +2,7 @@ import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-
 import { formatDurationMs } from '@/lib/format-time';
 
 /**
- * The longest a run may take (`WORKFLOW_EXECUTION_LIMITS_V1` in
+ * The longest a run may take (`WORKFLOW_EXECUTION_LIMITS` in
  * workflow-model, which the browser can't import; a test pins the two). A
  * workflow without its own setting gets this limit.
  */

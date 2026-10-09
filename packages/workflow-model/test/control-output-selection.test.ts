@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   workflowControlOutputKind,
-  workflowControlOutputNodeIdsV2,
+  workflowControlOutputNodeIds,
 } from '../src/graph/control-output-selection.js';
 
 describe('immutable executable control-output selection', () => {
   it('selects current control identities across structured bodies, not output-shaped Set nodes', () => {
     expect(
-      workflowControlOutputNodeIdsV2({
+      workflowControlOutputNodeIds({
         schemaVersion: 2,
         graph: {
           nodes: [
@@ -59,7 +59,7 @@ describe('immutable executable control-output selection', () => {
 
   it('bounds metadata traversal without inspecting output values', () => {
     expect(() =>
-      workflowControlOutputNodeIdsV2({
+      workflowControlOutputNodeIds({
         schemaVersion: 2,
         graph: {
           nodes: Array.from({ length: 10_001 }, (_, index) => ({
@@ -90,6 +90,6 @@ describe('immutable executable control-output selection', () => {
       },
     },
   ])('fails closed for invalid or incomplete V2 metadata %j', (value) => {
-    expect(() => workflowControlOutputNodeIdsV2(value)).toThrow(TypeError);
+    expect(() => workflowControlOutputNodeIds(value)).toThrow(TypeError);
   });
 });

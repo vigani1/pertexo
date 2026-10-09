@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/server';
+import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 
 import type {
   PortableCatalog,
@@ -18,12 +18,12 @@ export type WorkflowAuthoringWriteContext = Readonly<{
   requirePlaceable(
     previous: WorkflowGraph,
     next: WorkflowGraph,
-    placementCatalog: WorkflowDefinitionCatalogV1 | undefined,
+    placementCatalog: WorkflowDefinitionCatalog | undefined,
   ): void;
   selectCatalogs(client: Pick<PoolClient, 'query'>): Promise<
     Readonly<{
-      definitionCatalog: WorkflowDefinitionCatalogV1;
-      placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;
+      definitionCatalog: WorkflowDefinitionCatalog;
+      placementDefinitionCatalog: WorkflowDefinitionCatalog | undefined;
       portableCatalog: PortableCatalog | undefined;
       validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
     }>

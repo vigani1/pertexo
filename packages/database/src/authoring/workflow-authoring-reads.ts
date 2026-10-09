@@ -21,7 +21,7 @@ import type {
   WorkflowVersionRecord,
 } from './workflow-authoring-records.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/server';
+import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import type { WorkflowAuthoringGraphValidator } from './workflow-authoring-types.js';
 import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 
@@ -44,10 +44,10 @@ export type WorkflowAuthoringReadContext = Readonly<{
   ): Promise<void>;
   selectDefinitionCatalog(
     client: Pick<PoolClient, 'query'>,
-  ): Promise<WorkflowDefinitionCatalogV1>;
+  ): Promise<WorkflowDefinitionCatalog>;
   selectValidationVariant(client: Pick<PoolClient, 'query'>): Promise<
     Readonly<{
-      definitionCatalog: WorkflowDefinitionCatalogV1;
+      definitionCatalog: WorkflowDefinitionCatalog;
       validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
     }>
   >;

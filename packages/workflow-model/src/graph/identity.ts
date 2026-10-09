@@ -17,7 +17,7 @@ import {
   type GraphValidationIssue,
 } from './validation-contract.js';
 
-export interface WorkflowDefinitionCatalogV1 {
+export interface WorkflowDefinitionCatalog {
   readonly schemaVersion: 1;
   /** Full durable release identity selected by the serving artifact. */
   readonly releaseFingerprint?: string;
@@ -39,7 +39,7 @@ export type WorkflowIntegrationUsage = Readonly<{
   connectionId: string;
 }>;
 
-export const EMPTY_DEFINITION_CATALOG_V1: WorkflowDefinitionCatalogV1 =
+export const EMPTY_DEFINITION_CATALOG: WorkflowDefinitionCatalog =
   Object.freeze({ schemaVersion: 1, definitions: Object.freeze([]) });
 
 export interface WorkflowCompatibilityIssue {
@@ -59,7 +59,7 @@ function compareOrdinal(left: string, right: string): number {
 }
 
 function definitionCatalogFingerprint(
-  catalog: WorkflowDefinitionCatalogV1,
+  catalog: WorkflowDefinitionCatalog,
 ): string {
   if (catalog.releaseFingerprint !== undefined) {
     if (
@@ -110,7 +110,7 @@ function* workflowNodes(graph: WorkflowGraph) {
  */
 export function workflowIntegrationUsage(
   input: unknown,
-  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+  catalog: WorkflowDefinitionCatalog = EMPTY_DEFINITION_CATALOG,
 ): readonly WorkflowIntegrationUsage[] {
   const graph = parseWorkflowGraphDraft(input);
   const definitions = new Map(
@@ -156,7 +156,7 @@ export function workflowIntegrationUsage(
 
 function compatibilityForGraph(
   graph: WorkflowGraph,
-  catalog: WorkflowDefinitionCatalogV1,
+  catalog: WorkflowDefinitionCatalog,
 ): WorkflowCompatibilityReport {
   const known = new Set(
     catalog.definitions.map(
@@ -187,14 +187,14 @@ function compatibilityForGraph(
 
 export function workflowCompatibilityReport(
   input: unknown,
-  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+  catalog: WorkflowDefinitionCatalog = EMPTY_DEFINITION_CATALOG,
 ): WorkflowCompatibilityReport {
   return compatibilityForGraph(parseWorkflowGraphDraft(input), catalog);
 }
 
 export function parseWorkflowGraphForPublish(
   input: unknown,
-  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+  catalog: WorkflowDefinitionCatalog = EMPTY_DEFINITION_CATALOG,
 ): WorkflowGraph {
   const graph = parseWorkflowGraphDraft(input);
   const validation = validateWorkflowGraph(graph);
@@ -262,7 +262,7 @@ function executableGraphProjection(
 
 function workflowExecutableProjection(
   input: unknown,
-  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+  catalog: WorkflowDefinitionCatalog = EMPTY_DEFINITION_CATALOG,
 ): JsonValue {
   return executableGraphProjection(
     parseWorkflowGraphForPublish(input, catalog),
@@ -271,7 +271,7 @@ function workflowExecutableProjection(
 
 export function workflowExecutableChecksum(
   input: unknown,
-  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+  catalog: WorkflowDefinitionCatalog = EMPTY_DEFINITION_CATALOG,
 ): string {
   return checksumExecutableProjection(
     workflowExecutableProjection(input, catalog),

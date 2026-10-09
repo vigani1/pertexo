@@ -9,7 +9,7 @@ import type {
 } from '../graph/validation-contract.js';
 import {
   validateExpression,
-  EXPRESSION_POLICY_V1,
+  EXPRESSION_POLICY,
   type ExpressionValidation,
 } from '../expressions/policy.js';
 import {
@@ -101,7 +101,7 @@ export function validateAuthoringBatch(
         let message: string;
         if (
           pins?.has(source.policyVersion) !== true ||
-          source.policyVersion !== EXPRESSION_POLICY_V1.policyVersion
+          source.policyVersion !== EXPRESSION_POLICY.policyVersion
         ) {
           message =
             'The expression policy is not available for this step definition.';

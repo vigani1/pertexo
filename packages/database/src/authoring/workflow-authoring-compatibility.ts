@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import {
-  EMPTY_DEFINITION_CATALOG_V1,
-  type WorkflowDefinitionCatalogV1,
+  EMPTY_DEFINITION_CATALOG,
+  type WorkflowDefinitionCatalog,
 } from '@pertexo/workflow-model/server';
 
 import {
@@ -21,8 +21,8 @@ import type {
 type WorkflowAuthoringCompatibilitySelection = Readonly<{
   portableCatalog: PortableCatalog | undefined;
   compatibilityRelease: CompatibilityReleaseExpectation | undefined;
-  definitionCatalog: WorkflowDefinitionCatalogV1;
-  placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;
+  definitionCatalog: WorkflowDefinitionCatalog;
+  placementDefinitionCatalog: WorkflowDefinitionCatalog | undefined;
   executableCompiler: WorkflowExecutableCompiler | undefined;
   validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
 }>;
@@ -46,8 +46,8 @@ function sameRelease(
 
 function requireMatchingCatalog(
   release: CompatibilityReleaseExpectation,
-  definitionCatalog: WorkflowDefinitionCatalogV1,
-  placementDefinitionCatalog: WorkflowDefinitionCatalogV1,
+  definitionCatalog: WorkflowDefinitionCatalog,
+  placementDefinitionCatalog: WorkflowDefinitionCatalog,
   message: string,
 ): void {
   if (
@@ -87,7 +87,7 @@ export function normalizeWorkflowAuthoringCompatibility(
         ? undefined
         : parseCompatibilityReleaseExpectation(options.compatibilityRelease);
     const definitionCatalog =
-      options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG_V1;
+      options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG;
     if (
       options.executableCompiler !== undefined &&
       (compatibilityRelease === undefined ||

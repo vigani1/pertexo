@@ -5,7 +5,7 @@ import type {
   WorkflowPortabilityCatalog,
   WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
-import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/server';
+import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import type { WorkflowTemplateOriginRequest } from '@pertexo/templates';
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
 
@@ -82,8 +82,8 @@ export type PortableCatalog = WorkflowPortabilityCatalog &
 type WorkflowAuthoringCompatibilityVariant = Readonly<{
   portableCatalog?: PortableCatalog;
   compatibilityRelease: CompatibilityReleaseExpectation;
-  definitionCatalog: WorkflowDefinitionCatalogV1;
-  placementDefinitionCatalog: WorkflowDefinitionCatalogV1;
+  definitionCatalog: WorkflowDefinitionCatalog;
+  placementDefinitionCatalog: WorkflowDefinitionCatalog;
   executableCompiler: WorkflowExecutableCompiler;
   validateAuthoringGraph?: WorkflowAuthoringGraphValidator;
 }>;
@@ -93,8 +93,8 @@ export type WorkflowAuthoringDatabaseOptions = Readonly<{
   compatibilityRelease?: CompatibilityReleaseExpectation;
   compatibilityReleaseVariants?: readonly WorkflowAuthoringCompatibilityVariant[];
   compatibilityReadinessReleases?: readonly CompatibilityReleaseExpectation[];
-  definitionCatalog?: WorkflowDefinitionCatalogV1;
-  placementDefinitionCatalog?: WorkflowDefinitionCatalogV1;
+  definitionCatalog?: WorkflowDefinitionCatalog;
+  placementDefinitionCatalog?: WorkflowDefinitionCatalog;
   runtime?: DatabaseRuntime;
   executableCompiler?: WorkflowExecutableCompiler;
   validateAuthoringGraph?: WorkflowAuthoringGraphValidator;

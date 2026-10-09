@@ -18,7 +18,7 @@ export function workflowControlOutputKind(
 }
 
 /** Selects node IDs from the immutable compiled V2 envelope. */
-export function workflowControlOutputNodeIdsV2(
+export function workflowControlOutputNodeIds(
   executableJson: unknown,
 ): ReadonlySet<string> {
   if (
