@@ -209,8 +209,6 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'workspace_inbox_threads',
     'workspace_inbox_events',
     'workflow_concurrency_policies',
-    'workflow_concurrency_command_receipts',
-    'workflow_auto_pause_command_receipts',
     'workflow_trigger_pause_periods',
     'workflow_failure_streaks',
     'workflow_trigger_outcomes',

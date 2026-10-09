@@ -200,34 +200,6 @@ export const RETENTION_RULES = Object.freeze([
       where record.id = page.id`,
   },
   {
-    name: 'concurrency_command_receipts',
-    statement: `
-      with page as (
-        select workspace_id, actor_id, workflow_id, key_hash
-        from app.workflow_concurrency_command_receipts
-        where result is not null and expires_at <= clock_timestamp()
-        order by expires_at limit $1
-      )
-      delete from app.workflow_concurrency_command_receipts receipt using page
-      where (receipt.workspace_id, receipt.actor_id, receipt.workflow_id, receipt.key_hash)
-        = (page.workspace_id, page.actor_id, page.workflow_id, page.key_hash)`,
-  },
-  {
-    name: 'auto_pause_command_receipts',
-    statement: `
-      with page as (
-        select workspace_id, actor_id, resource_id, operation, key_hash
-        from app.workflow_auto_pause_command_receipts
-        where result is not null and expires_at <= clock_timestamp()
-        order by expires_at limit $1
-      )
-      delete from app.workflow_auto_pause_command_receipts receipt using page
-      where (receipt.workspace_id, receipt.actor_id, receipt.resource_id,
-             receipt.operation, receipt.key_hash)
-        = (page.workspace_id, page.actor_id, page.resource_id,
-           page.operation, page.key_hash)`,
-  },
-  {
     name: 'manual_start_rejections',
     statement: `
       with page as (

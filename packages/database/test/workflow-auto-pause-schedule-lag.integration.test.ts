@@ -387,18 +387,24 @@ describe('paused schedule admission after resume and scanner lag', () => {
         await resuming.query<{ pid: number }>('select pg_backend_pid() pid')
       ).rows[0]?.pid;
       if (pid === undefined) throw new Error('Missing resuming pid');
-      // Invoke the real authenticated owner command but hold its commit, so
-      // the admission's workflow SHARE lock has to wait for the cleared state.
+      // Make the resume's writes as the app role but hold the commit, so the
+      // admission's workflow SHARE lock has to wait for the cleared state.
       await resuming.query(
-        `select app.workflow_auto_pause_control($1,$2,$3,'resume',$4::jsonb,$5,$6,null,null)`,
-        [
-          workspaceId,
-          actorId,
-          workflowId,
-          JSON.stringify({ expectedPauseRevision: revision }),
-          'd'.repeat(64),
-          'e'.repeat(64),
-        ],
+        `insert into app.workflow_trigger_pause_periods
+           (workspace_id, workflow_id, pause_revision, paused_at, resumed_at)
+         select workspace_id, id, trigger_pause_revision, trigger_paused_at, clock_timestamp()
+         from app.workflows
+         where workspace_id = $1 and id = $2 and trigger_pause_revision = $3::bigint`,
+        [workspaceId, workflowId, revision],
+      );
+      await resuming.query(
+        `update app.workflows
+         set trigger_pause_state = 'none', trigger_paused_at = null,
+             trigger_pause_reason = null, trigger_pause_failures = null,
+             trigger_pause_last_run_id = null,
+             trigger_pause_revision = trigger_pause_revision + 1
+         where workspace_id = $1 and id = $2`,
+        [workspaceId, workflowId],
       );
       pending = fixture.worker.query<{ paused: boolean }>(
         'select app.schedule_claim_workflow_paused($1,$2,$3::timestamptz) paused',

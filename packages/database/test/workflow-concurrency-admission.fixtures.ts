@@ -135,7 +135,7 @@ export async function withDispatcher<T>(
   }
 }
 
-/** Runs retention and returns how many concurrency receipts it removed. */
+/** Runs retention and returns how many idempotency records it removed. */
 export async function reapConcurrencyReceipts() {
   const url = new URL(process.env.DATABASE_MAINTENANCE_URL ?? migrationUrl);
   if (process.env.DATABASE_MAINTENANCE_URL === undefined) {
@@ -143,7 +143,7 @@ export async function reapConcurrencyReceipts() {
     url.password = 'pertexo-local-maintenance';
   }
   url.pathname = new URL(migrationUrl).pathname;
-  return (await enforceRetention(url.toString())).concurrency_command_receipts;
+  return (await enforceRetention(url.toString())).idempotency_records;
 }
 
 export async function acceptRun(

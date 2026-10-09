@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
@@ -75,11 +75,18 @@ describe('workflow concurrency review regressions', () => {
           await settings.query("select set_config('app.actor_id',$1,true)", [
             scope.actorId,
           ]);
-          const hash = createHash('sha256').update(randomUUID()).digest('hex');
+          // A limit change holds the admission lock until it commits.
+          await settings.query('select app.lock_workspace_admission($1)', [
+            scope.workspaceId,
+          ]);
           await settings.query(
-            `select app.workflow_concurrency_control($1,$2,$3,'update',
-              '{"limit":1,"expectedRevision":1}'::jsonb,$4,$4,null,null)`,
-            [scope.workspaceId, scope.actorId, scope.workflowId, hash],
+            `insert into app.workflow_concurrency_policies
+               (workspace_id, workflow_id, active_run_limit, revision)
+             values ($1, $2, 1, 2)
+             on conflict (workspace_id, workflow_id) do update
+             set active_run_limit = 1,
+                 revision = app.workflow_concurrency_policies.revision + 1`,
+            [scope.workspaceId, scope.workflowId],
           );
           await writer.query('begin');
           await writer.query("select set_config('app.workspace_id',$1,true)", [

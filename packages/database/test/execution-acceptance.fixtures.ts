@@ -203,7 +203,6 @@ async function resetExecutionFixture(): Promise<void> {
     await client.query(`
       truncate table
         app.idempotency_records,
-        app.workflow_concurrency_command_receipts,
         app.run_events,
         app.run_checkpoints,
         app.workflow_runs,

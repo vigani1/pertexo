@@ -35,10 +35,7 @@ import {
   usageEvents,
 } from './schema/foundation.js';
 import { rlsProbeRecords } from './schema/rls-probe.js';
-import {
-  workflowConcurrencyPolicies,
-  workflowConcurrencyCommandReceipts,
-} from './schema/workflow-concurrency.js';
+import { workflowConcurrencyPolicies } from './schema/workflow-concurrency.js';
 import { workspaceLegalHolds } from './schema/retention.js';
 import {
   connections,
@@ -81,7 +78,6 @@ import {
 import {
   workflowFailureStreaks,
   workflowTriggerOutcomes,
-  workflowAutoPauseCommandReceipts,
   workflowTriggerPausePeriods,
 } from './schema/trigger-pause.js';
 import {
@@ -156,7 +152,6 @@ export const databaseSchema = {
   workflowInputCasePayloads,
   workflowInputCaseReceipts,
   workflowConcurrencyPolicies,
-  workflowConcurrencyCommandReceipts,
   artifactLinks,
   artifacts,
   workspaceArtifactCapacity,
@@ -193,7 +188,6 @@ export const databaseSchema = {
   workspaceInboxThreads,
   workflowFailureStreaks,
   workflowTriggerOutcomes,
-  workflowAutoPauseCommandReceipts,
   workflowTriggerPausePeriods,
   workspaceInvitations,
   workspaceInvitationCommandReceipts,

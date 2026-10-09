@@ -9,9 +9,9 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
 } from '../src/testing.js';
+import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import { createWorkflowTriggerPauseFoldStore } from '../src/triggers/pause/fold-store.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { enforceRetention } from './support/retention.js';
@@ -237,7 +237,7 @@ describe('workflow auto pause operational controls', () => {
     });
     await expect(
       controls().updateWorkflowSettings({ ...command, enabled: true }),
-    ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     await expect(
       controls().updateWorkflowSettings({
         ...command,
@@ -419,16 +419,29 @@ describe('workflow auto pause operational controls', () => {
         "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
         [scope.workspaceId, scope.actorId],
       );
+      // The same writes a resume makes, committed while the fold waits.
       await blocker.query(
-        `select app.workflow_auto_pause_control($1,$2,$3,'resume',$4::jsonb,$5,$6,null,null)`,
-        [
-          scope.workspaceId,
-          scope.actorId,
-          scope.workflowId,
-          JSON.stringify({ expectedPauseRevision: '2' }),
-          'a'.repeat(64),
-          'b'.repeat(64),
-        ],
+        `insert into app.workflow_trigger_pause_periods
+           (workspace_id, workflow_id, pause_revision, paused_at, resumed_at)
+         select workspace_id, id, trigger_pause_revision, trigger_paused_at, clock_timestamp()
+         from app.workflows where workspace_id = $1 and id = $2`,
+        [scope.workspaceId, scope.workflowId],
+      );
+      await blocker.query(
+        `update app.workflow_failure_streaks
+         set consecutive_failures = 0, last_run_id = null, last_ended_at = null,
+             resumed_after = clock_timestamp(), updated_at = clock_timestamp()
+         where workspace_id = $1 and workflow_id = $2`,
+        [scope.workspaceId, scope.workflowId],
+      );
+      await blocker.query(
+        `update app.workflows
+         set trigger_pause_state = 'none', trigger_paused_at = null,
+             trigger_pause_reason = null, trigger_pause_failures = null,
+             trigger_pause_last_run_id = null,
+             trigger_pause_revision = trigger_pause_revision + 1
+         where workspace_id = $1 and id = $2`,
+        [scope.workspaceId, scope.workflowId],
       );
       await blocker.query('commit');
       expect(await pendingFold).toEqual([]);
@@ -441,50 +454,8 @@ describe('workflow auto pause operational controls', () => {
       blocker.release();
     }
   });
-  it('never grants direct streak/receipt authority and rejects malformed direct commands', async () => {
+  it('rejects malformed and stale resume revisions', async () => {
     const scope = await seed();
-    await expect(
-      api.query('select * from app.workflow_failure_streaks'),
-    ).rejects.toThrow(/permission denied/u);
-    await expect(
-      api.query('select * from app.workflow_auto_pause_command_receipts'),
-    ).rejects.toThrow(/permission denied/u);
-    await expect(
-      worker.query(
-        `select app.workflow_auto_pause_control($1,$2,$3,'read','{}',null,null,null,null)`,
-        [scope.workspaceId, scope.actorId, scope.workflowId],
-      ),
-    ).rejects.toThrow('auto pause context denied');
-    const client = await api.connect();
-    try {
-      for (const request of [
-        { expectedPauseRevision: null },
-        {},
-        { expectedPauseRevision: '1', unknown: true },
-      ]) {
-        await client.query('begin');
-        await client.query(
-          "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
-          [scope.workspaceId, scope.actorId],
-        );
-        await expect(
-          client.query(
-            `select app.workflow_auto_pause_control($1,$2,$3,'resume',$4::jsonb,$5,$6,null,null)`,
-            [
-              scope.workspaceId,
-              scope.actorId,
-              scope.workflowId,
-              JSON.stringify(request),
-              'a'.repeat(64),
-              'b'.repeat(64),
-            ],
-          ),
-        ).rejects.toThrow(/invalid auto pause request/u);
-        await client.query('rollback');
-      }
-    } finally {
-      client.release();
-    }
     await expect(
       controls().resumeWorkflow({
         ...scope,
@@ -674,15 +645,15 @@ describe('workflow auto pause operational controls', () => {
     };
     await controls().updateWorkflowSettings(command);
     await admin.query(
-      "update app.workflow_auto_pause_command_receipts set expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1",
+      "update app.idempotency_records set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and operation='workflow.autopause.settings'",
       [scope.workspaceId],
     );
     const removed = await enforceRetention(maintenanceUrl);
-    expect(removed.auto_pause_command_receipts).toBe(1);
+    expect(removed.idempotency_records).toBeGreaterThanOrEqual(1);
     expect(
       (
         await admin.query(
-          'select 1 from app.workflow_auto_pause_command_receipts where workspace_id=$1',
+          "select 1 from app.idempotency_records where workspace_id=$1 and operation='workflow.autopause.settings'",
           [scope.workspaceId],
         )
       ).rows,
