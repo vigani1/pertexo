@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model/failure-notification';
+import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model';
 
 import { FailureNotificationStateError } from '../errors.js';
 import {

@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import {
   canonicalJson,
   type JsonValue,
-} from '@pertexo/workflow-model/canonical-json';
-import { workflowControlOutputKind } from '@pertexo/workflow-model/graph';
+  workflowControlOutputKind,
+} from '@pertexo/workflow-model';
 
 import type { parseCheckpoint } from '../checkpoint/checkpoint.js';
 import type { WorkflowExecutableNodeV2 } from '../executable-workflow.js';

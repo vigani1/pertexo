@@ -4,13 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PoolClient } from 'pg';
 import { Pool } from 'pg';
 import {
-  EMPTY_DEFINITION_CATALOG_V1,
   EMPTY_WORKFLOW_GRAPH_V1,
   InvalidWorkflowGraphError,
+} from '@pertexo/workflow-model';
+import {
+  AuthoringValidationUnavailableError,
+  EMPTY_DEFINITION_CATALOG_V1,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
-} from '@pertexo/workflow-model/graph';
-import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
+} from '@pertexo/workflow-model/server';
 import {
   admitWorkflowAuthoring,
   authoringIdleBudgetIsSafe,

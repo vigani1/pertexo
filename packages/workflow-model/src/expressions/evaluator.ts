@@ -1,5 +1,5 @@
 import { Worker } from 'node:worker_threads';
-import { canonicalizeJson, inspectJsonValue } from '../canonical-json.js';
+import { canonicalizeJson, inspectJsonValue } from '../json/canonical-json.js';
 import {
   EXPRESSION_POLICY_V1,
   JSONATA_EVALUATOR_DIAGNOSTICS,
@@ -15,8 +15,8 @@ import {
 
 const WORKER_RUNTIME_URL = new URL(
   import.meta.url.endsWith('.ts')
-    ? '../expression-worker-runtime.ts'
-    : '../expression-worker-runtime.js',
+    ? './evaluation-thread.ts'
+    : './evaluation-thread.js',
   import.meta.url,
 );
 

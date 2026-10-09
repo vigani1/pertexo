@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/graph';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {

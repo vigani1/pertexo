@@ -116,7 +116,7 @@ test('web source allows only reviewed workspace package subpaths', () => {
     'apps/web/src/features/settings/webhooks.api.ts':
       "import { webhookTriggerListResponseSchema } from '@pertexo/contracts/schemas/webhooks';",
     'apps/web/src/features/workflow-editor/model/input-mappings.ts':
-      "import { parseJsonPath } from '@pertexo/workflow-model/json-path';",
+      "import { parseJsonPath } from '@pertexo/workflow-model';",
     'apps/web/src/features/workflows/model/curated-templates.ts':
       "import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';",
   };
@@ -126,7 +126,7 @@ test('web source allows only reviewed workspace package subpaths', () => {
     '@pertexo/contracts',
     '@pertexo/contracts/errors',
     '@pertexo/contracts/schemas/transport-internals',
-    '@pertexo/workflow-model',
+    '@pertexo/workflow-model/server',
     '@pertexo/database/runs',
   ])
     assert.match(

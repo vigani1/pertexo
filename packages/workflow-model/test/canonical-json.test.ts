@@ -4,7 +4,7 @@ import {
   InvalidJsonValueError,
   canonicalJson,
   inspectJsonValue,
-} from '../src/canonical-json.js';
+} from '../src/json/canonical-json.js';
 
 describe('canonical JSON', () => {
   it('sorts every object and reports stable UTF-8 bytes', () => {

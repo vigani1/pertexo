@@ -26,7 +26,7 @@ import {
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/graph';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { Pool, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

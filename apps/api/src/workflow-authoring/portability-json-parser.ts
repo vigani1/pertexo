@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { FastifyAdapter } from '@nestjs/platform-fastify';
-import { parsePortableJson } from '@pertexo/workflow-model/portability-contract';
+import { parsePortableJson } from '@pertexo/workflow-model';
 
 const importPath = /^\/v1\/workspaces\/[^/]+\/workflows\/import(?:\/preview)?$/;
 const portablePath =

@@ -2,13 +2,11 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   parseWorkflowGraphDraft,
-  workflowDraftRepresentationTag,
+  type PortableConnectionBinding,
   type WorkflowGraph,
-} from '@pertexo/workflow-model/graph';
-import type {
-  PortableConnectionBinding,
-  WorkflowPortableManifest,
-} from '@pertexo/workflow-model/portability-contract';
+  type WorkflowPortableManifest,
+} from '@pertexo/workflow-model';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import type { ExportWorkflowInput } from './workflow-authoring-contracts.js';
 import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import {

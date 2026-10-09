@@ -1,140 +1,14 @@
-import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import {
-  WorkflowGraphContractError,
-  safeParseWorkflowGraphDraft,
-} from '../src/index.js';
+import { safeParseWorkflowGraphDraft } from '../src/graph/preflight.js';
+import { WorkflowGraphContractError } from '../src/graph/validation-contract.js';
 import {
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
   workflowGraphSchema,
-} from '../src/graph-contract.js';
+} from '../src/graph/contract.js';
 
-describe('workflow-model package contract', () => {
-  it('keeps authoring validation behind an explicit server-only facade', async () => {
-    const entry = await import('../src/authoring-validation.js');
-    expect(Object.keys(entry).sort()).toEqual([
-      'AUTHORING_VALIDATION_BUDGET',
-      'AuthoringValidationUnavailableError',
-      'WorkflowAuthoringValidator',
-    ]);
-    expect(await import('../src/index.js')).not.toHaveProperty(
-      'WorkflowAuthoringValidator',
-    );
-    const built = await import('../dist/authoring-validation.js');
-    const owner = new built.WorkflowAuthoringValidator();
-    try {
-      expect(
-        await owner.validate(
-          { schemaVersion: 1, nodes: [], edges: [], settings: {} },
-          { releaseFingerprint: 'test-selected-release', definitions: [] },
-        ),
-      ).toMatchObject({ ok: true });
-    } finally {
-      await owner.shutdown();
-    }
-  });
-  it('keeps the server root facade explicit and stable', async () => {
-    const publicEntry = await import('../src/index.js');
-    expect(Object.keys(publicEntry).sort()).toEqual([
-      'CANONICAL_JSON_MAX_DEPTH',
-      'EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1',
-      'EMPTY_DEFINITION_CATALOG_V1',
-      'EMPTY_WORKFLOW_GRAPH_V1',
-      'EXPRESSION_POLICY_V1',
-      'InvalidJsonValueError',
-      'InvalidWorkflowGraphError',
-      'JSONATA_EVALUATOR_DIAGNOSTICS',
-      'JsonataEvaluator',
-      'WORKFLOW_EXECUTION_LIMITS_V1',
-      'WORKFLOW_GRAPH_LIMITS',
-      'WorkflowGraphContractError',
-      'WorkflowSettingsSchemaV1',
-      'canonicalJson',
-      'canonicalizeJson',
-      'inspectJsonValue',
-      'parseRetainedWorkflowVersionV1',
-      'parseWorkflowGraphDraft',
-      'parseWorkflowGraphForPublish',
-      'resolveJsonPath',
-      'resolveValueSource',
-      'safeParseWorkflowGraphDraft',
-      'validateExpression',
-      'validateWorkflowGraph',
-      'workflowCompatibilityReport',
-      'workflowControlOutputKind',
-      'workflowControlOutputNodeIdsV2',
-      'workflowDefinitionPlacementIssues',
-      'workflowDraftRepresentationTag',
-      'workflowExecutableChecksum',
-      'workflowExecutableProjection',
-      'workflowForEachBoundsV2',
-      'workflowIntegrationUsage',
-      'workflowRetainedExecutableChecksum',
-    ]);
-  });
-
-  it('keeps canonical graph ownership browser-safe while server implementation exports remain protected', async () => {
-    const json = JSON.parse(
-      await readFile(new URL('../package.json', import.meta.url), 'utf8'),
-    ) as {
-      dependencies: Record<string, string>;
-      exports: Record<
-        string,
-        { types: string; node?: string; default: string }
-      >;
-      browser: Record<string, false>;
-    };
-    expect(json.dependencies).not.toHaveProperty('@pertexo/contracts');
-    expect(json.exports['./authoring-validation']).toMatchObject({
-      browser: false,
-    });
-    const graphContract = json.exports['./graph-contract'];
-    if (graphContract === undefined)
-      throw new Error('missing browser-safe graph contract export');
-    expect(graphContract).toEqual({
-      types: './dist/graph-contract.d.ts',
-      default: './dist/graph-contract.js',
-    });
-    expect(json.browser[graphContract.default]).toBeUndefined();
-    expect(json.exports['./portability-contract']).toEqual({
-      types: './dist/portability-contract.d.ts',
-      default: './dist/portability-contract.js',
-    });
-    expect(json.browser['./dist/portability-contract.js']).toBeUndefined();
-    expect(
-      await readFile(
-        new URL('../src/graph-contract.ts', import.meta.url),
-        'utf8',
-      ),
-    ).not.toMatch(/(?:from|import) ['"](?:node:|@pertexo\/contracts)/u);
-
-    for (const [name, value] of Object.entries(json.exports)) {
-      if (
-        name === './assert-never' ||
-        name === './failure-notification' ||
-        name === './graph-contract' ||
-        name === './portability-contract' ||
-        name === './json-path' ||
-        name === './lifecycle' ||
-        name === './observation-window'
-      )
-        continue;
-      if (value.node === undefined)
-        throw new Error(`server export ${name} is missing its node target`);
-      expect(value.default).toBe(value.node);
-      expect(json.browser[value.node]).toBe(false);
-      const source = new URL(
-        value.node.replace('./dist/', '../src/').replace(/\.js$/u, '.ts'),
-        import.meta.url,
-      );
-      expect(await readFile(source, 'utf8')).toContain(
-        "import './server-only.js';",
-      );
-    }
-  });
-
-  it('exposes only guarded graph parsing and safely rejects deeply nested input', async () => {
+describe('graph parsing in the browser schema and the server parser', () => {
+  it('safely rejects deeply nested input', () => {
     let graph: Record<string, unknown> = {
       schemaVersion: 1,
       nodes: [],
@@ -173,9 +47,6 @@ describe('workflow-model package contract', () => {
 
     expect(() => workflowGraphSchema.safeParse(graph)).not.toThrow(RangeError);
     expect(workflowGraphSchema.safeParse(graph).success).toBe(false);
-
-    const publicEntry = await import('../src/index.js');
-    expect(publicEntry).not.toHaveProperty('WorkflowGraphInputSchemaV1');
   });
 
   it('applies aggregate nested node limits identically in browser and server entrypoints', () => {

@@ -15,7 +15,7 @@ import {
   type LoopState,
   type WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
-import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 
 /** Everything a node attempt's executor reads, projected from stored state. */
 export type NodeAttemptInputs = Omit<NodeAttemptStoredInputs, 'checkpoint'> &

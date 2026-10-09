@@ -1,4 +1,4 @@
-import { workflowControlOutputKind } from '@pertexo/workflow-model/graph';
+import { workflowControlOutputKind } from '@pertexo/workflow-model';
 
 import { invocationKey } from './scheduling.js';
 import { WorkflowEngineError } from '../errors.js';

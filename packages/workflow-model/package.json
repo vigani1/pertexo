@@ -6,84 +6,16 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "node": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./canonical-json": {
-      "types": "./dist/canonical-json.d.ts",
-      "node": "./dist/canonical-json.js",
-      "default": "./dist/canonical-json.js"
-    },
-    "./graph": {
-      "types": "./dist/graph.d.ts",
-      "node": "./dist/graph.js",
-      "default": "./dist/graph.js"
-    },
-    "./graph-contract": {
-      "types": "./dist/graph-contract.d.ts",
-      "default": "./dist/graph-contract.js"
-    },
-    "./portability-contract": {
-      "types": "./dist/portability-contract.d.ts",
-      "default": "./dist/portability-contract.js"
-    },
-    "./portability": {
-      "types": "./dist/portability.d.ts",
+    "./server": {
+      "types": "./dist/server.d.ts",
       "browser": false,
-      "node": "./dist/portability.js",
-      "default": "./dist/portability.js"
-    },
-    "./failure-notification": {
-      "types": "./dist/failure-notification.d.ts",
-      "default": "./dist/failure-notification.js"
-    },
-    "./assert-never": {
-      "types": "./dist/assert-never.d.ts",
-      "default": "./dist/assert-never.js"
-    },
-    "./mapping": {
-      "types": "./dist/mapping.d.ts",
-      "node": "./dist/mapping.js",
-      "default": "./dist/mapping.js"
-    },
-    "./json-path": {
-      "types": "./dist/json-path.d.ts",
-      "default": "./dist/json-path.js"
-    },
-    "./lifecycle": {
-      "types": "./dist/lifecycle.d.ts",
-      "default": "./dist/lifecycle.js"
-    },
-    "./observation-window": {
-      "types": "./dist/observation-window.d.ts",
-      "default": "./dist/observation-window.js"
-    },
-    "./attempt-failure": {
-      "types": "./dist/attempt-failure.d.ts",
-      "node": "./dist/attempt-failure.js",
-      "default": "./dist/attempt-failure.js"
-    },
-    "./authoring-validation": {
-      "types": "./dist/authoring-validation.d.ts",
-      "browser": false,
-      "node": "./dist/authoring-validation.js",
-      "default": "./dist/authoring-validation.js"
-    },
-    "./expressions": {
-      "types": "./dist/expressions.d.ts",
-      "node": "./dist/expressions.js",
-      "default": "./dist/expressions.js"
+      "node": "./dist/server.js"
     }
   },
   "browser": {
-    "./dist/portability.js": false,
-    "./dist/index.js": false,
-    "./dist/canonical-json.js": false,
-    "./dist/graph.js": false,
-    "./dist/mapping.js": false,
-    "./dist/expressions.js": false,
-    "./dist/authoring-validation.js": false,
-    "./dist/attempt-failure.js": false
+    "./dist/server.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

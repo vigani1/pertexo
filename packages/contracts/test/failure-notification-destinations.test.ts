@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model/failure-notification';
+import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model';
 
 import {
   failureNotificationDestinationAppendVersionRequestSchema,

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   workflowActivationStatusSchema,
   workflowLifecycleStatusSchema,
-} from '@pertexo/workflow-model/lifecycle';
+} from '@pertexo/workflow-model';
 
 import {
   claimCommand,

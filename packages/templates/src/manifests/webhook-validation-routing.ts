@@ -1,4 +1,4 @@
-import type { WorkflowPortableManifest } from '@pertexo/workflow-model/portability-contract';
+import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 
 // Public instructional base; setup and bindings must be explicitly configured.
 export const WEBHOOK_VALIDATION_ROUTING_MANIFEST: WorkflowPortableManifest = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { WorkflowGraph, WorkflowNode } from '../src/graph-contract.js';
+import type { WorkflowGraph, WorkflowNode } from '../src/graph/contract.js';
 import { workflowDefinitionPlacementIssues } from '../src/graph/definition-placement.js';
 import { EMPTY_DEFINITION_CATALOG_V1 } from '../src/graph/identity.js';
 

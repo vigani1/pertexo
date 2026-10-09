@@ -1,11 +1,9 @@
 import type {
-  workflowCompatibilityReport,
-  WorkflowGraph,
-} from '@pertexo/workflow-model/graph';
-import type {
   WorkflowActivationStatus,
+  WorkflowGraph,
   WorkflowLifecycleStatus,
-} from '@pertexo/workflow-model/lifecycle';
+} from '@pertexo/workflow-model';
+import type { workflowCompatibilityReport } from '@pertexo/workflow-model/server';
 
 export type WorkflowRecord = Readonly<{
   id: string;

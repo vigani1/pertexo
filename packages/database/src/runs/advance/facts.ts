@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model/observation-window';
+import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model';
 
 import { CoordinatorRunStateCorruptError } from './contract.js';
 import {

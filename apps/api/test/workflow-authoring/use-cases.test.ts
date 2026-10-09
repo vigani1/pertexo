@@ -30,7 +30,7 @@ import {
 import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from '../../src/workflow-authoring/rename-use-case.js';
 import { RestoreWorkflowVersionUseCase } from '../../src/workflow-authoring/restore-version-use-case.js';
-import { validateWorkflowGraph } from '@pertexo/workflow-model/graph';
+import { validateWorkflowGraph } from '@pertexo/workflow-model';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

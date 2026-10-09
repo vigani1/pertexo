@@ -4,7 +4,7 @@ import {
   type WorkflowPortableManifest,
   type WorkflowImportPreviewResponse,
 } from '@pertexo/contracts/workflow-portability';
-import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   closeWorkflowLifecycleApiFixture,
   createWorkflowLifecycleApiFixture,

@@ -4,8 +4,8 @@ import type {
   NodeExecutionResult,
   NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
+import type { JsonValue } from '@pertexo/workflow-model';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import type { CompiledWorkflowExecutableV2 } from '../executable-workflow.js';
 import type { BranchScopePart, IterationScopePart } from '../types.js';

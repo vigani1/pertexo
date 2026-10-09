@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model/graph';
+import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model';
 
 import type { CompatibilityReleaseExpectation } from '../../compatibility/compatibility-release.js';
 import { classifyPublishedWorkflowVersionRow } from '../published-workflow.js';

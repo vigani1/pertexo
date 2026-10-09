@@ -1,9 +1,9 @@
 import type { PoolClient } from 'pg';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
-} from '@pertexo/workflow-model/authoring-validation';
-import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model/server';
 import type { WorkflowAuthoringGraphValidator } from './workflow-authoring-types.js';
 
 const parserWaitMs =

@@ -1,4 +1,4 @@
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/graph';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 
 export type DraftRepresentation = Readonly<{
   workflowId: string;

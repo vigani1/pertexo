@@ -1,8 +1,8 @@
 import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { z } from 'zod';
-import { canonicalizeJson } from '../canonical-json.js';
+import { canonicalizeJson } from '../json/canonical-json.js';
 import { parseWorkflowGraphDraft } from '../graph/preflight.js';
-import type { WorkflowGraph } from '../graph-contract.js';
+import type { WorkflowGraph } from '../graph/contract.js';
 import type { GraphValidationResult } from '../graph/validation-contract.js';
 import {
   AUTHORING_VALIDATION_BUDGET as budget,
@@ -16,8 +16,8 @@ import { assertReportBudget } from './validation.js';
 
 const runtimeUrl = new URL(
   import.meta.url.endsWith('.ts')
-    ? '../../dist/authoring-validation-worker-runtime.js'
-    : '../authoring-validation-worker-runtime.js',
+    ? '../../dist/authoring-validation/validation-thread.js'
+    : './validation-thread.js',
   import.meta.url,
 );
 const replySchema = z.discriminatedUnion('kind', [

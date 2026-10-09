@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 
 import type {
   ReplayWorkflowRunInput,

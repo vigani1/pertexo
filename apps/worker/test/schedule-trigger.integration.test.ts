@@ -13,11 +13,11 @@ import {
   jobIdForOutboxEvent,
 } from '@pertexo/queue';
 import { createCheckpoint } from '@pertexo/workflow-engine';
-import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model/server';
 import type { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 

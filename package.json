@@ -42,8 +42,8 @@
       },
       "packages/workflow-model": {
         "entry": [
-          "src/expression-worker-runtime.ts",
-          "src/authoring-validation-worker-runtime.ts"
+          "src/expressions/evaluation-thread.ts",
+          "src/authoring-validation/validation-thread.ts"
         ]
       }
     }

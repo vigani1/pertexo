@@ -1,4 +1,4 @@
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import type { JsonValue } from '@pertexo/workflow-model';
 
 import { WorkflowEngineError } from './errors.js';
 

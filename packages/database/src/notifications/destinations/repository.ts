@@ -5,9 +5,9 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
-  FailureNotificationDestinationConfigSchema,
   type FailureNotificationDestinationConfig,
-} from '@pertexo/workflow-model/failure-notification';
+  FailureNotificationDestinationConfigSchema,
+} from '@pertexo/workflow-model';
 
 import type { DatabaseConfig } from '../../config.js';
 import {

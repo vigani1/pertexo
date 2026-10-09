@@ -5,11 +5,11 @@ import {
   canonicalJson,
   canonicalizeJson,
   type JsonValue,
-} from '../canonical-json.js';
+} from '../json/canonical-json.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
-} from '../graph-contract.js';
+} from './contract.js';
 import { parseWorkflowGraphDraft } from './preflight.js';
 import { validateWorkflowGraph } from './validation.js';
 import {
@@ -154,9 +154,6 @@ export function workflowIntegrationUsage(
   );
 }
 
-export const EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1 =
-  definitionCatalogFingerprint(EMPTY_DEFINITION_CATALOG_V1);
-
 function compatibilityForGraph(
   graph: WorkflowGraph,
   catalog: WorkflowDefinitionCatalogV1,
@@ -263,7 +260,7 @@ function executableGraphProjection(
   }) as Readonly<Record<string, JsonValue>>;
 }
 
-export function workflowExecutableProjection(
+function workflowExecutableProjection(
   input: unknown,
   catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
 ): JsonValue {

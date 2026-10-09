@@ -1,4 +1,4 @@
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import type { JsonValue } from '@pertexo/workflow-model';
 
 import { normalizeBoundedEngineJson } from '../executable-workflow.js';
 import { isJsonRecord, operationError } from '../operation-values.js';

@@ -1,4 +1,4 @@
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../graph-contract.js';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from './contract.js';
 
 export interface WorkflowGraphLimits {
   readonly nodes: number;

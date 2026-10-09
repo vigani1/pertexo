@@ -4,25 +4,25 @@ import {
   portableConnectionBindingSchema,
   portableConnectionSlotSchema,
   portableIssueSchema,
-  workflowPortableManifestSchema,
   WORKFLOW_PORTABILITY_LIMITS,
-} from '@pertexo/workflow-model/portability-contract';
+  workflowPortableManifestSchema,
+} from '@pertexo/workflow-model';
 
 export {
-  workflowPortableManifestSchema,
   canonicalWorkflowPortableJson,
   parsePortableJson,
   portableGraphDigest,
-  portableManifestDigest,
   PortableJsonError,
+  portableManifestDigest,
   WORKFLOW_PORTABILITY_LIMITS,
-} from '@pertexo/workflow-model/portability-contract';
+  workflowPortableManifestSchema,
+} from '@pertexo/workflow-model';
 export type {
-  WorkflowPortableManifest,
   PortableConnectionBinding,
   PortableConnectionSlot,
   PortableIssue,
-} from '@pertexo/workflow-model/portability-contract';
+  WorkflowPortableManifest,
+} from '@pertexo/workflow-model';
 
 const source = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('draft') }).strict(),

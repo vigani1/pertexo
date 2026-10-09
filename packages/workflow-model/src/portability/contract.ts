@@ -4,8 +4,8 @@ import {
   workflowGraphSchema,
   workflowGraphStructuralSchemaV1,
   type WorkflowGraph,
-} from './graph-contract.js';
-import { inspectWorkflowGraphAdmission } from './graph/admission.js';
+} from '../graph/contract.js';
+import { inspectWorkflowGraphAdmission } from '../graph/admission.js';
 
 export const WORKFLOW_PORTABILITY_LIMITS = Object.freeze({
   bytes: 2_097_152,

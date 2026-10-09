@@ -3,10 +3,12 @@ import { z } from 'zod';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
-  workflowDraftRepresentationTag,
   type WorkflowGraph,
+} from '@pertexo/workflow-model';
+import {
   type WorkflowDefinitionCatalogV1,
-} from '@pertexo/workflow-model/graph';
+  workflowDraftRepresentationTag,
+} from '@pertexo/workflow-model/server';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { claimCommand, completeCommand } from '../platform/idempotency.js';

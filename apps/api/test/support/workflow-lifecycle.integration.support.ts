@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import {
-  workflowRetainedExecutableChecksum,
-  parseWorkflowGraphDraft,
-} from '@pertexo/workflow-model/graph';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/server';
 
 import {
   createIdentityWorkspaceDatabase,

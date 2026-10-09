@@ -26,7 +26,7 @@ import {
   workspaceId,
   withApplicationName,
 } from './support/workflow-authoring.integration.support.js';
-import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/graph';
+import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/server';
 
 type RestoreFixture = Readonly<{
   workflowId: string;

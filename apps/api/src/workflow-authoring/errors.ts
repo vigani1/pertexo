@@ -15,7 +15,7 @@ import {
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from '@pertexo/database/authoring';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
+import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { apiProblemIssueSchema } from '@pertexo/contracts/errors';
 import { z } from 'zod';
 

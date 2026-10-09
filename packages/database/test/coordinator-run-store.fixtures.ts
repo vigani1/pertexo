@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
-import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model/failure-notification';
+import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model';
 
 import {
   canonicalOutboxPayloadChecksum,

@@ -17,11 +17,11 @@ import {
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   AuthoringValidationUnavailableError,
   WorkflowAuthoringValidator,
-} from '@pertexo/workflow-model/authoring-validation';
-import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model/server';
 import { Queue } from 'bullmq';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 

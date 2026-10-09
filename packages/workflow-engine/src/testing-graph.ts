@@ -1,7 +1,7 @@
 import {
   parseWorkflowGraphDraft,
   validateWorkflowGraph,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model';
 
 import { WorkflowEngineError } from './errors.js';
 import type { SchedulerState } from './transition/graph-scheduler.js';

@@ -1,5 +1,5 @@
 import { boundedNodeJsonSchema } from '@pertexo/node-sdk';
-import { parseJsonPath } from '@pertexo/workflow-model/json-path';
+import { parseJsonPath } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 import {

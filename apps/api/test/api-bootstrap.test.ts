@@ -34,12 +34,12 @@ import { ScheduleManagementService } from '../src/schedules/service.js';
 import { createApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
 import { createBetterAuthFixtureApplication } from './support/better-auth-fixture-application.js';
 import { FixtureResourceOwner } from './support/fixture-resource-owner.js';
-import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
+import { EMPTY_WORKFLOW_GRAPH_V1 } from '@pertexo/workflow-model';
 import {
-  workflowCompatibilityReport,
+  AuthoringValidationUnavailableError,
   EMPTY_DEFINITION_CATALOG_V1,
-  EMPTY_WORKFLOW_GRAPH_V1,
-} from '@pertexo/workflow-model/graph';
+  workflowCompatibilityReport,
+} from '@pertexo/workflow-model/server';
 import { createDraftRepresentationTag } from '../src/workflow-authoring/etag.js';
 import {
   createApiPlatformFixture,

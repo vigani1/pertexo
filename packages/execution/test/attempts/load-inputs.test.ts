@@ -6,7 +6,7 @@ import {
   type NodeAttemptStoredInputs,
 } from '@pertexo/database/attempts';
 import { createCheckpointV2, invocationKey } from '@pertexo/workflow-engine';
-import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 
 import { loadAttemptInputs } from '../../src/attempts/load-inputs.js';

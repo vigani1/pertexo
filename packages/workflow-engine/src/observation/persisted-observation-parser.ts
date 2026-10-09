@@ -1,5 +1,7 @@
-import { isSafeExecutorErrorCode } from '@pertexo/workflow-model/attempt-failure';
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import {
+  isSafeExecutorErrorCode,
+  type JsonValue,
+} from '@pertexo/workflow-model';
 
 import type { WorkflowObservation } from '../types.js';
 import { exactKeys, operationError, record } from '../operation-values.js';

@@ -81,12 +81,10 @@ describe('browser contract consumer bundle', () => {
       moduleIds.some((id) => id.endsWith('/http/workflow-portability.js')),
     ).toBe(true);
     expect(
-      moduleIds.some((id) => id.endsWith('/portability-contract.js')),
+      moduleIds.some((id) => id.endsWith('/portability/contract.js')),
     ).toBe(true);
     expect(
-      moduleIds.some((id) =>
-        /\/node-catalog\/|\/workflow-engine\/|\/portability\.js$/u.test(id),
-      ),
+      moduleIds.some((id) => /\/node-catalog\/|\/workflow-engine\//u.test(id)),
     ).toBe(false);
     expect(moduleIds.some((id) => id.endsWith('/http/webhooks.js'))).toBe(true);
     expect(

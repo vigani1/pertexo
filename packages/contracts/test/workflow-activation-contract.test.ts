@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   workflowActivationStatusSchema as canonicalActivationStatusSchema,
   workflowLifecycleStatusSchema as canonicalLifecycleStatusSchema,
-} from '@pertexo/workflow-model/lifecycle';
+} from '@pertexo/workflow-model';
 
 import {
   workflowActivationStatusSchema,

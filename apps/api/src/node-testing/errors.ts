@@ -6,7 +6,7 @@ import {
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 import { AuthorizationError } from '../workspaces/index.js';

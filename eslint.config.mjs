@@ -5,6 +5,44 @@ const nodeGlobals = Object.fromEntries(
   Object.getOwnPropertyNames(globalThis).map((name) => [name, 'readonly']),
 );
 
+const workflowModelLayer = {
+  group: [
+    '**/apps/**',
+    '@nestjs/*',
+    '@pertexo/api',
+    '@pertexo/api/*',
+    '@pertexo/artifact-store',
+    '@pertexo/artifact-store/*',
+    '@pertexo/database',
+    '@pertexo/database/*',
+    '@pertexo/observability',
+    '@pertexo/observability/*',
+    '@pertexo/queue',
+    '@pertexo/queue/*',
+    '@pertexo/worker',
+    '@pertexo/worker/*',
+    '@pertexo/workflow-engine',
+    '@pertexo/workflow-engine/*',
+    '@pertexo/node-sdk',
+    '@pertexo/node-sdk/*',
+    '@pertexo/nodes-core',
+    '@pertexo/nodes-core/*',
+    '@pertexo/node-catalog',
+    '@pertexo/node-catalog/*',
+    '@pertexo/contracts',
+    '@pertexo/contracts/*',
+    '@pertexo/execution',
+    '@pertexo/execution/*',
+    '@pertexo/templates',
+    '@pertexo/templates/*',
+    'bullmq',
+    'drizzle-orm',
+    'ioredis',
+  ],
+  message:
+    'The workflow model is a lower-level deterministic contract and cannot depend on the engine or server infrastructure.',
+};
+
 export default tseslint.config(
   {
     ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**'],
@@ -414,35 +452,39 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          patterns: [workflowModelLayer],
+        },
+      ],
+    },
+  },
+  {
+    // The browser entry (src/index.ts) and everything it reaches stay free
+    // of Node; checksums, expressions and authoring validation are server-only.
+    files: ['packages/workflow-model/src/**/*.ts'],
+    ignores: [
+      'packages/workflow-model/src/server.ts',
+      'packages/workflow-model/src/graph/identity.ts',
+      'packages/workflow-model/src/expressions/**',
+      'packages/workflow-model/src/authoring-validation/**',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
           patterns: [
+            workflowModelLayer,
             {
               group: [
-                '**/apps/**',
-                '@nestjs/*',
-                '@pertexo/api',
-                '@pertexo/api/*',
-                '@pertexo/artifact-store',
-                '@pertexo/artifact-store/*',
-                '@pertexo/database',
-                '@pertexo/database/*',
-                '@pertexo/observability',
-                '@pertexo/observability/*',
-                '@pertexo/queue',
-                '@pertexo/queue/*',
-                '@pertexo/worker',
-                '@pertexo/worker/*',
-                '@pertexo/workflow-engine',
-                '@pertexo/workflow-engine/*',
-                '@pertexo/node-sdk',
-                '@pertexo/node-sdk/*',
-                '@pertexo/nodes-core',
-                '@pertexo/nodes-core/*',
-                'bullmq',
-                'drizzle-orm',
-                'ioredis',
+                'node:*',
+                'jsonata',
+                './server.js',
+                '**/graph/identity.js',
+                '**/expressions/*',
+                '**/authoring-validation/*',
               ],
+              allowTypeImports: true,
               message:
-                'The workflow model is a lower-level deterministic contract and cannot depend on the engine or server infrastructure.',
+                'Browser-safe workflow-model code cannot import Node or server-only modules; export Node-only code from src/server.ts.',
             },
           ],
         },

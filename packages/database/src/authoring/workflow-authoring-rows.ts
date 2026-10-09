@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import {
+  parseWorkflowGraphDraft,
   workflowActivationStatusSchema,
   workflowLifecycleStatusSchema,
-} from '@pertexo/workflow-model/lifecycle';
+} from '@pertexo/workflow-model';
 import {
-  parseWorkflowGraphDraft,
   workflowCompatibilityReport,
-  workflowRetainedExecutableChecksum,
   type WorkflowDefinitionCatalogV1,
-} from '@pertexo/workflow-model/graph';
+  workflowRetainedExecutableChecksum,
+} from '@pertexo/workflow-model/server';
 
 import type {
   WorkflowDraftRecord,

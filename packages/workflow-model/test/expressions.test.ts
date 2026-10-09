@@ -3,13 +3,13 @@ import { EventEmitter } from 'node:events';
 import { Worker } from 'node:worker_threads';
 import jsonata from 'jsonata';
 import { afterEach, describe, expect, it } from 'vitest';
-import { canonicalJson, type JsonValue } from '../src/canonical-json.js';
+import { canonicalJson, type JsonValue } from '../src/json/canonical-json.js';
+import { JsonataEvaluator } from '../src/expressions/evaluator.js';
 import {
   EXPRESSION_POLICY_V1,
   JSONATA_EVALUATOR_DIAGNOSTICS,
-  JsonataEvaluator,
   validateExpression,
-} from '../src/expressions.js';
+} from '../src/expressions/policy.js';
 
 const evaluators: JsonataEvaluator[] = [];
 afterEach(async () => {
@@ -53,7 +53,7 @@ function required<T>(value: T | undefined): T {
 describe('restricted JSONata policy v1', () => {
   it('executes the compiled and typechecked worker artifact', async () => {
     const worker = new Worker(
-      new URL('../dist/expression-worker-runtime.js', import.meta.url),
+      new URL('../dist/expressions/evaluation-thread.js', import.meta.url),
     );
     try {
       const result = await new Promise<unknown>((resolve, reject) => {

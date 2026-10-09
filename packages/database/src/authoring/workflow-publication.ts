@@ -6,15 +6,17 @@ import {
 import { generatePersistedId } from '../platform/persisted-id.js';
 
 import {
-  parseWorkflowGraphForPublish,
   InvalidWorkflowGraphError,
+  type WorkflowGraph,
+} from '@pertexo/workflow-model';
+import {
+  parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
+  type WorkflowDefinitionCatalogV1,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,
   workflowIntegrationUsage,
-  type WorkflowDefinitionCatalogV1,
-  type WorkflowGraph,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model/server';
 import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

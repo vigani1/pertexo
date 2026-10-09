@@ -1,11 +1,9 @@
 import {
   AuthoringValidationUnavailableError,
-  WorkflowAuthoringValidator,
-} from '@pertexo/workflow-model/authoring-validation';
-import {
   EMPTY_DEFINITION_CATALOG_V1,
+  WorkflowAuthoringValidator,
   type WorkflowDefinitionCatalogV1,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model/server';
 import type { DatabaseConfig } from '../../src/config.js';
 import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflow-authoring.js';
 import type {

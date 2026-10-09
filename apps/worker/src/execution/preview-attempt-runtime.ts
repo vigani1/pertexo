@@ -11,7 +11,7 @@ import {
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
-import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
+import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import type { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';

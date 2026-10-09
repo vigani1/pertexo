@@ -14,8 +14,10 @@ import {
   type WorkflowAuthoringDatabase,
   type WorkflowInputCaseDatabase,
 } from '@pertexo/database/authoring';
-import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
-import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/authoring-validation';
+import {
+  JsonataEvaluator,
+  WorkflowAuthoringValidator,
+} from '@pertexo/workflow-model/server';
 
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
 import type { WorkflowOrganizationConfig } from '../config/workflow-organization-config.js';

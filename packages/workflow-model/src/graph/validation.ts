@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-import { inspectJsonValue } from '../canonical-json.js';
+import { inspectJsonValue } from '../json/canonical-json.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
-} from '../graph-contract.js';
-import { validateGraphStructure } from '../graph-validation.js';
+} from './contract.js';
+import { validateGraphStructure } from './structure.js';
 import {
   WORKFLOW_GRAPH_LIMITS,
   type GraphIssueCode,
