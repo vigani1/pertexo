@@ -8,6 +8,7 @@ import {
   createIdentityWorkspaceDatabase,
 } from '@pertexo/database/api';
 import {
+  createRetentionDatabase,
   createWorkspacePurgeCoordinator,
   EXPECTED_MIGRATION_HEAD,
   parseDatabaseConfig,
@@ -647,11 +648,17 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
           )
         ).rowCount,
       ).toBe(1);
-      await ownerQuery(
-        'select * from app.reap_transient_data(1000)',
-        [],
-        scoped,
+      const retention = createRetentionDatabase(
+        parseDatabaseConfig({
+          connectionString: fixture.maintenanceUrl,
+          max: 1,
+        }),
       );
+      try {
+        await retention.enforce();
+      } finally {
+        await retention.close();
+      }
       expect(
         (
           await ownerQuery(

@@ -8,11 +8,14 @@ import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
 } from '../src/authoring/workflow-authoring-errors.js';
+import { createRetentionDatabase } from '../src/lifecycle/retention.js';
 import {
   actorId,
   workspaceId,
   apiUrl,
   apiPool,
+  dispatcherUrl,
+  enforceTestRetention,
   authoring,
   currentRepresentationTag,
   emptyGraph,
@@ -71,25 +74,7 @@ async function enable() {
     'update app.workflow_input_case_rollout set enabled=true where singleton',
   );
 }
-async function reap() {
-  return queryAsOwner<{
-    payloads_deleted: number;
-    receipts_deleted: number;
-    cases_deleted: number;
-  }>('select * from app.reap_workflow_input_cases(100)');
-}
 describe('bounded version-contextual run-input cases', () => {
-  it.each([null, 0, 101])(
-    'rejects an invalid cleanup page limit: %s',
-    async (limit) => {
-      await expect(
-        queryAsOwner('select * from app.reap_workflow_input_cases($1)', [
-          limit,
-        ]),
-      ).rejects.toMatchObject({ code: '22023' });
-    },
-  );
-
   it('lists metadata only, gets detached canonical input and replays identifiers without names or JSON in receipts/audits', async () => {
     await enable();
     const scope = await fixture();
@@ -252,7 +237,7 @@ describe('bounded version-contextual run-input cases', () => {
       Number(retainedBefore[0]?.bytes) + 4,
     );
   });
-  it('retains replacement bytes until bounded physical cleanup and charges update churn', async () => {
+  it('retains replacement bytes until paged cleanup and charges update churn', async () => {
     const scope = await fixture();
     const created = await database.createCase({
       ...scope,
@@ -280,11 +265,15 @@ describe('bounded version-contextual run-input cases', () => {
       }
     }
     expect(denied).toBe(true);
-    const result = (await reap())[0];
-    if (!result) throw new Error('Expected cleanup result');
-    expect(
-      result.payloads_deleted + result.receipts_deleted + result.cases_deleted,
-    ).toBeLessThanOrEqual(100);
+    const retention = createRetentionDatabase(
+      parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
+      { pageSize: 10 },
+    );
+    try {
+      expect((await retention.enforce()).removed.input_case_payloads).toBe(10);
+    } finally {
+      await retention.close();
+    }
     const remaining = await queryAsOwner<{ count: string }>(
       'select count(*) from app.workflow_input_case_payloads where workspace_id=$1 and case_id=$2',
       [workspaceId, created.caseId],
@@ -477,7 +466,7 @@ describe('bounded version-contextual run-input cases', () => {
       }),
     ).rejects.toMatchObject({ kind: 'workspace_count' });
   }, 20_000);
-  it('reaps terminal receipts and expired rejections for finite key reuse', async () => {
+  it('removes expired receipts and rejections so a key can be reused', async () => {
     const scope = await fixture();
     const key = randomUUID();
     const command = {
@@ -509,22 +498,7 @@ describe('bounded version-contextual run-input cases', () => {
       "update app.workflow_input_case_receipts set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day' where workspace_id=$1",
       [workspaceId],
     );
-    expect(
-      (
-        await queryAsOwner<{ count: number }>(
-          'select app.prune_manual_start_rejections(100) count',
-        )
-      )[0]?.count,
-    ).toBe(1);
-    for (let index = 0; index < 20; index += 1) {
-      const page = (await reap())[0];
-      if (!page) throw new Error('Expected cleanup result');
-      if (
-        page.payloads_deleted + page.receipts_deleted + page.cases_deleted ===
-        0
-      )
-        break;
-    }
+    expect((await enforceTestRetention()).manual_start_rejections).toBe(1);
     const next = await database.createCase(command);
     expect(next.caseId).not.toBe(created.caseId);
     expect(next.replayed).toBe(false);

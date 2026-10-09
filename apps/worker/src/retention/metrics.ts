@@ -4,7 +4,6 @@ import type {
   RetentionPassResult,
   RunArtifactRetentionProcessResult,
   WorkspacePurgeProcessResult,
-  TransientDataReapResult,
 } from '@pertexo/database/maintenance';
 
 export const RETENTION_METRIC_NAME = Object.freeze({
@@ -16,21 +15,12 @@ export const RETENTION_METRIC_NAME = Object.freeze({
   purgeCount: 'pertexo.purge.batch.count',
   purgeDuration: 'pertexo.purge.batch.duration',
   rowCount: 'pertexo.retention.rows.count',
-  transientDataReapCount: 'pertexo.retention.transient_data_reap.count',
 } as const);
 
 export type RetentionOperation =
-  | 'retention'
-  | 'preview'
-  | 'run_artifact'
-  | 'workspace_purge'
-  | 'transient_data_reap';
+  'retention' | 'preview' | 'run_artifact' | 'workspace_purge';
 
 export interface RetentionMetrics {
-  recordTransientDataReap(
-    result: TransientDataReapResult,
-    durationSeconds: number,
-  ): void;
   /** One pass of the retention rules: rows each rule removed. */
   recordRetention(result: RetentionPassResult, durationSeconds: number): void;
   recordFailure(operation: RetentionOperation, durationSeconds: number): void;
@@ -46,75 +36,6 @@ export interface RetentionMetrics {
     result: WorkspacePurgeProcessResult,
     durationSeconds: number,
   ): void;
-}
-
-function createTransientDataReapRecorder(
-  meter: Meter,
-  duration: ReturnType<Meter['createHistogram']>,
-): RetentionMetrics['recordTransientDataReap'] {
-  const reaps = meter.createCounter(
-    RETENTION_METRIC_NAME.transientDataReapCount,
-    {
-      description: 'Expired transient rows physically removed by data class',
-      unit: '{row}',
-    },
-  );
-  return (result, durationSeconds) => {
-    reaps.add(result.idempotencyRecordsDeleted, {
-      data_class: 'idempotency_record',
-    });
-    reaps.add(result.workspaceCreationRecordsDeleted, {
-      data_class: 'workspace_creation_idempotency_record',
-    });
-    reaps.add(result.sessionsDeleted, { data_class: 'session' });
-    reaps.add(result.authenticationMailDeleted, {
-      data_class: 'authentication_mail',
-    });
-    reaps.add(result.authenticationMailExpired, {
-      data_class: 'authentication_mail_expiry',
-    });
-    reaps.add(result.authenticationProofsDeleted, {
-      data_class: 'authentication_email_proof',
-    });
-    reaps.add(result.authenticationLinkAttemptsDeleted, {
-      data_class: 'authentication_method_link_attempt',
-    });
-    reaps.add(result.authenticationLegacyAttemptsDeleted, {
-      data_class: 'authentication_legacy_migration_attempt',
-    });
-    reaps.add(result.identitySecurityAuditDeleted, {
-      data_class: 'identity_security_audit_fact',
-    });
-    reaps.add(result.invitationAcceptanceIntentsDeleted, {
-      data_class: 'workspace_invitation_acceptance_intent',
-    });
-    reaps.add(result.invitationReplacementClaimsDeleted, {
-      data_class: 'workspace_invitation_replacement_claim',
-    });
-    reaps.add(result.invitationsExpired, {
-      data_class: 'workspace_invitation_expiry',
-    });
-    duration.record(durationSeconds, {
-      mode: 'transient_data_reap',
-      outcome:
-        result.idempotencyRecordsDeleted +
-          result.invitationAcceptanceIntentsDeleted +
-          result.invitationReplacementClaimsDeleted +
-          result.invitationsExpired +
-          result.workspaceCreationRecordsDeleted +
-          result.sessionsDeleted +
-          result.authenticationMailDeleted +
-          result.authenticationMailExpired +
-          result.authenticationProofsDeleted +
-          result.authenticationLinkAttemptsDeleted +
-          result.authenticationLegacyAttemptsDeleted +
-          result.identitySecurityAuditDeleted >
-        0
-          ? 'deleted'
-          : 'idle',
-      retention_kind: 'transient_data',
-    });
-  };
 }
 
 export function createRetentionMetrics(
@@ -160,7 +81,6 @@ export function createRetentionMetrics(
     },
   );
   const retentionMetrics: RetentionMetrics = {
-    recordTransientDataReap: createTransientDataReapRecorder(meter, duration),
     recordRetention: (result, durationSeconds) => {
       let removed = 0;
       for (const [rule, count] of Object.entries(result.removed)) {

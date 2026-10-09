@@ -8,6 +8,7 @@ import {
   type DatabaseConfig,
 } from '../src/api.js';
 import { createAuthenticationMailDeliveryStore } from '../src/execution.js';
+import { createRetentionDatabase } from '../src/maintenance.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
@@ -161,10 +162,10 @@ describe('durable authentication mail', () => {
       connectionString: database.databaseUrl(adminUrl),
       max: 1,
     });
-    const maintenance = new Pool({
-      connectionString: database.databaseUrl(maintenanceBaseUrl),
-      max: 1,
-    });
+    const retention = createRetentionDatabase(
+      databaseConfig(database.databaseUrl(maintenanceBaseUrl)),
+      { pageSize: 7 },
+    );
     const worker = createAuthenticationMailDeliveryStore(
       databaseConfig(database.databaseUrl(workerBaseUrl)),
     );
@@ -199,12 +200,10 @@ describe('durable authentication mail', () => {
       expect(before.rows[0]?.count).toBe('15');
 
       const expiredCounts: number[] = [];
-      for (let page = 0; page < 3; page += 1) {
-        const result = await maintenance.query<{ expired: number }>(
-          `select expired from app.prune_authentication_mail(7)`,
+      for (let page = 0; page < 3; page += 1)
+        expiredCounts.push(
+          (await retention.enforce()).removed.unsent_authentication_mail,
         );
-        expiredCounts.push(result.rows[0]?.expired ?? -1);
-      }
       expect(expiredCounts).toEqual([7, 7, 2]);
       const after = await owner.query<{
         id: string;
@@ -230,7 +229,7 @@ describe('durable authentication mail', () => {
         payload_ciphertext: null,
       });
     } finally {
-      await Promise.all([owner.end(), maintenance.end(), worker.close()]);
+      await Promise.all([owner.end(), retention.close(), worker.close()]);
     }
   });
 });

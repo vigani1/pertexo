@@ -31,7 +31,6 @@ import {
   workspaceInvitationDeliveryAttempts,
   workspaceInvitationAcceptanceIntents,
   workspaceInvitationBindingReplacementClaims,
-  workspaceInvitationClaimCleanupCursors,
   auditEvents,
   usageEvents,
 } from './schema/foundation.js';
@@ -201,7 +200,6 @@ export const databaseSchema = {
   workspaceInvitationDeliveryAttempts,
   workspaceInvitationAcceptanceIntents,
   workspaceInvitationBindingReplacementClaims,
-  workspaceInvitationClaimCleanupCursors,
   workspaceLegalHolds,
   workspaces,
   workflowDrafts,

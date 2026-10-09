@@ -33,10 +33,10 @@ type RetentionOperationStep = (signal: AbortSignal) => Promise<boolean>;
 const MAX_STEPS_PER_OPERATION = 20;
 
 /**
- * Workspace deletion commands, retention, preview and artifact cleanup and
- * workspace purge. Every worker may run it; the database leases keep the work
- * disjoint. A failing operation is logged and retried on the next cycle without
- * stopping the others or the worker.
+ * Retention rules, preview and artifact cleanup and workspace purge. Every
+ * worker may run it; locks in the database keep the work disjoint. A failing
+ * operation is logged and retried on the next cycle without stopping the
+ * others or the worker.
  */
 export function createRetentionRuntime(
   resources: RetentionRuntimeResources,
@@ -60,26 +60,6 @@ export function createRetentionRuntime(
     RetentionOperation,
     RetentionOperationStep,
   ])[] = [
-    [
-      'transient_data_reap',
-      async (signal) => {
-        const result = await timed(
-          () => resources.database.reapTransientData(signal),
-          (result, seconds) => {
-            metrics.recordTransientDataReap(result, seconds);
-          },
-        );
-        return (
-          result.invitationAcceptanceIntentsDeleted +
-            result.invitationReplacementClaimsDeleted +
-            result.invitationsExpired +
-            result.idempotencyRecordsDeleted +
-            result.workspaceCreationRecordsDeleted +
-            result.sessionsDeleted >
-          0
-        );
-      },
-    ],
     [
       'retention',
       async (signal) => {

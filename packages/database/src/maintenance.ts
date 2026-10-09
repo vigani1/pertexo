@@ -12,7 +12,6 @@ export type {
   RetentionDatabase,
   RetentionPassResult,
   RetentionRuleName,
-  TransientDataReapResult,
 } from './lifecycle/retention.js';
 export { createRunArtifactRetentionCoordinator } from './lifecycle/run-artifact-retention.js';
 export type {

@@ -8,6 +8,7 @@ import {
   actorId,
   apiPool,
   apiUrl,
+  enforceTestRetention,
   authoring,
   createWorkflowAuthoringDatabase,
   createConnectionDatabase,
@@ -937,7 +938,7 @@ describe('same-workspace workflow duplication through the runtime database role'
     }
   });
 
-  it('uses the finite transient receipt reaper without erasing either workflow and admits a new copy after expiry', async () => {
+  it('removes an expired duplicate receipt without erasing either workflow and admits a new copy after expiry', async () => {
     const original = await source();
     const input = await command(original.workflowId);
     const copied = await authoring.duplicateWorkflow(input);
@@ -946,12 +947,8 @@ describe('same-workspace workflow duplication through the runtime database role'
       [workspaceId, copied.workflowId],
       workspaceId,
     );
-    const reaped = await queryAsOwner(
-      'select * from app.reap_transient_data(1000)',
-    );
-    expect(
-      Number(reaped[0]?.idempotency_records_deleted),
-    ).toBeGreaterThanOrEqual(1);
+    const reaped = await enforceTestRetention();
+    expect(reaped.idempotency_records).toBeGreaterThanOrEqual(1);
     expect((await facts(original.workflowId)).revision).toBe(1);
     expect((await facts(copied.workflowId)).revision).toBe(1);
     expect((await facts(copied.workflowId)).receipts).toBe(0);
@@ -1055,7 +1052,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       [scopedWorkspace],
       scopedWorkspace,
     );
-    await queryAsOwner('select * from app.reap_transient_data(1000)');
+    await enforceTestRetention();
     expect(
       await queryAsOwner(
         "select id from app.idempotency_records where workspace_id=$1 and operation='workflow.duplicate'",

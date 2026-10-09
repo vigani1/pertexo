@@ -154,9 +154,15 @@ now, as one ordered program — not "whenever we touch it".
         workspace control columns, `lock_workspace_control_ledger`, the
         session-level destruction lock and the preview destruction capability
         rows are gone.
-  - [ ] Legal-hold table: drop once the reapers that still check it are ported
-        (favorites, inbox expiry, invitation reapers, manual-start
-        rejections, transient data).
+  - [x] Transient data runs as retention rules too: expired receipts and
+        idempotency records, sessions and sign-in records, invitation expiry,
+        acceptances, replacement claims and recipient addresses, input-case
+        leftovers and favorites. The reaper functions, the claim scan cursor
+        and the per-fact legal hold are gone.
+  - [ ] Legal-hold table: nothing places holds any more. Drop it with the
+        last checks of it: the favorite command and its held evidence
+        (Authoring), replacement-claim reapability (Workspaces and access) and
+        inbox expiry (Notifications and inbox).
   - [ ] Authoring: organization (folders, tags, favorites, batches), drafts,
         publication, portability, input cases, concurrency and auto-pause.
   - [ ] Workspaces and access: memberships, invitations (including the

@@ -35,13 +35,6 @@ const pools = {
     ),
     max: 1,
   }),
-  maintenance: new Pool({
-    connectionString: roleUrl(
-      'DATABASE_MAINTENANCE_URL',
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-    ),
-    max: 1,
-  }),
   worker: new Pool({
     connectionString: roleUrl(
       'DATABASE_URL',
@@ -117,11 +110,6 @@ describe('SQL boundary integrity', () => {
           [value],
         ),
       ).rejects.toSatisfy(hasCode('22023'));
-      await expect(
-        pools.maintenance.query('select * from app.reap_transient_data($1)', [
-          value,
-        ]),
-      ).rejects.toSatisfy(hasCode('22023'));
     }
     for (const value of [1, 1000]) {
       await expect(
@@ -131,19 +119,6 @@ describe('SQL boundary integrity', () => {
         ),
       ).resolves.toMatchObject({
         rows: [{ recover_due_workflow_run_active_admissions: 0 }],
-      });
-      await expect(
-        pools.maintenance.query('select * from app.reap_transient_data($1)', [
-          value,
-        ]),
-      ).resolves.toMatchObject({
-        rows: [
-          {
-            idempotency_records_deleted: 0,
-            sessions_deleted: 0,
-            workspace_creation_records_deleted: 0,
-          },
-        ],
       });
     }
   });

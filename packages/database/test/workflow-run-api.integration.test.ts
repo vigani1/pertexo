@@ -29,6 +29,7 @@ import type { ExecutionStateConflictError } from '../src/runs/state-errors.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { explainDocument, explainWork } from './support/query-plan.js';
+import { enforceRetention } from './support/retention.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -39,15 +40,19 @@ const migrationBaseUrl =
 const apiBaseUrl =
   process.env.DATABASE_URL ??
   'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const maintenanceBaseUrl =
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const databaseName = `pertexo_test_run_api_${randomUUID().replaceAll('-', '')}`;
 const disposableDatabase = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_app'],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
 const migrationUrl = disposableDatabase.databaseUrl(migrationBaseUrl);
 const apiUrl = disposableDatabase.databaseUrl(apiBaseUrl);
+const maintenanceUrl = disposableDatabase.databaseUrl(maintenanceBaseUrl);
 const workspaceId = randomUUID();
 const otherWorkspaceId = randomUUID();
 const actorId = randomUUID();
@@ -868,9 +873,8 @@ describe('workflow run API persistence', () => {
       "update app.workflow_manual_start_rejections set expires_at=clock_timestamp()-interval '1 second'",
     );
     expect(
-      (await ownerQuery('select app.prune_manual_start_rejections(100) count'))
-        .rows,
-    ).toEqual([{ count: 1 }]);
+      (await enforceRetention(maintenanceUrl)).manual_start_rejections,
+    ).toBe(1);
     await ownerQuery(
       'update app.workflows set published_version_id=$2 where id=$1',
       [workflowId, retainedWorkflowVersionId],
