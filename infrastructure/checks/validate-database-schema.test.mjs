@@ -8,37 +8,24 @@ import {
 
 const validSources = Object.freeze({
   migrationSql: `
-    CREATE TABLE app.typed_table(id uuid primary key);
-    CREATE TABLE app.raw_table(id uuid primary key);
-    ALTER TABLE app.raw_table ENABLE ROW LEVEL SECURITY;
-    ALTER TABLE app.raw_table FORCE ROW LEVEL SECURITY;
+    CREATE TABLE app.first_table(id uuid primary key);
+    CREATE TABLE app.second_table(id uuid primary key);
   `,
-  registry: [
-    {
-      accessRoles: ['worker_runtime_role'],
-      name: 'raw_table',
-      owner: 'owner_role',
-      reason:
-        'Raw table behavior is deliberately owned by reviewed SQL functions.',
-      rls: 'forced',
-    },
-  ],
-  schemaSource: "export const typedTable = appSchema.table('typed_table');",
+  schemaSource: `
+    export const firstTable = appSchema.table('first_table');
+    export const secondTable = appSchema.table('second_table');
+  `,
 });
 
-test('accounts for every migration-owned application table', async () => {
+test('types every migration-owned application table', async () => {
   assert.deepEqual(await validateDatabaseSchemaOwnership(), {
-    migrationTableCount: 84,
-    typedTableCount: 57,
-    rawSqlTableCount: 27,
+    tableCount: 84,
   });
 });
 
-test('validates a minimal typed and raw ownership inventory', () => {
+test('validates a minimal typed inventory', () => {
   assert.deepEqual(validateDatabaseSchemaSources(validSources), {
-    migrationTableCount: 2,
-    typedTableCount: 1,
-    rawSqlTableCount: 1,
+    tableCount: 2,
   });
 });
 
@@ -48,110 +35,42 @@ test('ignores tables a later migration drops', () => {
     DROP TABLE app.retired_table;`;
   assert.deepEqual(
     validateDatabaseSchemaSources({ ...validSources, migrationSql: retired }),
-    { migrationTableCount: 2, typedTableCount: 1, rawSqlTableCount: 1 },
+    { tableCount: 2 },
   );
   assert.throws(
     () =>
       validateDatabaseSchemaSources({
         ...validSources,
-        migrationSql: `${validSources.migrationSql}\nDROP TABLE IF EXISTS app.typed_table;`,
+        migrationSql: `${validSources.migrationSql}\nDROP TABLE IF EXISTS app.first_table;`,
       }),
-    /Typed tables absent from migrations: typed_table/u,
+    /Typed tables absent from migrations: first_table/u,
   );
 });
 
-test('rejects invalid raw-table registry fields', () => {
-  const invalidEntries = [
-    { name: 'Invalid-Name' },
-    { owner: 'worker_runtime_role' },
-    { accessRoles: [] },
-    { accessRoles: ['unknown_role'] },
-    { accessRoles: ['worker_runtime_role', 'worker_runtime_role'] },
-    { rls: 'enabled' },
-    { reason: 'too short' },
-  ];
-  for (const override of invalidEntries) {
-    const entry = {
-      ...validSources.registry[0],
-      accessRoles: [...validSources.registry[0].accessRoles],
-    };
-    assert.throws(
-      () =>
-        validateDatabaseSchemaSources({
-          ...validSources,
-          registry: [{ ...entry, ...override }],
-        }),
-      /Invalid raw SQL table registry entry/u,
-    );
-  }
-  assert.throws(
-    () => validateDatabaseSchemaSources({ ...validSources, registry: {} }),
-    /registry must be an array/u,
-  );
-});
-
-test('rejects duplicate, typed, absent and unowned raw tables', () => {
-  const [entry] = validSources.registry;
+test('rejects untyped and missing tables and UUID defaults', () => {
   assert.throws(
     () =>
       validateDatabaseSchemaSources({
         ...validSources,
-        registry: [entry, entry],
+        schemaSource:
+          "export const firstTable = appSchema.table('first_table');",
       }),
-    /Duplicate raw SQL table registry entry/u,
+    /Migration tables without a typed schema: second_table/u,
   );
-  assert.throws(
-    () =>
-      validateDatabaseSchemaSources({
-        ...validSources,
-        registry: [{ ...entry, name: 'typed_table' }],
-      }),
-    /Typed table must not be in raw SQL registry/u,
-  );
-  assert.throws(
-    () =>
-      validateDatabaseSchemaSources({
-        ...validSources,
-        registry: [{ ...entry, name: 'absent_table' }],
-      }),
-    /Registered table is not migration-owned/u,
-  );
-  assert.throws(
-    () =>
-      validateDatabaseSchemaSources({
-        ...validSources,
-        registry: [],
-      }),
-    /Migration tables without typed schema or registry ownership/u,
-  );
-});
-
-test('rejects missing typed tables, forbidden UUID defaults and incomplete forced RLS', () => {
   assert.throws(
     () =>
       validateDatabaseSchemaSources({
         ...validSources,
         schemaSource: `${validSources.schemaSource}\nexport const missing = appSchema.table('missing_table');`,
       }),
-    /Typed tables absent from migrations/u,
+    /Typed tables absent from migrations: missing_table/u,
   );
   assert.throws(
     () =>
       validateDatabaseSchemaSources({
         ...validSources,
-        migrationSql: `${validSources.migrationSql}\nALTER TABLE app.typed_table ALTER COLUMN id SET DEFAULT gen_random_uuid();`,
+        migrationSql: `${validSources.migrationSql}\nALTER TABLE app.first_table ALTER COLUMN id SET DEFAULT gen_random_uuid();`,
       }),
     /Persisted UUID defaults must be generated explicitly/u,
-  );
-  assert.throws(
-    () =>
-      validateDatabaseSchemaSources({
-        ...validSources,
-        migrationSql: validSources.migrationSql.replace(
-          'ALTER TABLE app.raw_table FORCE ROW LEVEL SECURITY;',
-          '',
-        ),
-      }),
-    /raw_table is registered as forced RLS without FORCE/u,
   );
 });

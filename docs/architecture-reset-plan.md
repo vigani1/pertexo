@@ -83,9 +83,10 @@ now, as one ordered program — not "whenever we touch it".
     folder (`runs/`, `queue/`, `outbox/`, …) and entry point when it is moved
     or ported, so no file moves twice. The consumer-named entry points
     (`/api`, `/worker`, `/maintenance`, `/lifecycle`) go at the end of step 7.
-  - Tables defined once: the 42 raw-SQL tables get Drizzle definitions as their
-    areas are ported in step 7 (tables that step 7 deletes are never typed);
-    drizzle-kit generates migrations once every table is typed (step 9).
+  - Tables defined once: the raw-SQL tables get Drizzle definitions as their
+    areas are ported (tables that step 7 deletes are never typed; the last 27
+    are typed in the step 8 database pass); drizzle-kit generates migrations
+    once every table is typed (step 9).
 - [x] **6. Execution package** — run actions and the coordinator move out of the
       database package; the engine's rules exist once.
   - [x] Advancing a run: `@pertexo/execution` `advanceRun` locks the run,
@@ -299,6 +300,19 @@ now, as one ordered program — not "whenever we touch it".
           `@pertexo/observability`. No runtime guard.
   - [ ] rate-limit
   - [ ] database
+    - [x] Every table typed: the 27 tables that existed only in SQL and the
+          JSON registry get Drizzle definitions (columns, keys, checks,
+          indexes, foreign keys), checked by generating DDL from them and
+          diffing `pg_dump` against the migrated schema. drizzle-orm cannot
+          declare two `DEFERRABLE` foreign keys (marked in source) or column
+          collations (`textC`). The registry is deleted;
+          `database:schema:check` requires every migration table to be typed,
+          and the schema-shape test checks owner, primary key, forced row
+          security on workspace tables and private grants for every table.
+    - [ ] SQL functions: operator commands and fold/recover move to
+          TypeScript; claims, admission counters and the webhook lookup stay
+          in SQL with their reasons recorded.
+    - [ ] Repository review.
   - [ ] execution
   - [ ] worker
   - [ ] api
@@ -399,8 +413,8 @@ payload, provider response). Inner layers trust typed values.
 
 ## Database design
 
-- **Tables defined once** in Drizzle (today 77 tables are typed and 43 exist
-  only in raw SQL plus a JSON registry). Queries use Drizzle's typed builder or
+- **Tables defined once** in Drizzle (all 84 tables are typed; the raw-SQL
+  JSON registry is gone). Queries use Drizzle's typed builder or
   `sql` templates with typed results — no hand-written column lists, row
   mappers or row validation.
 - **Migrations** are generated from the schema (drizzle-kit) plus small

@@ -14,18 +14,6 @@ const schemaDirectory = path.join(
   repositoryRoot,
   'packages/database/src/schema',
 );
-const registryPath = path.join(
-  repositoryRoot,
-  'packages/database/raw-sql-table-registry.json',
-);
-const rawTableRoleNames = new Set([
-  'api_runtime_role',
-  'dispatcher_role',
-  'lifecycle_command_role',
-  'maintenance_role',
-  'operator_role',
-  'worker_runtime_role',
-]);
 
 export async function validateDatabaseSchemaOwnership() {
   const migrationNames = (await readdir(migrationsDirectory))
@@ -49,20 +37,11 @@ export async function validateDatabaseSchemaOwnership() {
       ),
     ])
   ).join('\n');
-  const registry = JSON.parse(await readFile(registryPath, 'utf8'));
 
-  return validateDatabaseSchemaSources({
-    migrationSql,
-    registry,
-    schemaSource,
-  });
+  return validateDatabaseSchemaSources({ migrationSql, schemaSource });
 }
 
-export function validateDatabaseSchemaSources({
-  migrationSql,
-  registry,
-  schemaSource,
-}) {
+export function validateDatabaseSchemaSources({ migrationSql, schemaSource }) {
   if (typeof migrationSql !== 'string' || typeof schemaSource !== 'string')
     throw new TypeError('Database schema sources must be strings');
 
@@ -71,7 +50,6 @@ export function validateDatabaseSchemaSources({
     schemaSource,
     /appSchema\.table\(\s*['"]([^'"]+)/gu,
   );
-  const registeredTables = new Set();
 
   if (
     /DEFAULT\s+(?:gen_random_uuid|uuid_generate_v\d)\s*\(/iu.test(migrationSql)
@@ -80,68 +58,18 @@ export function validateDatabaseSchemaSources({
       'Persisted UUID defaults must be generated explicitly by their owning application or SQL operation',
     );
 
-  if (!Array.isArray(registry))
-    throw new Error('Raw SQL registry must be an array');
-  for (const entry of registry) {
-    if (
-      typeof entry?.name !== 'string' ||
-      !/^[a-z][a-z0-9_]*$/u.test(entry.name) ||
-      entry.owner !== 'owner_role' ||
-      !Array.isArray(entry.accessRoles) ||
-      entry.accessRoles.length === 0 ||
-      !entry.accessRoles.every(
-        (role) => typeof role === 'string' && rawTableRoleNames.has(role),
-      ) ||
-      new Set(entry.accessRoles).size !== entry.accessRoles.length ||
-      !['forced', 'not_applicable'].includes(entry.rls) ||
-      typeof entry.reason !== 'string' ||
-      entry.reason.trim().length < 40
-    ) {
-      throw new Error(
-        `Invalid raw SQL table registry entry: ${JSON.stringify(entry)}`,
-      );
-    }
-    if (registeredTables.has(entry.name))
-      throw new Error(`Duplicate raw SQL table registry entry: ${entry.name}`);
-    registeredTables.add(entry.name);
-    if (typedTables.has(entry.name))
-      throw new Error(
-        `Typed table must not be in raw SQL registry: ${entry.name}`,
-      );
-    if (!migrationTables.has(entry.name))
-      throw new Error(`Registered table is not migration-owned: ${entry.name}`);
-    if (entry.rls === 'forced') {
-      for (const clause of ['ENABLE', 'FORCE']) {
-        const pattern = new RegExp(
-          `ALTER\\s+TABLE\\s+(?:ONLY\\s+)?app\\.${entry.name}\\s+${clause}\\s+ROW\\s+LEVEL\\s+SECURITY`,
-          'iu',
-        );
-        if (!pattern.test(migrationSql))
-          throw new Error(
-            `${entry.name} is registered as forced RLS without ${clause}`,
-          );
-      }
-    }
-  }
-
-  const unowned = [...migrationTables].filter(
-    (name) => !typedTables.has(name) && !registeredTables.has(name),
-  );
+  const untyped = [...migrationTables].filter((name) => !typedTables.has(name));
   const absent = [...typedTables].filter((name) => !migrationTables.has(name));
-  if (unowned.length > 0)
+  if (untyped.length > 0)
     throw new Error(
-      `Migration tables without typed schema or registry ownership: ${unowned.join(', ')}`,
+      `Migration tables without a typed schema: ${untyped.join(', ')}`,
     );
   if (absent.length > 0)
     throw new Error(
       `Typed tables absent from migrations: ${absent.join(', ')}`,
     );
 
-  return Object.freeze({
-    migrationTableCount: migrationTables.size,
-    typedTableCount: typedTables.size,
-    rawSqlTableCount: registeredTables.size,
-  });
+  return Object.freeze({ tableCount: migrationTables.size });
 }
 
 /** Tables the migrations leave in place, applying creates and drops in order. */
@@ -162,9 +90,9 @@ function matches(source, pattern) {
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   validateDatabaseSchemaOwnership()
-    .then(({ migrationTableCount, typedTableCount, rawSqlTableCount }) => {
+    .then(({ tableCount }) => {
       process.stdout.write(
-        `Database schema ownership verified: ${migrationTableCount} migration tables (${typedTableCount} typed, ${rawSqlTableCount} raw SQL).\n`,
+        `Database schema ownership verified: ${tableCount} migration tables, all typed.\n`,
       );
     })
     .catch((error) => {

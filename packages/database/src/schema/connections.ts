@@ -1,11 +1,14 @@
 import {
-  foreignKey,
   bigint,
+  check,
+  foreignKey,
   index,
   jsonb,
+  primaryKey,
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar,
@@ -13,6 +16,7 @@ import {
 import { sql } from 'drizzle-orm';
 
 import { appSchema } from './app-schema.js';
+import { nodeAttempts } from './execution.js';
 
 export const connections = appSchema.table(
   'connections',
@@ -138,5 +142,94 @@ export const connectionEvents = appSchema.table(
       table.createdAt.desc(),
       table.id,
     ),
+  ],
+);
+
+export const nodeAttemptConnectionDispatches = appSchema.table(
+  'node_attempt_connection_dispatches',
+  {
+    workspaceId: uuid('workspace_id').notNull(),
+    attemptId: uuid('attempt_id').notNull(),
+    connectionId: uuid('connection_id').notNull(),
+    providerKey: varchar('provider_key', { length: 64 }).notNull(),
+    authType: varchar('auth_type', { length: 64 }).notNull(),
+    secretVersionId: uuid('secret_version_id').notNull(),
+    healthRevision: bigint('health_revision', { mode: 'number' }).notNull(),
+    workerId: varchar('worker_id', { length: 128 }).notNull(),
+    fenceToken: bigint('fence_token', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    check(
+      'node_attempt_connection_dispatches_auth_type_check',
+      sql`(auth_type)::text = 'slack_bot_token'::text`,
+    ),
+    check(
+      'node_attempt_connection_dispatches_fence_token_check',
+      sql`fence_token > 0`,
+    ),
+    check(
+      'node_attempt_connection_dispatches_health_revision_check',
+      sql`health_revision > 0`,
+    ),
+    check(
+      'node_attempt_connection_dispatches_provider_key_check',
+      sql`(provider_key)::text = 'slack'::text`,
+    ),
+    primaryKey({
+      name: 'node_attempt_connection_dispatches_pkey',
+      columns: [table.workspaceId, table.attemptId],
+    }),
+    foreignKey({
+      name: 'node_attempt_connection_dispatches_attempt_fk',
+      columns: [table.workspaceId, table.attemptId],
+      foreignColumns: [nodeAttempts.workspaceId, nodeAttempts.id],
+    }).onDelete('cascade'),
+  ],
+);
+
+export const connectionHealthObservations = appSchema.table(
+  'connection_health_observations',
+  {
+    id: uuid().primaryKey().notNull(),
+    workspaceId: uuid('workspace_id').notNull(),
+    attemptId: uuid('attempt_id').notNull(),
+    kind: varchar({ length: 32 }).notNull(),
+    reasonCode: varchar('reason_code', { length: 128 }),
+    productionMode: varchar('production_mode', { length: 16 }).notNull(),
+    outboxEventId: uuid('outbox_event_id').notNull(),
+    observedAt: timestamp('observed_at', { withTimezone: true, mode: 'string' })
+      .default(sql`clock_timestamp()`)
+      .notNull(),
+    appliedAt: timestamp('applied_at', { withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    check(
+      'connection_health_observations_production_mode_check',
+      sql`(production_mode)::text = ANY (ARRAY[('observe'::character varying)::text, ('enforce'::character varying)::text])`,
+    ),
+    check(
+      'connection_health_observations_signal_valid',
+      sql`(((kind)::text = 'healthy'::text) AND (reason_code IS NULL)) OR (((kind)::text = 'reauthorization_required'::text) AND (reason_code IS NOT NULL) AND ((reason_code)::text = ANY (ARRAY[('connection.slack_account_inactive'::character varying)::text, ('connection.slack_token_expired'::character varying)::text, ('connection.slack_token_revoked'::character varying)::text])))`,
+    ),
+    unique('connection_health_observations_attempt_unique').on(
+      table.workspaceId,
+      table.attemptId,
+    ),
+    unique('connection_health_observations_outbox_event_id_key').on(
+      table.outboxEventId,
+    ),
+    index('connection_health_observations_workspace_time_idx').on(
+      table.workspaceId,
+      table.observedAt,
+      table.id,
+    ),
+    foreignKey({
+      name: 'connection_health_observations_dispatch_fk',
+      columns: [table.workspaceId, table.attemptId],
+      foreignColumns: [
+        nodeAttemptConnectionDispatches.workspaceId,
+        nodeAttemptConnectionDispatches.attemptId,
+      ],
+    }).onDelete('cascade'),
   ],
 );

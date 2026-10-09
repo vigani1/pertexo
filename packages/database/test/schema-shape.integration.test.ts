@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
 import { getTableColumns, getTableName } from 'drizzle-orm';
@@ -15,21 +14,17 @@ const adminUrl =
 const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const appRole = 'pertexo_app';
+const maintenanceRole = 'pertexo_maintenance';
 const databaseName = `pertexo_test_schema_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
+  connectRoles: ['pertexo_migration', appRole, maintenanceRole],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
 const migrationUrl = fixture.databaseUrl(migrationBaseUrl);
 const owner = new Pool({ connectionString: migrationUrl, max: 1 });
-
-type RawTableContract = Readonly<{
-  accessRoles: readonly string[];
-  name: string;
-  rls: 'forced' | 'not_applicable';
-}>;
 
 function expectedColumnShape(value: unknown): Readonly<{
   column_name: string;
@@ -44,21 +39,12 @@ function expectedColumnShape(value: unknown): Readonly<{
   return { column_name: name, is_not_null: notNull };
 }
 
-const roleNames: Readonly<Record<string, string>> = Object.freeze({
-  api_runtime_role: 'pertexo_app',
-  dispatcher_role: 'pertexo_maintenance',
-  lifecycle_command_role: 'pertexo_maintenance',
-  maintenance_role: 'pertexo_maintenance',
-  operator_role: 'pertexo_maintenance',
-  worker_runtime_role: 'pertexo_app',
-});
-
 beforeAll(async () => {
   await fixture.create();
   await migrateDatabase({
-    appRole: roleNames.api_runtime_role ?? '',
+    appRole,
     connectionString: migrationUrl,
-    maintenanceRole: roleNames.maintenance_role ?? '',
+    maintenanceRole,
     ownerRole: 'pertexo_owner',
   });
 }, 60_000);
@@ -99,19 +85,11 @@ describe('migrated schema shape contract', () => {
       result.rows,
       ({ table_name: tableName }) => tableName,
     );
-    const registry = JSON.parse(
-      await readFile(
-        new URL('../raw-sql-table-registry.json', import.meta.url),
-        'utf8',
-      ),
-    ) as RawTableContract[];
     const typedNames = Object.values(databaseSchema).map((table) =>
       getTableName(table),
     );
     expect(new Set(typedNames).size).toBe(typedNames.length);
-    expect([...actualByTable.keys()].sort()).toEqual(
-      [...typedNames, ...registry.map(({ name }) => name)].sort(),
-    );
+    expect([...actualByTable.keys()].sort()).toEqual(typedNames.sort());
 
     for (const table of Object.values(databaseSchema)) {
       const tableName = getTableName(table);
@@ -135,16 +113,10 @@ describe('migrated schema shape contract', () => {
     }
   });
 
-  it('enforces registered raw-table RLS, grants, keys, and indexes', async () => {
-    const registry = JSON.parse(
-      await readFile(
-        new URL('../raw-sql-table-registry.json', import.meta.url),
-        'utf8',
-      ),
-    ) as RawTableContract[];
+  it('keeps every table owned, keyed, tenant-isolated and privately granted', async () => {
     const catalog = await owner.query<{
-      has_any_index: boolean;
       has_primary_key: boolean;
+      has_workspace_id: boolean;
       owner_name: string;
       relforcerowsecurity: boolean;
       relname: string;
@@ -152,15 +124,14 @@ describe('migrated schema shape contract', () => {
     }>(
       `select class.relname,class.relrowsecurity,class.relforcerowsecurity,
               pg_get_userbyid(class.relowner) owner_name,
-              exists(select 1 from pg_index where indrelid=class.oid) has_any_index,
               exists(select 1 from pg_constraint
-                      where conrelid=class.oid and contype='p') has_primary_key
+                      where conrelid=class.oid and contype='p') has_primary_key,
+              exists(select 1 from pg_attribute
+                      where attrelid=class.oid and attname='workspace_id'
+                        and not attisdropped) has_workspace_id
          from pg_class class
          join pg_namespace namespace on namespace.oid=class.relnamespace
         where namespace.nspname='app' and class.relkind='r'`,
-    );
-    const catalogByName = new Map(
-      catalog.rows.map((row) => [row.relname, row]),
     );
     const grants = await owner.query<{
       grantee: string;
@@ -181,38 +152,24 @@ describe('migrated schema shape contract', () => {
       grants.rows,
       ({ table_name: tableName }) => tableName,
     );
+    const runtimeRoles = new Set([appRole, maintenanceRole]);
 
-    for (const contract of registry) {
-      const table = catalogByName.get(contract.name);
-      expect(table, contract.name).toBeDefined();
-      expect(table?.owner_name, contract.name).toBe('pertexo_owner');
-      expect(table?.has_primary_key, contract.name).toBe(true);
-      expect(table?.has_any_index, contract.name).toBe(true);
-      expect(table?.relrowsecurity, contract.name).toBe(
-        contract.rls === 'forced',
-      );
-      expect(table?.relforcerowsecurity, contract.name).toBe(
-        contract.rls === 'forced',
-      );
-      const actualGrantees = new Set(
-        (grantsByTable.get(contract.name) ?? []).map(({ grantee }) => grantee),
-      );
-      expect(actualGrantees, `${contract.name}:PUBLIC`).not.toContain('PUBLIC');
-      const allowedGrantees = new Set([
-        'pertexo_owner',
-        ...contract.accessRoles.map((role) => roleNames[role]),
-      ]);
-      for (const grantee of actualGrantees)
-        expect(allowedGrantees, `${contract.name}:${grantee}`).toContain(
-          grantee,
-        );
-      for (const grant of grantsByTable.get(contract.name) ?? []) {
+    expect(catalog.rows.length).toBeGreaterThan(0);
+    for (const table of catalog.rows) {
+      expect(table.owner_name, table.relname).toBe('pertexo_owner');
+      expect(table.has_primary_key, table.relname).toBe(true);
+      if (table.has_workspace_id) {
+        expect(table.relrowsecurity, table.relname).toBe(true);
+        expect(table.relforcerowsecurity, table.relname).toBe(true);
+      }
+      for (const grant of grantsByTable.get(table.relname) ?? []) {
         if (grant.grantee === 'pertexo_owner') continue;
-        expect(
-          ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
-          `${contract.name}:${grant.grantee}:${grant.privilege_type}`,
-        ).toContain(grant.privilege_type);
-        expect(grant.is_grantable).toBe(false);
+        const label = `${table.relname}:${grant.grantee}:${grant.privilege_type}`;
+        expect(runtimeRoles, label).toContain(grant.grantee);
+        expect(['DELETE', 'INSERT', 'SELECT', 'UPDATE'], label).toContain(
+          grant.privilege_type,
+        );
+        expect(grant.is_grantable, label).toBe(false);
       }
     }
   });
