@@ -10,6 +10,7 @@ import {
   requestWorkflowRunCancellation,
   type ConnectionDatabase,
 } from '@pertexo/database/testing';
+import { createOperatorCommandDatabase } from '@pertexo/database/operator';
 import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
@@ -98,11 +99,9 @@ export function redisConnection() {
 
 let ownerPool!: Pool;
 let workerPool!: Pool;
-let operatorPool!: Pool;
 let apiDatabase!: ReturnType<typeof createWorkspaceDatabase>;
 let ownerPoolCreated = false;
 let workerPoolCreated = false;
-let operatorPoolCreated = false;
 let apiDatabaseCreated = false;
 let databaseCreated = false;
 let redisNamespaceAcquired = false;
@@ -647,25 +646,23 @@ export async function reclaimProviderScenarioAttempt(input: {
   attemptId: string;
   expectedFence: number;
 }) {
-  const result = await operatorPool.query<{
-    command_outcome: string;
-    result: {
-      fenceToken: number;
-      outboxEventId: string;
-      outcome: string;
-      schemaVersion: number;
-    };
-  }>(
-    `select command_outcome,result
-       from app.reconcile_operator_attempt(
-         $1,$2,$3,$4,'reclaim','http-attempt-operator',
-         'Recover an expired keyed provider attempt in the composed proof',false
-       )`,
-    [randomUUID(), workspaceId, input.attemptId, input.expectedFence],
+  const operator = createOperatorCommandDatabase(
+    parseDatabaseConfig({ connectionString: databaseUrl(operatorUrl), max: 1 }),
   );
-  const row = result.rows[0];
-  if (row === undefined) throw new Error('Attempt reclaim result missing');
-  return row;
+  try {
+    return await operator.reconcileAttempt({
+      action: 'reclaim',
+      actorRef: 'http-attempt-operator',
+      attemptId: input.attemptId,
+      commandId: randomUUID(),
+      dryRun: false,
+      expectedFenceToken: input.expectedFence,
+      reason: 'Recover an expired keyed provider attempt in the composed proof',
+      workspaceId,
+    });
+  } finally {
+    await operator.close();
+  }
 }
 
 export async function attemptDelivery(
@@ -745,10 +742,6 @@ function cleanupHttpNodeAttemptFixture(): Promise<void> {
       await attempt('API database', () => apiDatabase.close());
       apiDatabaseCreated = false;
     }
-    if (operatorPoolCreated) {
-      await attempt('operator pool', () => operatorPool.end());
-      operatorPoolCreated = false;
-    }
     if (workerPoolCreated) {
       await attempt('worker pool', () => workerPool.end());
       workerPoolCreated = false;
@@ -824,11 +817,6 @@ export function installHttpNodeAttemptFixture(): void {
         max: 3,
       });
       workerPoolCreated = true;
-      operatorPool = new Pool({
-        connectionString: databaseUrl(operatorUrl),
-        max: 1,
-      });
-      operatorPoolCreated = true;
       apiDatabase = createWorkspaceDatabase(
         parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
       );

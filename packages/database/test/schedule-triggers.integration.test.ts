@@ -21,6 +21,7 @@ const {
   ownerQuery,
   triggerId,
   versionId,
+  workerQuery,
   workflowId,
   workspaceId,
 } = schedule;
@@ -185,7 +186,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     ]);
     expect(failure.status).toBe('fulfilled');
 
-    const facts = await ownerQuery<{
+    const facts = await workerQuery<{
       command_outcome: string;
       command_status: string;
       completed_receipts: number;

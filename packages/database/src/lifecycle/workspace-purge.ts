@@ -192,6 +192,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'node_attempt_connection_dispatches',
     'operator_unknown_outcome_evidence',
     'operator_run_replay_requests',
+    'operator_commands',
     'node_attempts',
     'node_runs',
     'run_events',
