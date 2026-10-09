@@ -6,19 +6,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "browser": false,
-      "node": "./dist/index.js"
-    },
-    "./testing": {
-      "types": "./dist/testing.d.ts",
-      "browser": false,
-      "node": "./dist/testing.js"
+      "default": "./dist/index.js"
     }
-  },
-  "browser": {
-    "./dist/index.js": false,
-    "./dist/server-only.js": false,
-    "./dist/testing.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

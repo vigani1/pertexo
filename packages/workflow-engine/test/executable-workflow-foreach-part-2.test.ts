@@ -3,8 +3,6 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { safeParseWorkflowGraphDraft } from '@pertexo/workflow-model';
 
-import * as productionEngine from '../src/index.js';
-import * as testingEngine from '../src/testing.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
@@ -716,26 +714,4 @@ describe('For Each production operations', () => {
       expect(Reflect.get(Object.prototype, 'safe')).toBeUndefined();
     },
   );
-
-  it('keeps the generic scheduler graph seam on the server-only testing entry', () => {
-    for (const internalName of [
-      'assertNodeTransition',
-      'assertRunTransition',
-      'createLoopState',
-      'decideRetry',
-      'deriveReadyNodes',
-      'parseSchedulerGraph',
-      'settleJoin',
-    ]) {
-      expect(productionEngine).not.toHaveProperty(internalName);
-      expect(testingEngine).toHaveProperty(internalName);
-    }
-    for (const retiredPolicy of ['decideCancellation', 'planDurableWait']) {
-      expect(productionEngine).not.toHaveProperty(retiredPolicy);
-      expect(testingEngine).not.toHaveProperty(retiredPolicy);
-    }
-    expect(testingEngine.advanceWorkflow).not.toBe(
-      productionEngine.advanceWorkflow,
-    );
-  });
 });

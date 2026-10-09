@@ -7,7 +7,7 @@ import {
   parseSchedulerGraph,
   type AdvanceWorkflowInput,
   type SchedulerGraph,
-} from '../../src/testing.js';
+} from './engine.js';
 
 export const occurredAt = '2026-08-20T10:00:00.000Z';
 export const chainGraph = {

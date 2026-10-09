@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { advanceWorkflow, createCheckpoint } from '../src/testing.js';
+import { advanceWorkflow, createCheckpoint } from './support/engine.js';
 
 const occurredAt = '2026-08-20T10:00:00.000Z';
 

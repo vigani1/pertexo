@@ -1,0 +1,259 @@
+import {
+  parseCheckpoint,
+  reconstructReadySet,
+} from '../checkpoint/create-and-parse.js';
+import { WorkflowEngineError } from '../errors.js';
+import { deriveReadyNodes } from './scheduler.js';
+import { compareOrdinal } from '../ordering.js';
+import {
+  assertNodeTransition,
+  assertRunTransition,
+} from './status-transitions.js';
+import {
+  boundedReadyAdmissions,
+  deriveTerminalRunStatus,
+} from './decisions.js';
+import type {
+  AttemptAdmissionPlan,
+  NodeRunAdmissionPlan,
+  WorkflowTransitionPlan,
+} from '../types.js';
+import {
+  isTerminalNodeStatus,
+  schedulerNodeSideEffectClass,
+  scopedLoopSinkInvocation,
+  transitionEvent as event,
+  type MutableWorkflowTransition,
+} from './state.js';
+
+function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
+  const { current, graph, invocations, branchSelections, loops } = state;
+  if (
+    graph?.deriveReadiness !== true ||
+    state.cancelRequested ||
+    state.deadlineExpired
+  )
+    return false;
+  const allInvocations = [...invocations.values()];
+  if (
+    deriveReadyNodes({
+      graph,
+      workflowVersionId: current.workflowVersionId,
+      invocations: allInvocations,
+      branchSelections,
+    }).length > 0
+  )
+    return true;
+  for (const loop of loops.values()) {
+    if (loop.terminalStatus !== undefined) continue;
+    const body = graph.structuredBodies?.find(
+      ({ loopNodeId }) => loopNodeId === loop.loopId,
+    );
+    for (const ordinal of loop.activeOrdinals) {
+      const sink = scopedLoopSinkInvocation(loop, ordinal, allInvocations);
+      if (sink !== undefined && isTerminalNodeStatus(sink.status)) return true;
+      if (
+        body !== undefined &&
+        deriveReadyNodes({
+          graph: {
+            deriveReadiness: true,
+            nodes: body.nodes,
+            edges: body.edges,
+          },
+          workflowVersionId: current.workflowVersionId,
+          invocations: allInvocations,
+          branchSelections,
+          branchPath: loop.branchPath,
+          iterationPath: [
+            ...loop.iterationPath,
+            { loopNodeId: loop.loopId, ordinal },
+          ],
+        }).length > 0
+      )
+        return true;
+    }
+  }
+  return false;
+}
+
+export function buildWorkflowTransitionPlan(
+  state: MutableWorkflowTransition,
+  input: Readonly<{
+    consumedObservationCount: number;
+    consumedThroughEventSequence: number;
+    maximumAdmissions: number;
+    occurredAt: string;
+  }>,
+): WorkflowTransitionPlan {
+  const {
+    current,
+    graph,
+    invocations,
+    branchSelections,
+    eventDrafts,
+    nodeRunAdmissionKeys,
+    cancelRequested,
+    deadlineExpired,
+    joins,
+    loops,
+  } = state;
+  const ordered = [...invocations.values()].sort((left, right) =>
+    compareOrdinal(left.invocationKey, right.invocationKey),
+  );
+  const readySet = ordered
+    .filter(({ status }) => status === 'ready')
+    .map(({ invocationKey }) => invocationKey);
+  const admittedKeys =
+    cancelRequested || deadlineExpired
+      ? []
+      : boundedReadyAdmissions({
+          invocations: [...invocations.values()],
+          maximumAdmissions: input.maximumAdmissions,
+          readySet,
+          schedulerNodes: state.schedulerNodes,
+        });
+  const attempts: AttemptAdmissionPlan[] = [];
+  for (const key of admittedKeys) {
+    const invocation = invocations.get(key);
+    if (invocation === undefined)
+      throw new WorkflowEngineError(
+        'checkpoint_invalid',
+        `ready invocation ${key} is missing`,
+      );
+    assertNodeTransition(invocation.status, 'running');
+    const admissionKind =
+      invocation.waitKind === 'node_wait'
+        ? ('wait_resume' as const)
+        : invocation.waitKind === 'retry_backoff'
+          ? ('retry' as const)
+          : ('execute' as const);
+    const { waitKind: _waitKind, ...withoutWaitKind } = invocation;
+    const running = {
+      ...withoutWaitKind,
+      status: 'running' as const,
+      attemptNumber: invocation.attemptNumber + 1,
+    };
+    invocations.set(key, running);
+    attempts.push({
+      invocationKey: key,
+      nodeId: running.nodeId,
+      attemptNumber: running.attemptNumber,
+      admissionKind,
+      sideEffectClass: schedulerNodeSideEffectClass(
+        state.schedulerNodes,
+        running.nodeId,
+      ),
+      ...(running.branchPath === undefined
+        ? {}
+        : { branchPath: running.branchPath }),
+      ...(running.iterationPath === undefined
+        ? {}
+        : { iterationPath: running.iterationPath }),
+    });
+  }
+  if (state.runStatus === 'waiting' && attempts.length > 0) {
+    assertRunTransition(state.runStatus, 'running');
+    state.runStatus = 'running';
+  }
+
+  const finalInvocations = [...invocations.values()].sort((left, right) =>
+    compareOrdinal(left.invocationKey, right.invocationKey),
+  );
+  const nonterminal = finalInvocations.filter(({ status }) =>
+    ['pending', 'ready', 'running', 'waiting'].includes(status),
+  );
+  const graphIncomplete =
+    graph?.nodes.some(
+      ({ id }) => !finalInvocations.some(({ nodeId }) => nodeId === id),
+    ) === true;
+  const runIsActive =
+    state.runStatus === 'queued' ||
+    state.runStatus === 'running' ||
+    state.runStatus === 'waiting';
+  if (runIsActive && nonterminal.length === 0) {
+    const terminalStatus = deriveTerminalRunStatus({
+      cancelRequested,
+      deadlineExpired,
+      graphIncomplete,
+      invocations: finalInvocations,
+    });
+    if (terminalStatus !== undefined) {
+      assertRunTransition(state.runStatus, terminalStatus);
+      state.runStatus = terminalStatus;
+      eventDrafts.push(event(`run.${terminalStatus}`, input.occurredAt));
+    }
+  } else if (
+    state.runStatus === 'running' &&
+    nonterminal.length > 0 &&
+    nonterminal.every(({ status }) => status === 'waiting')
+  ) {
+    assertRunTransition(state.runStatus, 'waiting');
+    state.runStatus = 'waiting';
+    eventDrafts.push(event('run.waiting', input.occurredAt));
+  }
+
+  const firstDerivedEventSequence =
+    current.nextEventSequence + input.consumedObservationCount;
+  const events = eventDrafts.map((draft, offset) => ({
+    ...draft,
+    sequence: firstDerivedEventSequence + offset,
+  }));
+  const checkpoint = parseCheckpoint({
+    ...current,
+    revision: current.revision + 1,
+    runStatus: state.runStatus,
+    nextEventSequence: firstDerivedEventSequence + events.length,
+    cancelRequested,
+    deadlineExpired,
+    joins: [...joins.values()],
+    loops: [...loops.values()],
+    remainingIterationBudget: state.remainingIterationBudget,
+    admittedInvocationKeys: [
+      ...new Set([...current.admittedInvocationKeys, ...admittedKeys]),
+    ].sort(),
+    invocations: finalInvocations,
+    readySet: reconstructReadySet({
+      ...current,
+      invocations: finalInvocations,
+    }),
+    branchSelections,
+  });
+  const nodeRunAdmissions: NodeRunAdmissionPlan[] = [...nodeRunAdmissionKeys]
+    .sort(compareOrdinal)
+    .map((invocationKey) => {
+      const invocation = invocations.get(invocationKey);
+      if (invocation === undefined)
+        throw new WorkflowEngineError(
+          'checkpoint_invalid',
+          `materialized invocation ${invocationKey} is missing`,
+        );
+      return {
+        invocationKey,
+        nodeId: invocation.nodeId,
+        sideEffectClass: schedulerNodeSideEffectClass(
+          state.schedulerNodes,
+          invocation.nodeId,
+        ),
+        ...(invocation.branchPath === undefined
+          ? {}
+          : { branchPath: invocation.branchPath }),
+        ...(invocation.iterationPath === undefined
+          ? {}
+          : { iterationPath: invocation.iterationPath }),
+      };
+    });
+  return {
+    expectedRevision: current.revision,
+    expectedNextEventSequence: current.nextEventSequence,
+    consumedThroughEventSequence: input.consumedThroughEventSequence,
+    checkpoint,
+    events,
+    nodeRunAdmissions,
+    attempts,
+    ...(attempts.length === 0 &&
+    ['running', 'waiting'].includes(state.runStatus) &&
+    hasUnsettledSchedulerWork(state)
+      ? { immediateContinuation: true as const }
+      : {}),
+  };
+}

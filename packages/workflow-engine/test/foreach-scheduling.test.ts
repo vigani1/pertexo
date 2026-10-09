@@ -5,7 +5,7 @@ import {
   completeLoopIteration,
   createLoopState,
   invocationKey,
-} from '../src/testing.js';
+} from './support/engine.js';
 
 const scope = {
   controlInvocationKey: 'loop-control',

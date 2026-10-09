@@ -20,7 +20,7 @@ import {
   nodeRelease,
   pairedParallelGraph,
 } from './executable-workflow.fixtures.js';
-import { deriveReadyNodes } from '../src/testing.js';
+import { deriveReadyNodes } from './support/engine.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000601';
 const occurredAt = '2026-09-06T00:00:00.000Z';

@@ -1,8 +1,8 @@
 import type { JsonValue } from '@pertexo/workflow-model';
 
-import { normalizeBoundedEngineJson } from '../executable-workflow.js';
+import { normalizeBoundedEngineJson } from '../compilation/validation.js';
 import { isJsonRecord, operationError } from '../operation-values.js';
-import { uuidPattern } from './persisted-observations.js';
+import { uuidPattern } from './persisted.js';
 import type { OutputReference } from '../types.js';
 
 export function completedOutputReference(

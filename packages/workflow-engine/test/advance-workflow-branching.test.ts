@@ -5,7 +5,7 @@ import {
   advanceWorkflow as advanceWorkflowForTesting,
   deriveReadyNodes,
   parseSchedulerGraph,
-} from '../src/testing.js';
+} from './support/engine.js';
 import {
   chainGraph,
   checkpoint,

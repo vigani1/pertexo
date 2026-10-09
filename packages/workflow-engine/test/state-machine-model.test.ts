@@ -12,7 +12,7 @@ import {
   decideRetry,
   type SchedulerGraph,
   type WorkflowObservation,
-} from '../src/testing.js';
+} from './support/engine.js';
 
 const FOUR_NODE_IDS = ['a', 'b', 'c', 'd'] as const;
 const SIX_NODE_IDS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;

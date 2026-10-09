@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { parsePersistedObservation } from '../src/observation/persisted-observation-parser.js';
+import { parsePersistedObservation } from '../src/observation/persisted-parser.js';
 
 describe('persisted executor failure code', () => {
   it.each(['provider.unavailable', 'Provider.Failure', '9Provider:Failure'])(

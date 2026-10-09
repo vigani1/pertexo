@@ -6,8 +6,8 @@ import {
   invocationKey,
   type WorkflowCheckpoint,
   type WorkflowObservation,
-} from '../src/testing.js';
-import { scopedLoopSinkInvocation } from '../src/transition/workflow-transition-state.js';
+} from './support/engine.js';
+import { scopedLoopSinkInvocation } from '../src/transition/state.js';
 import type { InvocationState, LoopState } from '../src/types.js';
 
 const occurredAt = '2026-08-20T10:00:00.000Z';

@@ -4,7 +4,7 @@ import {
   advanceWorkflow as advanceWorkflowAtSeam,
   invocationKey,
   type AdvanceWorkflowInput,
-} from '../src/testing.js';
+} from './support/engine.js';
 import {
   chainGraph,
   checkpoint,

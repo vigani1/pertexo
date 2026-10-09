@@ -6,7 +6,7 @@ import {
   decideRetry,
   providerIdempotencyKey,
   WorkflowEngineError,
-} from '../src/testing.js';
+} from './support/engine.js';
 
 describe('retry and transition policy', () => {
   const policy = {

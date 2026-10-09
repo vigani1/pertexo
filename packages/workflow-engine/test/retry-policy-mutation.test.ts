@@ -5,7 +5,7 @@ import {
   ENGINE_RETRY_POLICY_V1,
   providerIdempotencyKey,
   resolveRetryPolicy,
-} from '../src/testing.js';
+} from './support/engine.js';
 
 const policy = {
   maximumAttempts: 2,

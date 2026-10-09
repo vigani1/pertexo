@@ -10,7 +10,7 @@ import {
   advanceWorkflow,
   deriveReadyNodes,
   parseSchedulerGraph,
-} from '../src/testing.js';
+} from './support/engine.js';
 import { branchPathHasPrefix } from '../src/scope.js';
 import {
   boundedPolicy,
