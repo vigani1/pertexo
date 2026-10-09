@@ -19,7 +19,7 @@ import {
 } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseSupport,
   invocationKey,
@@ -290,10 +290,10 @@ function nestedBranchGraph() {
 }
 
 function compiledProjection(
-  workflowGraph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
+  workflowGraph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
   release: ReturnType<typeof composeExecutableCompatibilityRelease>,
 ): PublishedWorkflowV2Projection {
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph: workflowGraph,
     release,
   });
@@ -312,7 +312,7 @@ function compiledProjection(
 
 function fixture(nodeId: 'manual' | 'terminate') {
   const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
-  const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+  const executable = buildWorkflowExecutable({ graph: graph(), release });
   const projection: PublishedWorkflowV2Projection = {
     id: VERSION_ID,
     workspaceId: WORKSPACE_ID,
@@ -428,7 +428,7 @@ describe('node attempt execution engine', () => {
     const release = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: branchGraph('condition'),
       release,
     });
@@ -731,7 +731,7 @@ describe('node attempt execution engine', () => {
     const target = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE_SUCCESSOR,
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: target,
     });
@@ -776,7 +776,7 @@ describe('node attempt execution engine', () => {
     const release = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: forEachGraph(),
       release,
     });
@@ -847,7 +847,7 @@ describe('node attempt execution engine', () => {
     const release = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: forEachGraph(),
       release,
     });

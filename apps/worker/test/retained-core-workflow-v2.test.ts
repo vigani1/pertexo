@@ -3,9 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
 import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
-  verifyWorkflowExecutableV2,
+  verifyWorkflowExecutable,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -61,7 +61,7 @@ describe('retained core workflow V2 compatibility', () => {
     const release = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE_SUCCESSOR,
     );
-    const rebuilt = buildWorkflowExecutableV2({
+    const rebuilt = buildWorkflowExecutable({
       graph: fixture.graph,
       release,
     });
@@ -70,7 +70,7 @@ describe('retained core workflow V2 compatibility', () => {
       envelope: fixture.executable,
       checksum: fixture.checksum,
     });
-    const verified = verifyWorkflowExecutableV2({
+    const verified = verifyWorkflowExecutable({
       envelope: fixture.executable,
       checksum: fixture.checksum,
       admissionRelease: release,

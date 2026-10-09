@@ -4,9 +4,9 @@ import {
   type RegistryRelease,
 } from '@pertexo/node-sdk';
 import {
-  type ExecutableRuntimePoliciesV1,
-  type WorkflowExecutableNodeV2,
-  type WorkflowExecutableV2,
+  type ExecutableRuntimePolicies,
+  type WorkflowExecutableNode,
+  type WorkflowExecutable,
   compareIdentity,
   digest,
   globalPolicies,
@@ -14,7 +14,7 @@ import {
 } from './foundation.js';
 
 function uniqueDefinitions(
-  nodes: readonly Pick<WorkflowExecutableNodeV2, 'definition'>[],
+  nodes: readonly Pick<WorkflowExecutableNode, 'definition'>[],
 ): readonly DefinitionIdentity[] {
   const unique = new Map<string, DefinitionIdentity>();
   for (const { definition } of nodes) unique.set(token(definition), definition);
@@ -28,8 +28,8 @@ function uniqueDefinitions(
  */
 export function selectionFingerprint(
   release: RegistryRelease,
-  nodes: readonly Pick<WorkflowExecutableNodeV2, 'definition'>[],
-  policies: ExecutableRuntimePoliciesV1,
+  nodes: readonly Pick<WorkflowExecutableNode, 'definition'>[],
+  policies: ExecutableRuntimePolicies,
 ): string {
   const nodeSelectionFingerprint = computeCompatibilitySelectionFingerprint(
     release,
@@ -45,7 +45,7 @@ export function selectionFingerprint(
   )}`;
 }
 
-function executableProjection(envelope: WorkflowExecutableV2): unknown {
+function executableProjection(envelope: WorkflowExecutable): unknown {
   return {
     schemaVersion: envelope.schemaVersion,
     sourceGraphSchemaVersion: envelope.sourceGraphSchemaVersion,
@@ -61,8 +61,8 @@ function executableProjection(envelope: WorkflowExecutableV2): unknown {
  * Computes the V2 executable identity. It intentionally hashes only the
  * executable projection and leaves envelope provenance outside the digest.
  */
-export function computeWorkflowExecutableChecksumV2(
-  envelope: WorkflowExecutableV2,
+export function computeWorkflowExecutableChecksum(
+  envelope: WorkflowExecutable,
 ): `wf:v2:sha256:${string}` {
   return `wf:v2:sha256:${digest(
     'pertexo.workflow-executable.v2',

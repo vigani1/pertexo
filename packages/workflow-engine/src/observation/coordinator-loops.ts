@@ -7,7 +7,7 @@ import {
 } from '@pertexo/workflow-model';
 
 import type { parseCheckpoint } from '../checkpoint/create-and-parse.js';
-import type { WorkflowExecutableNodeV2 } from '../compilation/foundation.js';
+import type { WorkflowExecutableNode } from '../compilation/foundation.js';
 import { completedOutputReference } from './coordinator-output.js';
 import {
   exactKeys,
@@ -91,7 +91,7 @@ export function forEachCoordinatorObservations(
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   checkpoint: ReturnType<typeof parseCheckpoint>,
   invocations: ReadonlyMap<string, CheckpointInvocation>,
-  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
+  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
   derivedObservations: readonly WorkflowObservation[] = [],
 ): Readonly<{
   observations: readonly WorkflowObservation[];

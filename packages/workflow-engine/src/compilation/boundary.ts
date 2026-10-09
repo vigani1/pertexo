@@ -1,14 +1,14 @@
 import { parseRegistryRelease } from '@pertexo/node-sdk';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import {
-  computeWorkflowExecutableChecksumV2,
+  computeWorkflowExecutableChecksum,
   selectionFingerprint,
 } from './identity.js';
 import { executableNodes } from './graph.js';
 import {
-  type CompiledWorkflowExecutableV2,
-  type VerifiedWorkflowExecutableV2,
-  type WorkflowExecutableV2,
+  type CompiledWorkflowExecutable,
+  type VerifiedWorkflowExecutable,
+  type WorkflowExecutable,
   fail,
   freezeExecutable,
   normalizeError,
@@ -32,7 +32,7 @@ export function parseBoundary(input: {
   readonly admissionRelease: unknown;
   readonly currentRelease?: unknown;
   readonly execution?: { readonly alreadyAdmitted: boolean };
-}): WorkflowExecutableV2 {
+}): WorkflowExecutable {
   const normalizedEnvelope: unknown = normalizeBoundedEngineJson(
     input.envelope,
   );
@@ -108,30 +108,28 @@ export function parseBoundary(input: {
   };
 }
 
-export function parseWorkflowExecutableV2(input: {
+export function parseWorkflowExecutable(input: {
   readonly envelope: unknown;
   readonly admissionRelease: unknown;
   readonly currentRelease?: unknown;
   readonly execution?: { readonly alreadyAdmitted: boolean };
-}): VerifiedWorkflowExecutableV2 {
+}): VerifiedWorkflowExecutable {
   try {
-    return freezeExecutable(
-      parseBoundary(input),
-    ) as VerifiedWorkflowExecutableV2;
+    return freezeExecutable(parseBoundary(input)) as VerifiedWorkflowExecutable;
   } catch (error) {
     normalizeError(error);
   }
 }
 
-export function verifyWorkflowExecutableV2(input: {
+export function verifyWorkflowExecutable(input: {
   readonly envelope: unknown;
   readonly checksum: unknown;
   readonly admissionRelease: unknown;
   readonly currentRelease?: unknown;
   readonly execution?: { readonly alreadyAdmitted: boolean };
-}): CompiledWorkflowExecutableV2 {
-  const envelope = parseWorkflowExecutableV2(input);
-  const checksum = computeWorkflowExecutableChecksumV2(envelope);
+}): CompiledWorkflowExecutable {
+  const envelope = parseWorkflowExecutable(input);
+  const checksum = computeWorkflowExecutableChecksum(envelope);
   if (input.checksum !== checksum)
     fail('workflow executable V2 checksum does not match');
   return registerExecutableIdentity(Object.freeze({ envelope, checksum }));

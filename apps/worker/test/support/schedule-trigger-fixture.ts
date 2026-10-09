@@ -12,7 +12,7 @@ import {
 } from '@pertexo/node-catalog';
 import { QUEUE_NAME } from '@pertexo/queue';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
@@ -102,9 +102,9 @@ function scheduleAuthoringOptions(
         command: Readonly<{ signal?: AbortSignal }>,
       ) => validator.validate(graph, authoringPolicies, command),
       executableCompiler: (
-        graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
+        graph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
       ) => {
-        const compiled = buildWorkflowExecutableV2({ graph, release });
+        const compiled = buildWorkflowExecutable({ graph, release });
         return {
           checksum: compiled.checksum,
           executableSchemaVersion: 2 as const,

@@ -14,8 +14,8 @@ import {
   executorManifest,
 } from './graph-rules.js';
 import {
-  type WorkflowExecutableGraphV2,
-  type WorkflowExecutableNodeV2,
+  type WorkflowExecutableGraph,
+  type WorkflowExecutableNode,
   compareIdentity,
   compareOrdinal,
   fail,
@@ -32,24 +32,24 @@ import {
   sideEffectClass,
 } from './validation.js';
 
-export interface RawExecutableNodeV2 {
+export interface RawExecutableNode {
   readonly raw: Record<string, unknown>;
   readonly structured?: {
     readonly raw: Record<string, unknown>;
-    readonly body: RawExecutableGraphV2;
+    readonly body: RawExecutableGraph;
   };
 }
 
-export interface RawExecutableGraphV2 {
+export interface RawExecutableGraph {
   readonly raw: Record<string, unknown>;
-  readonly nodes: readonly RawExecutableNodeV2[];
+  readonly nodes: readonly RawExecutableNode[];
   readonly body: boolean;
 }
 
 export function readRawExecutableGraph(
   value: unknown,
   body: boolean,
-): RawExecutableGraphV2 {
+): RawExecutableGraph {
   const raw = record(
     value,
     body ? 'executable structured body' : 'executable graph',
@@ -61,7 +61,7 @@ export function readRawExecutableGraph(
       : ['settings', 'nodes', 'edges'],
   );
   if (!Array.isArray(raw.nodes)) fail('executable nodes must be an array');
-  const nodes = raw.nodes.map((value, index): RawExecutableNodeV2 => {
+  const nodes = raw.nodes.map((value, index): RawExecutableNode => {
     const node = record(value, `executable node ${String(index)}`);
     exactKeys(
       node,
@@ -94,7 +94,7 @@ export function readRawExecutableGraph(
   return { raw, nodes, body };
 }
 
-function authoringNode(node: RawExecutableNodeV2): unknown {
+function authoringNode(node: RawExecutableNode): unknown {
   const raw = node.raw;
   const authoring: Record<string, unknown> = {
     id: raw.id,
@@ -117,7 +117,7 @@ function authoringNode(node: RawExecutableNodeV2): unknown {
   return authoring;
 }
 
-export function authoringGraph(tree: RawExecutableGraphV2): unknown {
+export function authoringGraph(tree: RawExecutableGraph): unknown {
   return {
     schemaVersion: 1,
     settings: tree.raw.settings,
@@ -164,10 +164,10 @@ function assertRetainedBehavior(
 
 function assertNodePinIdentity(
   node: WorkflowNode,
-  definition: WorkflowExecutableNodeV2['definition'],
-  executor: WorkflowExecutableNodeV2['executor'],
+  definition: WorkflowExecutableNode['definition'],
+  executor: WorkflowExecutableNode['executor'],
   executorAbi: unknown,
-  selectedSideEffectClass: WorkflowExecutableNodeV2['sideEffectClass'],
+  selectedSideEffectClass: WorkflowExecutableNode['sideEffectClass'],
   admissionDefinition: DefinitionManifest,
   currentDefinition: DefinitionManifest,
   admissionExecutor: ExecutorManifest,
@@ -208,7 +208,7 @@ function assertPinnedPolicies(
 
 function assertCurrentExecutionEligibility(
   currentExecutor: ExecutorManifest,
-  definition: WorkflowExecutableNodeV2['definition'],
+  definition: WorkflowExecutableNode['definition'],
   alreadyAdmitted: boolean,
 ): void {
   if (
@@ -230,7 +230,7 @@ function validatePin(
   admission: RegistryRelease,
   current: RegistryRelease,
   alreadyAdmitted: boolean,
-): WorkflowExecutableNodeV2 {
+): WorkflowExecutableNode {
   const definition = parseIdentity(raw.definition, 'node definition');
   const executor = parseIdentity(raw.executor, 'node executor');
   const policies = parsePolicies(raw.policyReferences);
@@ -285,12 +285,12 @@ function validatePin(
 }
 
 export function validateExecutableGraph(
-  tree: RawExecutableGraphV2,
+  tree: RawExecutableGraph,
   graph: WorkflowGraph,
   admission: RegistryRelease,
   current: RegistryRelease,
   alreadyAdmitted: boolean,
-): WorkflowExecutableGraphV2 {
+): WorkflowExecutableGraph {
   const index = graphValidationIndex(graph);
   assertGraphPorts(graph, admission, index);
   assertBranchesDoNotReconverge(graph, index);

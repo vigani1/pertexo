@@ -3,7 +3,7 @@ import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
 } from '@pertexo/workflow-engine';
@@ -26,7 +26,7 @@ it('admits the reviewed schedule successor after an empty For Each declaration',
         : node,
     ),
   };
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph,
     release: composeExecutableCompatibilityRelease(
       platformServingRegistryRelease(),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   invocationKey,
@@ -10,7 +10,7 @@ import {
 import { forEachGraph, nodeRelease } from './executable-workflow.fixtures.js';
 
 async function startForEach() {
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph: forEachGraph(),
     release: composeExecutableCompatibilityRelease(
       nodeRelease({ forEach: true, setRetryClass: 'idempotent-with-key' }),
@@ -603,7 +603,7 @@ describe('For Each production operations', () => {
       throw new Error('For Each structure missing');
     for (const bodyNode of skippedControl.structured.body.nodes)
       Object.assign(bodyNode, { disabled: true });
-    const skippedExecutable = buildWorkflowExecutableV2({
+    const skippedExecutable = buildWorkflowExecutable({
       graph: skippedGraph,
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ forEach: true, setRetryClass: 'idempotent-with-key' }),
@@ -859,7 +859,7 @@ describe('For Each production operations', () => {
     if (concurrentControl === undefined || !('structured' in concurrentControl))
       throw new Error('For Each structure missing');
     Object.assign(concurrentControl.structured, { maxConcurrency: 2 });
-    const concurrentExecutable = buildWorkflowExecutableV2({
+    const concurrentExecutable = buildWorkflowExecutable({
       graph: concurrentGraph,
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ forEach: true, setRetryClass: 'idempotent-with-key' }),

@@ -1,6 +1,6 @@
 import type { PublishedWorkflowV2Projection } from '@pertexo/database/runs';
 import {
-  verifyWorkflowExecutableV2,
+  verifyWorkflowExecutable,
   WorkflowEngineError,
   type ExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
@@ -42,7 +42,7 @@ export function verifyPersistedWorkflowProjection(
     admissionRelease = options.admissionRelease;
     currentRelease = options.currentRelease;
   }
-  const executable = verifyWorkflowExecutableV2({
+  const executable = verifyWorkflowExecutable({
     envelope: projection.executableJson,
     checksum: projection.checksum,
     admissionRelease,

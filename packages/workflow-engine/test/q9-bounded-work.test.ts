@@ -2,10 +2,7 @@ import { performance } from 'node:perf_hooks';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  parseCheckpoint,
-  WORKFLOW_CHECKPOINT_LIMITS_V1,
-} from '../src/index.js';
+import { parseCheckpoint, WORKFLOW_CHECKPOINT_LIMITS } from '../src/index.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 
@@ -36,7 +33,7 @@ function checkpoint(population: number) {
 
 function largestAcceptedPopulation(): number {
   let accepted = 0;
-  let rejected = WORKFLOW_CHECKPOINT_LIMITS_V1.arrayItems + 1;
+  let rejected = WORKFLOW_CHECKPOINT_LIMITS.arrayItems + 1;
   while (accepted + 1 < rejected) {
     const candidate = Math.floor((accepted + rejected) / 2);
     try {

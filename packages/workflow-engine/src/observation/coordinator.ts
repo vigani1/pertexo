@@ -3,8 +3,8 @@ import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
 import type { parseCheckpoint } from '../checkpoint/create-and-parse.js';
 import { executableEdges } from '../compilation/graph.js';
 import type {
-  CompiledWorkflowExecutableV2,
-  WorkflowExecutableNodeV2,
+  CompiledWorkflowExecutable,
+  WorkflowExecutableNode,
 } from '../compilation/foundation.js';
 import { completedOutputReference } from './coordinator-output.js';
 import {
@@ -26,7 +26,7 @@ export function branchSelectionObservations(
   completedItems: readonly JsonValue[],
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   invocations: ReadonlyMap<string, CheckpointInvocation>,
-  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
+  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
 ): readonly WorkflowObservation[] {
   const seen = new Map<string, string>();
   const verifiedParallelOutputs = new Set<string>();
@@ -142,10 +142,10 @@ export function branchSelectionObservations(
 }
 
 export function mergeCoordinatorObservations(
-  executable: CompiledWorkflowExecutableV2,
+  executable: CompiledWorkflowExecutable,
   checkpoint: ReturnType<typeof parseCheckpoint>,
   observations: readonly WorkflowObservation[],
-  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
+  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
 ): readonly WorkflowObservation[] {
   const projected = new Map(
     checkpoint.invocations.map((invocation) => [

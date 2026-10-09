@@ -3,7 +3,7 @@ import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
 } from '@pertexo/workflow-engine';
@@ -27,7 +27,7 @@ it('the actual reviewed For Each fails its pinned bound before any body admissio
         : node,
     ),
   };
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph,
     release: composeExecutableCompatibilityRelease(
       platformServingRegistryRelease(),

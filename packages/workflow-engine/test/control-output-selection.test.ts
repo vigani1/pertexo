@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
 } from '../src/index.js';
 import {
@@ -46,7 +46,7 @@ describe('persisted control-output selection', () => {
   ])(
     'finds $name nodes in the serialized compiled V2 envelope',
     ({ graph, release, expected }) => {
-      const executable = buildWorkflowExecutableV2({
+      const executable = buildWorkflowExecutable({
         graph,
         release: composeExecutableCompatibilityRelease(release),
       });

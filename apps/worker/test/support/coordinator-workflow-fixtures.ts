@@ -8,7 +8,7 @@ import {
   PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
 } from '@pertexo/node-catalog';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
 } from '@pertexo/workflow-engine';
 import { z } from 'zod';
@@ -449,7 +449,7 @@ async function insertCompiledWorkflow(
     workspaceId: string;
   }>,
 ): Promise<void> {
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph: input.graph,
     release: composeExecutableCompatibilityRelease(input.release),
   });

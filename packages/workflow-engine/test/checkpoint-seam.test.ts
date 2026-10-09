@@ -5,7 +5,7 @@ import {
   invocationKey,
   parseCheckpoint,
   reconstructReadySet,
-  WORKFLOW_CHECKPOINT_LIMITS_V1,
+  WORKFLOW_CHECKPOINT_LIMITS,
 } from '../src/index.js';
 import {
   withExplicitSchedulerState,
@@ -684,11 +684,7 @@ describe('checkpoint seam', () => {
 
   it('rejects a wide object at the incremental member cap', () => {
     const wide: Record<string, number> = {};
-    for (
-      let index = 0;
-      index <= WORKFLOW_CHECKPOINT_LIMITS_V1.members;
-      index += 1
-    )
+    for (let index = 0; index <= WORKFLOW_CHECKPOINT_LIMITS.members; index += 1)
       wide[`field-${String(index)}`] = index;
     const startedAt = performance.now();
     expect(() =>

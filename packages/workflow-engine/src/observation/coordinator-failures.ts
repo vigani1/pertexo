@@ -1,6 +1,6 @@
 import type { PolicyReference } from '@pertexo/node-sdk';
 
-import type { WorkflowExecutableNodeV2 } from '../compilation/foundation.js';
+import type { WorkflowExecutableNode } from '../compilation/foundation.js';
 import { operationError } from '../operation-values.js';
 import type { AttemptFailureObservation } from './persisted.js';
 import { decideRetry, resolveRetryPolicy } from '../attempt/retries.js';
@@ -17,7 +17,7 @@ export function resolveAttemptFailures(
     runId: string;
     failures: readonly AttemptFailureObservation[];
     invocations: ReadonlyMap<string, FailureInvocation>;
-    nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>;
+    nodes: ReadonlyMap<string, WorkflowExecutableNode>;
     retryPolicyReference: PolicyReference;
     controlCanceled: boolean;
     controlDeadline: boolean;

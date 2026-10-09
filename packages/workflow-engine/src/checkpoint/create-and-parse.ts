@@ -69,4 +69,4 @@ export function createCheckpoint(input: {
   };
 }
 
-export { WORKFLOW_CHECKPOINT_LIMITS_V1 } from './fields.js';
+export { WORKFLOW_CHECKPOINT_LIMITS } from './fields.js';

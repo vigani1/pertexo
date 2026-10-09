@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { projectSchedulerState } from '../src/operations.js';
-import type { WorkflowExecutableGraphV2 } from '../src/compilation/foundation.js';
+import type { WorkflowExecutableGraph } from '../src/compilation/foundation.js';
 
 describe('scheduler executable projection', () => {
   it('visits each nested structured body once', () => {
     let bodyReads = 0;
-    let graph: WorkflowExecutableGraphV2 & {
+    let graph: WorkflowExecutableGraph & {
       readonly inputPorts: readonly string[];
       readonly outputPorts: readonly string[];
     } = {

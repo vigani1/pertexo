@@ -7,7 +7,7 @@ import type {
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
-import type { CompiledWorkflowExecutableV2 } from '../compilation/foundation.js';
+import type { CompiledWorkflowExecutable } from '../compilation/foundation.js';
 import type { BranchScopePart, IterationScopePart } from '../types.js';
 
 // What one node attempt takes and gives back, shared by the engine's
@@ -26,7 +26,7 @@ export interface ExecuteNodeAttemptInput {
   readonly runId: string;
   readonly nodeRunId: string;
   readonly attemptId: string;
-  readonly executable: CompiledWorkflowExecutableV2;
+  readonly executable: CompiledWorkflowExecutable;
   readonly workflowVersionId: string;
   readonly invocationKey: string;
   readonly nodeId: string;

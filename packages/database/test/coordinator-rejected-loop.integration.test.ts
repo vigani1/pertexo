@@ -6,7 +6,7 @@ import { rejectedLoopGraph } from './support/coordinator-rejected-loop-graph.js'
 // Test-only compiled facade: do not add the engine to the database runtime graph.
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
 } from '../../workflow-engine/dist/index.js';
 
@@ -27,7 +27,7 @@ const items = ['one', 'two', 'three', 'four'];
 const graph = () => rejectedLoopGraph(items);
 
 async function rejectedFixture() {
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph: graph(),
     release: composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
@@ -35,7 +35,7 @@ async function rejectedFixture() {
   });
   const versionId = fixture.randomUUID();
   const workflowId = fixture.randomUUID();
-  const pinned = buildWorkflowExecutableV2({
+  const pinned = buildWorkflowExecutable({
     graph: graph(),
     release: composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,

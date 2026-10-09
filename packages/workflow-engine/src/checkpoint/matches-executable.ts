@@ -2,8 +2,8 @@ import type { parseCheckpoint } from './create-and-parse.js';
 import { isCoreMergeDefinition } from '../core-definition-identities.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import type {
-  CompiledWorkflowExecutableV2,
-  WorkflowExecutableNodeV2,
+  CompiledWorkflowExecutable,
+  WorkflowExecutableNode,
 } from '../compilation/foundation.js';
 import {
   configuredParallelOutputPorts,
@@ -22,7 +22,7 @@ type CheckpointLoop = ParsedCheckpoint['loops'][number];
 function assertCheckpointJoinIdentity(
   join: CheckpointJoin,
   checkpoint: ParsedCheckpoint,
-  nodesById: ReadonlyMap<string, WorkflowExecutableNodeV2>,
+  nodesById: ReadonlyMap<string, WorkflowExecutableNode>,
 ): void {
   const merge = nodesById.get(join.joinId);
   if (merge === undefined || !isCoreMergeDefinition(merge.definition))
@@ -89,9 +89,9 @@ function expectedInvocationKey(
 function assertInvocationBelongsToExecutable(
   invocation: CheckpointInvocation,
   checkpoint: ParsedCheckpoint,
-  executable: CompiledWorkflowExecutableV2,
+  executable: CompiledWorkflowExecutable,
   nodeIds: ReadonlySet<string>,
-  nodesById: ReadonlyMap<string, WorkflowExecutableNodeV2>,
+  nodesById: ReadonlyMap<string, WorkflowExecutableNode>,
 ): void {
   const invalidInvocationIdentity = (): never =>
     operationError(
@@ -157,7 +157,7 @@ function assertInvocationIterationScopes(
 function assertCheckpointLoopIdentity(
   loop: CheckpointLoop,
   checkpoint: ParsedCheckpoint,
-  nodesById: ReadonlyMap<string, WorkflowExecutableNodeV2>,
+  nodesById: ReadonlyMap<string, WorkflowExecutableNode>,
 ): void {
   const node = nodesById.get(loop.loopId);
   const controlIdentityMatches =
@@ -201,8 +201,8 @@ function assertCheckpointLoopIdentity(
 
 export function assertCheckpointMatchesExecutable(
   checkpoint: ParsedCheckpoint,
-  executable: CompiledWorkflowExecutableV2,
-  allNodes: readonly WorkflowExecutableNodeV2[],
+  executable: CompiledWorkflowExecutable,
+  allNodes: readonly WorkflowExecutableNode[],
 ): void {
   const nodeIds = new Set(allNodes.map(({ id }) => id));
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));

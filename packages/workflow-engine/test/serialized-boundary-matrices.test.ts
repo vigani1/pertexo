@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   invocationKey,
@@ -18,7 +18,7 @@ const workflowVersionId = '00000000-0000-4000-8000-000000000901';
 const occurredAt = '2026-09-12T00:00:00.000Z';
 
 function executable() {
-  return buildWorkflowExecutableV2({
+  return buildWorkflowExecutable({
     graph: {
       schemaVersion: 1,
       settings: {},
@@ -190,7 +190,7 @@ describe('serialized workflow boundary matrices', () => {
   });
 
   it('rejects an altered serialized join ledger after the paired-graph check', async () => {
-    const executableWithJoin = buildWorkflowExecutableV2({
+    const executableWithJoin = buildWorkflowExecutable({
       graph: pairedParallelGraph(),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ parallel: true, merge: true }),
@@ -234,7 +234,7 @@ describe('serialized workflow boundary matrices', () => {
   });
 
   it('rejects altered serialized loop bounds after authentic body topology is checked', async () => {
-    const executableWithLoop = buildWorkflowExecutableV2({
+    const executableWithLoop = buildWorkflowExecutable({
       graph: forEachGraph(),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ forEach: true }),

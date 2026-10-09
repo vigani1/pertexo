@@ -10,10 +10,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
-  WORKFLOW_CHECKPOINT_LIMITS_V1,
+  WORKFLOW_CHECKPOINT_LIMITS,
 } from '../src/index.js';
 import {
   forEachGraph,
@@ -122,7 +122,7 @@ async function runToCompletion(
   loopItems: Readonly<Record<string, number>>,
 ): Promise<{ status: string; checkpointBytes: number }> {
   const workflowVersionId = randomUUID();
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph,
     release: composeExecutableCompatibilityRelease(
       nodeRelease({ forEach: true }),
@@ -229,7 +229,7 @@ describe('checkpoint capacity at the authoring limits', () => {
       expect(status).toBe('succeeded');
       // Headroom for later checkpoint fields before authoring must shrink.
       expect(checkpointBytes).toBeLessThan(
-        WORKFLOW_CHECKPOINT_LIMITS_V1.bytes * 0.9,
+        WORKFLOW_CHECKPOINT_LIMITS.bytes * 0.9,
       );
     },
   );

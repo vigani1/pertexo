@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createRegistryRelease, type RegistryRelease } from '@pertexo/node-sdk';
 
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
-  parseWorkflowExecutableV2,
+  parseWorkflowExecutable,
 } from '../src/index.js';
 import {
   advanceWorkflow,
@@ -45,7 +45,7 @@ function baselineRelease(): RegistryRelease {
 describe('expanded public workflow-engine boundaries', () => {
   it('rejects exact-shaped executable envelope identity drift', () => {
     const release = baselineRelease();
-    const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
+    const compiled = buildWorkflowExecutable({ graph: graph(), release });
 
     for (const mutate of [
       (envelope: Record<string, unknown>) => {
@@ -67,7 +67,7 @@ describe('expanded public workflow-engine boundaries', () => {
       >;
       mutate(envelope);
       expect(() =>
-        parseWorkflowExecutableV2({
+        parseWorkflowExecutable({
           envelope,
           admissionRelease: release,
         }),
@@ -85,8 +85,8 @@ describe('expanded public workflow-engine boundaries', () => {
       ),
     });
     expect(
-      buildWorkflowExecutableV2({ graph: graph(), release: deprecated })
-        .envelope.graph.nodes,
+      buildWorkflowExecutable({ graph: graph(), release: deprecated }).envelope
+        .graph.nodes,
     ).toHaveLength(3);
 
     const incompatibleGraph = structuredClone(graph());
@@ -94,7 +94,7 @@ describe('expanded public workflow-engine boundaries', () => {
     if (setNode === undefined) throw new Error('set fixture is missing');
     Object.assign(setNode, { configVersion: 2 });
     expect(() =>
-      buildWorkflowExecutableV2({ graph: incompatibleGraph, release }),
+      buildWorkflowExecutable({ graph: incompatibleGraph, release }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
 
     const missingAbi = recreateRelease(release, {
@@ -109,7 +109,7 @@ describe('expanded public workflow-engine boundaries', () => {
       }),
     });
     expect(() =>
-      buildWorkflowExecutableV2({ graph: graph(), release: missingAbi }),
+      buildWorkflowExecutable({ graph: graph(), release: missingAbi }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
@@ -134,7 +134,7 @@ describe('expanded public workflow-engine boundaries', () => {
       ),
     });
     expect(
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: graph(),
         release: reversed,
       }).envelope.graph.nodes.find(({ id }) => id === 'set')?.policyReferences,
@@ -156,7 +156,7 @@ describe('expanded public workflow-engine boundaries', () => {
       policies: [...release.policies, policyV1, policyV2],
     });
     expect(
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: graph(),
         release: reversedVersions,
       }).envelope.graph.nodes.find(({ id }) => id === 'set')?.policyReferences,
@@ -165,7 +165,7 @@ describe('expanded public workflow-engine boundaries', () => {
     const releaseWithAlternative = composeExecutableCompatibilityRelease(
       nodeRelease({ extraPolicyVersion: 1 }),
     );
-    const compiled = buildWorkflowExecutableV2({
+    const compiled = buildWorkflowExecutable({
       graph: graph(),
       release: releaseWithAlternative,
     });
@@ -174,7 +174,7 @@ describe('expanded public workflow-engine boundaries', () => {
       scheduler: { key: 'test.rollout', version: 1 },
     });
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: nonBaseline,
         admissionRelease: releaseWithAlternative,
       }),
@@ -186,7 +186,7 @@ describe('expanded public workflow-engine boundaries', () => {
       ),
     });
     expect(() =>
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: graph(),
         release: missingRuntimePolicy,
       }),
@@ -246,7 +246,7 @@ describe('expanded public workflow-engine boundaries', () => {
       );
 
       expect(
-        () => buildWorkflowExecutableV2({ graph: graph(), release: hostile }),
+        () => buildWorkflowExecutable({ graph: graph(), release: hostile }),
         name,
       ).toThrow('executable processing failed');
       expect(() => parseSchedulerGraph(hostile), name).toThrow(

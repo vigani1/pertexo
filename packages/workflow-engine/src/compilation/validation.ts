@@ -8,8 +8,8 @@ import type {
 import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
 import type { SideEffectClass } from '../types.js';
 import {
-  type ExecutableRuntimePoliciesV1,
-  WORKFLOW_EXECUTABLE_LIMITS_V2,
+  type ExecutableRuntimePolicies,
+  WORKFLOW_EXECUTABLE_LIMITS,
   compareIdentity,
   compareOrdinal,
   fail,
@@ -49,7 +49,7 @@ function assertSafeExecutableJson(value: unknown): void {
   let bytes = 0;
   const add = (amount: number): void => {
     bytes += amount;
-    if (bytes > WORKFLOW_EXECUTABLE_LIMITS_V2.bytes)
+    if (bytes > WORKFLOW_EXECUTABLE_LIMITS.bytes)
       fail('executable envelope exceeds maximum bytes');
   };
   const addString = (input: string): void => {
@@ -106,7 +106,7 @@ function assertSafeExecutableJson(value: unknown): void {
     if (typeof item !== 'object') fail('executable envelope must contain JSON');
     if (nodeTypes.isProxy(item))
       fail('executable envelope must not contain proxies');
-    if (frame.depth > WORKFLOW_EXECUTABLE_LIMITS_V2.depth)
+    if (frame.depth > WORKFLOW_EXECUTABLE_LIMITS.depth)
       fail('executable envelope exceeds maximum depth');
     if (ancestors.has(item))
       fail('executable envelope must not contain cycles');
@@ -115,7 +115,7 @@ function assertSafeExecutableJson(value: unknown): void {
       object | null;
     if (!isArray && prototype !== Object.prototype && prototype !== null)
       fail('executable envelope must contain plain objects');
-    if (isArray && item.length > WORKFLOW_EXECUTABLE_LIMITS_V2.members)
+    if (isArray && item.length > WORKFLOW_EXECUTABLE_LIMITS.members)
       fail('executable envelope array is oversized');
     add(2 + (isArray ? Math.max(0, item.length - 1) : 0));
     ancestors.add(item);
@@ -132,7 +132,7 @@ function assertSafeExecutableJson(value: unknown): void {
       )
         fail('executable envelope must contain own data fields');
       members += 1;
-      if (members > WORKFLOW_EXECUTABLE_LIMITS_V2.members)
+      if (members > WORKFLOW_EXECUTABLE_LIMITS.members)
         fail('executable envelope exceeds maximum members');
       if (isArray && key !== String(enumerableCount))
         fail('executable envelope array is sparse or has extra fields');
@@ -187,7 +187,7 @@ export function parseIdentity(
   return { key: identity.key, version: identity.version };
 }
 
-export function parseGlobals(value: unknown): ExecutableRuntimePoliciesV1 {
+export function parseGlobals(value: unknown): ExecutableRuntimePolicies {
   const policies = record(value, 'runtime policies');
   exactKeys(policies, [
     'scheduler',

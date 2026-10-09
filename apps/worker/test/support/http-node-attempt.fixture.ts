@@ -17,7 +17,7 @@ import {
 } from '@pertexo/integrations/server';
 import { PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE } from '@pertexo/node-catalog';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
 } from '@pertexo/workflow-engine';
@@ -378,7 +378,7 @@ async function sealAndZero(
 }
 
 export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph: graph(),
     release: activeRelease,
   });
@@ -567,7 +567,7 @@ export async function acceptProviderScenarioRun(provider: ProviderScenario) {
   const scenarioWorkflowId = randomUUID();
   const scenarioWorkflowVersionId = randomUUID();
   const scenarioGraph = providerScenarioGraph(provider);
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph: scenarioGraph,
     release: activeRelease,
   });

@@ -10,7 +10,7 @@ import {
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
-  verifyWorkflowExecutableV2,
+  verifyWorkflowExecutable,
 } from '@pertexo/workflow-engine';
 
 const executable = composeExecutableCompatibilityRelease(
@@ -153,7 +153,7 @@ export async function verifyHttpEvidence(
   const version = versions.rows[0];
   if (version === undefined) throw new Error('Owned HTTP version missing');
   expect(version.id).toBe(evidence.workflowVersionId);
-  verifyWorkflowExecutableV2({
+  verifyWorkflowExecutable({
     envelope: version.executable_json,
     checksum: version.checksum,
     admissionRelease: executable,

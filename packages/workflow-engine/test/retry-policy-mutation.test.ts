@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   decideRetry,
-  ENGINE_RETRY_POLICY_V1,
+  ENGINE_RETRY_POLICY,
   providerIdempotencyKey,
   resolveRetryPolicy,
 } from './support/engine.js';
@@ -20,7 +20,7 @@ describe('retry policy mutation canary', () => {
       decideRetry({
         sideEffectClass: 'safe',
         currentAttemptNumber: 1,
-        policy: ENGINE_RETRY_POLICY_V1,
+        policy: ENGINE_RETRY_POLICY,
         observation: {
           kind: 'executor_failure',
           recommendation: 'retry',
@@ -132,7 +132,7 @@ describe('retry policy mutation canary', () => {
 
   it('pins policy identity and rejects every incomplete provider identity', () => {
     expect(resolveRetryPolicy({ key: 'engine.retry', version: 1 })).toBe(
-      ENGINE_RETRY_POLICY_V1,
+      ENGINE_RETRY_POLICY,
     );
     expect(() => resolveRetryPolicy({ key: 'other', version: 1 })).toThrow(
       'Unsupported retry policy',

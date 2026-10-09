@@ -10,7 +10,7 @@ import type {
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   parseCheckpoint,
@@ -62,7 +62,7 @@ function executableWithNestedParallel(
         : {}),
     }));
   const bodyIds = new Set(bodyNodes.map(({ id }) => id));
-  return buildWorkflowExecutableV2({
+  return buildWorkflowExecutable({
     graph: {
       ...outer,
       nodes: outer.nodes.map((node) =>
@@ -378,7 +378,7 @@ describe('nested Parallel admission through the public engine', () => {
     'keeps a root Parallel cap global across descendant loop iterations ($maxConcurrency)',
     async (maxConcurrency) => {
       const graph = rootParallelWithDescendantLoop(maxConcurrency, 1);
-      const executable = buildWorkflowExecutableV2({
+      const executable = buildWorkflowExecutable({
         graph,
         release: composeExecutableCompatibilityRelease(
           nodeRelease({
@@ -513,7 +513,7 @@ describe('nested Parallel admission through the public engine', () => {
   );
 
   it('keys a nested Parallel cap by the complete enclosing loop path', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: parallelInsideNestedLoops(1, 1),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ forEach: true, parallel: true, merge: true }),
