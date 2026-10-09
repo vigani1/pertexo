@@ -29,12 +29,10 @@ import {
   workflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
-import {
-  WORKFLOW_ORDER_BY_SORT,
-  parseWorkflowListSearch,
-} from '@/features/workflows/list-search.public';
+import { parseWorkflowListSearch } from '@/features/workflows/list-search.public';
 import {
   recentWorkflowsQueryOptions,
+  workflowListQueryOptions,
   workflowsInfiniteQueryOptions,
 } from '@/features/workflows/queries.public';
 import {
@@ -191,17 +189,12 @@ export const workflowsRoute = createRoute({
   // `create` opens the New workflow lens; `view` and `sort` keep the list's
   // filters shareable. Unknown values fall back to the defaults.
   validateSearch: (search) => parseWorkflowListSearch(search),
-  loaderDeps: ({ search }) => ({ sort: search.sort }),
+  loaderDeps: ({ search: { create: _create, ...list } }) => list,
   loader: ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace } = context;
     warmPrefetches(context, [
       queryClient.infiniteQuery(
-        workflowsInfiniteQueryOptions(
-          apiClient,
-          user.id,
-          workspace.id,
-          WORKFLOW_ORDER_BY_SORT[deps.sort ?? 'updated'],
-        ),
+        workflowListQueryOptions(apiClient, user.id, workspace.id, deps),
       ),
       ...authoringPrefetches(context, user.id, workspace.id),
     ]);

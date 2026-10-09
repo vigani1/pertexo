@@ -15,4 +15,12 @@ export const mockServer = setupServer(
   http.get('http://pertexo.test/v1/workspaces/:workspaceId/auto-pause', () =>
     HttpResponse.json({ threshold: 10, revision: 1 }),
   ),
+  // Every workflow list reads its folders and tags; most tests have none.
+  http.get(
+    'http://pertexo.test/v1/workspaces/:workspaceId/workflow-folders',
+    () => HttpResponse.json({ items: [] }),
+  ),
+  http.get('http://pertexo.test/v1/workspaces/:workspaceId/workflow-tags', () =>
+    HttpResponse.json({ items: [], nextCursor: null }),
+  ),
 );

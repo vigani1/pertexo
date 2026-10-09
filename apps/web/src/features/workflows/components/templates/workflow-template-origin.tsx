@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowTemplateOriginQueryOptions } from '../../data/workflow-origin.queries';
 import { useTemplateOriginLifetime } from './use-template-origin-lifetime';
@@ -48,46 +47,16 @@ function OriginSnapshot({
     ),
     enabled: canRead && !denied,
   });
-  if (!canRead || denied)
-    return (
-      <p className="text-xs text-muted-foreground">
-        Template origin unavailable: access changed.
-      </p>
-    );
-  if (query.isError)
-    return (
-      <p className="text-xs text-muted-foreground">
-        Template origin unavailable.{' '}
-        <Button
-          variant="link"
-          size="sm"
-          onClick={() => {
-            void query.refetch();
-          }}
-        >
-          Retry origin read
-        </Button>
-      </p>
-    );
-  if (query.isPending || query.isFetching)
-    return (
-      <p className="text-xs text-muted-foreground" role="status">
-        Reading historical template origin…
-      </p>
-    );
-  if (query.data.templateOrigin === null)
-    return (
-      <p className="text-xs text-muted-foreground">
-        No recorded template origin.
-      </p>
-    );
-  const origin = query.data.templateOrigin;
+  // The origin is a quiet note: nothing shows until one is known.
+  const origin = canRead && !denied ? query.data?.templateOrigin : undefined;
+  if (origin === undefined || origin === null) return null;
   return (
-    <p className="text-xs text-muted-foreground">
-      Originally based on {origin.templateId}, version {origin.templateVersion}
-      {origin.derivation === 'inherited' ? ' (inherited)' : ''}. Historical
-      basis only; later edits are independent, not verified for equivalence or
-      safety.
+    <p
+      className="text-xs text-muted-foreground"
+      title="Historical basis only; later edits are independent and not checked against the template."
+    >
+      Based on template {origin.templateId} v{origin.templateVersion}
+      {origin.derivation === 'inherited' ? ' (inherited)' : ''}
     </p>
   );
 }

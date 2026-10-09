@@ -103,7 +103,7 @@ function Probe({
   actor = userId,
   tenant = workspaceId,
 }: Readonly<{ actor?: string; tenant?: string }>) {
-  const result = useOrganizationList(apiClient, actor, tenant, {}, true);
+  const result = useOrganizationList(apiClient, actor, tenant, {});
   return (
     <>
       <button onClick={() => void result.refetch()}>
@@ -199,13 +199,7 @@ describe('organization reads without a command dialog', () => {
     vi.mocked(sendWorkflowOrganizationCommand).mockReturnValue(held.promise);
     const hook = renderHook(
       () => {
-        const list = useOrganizationList(
-          apiClient,
-          userId,
-          workspaceId,
-          {},
-          true,
-        );
+        const list = useOrganizationList(apiClient, userId, workspaceId, {});
         const command = useWorkflowOrganizationCommand({
           apiClient,
           userId,

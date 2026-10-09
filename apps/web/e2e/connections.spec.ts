@@ -1,4 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
+import {
+  routeEmptyWorkflowOrganization,
+  workflowListBody,
+} from './workflow-list-support';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -119,8 +123,11 @@ async function installRoutes(page: Page) {
       });
     },
   );
+  await routeEmptyWorkflowOrganization(page, workspaceId);
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
-    route.fulfill({ json: { items: [workflow], nextCursor: null } }),
+    route.fulfill({
+      json: workflowListBody(route.request().url(), [workflow]),
+    }),
   );
   await page.route('**/v1/node-definitions', (route) =>
     route.fulfill({

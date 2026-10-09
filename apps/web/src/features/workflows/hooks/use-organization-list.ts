@@ -1,11 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { workflowOrganizationListResponseSchema } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowOrganizationInfiniteQueryOptions } from '../data/organization.queries';
-import {
-  WORKFLOW_ORDER_BY_SORT,
-  type WorkflowListSearch,
-} from '../model/list-view';
+import { workflowListQueryOptions } from '../data/organization.queries';
+import type { WorkflowListSearch } from '../model/list-view';
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,
@@ -17,25 +14,11 @@ export function useOrganizationList(
   userId: string,
   workspaceId: string,
   search: WorkflowListSearch,
-  enabled: boolean,
 ) {
   const lifetime = useOrganizationReadLifetime(userId, workspaceId);
   const query = useInfiniteQuery({
-    ...workflowOrganizationInfiniteQueryOptions(
-      apiClient,
-      userId,
-      workspaceId,
-      {
-        include: 'organization',
-        order: WORKFLOW_ORDER_BY_SORT[search.sort ?? 'updated'],
-        view: search.view ?? 'active',
-        query: search.query,
-        tagId: search.tagId,
-        folderId: search.folderId,
-        favoritesOnly: search.favoritesOnly,
-      },
-    ),
-    enabled: enabled && lifetime.error === undefined,
+    ...workflowListQueryOptions(apiClient, userId, workspaceId, search),
+    enabled: lifetime.error === undefined,
     select: (data) => ({
       ...data,
       pages: data.pages.map((page) => {

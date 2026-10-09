@@ -48,7 +48,6 @@ export function WorkflowImportDialog({
   onCreated,
   open = true,
   onReopen,
-  templatesEnabled = false,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -57,7 +56,6 @@ export function WorkflowImportDialog({
   onCreated: (workflowId: string) => void;
   open?: boolean;
   onReopen?: () => void;
-  templatesEnabled?: boolean;
 }>) {
   const [template, setTemplate] = useState<CuratedTemplate>();
   const [setupValues, setSetupValues] = useState<string[]>([]);
@@ -258,25 +256,23 @@ export function WorkflowImportDialog({
                 effects when you later publish, preview or run them. This check
                 does not execute steps or promise that the workflow is safe.
               </Notice>
-              {templatesEnabled ? (
-                <CuratedTemplateChoice
-                  apiClient={apiClient}
-                  userId={userId}
-                  disabled={locked}
-                  onChoose={(next) => {
-                    if (locked) return;
-                    invalidate();
-                    validation.reset();
-                    setTemplate(next);
-                    setReading(false);
-                    setManifest(structuredClone(next.manifest));
-                    setName(next.title);
-                    setBindings([]);
-                    // Destination literals must be supplied explicitly, never reused from demo data.
-                    setSetupValues(next.setupTargets.map(() => ''));
-                  }}
-                />
-              ) : null}
+              <CuratedTemplateChoice
+                apiClient={apiClient}
+                userId={userId}
+                disabled={locked}
+                onChoose={(next) => {
+                  if (locked) return;
+                  invalidate();
+                  validation.reset();
+                  setTemplate(next);
+                  setReading(false);
+                  setManifest(structuredClone(next.manifest));
+                  setName(next.title);
+                  setBindings([]);
+                  // Destination literals must be supplied explicitly, never reused from demo data.
+                  setSetupValues(next.setupTargets.map(() => ''));
+                }}
+              />
               <FieldGroup>
                 <LabelledField
                   id="portable-workflow-file"

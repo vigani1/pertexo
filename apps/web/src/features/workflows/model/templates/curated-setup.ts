@@ -8,8 +8,6 @@ import {
 export type CuratedTemplate = CuratedWorkflowTemplate;
 export type SetupTarget = CuratedTemplate['setupTargets'][number];
 
-export { curatedTemplateChooserEnabled } from './feature-gates';
-
 export function templateOrigin(template: CuratedTemplate) {
   return {
     schemaVersion: 1 as const,

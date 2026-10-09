@@ -4,23 +4,18 @@ import type {
   UserProfileResponse,
   WorkflowSummary,
 } from '@pertexo/contracts';
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-} from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { NewWorkflowSheet } from '../components/creation/new-workflow-sheet';
 import type { StartChoice } from '../components/creation/starter-choice';
 import { WorkflowLifecycleDialog } from '../components/workflow-lifecycle-dialog';
-import { WorkflowListEmpty } from '../components/list/workflow-list-empty';
 import {
   NewWorkflowButton,
   WorkflowListHeader,
 } from '../components/list/workflow-list-header';
-import { WorkflowListResults } from '../components/list/workflow-list-results';
+import { WorkflowListEmpty } from '../components/list/workflow-list-empty';
 import { WorkflowListError } from '../components/list/workflow-list-states';
 import { WorkflowRenameDialog } from '../components/workflow-rename-dialog';
 import { WorkflowDuplicateDialog } from '../components/workflow-duplicate-dialog';
@@ -30,20 +25,17 @@ import { Button } from '@/components/ui/button';
 import { WorkflowRowsSkeleton } from '../components/list/workflow-rows';
 import { lifecycleIntentFor, type LifecycleIntent } from '../model/lifecycle';
 import {
-  WORKFLOW_ORDER_BY_SORT,
+  isUnfilteredWorkflowList,
   updateWorkflowListSearch,
   parseWorkflowListSearch,
   type WorkflowListSearch,
   type WorkflowListSearchUpdate,
 } from '../model/list-view';
 import { availableStarters } from '../model/templates/starters';
-import { curatedTemplateChooserEnabled } from '@/features/workflows/model/templates/feature-gates';
 import { useListShortcuts } from '../hooks/use-list-shortcuts';
 import { useRunWorkflow } from '../hooks/use-run-workflow';
 import type { StarterDraftWriter } from '../data/workflows.mutations';
-import { workflowsInfiniteQueryOptions } from '../data/workflows.queries';
 import { useOrganizationList } from '../hooks/use-organization-list';
-import { workflowOrganizationControlsEnabled } from '@/features/workflows/model/organization/feature-gates';
 import { WorkflowOrganizationFilters } from '../components/organization/workflow-organization-filters';
 import { WorkflowOrganizedResults } from '../components/organization/workflow-organized-results';
 
@@ -99,25 +91,12 @@ function useWorkflowList(
   starterDraftWriter: StarterDraftWriter | undefined,
 ) {
   const canCreate = workspace.capabilities.includes('workflow:create');
-  const organized = workflowOrganizationControlsEnabled();
-  const legacy = useInfiniteQuery({
-    ...workflowsInfiniteQueryOptions(
-      apiClient,
-      userId,
-      workspace.id,
-      WORKFLOW_ORDER_BY_SORT[search.sort ?? 'updated'],
-    ),
-    placeholderData: keepPreviousData,
-    enabled: !organized,
-  });
-  const organization = useOrganizationList(
+  const workflows = useOrganizationList(
     apiClient,
     userId,
     workspace.id,
     search,
-    organized,
   );
-  const workflows = organized ? organization : legacy;
   const catalog = useQuery({
     ...authoringCatalogQueryOptions(apiClient, userId),
     enabled: canCreate && starterDraftWriter !== undefined,
@@ -131,9 +110,8 @@ function useWorkflowList(
     starters:
       starterDraftWriter === undefined ? [] : startersFrom(catalog.data),
     shown: listState(workflows.isPending, workflows.data !== undefined, empty),
-    organizations: organized
-      ? (organization.data?.pages.flatMap((page) => page.organizations) ?? [])
-      : [],
+    organizations:
+      workflows.data?.pages.flatMap((page) => page.organizations) ?? [],
   } as const;
 }
 
@@ -205,13 +183,12 @@ function WorkflowListContent({
   onRunStarted: (runId: string) => void;
 }>) {
   const canCreate = workspace.capabilities.includes('workflow:create');
-  const organized = workflowOrganizationControlsEnabled();
   const scope = { apiClient, userId: user.id, workspace };
-  const templatesEnabled = curatedTemplateChooserEnabled();
   const list = useWorkflowList(scope, search, starterDraftWriter);
   const { workflows } = list;
+  // An empty workspace with no filter shows the first-workflow onboarding.
+  const onboarding = list.shown === 'empty' && isUnfilteredWorkflowList(search);
   const filterRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState('');
   const [startChoice, setStartChoice] = useState<StartChoice>('blank');
   const [lifecycle, setLifecycle] = useState<LifecycleTarget>();
   const [renaming, setRenaming] = useState<WorkflowSummary>();
@@ -258,27 +235,25 @@ function WorkflowListContent({
               >
                 Import workflow…
               </Button>
-              {organized || !list.empty ? (
+              {onboarding ? null : (
                 <NewWorkflowButton
                   onClick={() => {
                     openCreate('blank');
                   }}
                 />
-              ) : null}
+              )}
             </div>
           ) : undefined
         }
       />
-      {organized ? (
-        <WorkflowOrganizationFilters
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          search={search}
-          filterRef={filterRef}
-          onSearchChange={onSearchChange}
-        />
-      ) : null}
+      <WorkflowOrganizationFilters
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        search={search}
+        filterRef={filterRef}
+        onSearchChange={onSearchChange}
+      />
       {refreshingInBackground(workflows) ? (
         <SkeletonThread
           role="status"
@@ -294,14 +269,14 @@ function WorkflowListContent({
           onRetry={() => void workflows.refetch()}
         />
       ) : null}
-      {list.shown === 'empty' && !organized ? (
+      {onboarding ? (
         <WorkflowListEmpty
           canCreate={canCreate}
           starters={list.starters}
           onStart={openCreate}
         />
       ) : null}
-      {organized && (list.shown === 'results' || list.shown === 'empty') ? (
+      {list.shown === 'results' || (list.shown === 'empty' && !onboarding) ? (
         <WorkflowOrganizedResults
           key={JSON.stringify(search)}
           apiClient={apiClient}
@@ -309,30 +284,6 @@ function WorkflowListContent({
           workspace={workspace}
           items={list.organizations}
           workflows={workflows}
-          actions={{
-            onRename: setRenaming,
-            onDuplicate: setDuplicating,
-            onExport: setExporting,
-            onLifecycle: (workflow) => {
-              setLifecycle({ workflow, intent: lifecycleIntentFor(workflow) });
-            },
-            onRun: (workflow) => void runner.run(workflow),
-            runningId: runner.pendingId,
-          }}
-        />
-      ) : null}
-      {list.shown === 'results' && !organized ? (
-        <WorkflowListResults
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          workflows={workflows}
-          items={list.items}
-          search={search}
-          query={query}
-          filterRef={filterRef}
-          onQueryChange={setQuery}
-          onSearchChange={onSearchChange}
           actions={{
             onRename: setRenaming,
             onDuplicate: setDuplicating,
@@ -359,16 +310,10 @@ function WorkflowListContent({
             onSearchChange(updateWorkflowListSearch(search, { create: open }));
           }}
           onCreated={onCreated}
-          onChooseTemplate={
-            templatesEnabled
-              ? () => {
-                  onSearchChange(
-                    updateWorkflowListSearch(search, { create: false }),
-                  );
-                  setImporting(true);
-                }
-              : undefined
-          }
+          onChooseTemplate={() => {
+            onSearchChange(updateWorkflowListSearch(search, { create: false }));
+            setImporting(true);
+          }}
         />
       ) : null}
       <WorkflowDialogs
@@ -420,7 +365,6 @@ function WorkflowListContent({
         userId={user.id}
         workspace={workspace}
         open={importing}
-        templatesEnabled={templatesEnabled}
         onReopen={() => {
           setImporting(true);
         }}

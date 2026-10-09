@@ -3,15 +3,11 @@ import {
   parseWorkflowListSearch,
   updateWorkflowListSearch,
 } from '@/features/workflows/model/list-view';
-import { workflowOrganizationControlsEnabled } from '@/features/workflows/model/organization/feature-gates';
 
 const tagId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const folderId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 describe('organization list URL scope', () => {
-  it('keeps controls OFF outside the owned qualification build', () => {
-    expect(workflowOrganizationControlsEnabled()).toBe(false);
-  });
   it('normalizes literal filters and preserves explicit root versus all folders', () => {
     expect(
       parseWorkflowListSearch({

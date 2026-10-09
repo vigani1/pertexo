@@ -17,11 +17,16 @@ import {
   versionId,
   workflowId,
   workspaceId,
+  organizedPage,
 } from './fixtures';
 
 function listHandler(pages: (after: string | null) => Record<string, unknown>) {
   return http.get(`${api}/workflows`, ({ request }) =>
-    HttpResponse.json(pages(new URL(request.url).searchParams.get('after'))),
+    HttpResponse.json(
+      organizedPage(
+        pages(new URL(request.url).searchParams.get('after')) as never,
+      ),
+    ),
   );
 }
 
@@ -59,15 +64,17 @@ describe('workflow list', () => {
         const url = new URL(request.url);
         orders.push(url.searchParams.get('order'));
         return HttpResponse.json(
-          url.searchParams.get('after') === null
-            ? {
-                items: [summary(workflowId, 'Daily intake')],
-                nextCursor: 'two',
-              }
-            : {
-                items: [summary(secondWorkflowId, 'Incident response')],
-                nextCursor: null,
-              },
+          organizedPage(
+            url.searchParams.get('after') === null
+              ? {
+                  items: [summary(workflowId, 'Daily intake')],
+                  nextCursor: 'two',
+                }
+              : {
+                  items: [summary(secondWorkflowId, 'Incident response')],
+                  nextCursor: null,
+                },
+          ),
         );
       }),
     );
@@ -116,16 +123,20 @@ describe('workflow list', () => {
       draftHandler(),
       http.get(`${api}/workflows`, ({ request }) => {
         if (new URL(request.url).searchParams.get('after') === null)
-          return HttpResponse.json({
-            items: [summary(workflowId, 'Daily intake')],
-            nextCursor: 'two',
-          });
+          return HttpResponse.json(
+            organizedPage({
+              items: [summary(workflowId, 'Daily intake')],
+              nextCursor: 'two',
+            }),
+          );
         nextPageAttempts += 1;
         if (nextPageAttempts === 1) return HttpResponse.error();
-        return HttpResponse.json({
-          items: [summary(secondWorkflowId, 'Incident response')],
-          nextCursor: null,
-        });
+        return HttpResponse.json(
+          organizedPage({
+            items: [summary(secondWorkflowId, 'Incident response')],
+            nextCursor: null,
+          }),
+        );
       }),
     );
     renderApp(`/w/${workspaceId}/workflows`);
@@ -195,61 +206,6 @@ describe('workflow list', () => {
     expect(
       within(invoice).getByRole('link', { name: 'Invoice intake' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
-  });
-
-  it('sorts on the server and filters loaded workflows by name and view', async () => {
-    const orders: (string | null)[] = [];
-    mockServer.use(
-      ...discoveryHandlers(),
-      draftHandler(),
-      http.get(`${api}/workflows`, ({ request }) => {
-        orders.push(new URL(request.url).searchParams.get('order'));
-        return HttpResponse.json({
-          items: [
-            summary(workflowId, 'Daily intake'),
-            summary(secondWorkflowId, 'Old report', {
-              lifecycleStatus: 'archived',
-            }),
-            summary(thirdWorkflowId, 'Incident response'),
-          ],
-          nextCursor: null,
-        });
-      }),
-    );
-    const { router } = renderApp(`/w/${workspaceId}/workflows`);
-    const event = userEvent.setup();
-    const list = await screen.findByRole('list', { name: 'Workflows' });
-    expect(within(list).queryByText('Old report')).not.toBeInTheDocument();
-
-    await event.keyboard('/');
-    const filter = screen.getByRole('searchbox', {
-      name: 'Filter workflows by name',
-    });
-    expect(filter).toHaveFocus();
-    await event.type(filter, 'INC');
-    expect(within(list).getByText('Incident response')).toBeVisible();
-    expect(within(list).queryByText('Daily intake')).not.toBeInTheDocument();
-
-    await event.clear(filter);
-    await event.click(screen.getByRole('button', { name: /^Archived/u }));
-    expect(
-      await within(
-        await screen.findByRole('list', { name: 'Workflows' }),
-      ).findByText('Old report'),
-    ).toBeVisible();
-    expect(router.state.location.search).toMatchObject({ view: 'archived' });
-
-    await event.click(screen.getByRole('combobox', { name: 'Sort workflows' }));
-    await event.click(
-      await screen.findByRole('option', { name: 'Oldest first' }),
-    );
-    await waitFor(() => {
-      expect(orders).toContain('created_asc');
-    });
-    expect(router.state.location.search).toMatchObject({
-      view: 'archived',
-      sort: 'created',
-    });
   });
 
   it('draws each workflow’s strip from its own latest runs', async () => {
@@ -517,10 +473,12 @@ describe('workflow list', () => {
       http.get(`${api}/workflows`, () =>
         failing
           ? HttpResponse.json({}, { status: 500 })
-          : HttpResponse.json({
-              items: [summary(workflowId, 'Daily intake')],
-              nextCursor: null,
-            }),
+          : HttpResponse.json(
+              organizedPage({
+                items: [summary(workflowId, 'Daily intake')],
+                nextCursor: null,
+              }),
+            ),
       ),
     );
     renderApp(`/w/${workspaceId}/workflows`);
