@@ -22,7 +22,7 @@ import {
   workflowId,
   versionId,
   problem,
-} from '../workflows/workflow-list.fixtures';
+} from '../workflows/list/fixtures';
 
 const caseId = '34343434-3434-4343-8343-343434343434';
 const path = `${api}/workflows/${workflowId}/input-cases`;

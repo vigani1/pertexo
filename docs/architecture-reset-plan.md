@@ -416,6 +416,13 @@ now, as one ordered program — not "whenever we touch it".
           `mutations/`), other logic to `model/` or `components/`. Routes are
           grouped into `root/`, `auth/`, `workspace/` and `workflow/`; shared
           hooks and formatters in `lib/hooks/` and `lib/format/`.
+    - [x] Folders over about ten files are grouped: `components/patterns`
+          (`states/`, `guidance/`, `core/`), the workflows model
+          (`duplicate/`, `organization/`, `templates/`), the editor inspector
+          (`tabs/`, `fields/`), the workspace shell routes (`shell/`) and run
+          detail (`timeline/`). Tests move into their feature folders,
+          mirroring the source, with shared fixtures in `support/fixtures/`.
+          `components/ui` stays flat: it holds the shadcn primitives.
     - [x] `ARCHITECTURE.md` is a guide (4,864 lines to 1,468): the
           delivery stages and their evidence, the roadmap and delivery plans,
           the finished structure plan and the legacy-design inventory go (git

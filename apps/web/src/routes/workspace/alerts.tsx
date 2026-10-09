@@ -1,5 +1,5 @@
 import { FailureNotificationDestinationsPage } from '@/features/failure-notifications/destinations-page.public';
-import { useWorkspaceScope } from './use-workspace-scope';
+import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function AlertsRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

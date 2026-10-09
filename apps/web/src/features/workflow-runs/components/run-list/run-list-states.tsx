@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 import { Link } from '@tanstack/react-router';
-import { BarredThread } from '@/components/patterns/thread-illustrations';
+import { BarredThread } from '@/components/patterns/states/thread-illustrations';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {

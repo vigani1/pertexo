@@ -1,7 +1,7 @@
 import type {
   GuideEntry,
   GuideSection,
-} from '@/components/patterns/status-guide';
+} from '@/components/patterns/guidance/status-guide';
 import {
   describeNodeStatus,
   describeRunStatus,

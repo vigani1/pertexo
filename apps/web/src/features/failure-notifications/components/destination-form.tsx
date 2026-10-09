@@ -5,7 +5,7 @@ import type {
   FailureNotificationDestinationResponse,
 } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { FieldGroup } from '@/components/ui/field';

@@ -19,7 +19,7 @@ import {
   type WorkflowLifecycleCommand,
   type WorkflowRenameAttempt,
 } from './workflows.api';
-import type { LifecycleAction } from '../model/workflow-lifecycle';
+import type { LifecycleAction } from '../model/lifecycle';
 import { workflowKeys } from './workflows.queries';
 import { workflowOrganizationKeys } from './organization.queries';
 

@@ -24,8 +24,8 @@ import {
   type ScheduleRecurrence,
   type ScheduleSchema,
 } from '../../../model/inspector/schedule-draft';
-import { useInspectorDraftField } from '../use-inspector-draft-field';
-import { ChoiceSelect } from '../choice-select';
+import { useInspectorDraftField } from '../use-draft-field';
+import { ChoiceSelect } from '../fields/choice-select';
 import { DraftNextRuns } from './draft-next-runs';
 import {
   CronField,

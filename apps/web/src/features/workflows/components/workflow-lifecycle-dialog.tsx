@@ -4,7 +4,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   LIFECYCLE_CONSEQUENCES,
   type LifecycleIntent,
-} from '../model/workflow-lifecycle';
+} from '../model/lifecycle';
 import { useWorkflowLifecycleCommand } from '../data/workflows.mutations';
 
 const COPY = {

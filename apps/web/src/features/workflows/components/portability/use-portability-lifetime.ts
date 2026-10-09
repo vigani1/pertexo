@@ -5,7 +5,7 @@ import { subscribeSessionChanges } from '@/features/auth/session-sync.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
-import { isDuplicateAccessLoss } from '../../model/workflow-duplicate-authority';
+import { isDuplicateAccessLoss } from '../../model/duplicate/access-loss';
 
 /** Private dialog payloads live only for one identity/workspace lifetime. */
 export function usePortabilityLifetime(

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RunAdmissionBlockers } from '@/features/workflow-runs/components/run-admission-blockers';
-import { fixtureIds, fixtureRun } from '../../support/run-fixtures';
+import { fixtureIds, fixtureRun } from '../../support/fixtures/run';
 import { workflowRunReadSummarySchema } from '@pertexo/contracts';
 
 function run(

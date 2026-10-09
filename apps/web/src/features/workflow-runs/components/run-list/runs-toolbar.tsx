@@ -1,5 +1,5 @@
 import { ChartGanttIcon, ListIcon } from 'lucide-react';
-import { StatusGuide } from '@/components/patterns/status-guide';
+import { StatusGuide } from '@/components/patterns/guidance/status-guide';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { RUN_LIST_GUIDE } from '../../model/run-guide';

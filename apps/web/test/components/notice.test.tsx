@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { StaleLine } from '../../src/components/patterns/stale-line';
+import { StaleLine } from '../../src/components/patterns/states/stale-line';
 import { Button } from '../../src/components/ui/button';
 import { Notice } from '../../src/components/ui/notice';
 

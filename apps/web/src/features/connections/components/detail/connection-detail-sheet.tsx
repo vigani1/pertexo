@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import { describeReadError, isNotFound } from '@/lib/api/api-error-copy';
 import { cn } from '@/lib/utils';
-import { ReadFailure } from '@/components/patterns/read-failure';
+import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { connectionAccessLost } from '../../model/connection-access';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import { connectionDetailQueryOptions } from '../../data/connections.queries';

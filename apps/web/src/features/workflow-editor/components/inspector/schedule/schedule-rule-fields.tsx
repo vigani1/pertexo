@@ -15,7 +15,7 @@ import {
   type ScheduleIssue,
   type ScheduleSchema,
 } from '../../../model/inspector/schedule-draft';
-import { ChoiceSelect } from '../choice-select';
+import { ChoiceSelect } from '../fields/choice-select';
 
 /** What every builder control needs: the draft, its issue and a way to edit. */
 export type RuleFieldProps = Readonly<{

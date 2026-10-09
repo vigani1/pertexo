@@ -18,7 +18,7 @@ import {
   exportWorkflow,
   readWorkflowExportSource,
 } from '../../data/workflow-portability.api';
-import { downloadPortableWorkflow } from '../../model/workflow-portability';
+import { downloadPortableWorkflow } from '../../model/portability';
 import { usePortabilityLifetime } from './use-portability-lifetime';
 import { PortableGraphReview } from './portable-graph-review';
 

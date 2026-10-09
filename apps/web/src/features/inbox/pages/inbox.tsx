@@ -12,8 +12,8 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { ReadFailure } from '@/components/patterns/read-failure';
-import { UnavailablePage } from '@/components/patterns/unavailable-page';
+import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import {
   Empty,
   EmptyDescription,

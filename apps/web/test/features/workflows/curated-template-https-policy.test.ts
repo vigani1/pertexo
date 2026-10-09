@@ -5,7 +5,7 @@ import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   configureTemplate,
   setupValueError,
-} from '@/features/workflows/model/curated-template-setup';
+} from '@/features/workflows/model/templates/curated-setup';
 
 const controlled = CURATED_WORKFLOW_TEMPLATES.find(
   (template) => template.templateId === 'controlled-http-notification',

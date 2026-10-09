@@ -12,7 +12,7 @@ import {
   type PredecessorOption,
   type SchemaValueType,
 } from '../../../model/inspector/input-mappings';
-import { ChoiceSelect } from '../choice-select';
+import { ChoiceSelect } from '../fields/choice-select';
 import { LiteralEditor } from './literal-editor';
 
 /**

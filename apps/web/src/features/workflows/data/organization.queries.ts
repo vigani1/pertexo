@@ -8,7 +8,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   normalizeWorkflowOrganizationListQuery,
   normalizeWorkflowOrganizationProjectionQuery,
-} from '../model/workflow-organization';
+} from '../model/organization/requests';
 import {
   getWorkflowOrganizationPage,
   getWorkflowOrganizationProjection,

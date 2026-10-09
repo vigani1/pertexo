@@ -7,12 +7,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { describeWorkflowState } from '../model/workflow-state';
+import { describeWorkflowState } from '../model/state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
 import { WorkflowDuplicateAction } from './workflow-duplicate-dialog';
 import { WorkflowExportAction } from './portability/workflow-export-dialog';
 import { WorkflowTemplateOrigin } from './templates/workflow-template-origin';
-import { workflowTemplateOriginPresentationEnabled } from '@/features/workflows/model/template-feature-gates';
+import { workflowTemplateOriginPresentationEnabled } from '@/features/workflows/model/templates/feature-gates';
 import { InputCasesAction } from './input-cases/input-cases-action';
 
 export type WorkflowHubTab =

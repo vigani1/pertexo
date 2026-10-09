@@ -12,7 +12,7 @@ import {
   identityHandlers,
   sseEvents,
   coldStart,
-} from '../../support/run-fixtures';
+} from '../../support/fixtures/run';
 
 const {
   user: userId,

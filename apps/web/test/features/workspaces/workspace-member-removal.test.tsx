@@ -18,7 +18,7 @@ import {
   userId,
   workspaceId,
   type SentMemberCommand,
-} from '../../support/team-fixtures';
+} from '../../support/fixtures/team';
 
 const thirdMemberId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const workspaceName = ownerWorkspace.name;

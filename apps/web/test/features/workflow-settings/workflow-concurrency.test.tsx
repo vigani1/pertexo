@@ -24,7 +24,7 @@ import { ApiError } from '@/lib/api/api-error';
 import { ConcurrencySection } from '@/features/workflow-settings/components/settings/concurrency-section';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { mockServer } from '../../support/mock-server';
-import { defaultConcurrencySettings } from '../../support/concurrency-fixtures';
+import { defaultConcurrencySettings } from '../../support/fixtures/concurrency';
 import { renderApp, testFetch } from '../../support/render-app';
 import {
   installQueries,
@@ -33,7 +33,7 @@ import {
   workflowId,
   userId,
 } from './workflow-settings.fixtures';
-import { workspaceWith } from '../workflows/workflow-list.fixtures';
+import { workspaceWith } from '../workflows/list/fixtures';
 
 const path = `/w/${workspaceId}/workflows/${workflowId}/settings`;
 const endpoint = `${workflowApi}/concurrency`;

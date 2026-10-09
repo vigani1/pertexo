@@ -13,7 +13,7 @@ import {
   curatedTemplateChooserEnabled,
   templateOrigin,
   templateUnavailableReasons,
-} from '@/features/workflows/model/curated-template-setup';
+} from '@/features/workflows/model/templates/curated-setup';
 import { WorkflowImportDialog } from '@/features/workflows/components/portability/workflow-import-dialog';
 import { createApiClient } from '@/lib/api/client';
 import { renderInRouter } from '../../support/render-in-router';
@@ -27,7 +27,7 @@ import {
   userId,
   versionId,
   workspaceWith,
-} from './workflow-list.fixtures';
+} from './list/fixtures';
 
 const first = CURATED_WORKFLOW_TEMPLATES[0];
 const controlled = CURATED_WORKFLOW_TEMPLATES[2];

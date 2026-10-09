@@ -21,8 +21,8 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { describeCommandError } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowNameError } from '../../model/workflow-rename';
-import { readPortableWorkflowFile } from '../../model/workflow-portability';
+import { workflowNameError } from '../../model/rename';
+import { readPortableWorkflowFile } from '../../model/portability';
 import { previewWorkflowImport } from '../../data/workflow-portability.api';
 import { usePortabilityLifetime } from './use-portability-lifetime';
 import { useWorkflowImportCommand } from '../../data/workflow-portability.mutations';
@@ -38,7 +38,7 @@ import {
   setupValueError,
   templateOrigin,
   type CuratedTemplate,
-} from '../../model/curated-template-setup';
+} from '../../model/templates/curated-setup';
 
 export function WorkflowImportDialog({
   apiClient,

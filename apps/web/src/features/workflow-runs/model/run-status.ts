@@ -2,7 +2,7 @@ import type {
   WorkflowNodeRunSummary,
   WorkflowRunSummary,
 } from '@pertexo/contracts';
-import type { CoreOrbState } from '@/components/patterns/core-orb';
+import type { CoreOrbState } from '@/components/patterns/core/orb';
 import type { StatusTone } from '@/components/ui/status';
 
 export type RunStatus = WorkflowRunSummary['status'];

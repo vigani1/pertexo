@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { findDefinition, stepTitle } from '../../model/graph/graph-adapter';
 import type { GraphLevel, WorkflowNode } from '../../model/graph/graph-scopes';
-import { ChoiceSelect } from './choice-select';
+import { ChoiceSelect } from './fields/choice-select';
 
 /**
  * Connections into this step, kept apart from its input mapping: wiring

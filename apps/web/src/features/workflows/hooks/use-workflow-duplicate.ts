@@ -15,12 +15,12 @@ import {
   duplicateFailureState,
   type DuplicatePhase,
   type DuplicateState,
-} from '../model/workflow-duplicate-state';
+} from '../model/duplicate/state';
 import {
   isDuplicateAccessLoss,
   observeDuplicateAccessLoss,
   verifyDuplicateAuthority,
-} from '../model/workflow-duplicate-authority';
+} from '../model/duplicate/access-loss';
 
 type DuplicateAttempt = WorkflowDuplicateAttempt & {
   result?: Readonly<{ workflowId: string }>;

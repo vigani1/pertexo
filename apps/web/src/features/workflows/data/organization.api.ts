@@ -29,7 +29,7 @@ import {
   normalizeWorkflowOrganizationProjectionQuery,
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
-} from '../model/workflow-organization';
+} from '../model/organization/requests';
 
 function workspacePath(workspaceId: string): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}`;

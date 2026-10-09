@@ -25,9 +25,9 @@ import {
   updateWorkflowListSearch,
   type WorkflowListSearch,
   type WorkflowListSearchUpdate,
-} from '../../model/workflow-list-view';
+} from '../../model/list-view';
 import { WorkflowOrganizationManager } from './workflow-organization-manager';
-import { workflowFolderOptions } from '../../model/workflow-folder-navigation';
+import { workflowFolderOptions } from '../../model/organization/folder-navigation';
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,

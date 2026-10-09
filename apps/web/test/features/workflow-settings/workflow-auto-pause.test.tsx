@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
 import { mockServer } from '../../support/mock-server';
-import { unpausedWorkflowSettings } from '../../support/auto-pause-fixtures';
+import { unpausedWorkflowSettings } from '../../support/fixtures/auto-pause';
 import { renderApp } from '../../support/render-app';
 import {
   installQueries,

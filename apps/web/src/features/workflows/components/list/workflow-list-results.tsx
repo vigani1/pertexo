@@ -8,14 +8,14 @@ import type {
   InfiniteData,
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import type { ApiClient } from '@/lib/api/client';
 import {
   countWorkflowViews,
   filterWorkflows,
   updateWorkflowListSearch,
   type WorkflowListSearch,
-} from '../../model/workflow-list-view';
+} from '../../model/list-view';
 import { WorkflowListNoMatches } from './workflow-list-states';
 import { WorkflowListToolbar } from './workflow-list-toolbar';
 import type { WorkflowRowActions } from './workflow-row-actions';

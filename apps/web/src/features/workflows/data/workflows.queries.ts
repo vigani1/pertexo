@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-query';
 import type { WorkflowListResponse, WorkflowSummary } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import type { WorkflowListOrder } from '../model/workflow-list-view';
+import type { WorkflowListOrder } from '../model/list-view';
 import {
   getWorkflowShapeGraph,
   getWorkflowSummary,

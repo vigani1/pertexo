@@ -4,7 +4,7 @@ import {
   useRouter,
 } from '@tanstack/react-router';
 import { WorkspaceGeneralPage } from '@/features/workspaces/workspace-general.public';
-import { useWorkspaceScope } from './use-workspace-scope';
+import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function WorkspaceSettingsRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

@@ -26,7 +26,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   buildStarterGraph,
   type AvailableStarter,
-} from '../../model/workflow-starters';
+} from '../../model/templates/starters';
 import {
   useCreateWorkflow,
   type CreateWorkflowResult,

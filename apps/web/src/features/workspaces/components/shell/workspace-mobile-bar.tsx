@@ -7,7 +7,7 @@ import {
   WavesIcon,
   WorkflowIcon,
 } from 'lucide-react';
-import { CoreOrb } from '@/components/patterns/core-orb';
+import { CoreOrb } from '@/components/patterns/core/orb';
 import {
   Sheet,
   SheetBody,

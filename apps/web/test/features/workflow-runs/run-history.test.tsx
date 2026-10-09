@@ -14,7 +14,7 @@ import {
   notFoundProblem,
   coldStart,
   statisticsHandler,
-} from '../../support/run-fixtures';
+} from '../../support/fixtures/run';
 
 const { workspace: workspaceId, workflow: workflowId } = fixtureIds;
 const { firstRun: firstRunId, secondRun: secondRunId } = fixtureIds;

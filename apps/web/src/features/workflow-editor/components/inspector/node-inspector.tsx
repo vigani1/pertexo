@@ -22,20 +22,20 @@ import {
   type WorkflowNode,
 } from '../../model/graph/graph-scopes';
 import { isSlackStep } from '../../model/inspector/slack-channel';
-import { createScratchTracker } from './use-inspector-draft-field';
-import { AboutTab } from './about-tab';
-import { InputsTab } from './inputs-tab';
-import { InspectorHeader, type StepMenuActions } from './inspector-header';
+import { createScratchTracker } from './use-draft-field';
+import { AboutTab } from './tabs/about';
+import { InputsTab } from './tabs/inputs';
+import { InspectorHeader, type StepMenuActions } from './header';
 import { LoopBodySection } from './loop-body-section';
 import {
   fieldControlId,
   type NodeFormApi,
 } from '../../model/inspector/node-form';
-import { SetupTab } from './setup-tab';
+import { SetupTab } from './tabs/setup';
 import {
   SlackChannelField,
   type ChannelLookupScope,
-} from './slack-channel-field';
+} from './fields/slack-channel-field';
 import { shortcut } from '@/lib/shortcut-keys';
 
 export type NodeInspectorActions = StepMenuActions &

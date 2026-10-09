@@ -1,5 +1,5 @@
 import { RotateCcwIcon } from 'lucide-react';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import { Notice } from '@/components/ui/notice';

@@ -7,7 +7,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   templateUnavailableReasons,
   type CuratedTemplate,
-} from '../../model/curated-template-setup';
+} from '../../model/templates/curated-setup';
 
 export function CuratedTemplateChoice({
   apiClient,

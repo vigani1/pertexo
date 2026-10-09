@@ -19,15 +19,12 @@ import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
-import {
-  canRunWorkflow,
-  describeWorkflowState,
-} from '../../model/workflow-state';
+import { canRunWorkflow, describeWorkflowState } from '../../model/state';
 import {
   describeWorkflowPath,
   workflowTriggerKinds,
   type TriggerKind,
-} from '../../model/workflow-shape';
+} from '../../model/shape';
 import { useWorkflowRunTicks } from './use-workflow-run-ticks';
 import { useHasBeenVisible } from './use-has-been-visible';
 import { workflowShapeQueryOptions } from '../../data/workflows.queries';
