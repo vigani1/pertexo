@@ -1,209 +1,196 @@
 import {
   SpanStatusCode,
+  type Attributes,
   type Meter,
   type Span,
   type Tracer,
 } from '@opentelemetry/api';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  HttpRequestExecutorError,
+  SlackSendMessageExecutorError,
+} from '@pertexo/integrations/server';
+import { describe, expect, it } from 'vitest';
 
-import { createProductionProviderTelemetry } from '../../src/providers/telemetry.js';
+import {
+  createEmailProviderTelemetry,
+  createHttpProviderTelemetry,
+  createSlackProviderTelemetry,
+} from '../../src/providers/telemetry.js';
 
-type DiagnosticStage =
-  | 'start_before_callback'
-  | 'start_before_callback_async'
-  | 'trace_after_callback_sync'
-  | 'trace_after_callback_async'
-  | 'count'
-  | 'rate_limit'
-  | 'duration'
-  | 'attribute'
-  | 'status'
-  | 'end';
-
-function diagnostics(stage?: DiagnosticStage) {
-  const counters = new Map<string, ReturnType<typeof vi.fn>>();
-  const histograms = new Map<string, ReturnType<typeof vi.fn>>();
-  const createCounter = vi.fn((name: string) => {
-    const add = vi.fn(() => {
-      if (stage === 'count' && name === 'pertexo.provider.request.count')
-        throw new Error('count failed');
-      if (
-        stage === 'rate_limit' &&
-        name === 'pertexo.provider.rate_limit.count'
-      )
-        throw new Error('rate-limit count failed');
-    });
-    counters.set(name, add);
-    return { add };
-  });
-  const createHistogram = vi.fn((name: string) => {
-    const record = vi.fn(() => {
-      if (stage === 'duration') throw new Error('duration failed');
-    });
-    histograms.set(name, record);
-    return { record };
-  });
-  const setAttribute = vi.fn(() => {
-    if (stage === 'attribute') throw new Error('attribute failed');
-  });
-  const setStatus = vi.fn(() => {
-    if (stage === 'status') throw new Error('status failed');
-  });
-  const end = vi.fn(() => {
-    if (stage === 'end') throw new Error('end failed');
-  });
-  const span = { end, setAttribute, setStatus } as unknown as Span;
-  const startActiveSpan = vi.fn(
-    (_name: string, callback: (activeSpan: Span) => Promise<unknown>) => {
-      if (stage === 'start_before_callback')
-        throw new Error('span start failed');
-      if (stage === 'start_before_callback_async')
-        return Promise.reject(new Error('async span start failed'));
-      const work = callback(span);
-      if (stage === 'trace_after_callback_sync')
-        throw new Error('trace wrapper failed');
-      if (stage === 'trace_after_callback_async')
-        return Promise.reject(new Error('async trace wrapper failed'));
-      return work;
-    },
-  );
-  return {
-    counters,
-    end,
-    histograms,
-    meter: { createCounter, createHistogram } as unknown as Meter,
-    setAttribute,
-    setStatus,
-    startActiveSpan,
-    tracer: { startActiveSpan } as unknown as Tracer,
-  };
-}
-
-function telemetry(stage?: DiagnosticStage) {
-  const harness = diagnostics(stage);
-  return {
-    harness,
-    telemetry: createProductionProviderTelemetry<{
-      messageId: string;
-      privatePayload: string;
-    }>({
-      instrumentationName: '@pertexo/test.provider',
-      spanName: 'pertexo.provider.test.send',
-      providerKey: 'test',
-      operationKey: 'send',
-      classifyFailure: (error) => {
-        if (!(error instanceof Error)) return undefined;
-        return {
-          errorClass: 'rate_limit',
-          outcome: 'retry',
-          possiblyDispatched: true,
-        };
+function recorder() {
+  const counts = new Map<string, Attributes[]>();
+  const durations: Attributes[] = [];
+  const spans: {
+    name: string;
+    attributes: Attributes;
+    status?: SpanStatusCode;
+    ended: boolean;
+  }[] = [];
+  const meter = {
+    createCounter: (name: string) => ({
+      add: (_value: number, attributes: Attributes) => {
+        counts.set(name, [...(counts.get(name) ?? []), attributes]);
       },
-      meter: harness.meter,
-      tracer: harness.tracer,
     }),
-  };
+    createHistogram: () => ({
+      record: (_value: number, attributes: Attributes) => {
+        durations.push(attributes);
+      },
+    }),
+  } as unknown as Meter;
+  const tracer = {
+    startActiveSpan: (name: string, work: (span: Span) => unknown) => {
+      const recorded: (typeof spans)[number] = {
+        name,
+        attributes: {},
+        ended: false,
+      };
+      spans.push(recorded);
+      return work({
+        setAttributes: (values: Attributes) => {
+          Object.assign(recorded.attributes, values);
+        },
+        setStatus: ({ code }: { code: SpanStatusCode }) => {
+          recorded.status = code;
+        },
+        end: () => {
+          recorded.ended = true;
+        },
+      } as unknown as Span);
+    },
+  } as unknown as Tracer;
+  return { counts, durations, meter, spans, tracer };
 }
 
-describe('shared provider telemetry', () => {
-  it.each([
-    'start_before_callback',
-    'start_before_callback_async',
-    'trace_after_callback_sync',
-    'trace_after_callback_async',
-    'count',
-    'duration',
-    'attribute',
-    'status',
-    'end',
-  ] as const)(
-    'preserves one successful operation when %s fails',
-    async (stage) => {
-      const { harness, telemetry: measured } = telemetry(stage);
-      const output = {
-        messageId: 'provider-result',
-        privatePayload: 'private-output-sentinel',
-      };
-      const work = vi.fn(() => Promise.resolve(output));
+describe('provider telemetry', () => {
+  it('records a success with bounded attributes only', async () => {
+    const recorded = recorder();
+    const telemetry = createSlackProviderTelemetry(recorded);
+    const output = {
+      channelId: 'private-channel-sentinel',
+      messageTs: 'private-message-sentinel',
+    };
 
-      await expect(measured.measure(work)).resolves.toBe(output);
-      expect(work).toHaveBeenCalledOnce();
-      if (
-        stage !== 'start_before_callback' &&
-        stage !== 'start_before_callback_async'
-      ) {
-        expect(harness.end).toHaveBeenCalledOnce();
-        expect(harness.setStatus).toHaveBeenCalledWith({
-          code: SpanStatusCode.OK,
-        });
-      }
-    },
-  );
+    await expect(
+      telemetry.measure(() => Promise.resolve(output)),
+    ).resolves.toBe(output);
 
-  it.each([
-    'start_before_callback',
-    'start_before_callback_async',
-    'trace_after_callback_sync',
-    'trace_after_callback_async',
-    'count',
-    'rate_limit',
-    'duration',
-    'attribute',
-    'status',
-    'end',
-  ] as const)(
-    'preserves one rejected operation when %s fails',
-    async (stage) => {
-      const { telemetry: measured } = telemetry(stage);
-      const failure = new Error('original provider failure');
-      const work = vi.fn(() => Promise.reject(failure));
+    const success = {
+      provider_key: 'slack',
+      operation_key: 'send_message',
+      outcome: 'succeeded',
+      possibly_dispatched: true,
+    };
+    expect(recorded.counts.get('pertexo.provider.request.count')).toEqual([
+      success,
+    ]);
+    expect(recorded.durations).toEqual([success]);
+    expect(recorded.spans).toEqual([
+      {
+        name: 'pertexo.provider.slack.send_message',
+        attributes: success,
+        status: SpanStatusCode.OK,
+        ended: true,
+      },
+    ]);
+    expect(JSON.stringify(recorded)).not.toMatch(/sentinel/u);
+  });
 
-      await expect(measured.measure(work)).rejects.toBe(failure);
-      expect(work).toHaveBeenCalledOnce();
-    },
-  );
+  it('adds the response storage to an HTTP success', async () => {
+    const recorded = recorder();
+    const output = { status: 200, body: { kind: 'inline' } } as never;
 
-  it('preserves the exact typed rejection and bounded failure attributes', async () => {
-    const { harness, telemetry: measured } = telemetry();
-    const failure = new Error('private-error-sentinel');
-    const work = vi.fn(() => Promise.reject(failure));
+    await createHttpProviderTelemetry(recorded).measure(() =>
+      Promise.resolve(output),
+    );
 
-    await expect(measured.measure(work)).rejects.toBe(failure);
-    expect(work).toHaveBeenCalledOnce();
-    const expected = {
-      provider_key: 'test',
-      operation_key: 'send',
+    expect(recorded.spans[0]).toMatchObject({
+      name: 'pertexo.provider.http.request',
+      attributes: {
+        provider_key: 'http',
+        operation_key: 'request',
+        outcome: 'succeeded',
+        response_storage: 'inline',
+        status_class: '2xx',
+      },
+    });
+  });
+
+  it('classifies a provider failure and counts rate limits', async () => {
+    const recorded = recorder();
+    const rateLimited = new SlackSendMessageExecutorError(
+      { kind: 'retry', errorKind: 'rate_limit', possiblyDispatched: true },
+      1_000,
+    );
+    Object.assign(rateLimited, { detail: 'private-error-sentinel' });
+
+    await expect(
+      createSlackProviderTelemetry(recorded).measure(() =>
+        Promise.reject(rateLimited),
+      ),
+    ).rejects.toBe(rateLimited);
+
+    const failure = {
+      provider_key: 'slack',
+      operation_key: 'send_message',
       outcome: 'retry',
       error_class: 'rate_limit',
       possibly_dispatched: true,
     };
-    expect(
-      harness.counters.get('pertexo.provider.request.count'),
-    ).toHaveBeenCalledWith(1, expected);
-    expect(
-      harness.counters.get('pertexo.provider.rate_limit.count'),
-    ).toHaveBeenCalledWith(1, expected);
-    expect(harness.setStatus).toHaveBeenCalledWith({
-      code: SpanStatusCode.ERROR,
+    expect(recorded.counts.get('pertexo.provider.rate_limit.count')).toEqual([
+      failure,
+    ]);
+    expect(recorded.spans[0]).toMatchObject({
+      attributes: failure,
+      status: SpanStatusCode.ERROR,
+      ended: true,
     });
-    const diagnosticsSurface = JSON.stringify({
-      counters: [...harness.counters.values()].map((call) => call.mock.calls),
-      histograms: [...harness.histograms.values()].map(
-        (call) => call.mock.calls,
-      ),
-      span: harness.setAttribute.mock.calls,
-    });
-    expect(diagnosticsSurface).not.toContain('private-error-sentinel');
-    expect(diagnosticsSurface).not.toContain('private-output-sentinel');
+    expect(JSON.stringify(recorded)).not.toMatch(/sentinel/u);
   });
 
-  it('contains classifier failure for a hostile rejection and preserves identity', async () => {
-    const { telemetry: measured } = telemetry();
-    const revoked = Proxy.revocable(new Error('private-hostile-sentinel'), {});
-    revoked.revoke();
-    const work = vi.fn(() => Promise.reject(revoked.proxy));
+  it('reports an HTTP executor failure by its decision', async () => {
+    const recorded = recorder();
+    const failure = new HttpRequestExecutorError(
+      { kind: 'failed', errorKind: 'provider' },
+      true,
+    );
 
-    await expect(measured.measure(work)).rejects.toBe(revoked.proxy);
-    expect(work).toHaveBeenCalledOnce();
+    await expect(
+      createHttpProviderTelemetry(recorded).measure(() =>
+        Promise.reject(failure),
+      ),
+    ).rejects.toBe(failure);
+
+    expect(recorded.spans[0]?.attributes).toEqual({
+      provider_key: 'http',
+      operation_key: 'request',
+      outcome: 'failed',
+      error_class: 'provider',
+      possibly_dispatched: true,
+    });
+  });
+
+  it('reports an unclassified error as an internal failure', async () => {
+    const recorded = recorder();
+    const error = new Error('unexpected');
+
+    await expect(
+      createEmailProviderTelemetry(recorded).measure(() =>
+        Promise.reject(error),
+      ),
+    ).rejects.toBe(error);
+
+    expect(recorded.counts.get('pertexo.provider.request.count')).toEqual([
+      {
+        provider_key: 'email',
+        operation_key: 'send_notification',
+        outcome: 'failed',
+        error_class: 'internal',
+        possibly_dispatched: false,
+      },
+    ]);
+    expect(recorded.counts.get('pertexo.provider.rate_limit.count')).toBe(
+      undefined,
+    );
   });
 });

@@ -396,6 +396,11 @@ now, as one ordered program — not "whenever we touch it".
           trap-throwing proxies), a resolved connection is not re-matched to
           the workspace and id it was resolved by, and failure-notification
           delivery does not re-check the intent's side-effect class.
+    - [x] One provider telemetry: HTTP, Slack and email calls share one
+          OpenTelemetry measurement, classified by `NodeExecutorFailure`
+          (HTTP adds its response storage). The separate HTTP
+          implementation, the per-provider classifiers and the guards around
+          OpenTelemetry calls, which never throw, go.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration

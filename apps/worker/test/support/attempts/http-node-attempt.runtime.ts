@@ -29,7 +29,7 @@ import { Queue } from 'bullmq';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createProductionHttpProviderTelemetry } from '../../../src/providers/http-telemetry.js';
+import { createHttpProviderTelemetry } from '../../../src/providers/telemetry.js';
 import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
 import {
@@ -165,8 +165,8 @@ export async function createHttpNodeAttemptProofRuntime(
       ): Promise<T> => {
         const attributes: Attributes = {};
         const span = {
-          setAttribute: (key: string, value: unknown) => {
-            attributes[key] = value as never;
+          setAttributes: (values: Attributes) => {
+            Object.assign(attributes, values);
             return span;
           },
           setStatus: () => span,
@@ -200,7 +200,7 @@ export async function createHttpNodeAttemptProofRuntime(
     );
     const registry = createPlatformNodeRegistry({
       httpRequest: { httpClient },
-      httpRequestTelemetry: createProductionHttpProviderTelemetry({
+      httpRequestTelemetry: createHttpProviderTelemetry({
         meter,
         tracer,
       }),
