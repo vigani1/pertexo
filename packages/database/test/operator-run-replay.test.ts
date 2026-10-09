@@ -108,7 +108,6 @@ function storeWith(results = validResults()) {
   for (const result of results) execute.mockResolvedValueOnce(result);
   const transaction = { db: { execute }, workspaceId };
   const database = {
-    checkCompatibility: vi.fn(),
     checkReadiness: vi.fn(),
     close: mocks.close,
     withWorkspace: vi.fn(),
@@ -161,7 +160,6 @@ function reconciliationWith(
     .mockResolvedValueOnce({ rows: evidence === null ? [] : [evidence] });
   const transaction = { db: { execute }, workspaceId };
   const database = {
-    checkCompatibility: vi.fn(),
     checkReadiness: vi.fn(),
     close: mocks.close,
     withWorkspace: vi.fn(),

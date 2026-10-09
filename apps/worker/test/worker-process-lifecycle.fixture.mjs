@@ -14,7 +14,7 @@ function report(event) {
 
 const database = {
   withWorkspace: async (_workspaceId, operation) => operation(undefined),
-  checkCompatibility: () =>
+  checkReadiness: () =>
     mode === 'bootstrap-failure'
       ? Promise.reject(new Error('fixture bootstrap failure'))
       : Promise.resolve({
@@ -22,12 +22,6 @@ const database = {
           postgresMajor: 18,
           role: 'pertexo_app',
         }),
-  checkReadiness: () =>
-    Promise.resolve({
-      migrationHead: '0076_replay_lineage_retention.sql',
-      postgresMajor: 18,
-      role: 'pertexo_app',
-    }),
   close: () => {
     report('database.closed');
     return Promise.resolve();

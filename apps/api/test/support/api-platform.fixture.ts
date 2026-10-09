@@ -15,12 +15,6 @@ export function createApiPlatformFixture(migrationHead: string) {
       _workspaceId: string,
       operation: (transaction: never) => Promise<T>,
     ): Promise<T> => operation(undefined as never),
-    checkCompatibility: () =>
-      Promise.resolve({
-        migrationHead,
-        postgresMajor: 18,
-        role: 'pertexo_app',
-      }),
     checkReadiness: () =>
       Promise.resolve({
         migrationHead,

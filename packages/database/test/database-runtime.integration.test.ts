@@ -161,7 +161,7 @@ describe('database process runtime integration', () => {
       );
       for (const client of clients.splice(0)) client.release();
       await Promise.all(
-        repositories.map((repository) => repository.checkCompatibility()),
+        repositories.map((repository) => repository.checkReadiness()),
       );
       await Promise.all(repositories.map((repository) => repository.close()));
       expect(await sessionCount()).toBe(4);

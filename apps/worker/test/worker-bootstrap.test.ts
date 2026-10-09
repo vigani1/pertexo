@@ -32,12 +32,6 @@ const database: WorkspaceDatabase = {
     _workspaceId: string,
     operation: (transaction: never) => Promise<T>,
   ): Promise<T> => operation(undefined as never),
-  checkCompatibility: () =>
-    Promise.resolve({
-      migrationHead: '0000_rls_probe.sql',
-      postgresMajor: 18,
-      role: 'pertexo_app',
-    }),
   checkReadiness: () =>
     Promise.resolve({
       migrationHead: '0000_rls_probe.sql',
@@ -257,11 +251,9 @@ describe('worker application bootstrap', () => {
   });
 
   it('creates a standalone context without an HTTP server', async () => {
-    const checkCompatibility = vi.fn(() => database.checkCompatibility());
     const checkReadiness = vi.fn(() => database.checkReadiness());
     const selectedDatabase: WorkspaceDatabase = {
       ...database,
-      checkCompatibility,
       checkReadiness,
     };
     const selected = dependencies(selectedDatabase);
@@ -270,8 +262,7 @@ describe('worker application bootstrap', () => {
     try {
       expect('getHttpServer' in app).toBe(false);
       expect(selected.workerProcessStart).toHaveBeenCalledOnce();
-      expect(checkCompatibility).toHaveBeenCalledOnce();
-      expect(checkReadiness).toHaveBeenCalledOnce();
+      expect(checkReadiness).toHaveBeenCalledTimes(2);
     } finally {
       await app.close();
     }
@@ -492,7 +483,7 @@ describe('worker application bootstrap', () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const unavailableDatabase: WorkspaceDatabase = {
       ...database,
-      checkCompatibility: vi
+      checkReadiness: vi
         .fn()
         .mockRejectedValue(new Error('migration mismatch')),
       close,

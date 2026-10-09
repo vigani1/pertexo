@@ -11,8 +11,8 @@ export type PollingRuntimeDefinition = Readonly<{
   name: string;
   /** Idle wait between cycles. */
   pollMillis: number;
-  /** Startup compatibility: fails unless the reviewed commands are present. */
-  checkCompatibility(signal: AbortSignal): Promise<void>;
+  /** Checks the runtime's store once, before the first cycle. */
+  checkStore(signal: AbortSignal): Promise<void>;
   cycle(signal: AbortSignal): Promise<void>;
   cycleFailed(): void;
   /** Releases the runtime's resources once the loop has stopped. */
@@ -30,7 +30,7 @@ export function reportDiagnostic(diagnostic: () => void): void {
 
 /**
  * A worker loop that runs a cycle and waits between cycles until closed. It
- * checks compatibility before its first cycle, and is ready once that cycle
+ * checks its store before the first cycle, and is ready once that cycle
  * settles while the latest one succeeded.
  */
 export function createPollingRuntime(
@@ -40,13 +40,13 @@ export function createPollingRuntime(
   const { signal } = controller;
   let firstCycle: PromiseWithResolvers<undefined> | undefined;
   let loop: Promise<void> | undefined;
-  let compatible = false;
+  let storeChecked = false;
   let latestCycleFailed = true;
 
   const cycle = async () => {
-    if (!compatible) {
-      await definition.checkCompatibility(signal);
-      compatible = true;
+    if (!storeChecked) {
+      await definition.checkStore(signal);
+      storeChecked = true;
     }
     await definition.cycle(signal);
   };
@@ -81,8 +81,8 @@ export function createPollingRuntime(
       if (firstCycle === undefined)
         throw new Error(`${definition.name} runtime has not started`);
       await firstCycle.promise;
-      if (!compatible)
-        throw new Error(`${definition.name} commands are incompatible`);
+      if (!storeChecked)
+        throw new Error(`${definition.name} store is not ready`);
       if (latestCycleFailed)
         throw new Error(`${definition.name} latest cycle failed`);
     },

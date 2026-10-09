@@ -516,7 +516,7 @@ describe('API bootstrap ownership and health', () => {
     const cleanupFailure = new Error('identity cleanup failed');
     const selectedDatabase: WorkspaceDatabase = {
       ...database,
-      checkCompatibility: vi.fn().mockRejectedValue(startupFailure),
+      checkReadiness: vi.fn().mockRejectedValue(startupFailure),
     };
     const selectedIdentity = identityRuntime(
       vi.fn().mockRejectedValue(cleanupFailure),
@@ -549,12 +549,10 @@ describe('API bootstrap ownership and health', () => {
     expect(response.payload.length).toBeLessThanOrEqual(64);
   });
 
-  it('reports readiness only after database compatibility passes', async () => {
-    const checkCompatibility = vi.fn(() => database.checkCompatibility());
+  it('checks the database at startup and again when asked for readiness', async () => {
     const checkReadiness = vi.fn(() => database.checkReadiness());
     const selectedDatabase: WorkspaceDatabase = {
       ...database,
-      checkCompatibility,
       checkReadiness,
     };
     application = await createApiApplication(
@@ -570,8 +568,7 @@ describe('API bootstrap ownership and health', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: 'ready' });
-    expect(checkCompatibility).toHaveBeenCalledOnce();
-    expect(checkReadiness).toHaveBeenCalledOnce();
+    expect(checkReadiness).toHaveBeenCalledTimes(2);
   });
 
   it('returns 503 without exposing a database readiness failure', async () => {
@@ -582,9 +579,10 @@ describe('API bootstrap ownership and health', () => {
     } as const;
     const unavailableDatabase: WorkspaceDatabase = {
       ...database,
-      checkCompatibility: vi.fn().mockResolvedValue(readiness),
+      // Ready at startup, then unavailable.
       checkReadiness: vi
         .fn()
+        .mockResolvedValueOnce(readiness)
         .mockRejectedValue(new Error('secret database detail')),
     };
     application = await createApiApplication(
@@ -615,7 +613,7 @@ describe('API bootstrap ownership and health', () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const incompatibleDatabase: WorkspaceDatabase = {
       ...database,
-      checkCompatibility: vi
+      checkReadiness: vi
         .fn()
         .mockRejectedValue(new Error('migration mismatch')),
       close,
@@ -2083,7 +2081,7 @@ describe('API bootstrap ownership and health', () => {
       const selectedIdentityRuntime = identityRuntime(identityClose);
       const incompatibleDatabase: WorkspaceDatabase = {
         ...database,
-        checkCompatibility: vi
+        checkReadiness: vi
           .fn()
           .mockRejectedValue(new Error('migration mismatch')),
       };

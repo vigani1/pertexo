@@ -134,7 +134,7 @@ export function createRetentionRuntime(
   return createPollingRuntime({
     name: 'Retention',
     pollMillis,
-    checkCompatibility: async (signal) => {
+    checkStore: async (signal) => {
       await resources.database.checkReadiness(signal);
     },
     cycle: async (signal) => {

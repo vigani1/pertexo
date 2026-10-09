@@ -164,7 +164,6 @@ export type ArtifactUploadDatabase = Readonly<{
   getMetadata(
     input: ArtifactUploadAuthorization,
   ): Promise<ArtifactRecord | null>;
-  checkCompatibility(): Promise<DatabaseReadiness>;
   checkReadiness(): Promise<DatabaseReadiness>;
   close(): Promise<void>;
 }>;

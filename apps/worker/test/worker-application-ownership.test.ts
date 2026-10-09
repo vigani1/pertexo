@@ -113,7 +113,7 @@ describe('worker application construction ownership', () => {
   });
 
   it('preserves a compatibility failure when Nest close itself fails', async () => {
-    const compatibilityFailure = new Error('database compatibility failed');
+    const readinessFailure = new Error('database readiness failed');
     const nestCloseFailure = new Error('Nest before-shutdown hook failed');
     const shutdown = new WorkerShutdownCoordinator(new WorkerDrainState());
     const application = {
@@ -124,7 +124,7 @@ describe('worker application construction ownership', () => {
         if (token === WorkerShutdownCoordinator) return shutdown;
         if (token === WORKSPACE_DATABASE)
           return {
-            checkCompatibility: () => Promise.reject(compatibilityFailure),
+            checkReadiness: () => Promise.reject(readinessFailure),
           };
         throw new Error('Unexpected application token');
       }),
@@ -143,7 +143,7 @@ describe('worker application construction ownership', () => {
     ).catch((error: unknown) => error);
 
     expect((failure as AggregateError).errors).toEqual([
-      compatibilityFailure,
+      readinessFailure,
       nestCloseFailure,
     ]);
     expect(application.close).toHaveBeenCalledOnce();

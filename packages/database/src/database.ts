@@ -16,7 +16,6 @@ export interface WorkspaceDatabase {
     operation: (transaction: WorkspaceTransaction) => Promise<T>,
     options?: WorkspaceTransactionOptions,
   ): Promise<T>;
-  checkCompatibility(): Promise<DatabaseReadiness>;
   checkReadiness(): Promise<DatabaseReadiness>;
   close(): Promise<void>;
 }
@@ -34,8 +33,6 @@ export function createWorkspaceDatabase(
       options?: WorkspaceTransactionOptions,
     ): Promise<T> =>
       withWorkspaceTransaction(pool, workspaceId, operation, options),
-    checkCompatibility: async (): Promise<DatabaseReadiness> =>
-      checkDatabaseReadiness(pool),
     checkReadiness: async (): Promise<DatabaseReadiness> =>
       checkDatabaseReadiness(pool),
     close: (): Promise<void> => lease.close(),

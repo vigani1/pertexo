@@ -5,7 +5,6 @@ import { createApiApplication } from '../dist/app.js';
 const events = (event) =>
   process.stdout.write(`${JSON.stringify({ event })}\n`);
 const database = {
-  checkCompatibility: () => Promise.resolve(),
   checkReadiness: () => Promise.resolve(),
   close: async () => {
     events('database.closed');
