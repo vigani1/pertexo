@@ -5,6 +5,12 @@ import {
   authIdentities,
   sessions,
   oidcLoginTransactions,
+  userProfileCommandReceipts,
+  authLegacyMethodMigrationAttempts,
+  authMethodLinkAttempts,
+  authEmailProofs,
+  authenticationMailDeliveries,
+  identitySecurityAuditFacts,
 } from './schema/authentication.js';
 import { workflowTemplateOrigins } from './schema/curated-template-origin.js';
 import { workflowManualStartRejections } from './schema/manual-start.js';
@@ -22,6 +28,7 @@ import {
   workspaceInvitationBindingReplacementClaims,
   auditEvents,
   usageEvents,
+  workspaceLifecycleOperations,
 } from './schema/foundation.js';
 import { rlsProbeRecords } from './schema/rls-probe.js';
 import { workflowConcurrencyPolicies } from './schema/workflow-concurrency.js';
@@ -29,6 +36,8 @@ import {
   connections,
   connectionSecretVersions,
   connectionEvents,
+  nodeAttemptConnectionDispatches,
+  connectionHealthObservations,
 } from './schema/connections.js';
 import {
   artifacts,
@@ -36,6 +45,7 @@ import {
   outboxEvents,
   inboxReceipts,
   transportSecurityAuditFacts,
+  outboxFairDispatchCursor,
 } from './schema/transport.js';
 import {
   workflowRuns,
@@ -78,6 +88,31 @@ import {
   triggerScheduleOccurrences,
 } from './schema/triggers.js';
 
+import {
+  workflowFolders,
+  workflowTags,
+  workflowOrganizationState,
+  workflowTagAssignments,
+  workflowFavorites,
+} from './schema/workflow-organization.js';
+import {
+  failureNotificationDestinations,
+  failureNotificationDestinationVersions,
+  workflowFailureNotificationPolicies,
+  runFailureNotificationIntents,
+  runFailureNotificationAuditFacts,
+} from './schema/notifications.js';
+import {
+  operatorCommands,
+  operatorRunReplayRequests,
+  operatorUnknownOutcomeEvidence,
+} from './schema/operator.js';
+import {
+  workspaceExecutionEntitlements,
+  workspaceExecutionEntitlementVersions,
+  workspaceExecutionAdmissionCounters,
+  workflowRunActiveAdmissions,
+} from './schema/execution-admission.js';
 export {
   authAccounts,
   authSessions,
@@ -130,6 +165,33 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  workflowFolders,
+  workflowTags,
+  workflowOrganizationState,
+  workflowTagAssignments,
+  workflowFavorites,
+  nodeAttemptConnectionDispatches,
+  connectionHealthObservations,
+  userProfileCommandReceipts,
+  authLegacyMethodMigrationAttempts,
+  authMethodLinkAttempts,
+  authEmailProofs,
+  authenticationMailDeliveries,
+  identitySecurityAuditFacts,
+  failureNotificationDestinations,
+  failureNotificationDestinationVersions,
+  workflowFailureNotificationPolicies,
+  runFailureNotificationIntents,
+  runFailureNotificationAuditFacts,
+  operatorCommands,
+  operatorRunReplayRequests,
+  operatorUnknownOutcomeEvidence,
+  outboxFairDispatchCursor,
+  workspaceExecutionEntitlements,
+  workspaceExecutionEntitlementVersions,
+  workspaceExecutionAdmissionCounters,
+  workflowRunActiveAdmissions,
+  workspaceLifecycleOperations,
   workflowTemplateOrigins,
   workflowManualStartRejections,
   workflowInputCases,

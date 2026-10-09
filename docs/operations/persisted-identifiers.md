@@ -26,7 +26,5 @@ review and a statement of why its identity must be allocated inside the atomic
 operation.
 
 `pnpm database:schema:check` rejects UUID-generating column defaults and
-accounts for every `app` table created by migrations. Drizzle-owned tables are
-discovered from `schema.ts`; intentionally raw-SQL-owned tables are listed in
-`packages/database/raw-sql-table-registry.json` with owner, access roles, RLS
-status, and the invariant that keeps them in SQL.
+requires every `app` table created by migrations to have a Drizzle definition
+under `packages/database/src/schema/`.
