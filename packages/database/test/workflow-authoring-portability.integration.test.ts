@@ -11,10 +11,10 @@ import {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,
-} from '../src/authoring/workflow-authoring-errors.js';
-import type { ImportWorkflowInput } from '../src/authoring/workflow-authoring-contracts.js';
-import { workflowImportCommandDigest } from '../src/authoring/workflow-authoring-portability.js';
-import type { WorkflowAuthoringDatabaseOptions } from '../src/authoring/workflow-authoring-types.js';
+} from '../src/authoring/workflows/errors.js';
+import type { ImportWorkflowInput } from '../src/authoring/workflows/contracts.js';
+import { workflowImportCommandDigest } from '../src/authoring/portability/store.js';
+import type { WorkflowAuthoringDatabaseOptions } from '../src/authoring/workflows/types.js';
 import {
   actorId,
   otherActorId,

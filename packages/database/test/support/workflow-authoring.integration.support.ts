@@ -22,7 +22,7 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   type WorkflowAuthoringDatabase,
-} from '../../src/authoring/workflow-authoring.js';
+} from '../../src/authoring/workflows/database.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/workflow-integration-usage.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';

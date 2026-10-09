@@ -1,4 +1,4 @@
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import type {
   GraphValidationResult,
   WorkflowGraph,

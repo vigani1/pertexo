@@ -1,6 +1,6 @@
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
 
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
 import { z } from 'zod';
 import { planWorkflowLifecycleCommand } from '@pertexo/workflow-model';
 
@@ -8,22 +8,19 @@ import {
   claimWorkflowCommand,
   completeWorkflowCommand,
   type WorkflowCommand,
-} from './workflow-authoring-command-receipts.js';
+} from '../command-receipts.js';
 import {
   WorkflowLifecycleRevisionConflictError,
   WorkflowNotFoundError,
-} from './workflow-authoring-errors.js';
+} from '../errors.js';
 import type {
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
   WorkflowAuthoringDatabase,
-} from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
-import {
-  mapWorkflow,
-  workflowRowSelection,
-} from './workflow-authoring-rows.js';
-import { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
+} from '../contracts.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
+import { mapWorkflow, workflowRowSelection } from '../rows.js';
+import { reconcileWorkflowTriggersPayload } from '../../publication/trigger-reconciliation.js';
 
 const uuidSchema = z.uuid();
 const commandSchema = z.enum(['archive', 'restore']);

@@ -7,13 +7,10 @@ import {
 } from '../../platform/database-runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/workspace.js';
 import { ROLES } from '../../tenant-access/workspace-policy.js';
-import { lockWorkflowAuthoringAuthority } from '../workflow-authoring-authority.js';
-import { WorkflowNotFoundError } from '../workflow-authoring-errors.js';
-import {
-  mapWorkflow,
-  workflowRowSelection,
-} from '../workflow-authoring-rows.js';
-import type { WorkflowRecord } from '../workflow-authoring-records.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
+import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { mapWorkflow, workflowRowSelection } from '../workflows/rows.js';
+import type { WorkflowRecord } from '../workflows/records.js';
 
 type Scope = Readonly<{
   workspaceId: string;

@@ -1,6 +1,6 @@
 // Broad test and migration-fixture surface; production code must use role-owned package subpaths instead.
 export * from './authoring/testing.js';
-export * from './authoring/workflow-auto-pause.js';
+export * from './authoring/settings/auto-pause.js';
 export * from './connections/testing.js';
 export { lockManualStartCommand } from './runs/commands/manual-start.js';
 export {

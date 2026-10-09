@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { canonicalWorkflowPortableJson } from '@pertexo/workflow-model';
-import { workflowImportCommandDigest } from '../src/authoring/workflow-authoring-portability.js';
+import { workflowImportCommandDigest } from '../src/authoring/portability/store.js';
 
 describe('workflow import command digest', () => {
   it('hashes the public command, including a template origin, but not who sent it', () => {

@@ -1,4 +1,4 @@
-import { acquireDatabasePool } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../../platform/database-runtime.js';
 
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
@@ -9,41 +9,41 @@ import {
 } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 
-import type { DatabaseConfig } from '../config.js';
-import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
-import { normalizeWorkflowAuthoringCompatibility } from './workflow-authoring-compatibility.js';
-import { createWorkflowPublisher } from './workflow-publication.js';
-import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
-import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
-import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
-import { createWorkflowVersionRestoreStore } from './workflow-authoring-version-restore.js';
-import { createWorkflowDuplicationStore } from './workflow-authoring-duplication.js';
-import { createWorkflowPortabilityStore } from './workflow-authoring-portability.js';
-import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
-import { createWorkflowAuthoringLifecycleStore } from './workflow-authoring-lifecycle.js';
-import { createWorkflowAuthoringRenameStore } from './workflow-authoring-rename.js';
-import { createWorkflowAutoPauseStore } from './workflow-auto-pause.js';
-import { createWorkflowConcurrencyStore } from './workflow-concurrency.js';
+import type { DatabaseConfig } from '../../config.js';
+import { WorkflowNotFoundError } from './errors.js';
+import { normalizeWorkflowAuthoringCompatibility } from './compatibility.js';
+import { createWorkflowPublisher } from '../publication/publisher.js';
+import { createWorkflowAuthoringReadStore } from './reads.js';
+import { lockWorkflowAuthoringAuthority } from './authority.js';
+import { createWorkflowAuthoringDraftStore } from './commands/drafts.js';
+import { createWorkflowVersionRestoreStore } from './commands/version-restore.js';
+import { createWorkflowDuplicationStore } from './commands/duplication.js';
+import { createWorkflowPortabilityStore } from '../portability/store.js';
+import type { WorkflowAuthoringWriteContext } from './context.js';
+import { createWorkflowAuthoringLifecycleStore } from './commands/lifecycle.js';
+import { createWorkflowAuthoringRenameStore } from './commands/rename.js';
+import { createWorkflowAutoPauseStore } from '../settings/auto-pause.js';
+import { createWorkflowConcurrencyStore } from '../settings/concurrency.js';
 export type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './workflow-authoring-records.js';
+} from './records.js';
 import {
   acceptPreviewRun,
   readPreviewRun,
   resolvePreviewReplay,
-} from '../previews/repository.js';
+} from '../../previews/repository.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
-} from '../tenant-access/workspace.js';
-import { rolesForCapability } from '../tenant-access/workspace-policy.js';
-import type { WorkflowAuthoringDatabaseOptions } from './workflow-authoring-types.js';
+} from '../../tenant-access/workspace.js';
+import { rolesForCapability } from '../../tenant-access/workspace-policy.js';
+import type { WorkflowAuthoringDatabaseOptions } from './types.js';
 export type {
   WorkflowAuthoringDatabaseOptions,
   WorkflowAuthoringTestHooks,
-} from './workflow-authoring-types.js';
+} from './types.js';
 
 const uuidSchema = z.uuid();
 
@@ -57,13 +57,13 @@ export {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,
-} from './workflow-authoring-errors.js';
+} from './errors.js';
 export type {
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
   WorkflowLifecycleCommand,
-} from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringDatabase } from './workflow-authoring-contracts.js';
+} from './contracts.js';
+import type { WorkflowAuthoringDatabase } from './contracts.js';
 
 export type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model';
 
@@ -96,9 +96,9 @@ export type {
   WorkflowAuthoringDatabase,
   WorkflowPage,
   WorkflowVersionPage,
-} from './workflow-authoring-contracts.js';
+} from './contracts.js';
 
-export { reconcileWorkflowTriggersPayload } from './workflow-publication.js';
+export { reconcileWorkflowTriggersPayload } from '../publication/publisher.js';
 
 function requirePlaceableDefinitionAdditions(
   previous: WorkflowGraph,

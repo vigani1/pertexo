@@ -4,7 +4,7 @@ export {
   WorkflowNotFoundError,
   WorkflowDefinitionPlacementError,
   WorkflowRevisionConflictError,
-} from './workflow-authoring.js';
+} from './workflows/database.js';
 export type {
   CreateWorkflowInput,
   CreateWorkflowResult,
@@ -25,4 +25,4 @@ export type {
   WorkflowRecord,
   WorkflowVersionPage,
   WorkflowVersionRecord,
-} from './workflow-authoring.js';
+} from './workflows/database.js';

@@ -16,12 +16,12 @@ import {
 import {
   admitWorkflowAuthoring,
   authoringIdleBudgetIsSafe,
-} from '../src/authoring/workflow-authoring-admission.js';
-import { createWorkflowAuthoringReadStore } from '../src/authoring/workflow-authoring-reads.js';
-import { createWorkflowPublisher } from '../src/authoring/workflow-publication.js';
-import { WorkflowRevisionConflictError } from '../src/authoring/workflow-authoring-errors.js';
+} from '../src/authoring/workflows/admission.js';
+import { createWorkflowAuthoringReadStore } from '../src/authoring/workflows/reads.js';
+import { createWorkflowPublisher } from '../src/authoring/publication/publisher.js';
+import { WorkflowRevisionConflictError } from '../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '../src/platform/idempotency.js';
-import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
+import { createWorkflowAuthoringDatabase } from '../src/authoring/workflows/database.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

@@ -6,7 +6,7 @@ import type {
   PortableCatalog,
   WorkflowAuthoringGraphValidator,
   WorkflowAuthoringTestHooks,
-} from './workflow-authoring-types.js';
+} from './types.js';
 
 /** Variable transaction, authority and compatibility seams shared by writes. */
 export type WorkflowAuthoringWriteContext = Readonly<{

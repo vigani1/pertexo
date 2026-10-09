@@ -1,11 +1,11 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { claimCommand, completeCommand } from '../platform/idempotency.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { ROLES, type Role } from '../tenant-access/workspace-policy.js';
-import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
-import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { ROLES, type Role } from '../../tenant-access/workspace-policy.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
+import { WorkflowNotFoundError } from '../workflows/errors.js';
 
 const revision = z.number().int().min(1).max(2_147_483_647);
 const limit = z.number().int().min(1).max(10_000).nullable();

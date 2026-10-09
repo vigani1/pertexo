@@ -5,11 +5,11 @@ import {
   type WorkflowDefinitionCatalog,
 } from '@pertexo/workflow-model/server';
 import type { DatabaseConfig } from '../../src/config.js';
-import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflow-authoring.js';
+import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflows/database.js';
 import type {
   WorkflowAuthoringDatabaseOptions,
   WorkflowAuthoringGraphValidator,
-} from '../../src/authoring/workflow-authoring-types.js';
+} from '../../src/authoring/workflows/types.js';
 
 /** Synthetic authoring fixtures explicitly pin the canonical restricted policy.
  * Production derives these references from actual registry manifests instead.

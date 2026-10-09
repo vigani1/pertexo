@@ -1,29 +1,26 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
-import { createWorkflowTemplateOriginReader } from './workflow-template-origin-read.js';
+import { WorkflowNotFoundError } from './errors.js';
+import { createWorkflowTemplateOriginReader } from '../portability/template-origin.js';
 import {
   mapDraft,
   mapVersion,
   mapWorkflow,
   workflowVersionRowSelection,
-} from './workflow-authoring-rows.js';
+} from './rows.js';
 import type {
   ListWorkflowsInput,
   ListWorkflowVersionsInput,
   WorkflowAuthoringDatabase,
   WorkflowPage,
   WorkflowVersionPage,
-} from './workflow-authoring-contracts.js';
-import type {
-  WorkflowDraftRecord,
-  WorkflowVersionRecord,
-} from './workflow-authoring-records.js';
+} from './contracts.js';
+import type { WorkflowDraftRecord, WorkflowVersionRecord } from './records.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
-import type { WorkflowAuthoringGraphValidator } from './workflow-authoring-types.js';
-import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
+import type { WorkflowAuthoringGraphValidator } from './types.js';
+import { admitWorkflowAuthoring } from './admission.js';
 
 type ReadStore = Pick<
   WorkflowAuthoringDatabase,

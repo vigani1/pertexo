@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool, type PoolClient } from 'pg';
-import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
-import type { WorkflowConcurrencyDatabase } from '../src/authoring/workflow-concurrency.js';
+import { createWorkflowAuthoringDatabase } from '../src/authoring/workflows/database.js';
+import type { WorkflowConcurrencyDatabase } from '../src/authoring/settings/concurrency.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { acceptWorkflowRun } from '../src/runs/commands/acceptance.js';
 import {
