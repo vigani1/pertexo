@@ -10,13 +10,13 @@ import {
 import {
   accessibleWorkspacesResponseSchema,
   workspaceCreateRequestSchema,
-  workspaceLifecycleOperationResponseSchema,
+  workspaceLifecycleChangeResponseSchema,
   workspaceResponseSchema,
   workspaceMembersResponseSchema,
   type AccessibleWorkspacesResponse,
   type UserProfileResponse,
   type WorkspaceMembersResponse,
-  type WorkspaceLifecycleOperationResponse,
+  type WorkspaceLifecycleChangeResponse,
   type WorkspaceResponse,
 } from './types.js';
 import {
@@ -60,7 +60,7 @@ type WorkspaceCreationPersistence = Pick<
 >;
 type WorkspaceLifecyclePersistence = Pick<
   IdentityWorkspacePersistence,
-  'requestWorkspaceLifecycleOperation' | 'readWorkspaceLifecycleOperation'
+  'requestWorkspaceLifecycleOperation'
 >;
 
 export class GetCurrentUserUseCase {
@@ -249,13 +249,6 @@ export type WorkspaceLifecycleInput = Readonly<{
 export type RequestDeletionInput = WorkspaceLifecycleInput &
   Readonly<{ reason: string }>;
 
-export type ReadWorkspaceLifecycleOperationInput = Readonly<{
-  actor: ActorContext;
-  authorizedWorkspace?: AuthorizedWorkspaceContext;
-  routeWorkspaceId: string;
-  operationId: string;
-}>;
-
 export class WorkspaceLifecycleUseCase {
   public constructor(
     private readonly persistence: WorkspaceLifecyclePersistence,
@@ -265,7 +258,7 @@ export class WorkspaceLifecycleUseCase {
 
   public async requestDeletion(
     input: RequestDeletionInput,
-  ): Promise<WorkspaceLifecycleOperationResponse> {
+  ): Promise<WorkspaceLifecycleChangeResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceRequestDeletion,
       async () => {
@@ -282,14 +275,14 @@ export class WorkspaceLifecycleUseCase {
             reason: input.reason,
             idempotencyKey: input.idempotencyKey,
           });
-        return toWorkspaceLifecycleOperationResponse(operation);
+        return toWorkspaceLifecycleChangeResponse(operation);
       },
     );
   }
 
   public async restore(
     input: WorkspaceLifecycleInput,
-  ): Promise<WorkspaceLifecycleOperationResponse> {
+  ): Promise<WorkspaceLifecycleChangeResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceRestore,
       async () => {
@@ -306,27 +299,9 @@ export class WorkspaceLifecycleUseCase {
             reason: 'Workspace deletion restored',
             idempotencyKey: input.idempotencyKey,
           });
-        return toWorkspaceLifecycleOperationResponse(operation);
+        return toWorkspaceLifecycleChangeResponse(operation);
       },
     );
-  }
-
-  public async readOperation(
-    input: ReadWorkspaceLifecycleOperationInput,
-  ): Promise<WorkspaceLifecycleOperationResponse> {
-    await this.authorize(input, 'workspace:manage', LIFECYCLE_VISIBLE_STATUSES);
-    const operation = await this.persistence.readWorkspaceLifecycleOperation(
-      input.routeWorkspaceId,
-      input.operationId,
-      input.actor.actorId,
-    );
-    if (operation === null) {
-      throw new AuthorizationError(
-        'resource.not_found',
-        'Workspace lifecycle operation was not found',
-      );
-    }
-    return toWorkspaceLifecycleOperationResponse(operation);
   }
 
   private authorize(
@@ -352,21 +327,14 @@ export class WorkspaceLifecycleUseCase {
   }
 }
 
-/** A request is applied when it is submitted, so its receipt is complete. */
-function toWorkspaceLifecycleOperationResponse(
+/** A request is applied when it is submitted; a replay returns the same change. */
+function toWorkspaceLifecycleChangeResponse(
   operation: WorkspaceLifecycleOperationRecord,
-): WorkspaceLifecycleOperationResponse {
-  const at = operation.submittedAt.toISOString();
-  return workspaceLifecycleOperationResponseSchema.parse({
-    id: operation.id,
+): WorkspaceLifecycleChangeResponse {
+  return workspaceLifecycleChangeResponseSchema.parse({
     workspaceId: operation.workspaceId,
-    commandType: operation.commandType,
-    status: 'completed',
-    submittedAt: at,
-    updatedAt: at,
-    completedAt: at,
-    errorCode: null,
-    result: { workspaceId: operation.workspaceId },
+    change: operation.commandType,
+    occurredAt: operation.submittedAt.toISOString(),
   });
 }
 

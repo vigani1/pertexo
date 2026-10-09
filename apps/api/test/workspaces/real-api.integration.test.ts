@@ -724,15 +724,12 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       }),
       payload: { reason: 'customer requested integration deletion' },
     });
-    expect(deletion.statusCode).toBe(202);
-    expect(deletion.json()).toMatchObject({
+    expect(deletion.statusCode).toBe(200);
+    expect(deletion.json()).toEqual({
       workspaceId: primaryWorkspaceId,
-      commandType: 'deletion_requested',
-      status: 'completed',
-      errorCode: null,
-      result: { workspaceId: primaryWorkspaceId },
+      change: 'deletion_requested',
+      occurredAt: expect.any(String) as string,
     });
-    const operationId = deletion.json<{ id: string }>().id;
     expect(deletion.payload).not.toContain(
       'customer requested integration deletion',
     );
@@ -740,7 +737,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     // Deletion signs out the workspace's members.
     const signedOut = await application.inject({
       method: 'GET',
-      url: `/v1/workspaces/${primaryWorkspaceId}/lifecycle-operations/${operationId}`,
+      url: '/v1/workspaces',
       headers: { cookie: deletionCookies.cookieHeader },
     });
     expect(signedOut.statusCode).toBe(401);
@@ -752,16 +749,8 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       headers: mutationHeaders(cookies, { 'idempotency-key': deletionKey }),
       payload: { reason: 'customer requested integration deletion' },
     });
-    expect(deletionRetry.statusCode).toBe(202);
+    expect(deletionRetry.statusCode).toBe(200);
     expect(deletionRetry.json()).toEqual(deletion.json());
-
-    const operation = await application.inject({
-      method: 'GET',
-      url: `/v1/workspaces/${primaryWorkspaceId}/lifecycle-operations/${operationId}`,
-      headers: { cookie: cookies.cookieHeader },
-    });
-    expect(operation.statusCode).toBe(200);
-    expect(operation.json()).toEqual(deletion.json());
 
     const deleted = await workspaceAggregate(primaryWorkspaceId);
     expect(deleted.workspace).toMatchObject({
@@ -788,10 +777,10 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         'idempotency-key': `restore-${randomUUID()}`,
       }),
     });
-    expect(restore.statusCode).toBe(202);
+    expect(restore.statusCode).toBe(200);
     expect(restore.json()).toMatchObject({
-      commandType: 'deletion_restored',
-      status: 'completed',
+      workspaceId: primaryWorkspaceId,
+      change: 'deletion_restored',
     });
     expect(
       (await workspaceAggregate(primaryWorkspaceId)).workspace,

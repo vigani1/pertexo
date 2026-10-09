@@ -281,6 +281,5 @@ function workspacePersistence(): IdentityWorkspacePersistence {
       updatedAt: new Date('2026-08-20T12:00:00.000Z'),
     }),
     requestWorkspaceLifecycleOperation: vi.fn(),
-    readWorkspaceLifecycleOperation: vi.fn(),
   };
 }

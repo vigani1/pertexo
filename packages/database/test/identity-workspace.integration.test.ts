@@ -1228,7 +1228,7 @@ describe('identity/workspace persistence', () => {
     }
   });
 
-  it('applies one deletion request once and reads its receipt', async () => {
+  it('applies one deletion request once', async () => {
     const workspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Lifecycle workspace',
       slug: `lifecycle-${randomUUID().slice(0, 12)}`,
@@ -1253,13 +1253,6 @@ describe('identity/workspace persistence', () => {
       commandType: 'deletion_requested',
     });
     await expect(
-      identityDatabase.readWorkspaceLifecycleOperation(
-        workspace.id,
-        deletedLeft.id,
-        ownerUserId,
-      ),
-    ).resolves.toEqual(deletedLeft);
-    await expect(
       identityDatabase.findWorkspaceAccess(ownerUserId, workspace.id),
     ).resolves.toMatchObject({ workspaceStatus: 'pending_deletion' });
     await expect(
@@ -1271,13 +1264,6 @@ describe('identity/workspace persistence', () => {
         idempotencyKey: deletionKey,
       }),
     ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
-    await expect(
-      identityDatabase.readWorkspaceLifecycleOperation(
-        workspace.id,
-        randomUUID(),
-        ownerUserId,
-      ),
-    ).resolves.toBeNull();
   });
 
   it('denies audit updates and deletes to the API runtime role', async () => {

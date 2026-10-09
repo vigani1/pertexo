@@ -375,8 +375,10 @@ now, as one ordered program — not "whenever we touch it".
           optional organization dependencies and the
           `workflow.organization_unavailable` problem go (ADR 064
           amendment).
-    - [ ] Workspace deletion and restore complete in the request: answer
-          once instead of `202` plus an operation the web polls.
+    - [x] Workspace deletion and restore complete in the request: they
+          answer `200` with the change applied, and the operation read
+          route, its contract and the web's polling and `operationId`
+          search state go.
   - [ ] web
     - [x] Feature folders by role: only public entry files stay at a
           feature's root; screens go to `pages/`, hooks to `hooks/`, server

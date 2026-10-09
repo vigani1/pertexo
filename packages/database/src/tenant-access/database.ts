@@ -32,10 +32,7 @@ import {
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
 } from '../runs/commands/acceptance.js';
-import {
-  changeWorkspaceLifecycle,
-  readWorkspaceLifecycleOperation,
-} from '../lifecycle/workspace-deletion.js';
+import { changeWorkspaceLifecycle } from '../lifecycle/workspace-deletion.js';
 import { mapWorkspace } from './rows.js';
 import { createUserStore } from './users/store.js';
 import {
@@ -401,22 +398,6 @@ export function createIdentityWorkspaceDatabase(
       } catch (error: unknown) {
         throwWorkspaceLifecycleError(error);
       }
-    },
-
-    readWorkspaceLifecycleOperation: async (
-      workspaceIdInput: string,
-      operationIdInput: string,
-      actorUserIdInput: string,
-    ): Promise<WorkspaceLifecycleOperation | null> => {
-      const workspaceId = parseIdentityUuid(workspaceIdInput);
-      const operationId = parseIdentityUuid(operationIdInput);
-      const actorUserId = parseIdentityUuid(actorUserIdInput);
-      return withTenantScopedClient(
-        pool,
-        { workspaceId, actorId: actorUserId },
-        (client) =>
-          readWorkspaceLifecycleOperation(client, workspaceId, operationId),
-      );
     },
 
     close: () => lease.close(),

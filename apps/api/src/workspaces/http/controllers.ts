@@ -41,7 +41,6 @@ import {
   accessibleWorkspacesQuerySchema,
   workspaceDeletionRequestSchema,
   workspaceIdParamSchema,
-  workspaceLifecycleOperationParamsSchema,
   workspaceMembersQuerySchema,
   type CookieResponse,
   type IdentityWorkspaceRequest,
@@ -226,7 +225,7 @@ export class WorkspaceController {
 
   @Post(':workspaceId/deletion')
   @RateLimit('ordinary_mutation')
-  @HttpCode(202)
+  @HttpCode(200)
   @UseGuards(
     SessionAuthenticationGuard,
     CsrfProtectionGuard,
@@ -255,7 +254,6 @@ export class WorkspaceController {
 
   @Delete(':workspaceId/deletion')
   @RateLimit('ordinary_mutation')
-  @HttpCode(202)
   @UseGuards(
     SessionAuthenticationGuard,
     CsrfProtectionGuard,
@@ -276,24 +274,6 @@ export class WorkspaceController {
       routeWorkspaceId: workspaceId,
       requestId,
       ...traceFields(traceId),
-    });
-  }
-
-  @Get(':workspaceId/lifecycle-operations/:operationId')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, WorkspaceManageGuard)
-  public async readLifecycleOperation(
-    @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-  ) {
-    const { workspaceId, operationId } =
-      workspaceLifecycleOperationParamsSchema.parse(params);
-    const actor = lifecycleActorFrom(request, workspaceId);
-    return this.lifecycle.readOperation({
-      actor,
-      ...guardAuthorization(request),
-      routeWorkspaceId: workspaceId,
-      operationId,
     });
   }
 }

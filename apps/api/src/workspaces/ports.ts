@@ -194,11 +194,6 @@ export interface IdentityWorkspacePersistence {
     reason: string;
     idempotencyKey: string;
   }): Promise<WorkspaceLifecycleOperationRecord>;
-  readWorkspaceLifecycleOperation(
-    workspaceId: WorkspaceId,
-    operationId: string,
-    actorUserId: string,
-  ): Promise<WorkspaceLifecycleOperationRecord | null>;
 }
 
 export type WorkspaceInvitationPersistenceRecord = Readonly<{

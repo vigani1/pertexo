@@ -26,8 +26,7 @@ import {
   workspaceRenameResponseSchema,
   workspaceDeletionRequestSchema,
   workspaceIdentifierSchema,
-  workspaceLifecycleOperationIdentifierSchema,
-  workspaceLifecycleOperationResponseSchema,
+  workspaceLifecycleChangeResponseSchema,
   workspaceMemberRoleChangeRequestSchema,
   workspaceMemberRoleChangeResponseSchema,
   workspaceMemberRemovalRequestSchema,
@@ -52,8 +51,8 @@ const schemas = Object.freeze({
   WorkspaceRenameRequest: jsonSchema(workspaceRenameRequestSchema, 'input'),
   WorkspaceRenameResponse: jsonSchema(workspaceRenameResponseSchema, 'output'),
   WorkspaceDeletionRequest: jsonSchema(workspaceDeletionRequestSchema, 'input'),
-  WorkspaceLifecycleOperationResponse: jsonSchema(
-    workspaceLifecycleOperationResponseSchema,
+  WorkspaceLifecycleChangeResponse: jsonSchema(
+    workspaceLifecycleChangeResponseSchema,
     'output',
   ),
   UserProfileResponse: jsonSchema(userProfileResponseSchema, 'output'),
@@ -173,9 +172,9 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         parameters: lifecycleParameters(),
         requestBody: jsonRequest('WorkspaceDeletionRequest'),
         responses: {
-          '202': jsonResponse(
-            'Workspace deletion operation accepted',
-            'WorkspaceLifecycleOperationResponse',
+          '200': jsonResponse(
+            'Workspace scheduled for deletion',
+            'WorkspaceLifecycleChangeResponse',
           ),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
@@ -189,32 +188,14 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         security: [{ cookieSession: [] }],
         parameters: lifecycleParameters(),
         responses: {
-          '202': jsonResponse(
-            'Workspace restore operation accepted',
-            'WorkspaceLifecycleOperationResponse',
+          '200': jsonResponse(
+            'Workspace restored',
+            'WorkspaceLifecycleChangeResponse',
           ),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '409': responseReference('Conflict'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/lifecycle-operations/{operationId}': {
-      get: {
-        operationId: 'getWorkspaceLifecycleOperation',
-        security: [{ cookieSession: [] }],
-        parameters: [pathParameter(), lifecycleOperationPathParameter()],
-        responses: {
-          '200': jsonResponse(
-            'Workspace lifecycle operation',
-            'WorkspaceLifecycleOperationResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': problemResponse('Operation not found'),
           '500': responseReference('Unexpected'),
         },
       },
@@ -354,15 +335,6 @@ function pathParameter() {
     in: 'path',
     required: true,
     schema: jsonSchema(workspaceIdentifierSchema, 'input'),
-  } as const;
-}
-
-function lifecycleOperationPathParameter() {
-  return {
-    name: 'operationId',
-    in: 'path',
-    required: true,
-    schema: jsonSchema(workspaceLifecycleOperationIdentifierSchema, 'input'),
   } as const;
 }
 

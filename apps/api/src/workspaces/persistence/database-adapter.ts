@@ -201,14 +201,6 @@ export class DatabaseIdentityWorkspaceAdapter
   ): Promise<WorkspaceLifecycleOperationRecord> {
     return this.database.requestWorkspaceLifecycleOperation(...input);
   }
-
-  public readWorkspaceLifecycleOperation(
-    ...input: Parameters<
-      IdentityWorkspaceDatabase['readWorkspaceLifecycleOperation']
-    >
-  ): Promise<WorkspaceLifecycleOperationRecord | null> {
-    return this.database.readWorkspaceLifecycleOperation(...input);
-  }
 }
 
 function mapUserProfile(

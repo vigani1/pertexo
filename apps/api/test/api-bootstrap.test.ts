@@ -86,7 +86,6 @@ function identityRuntime(
       changeWorkspaceMemberRole,
       createWorkspaceWithOwner: notUsed,
       requestWorkspaceLifecycleOperation: notUsed,
-      readWorkspaceLifecycleOperation: notUsed,
     },
     authorization: {
       findAccess: () =>

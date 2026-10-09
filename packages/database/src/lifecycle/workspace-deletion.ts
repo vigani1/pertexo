@@ -263,18 +263,3 @@ export async function changeWorkspaceLifecycle(
   );
   return operation(operationRowSchema.parse(inserted.rows[0]));
 }
-
-/** One request's receipt, if it belongs to the workspace. */
-export async function readWorkspaceLifecycleOperation(
-  client: PoolClient,
-  workspaceId: string,
-  operationId: string,
-): Promise<WorkspaceLifecycleOperation | null> {
-  const result = await client.query(
-    `select ${OPERATION_COLUMNS} from app.workspace_lifecycle_operations
-     where workspace_id = $1 and id = $2`,
-    [workspaceId, operationId],
-  );
-  const row: unknown = result.rows[0];
-  return row === undefined ? null : operation(operationRowSchema.parse(row));
-}

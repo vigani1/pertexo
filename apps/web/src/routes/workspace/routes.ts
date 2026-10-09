@@ -4,7 +4,6 @@ import {
   notFound,
 } from '@tanstack/react-router';
 import {
-  workspaceLifecycleOperationIdentifierSchema,
   type AccessibleWorkspace,
   workflowRunIdentifierSchema,
 } from '@pertexo/contracts';
@@ -40,7 +39,6 @@ import {
 } from '@/features/workflows/queries.public';
 import {
   parseTeamSearch,
-  workspaceLifecycleOperationQueryOptions,
   workspaceMembersInfiniteQueryOptions,
 } from '@/features/workspaces/queries.public';
 import { pageTitle } from '../root/page-title';
@@ -394,31 +392,6 @@ export const workspaceSettingsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'settings',
   staticData: { crumb: 'Settings' },
-  validateSearch: (search) => {
-    const parsed = workspaceLifecycleOperationIdentifierSchema.safeParse(
-      Reflect.get(search, 'operationId'),
-    );
-    return parsed.success ? { operationId: parsed.data } : {};
-  },
-  loaderDeps: ({ search }) => search,
-  loader: ({ context, deps }) => {
-    const { apiClient, queryClient, user, workspace } = context;
-    if (
-      !workspace.capabilities.includes('workspace:manage') ||
-      deps.operationId === undefined
-    )
-      return;
-    warmPrefetches(context, [
-      queryClient.query(
-        workspaceLifecycleOperationQueryOptions(
-          apiClient,
-          user.id,
-          workspace.id,
-          deps.operationId,
-        ),
-      ),
-    ]);
-  },
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Settings', match.context.workspace.name) }],
   }),

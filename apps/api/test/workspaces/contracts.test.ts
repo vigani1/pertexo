@@ -22,7 +22,7 @@ import {
   identityWorkspaceOpenApiDocument,
   workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
-  workspaceLifecycleOperationResponseSchema,
+  workspaceLifecycleChangeResponseSchema,
   workspaceMembersResponseSchema,
   workspaceMemberRoleChangeRequestSchema,
   workspaceMemberRoleChangeResponseSchema,
@@ -133,8 +133,8 @@ describe('identity/workspace generated contracts', () => {
           workspaceDeletionRequestSchema,
           'input',
         ),
-        WorkspaceLifecycleOperationResponse: generated(
-          workspaceLifecycleOperationResponseSchema,
+        WorkspaceLifecycleChangeResponse: generated(
+          workspaceLifecycleChangeResponseSchema,
           'output',
         ),
         WorkspaceResponse: generated(workspaceResponseSchema, 'output'),
@@ -244,7 +244,6 @@ describe('identity/workspace generated contracts', () => {
       '/v1/auth/logout',
       '/v1/workspaces',
       '/v1/workspaces/{workspaceId}/deletion',
-      '/v1/workspaces/{workspaceId}/lifecycle-operations/{operationId}',
       '/v1/workspaces/{workspaceId}/members',
       '/v1/workspaces/{workspaceId}',
       '/v1/workspaces/{workspaceId}/members/{userId}/role',
@@ -291,12 +290,12 @@ describe('identity/workspace generated contracts', () => {
     expect(
       identityWorkspaceOpenApiDocument.paths[
         '/v1/workspaces/{workspaceId}/deletion'
-      ].post.responses['202'],
+      ].post.responses['200'],
     ).toMatchObject({
       content: {
         'application/json': {
           schema: {
-            $ref: '#/components/schemas/WorkspaceLifecycleOperationResponse',
+            $ref: '#/components/schemas/WorkspaceLifecycleChangeResponse',
           },
         },
       },

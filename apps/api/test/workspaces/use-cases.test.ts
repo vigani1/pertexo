@@ -78,7 +78,6 @@ function persistence() {
         (input: { commandType: 'deletion_requested' | 'deletion_restored' }) =>
           Promise.resolve(operation(input.commandType)),
       ),
-    readWorkspaceLifecycleOperation: vi.fn().mockResolvedValue(operation()),
   };
 }
 
@@ -323,31 +322,16 @@ describe('identity/workspace application use cases', () => {
       allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
     });
 
-    await new WorkspaceLifecycleUseCase(store, authorization).readOperation({
+    await new WorkspaceLifecycleUseCase(store, authorization).requestDeletion({
       actor: requestActor,
       authorizedWorkspace,
+      idempotencyKey,
       routeWorkspaceId: workspaceId,
-      operationId: operation().id,
+      reason: 'retiring the temporary workspace',
     });
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(authorization.findAccess)).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns non-disclosing not-found when a lifecycle operation is absent', async () => {
-    const store = persistence();
-    store.readWorkspaceLifecycleOperation.mockResolvedValue(null);
-    const app = new WorkspaceLifecycleUseCase(store, {
-      findAccess: vi.fn().mockResolvedValue(activeAccess()),
-    });
-
-    await expect(
-      app.readOperation({
-        actor: actor(),
-        routeWorkspaceId: workspaceId,
-        operationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-      }),
-    ).rejects.toMatchObject({ code: 'resource.not_found' });
   });
 
   it('matches persistence workspace name and slug limits exactly', () => {
@@ -488,14 +472,14 @@ describe('identity/workspace application use cases', () => {
         routeWorkspaceId: workspaceId,
         reason: 'retiring the suspended workspace',
       }),
-    ).resolves.toMatchObject({ status: 'completed' });
+    ).resolves.toMatchObject({ change: 'deletion_requested' });
     await expect(
       app.restore({
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
       }),
-    ).resolves.toMatchObject({ status: 'completed' });
+    ).resolves.toMatchObject({ change: 'deletion_restored' });
     const conflict = new WorkspaceLifecycleConflictError(
       'invalid_state',
       'Workspace is not pending deletion',
@@ -511,29 +495,22 @@ describe('identity/workspace application use cases', () => {
     expect(store.requestWorkspaceLifecycleOperation).toHaveBeenCalledTimes(3);
   });
 
-  it('reports a lifecycle operation as completed when it was submitted', async () => {
-    const store = persistence();
-    store.readWorkspaceLifecycleOperation.mockResolvedValue(operation());
-    const app = new WorkspaceLifecycleUseCase(store, {
+  it('answers a deletion request with the change it applied', async () => {
+    const app = new WorkspaceLifecycleUseCase(persistence(), {
       findAccess: vi.fn().mockResolvedValue(activeAccess()),
     });
 
     await expect(
-      app.readOperation({
+      app.requestDeletion({
         actor: actor(),
+        idempotencyKey,
         routeWorkspaceId: workspaceId,
-        operationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        reason: 'retiring the temporary workspace',
       }),
     ).resolves.toEqual({
-      id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       workspaceId,
-      commandType: 'deletion_requested',
-      status: 'completed',
-      submittedAt: '2026-08-20T12:00:00.000Z',
-      updatedAt: '2026-08-20T12:00:00.000Z',
-      completedAt: '2026-08-20T12:00:00.000Z',
-      errorCode: null,
-      result: { workspaceId },
+      change: 'deletion_requested',
+      occurredAt: '2026-08-20T12:00:00.000Z',
     });
   });
 
@@ -572,21 +549,14 @@ describe('identity/workspace application use cases', () => {
         routeWorkspaceId: workspaceId,
         reason: 'retiring the temporary workspace',
       }),
-    ).resolves.toMatchObject({
-      commandType: 'deletion_requested',
-      status: 'completed',
-      result: { workspaceId },
-    });
+    ).resolves.toMatchObject({ change: 'deletion_requested', workspaceId });
     await expect(
       app.restore({
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
       }),
-    ).resolves.toMatchObject({
-      commandType: 'deletion_restored',
-      status: 'completed',
-    });
+    ).resolves.toMatchObject({ change: 'deletion_restored' });
 
     const failure = new Error('transaction rolled back');
     store.requestWorkspaceLifecycleOperation.mockRejectedValueOnce(failure);

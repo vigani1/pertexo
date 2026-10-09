@@ -75,7 +75,6 @@ const identityDependencies: IdentityWorkspaceDependencies = {
     changeWorkspaceMemberRole: notExercised,
     createWorkspaceWithOwner: notExercised,
     requestWorkspaceLifecycleOperation: notExercised,
-    readWorkspaceLifecycleOperation: notExercised,
   },
   authorization: { findAccess: authorizationLookup },
   sessions: {

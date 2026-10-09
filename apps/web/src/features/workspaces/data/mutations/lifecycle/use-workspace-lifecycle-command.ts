@@ -1,3 +1,4 @@
+import type { WorkspaceLifecycleChangeResponse } from '@pertexo/contracts';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
@@ -27,11 +28,11 @@ type LifecycleAttempt = Readonly<{
 export function useWorkspaceLifecycleCommand({
   apiClient,
   workspaceId,
-  onAccepted,
+  onCompleted,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
-  onAccepted: (operationId: string) => void;
+  onCompleted: (change: WorkspaceLifecycleChangeResponse['change']) => void;
 }>) {
   const [error, setError] = useState<string>();
   const [retryAvailable, setRetryAvailable] = useState(false);
@@ -67,10 +68,10 @@ export function useWorkspaceLifecycleCommand({
     setRetryAvailable(false);
     attempt.current = current;
     try {
-      const operation = await mutation.mutateAsync(current);
+      const completed = await mutation.mutateAsync(current);
       if (owner.current !== submissionOwner) return false;
       attempt.current = undefined;
-      onAccepted(operation.id);
+      onCompleted(completed.change);
       return true;
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;

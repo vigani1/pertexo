@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const operationId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const timestamp = '2026-09-15T10:00:00.000Z';
 const csrfToken = 'csrf-token-for-workspace-lifecycle-tests-1234567890';
 
@@ -77,27 +76,15 @@ async function installRoutes(page: Page, renameName = 'Incident Operations') {
       expect(request.headers()['x-csrf-token']).toBe(csrfToken);
       expect(request.headers()['idempotency-key']).toBeTruthy();
       expect(request.postDataJSON()).toEqual({ reason: 'Retiring this space' });
-      await route.fulfill({ status: 202, json: lifecycleOperation('pending') });
+      await route.fulfill({
+        json: {
+          workspaceId,
+          change: 'deletion_requested',
+          occurredAt: timestamp,
+        },
+      });
     },
   );
-  await page.route(
-    `**/v1/workspaces/${workspaceId}/lifecycle-operations/${operationId}`,
-    (route) => route.fulfill({ json: lifecycleOperation('running') }),
-  );
-}
-
-function lifecycleOperation(status: 'pending' | 'running') {
-  return {
-    id: operationId,
-    workspaceId,
-    commandType: 'deletion_requested',
-    status,
-    submittedAt: timestamp,
-    updatedAt: timestamp,
-    completedAt: null,
-    errorCode: null,
-    result: null,
-  };
 }
 
 test('requests deletion through the accessible workspace settings flow', async ({
@@ -135,14 +122,9 @@ test('requests deletion through the accessible workspace settings flow', async (
   await dialog.getByLabel('Reason (required)').fill('Retiring this space');
   await dialog.getByRole('button', { name: 'Delete workspace' }).click();
 
-  await expect(page).toHaveURL(
-    `/w/${workspaceId}/settings?operationId=${operationId}`,
-  );
-  const request = page.getByRole('region', { name: 'Deletion request' });
-  await expect(request.getByText('Running')).toBeVisible();
   await expect(
-    request.getByText(/Pertexo is stopping access and triggers/u),
-  ).toBeVisible();
+    page.getByRole('status', { name: 'Deletion request' }),
+  ).toContainText('The workspace is scheduled for deletion.');
 });
 
 test('renames a workspace with keyboard-accessible validation and refreshes the shell', async ({

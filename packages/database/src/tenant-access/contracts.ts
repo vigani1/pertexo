@@ -398,10 +398,5 @@ export type IdentityWorkspaceDatabase = Readonly<{
   requestWorkspaceLifecycleOperation(
     input: RequestWorkspaceLifecycleOperationInput,
   ): Promise<WorkspaceLifecycleOperation>;
-  readWorkspaceLifecycleOperation(
-    workspaceId: string,
-    operationId: string,
-    actorUserId: string,
-  ): Promise<WorkspaceLifecycleOperation | null>;
   close(): Promise<void>;
 }>;
