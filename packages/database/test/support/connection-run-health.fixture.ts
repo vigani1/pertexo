@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher.js';
+import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/database.js';
 import type { PoolClient } from 'pg';
 
 import { createApiConnectionDatabase } from '../../src/connections/database.js';

@@ -15,7 +15,7 @@ import {
 import { serializeStoredExecutionValueV1 } from '../../platform/stored-execution-value.js';
 import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { sha256HexSchema as sha256Schema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema as sha256Schema } from '../../platform/persisted-primitives.js';
 import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';
 const traceparentSchema = z
   .string()

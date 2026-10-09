@@ -20,7 +20,7 @@ import {
 import { admitWorkflowAuthoring } from '../workflows/admission.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import {

@@ -5,9 +5,9 @@ import { Pool, type PoolClient } from 'pg';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
-import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher.js';
+import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/database.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { createOperatorCommandDatabase } from '../../src/operator/operator-commands.js';
+import { createOperatorCommandDatabase } from '../../src/operator/commands.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 
 function deferredHandle<T extends object>(resolve: () => T): T {

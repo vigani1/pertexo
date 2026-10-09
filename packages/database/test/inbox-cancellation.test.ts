@@ -14,7 +14,7 @@ vi.mock('../src/database.js', () => ({
 
 import type { WorkspaceDatabase } from '../src/database.js';
 import { reconcileUnknownOutcomeEvidence } from '../src/outbox/unknown-outcome-reconciliation.js';
-import { createOperatorRunReplayStore } from '../src/operator/operator-run-replay.js';
+import { createOperatorRunReplayStore } from '../src/operator/run-replay.js';
 import type { WorkspaceTransaction } from '../src/tenant-access/transactions.js';
 
 const checksum = 'a'.repeat(64);

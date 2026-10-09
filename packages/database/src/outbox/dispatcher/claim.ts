@@ -1,8 +1,8 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { claimQueryResultSchema, toLeasedEvent } from './dispatcher-rows.js';
-import type { LeasedOutboxEvent } from './dispatcher-contracts.js';
+import { claimQueryResultSchema, toLeasedEvent } from './rows.js';
+import type { LeasedOutboxEvent } from './contracts.js';
 
 const claimInputSchema = z.object({
   enabledJobNames: z

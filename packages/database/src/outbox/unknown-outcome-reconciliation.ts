@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
 import type { WorkspaceDatabase } from '../database.js';
 import { consumeInboxMessage } from './receipts.js';

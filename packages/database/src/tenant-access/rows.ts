@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../platform/persisted-primitives.js';
 import { parsePersistedIdentityMetadata } from './support.js';
 
 import type {

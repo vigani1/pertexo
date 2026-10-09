@@ -1,7 +1,7 @@
 import type { InitialCheckpointFactory } from '../runs/initial-checkpoint.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';

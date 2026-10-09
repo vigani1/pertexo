@@ -8,7 +8,7 @@ vi.mock('../src/tenant-access/transactions.js', () => ({
   withWorkspaceTransaction: transaction,
 }));
 
-import { createOperatorCommandDatabase } from '../src/operator/operator-commands.js';
+import { createOperatorCommandDatabase } from '../src/operator/commands.js';
 
 const config = {
   connectionString: 'postgresql://operator.invalid/pertexo',

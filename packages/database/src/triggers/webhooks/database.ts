@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 import type { DatabaseConfig } from '../../config.js';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';

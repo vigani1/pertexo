@@ -24,7 +24,7 @@ import {
   resumeDueWork,
   retryTriggerReconciliation,
   type OperatorDecision,
-} from './operator-command-handlers.js';
+} from './command-handlers.js';
 
 export class OperatorCommandConflictError extends Error {
   public constructor() {

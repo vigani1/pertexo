@@ -23,7 +23,7 @@ vi.mock('../src/platform/postgres-telemetry.js', () => ({
 import type { DatabaseConfig } from '../src/config.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 import { createPublishedWorkflowReader } from '../src/runs/published-workflow.js';
-import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher.js';
+import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher/database.js';
 import { createWorkflowRunDatabase } from '../src/runs/runs.repository.js';
 import { createScheduleTriggerScanner } from '../src/triggers/schedules/scanner.js';
 import { createWebhookTriggerDatabase } from '../src/triggers/webhooks/database.js';

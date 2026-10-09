@@ -1,20 +1,17 @@
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
-export type { LeasedOutboxEvent } from './dispatcher-contracts.js';
+import type { DatabaseConfig } from '../../config.js';
+export type { LeasedOutboxEvent } from './contracts.js';
 import {
   claimOutboxBatch,
   type ClaimOutboxBatchInput,
   type ClaimOutboxBatchResult,
-} from './dispatcher-claim.js';
-import { checkDatabaseReadiness } from '../platform/readiness.js';
+} from './claim.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.js';
 
-export type {
-  ClaimOutboxBatchInput,
-  ClaimOutboxBatchResult,
-} from './dispatcher-claim.js';
+export type { ClaimOutboxBatchInput, ClaimOutboxBatchResult } from './claim.js';
 
 const observeBacklogInputSchema = z.object({
   enabledJobNames: z

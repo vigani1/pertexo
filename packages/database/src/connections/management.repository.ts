@@ -23,7 +23,7 @@ import {
 } from './records.js';
 import { requireConnectionManager } from './authority.js';
 import { revokeConnectionHealth } from './health/transitions.js';
-import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
 import type { ConnectionDatabase, ConnectionRecord } from './records.js';
 
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */

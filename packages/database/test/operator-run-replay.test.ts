@@ -29,7 +29,7 @@ import {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from '../src/operator/operator-run-replay.js';
+} from '../src/operator/run-replay.js';
 import {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,

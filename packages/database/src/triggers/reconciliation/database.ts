@@ -3,7 +3,7 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../../config.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
