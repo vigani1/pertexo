@@ -17,63 +17,36 @@ export class WorkerProcessShutdown {
 
   public install(): void {
     if (this.installed) return;
-    let sigintRegistered = false;
-    try {
-      process.once('SIGINT', this.onSigint);
-      sigintRegistered = true;
-      process.once('SIGTERM', this.onSigterm);
-      this.installed = true;
-    } catch (error: unknown) {
-      if (sigintRegistered) {
-        process.removeListener('SIGINT', this.onSigint);
-      }
-      throw error;
-    }
+    process.once('SIGINT', this.onSigint);
+    process.once('SIGTERM', this.onSigterm);
+    this.installed = true;
   }
 
+  /** Closes once; a failure is logged and sets a failing exit code. */
   public close(signal?: WorkerShutdownSignal): Promise<void> {
-    if (this.closePromise !== undefined) return this.closePromise;
-
-    let resolveClose!: () => void;
-    this.closePromise = new Promise<void>((resolve) => {
-      resolveClose = resolve;
-    });
-    let applicationClose: Promise<void>;
-    try {
-      applicationClose = this.application.close(signal);
-    } catch (error: unknown) {
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- preserve a hostile application boundary exactly
-      applicationClose = Promise.reject(error);
-    }
-    void applicationClose.then(
-      () => {
-        this.uninstall();
-        resolveClose();
-      },
-      (error: unknown) => {
+    this.closePromise ??= (async () => {
+      try {
+        await this.application.close(signal);
+      } catch (error: unknown) {
         process.exitCode = 1;
-        try {
-          this.logger.error(
-            'worker.shutdown_failed',
-            signal === undefined ? {} : { signal },
-            error,
-          );
-        } catch {
-          // A diagnostic destination must not prevent owned listener cleanup.
-        }
+        this.logger.error(
+          'worker.shutdown_failed',
+          signal === undefined ? {} : { signal },
+          error,
+        );
+      } finally {
         this.uninstall();
-        resolveClose();
-      },
-    );
+      }
+    })();
     return this.closePromise;
   }
 
   private readonly onSigint = (): void => {
-    void this.close('SIGINT').catch(() => undefined);
+    void this.close('SIGINT');
   };
 
   private readonly onSigterm = (): void => {
-    void this.close('SIGTERM').catch(() => undefined);
+    void this.close('SIGTERM');
   };
 
   private uninstall(): void {
