@@ -8,6 +8,13 @@ tree is identical to accepted F06 `eed68cd6`. Persistent continuation is now
 authorized, not writer enablement or completed behavior.
 Number reserved by the primary on 2026-10-02. Parent: F07.
 
+> **Amendment note (2026-10-09, ADR 069).** Organization is always available:
+> there is no dedicated cursor key, so its absence no longer leaves folders,
+> tags and favorites unavailable, and the `workflow.organization_unavailable`
+> problem and item outcome go. Continuations stay opaque, scoped and
+> filter-bound, but they are not signed and do not expire: they never
+> authorize anything, as the decision below already says.
+
 Workflow discovery currently paginates saved workflow summaries but searches and
 filters lifecycle only over loaded browser pages. We propose shared workspace
 tags and later folders, plus strictly private per-person favorites, behind the
