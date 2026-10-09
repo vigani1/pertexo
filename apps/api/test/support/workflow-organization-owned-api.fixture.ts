@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { Pool } from 'pg';
 import { beforeAll, expect } from 'vitest';
 import {
   verifyCuratedFixtureOwnership,
@@ -34,19 +33,7 @@ export function useOrganizationOwnedApi(
     workflowOrganization: {
       cursorSigningKey: Buffer.alloc(32, 0x7a).toString('base64'),
     },
-    afterMigration: async (url) => {
-      await recheckCuratedFixtureOwnership(ownership);
-      const pool = new Pool({
-        connectionString: url(process.env.DATABASE_ADMIN_URL ?? ''),
-      });
-      try {
-        await pool.query(
-          'update app.workflow_organization_rollout set writes_enabled=true',
-        );
-      } finally {
-        await pool.end();
-      }
-    },
+    afterMigration: () => recheckCuratedFixtureOwnership(ownership),
     beforeDrop: () => recheckCuratedFixtureOwnership(ownership),
   });
   async function fixture() {

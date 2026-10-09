@@ -79,7 +79,6 @@
             "workflow.tag_revision_conflict",
             "workflow.tag_delete_overflow",
             "workflow.organization_revision_conflict",
-            "workflow.favorite_revision_conflict",
             "workflow.folder_name_conflict",
             "workflow.folder_limit_exceeded",
             "workflow.folder_revision_conflict",
@@ -2595,25 +2594,10 @@
       "properties": {
         "favorite": {
           "type": "boolean"
-        },
-        "expectedFavoriteRevision": {
-          "anyOf": [
-            {
-              "type": "string",
-              "maxLength": 128,
-              "pattern": "^absent\\.v1\\.(0|[1-9][0-9]{0,11})\\.(0|[1-9][0-9]{0,11})\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\\s\\S])"
-            },
-            {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          ]
         }
       },
       "required": [
-        "favorite",
-        "expectedFavoriteRevision"
+        "favorite"
       ],
       "additionalProperties": false
     },
@@ -2623,20 +2607,10 @@
       "properties": {
         "isFavorite": {
           "type": "boolean"
-        },
-        "favoriteRevision": {
-          "type": "string",
-          "format": "uuid",
-          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-        },
-        "replayed": {
-          "type": "boolean"
         }
       },
       "required": [
-        "isFavorite",
-        "favoriteRevision",
-        "replayed"
+        "isFavorite"
       ],
       "additionalProperties": false
     },
@@ -2847,28 +2821,13 @@
                   },
                   "isFavorite": {
                     "type": "boolean"
-                  },
-                  "favoriteRevision": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 128,
-                        "pattern": "^absent\\.v1\\.(0|[1-9][0-9]{0,11})\\.(0|[1-9][0-9]{0,11})\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\\s\\S])"
-                      },
-                      {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      }
-                    ]
                   }
                 },
                 "required": [
                   "tags",
                   "organizationRevision",
                   "folderId",
-                  "isFavorite",
-                  "favoriteRevision"
+                  "isFavorite"
                 ],
                 "additionalProperties": false
               }
@@ -3039,28 +2998,13 @@
             },
             "isFavorite": {
               "type": "boolean"
-            },
-            "favoriteRevision": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 128,
-                  "pattern": "^absent\\.v1\\.(0|[1-9][0-9]{0,11})\\.(0|[1-9][0-9]{0,11})\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\\s\\S])"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                }
-              ]
             }
           },
           "required": [
             "tags",
             "organizationRevision",
             "folderId",
-            "isFavorite",
-            "favoriteRevision"
+            "isFavorite"
           ],
           "additionalProperties": false
         }
@@ -3262,28 +3206,13 @@
             },
             "isFavorite": {
               "type": "boolean"
-            },
-            "favoriteRevision": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 128,
-                  "pattern": "^absent\\.v1\\.(0|[1-9][0-9]{0,11})\\.(0|[1-9][0-9]{0,11})\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\\s\\S])"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                }
-              ]
             }
           },
           "required": [
             "tags",
             "organizationRevision",
             "folderId",
-            "isFavorite",
-            "favoriteRevision"
+            "isFavorite"
           ],
           "additionalProperties": false
         }

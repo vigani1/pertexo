@@ -3524,9 +3524,9 @@
       }
     },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite": {
-      "post": {
+      "put": {
         "operationId": "setWorkflowFavorite",
-        "description": "Current workflow:read including viewers, active workspace; archived workflows allowed. Private desired state at an opaque token. Exact current-generation committed replay precedes token verification/expiry/rotation and writer checks. A new command needs an authenticated absence token or current UUID revision. Recovery is bounded to 24 hours; never automatically replace uncertain command identity. No actor or generation selector.",
+        "description": "Current workflow:read including viewers, active workspace; archived workflows allowed. Marks or unmarks the workflow as one of the actor's private favorites. Asking for the current state changes nothing, so a retry is safe without an idempotency key.",
         "security": [
           {
             "cookieSession": []
@@ -3567,18 +3567,6 @@
               "minLength": 16,
               "maxLength": 256
             }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
-            }
           }
         ],
         "requestBody": {
@@ -3593,7 +3581,7 @@
         },
         "responses": {
           "200": {
-            "description": "Original private favorite command outcome",
+            "description": "The actor's favorite state",
             "content": {
               "application/json": {
                 "schema": {
@@ -3622,16 +3610,6 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "description": "Known organization, revision, idempotency or lifecycle conflict; retain uncertain commands for explicit exact recovery",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiProblem"
-                }
-              }
-            }
           },
           "429": {
             "description": "Request rate limit reached",
@@ -4611,7 +4589,6 @@
               "workflow.tag_revision_conflict",
               "workflow.tag_delete_overflow",
               "workflow.organization_revision_conflict",
-              "workflow.favorite_revision_conflict",
               "workflow.folder_name_conflict",
               "workflow.folder_limit_exceeded",
               "workflow.folder_revision_conflict",
@@ -7127,25 +7104,10 @@
         "properties": {
           "favorite": {
             "type": "boolean"
-          },
-          "expectedFavoriteRevision": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 128,
-                "pattern": "^absent\\.v1\\.(0|[1-9][0-9]{0,11})\\.(0|[1-9][0-9]{0,11})\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\\s\\S])"
-              },
-              {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              }
-            ]
           }
         },
         "required": [
-          "favorite",
-          "expectedFavoriteRevision"
+          "favorite"
         ],
         "additionalProperties": false
       },
@@ -7155,20 +7117,10 @@
         "properties": {
           "isFavorite": {
             "type": "boolean"
-          },
-          "favoriteRevision": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "replayed": {
-            "type": "boolean"
           }
         },
         "required": [
-          "isFavorite",
-          "favoriteRevision",
-          "replayed"
+          "isFavorite"
         ],
         "additionalProperties": false
       },
@@ -7379,28 +7331,13 @@
                     },
                     "isFavorite": {
                       "type": "boolean"
-                    },
-                    "favoriteRevision": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "maxLength": 128,
-                          "pattern": "^absent\\.v1\\.(0|[1-9][0-9]{0,11})\\.(0|[1-9][0-9]{0,11})\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\\s\\S])"
-                        },
-                        {
-                          "type": "string",
-                          "format": "uuid",
-                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                        }
-                      ]
                     }
                   },
                   "required": [
                     "tags",
                     "organizationRevision",
                     "folderId",
-                    "isFavorite",
-                    "favoriteRevision"
+                    "isFavorite"
                   ],
                   "additionalProperties": false
                 }
@@ -7571,28 +7508,13 @@
               },
               "isFavorite": {
                 "type": "boolean"
-              },
-              "favoriteRevision": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "maxLength": 128,
-                    "pattern": "^absent\\.v1\\.(0|[1-9][0-9]{0,11})\\.(0|[1-9][0-9]{0,11})\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\\s\\S])"
-                  },
-                  {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  }
-                ]
               }
             },
             "required": [
               "tags",
               "organizationRevision",
               "folderId",
-              "isFavorite",
-              "favoriteRevision"
+              "isFavorite"
             ],
             "additionalProperties": false
           }
@@ -7794,28 +7716,13 @@
               },
               "isFavorite": {
                 "type": "boolean"
-              },
-              "favoriteRevision": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "maxLength": 128,
-                    "pattern": "^absent\\.v1\\.(0|[1-9][0-9]{0,11})\\.(0|[1-9][0-9]{0,11})\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\\s\\S])"
-                  },
-                  {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  }
-                ]
               }
             },
             "required": [
               "tags",
               "organizationRevision",
               "folderId",
-              "isFavorite",
-              "favoriteRevision"
+              "isFavorite"
             ],
             "additionalProperties": false
           }

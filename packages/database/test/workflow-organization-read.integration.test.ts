@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { WorkflowFavoriteAbsenceTokenAuthority } from '../src/authoring/organization/favorites.repository.js';
 import { WorkflowNotFoundError } from '../src/authoring/workflow-authoring-errors.js';
 import {
   commandKey,
@@ -9,20 +8,6 @@ import {
   type OrganizationOwnedFixture,
 } from './support/workflow-organization-owned.fixture.js';
 
-// This fixture qualifies SQL filtering/projection, not MAC authentication.
-// Actual API codec composition has its own owned PostgreSQL integration suite.
-const absenceTokens: WorkflowFavoriteAbsenceTokenAuthority = {
-  issue: (_scope, proof) =>
-    `absent.v1.${String(proof.issuedAtSeconds)}.${String(proof.issuedAtSeconds + 86_400)}.${'A'.repeat(43)}`,
-  verify: (token, _scope, generation) => {
-    const issuedAtSeconds = Number(token.split('.')[2]);
-    return {
-      generation,
-      issuedAtSeconds,
-      expiresAtSeconds: issuedAtSeconds + 86_400,
-    };
-  },
-};
 let fixture: OrganizationOwnedFixture;
 let stores: ReturnType<OrganizationOwnedFixture['organizationStores']>;
 let closeFixture: (() => Promise<void>) | undefined;
@@ -36,16 +21,10 @@ async function favorite(
   workflowId: string,
   actorId = scope.actor,
 ) {
-  const current = await stores.favorites.readFavorite({
-    ...context(scope, actorId),
-    workflowId,
-  });
   return stores.favorites.setFavorite({
     ...context(scope, actorId),
     workflowId,
     favorite: true,
-    expectedFavoriteRevision: current.favoriteRevision,
-    idempotencyKey: randomUUID(),
   });
 }
 async function attach(scope: Scope, workflowId: string, tagId: string) {
@@ -63,10 +42,7 @@ describe.skipIf(!organizationFixtureEnabled)(
     beforeAll(async () => {
       fixture = await createOrganizationOwnedFixture();
       closeFixture = fixture.close;
-      stores = fixture.organizationStores(absenceTokens);
-      await fixture.owner.query(
-        'update app.workflow_organization_rollout set writes_enabled=true',
-      );
+      stores = fixture.organizationStores();
     }, 60_000);
     afterAll(async () => {
       await closeFixture?.();
@@ -241,9 +217,7 @@ describe.skipIf(!organizationFixtureEnabled)(
         workflowId: first,
       });
       expect(viewer?.organization.isFavorite).toBe(false);
-      expect(viewer?.organization.favoriteRevision).toMatch(/^absent\.v1\./u);
       expect(Object.keys(viewer?.organization ?? {}).sort()).toEqual([
-        'favoriteRevision',
         'folderId',
         'isFavorite',
         'organizationRevision',
@@ -335,50 +309,32 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).toEqual([archived]);
     });
 
-    it('reads compatible metadata while writers are off, including fresh absence and false tombstones', async () => {
+    it('drops an unfavorited workflow from the favorites view', async () => {
       const scope = await fixture.scope(),
         workflowId = await scope.workflow();
-      const saved = await favorite(scope, workflowId);
-      const removed = await stores.favorites.setFavorite({
+      await favorite(scope, workflowId);
+      await stores.favorites.setFavorite({
         ...context(scope),
         workflowId,
         favorite: false,
-        expectedFavoriteRevision: saved.favoriteRevision,
-        idempotencyKey: randomUUID(),
       });
-      await fixture.owner.query(
-        'update app.workflow_organization_rollout set writes_enabled=false',
-      );
-      try {
-        const row = await stores.reader.getWorkflow({
-          ...context(scope),
-          workflowId,
-        });
-        expect(row?.organization).toEqual({
-          tags: [],
-          folderId: null,
-          organizationRevision: 1,
-          isFavorite: false,
-          favoriteRevision: removed.favoriteRevision,
-        });
-        const viewer = await stores.reader.getWorkflow({
-          ...context(scope, scope.viewer),
-          workflowId,
-        });
-        expect(viewer?.organization.favoriteRevision).toMatch(/^absent\.v1\./u);
-        expect(
-          (
-            await stores.reader.listWorkflows({
-              ...context(scope),
-              favoritesOnly: true,
-            })
-          ).items,
-        ).toEqual([]);
-      } finally {
-        await fixture.owner.query(
-          'update app.workflow_organization_rollout set writes_enabled=true',
-        );
-      }
+      expect(
+        (await stores.reader.getWorkflow({ ...context(scope), workflowId }))
+          ?.organization,
+      ).toEqual({
+        tags: [],
+        folderId: null,
+        organizationRevision: 1,
+        isFavorite: false,
+      });
+      expect(
+        (
+          await stores.reader.listWorkflows({
+            ...context(scope),
+            favoritesOnly: true,
+          })
+        ).items,
+      ).toEqual([]);
     });
 
     it('rechecks current authority on continuation instead of treating the page position as authorization', async () => {

@@ -51,7 +51,6 @@ function installVocabulary() {
           folderId: null,
           organizationRevision: 1,
           isFavorite: true,
-          favoriteRevision: workflowId,
         },
       }),
     ),
@@ -730,7 +729,6 @@ describe('workflow organization manager', () => {
             folderId: null,
             organizationRevision: 1,
             isFavorite: true,
-            favoriteRevision: workflowId,
           },
         });
       }),

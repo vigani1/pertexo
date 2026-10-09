@@ -63,8 +63,6 @@ export const PURGE_PRESERVED_TABLES = Object.freeze([
 export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
   // Workflow organization.
   ...[
-    'workflow_favorite_receipts',
-    'workflow_favorite_held_evidence',
     'workflow_favorites',
     'workflow_tag_assignments',
     'workflow_organization_state',
@@ -83,12 +81,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
       )
       delete from app.workflow_folders row using page where row.ctid = page.ctid`,
   },
-  ...[
-    'workflow_tags',
-    'workflow_favorite_membership_generations',
-    'workflow_organization_coordination',
-    'workflow_input_case_receipts',
-  ].map(deleteRows),
+  ...['workflow_tags', 'workflow_input_case_receipts'].map(deleteRows),
   {
     // Payloads are large; a page stays under 1 MiB.
     name: 'workflow_input_case_payloads',

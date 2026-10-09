@@ -146,11 +146,12 @@ async function command(
   button: Locator,
   suffix: string,
   status = 200,
+  method = 'POST',
 ) {
   const replied = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname.endsWith(suffix) &&
-      response.request().method() === 'POST',
+      response.request().method() === method,
   );
   await expect(button).toBeEnabled();
   await button.click();
@@ -209,19 +210,16 @@ async function projection(page: Page, workspaceId: string, workflowId: string) {
   );
 }
 async function favorite(page: Page, name: string) {
-  await row(page, name)
-    .getByRole('button', { name: `Manage favorite for ${name}`, exact: true })
-    .click();
-  const dialog = page.getByRole('dialog', {
-    name: 'Personal favorite',
-    exact: true,
-  });
   await command(
     page,
-    dialog.getByRole('button', { name: 'Add favorite', exact: true }),
+    row(page, name).getByRole('button', {
+      name: `Add favorite for ${name}`,
+      exact: true,
+    }),
     '/favorite',
+    200,
+    'PUT',
   );
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
 }
 async function lifecycle(
   page: Page,
@@ -786,27 +784,7 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await phase('placement');
   await organize(page, alphaName, 'move', 'Delivery');
   await organize(page, alphaName, 'tags', 'ops');
-  await row(page, alphaName)
-    .getByRole('button', {
-      name: `Manage favorite for ${alphaName}`,
-      exact: true,
-    })
-    .click();
-  const favoriteDialog = page.getByRole('dialog', {
-    name: 'Personal favorite',
-    exact: true,
-  });
-  await command(
-    page,
-    favoriteDialog.getByRole('button', {
-      name: 'Add favorite',
-      exact: true,
-    }),
-    '/favorite',
-  );
-  await favoriteDialog
-    .getByRole('button', { name: 'Close', exact: true })
-    .click();
+  await favorite(page, alphaName);
   await page.getByLabel('Name contains', { exact: true }).fill('Alpha');
   await phase('filters');
   await page
@@ -1067,10 +1045,13 @@ test('default-off release build preserves ordinary workflows without organizatio
     expectedOrganizationRevision: state.organization.organizationRevision,
   });
   expect(tags.status()).toBe(200);
-  const favorite = await write(`workflows/${workflowId}/favorite`, {
-    favorite: true,
-    expectedFavoriteRevision: state.organization.favoriteRevision,
-  });
+  const favorite = await page.request.put(
+    `/v1/workspaces/${workspaceId}/workflows/${workflowId}/favorite`,
+    {
+      headers: { 'x-csrf-token': decodeURIComponent(cookie.value) },
+      data: { favorite: true },
+    },
+  );
   expect(favorite.status()).toBe(200);
   await page.goto(`/w/${workspaceId}/workflows`);
   await expect(row(page, name)).toBeVisible();
@@ -1085,7 +1066,7 @@ test('default-off release build preserves ordinary workflows without organizatio
   ).toHaveCount(0);
   await expect(
     row(page, name).getByRole('button', {
-      name: `Manage favorite for ${name}`,
+      name: `Add favorite for ${name}`,
       exact: true,
     }),
   ).toHaveCount(0);

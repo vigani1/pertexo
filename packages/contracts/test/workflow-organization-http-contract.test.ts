@@ -29,7 +29,6 @@ const organization = {
   organizationRevision: 1,
   folderId: null,
   isFavorite: false,
-  favoriteRevision: `absent.v1.1790930096.1791016496.${'A'.repeat(43)}`,
 };
 type OperationShape = Readonly<{
   security: unknown;
@@ -63,11 +62,11 @@ describe('organization HTTP manifest and generated structural contracts', () => 
       'POST /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/delete',
       'GET /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows',
       'POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/tags',
-      'POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite',
+      'PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite',
     ]);
   });
 
-  it('requires authenticated CSRF/idempotency command headers and private no-store responses', () => {
+  it('requires authenticated CSRF and idempotency command headers and private no-store responses', () => {
     for (const methods of Object.values(workflowOrganizationContractPaths)) {
       for (const [method, operation] of Object.entries(methods) as [
         string,
@@ -77,8 +76,13 @@ describe('organization HTTP manifest and generated structural contracts', () => 
         const headers = operation.parameters.filter(
           (parameter) => parameter.in === 'header',
         );
+        // Setting a favorite is idempotent by itself and needs no key.
         expect(headers.map((parameter) => parameter.name)).toEqual(
-          method === 'post' ? ['x-csrf-token', 'Idempotency-Key'] : [],
+          method === 'post'
+            ? ['x-csrf-token', 'Idempotency-Key']
+            : method === 'put'
+              ? ['x-csrf-token']
+              : [],
         );
         expect(headers.every((header) => header.required)).toBe(true);
         const success =
@@ -92,7 +96,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
         expect(success).toHaveProperty('headers.Cache-Control.required', true);
         expect(operation.responses).toHaveProperty('503');
         expect(operation.responses).toHaveProperty('429');
-        if (method === 'post')
+        if (method !== 'get')
           expect(operation).toHaveProperty('requestBody.required', true);
       }
     }
@@ -111,8 +115,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
         .description,
     ).toContain('workflow:update');
     const favorite =
-      paths['/v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite']
-        .post;
+      paths['/v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite'].put;
     expect(favorite.description).toContain('including viewers');
     expect(favorite.description).toContain('archived workflows allowed');
     const discovery =
@@ -241,7 +244,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
   });
 
   it('centralizes exactly the accepted sanitized problems without private extension fields', () => {
-    expect(WORKFLOW_ORGANIZATION_PROBLEM_CODES).toHaveLength(13);
+    expect(WORKFLOW_ORGANIZATION_PROBLEM_CODES).toHaveLength(12);
     for (const code of WORKFLOW_ORGANIZATION_PROBLEM_CODES) {
       const entry = API_PROBLEM_MANIFEST[code];
       expect(entry.status).toBe(

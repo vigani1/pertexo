@@ -160,7 +160,6 @@
               "workflow.tag_revision_conflict",
               "workflow.tag_delete_overflow",
               "workflow.organization_revision_conflict",
-              "workflow.favorite_revision_conflict",
               "workflow.folder_name_conflict",
               "workflow.folder_limit_exceeded",
               "workflow.folder_revision_conflict",

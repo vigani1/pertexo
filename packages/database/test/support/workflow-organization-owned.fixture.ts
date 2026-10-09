@@ -16,10 +16,7 @@ import {
   createWorkflowOrganizationBatchDatabase,
 } from '../../src/api.js';
 import { createWorkflowOrganizationReadDatabase } from '../../src/authoring/organization/workflows.queries.js';
-import {
-  createWorkflowFavoriteDatabase,
-  type WorkflowFavoriteAbsenceTokenAuthority,
-} from '../../src/authoring/organization/favorites.repository.js';
+import { createWorkflowFavoriteDatabase } from '../../src/authoring/organization/favorites.repository.js';
 
 const roles = {
   DATABASE_ADMIN_URL: 'postgres',
@@ -135,22 +132,17 @@ export async function createOrganizationOwnedFixture() {
     const identity = createIdentityWorkspaceDatabase(config);
     const authoring = createWorkflowAuthoringFixtureDatabase(config);
     const tags = createWorkflowTagDatabase(config);
-    resources.push(identity, authoring, tags);
+    const favorites = createWorkflowFavoriteDatabase(config);
+    resources.push(identity, authoring, tags, favorites);
     function folderStores() {
       const folders = createWorkflowFolderDatabase(config);
       const batches = createWorkflowOrganizationBatchDatabase(config);
       resources.push(folders, batches);
       return { folders, batches };
     }
-    function organizationStores(
-      absenceTokens: WorkflowFavoriteAbsenceTokenAuthority,
-    ) {
-      const reader = createWorkflowOrganizationReadDatabase(config, {
-        absenceTokens,
-      });
-      const favorites = createWorkflowFavoriteDatabase(config, {
-        absenceTokens,
-      });
+    function organizationStores() {
+      const reader = createWorkflowOrganizationReadDatabase(config);
+      const favorites = createWorkflowFavoriteDatabase(config);
       resources.push(reader, favorites);
       return { reader, favorites };
     }
@@ -254,6 +246,7 @@ export async function createOrganizationOwnedFixture() {
       identity,
       authoring,
       tags,
+      favorites,
       folderStores,
       organizationStores,
       upgrade,

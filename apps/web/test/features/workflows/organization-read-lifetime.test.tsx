@@ -82,7 +82,6 @@ const page = {
         tags: tags.items,
         organizationRevision: 1,
         isFavorite: true,
-        favoriteRevision: workflowId,
       },
     },
   ],

@@ -26,7 +26,6 @@ const row = (id = workflowId, revision = 3) =>
       folderId: null,
       organizationRevision: revision,
       isFavorite: true,
-      favoriteRevision: workflowId,
     },
   });
 describe('organization editing presentation model', () => {

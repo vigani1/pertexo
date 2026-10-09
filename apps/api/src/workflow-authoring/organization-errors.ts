@@ -1,5 +1,4 @@
 import {
-  WorkflowFavoriteRevisionConflictError,
   WorkflowFolderConflictError,
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
@@ -73,11 +72,6 @@ const folderConflicts: Readonly<
 export function mapWorkflowOrganizationError(
   error: unknown,
 ): ApplicationError | undefined {
-  if (error instanceof WorkflowFavoriteRevisionConflictError)
-    return applicationError('workflow.favorite_revision_conflict', {
-      safeDetail:
-        'The favorite has changed; reload it before confirming a new command.',
-    });
   if (error instanceof WorkflowOrganizationUnavailableError)
     return applicationError('workflow.organization_unavailable', {
       safeDetail: 'Workflow organization is temporarily unavailable.',

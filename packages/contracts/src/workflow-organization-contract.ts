@@ -346,19 +346,19 @@ export const workflowOrganizationContractPaths = {
     },
   },
   '/v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite': {
-    post: {
+    put: {
       operationId: 'setWorkflowFavorite',
       description:
-        'Current workflow:read including viewers, active workspace; archived workflows allowed. Private desired state at an opaque token. Exact current-generation committed replay precedes token verification/expiry/rotation and writer checks. A new command needs an authenticated absence token or current UUID revision. Recovery is bounded to 24 hours; never automatically replace uncertain command identity. No actor or generation selector.',
+        "Current workflow:read including viewers, active workspace; archived workflows allowed. Marks or unmarks the workflow as one of the actor's private favorites. Asking for the current state changes nothing, so a retry is safe without an idempotency key.",
       security: [{ cookieSession: [] }],
-      parameters: [...workflowParameters, ...commandHeaders],
+      parameters: [...workflowParameters, csrfHeaderParameter()],
       requestBody: jsonRequest('WorkflowFavoriteRequest'),
       responses: {
         '200': privateResponse(
-          'Original private favorite command outcome',
+          "The actor's favorite state",
           'WorkflowFavoriteResponse',
         ),
-        ...commandProblems,
+        ...readProblems,
       },
     },
   },

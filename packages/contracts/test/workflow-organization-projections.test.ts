@@ -29,7 +29,6 @@ const organization = {
   organizationRevision: 1,
   folderId: null,
   isFavorite: false,
-  favoriteRevision: `absent.v1.1790930096.1791016496.${'A'.repeat(43)}`,
 };
 
 describe('additive organization projection contracts', () => {

@@ -5,7 +5,6 @@ export const WORKFLOW_ORGANIZATION_PROBLEM_CODES = [
   'workflow.tag_revision_conflict',
   'workflow.tag_delete_overflow',
   'workflow.organization_revision_conflict',
-  'workflow.favorite_revision_conflict',
   'workflow.folder_name_conflict',
   'workflow.folder_limit_exceeded',
   'workflow.folder_revision_conflict',
@@ -48,12 +47,6 @@ export const workflowOrganizationProblems = {
   'workflow.organization_revision_conflict': {
     status: 409,
     title: 'Workflow organization revision conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.favorite_revision_conflict': {
-    status: 409,
-    title: 'Workflow favorite revision conflict',
     severity: 'warn',
     exposeDetail: true,
   },

@@ -113,9 +113,9 @@ const routes = [
   {
     name: 'favorite',
     path: 'workflows/:workflowId/favorite',
-    method: 'POST',
+    method: 'PUT',
     suffix: `/workflows/${workflowId}/favorite`,
-    body: { favorite: false, expectedFavoriteRevision: tagId },
+    body: { favorite: false },
     status: 200,
   },
 ] as const;
@@ -147,12 +147,7 @@ function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'owner') {
     close: vi.fn(),
   } satisfies WorkflowTagDatabase;
   const favorites = {
-    readFavorite: vi.fn(),
-    setFavorite: vi.fn().mockResolvedValue({
-      isFavorite: false,
-      favoriteRevision: tagId,
-      replayed: true,
-    }),
+    setFavorite: vi.fn().mockResolvedValue({ isFavorite: false }),
     close: vi.fn(),
   } satisfies WorkflowFavoriteDatabase;
   const authorization = {
@@ -270,7 +265,7 @@ describe('organization controller registered HTTP seam (fake session and persist
       const handler = WorkflowOrganizationController.prototype[route.name];
       expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(route.path);
       expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(
-        route.method === 'GET' ? 0 : 1,
+        { GET: 0, POST: 1, PUT: 2 }[route.method],
       );
       expect(Reflect.getMetadata(HEADERS_METADATA, handler)).toEqual([
         { name: 'Cache-Control', value: 'private, no-store' },
@@ -278,7 +273,7 @@ describe('organization controller registered HTTP seam (fake session and persist
       expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
         SessionAuthenticationGuard,
         route.name === 'replaceTags' ? WorkflowUpdateGuard : WorkflowReadGuard,
-        ...(route.method === 'POST' ? [CsrfProtectionGuard] : []),
+        ...(route.method === 'GET' ? [] : [CsrfProtectionGuard]),
       ]);
       expect(
         Reflect.getMetadata(RATE_LIMIT_METADATA, handler) ??
@@ -289,7 +284,7 @@ describe('organization controller registered HTTP seam (fake session and persist
       ).toBe(
         route.method === 'GET' ? 'authenticated_read' : 'ordinary_mutation',
       );
-      if (route.method === 'POST')
+      if (route.method !== 'GET')
         expect(Reflect.getMetadata(HTTP_CODE_METADATA, handler)).toBe(
           route.status,
         );
@@ -399,19 +394,12 @@ describe('organization controller registered HTTP seam (fake session and persist
 
   it('rejects invalid IDs, extra bodies, duplicate queries and command headers', async () => {
     const f = await httpFixture();
-    for (const url of [
-      `${prefix}/workflow-tags/not-a-uuid/rename`,
-      `${prefix}/workflows/not-a-uuid/favorite`,
-    ])
+    for (const [method, url, payload] of [
+      ['POST', `${prefix}/workflow-tags/not-a-uuid/rename`, routes[2].body],
+      ['PUT', `${prefix}/workflows/not-a-uuid/favorite`, { favorite: true }],
+    ] as const)
       expect(
-        (
-          await f.app.inject({
-            method: 'POST',
-            url,
-            headers,
-            payload: routes[2].body,
-          })
-        ).statusCode,
+        (await f.app.inject({ method, url, headers, payload })).statusCode,
       ).toBe(400);
     for (const payload of [
       { key: 'release', actorId },

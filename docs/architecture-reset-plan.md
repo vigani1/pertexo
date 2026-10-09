@@ -160,18 +160,20 @@ now, as one ordered program — not "whenever we touch it".
         leftovers and favorites. The reaper functions, the claim scan cursor
         and the per-fact legal hold are gone.
   - [ ] Legal-hold table: nothing places holds any more. Drop it with the
-        last checks of it: the favorite command and its held evidence
-        (Authoring), replacement-claim reapability (Workspaces and access) and
-        inbox expiry (Notifications and inbox).
+        last checks of it: replacement-claim reapability (Workspaces and
+        access) and inbox expiry (Notifications and inbox).
   - [x] Organization commands (folders, tags, placement, batches) run in
         TypeScript (`authoring/organization/`). An advisory lock per workspace
         orders them, and their keys use `idempotency_records` through the
         shared `platform/idempotency.ts`; the organization receipt table goes.
         Every other area moves to the same helper and drops its receipt table
         when it is ported.
-  - [ ] Favorites: a simple idempotent on/off (no revisions, absence tokens,
-        membership generations, receipts or held evidence); then the
-        organization rollout flag and coordination table go.
+  - [x] Favorites are a simple idempotent on/off: a row is a favorite,
+        `PUT …/favorite` sets it without an idempotency key, and removing a
+        member deletes their favorites. Revisions, signed absence tokens,
+        membership generations, receipts, held evidence and the confirm
+        dialog are gone, with the organization rollout switch and
+        coordination table.
   - [ ] Authoring: drafts, publication, portability, input cases, concurrency
         and auto-pause.
   - [ ] Workspaces and access: memberships, invitations (including the

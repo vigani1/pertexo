@@ -47,7 +47,6 @@ function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'viewer') {
       organizationRevision: 2,
       folderId: null,
       isFavorite: false,
-      favoriteRevision: randomUUID(),
     },
   };
   const position = {
