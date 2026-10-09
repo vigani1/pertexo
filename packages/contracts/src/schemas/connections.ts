@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { utf8ByteLength } from './utf8-byte-length.js';
+import { utf8ByteLength } from './text.js';
 
 import { isSupportedHttpFieldValue } from './http-field-value.js';
 

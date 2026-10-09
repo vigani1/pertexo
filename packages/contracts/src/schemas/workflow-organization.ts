@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { strictlyAscendingIdentifiers } from './workflow-organization-order.js';
-import { utf8ByteLength } from './utf8-byte-length.js';
+import { trimSpaces, utf8ByteLength } from './text.js';
 
 /** ADR064 bounds are product contracts, never caller-configurable quotas. */
 export const WORKFLOW_ORGANIZATION_LIMITS = Object.freeze({
@@ -13,9 +13,7 @@ export const WORKFLOW_ORGANIZATION_LIMITS = Object.freeze({
 
 /** U+0020 trim and ASCII-only case mapping; no Unicode fold/transliteration. */
 export function normalizeWorkflowTagKey(value: string): string {
-  return value
-    .replace(/^ +| +$(?![\s\S])/gu, '')
-    .replace(/[A-Z]/gu, (letter) => letter.toLowerCase());
+  return trimSpaces(value).replace(/[A-Z]/gu, (letter) => letter.toLowerCase());
 }
 
 export const workflowOrganizationRevisionSchema = z
@@ -269,7 +267,7 @@ export const workflowOrganizationSchema = z
 /** Literal case-sensitive substring. Only outer U+0020 is trimmed. */
 export const workflowOrganizationNameQuerySchema = z
   .string()
-  .overwrite((query) => query.replace(/^ +| +$(?![\s\S])/gu, ''))
+  .overwrite((query) => trimSpaces(query))
   .refine(
     (query) =>
       utf8ByteLength(query) <= WORKFLOW_ORGANIZATION_LIMITS.nameQueryBytes,
