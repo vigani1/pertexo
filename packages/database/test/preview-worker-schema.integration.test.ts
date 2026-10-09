@@ -4,26 +4,22 @@ import {} from '../src/platform/readiness.js';
 import {
   acceptFixture,
   expectPgCode,
+  scopedQuery,
   withOwnerRole,
   workspaceId,
 } from './support/preview-worker-fixture.js';
 
 describe('preview worker schema contract', () => {
-  it('rejects mutation of terminal correlation and classification pins', async () => {
+  it('withholds correlation and classification pins from runtime updates', async () => {
     const accepted = await acceptFixture();
     await expect(
-      withOwnerRole(async (client) => {
-        await client.query("select set_config('app.workspace_id',$1,true)", [
-          workspaceId,
-        ]);
-        await client.query(
-          `update app.preview_runs
-              set request_id='forged-request',provider_key='forged'
-            where workspace_id=$1 and id=$2`,
-          [workspaceId, accepted.previewRunId],
-        );
-      }),
-    ).rejects.toSatisfy(expectPgCode('55000'));
+      scopedQuery(
+        `update app.preview_runs
+            set request_id='forged-request',provider_key='forged'
+          where workspace_id=$1 and id=$2`,
+        [workspaceId, accepted.previewRunId],
+      ),
+    ).rejects.toSatisfy(expectPgCode('42501'));
   });
 
   it('rejects a one-sided preview provider identity by the exact constraint', async () => {
