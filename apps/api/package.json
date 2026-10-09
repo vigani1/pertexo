@@ -41,7 +41,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@nestjs/testing": "11.2.6",
+    "@nestjs/testing": "11.2.7",
     "@opentelemetry/sdk-node": "0.222.0",
     "@pertexo/templates": "workspace:*",
     "@types/pg": "8.23.1"

@@ -131,7 +131,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@redocly/cli": "2.54.3",
+    "@redocly/cli": "2.58.2",
     "ajv": "8.20.0"
   }
 }
