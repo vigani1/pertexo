@@ -5,7 +5,6 @@ import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import type {
   PortableCatalog,
   WorkflowAuthoringGraphValidator,
-  WorkflowAuthoringTestHooks,
 } from './types.js';
 
 /** Variable transaction, authority and compatibility seams shared by writes. */
@@ -28,7 +27,6 @@ export type WorkflowAuthoringWriteContext = Readonly<{
       validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
     }>
   >;
-  testHooks?: WorkflowAuthoringTestHooks;
   transact<T>(
     workspaceId: string,
     actorId: string,

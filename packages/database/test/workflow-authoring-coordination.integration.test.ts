@@ -11,13 +11,14 @@ import {
   createHash,
   createWorkflowAuthoringDatabase,
   currentRepresentationTag,
-  deferred,
   emptyGraph,
   finishControlledScenario,
   finishTransactionClient,
+  holdAtWrite,
   migrationUrl,
   otherWorkflowId,
   parseDatabaseConfig,
+  publicationWrite,
   queryAsOwner,
   randomUUID,
   saveCurrentDraft,
@@ -131,40 +132,24 @@ describe('workflow authoring coordination', () => {
         name: `Authority ${command}`,
         workspaceId,
       });
-      const entered = deferred();
-      const releaseOperation = deferred();
+      const hold = await holdAtWrite(
+        command === 'save'
+          ? {
+              table: 'workflow_drafts',
+              operation: 'update',
+              when: `NEW.workflow_id = '${created.workflowId}'`,
+            }
+          : command === 'publish'
+            ? publicationWrite('version', created.workflowId)
+            : {
+                table: 'workflows',
+                operation: 'update',
+                when: `NEW.id = '${created.workflowId}' and NEW.lifecycle_status is distinct from OLD.lifecycle_status`,
+              },
+      );
       const authorityApplication = `wa-${command}-${randomUUID()}`;
       const controlled = createWorkflowAuthoringDatabase(
         parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-        {
-          testHooks: {
-            ...(command === 'save'
-              ? {
-                  afterSaveCas: async () => {
-                    entered.resolve();
-                    await releaseOperation.promise;
-                  },
-                }
-              : {}),
-            ...(command === 'publish'
-              ? {
-                  afterPublishDraftLock: async () => {
-                    entered.resolve();
-                    await releaseOperation.promise;
-                  },
-                }
-              : {}),
-            ...(command === 'lifecycle'
-              ? {
-                  afterLifecycleStep: async (step) => {
-                    if (step !== 'workflow') return;
-                    entered.resolve();
-                    await releaseOperation.promise;
-                  },
-                }
-              : {}),
-          },
-        },
       );
       const authorityPool = new Pool({
         connectionString: withApplicationName(
@@ -215,7 +200,7 @@ describe('workflow authoring coordination', () => {
                   workspaceId,
                 });
         await waitForOperationEntry(
-          entered.promise,
+          hold.reached(),
           operation,
           `${command} authority command`,
         );
@@ -233,7 +218,7 @@ describe('workflow authoring coordination', () => {
         );
         void suspension.catch(() => undefined);
         await waitForPostgresLock(authorityApplication);
-        releaseOperation.resolve();
+        await hold.release();
         await expect(operation).resolves.toBeDefined();
         await expect(suspension).resolves.toMatchObject({ rowCount: 1 });
         await authority.query('rollback');
@@ -274,7 +259,7 @@ describe('workflow authoring coordination', () => {
       } catch (error: unknown) {
         primaryError = error;
       } finally {
-        releaseOperation.resolve();
+        await hold.release();
         if (authorityOpen)
           await authority.query('rollback').catch(() => undefined);
         await Promise.allSettled(
@@ -286,6 +271,7 @@ describe('workflow authoring coordination', () => {
         const cleanup = await Promise.allSettled([
           authorityPool.end(),
           controlled.close(),
+          hold.remove(),
         ]);
         cleanupFailures = cleanup.flatMap((result) =>
           result.status === 'rejected' ? [result.reason as unknown] : [],
@@ -386,8 +372,11 @@ describe('workflow authoring coordination', () => {
       name: 'Save first race',
       workspaceId,
     });
-    const saveLocked = deferred();
-    const releaseSave = deferred();
+    const saveHold = await holdAtWrite({
+      table: 'workflow_drafts',
+      operation: 'update',
+      when: `NEW.workflow_id = '${saveFirstDraft.workflowId}'`,
+    });
     const saveFirstTag = await currentRepresentationTag(
       authoring,
       workspaceId,
@@ -396,14 +385,6 @@ describe('workflow authoring coordination', () => {
     );
     const saveFirstDatabase = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-      {
-        testHooks: {
-          afterSaveCas: async () => {
-            saveLocked.resolve();
-            await releaseSave.promise;
-          },
-        },
-      },
     );
     const saveFirstPublisher = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({
@@ -428,7 +409,7 @@ describe('workflow authoring coordination', () => {
         workflowId: saveFirstDraft.workflowId,
         workspaceId,
       });
-      await waitForOperationEntry(saveLocked.promise, save, 'save-first save');
+      await waitForOperationEntry(saveHold.reached(), save, 'save-first save');
       publish = saveFirstPublisher.publishWorkflow({
         actorId,
         representationTag: saveFirstTag,
@@ -441,7 +422,7 @@ describe('workflow authoring coordination', () => {
         currentRevision: 2,
       });
       await waitForPostgresLock(saveFirstPublisherApplication);
-      releaseSave.resolve();
+      await saveHold.release();
       await expect(save).resolves.toMatchObject({ revision: 2 });
       await publishExpectation;
     } catch (error: unknown) {
@@ -451,11 +432,12 @@ describe('workflow authoring coordination', () => {
       close: [
         () => saveFirstDatabase.close(),
         () => saveFirstPublisher.close(),
+        () => saveHold.remove(),
       ],
       label: 'save-first authoring race',
       operations: [save, publish],
       primaryError,
-      release: releaseSave.resolve,
+      release: () => void saveHold.release(),
     });
 
     const publishFirstDraft = await authoring.createWorkflow({
@@ -465,8 +447,9 @@ describe('workflow authoring coordination', () => {
       name: 'Publish first race',
       workspaceId,
     });
-    const publishLocked = deferred();
-    const releasePublish = deferred();
+    const publishHold = await holdAtWrite(
+      publicationWrite('version', publishFirstDraft.workflowId),
+    );
     const publishFirstTag = await currentRepresentationTag(
       authoring,
       workspaceId,
@@ -475,14 +458,6 @@ describe('workflow authoring coordination', () => {
     );
     const publishFirstDatabase = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-      {
-        testHooks: {
-          afterPublishDraftLock: async () => {
-            publishLocked.resolve();
-            await releasePublish.promise;
-          },
-        },
-      },
     );
     const publishFirstSaverApplication = `workflow-publish-first-${workflowId}`;
     const publishFirstSaver = createWorkflowAuthoringDatabase(
@@ -507,7 +482,7 @@ describe('workflow authoring coordination', () => {
         workspaceId,
       });
       await waitForOperationEntry(
-        publishLocked.promise,
+        publishHold.reached(),
         publishFirstOperation,
         'publish-first publication',
       );
@@ -525,7 +500,7 @@ describe('workflow authoring coordination', () => {
         revision: 2,
       });
       await waitForPostgresLock(publishFirstSaverApplication);
-      releasePublish.resolve();
+      await publishHold.release();
       await expect(publishFirstOperation).resolves.toMatchObject({
         version: { graphJson: emptyGraph },
       });
@@ -537,11 +512,12 @@ describe('workflow authoring coordination', () => {
       close: [
         () => publishFirstDatabase.close(),
         () => publishFirstSaver.close(),
+        () => publishHold.remove(),
       ],
       label: 'publish-first authoring race',
       operations: [publishFirstOperation, saveAfterPublish],
       primaryError,
-      release: releasePublish.resolve,
+      release: () => void publishHold.release(),
     });
   });
 });

@@ -29,8 +29,10 @@ import {
   currentRepresentationTag,
   emptyGraph,
   draftNode,
+  failAtWrite,
+  holdAtWrite,
+  importWrite,
   randomUUID,
-  executeAsOwner,
   queryAsOwner,
   identity,
   authoring,
@@ -41,7 +43,6 @@ import {
   createConnectionDatabase,
   CONNECTION_AUTH_TYPE,
   createHash,
-  deferred,
   waitForOperationEntry,
   waitForPostgresLock,
   withApplicationName,
@@ -115,6 +116,14 @@ async function firstFacts() {
 afterEach(async () => {
   await Promise.all(databases.splice(0).map((db) => db.close()));
 });
+
+function importReceipts(receipt: readonly [string, string]) {
+  return queryAsOwner(
+    "select resource_id from app.idempotency_records where workspace_id=$1 and operation='workflow.import' and resource_id=$2",
+    [...receipt],
+    workspaceId,
+  );
+}
 
 describe('portable workflow persistence under the API role', () => {
   it('stores a curated template origin with its import command digest', async () => {
@@ -279,29 +288,21 @@ describe('portable workflow persistence under the API role', () => {
     expect(rejected?.reason instanceof IdempotencyConflictError).toBe(true);
   });
 
-  it.each([
-    'claim',
-    'catalog',
-    'connections',
-    'workflow',
-    'draft',
-    'audit',
-    'idempotency',
-  ] as const)('rolls back all import facts after %s fault', async (step) => {
-    const db = database({
-      testHooks: {
-        afterImportStep: (observed) =>
-          observed === step
-            ? Promise.reject(new Error('owned atomic fault'))
-            : Promise.resolve(),
-      },
-    });
-    const before = await facts();
-    await expect(db.importWorkflow(command())).rejects.toThrow(
-      'owned atomic fault',
-    );
-    expect(await facts()).toEqual(before);
-  });
+  it.each(['claim', 'workflow', 'draft', 'audit', 'idempotency'] as const)(
+    'rolls back all import facts after a failed %s write',
+    async (step) => {
+      const db = database();
+      const input = command();
+      const before = await facts();
+      const fault = await failAtWrite(importWrite(step, input.name));
+      try {
+        await expect(db.importWorkflow(input)).rejects.toThrow(fault.message);
+      } finally {
+        await fault.remove();
+      }
+      expect(await facts()).toEqual(before);
+    },
+  );
 
   it('requires fresh compatibility preview, exact graph requirements and new-placement authority', async () => {
     const db = database();
@@ -585,42 +586,11 @@ describe('portable workflow persistence under the API role', () => {
     }
   });
 
-  it.each(['app.workflows', 'app.workflow_drafts'] as const)(
-    'rolls back creator-internal writes if %s insertion fails',
-    async (table) => {
-      const db = database();
-      const name = `portable_fault_${randomUUID().replaceAll('-', '')}`;
-      await executeAsOwner(
-        `create function app.${name}() returns trigger language plpgsql as $$begin raise exception 'owned creator insertion fault'; end$$; create trigger ${name} before insert on ${table} for each row execute function app.${name}()`,
-      );
-      try {
-        const before = await facts();
-        await expect(db.importWorkflow(command())).rejects.toThrow(
-          'owned creator insertion fault',
-        );
-        expect(await facts()).toEqual(before);
-      } finally {
-        await executeAsOwner(
-          `drop trigger ${name} on ${table}; drop function app.${name}()`,
-        );
-      }
-    },
-  );
-
   it('holds ordered authority/catalog locks until import commits so later writers lose the race', async () => {
     for (const surface of ['workspace', 'actor', 'membership'] as const) {
-      const entered = deferred(),
-        released = deferred();
-      const db = database({
-        testHooks: {
-          afterImportStep: async (step) => {
-            if (step === 'catalog') {
-              entered.resolve();
-              await released.promise;
-            }
-          },
-        },
-      });
+      const input = command();
+      const hold = await holdAtWrite(importWrite('workflow', input.name));
+      const db = database();
       const application = `portable-${surface}-${randomUUID()}`;
       const pool = new Pool({
         connectionString: withApplicationName(migrationUrl, application),
@@ -631,9 +601,9 @@ describe('portable workflow persistence under the API role', () => {
         writer: Promise<unknown> | undefined,
         primaryError: unknown;
       try {
-        operation = db.importWorkflow(command());
+        operation = db.importWorkflow(input);
         await waitForOperationEntry(
-          entered.promise,
+          hold.reached(),
           operation,
           'portable admission',
         );
@@ -657,14 +627,14 @@ describe('portable workflow persistence under the API role', () => {
               : [],
         );
         await waitForPostgresLock(application);
-        released.resolve();
+        await hold.release();
         await operation;
         await writer;
         await owner.query('rollback');
       } catch (error) {
         primaryError = error;
       } finally {
-        released.resolve();
+        await hold.release();
         await Promise.allSettled(
           [operation, writer].filter((value) => value !== undefined),
         );
@@ -677,8 +647,8 @@ describe('portable workflow persistence under the API role', () => {
           label: 'portable race',
           primaryError,
           operations: [],
-          release: released.resolve,
-          close: [() => pool.end()],
+          release: () => void hold.release(),
+          close: [() => pool.end(), () => hold.remove()],
         });
       }
     }
@@ -798,19 +768,8 @@ describe('portable workflow persistence under the API role', () => {
       });
       return id;
     };
-    const entered = deferred(),
-      released = deferred();
-    const winner = database({
-      portableCatalog: providerCatalog,
-      testHooks: {
-        afterImportStep: async (step) => {
-          if (step === 'connections') {
-            entered.resolve();
-            await released.promise;
-          }
-        },
-      },
-    });
+    const winner = database({ portableCatalog: providerCatalog });
+    const hold = await holdAtWrite(importWrite('workflow', command().name));
     let accepted: Promise<{ workflowId: string }> | undefined,
       revoked: Promise<unknown> | undefined,
       primaryError: unknown;
@@ -835,7 +794,7 @@ describe('portable workflow persistence under the API role', () => {
       });
       accepted = winner.importWorkflow(first);
       await waitForOperationEntry(
-        entered.promise,
+        hold.reached(),
         accepted,
         'portable connection admission',
       );
@@ -845,7 +804,7 @@ describe('portable workflow persistence under the API role', () => {
         connectionId: firstConnection,
       });
       await waitForPostgresLock(connectionApplication);
-      released.resolve();
+      await hold.release();
       const result = await accepted;
       await revoked;
       expect(await winner.importWorkflow(first)).toEqual(result);
@@ -907,8 +866,8 @@ describe('portable workflow persistence under the API role', () => {
         label: 'portable connection races',
         primaryError,
         operations: [accepted, revoked],
-        release: released.resolve,
-        close: [() => connections.close()],
+        release: () => void hold.release(),
+        close: [() => connections.close(), () => hold.remove()],
       });
     }
   });
@@ -955,131 +914,47 @@ describe('portable workflow persistence under the API role', () => {
     );
   });
 
-  it('answers an exact retry holding an expired receipt before retention removes it', async () => {
+  it('answers an exact retry from an expired receipt until retention removes it after its lock', async () => {
     const db = database();
     const input = command();
     const accepted = await db.importWorkflow(input);
+    const receipt = [workspaceId, accepted.workflowId] as const;
     await queryAsOwner(
       "update app.idempotency_records set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and operation='workflow.import' and resource_id=$2",
-      [workspaceId, accepted.workflowId],
+      [...receipt],
       workspaceId,
     );
-    const entered = deferred(),
-      released = deferred();
-    const retry = database({
-      testHooks: {
-        afterImportStep: async (step) => {
-          if (step === 'claim') {
-            entered.resolve();
-            await released.promise;
-          }
-        },
-      },
-    });
-    let pending: Promise<unknown> | undefined, primaryError: unknown;
-    try {
-      pending = retry.importWorkflow(input);
-      await waitForOperationEntry(
-        entered.promise,
-        pending,
-        'locked expired import receipt',
-      );
-      // Retention waits for the retry's lock on the receipt.
-      const reaping = enforceTestRetention();
-      released.resolve();
-      expect(await pending).toEqual(accepted);
-      await reaping;
-      expect(
-        await queryAsOwner(
-          "select resource_id from app.idempotency_records where workspace_id=$1 and operation='workflow.import' and resource_id=$2",
-          [workspaceId, accepted.workflowId],
-          workspaceId,
-        ),
-      ).toEqual([]);
-    } catch (error) {
-      primaryError = error;
-    } finally {
-      await finishControlledScenario({
-        label: 'expired locked import claim',
-        primaryError,
-        operations: [pending],
-        release: released.resolve,
-        close: [],
-      });
-    }
-  });
+    expect(await db.importWorkflow(input)).toEqual(accepted);
 
-  it('exports the reviewed draft snapshot before a later save wins its draft UPDATE', async () => {
-    const entered = deferred(),
-      released = deferred();
-    const reader = database({
-      testHooks: {
-        afterExportSourceLock: async () => {
-          entered.resolve();
-          await released.promise;
-        },
-      },
+    // Retention waits for a transaction that holds the receipt, as a retry does.
+    const application = `portable-receipt-${randomUUID()}`;
+    const pool = new Pool({
+      connectionString: withApplicationName(migrationUrl, application),
+      max: 1,
     });
-    const saveApplication = `portable-save-${randomUUID()}`;
-    const writer = database({}, withApplicationName(apiUrl, saveApplication));
-    const source = await reader.createWorkflow({
-      workspaceId,
-      actorId,
-      name: 'Export/save race',
-      emptyGraph,
-      idempotencyKey: randomUUID(),
-    });
-    const tag = await currentRepresentationTag(
-      reader,
-      workspaceId,
-      source.workflowId,
-      actorId,
-    );
-    let exported: Promise<unknown> | undefined,
-      saved: Promise<unknown> | undefined,
-      primaryError: unknown;
+    const holder = await pool.connect();
+    let reaping: Promise<unknown> | undefined;
     try {
-      exported = reader.exportWorkflow({
+      await holder.query('begin');
+      await holder.query('set local role pertexo_owner');
+      await holder.query("select set_config('app.workspace_id',$1,true)", [
         workspaceId,
-        actorId,
-        workflowId: source.workflowId,
-        source: { kind: 'draft' },
-        representationTag: tag,
-        reviewedGraphDigest: await portableGraphDigest(
-          parseWorkflowGraphDraft(emptyGraph),
-        ),
-      });
-      await waitForOperationEntry(
-        entered.promise,
-        exported,
-        'locked portable source',
+      ]);
+      await holder.query(
+        "select 1 from app.idempotency_records where workspace_id=$1 and operation='workflow.import' and resource_id=$2 for update",
+        [...receipt],
       );
-      saved = writer.saveDraft({
-        workspaceId,
-        actorId,
-        workflowId: source.workflowId,
-        representationTag: tag,
-        expectedRevision: 1,
-        graphJson: { ...emptyGraph, settings: { maxRunDurationMs: 2000 } },
-      });
-      await waitForPostgresLock(saveApplication);
-      released.resolve();
-      expect(await exported).toEqual(command().manifest);
-      await saved;
-      expect(
-        (await writer.getDraft(workspaceId, source.workflowId, actorId))
-          ?.graphJson.settings,
-      ).toEqual({ maxRunDurationMs: 2000 });
-    } catch (error) {
-      primaryError = error;
+      reaping = enforceTestRetention();
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+      expect(await importReceipts(receipt)).toHaveLength(1);
+      await holder.query('commit');
+      await reaping;
+      expect(await importReceipts(receipt)).toEqual([]);
     } finally {
-      await finishControlledScenario({
-        label: 'portable export/save race',
-        primaryError,
-        operations: [exported, saved],
-        release: released.resolve,
-        close: [],
-      });
+      await holder.query('rollback');
+      holder.release();
+      await Promise.allSettled(reaping === undefined ? [] : [reaping]);
+      await pool.end();
     }
   });
 

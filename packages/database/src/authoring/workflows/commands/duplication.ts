@@ -158,7 +158,6 @@ export function createWorkflowDuplicationStore(
             },
             resourceId: destinationId,
           });
-          await context.testHooks?.afterDuplicateStep?.('claim');
           if (stored !== null) {
             const replay = resultSchema.parse(stored);
             const destination = await client.query(
@@ -182,14 +181,12 @@ export function createWorkflowDuplicationStore(
             placementDefinitionCatalog ?? definitionCatalog,
           );
           await requireOwnedConnections(client, input.workspaceId, graph);
-          await context.testHooks?.afterDuplicateStep?.('source');
           await client.query(
             `insert into app.workflows
                (id, workspace_id, name, lifecycle_status, activation_status, created_by)
              values ($1, $2, $3, 'active', 'inactive', $4)`,
             [destinationId, input.workspaceId, input.name, input.actorId],
           );
-          await context.testHooks?.afterDuplicateStep?.('workflow');
           await client.query(
             `insert into app.workflow_drafts
                (workflow_id, workspace_id, revision, schema_version, graph_json, updated_by)
@@ -210,7 +207,6 @@ export function createWorkflowDuplicationStore(
              where workspace_id = $1 and workflow_id = $3`,
             [input.workspaceId, destinationId, input.workflowId],
           );
-          await context.testHooks?.afterDuplicateStep?.('draft');
           await client.query(
             `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
          values($1,$2,$3,'workflow.duplicated','workflow',$4,$5,$6,$7::jsonb)`,
@@ -228,10 +224,8 @@ export function createWorkflowDuplicationStore(
               }),
             ],
           );
-          await context.testHooks?.afterDuplicateStep?.('audit');
           const result = Object.freeze({ workflowId: destinationId });
           await completeCommand(client, command, result);
-          await context.testHooks?.afterDuplicateStep?.('idempotency');
           return result;
         },
         input.signal,

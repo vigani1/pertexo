@@ -7,13 +7,15 @@ import {
   authoring,
   createHash,
   createWorkflowAuthoringDatabase,
-  deferred,
   emptyGraph,
+  failAtWrite,
+  holdAtWrite,
   otherActorId,
   otherWorkflowId,
   parseDatabaseConfig,
   queryAsOwner,
   randomUUID,
+  renameWrite,
   saveCurrentDraft,
   waitForOperationEntry,
   waitForPostgresLock,
@@ -307,8 +309,7 @@ describe('workflow rename command persistence (ADR 041)', () => {
 
   it('lets exactly one of two racing renames at the same revision win', async () => {
     const workflowId = await createNamed('Racing');
-    const firstLocked = deferred();
-    const releaseFirst = deferred();
+    const firstHold = await holdAtWrite(renameWrite('workflow', workflowId));
     const firstApplication = `rnf-${randomUUID()}`;
     const secondApplication = `rns-${randomUUID()}`;
     const first = createWorkflowAuthoringDatabase(
@@ -316,15 +317,6 @@ describe('workflow rename command persistence (ADR 041)', () => {
         connectionString: withApplicationName(apiUrl, firstApplication),
         max: 1,
       }),
-      {
-        testHooks: {
-          afterRenameStep: async (step) => {
-            if (step !== 'workflow') return;
-            firstLocked.resolve();
-            await releaseFirst.promise;
-          },
-        },
-      },
     );
     const second = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({
@@ -341,7 +333,7 @@ describe('workflow rename command persistence (ADR 041)', () => {
         workflowId,
         workspaceId,
       });
-      await waitForOperationEntry(firstLocked.promise, winner, 'first rename');
+      await waitForOperationEntry(firstHold.reached(), winner, 'first rename');
       const loser = second.renameWorkflow({
         actorId,
         expectedNameRevision: 1,
@@ -351,7 +343,7 @@ describe('workflow rename command persistence (ADR 041)', () => {
         workspaceId,
       });
       await waitForPostgresLock(secondApplication);
-      releaseFirst.resolve();
+      await firstHold.release();
       await expect(winner).resolves.toMatchObject({
         workflow: { name: 'Racing first', nameRevision: 2 },
       });
@@ -360,8 +352,9 @@ describe('workflow rename command persistence (ADR 041)', () => {
         currentRevision: 2,
       });
     } finally {
-      releaseFirst.resolve();
+      await firstHold.release();
       await Promise.all([first.close(), second.close()]);
+      await firstHold.remove();
     }
     expect(await nameFacts(workflowId)).toMatchObject({
       name: 'Racing first',
@@ -375,30 +368,16 @@ describe('workflow rename command persistence (ADR 041)', () => {
     for (const step of ['claim', 'workflow', 'audit', 'idempotency'] as const) {
       const workflowId = await createNamed(`Rollback ${step}`);
       const before = await nameFacts(workflowId);
-      const faulting = createWorkflowAuthoringDatabase(
-        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-        {
-          testHooks: {
-            afterRenameStep: (reached) =>
-              reached === step
-                ? Promise.reject(new Error(`injected-${step}`))
-                : Promise.resolve(),
-          },
-        },
-      );
+      const fault = await failAtWrite(renameWrite(step, workflowId));
       try {
         await expect(
-          faulting.renameWorkflow({
-            actorId,
-            expectedNameRevision: 1,
+          rename(workflowId, {
             idempotencyKey: `rename-rollback-${workflowId}`,
             name: `Renamed ${step}`,
-            workflowId,
-            workspaceId,
           }),
-        ).rejects.toThrow(`injected-${step}`);
+        ).rejects.toThrow(fault.message);
       } finally {
-        await faulting.close();
+        await fault.remove();
       }
       expect(await nameFacts(workflowId)).toEqual(before);
       await expect(

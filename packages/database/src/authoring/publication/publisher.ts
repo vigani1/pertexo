@@ -32,7 +32,6 @@ import type {
   PublishWorkflowResult,
 } from '../workflows/contracts.js';
 import type {
-  WorkflowAuthoringTestHooks,
   WorkflowExecutableCompiler,
   WorkflowAuthoringGraphValidator,
 } from '../workflows/types.js';
@@ -86,7 +85,6 @@ export type WorkflowPublicationDependencies = Readonly<{
     actorId: string,
   ): Promise<void>;
   selectVariant(client: Pick<PoolClient, 'query'>): Promise<PublicationVariant>;
-  testHooks: WorkflowAuthoringTestHooks | undefined;
   transact<T>(
     workspaceId: string,
     actorId: string,
@@ -171,7 +169,6 @@ async function lockAndCompilePublication(
   if (draftRow === undefined)
     throw new Error('Workflow is missing its required draft');
   const draft = mapDraft(draftRow, variant.definitionCatalog);
-  await dependencies.testHooks?.afterPublishDraftLock?.();
   const currentEtag = workflowDraftRepresentationTag({
     workflowId,
     revision: draft.revision,
@@ -214,7 +211,6 @@ async function persistVersion(
   input: PublishWorkflowInput,
   workflowId: string,
   publication: CompiledPublication,
-  dependencies: WorkflowPublicationDependencies,
 ): Promise<Readonly<{ reused: boolean; version: WorkflowVersionRecord }>> {
   const retained = await client.query<Record<string, unknown>>(
     `select ${workflowVersionRowSelection} from app.workflow_versions
@@ -255,7 +251,6 @@ async function persistVersion(
   if (versionRow === undefined)
     throw new Error('Workflow publication returned no version');
   const version = mapVersion(versionRow);
-  await dependencies.testHooks?.afterPublishStep?.('version');
   return Object.freeze({ reused, version });
 }
 
@@ -265,7 +260,6 @@ async function persistPublicationProjections(
   workflowId: string,
   publication: CompiledPublication,
   version: WorkflowVersionRecord,
-  hooks: WorkflowAuthoringTestHooks | undefined,
 ): Promise<void> {
   const usage = workflowIntegrationUsage(
     version.graphJson,
@@ -289,13 +283,11 @@ async function persistPublicationProjections(
          provider_key varchar(64),operation_key varchar(128),connection_id uuid)`,
       [input.workspaceId, version.id, JSON.stringify(usage)],
     );
-  await hooks?.afterPublishStep?.('integration_usage');
   await persistPublishedWorkflowTriggers(client, {
     workspaceId: input.workspaceId,
     workflowId,
     version,
   });
-  await hooks?.afterPublishStep?.('trigger_projection');
 }
 
 async function finalizePublication(
@@ -304,7 +296,6 @@ async function finalizePublication(
   claim: PublicationClaim,
   version: WorkflowVersionRecord,
   reused: boolean,
-  hooks: WorkflowAuthoringTestHooks | undefined,
 ): Promise<void> {
   await client.query(
     `update app.workflows set published_version_id=$1,
@@ -312,7 +303,6 @@ async function finalizePublication(
      where workspace_id=$2 and id=$3`,
     [version.id, input.workspaceId, claim.workflowId],
   );
-  await hooks?.afterPublishStep?.('pointer');
   const eventId = generatePersistedId();
   const payload = reconcileWorkflowTriggersPayload({
     workspaceId: input.workspaceId,
@@ -336,7 +326,6 @@ async function finalizePublication(
       canonicalOutboxPayloadChecksum(payload),
     ],
   );
-  await hooks?.afterPublishStep?.('outbox');
   await client.query(
     `insert into app.audit_events
        (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,
@@ -357,12 +346,10 @@ async function finalizePublication(
       }),
     ],
   );
-  await hooks?.afterPublishStep?.('audit');
   await completeCommand(client, claim.command, {
     versionId: version.id,
     reused,
   });
-  await hooks?.afterPublishStep?.('idempotency');
 }
 
 export function createWorkflowPublisher(
@@ -391,7 +378,6 @@ export function createWorkflowPublisher(
           input,
           claim.workflowId,
           publication,
-          dependencies,
         );
         await persistPublicationProjections(
           client,
@@ -399,16 +385,8 @@ export function createWorkflowPublisher(
           claim.workflowId,
           publication,
           version,
-          dependencies.testHooks,
         );
-        await finalizePublication(
-          client,
-          input,
-          claim,
-          version,
-          reused,
-          dependencies.testHooks,
-        );
+        await finalizePublication(client, input, claim, version, reused);
         return Object.freeze({ replayed: false, reused, version });
       },
       input.signal,

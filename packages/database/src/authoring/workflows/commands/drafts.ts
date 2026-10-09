@@ -194,7 +194,6 @@ async function saveDraft(
       throwRevisionConflict(workflowId, mapDraft(latestRow, definitionCatalog));
     }
     const saved = mapDraft(result.rows[0], definitionCatalog);
-    await context.testHooks?.afterSaveCas?.();
     await client.query(
       `insert into app.audit_events (id, workspace_id, actor_user_id, action, target_type, target_id, request_id, trace_id, metadata)
        values ($1, $2, $3, 'workflow.draft_saved', 'workflow', $4, $5, $6, $7::jsonb)`,

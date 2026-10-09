@@ -18,7 +18,6 @@ export type {
   SaveWorkflowDraftInput,
   WorkflowAuthoringDatabase,
   WorkflowAuthoringDatabaseOptions,
-  WorkflowAuthoringTestHooks,
   WorkflowDefinitionPlacementIssue,
   WorkflowDraftRecord,
   WorkflowPage,

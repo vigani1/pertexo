@@ -4,14 +4,17 @@ import {
   actorId,
   apiPool,
   apiUrl,
+  archiveWrite,
   authoring,
   createHash,
   createWorkflowAuthoringDatabase,
   currentRepresentationTag,
-  deferred,
   emptyGraph,
+  failAtWrite,
   finishTransactionClient,
+  holdAtWrite,
   parseDatabaseConfig,
+  publicationWrite,
   queryAsOwner,
   randomUUID,
   waitForPostgresLock,
@@ -129,20 +132,10 @@ describe('workflow lifecycle command persistence', () => {
         workspaceId,
       });
       const before = await lifecycleFacts(created.workflowId);
-      const faulting = createWorkflowAuthoringDatabase(
-        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-        {
-          testHooks: {
-            afterLifecycleStep: (reached) =>
-              reached === step
-                ? Promise.reject(new Error(`injected-${step}`))
-                : Promise.resolve(),
-          },
-        },
-      );
+      const fault = await failAtWrite(archiveWrite(step, created.workflowId));
       try {
         await expect(
-          faulting.transitionWorkflowLifecycle({
+          authoring.transitionWorkflowLifecycle({
             actorId,
             command: 'archive',
             expectedLifecycleRevision: 1,
@@ -150,9 +143,9 @@ describe('workflow lifecycle command persistence', () => {
             workflowId: created.workflowId,
             workspaceId,
           }),
-        ).rejects.toThrow(`injected-${step}`);
+        ).rejects.toThrow(fault.message);
       } finally {
-        await faulting.close();
+        await fault.remove();
       }
       expect(await lifecycleFacts(created.workflowId)).toEqual(before);
       await expect(
@@ -186,23 +179,15 @@ describe('workflow lifecycle command persistence', () => {
       name: 'Lifecycle archive first',
       workspaceId,
     });
-    const archiveLocked = deferred();
-    const releaseArchive = deferred();
+    const archiveHold = await holdAtWrite(
+      archiveWrite('workflow', archiveFirst.workflowId),
+    );
     const archiveApplication = `laf-${randomUUID()}`;
     const archiveFirstCommand = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, archiveApplication),
         max: 1,
       }),
-      {
-        testHooks: {
-          afterLifecycleStep: async (step) => {
-            if (step !== 'workflow') return;
-            archiveLocked.resolve();
-            await releaseArchive.promise;
-          },
-        },
-      },
     );
     const archiveFirstPublisherApplication = `lafp-${randomUUID()}`;
     const archiveFirstPublisher = createWorkflowAuthoringDatabase(
@@ -224,7 +209,7 @@ describe('workflow lifecycle command persistence', () => {
         workspaceId,
       });
       await waitForOperationEntry(
-        archiveLocked.promise,
+        archiveHold.reached(),
         archive,
         'archive-first lifecycle command',
       );
@@ -242,7 +227,7 @@ describe('workflow lifecycle command persistence', () => {
         workspaceId,
       });
       await waitForPostgresLock(archiveFirstPublisherApplication);
-      releaseArchive.resolve();
+      await archiveHold.release();
       await expect(archive).resolves.toMatchObject({
         workflow: { lifecycleStatus: 'archived', publishedVersionId: null },
       });
@@ -258,11 +243,12 @@ describe('workflow lifecycle command persistence', () => {
         auditEvents: 1,
       });
     } finally {
-      releaseArchive.resolve();
+      await archiveHold.release();
       await Promise.all([
         archiveFirstCommand.close(),
         archiveFirstPublisher.close(),
       ]);
+      await archiveHold.remove();
     }
 
     const publicationFirst = await authoring.createWorkflow({
@@ -272,8 +258,9 @@ describe('workflow lifecycle command persistence', () => {
       name: 'Lifecycle publication first',
       workspaceId,
     });
-    const publishLocked = deferred();
-    const releasePublish = deferred();
+    const publishHold = await holdAtWrite(
+      publicationWrite('version', publicationFirst.workflowId),
+    );
     const publicationFirstApplication = `lpf-${randomUUID()}`;
     const publicationFirstPublisher = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({
@@ -283,14 +270,6 @@ describe('workflow lifecycle command persistence', () => {
         ),
         max: 1,
       }),
-      {
-        testHooks: {
-          afterPublishDraftLock: async () => {
-            publishLocked.resolve();
-            await releasePublish.promise;
-          },
-        },
-      },
     );
     const publicationFirstArchiveApplication = `lpfa-${randomUUID()}`;
     const publicationFirstArchive = createWorkflowAuthoringDatabase(
@@ -317,7 +296,7 @@ describe('workflow lifecycle command persistence', () => {
         workspaceId,
       });
       await waitForOperationEntry(
-        publishLocked.promise,
+        publishHold.reached(),
         publish,
         'publication-first command',
       );
@@ -330,7 +309,7 @@ describe('workflow lifecycle command persistence', () => {
         workspaceId,
       });
       await waitForPostgresLock(publicationFirstArchiveApplication);
-      releasePublish.resolve();
+      await publishHold.release();
       const publication = await publish;
       expect(publication).toMatchObject({
         version: { workflowId: publicationFirst.workflowId },
@@ -351,11 +330,12 @@ describe('workflow lifecycle command persistence', () => {
         auditEvents: 1,
       });
     } finally {
-      releasePublish.resolve();
+      await publishHold.release();
       await Promise.all([
         publicationFirstPublisher.close(),
         publicationFirstArchive.close(),
       ]);
+      await publishHold.remove();
     }
   });
 });

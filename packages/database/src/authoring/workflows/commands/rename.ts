@@ -33,7 +33,7 @@ const requestIdSchema = z.string().max(128);
 type WorkflowRenameStore = Pick<WorkflowAuthoringDatabase, 'renameWorkflow'>;
 type WorkflowRenameContext = Pick<
   WorkflowAuthoringWriteContext,
-  'requireAuthor' | 'testHooks' | 'transact'
+  'requireAuthor' | 'transact'
 >;
 
 type RenameCommand = Readonly<{
@@ -105,7 +105,6 @@ async function applyRename(
   if (row === undefined)
     throw new WorkflowNameRevisionConflictError(current.nameRevision);
   const renamed = mapWorkflow(row);
-  await context.testHooks?.afterRenameStep?.('workflow');
   await client.query(
     `insert into app.audit_events
        (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,
@@ -126,7 +125,6 @@ async function applyRename(
       }),
     ],
   );
-  await context.testHooks?.afterRenameStep?.('audit');
   return renamed;
 }
 
@@ -156,7 +154,6 @@ async function renameWorkflow(
         },
       };
       const replay = await claimWorkflowCommand(client, claim);
-      await context.testHooks?.afterRenameStep?.('claim');
       if (replay !== null)
         return Object.freeze({ replayed: true, workflow: replay });
 
@@ -166,7 +163,6 @@ async function renameWorkflow(
           ? current
           : await applyRename(client, context, command, current);
       await completeWorkflowCommand(client, claim, workflow);
-      await context.testHooks?.afterRenameStep?.('idempotency');
       return Object.freeze({ replayed: false, workflow });
     },
   );
