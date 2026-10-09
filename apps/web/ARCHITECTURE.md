@@ -343,7 +343,7 @@ unload warning is not durable recovery.
 | ------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
 | HTTP request/response schemas and inferred types        | `packages/contracts/src/http/*` and public package exports    | Reviewed public schema/type subpaths only                 |
 | Problem codes and shapes                                | `@pertexo/contracts/errors` plus endpoint-specific extensions | Parse once at the transport/endpoint boundary             |
-| Graph, node, edge, mapping value shapes                 | `@pertexo/workflow-model/graph-contract`                      | Shared portable validation/types, not copied interfaces   |
+| Graph, node, edge, mapping value shapes                 | `@pertexo/workflow-model`                                     | Shared portable validation/types, not copied interfaces   |
 | Definition identities/config schemas/ports/availability | Authenticated catalog API                                     | Query live release; do not bundle an independent registry |
 | UI node appearance, field state, edit commands          | Owning frontend feature                                       | Local types, referring to shared domain types             |
 | ORM records, persistence envelopes, use-case types      | Backend/database packages                                     | Never imported by the web app                             |
@@ -352,11 +352,10 @@ unload warning is not durable recovery.
 Relevant existing contracts include `/identity-workspace`, `/catalog`,
 `/workflow-authoring`, `/workflow-runs`, `/connections`, `/node-testing`,
 `/artifacts`, `/webhooks`, `/schedules`, `/transport` and `/errors`. Do not
-import the contracts root by habit. Browser-usable workflow-model leaves include
-`/graph-contract`, `/lifecycle`, `/json-path` and `/failure-notification` when a
-real use requires them. Its root, `/graph`, `/canonical-json`, `/mapping` and
-`/expressions` are not browser exports. Do not import node executors or
-`@pertexo/node-sdk/server` just to obtain a type.
+import the contracts root by habit. `@pertexo/workflow-model` is browser-safe;
+`@pertexo/workflow-model/server` (checksums, expressions, authoring validation)
+is not. Do not import node executors or `@pertexo/node-sdk/server` just to
+obtain a type.
 
 **Package prerequisite:** several contracts entrypoints currently construct
 client/OpenAPI projections at module initialization; see
@@ -3853,13 +3852,12 @@ node for N4 as part of that review. Payments remain excluded.
   Use schemas for field suggestions/descriptions, not as proof of runtime data.
   Dynamic object schemas need custom top-level keys; bounded support must not
   make `core.set` unusable merely because it lacks enumerated properties.
-- Reuse the existing browser-safe `@pertexo/workflow-model/json-path` parser
-  after confirming its package export and browser allowlist. Its dialect
-  supports `$`, dot properties, numeric array indices and quoted bracket
-  properties; no wildcard, filter or JSONata syntax in a path field. Do not
-  import server-only mapping/expression modules or implement a second parser.
-  Add only a narrowly reviewed schema-only contract export if individual mapping
-  validation needs it.
+- Reuse the existing browser-safe `parseJsonPath` from
+  `@pertexo/workflow-model`. Its dialect supports `$`, dot properties, numeric
+  array indices and quoted bracket properties; no wildcard, filter or JSONata
+  syntax in a path field. Do not import server-only mapping/expression modules
+  or implement a second parser. Add only a narrowly reviewed schema-only
+  contract export if individual mapping validation needs it.
 
 ##### UI and ownership
 
