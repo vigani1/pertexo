@@ -5,19 +5,19 @@ import type { Job as BullMqJob, Processor } from 'bullmq';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 
-import type { QueueJob } from './contracts.js';
-import { admitQueueDelivery } from './delivery-admission.js';
-export { InvalidQueueDeliveryError } from './delivery-admission.js';
-import { QUEUE_CLASS_DEFAULTS } from './defaults.js';
-import { QUEUE_NAME, type QueueName } from './names.js';
+import type { QueueJob } from './jobs/contracts.js';
+import { admitQueueDelivery } from './jobs/delivery-admission.js';
+export { InvalidQueueDeliveryError } from './jobs/delivery-admission.js';
+import { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
+import { QUEUE_NAME, type QueueName } from './jobs/names.js';
 import {
   instrumentRedisCommands,
   notifyRedisConnectionEvent,
   observeRedisOperation,
   type RedisTelemetryObserver,
-} from './redis-telemetry-contracts.js';
-import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
-import { normalizeRedisEndpoint } from './redis-endpoint.js';
+} from './redis/telemetry-contracts.js';
+import { createProductionRedisTelemetryObserver } from './redis/telemetry.js';
+import { normalizeRedisEndpoint } from './redis/endpoint.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;
 const MAX_CONFIGURED_TIMEOUT_MS = 60 * 60_000;

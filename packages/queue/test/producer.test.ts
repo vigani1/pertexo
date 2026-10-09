@@ -74,8 +74,8 @@ import {
   createQueueProducer,
   jobIdForOutboxEvent,
 } from '../src/producer.js';
-import { JOB_NAME, QUEUE_NAME } from '../src/names.js';
-import type { RedisTelemetryObserver } from '../src/redis-telemetry-contracts.js';
+import { JOB_NAME, QUEUE_NAME } from '../src/jobs/names.js';
+import type { RedisTelemetryObserver } from '../src/redis/telemetry-contracts.js';
 
 const IDS = {
   workspaceId: '11111111-1111-4111-8111-111111111111',

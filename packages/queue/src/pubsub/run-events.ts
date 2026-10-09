@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
   BoundedRedisPublisher,
   type BoundedRedisPublisherOptions,
-} from './redis-bounded-publisher.js';
+} from './bounded-publisher.js';
 
 const MAX_LIVE_MESSAGE_BYTES = 512;
 const identitySchema = z

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { QUEUE_CLASS_DEFAULTS } from '../src/defaults.js';
-import { QUEUE_NAME } from '../src/names.js';
+import { QUEUE_CLASS_DEFAULTS } from '../src/jobs/defaults.js';
+import { QUEUE_NAME } from '../src/jobs/names.js';
 
 describe('queue-class defaults', () => {
   it('defines transport-only retry and bounded retention for every queue', () => {

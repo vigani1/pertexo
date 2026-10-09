@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeRedisEndpoint,
   type RedisEndpointErrorReason,
-} from '../src/redis-endpoint.js';
+} from '../src/redis/endpoint.js';
 
 class EndpointPolicyError extends Error {
   constructor(readonly reason: RedisEndpointErrorReason) {

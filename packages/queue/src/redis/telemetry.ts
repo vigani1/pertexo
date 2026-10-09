@@ -5,7 +5,7 @@ import type {
   RedisConnectionEvent,
   RedisOperationObservation,
   RedisTelemetryObserver,
-} from './redis-telemetry-contracts.js';
+} from './telemetry-contracts.js';
 
 export const REDIS_METRIC_NAME = Object.freeze({
   connectionEventCount: 'pertexo.redis.connection.event.count',

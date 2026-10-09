@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
   BoundedRedisPublisher,
   type BoundedRedisPublisherOptions,
-} from './redis-bounded-publisher.js';
+} from './bounded-publisher.js';
 
 /** Largest hint a subscriber accepts; anything larger is discarded. */
 const MAX_HINT_BYTES = 256;

@@ -3,22 +3,22 @@ import type { JobsOptions } from 'bullmq';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 
-import { QUEUE_CLASS_DEFAULTS } from './defaults.js';
-import { parseQueueJob, type QueueJob } from './contracts.js';
+import { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
+import { parseQueueJob, type QueueJob } from './jobs/contracts.js';
 import {
   QUEUE_FOR_JOB,
   QUEUE_NAME,
   type JobName,
   type QueueName,
-} from './names.js';
+} from './jobs/names.js';
 import {
   instrumentRedisCommands,
   notifyRedisConnectionEvent,
   observeRedisOperation,
   type RedisTelemetryObserver,
-} from './redis-telemetry-contracts.js';
-import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
-import { normalizeRedisEndpoint } from './redis-endpoint.js';
+} from './redis/telemetry-contracts.js';
+import { createProductionRedisTelemetryObserver } from './redis/telemetry.js';
+import { normalizeRedisEndpoint } from './redis/endpoint.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;
 const DEFAULT_PUBLISH_TIMEOUT_MS = 5_000;
