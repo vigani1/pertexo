@@ -1,4 +1,3 @@
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import type {
   PreviewRunRecord,
   WorkflowDraftRecord,
@@ -55,7 +54,7 @@ export function nodeTestingDraft(
     graphJson: httpNodeTestingGraph(),
     compatibility: {
       compatible: true,
-      fingerprint: PLATFORM_REGISTRY_RELEASE.fingerprint,
+      fingerprint: `wf-compat:v1:sha256:${'c'.repeat(64)}`,
       issues: [],
     },
     updatedBy: nodeTestingIds.actorId,

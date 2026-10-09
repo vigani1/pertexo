@@ -38,12 +38,7 @@ export const workspace = {
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
 };
-const release = {
-  epoch: 1,
-  fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-};
 export const definition = {
-  schemaVersion: 1,
   definition: { key: 'core.set', version: 1 },
   family: 'transform',
   configVersion: 1,
@@ -70,9 +65,6 @@ export const definition = {
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: [],
-  lifecycle: 'active',
-  available: true,
-  publishable: true,
 };
 export const manualDefinition = {
   ...definition,
@@ -127,10 +119,10 @@ export async function installEditorRoutes(
     route.fulfill({ json: { items: [accessibleWorkspace], nextCursor: null } }),
   );
   await page.route('**/v1/node-definitions', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, release, items: definitions } }),
+    route.fulfill({ json: { schemaVersion: 1, items: definitions } }),
   );
   await page.route('**/v1/integrations', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, release, items: [] } }),
+    route.fulfill({ json: { schemaVersion: 1, items: [] } }),
   );
   await page.route(`**/v1/workspaces/${workspaceId}/connections?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),

@@ -238,14 +238,13 @@ describe('workflow list view', () => {
 });
 
 describe('starter patterns', () => {
-  it('offers a starter only when every step is available and publishable', () => {
+  it('offers a starter only when the catalog has every step', () => {
     const catalog = catalogOf([
       catalogDefinition('core.webhook', 'trigger'),
       catalogDefinition('http.request', 'action'),
       catalogDefinition('http.request', 'action', { version: 3 }),
       catalogDefinition('slack.send_message', 'action'),
       catalogDefinition('core.schedule', 'trigger'),
-      catalogDefinition('core.validate', 'transform', { publishable: false }),
       catalogDefinition('email.send_notification', 'action'),
     ]);
     const starters = availableStarters(catalog);

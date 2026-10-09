@@ -5,6 +5,7 @@ import {
   projectWorkflowPortableManifest,
   type WorkflowPortabilityCatalog,
 } from '@pertexo/workflow-model';
+import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   WorkflowPortabilityCompatibilityConflictError,
@@ -15,7 +16,6 @@ import type { ImportWorkflowInput } from '../src/authoring/workflow-authoring-co
 import { workflowImportCommandDigest } from '../src/authoring/workflow-authoring-portability.js';
 import type { WorkflowAuthoringDatabaseOptions } from '../src/authoring/workflow-authoring-types.js';
 import {
-  BASELINE_RELEASE_FINGERPRINT,
   actorId,
   otherActorId,
   workspaceId,
@@ -53,11 +53,9 @@ import {
 
 const catalog = {
   schemaVersion: 1 as const,
-  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
   definitions: [{ key: 'test.placeholder', version: 1 }],
 };
 const portableCatalog: WorkflowPortabilityCatalog = {
-  fingerprint: catalog.releaseFingerprint,
   definitions: [
     {
       key: 'test.placeholder',
@@ -67,11 +65,9 @@ const portableCatalog: WorkflowPortabilityCatalog = {
       validateConfig: () => true,
     },
   ],
-  selectionFingerprint: () => `node-select:v1:sha256:${'1'.repeat(64)}`,
 };
 const options: WorkflowAuthoringDatabaseOptions = {
   definitionCatalog: catalog,
-  placementDefinitionCatalog: catalog,
   portableCatalog,
 };
 const databases: ReturnType<typeof createWorkflowAuthoringDatabase>[] = [];
@@ -95,7 +91,8 @@ function command(
       portableCatalog,
     ),
     bindings: [],
-    expectedCompatibilityFingerprint: catalog.releaseFingerprint,
+    expectedCompatibilityFingerprint:
+      workflowDefinitionCatalogFingerprint(catalog),
     idempotencyKey: randomUUID(),
     ...extra,
   };
@@ -125,23 +122,19 @@ describe('portable workflow persistence under the API role', () => {
       ({ templateId }) => templateId === 'webhook-validation-routing',
     );
     if (template === undefined) throw new Error('Expected a curated template');
-    const { definitions, selectionFingerprint } =
-      template.manifest.requirements;
+    const { definitions } = template.manifest.requirements;
     const templateCatalog = {
       ...catalog,
       definitions: definitions.map(({ key, version }) => ({ key, version })),
     };
     const db = database({
       definitionCatalog: templateCatalog,
-      placementDefinitionCatalog: templateCatalog,
       portableCatalog: {
-        fingerprint: catalog.releaseFingerprint,
         definitions: definitions.map((definition) => ({
           ...definition,
           slots: [],
           validateConfig: () => true,
         })),
-        selectionFingerprint: () => selectionFingerprint,
         validateTemplateSetup: () => true,
       },
     });
@@ -151,7 +144,12 @@ describe('portable workflow persistence under the API role', () => {
       templateVersion: template.templateVersion,
       baseManifestDigest: template.baseManifestDigest,
     };
-    const input = command({ manifest: template.manifest, templateOrigin });
+    const input = command({
+      manifest: template.manifest,
+      templateOrigin,
+      expectedCompatibilityFingerprint:
+        workflowDefinitionCatalogFingerprint(templateCatalog),
+    });
     const { workflowId } = await db.importWorkflow(input);
     expect(
       await db.getWorkflowWithTemplateOrigin(workspaceId, workflowId, actorId),
@@ -170,7 +168,11 @@ describe('portable workflow persistence under the API role', () => {
       },
     };
     await expect(
-      db.importWorkflow(command({ manifest: changed, templateOrigin })),
+      db.importWorkflow({
+        ...input,
+        manifest: changed,
+        idempotencyKey: randomUUID(),
+      }),
     ).rejects.toBeInstanceOf(WorkflowPortabilityValidationError);
   });
 
@@ -225,16 +227,13 @@ describe('portable workflow persistence under the API role', () => {
     const result = await first.importWorkflow(input);
     await first.close();
     const restarted = database({
-      portableCatalog: {
-        ...portableCatalog,
-        fingerprint: 'unavailable-after-restart',
-      },
+      definitionCatalog: { ...catalog, definitions: [] },
     });
     expect(await restarted.importWorkflow(input)).toEqual(result);
     for (const changed of [
       { name: 'Changed' },
       {
-        expectedCompatibilityFingerprint: `node-compat:v1:sha256:${'0'.repeat(64)}`,
+        expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'0'.repeat(64)}`,
       },
       {
         manifest: {
@@ -310,7 +309,7 @@ describe('portable workflow persistence under the API role', () => {
     await expect(
       db.importWorkflow(
         command({
-          expectedCompatibilityFingerprint: `node-compat:v1:sha256:${'0'.repeat(64)}`,
+          expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'0'.repeat(64)}`,
         }),
       ),
     ).rejects.toBeInstanceOf(WorkflowPortabilityCompatibilityConflictError);
@@ -434,7 +433,6 @@ describe('portable workflow persistence under the API role', () => {
     };
     const db = database({
       definitionCatalog: scopedCatalog,
-      placementDefinitionCatalog: scopedCatalog,
       portableCatalog: scopedPortableCatalog,
     });
     const destinationConnection = randomUUID(),
@@ -516,6 +514,8 @@ describe('portable workflow persistence under the API role', () => {
             connectionId: destinationConnection,
           },
         ],
+        expectedCompatibilityFingerprint:
+          workflowDefinitionCatalogFingerprint(scopedCatalog),
       });
       expect(
         (

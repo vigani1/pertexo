@@ -40,10 +40,7 @@ async function sourceGraph(page: Page) {
     x: number,
   ): WorkflowGraphContract['nodes'][number] {
     const entry = catalog.items
-      .filter(
-        (item) =>
-          item.definition.key === key && item.available && item.publishable,
-      )
+      .filter((item) => item.definition.key === key)
       .sort((a, b) => b.definition.version - a.definition.version)[0];
     if (entry === undefined) throw new Error(`Live catalog missing ${key}`);
     return {

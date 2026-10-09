@@ -17,7 +17,6 @@ export const CORE_CONDITION_EXECUTOR = Object.freeze({
 });
 
 export const CORE_CONDITION_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_CONDITION_DEFINITION,
   family: 'logic',
   configVersion: 1,
@@ -33,7 +32,6 @@ export const CORE_CONDITION_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze([]),
-  lifecycle: 'active',
   executor: CORE_CONDITION_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([

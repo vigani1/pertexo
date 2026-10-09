@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRegistryRelease } from '@pertexo/node-sdk';
+import { createNodeCatalog } from '@pertexo/node-sdk';
 import {
   NodeExecutionAbortedError,
   createNodeRegistry,
@@ -25,8 +25,7 @@ import {
 } from '../src/index.js';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '../src/server.js';
 
-const release = createRegistryRelease({
-  epoch: 1,
+const catalog = createNodeCatalog({
   definitions: CORE_NODE_DEFINITION_REGISTRATIONS.map(
     ({ manifest }) => manifest,
   ),
@@ -34,14 +33,13 @@ const release = createRegistryRelease({
     abiVersion: registration.abiVersion,
     definitions: registration.definitions,
     executor: registration.executor,
-    lifecycle: registration.lifecycle,
     policyReferences: registration.policyReferences,
   })),
   policies: [CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY],
 });
 
 const registry = createNodeRegistry({
-  release,
+  catalog,
   definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
   executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
 });

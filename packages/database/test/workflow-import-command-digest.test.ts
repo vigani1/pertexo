@@ -15,15 +15,12 @@ describe('workflow import command digest', () => {
           edges: [],
           settings: {},
         },
-        requirements: {
-          definitions: [],
-          selectionFingerprint: `node-select:v1:sha256:${'a'.repeat(64)}`,
-        },
+        requirements: { definitions: [] },
         connectionSlots: [],
       },
       bindings: [],
       name: 'Example',
-      expectedCompatibilityFingerprint: `node-compat:v1:sha256:${'b'.repeat(64)}`,
+      expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'b'.repeat(64)}`,
     };
     const scope = {
       workspaceId: randomUUID(),

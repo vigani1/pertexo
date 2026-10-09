@@ -3,7 +3,7 @@ import type {
   ExecutorIdentity,
   NodeManifest,
   PolicyReference,
-  RegistryRelease,
+  NodeCatalog,
 } from '@pertexo/node-sdk';
 import type {
   WorkflowEdge,
@@ -21,10 +21,10 @@ import {
 import { compareOrdinal, fail, sameIdentity } from './foundation.js';
 
 export function definitionManifest(
-  release: RegistryRelease,
+  catalog: NodeCatalog,
   definition: DefinitionIdentity,
 ): NodeManifest {
-  const manifest = release.definitions.find((candidate) =>
+  const manifest = catalog.definitions.find((candidate) =>
     sameIdentity(candidate.definition, definition),
   );
   if (manifest === undefined) fail('node definition is unavailable');
@@ -32,10 +32,10 @@ export function definitionManifest(
 }
 
 export function executorManifest(
-  release: RegistryRelease,
+  catalog: NodeCatalog,
   executor: ExecutorIdentity,
 ) {
-  const manifest = release.executors.find((candidate) =>
+  const manifest = catalog.executors.find((candidate) =>
     sameIdentity(candidate.executor, executor),
   );
   if (manifest === undefined) fail('node executor is unavailable');
@@ -50,13 +50,13 @@ export function canonicalEdges(graph: WorkflowGraph): readonly WorkflowEdge[] {
 
 export function assertGraphPorts(
   graph: WorkflowGraph,
-  release: RegistryRelease,
+  catalog: NodeCatalog,
   index: GraphValidationIndex,
 ): void {
   const manifests = new Map(
     graph.nodes.map((node) => [
       node.id,
-      definitionManifest(release, node.definition),
+      definitionManifest(catalog, node.definition),
     ]),
   );
   for (const edge of graph.edges) {

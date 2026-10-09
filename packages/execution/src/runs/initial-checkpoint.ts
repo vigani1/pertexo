@@ -17,7 +17,7 @@ export const ENGINE_VERSION = 'phase3-engine-v1';
 
 /**
  * The first checkpoint of a new run of a published workflow, for every way a
- * run starts. Throws `WorkflowEngineError` when this release cannot run it.
+ * run starts. Throws `WorkflowEngineError` when the served catalog cannot run it.
  */
 export function createInitialCheckpoint(
   projection: PublishedWorkflowV2Projection,
@@ -35,7 +35,7 @@ export function createInitialCheckpoint(
   });
 }
 
-/** The factory every run start takes, bound to the served release. */
+/** The factory every run start takes, bound to the served catalog. */
 export function initialCheckpointFactory(
   verification: PersistedWorkflowProjectionVerificationOptions,
 ): InitialCheckpointFactory {

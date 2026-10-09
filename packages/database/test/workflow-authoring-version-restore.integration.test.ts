@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BASELINE_RELEASE_FINGERPRINT,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   actorId,
@@ -41,7 +40,6 @@ function graphWithDuration(duration: number) {
 
 const blockedDefinitionCatalog = Object.freeze({
   schemaVersion: 1 as const,
-  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
   definitions: Object.freeze([
     Object.freeze({ key: 'test.blocked', version: 1 }),
   ]),
@@ -49,7 +47,6 @@ const blockedDefinitionCatalog = Object.freeze({
 
 const currentDefinitionCatalog = Object.freeze({
   ...testDefinitionCatalog,
-  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
 });
 
 async function createRestoreFixture(
@@ -440,14 +437,12 @@ describe('workflow version restoration persistence', () => {
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
         definitionCatalog: blockedDefinitionCatalog,
-        placementDefinitionCatalog: blockedDefinitionCatalog,
       },
     );
     const rejectingAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
         definitionCatalog: currentDefinitionCatalog,
-        placementDefinitionCatalog: currentDefinitionCatalog,
       },
     );
     try {

@@ -8,7 +8,7 @@ import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   executeNodeAttempt,
   invocationKey,
@@ -16,7 +16,7 @@ import {
 } from '../src/index.js';
 import {
   graph,
-  nodeRelease,
+  nodeCatalog,
   completedOutputs,
 } from './executable-workflow.fixtures.js';
 
@@ -45,7 +45,7 @@ function mappedExecutable() {
   });
   return buildWorkflowExecutable({
     graph: mappedGraph,
-    release: composeExecutableCompatibilityRelease(nodeRelease()),
+    catalog: composeExecutableCatalog(nodeCatalog()),
   });
 }
 
@@ -53,8 +53,8 @@ describe('input resolution production operations', () => {
   it.each([2, 3] as const)(
     'treats Schedule V%s envelopes as coordinator-owned trigger input',
     async (version) => {
-      const release = composeExecutableCompatibilityRelease(
-        nodeRelease({ schedule: true, scheduleVersion: version }),
+      const catalog = composeExecutableCatalog(
+        nodeCatalog({ schedule: true, scheduleVersion: version }),
       );
       const scheduledGraph = graph();
       const trigger = scheduledGraph.nodes[0];
@@ -70,7 +70,7 @@ describe('input resolution production operations', () => {
       });
       const executable = buildWorkflowExecutable({
         graph: scheduledGraph,
-        release,
+        catalog,
       });
       const envelope = {
         schemaVersion: 1,
@@ -110,8 +110,8 @@ describe('input resolution production operations', () => {
   );
 
   it('requires canonical UUID output locators bound to inline attempt identity', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -255,7 +255,7 @@ describe('input resolution production operations', () => {
     });
     const executable = buildWorkflowExecutable({
       graph: mappedGraph,
-      release: composeExecutableCompatibilityRelease(nodeRelease()),
+      catalog: composeExecutableCatalog(nodeCatalog()),
     });
     const runInput = {
       customer: { id: 'customer-7', name: 'Ada' },
@@ -522,8 +522,8 @@ describe('input resolution production operations', () => {
   });
 
   it('contains hostile registry and expression-evaluator rejections', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const expressionGraph = structuredClone(graph());
     Object.assign(expressionGraph.nodes[1], {
       inputMappings: {
@@ -537,7 +537,7 @@ describe('input resolution production operations', () => {
     });
     const expressionExecutable = buildWorkflowExecutable({
       graph: expressionGraph,
-      release,
+      catalog,
     });
     const throwingName = new Error('private registry message');
     Object.defineProperty(throwingName, 'name', {
@@ -618,15 +618,13 @@ describe('input resolution production operations', () => {
     ['core.schedule', { schedule: true }],
   ] as const)(
     'passes accepted run input to a %s trigger root',
-    async (key, releaseOptions) => {
+    async (key, catalogOptions) => {
       const triggerGraph = structuredClone(graph());
       const trigger = triggerGraph.nodes[0];
       Object.assign(trigger, { definition: { key, version: 1 } });
       const executable = buildWorkflowExecutable({
         graph: triggerGraph,
-        release: composeExecutableCompatibilityRelease(
-          nodeRelease(releaseOptions),
-        ),
+        catalog: composeExecutableCatalog(nodeCatalog(catalogOptions)),
       });
       const runInput = { accepted: true, source: key };
 
@@ -707,7 +705,7 @@ describe('input resolution production operations', () => {
   });
 
   it('classifies aggregate mapped-input overflow as an invalid attempt', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const catalog = composeExecutableCatalog(nodeCatalog());
     const repeatedGraph = structuredClone(graph());
     Object.assign(repeatedGraph.nodes[1], {
       inputMappings: {
@@ -717,7 +715,7 @@ describe('input resolution production operations', () => {
     });
     const executable = buildWorkflowExecutable({
       graph: repeatedGraph,
-      release,
+      catalog,
     });
     let executions = 0;
     await expect(

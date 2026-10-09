@@ -15,7 +15,6 @@ import {
   WorkflowRevisionConflictError,
   type WorkflowDraftRecord,
 } from '@pertexo/database/authoring';
-import type { RegistryRelease } from '@pertexo/node-sdk';
 import {
   canonicalJson,
   type JsonValue,
@@ -106,7 +105,6 @@ export class TestWorkflowNodeUseCase {
       'acceptPreview' | 'getDraft' | 'resolvePreviewReplay'
     >,
     private readonly authorization: Authorization,
-    private readonly release: RegistryRelease,
     private readonly now: () => Date = () => new Date(),
     private readonly expressionEvaluator?: ExpressionEvaluator,
   ) {}
@@ -151,7 +149,6 @@ export class TestWorkflowNodeUseCase {
     const prepared = await prepareNodeValidation({
       graph,
       nodeId: input.nodeId,
-      release: this.release,
       ...(this.expressionEvaluator === undefined
         ? {}
         : { expressionEvaluator: this.expressionEvaluator }),

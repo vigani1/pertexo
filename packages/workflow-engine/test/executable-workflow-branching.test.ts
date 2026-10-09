@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   executeNodeAttempt,
   invocationKey,
 } from '../src/index.js';
 import {
-  nodeRelease,
+  nodeCatalog,
   conditionGraph,
   switchGraph,
   pairedParallelGraph,
@@ -19,8 +19,8 @@ import {
 
 describe('branching production operations', () => {
   it('advances only through the verified V2 graph and rejects malformed observations', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const checkpoint = createCheckpoint({
       engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
@@ -106,12 +106,10 @@ describe('branching production operations', () => {
 
   it('accepts canonical branch-scoped checkpoint V2 identity', async () => {
     const workflowVersionId = '00000000-0000-4000-8000-000000000007';
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ condition: true }),
-    );
+    const catalog = composeExecutableCatalog(nodeCatalog({ condition: true }));
     const executable = buildWorkflowExecutable({
       graph: conditionGraph('true'),
-      release,
+      catalog,
     });
     const conditionKey = invocationKey({
       workflowVersionId,
@@ -207,9 +205,7 @@ describe('branching production operations', () => {
 
   it('derives a Condition selection only from its persisted inline output', async () => {
     const workflowVersionId = '00000000-0000-4000-8000-000000000007';
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ condition: true }),
-    );
+    const catalog = composeExecutableCatalog(nodeCatalog({ condition: true }));
     const condition = conditionGraph('true');
     const executable = buildWorkflowExecutable({
       graph: {
@@ -227,7 +223,7 @@ describe('branching production operations', () => {
           },
         ],
       },
-      release,
+      catalog,
     });
     const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
     const conditionKey = invocationKey({
@@ -313,9 +309,7 @@ describe('branching production operations', () => {
 
   it('derives a Switch selection only from its persisted inline output', async () => {
     const workflowVersionId = '00000000-0000-4000-8000-000000000005';
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ switch: true }),
-    );
+    const catalog = composeExecutableCatalog(nodeCatalog({ switch: true }));
     const selected = switchGraph('case-02');
     const executable = buildWorkflowExecutable({
       graph: {
@@ -339,7 +333,7 @@ describe('branching production operations', () => {
           },
         ],
       },
-      release,
+      catalog,
     });
     const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
     const switchKey = invocationKey({ workflowVersionId, nodeId: 'switch' });
@@ -428,12 +422,12 @@ describe('branching production operations', () => {
     'fans out Parallel V%s and supplies its paired Merge settled input',
     async (structuredVersion) => {
       const workflowVersionId = '00000000-0000-4000-8000-000000000003';
-      const release = composeExecutableCompatibilityRelease(
-        nodeRelease({ parallel: true, merge: true, structuredVersion }),
+      const catalog = composeExecutableCatalog(
+        nodeCatalog({ parallel: true, merge: true, structuredVersion }),
       );
       const executable = buildWorkflowExecutable({
         graph: pairedParallelGraph(structuredVersion),
-        release,
+        catalog,
       });
       const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
       const parallelKey = invocationKey({
@@ -651,12 +645,12 @@ describe('branching production operations', () => {
 
   it('settles direct Parallel-to-Merge branches as explicitly missing', async () => {
     const workflowVersionId = '00000000-0000-4000-8000-000000000008';
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ parallel: true, merge: true }),
+    const catalog = composeExecutableCatalog(
+      nodeCatalog({ parallel: true, merge: true }),
     );
     const executable = buildWorkflowExecutable({
       graph: directPairedParallelGraph(),
-      release,
+      catalog,
     });
     const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
     const parallelKey = invocationKey({

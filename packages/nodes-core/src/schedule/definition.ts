@@ -1,8 +1,4 @@
-import {
-  generateSchemaDocument,
-  type NodeManifest,
-  type NodeManifestV2,
-} from '@pertexo/node-sdk';
+import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 
 import { CORE_BOUNDED_JSON_POLICY } from '../policies.js';
 import {
@@ -23,7 +19,6 @@ export const CORE_SCHEDULE_EXECUTOR = Object.freeze({
   version: 1,
 });
 export const CORE_SCHEDULE_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_SCHEDULE_DEFINITION,
   family: 'trigger',
   configVersion: 1,
@@ -39,7 +34,6 @@ export const CORE_SCHEDULE_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze(['schedule']),
-  lifecycle: 'active',
   executor: CORE_SCHEDULE_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
@@ -61,9 +55,8 @@ export const CORE_SCHEDULE_EXECUTOR_V3 = Object.freeze({
   key: 'core.schedule',
   version: 3,
 });
-export const CORE_SCHEDULE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
+export const CORE_SCHEDULE_MANIFEST_V2: NodeManifest = Object.freeze({
   ...CORE_SCHEDULE_MANIFEST,
-  schemaVersion: 2,
   definition: CORE_SCHEDULE_DEFINITION_V2,
   configVersion: 2,
   configSchema: generateSchemaDocument(CORE_SCHEDULE_CONFIG_SCHEMA_V2),
@@ -73,7 +66,7 @@ export const CORE_SCHEDULE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
   executorAbi: 1,
 });
 
-export const CORE_SCHEDULE_MANIFEST_V3: NodeManifestV2 = Object.freeze({
+export const CORE_SCHEDULE_MANIFEST_V3: NodeManifest = Object.freeze({
   ...CORE_SCHEDULE_MANIFEST_V2,
   definition: CORE_SCHEDULE_DEFINITION_V3,
   configVersion: 3,

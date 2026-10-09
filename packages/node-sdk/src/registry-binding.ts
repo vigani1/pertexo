@@ -1,10 +1,10 @@
 import { NodeRegistryCompatibilityError } from './executor-errors.js';
 import { identityToken, sameIdentity } from './identity.js';
 import type { NodeRegistryOptions } from './executor-contracts.js';
-import type { ExecutorIdentity, NodeManifest } from './release.js';
+import type { ExecutorIdentity, NodeManifest } from './catalog.js';
 
-/** Bind local schemas/execution to an already approved immutable release. */
-export function bindRegistryRelease(
+/** Bind local schemas and executors to the served node catalog. */
+export function bindNodeCatalog(
   options: NodeRegistryOptions,
 ): NodeRegistryOptions {
   const definitions = new Map(
@@ -20,9 +20,9 @@ export function bindRegistryRelease(
     ]),
   );
   return Object.freeze({
-    release: options.release,
+    catalog: options.catalog,
     definitions: Object.freeze(
-      options.release.definitions.map((manifest) => {
+      options.catalog.definitions.map((manifest) => {
         const registration = definitions.get(
           identityToken(manifest.definition),
         );
@@ -34,7 +34,7 @@ export function bindRegistryRelease(
       }),
     ),
     executors: Object.freeze(
-      options.release.executors.map((manifest) => {
+      options.catalog.executors.map((manifest) => {
         const registration = executors.get(identityToken(manifest.executor));
         if (registration === undefined)
           throw new NodeRegistryCompatibilityError(

@@ -3,12 +3,12 @@ import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
 } from '../src/index.js';
 import {
   conditionGraph,
   nestedForEachGraph,
-  nodeRelease,
+  nodeCatalog,
   pairedParallelGraph,
   switchGraph,
 } from './executable-workflow.fixtures.js';
@@ -18,19 +18,19 @@ describe('persisted control-output selection', () => {
     {
       name: 'Condition',
       graph: conditionGraph('true'),
-      release: nodeRelease({ condition: true }),
+      catalog: nodeCatalog({ condition: true }),
       expected: ['condition'],
     },
     {
       name: 'Switch',
       graph: switchGraph('case-01'),
-      release: nodeRelease({ switch: true }),
+      catalog: nodeCatalog({ switch: true }),
       expected: ['switch'],
     },
     ...([1, 2, 3] as const).map((version) => ({
       name: `Parallel v${String(version)}`,
       graph: pairedParallelGraph(version),
-      release: nodeRelease({
+      catalog: nodeCatalog({
         parallel: true,
         merge: true,
         structuredVersion: version,
@@ -40,15 +40,15 @@ describe('persisted control-output selection', () => {
     {
       name: 'nested For Each',
       graph: nestedForEachGraph(),
-      release: nodeRelease({ forEach: true }),
+      catalog: nodeCatalog({ forEach: true }),
       expected: ['loop', 'body-first'],
     },
   ])(
     'finds $name nodes in the serialized compiled V2 envelope',
-    ({ graph, release, expected }) => {
+    ({ graph, catalog, expected }) => {
       const executable = buildWorkflowExecutable({
         graph,
-        release: composeExecutableCompatibilityRelease(release),
+        catalog: composeExecutableCatalog(catalog),
       });
       const persisted = JSON.parse(
         JSON.stringify(executable.envelope),

@@ -4810,7 +4810,7 @@
                 },
                 "fingerprint": {
                   "type": "string",
-                  "pattern": "^(?:wf-compat|node-compat):v1:sha256:[0-9a-f]{64}$"
+                  "pattern": "^wf-compat:v1:sha256:[0-9a-f]{64}$"
                 },
                 "issues": {
                   "maxItems": 1000,
@@ -6342,7 +6342,7 @@
             },
             "fingerprint": {
               "type": "string",
-              "pattern": "^(?:wf-compat|node-compat):v1:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf-compat:v1:sha256:[0-9a-f]{64}$"
             },
             "issues": {
               "maxItems": 1000,
@@ -6406,7 +6406,7 @@
         },
         "fingerprint": {
           "type": "string",
-          "pattern": "^(?:wf-compat|node-compat):v1:sha256:[0-9a-f]{64}$"
+          "pattern": "^wf-compat:v1:sha256:[0-9a-f]{64}$"
         },
         "issues": {
           "maxItems": 1000,
@@ -6490,7 +6490,7 @@
             },
             "fingerprint": {
               "type": "string",
-              "pattern": "^(?:wf-compat|node-compat):v1:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf-compat:v1:sha256:[0-9a-f]{64}$"
             },
             "issues": {
               "maxItems": 1000,

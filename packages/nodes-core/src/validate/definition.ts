@@ -1,4 +1,4 @@
-import { generateSchemaDocument, type NodeManifestV2 } from '@pertexo/node-sdk';
+import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 
 import { CORE_BOUNDED_JSON_POLICY } from '../policies.js';
 import {
@@ -26,8 +26,7 @@ const CORE_VALIDATE_RUNTIME_SEMANTICS = Object.freeze([
   'Validate mismatch is a successful typed result; the output never echoes the observed input value.',
 ] as const);
 
-export const CORE_VALIDATE_MANIFEST: NodeManifestV2 = Object.freeze({
-  schemaVersion: 2,
+export const CORE_VALIDATE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_VALIDATE_DEFINITION,
   family: 'transform',
   configVersion: 1,
@@ -47,7 +46,6 @@ export const CORE_VALIDATE_MANIFEST: NodeManifestV2 = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze([]),
-  lifecycle: 'active',
   executor: CORE_VALIDATE_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),

@@ -6,10 +6,7 @@ import {
   type WorkflowNode,
   workflowPortableManifestSchema,
 } from '@pertexo/workflow-model';
-import {
-  parseSupportedPlatformRelease,
-  resolvePlatformNodeDefinitionForRelease,
-} from './definition-resolution.js';
+import { resolvePlatformNodeDefinition } from './definition-resolution.js';
 
 function nodesIn(graph: WorkflowGraph): readonly WorkflowNode[] {
   return graph.nodes.flatMap((node) => [
@@ -20,24 +17,19 @@ function nodesIn(graph: WorkflowGraph): readonly WorkflowNode[] {
 
 /** Server registration validation is separate from portable config-only admission. */
 export function validateRegisteredCuratedTemplateSetup(
-  releaseInput: unknown,
   manifest: unknown,
   origin: unknown,
 ): boolean {
   try {
     const verified = verifyCuratedTemplateManifest(manifest, origin);
     if (!verified.ok) return false;
-    const release = parseSupportedPlatformRelease(releaseInput);
     const parsed = workflowPortableManifestSchema.parse(manifest);
     const nodes = nodesIn(parsed.graph);
     for (const target of verified.descriptor.setupTargets) {
       const matching = nodes.filter((node) => node.id === target.nodeId);
       const node = matching[0];
       if (matching.length !== 1 || node === undefined) return false;
-      const registration = resolvePlatformNodeDefinitionForRelease(
-        release,
-        node.definition,
-      );
+      const registration = resolvePlatformNodeDefinition(node.definition);
       if (target.location === 'config') {
         if (!registration.configSchema.safeParse(node.config).success)
           return false;

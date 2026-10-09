@@ -5,8 +5,7 @@ import {
   parseDatabaseConfig,
   parseStoredExecutionValueV1,
 } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { describe, expect, it } from 'vitest';
 
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
@@ -34,9 +33,7 @@ describeIntegration('preview delivery transport', () => {
     const previewStore = createDatabasePreviewAttemptRunStore(
       parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
     );
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const registry = createPlatformNodeRegistry();
     const platformInvoker = createPlatformPreviewNodeInvoker({
       registry,
     });

@@ -34,7 +34,6 @@ import {
   createScheduleTriggerDatabase,
   ScheduleTriggerError,
 } from '../src/triggers/schedule-triggers.js';
-import { BASELINE_RELEASE_FINGERPRINT } from './baseline-compatibility-fixture.js';
 import type { WebhookDeliveryPosition } from '../src/triggers/webhook-trigger-deliveries.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import { withWorkspaceTransaction } from '../src/tenant-access/workspace.js';
@@ -109,7 +108,6 @@ let workerReadinessPool: Pool;
 let workerPool: Pool;
 const triggerCatalog = Object.freeze({
   schemaVersion: 1 as const,
-  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
   definitions: Object.freeze([
     Object.freeze({ key: 'core.webhook', version: 1 }),
     Object.freeze({ key: 'core.schedule', version: 1 }),
@@ -284,7 +282,6 @@ beforeAll(async () => {
   webhook = createWebhookTriggerDatabase(apiConfig);
   authoring = createWorkflowAuthoringDatabase(apiConfig, {
     definitionCatalog: triggerCatalog,
-    placementDefinitionCatalog: triggerCatalog,
     executableCompiler: (graph) => ({
       checksum: `wf:v2:sha256:${createHash('sha256')
         .update(JSON.stringify(graph))

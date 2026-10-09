@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { inspectBoundedJson, NODE_JSON_LIMITS_V1 } from '../bounded-json.js';
-import { cloneAndFreeze } from '../compatibility-canonical.js';
+import { cloneAndFreeze } from '../freeze.js';
 
 export { NODE_JSON_LIMITS_V1 } from '../bounded-json.js';
 

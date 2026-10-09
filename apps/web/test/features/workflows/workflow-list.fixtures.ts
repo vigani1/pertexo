@@ -12,11 +12,6 @@ export const versionId = '12121212-1212-4121-8121-121212121212';
 export const etag = `"draft-v1.${'a'.repeat(43)}"`;
 export const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
 
-const release = {
-  epoch: 1,
-  fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-};
-
 export const user = {
   id: userId,
   email: 'owner@example.test',
@@ -127,10 +122,10 @@ export function discoveryHandlers(
       }),
     ),
     http.get('http://pertexo.test/v1/node-definitions', () =>
-      HttpResponse.json({ schemaVersion: 1, release, items: [] }),
+      HttpResponse.json({ schemaVersion: 1, items: [] }),
     ),
     http.get('http://pertexo.test/v1/integrations', () =>
-      HttpResponse.json({ schemaVersion: 1, release, items: [] }),
+      HttpResponse.json({ schemaVersion: 1, items: [] }),
     ),
     http.get(`${api}/connections`, () =>
       HttpResponse.json({ items: [], nextCursor: null }),
@@ -166,14 +161,9 @@ type CatalogItem = NodeDefinitionListResponse['items'][number];
 export function catalogDefinition(
   key: string,
   family: CatalogItem['family'],
-  flags: Readonly<{
-    available?: boolean;
-    publishable?: boolean;
-    version?: number;
-  }> = {},
+  flags: Readonly<{ version?: number }> = {},
 ): CatalogItem {
   return {
-    schemaVersion: 1,
     definition: { key, version: flags.version ?? 1 },
     family,
     configVersion: flags.version ?? 1,
@@ -186,14 +176,11 @@ export function catalogDefinition(
     retryClass: 'safe',
     resourceClass: 'io',
     capabilities: [],
-    lifecycle: 'active',
-    available: flags.available ?? true,
-    publishable: flags.publishable ?? true,
   };
 }
 
 export function catalogOf(
   items: readonly CatalogItem[],
 ): NodeDefinitionListResponse {
-  return { schemaVersion: 1, release, items: [...items] };
+  return { schemaVersion: 1, items: [...items] };
 }

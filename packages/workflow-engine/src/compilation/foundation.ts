@@ -4,7 +4,7 @@ import {
   type DefinitionIdentity,
   type ExecutorIdentity,
   type PolicyReference,
-  type RegistryRelease,
+  type NodeCatalog,
 } from '@pertexo/node-sdk';
 import {
   canonicalJson,
@@ -180,7 +180,7 @@ export function globalPolicies(
 
 export function validateGlobals(
   policies: ExecutableRuntimePolicies,
-  release: RegistryRelease,
+  catalog: NodeCatalog,
 ): void {
   const selected = globalPolicies(policies);
   const expected = globalPolicies(BASELINE_RUNTIME_POLICIES);
@@ -192,7 +192,7 @@ export function validateGlobals(
     new Set(selected.map(token)).size !== selected.length
   )
     fail('runtime policy selection is not baseline policy v1');
-  const available = new Set(release.policies.map(token));
+  const available = new Set(catalog.policies.map(token));
   if (!selected.every((value) => available.has(token(value))))
-    fail('compatibility release is missing a runtime policy');
+    fail('node catalog is missing a runtime policy');
 }

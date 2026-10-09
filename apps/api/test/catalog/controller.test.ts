@@ -20,7 +20,7 @@ import {
 import { RATE_LIMIT_METADATA } from '../../src/platform/rate-limit/metadata.js';
 
 describe('catalog controller public seam', () => {
-  it('returns the exact safe, release-pinned node projection', () => {
+  it('returns the safe node projection', () => {
     const useCases = createCatalogUseCases();
     const controller = new CatalogController(
       useCases.listNodeDefinitions,
@@ -28,7 +28,6 @@ describe('catalog controller public seam', () => {
     );
     const response = controller.listNodeDefinitions();
     expect(nodeDefinitionListResponseSchema.parse(response)).toEqual(response);
-    expect(response.release.fingerprint).toMatch(/^node-compat:v1:sha256:/u);
     for (const item of response.items) {
       expect(item).not.toHaveProperty('executor');
       expect(item).not.toHaveProperty('executorAbi');
@@ -46,8 +45,6 @@ describe('catalog controller public seam', () => {
         providerKey: 'email',
         operationKey: 'archive',
         nodeDefinitions: [{ key: 'archive.node', version: 1 }],
-        available: false,
-        publishable: true,
       },
       {
         providerKey: 'email',
@@ -57,15 +54,11 @@ describe('catalog controller public seam', () => {
           { key: 'alpha.node', version: 10 },
           { key: 'zeta.node', version: 1 },
         ],
-        available: true,
-        publishable: true,
       },
       {
         providerKey: 'http',
         operationKey: 'request',
         nodeDefinitions: [{ key: 'http.node', version: 1 }],
-        available: true,
-        publishable: false,
       },
     ]);
 
@@ -141,8 +134,6 @@ function customCatalog(): PlatformNodeDefinitionBrowserCatalog {
     version: number,
     providerKey: string | undefined,
     operationKey: string | undefined,
-    available: boolean,
-    publishable: boolean,
   ): PlatformNodeDefinitionBrowserProjection => {
     const { integration, ...common } = base;
     return {
@@ -151,20 +142,17 @@ function customCatalog(): PlatformNodeDefinitionBrowserCatalog {
       ...(providerKey === undefined || operationKey === undefined
         ? {}
         : { integration: { providerKey, operationKey } }),
-      available,
-      publishable,
     };
   };
   return {
     schemaVersion: 1,
-    release: source.release,
     definitions: [
-      definition('zeta.node', 1, 'email', 'notify', false, false),
-      definition('http.node', 1, 'http', 'request', true, false),
-      definition('alpha.node', 10, 'email', 'notify', false, true),
-      definition('local.node', 1, undefined, undefined, true, true),
-      definition('archive.node', 1, 'email', 'archive', false, true),
-      definition('alpha.node', 2, 'email', 'notify', true, false),
+      definition('zeta.node', 1, 'email', 'notify'),
+      definition('http.node', 1, 'http', 'request'),
+      definition('alpha.node', 10, 'email', 'notify'),
+      definition('local.node', 1, undefined, undefined),
+      definition('archive.node', 1, 'email', 'archive'),
+      definition('alpha.node', 2, 'email', 'notify'),
     ],
   };
 }

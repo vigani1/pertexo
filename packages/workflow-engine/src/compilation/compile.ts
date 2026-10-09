@@ -1,4 +1,4 @@
-import { parseRegistryRelease, type RegistryRelease } from '@pertexo/node-sdk';
+import { parseNodeCatalog, type NodeCatalog } from '@pertexo/node-sdk';
 import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { graphValidationIndex } from './graph-validation-index.js';
@@ -25,7 +25,6 @@ import {
   freezeExecutable,
   normalizeError,
   registerExecutableIdentity,
-  sameIdentity,
   validateGlobals,
 } from './foundation.js';
 import { sideEffectClass } from './validation.js';
@@ -34,26 +33,13 @@ export { computeWorkflowExecutableChecksum } from './identity.js';
 
 function executableNode(
   node: WorkflowNode,
-  release: RegistryRelease,
+  catalog: NodeCatalog,
 ): WorkflowExecutableNode {
-  const definition = definitionManifest(release, node.definition);
-  const executor = executorManifest(release, definition.executor);
-  if (
-    (definition.lifecycle !== 'active' &&
-      definition.lifecycle !== 'deprecated') ||
-    executor.lifecycle !== 'active' ||
-    !executor.definitions.some((value) =>
-      sameIdentity(value, definition.definition),
-    )
-  )
-    fail('node definition is not publishable');
+  const definition = definitionManifest(catalog, node.definition);
+  const executor = executorManifest(catalog, definition.executor);
+  // Parsing the catalog already checked the definition-executor binding and ABI.
   if (node.configVersion !== definition.configVersion)
     fail('node config version is incompatible');
-  if (
-    definition.executorAbi === undefined ||
-    definition.executorAbi !== executor.abiVersion
-  )
-    fail('node executor ABI is incompatible');
   assertExpressionPolicies(node, definition.policyReferences);
   const executable: WorkflowExecutableNode = {
     id: node.id,
@@ -76,7 +62,7 @@ function executableNode(
       maxIterations: node.structured.maxIterations,
       maxConcurrency: node.structured.maxConcurrency,
       body: {
-        ...compileExecutableGraph(node.structured.body, release),
+        ...compileExecutableGraph(node.structured.body, catalog),
         inputPorts: node.structured.body.inputPorts,
         outputPorts: node.structured.body.outputPorts,
       },
@@ -86,31 +72,31 @@ function executableNode(
 
 function compileExecutableGraph(
   graph: WorkflowGraph,
-  release: RegistryRelease,
+  catalog: NodeCatalog,
 ): WorkflowExecutableGraph {
   const index = graphValidationIndex(graph);
-  assertGraphPorts(graph, release, index);
+  assertGraphPorts(graph, catalog, index);
   assertBranchesDoNotReconverge(graph, index);
   return {
     settings: graph.settings,
     nodes: [...graph.nodes]
       .sort((left, right) => compareOrdinal(left.id, right.id))
-      .map((node) => executableNode(node, release)),
+      .map((node) => executableNode(node, catalog)),
     edges: canonicalEdges(graph),
   };
 }
 
 function buildBoundary(input: {
   readonly graph: unknown;
-  readonly release: unknown;
+  readonly catalog: unknown;
 }): CompiledWorkflowExecutable {
-  const release = parseRegistryRelease(input.release);
-  validateGlobals(BASELINE_RUNTIME_POLICIES, release);
+  const catalog = parseNodeCatalog(input.catalog);
+  validateGlobals(BASELINE_RUNTIME_POLICIES, catalog);
   const graph = parseWorkflowGraphForPublish(input.graph, {
     schemaVersion: 1,
-    definitions: release.definitions.map(({ definition }) => definition),
+    definitions: catalog.definitions.map(({ definition }) => definition),
   });
-  const executableGraph = compileExecutableGraph(graph, release);
+  const executableGraph = compileExecutableGraph(graph, catalog);
   const envelope: WorkflowExecutable = {
     schemaVersion: 2,
     sourceGraphSchemaVersion: 1,
@@ -118,7 +104,7 @@ function buildBoundary(input: {
     runtimePolicies: BASELINE_RUNTIME_POLICIES,
   };
   const normalizedEnvelope = freezeExecutable(
-    parseBoundary({ envelope, release }),
+    parseBoundary({ envelope, catalog }),
   ) as VerifiedWorkflowExecutable;
   return registerExecutableIdentity(
     Object.freeze({
@@ -135,7 +121,7 @@ function buildBoundary(input: {
  */
 export function buildWorkflowExecutable(input: {
   readonly graph: unknown;
-  readonly release: unknown;
+  readonly catalog: unknown;
 }): CompiledWorkflowExecutable {
   try {
     return buildBoundary(input);

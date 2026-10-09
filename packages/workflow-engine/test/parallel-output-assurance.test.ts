@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
 } from '../src/index.js';
 import {
-  nodeRelease,
+  nodeCatalog,
   pairedParallelGraph,
 } from './executable-workflow.fixtures.js';
 
@@ -25,12 +25,12 @@ const completed = {
 };
 
 function setup() {
-  const release = composeExecutableCompatibilityRelease(
-    nodeRelease({ parallel: true, merge: true }),
+  const catalog = composeExecutableCatalog(
+    nodeCatalog({ parallel: true, merge: true }),
   );
   const executable = buildWorkflowExecutable({
     graph: pairedParallelGraph(),
-    release,
+    catalog,
   });
   return {
     runId: 'parallel-output-proof',

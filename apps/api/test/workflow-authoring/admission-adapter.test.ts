@@ -40,22 +40,24 @@ const draft = {
 };
 
 describe('authoring API admission adapter', () => {
-  it('binds the portable catalog to the served release and keeps definition-selection identity', () => {
+  it('derives the portable and definition catalogs from the served catalog', () => {
     const compatibility = createCoreWorkflowCompatibility();
     const options = createCoreAuthoringOptions(compatibility, {
       validate: () => Promise.resolve(valid),
     });
-    expect(options.portableCatalog.fingerprint).toBe(
-      options.definitionCatalog.releaseFingerprint,
+    const identities = (
+      definitions: readonly { key: string; version: number }[],
+    ) => definitions.map(({ key, version }) => ({ key, version }));
+    expect(identities(options.portableCatalog.definitions)).toEqual(
+      identities(options.definitionCatalog.definitions),
     );
-    expect(options.portableCatalog.fingerprint).toBe(
-      compatibility.release.fingerprint,
-    );
-    expect(options.portableCatalog.selectionFingerprint([])).toMatch(
-      /^node-select:v1:sha256:[a-f0-9]{64}$/u,
+    expect(identities(options.definitionCatalog.definitions)).toEqual(
+      identities(
+        compatibility.catalog.definitions.map(({ definition }) => definition),
+      ),
     );
   });
-  it('admits through the real compiled parser with the production release projection', async () => {
+  it('admits through the real compiled parser with the production policies', async () => {
     const compatibility = createCoreWorkflowCompatibility();
     const validator = new WorkflowAuthoringValidator();
     const options = createCoreAuthoringOptions(compatibility, validator);
@@ -93,16 +95,13 @@ describe('authoring API admission adapter', () => {
       await validator.shutdown();
     }
   });
-  it('validates against the served release policies through the shared owner', async () => {
+  it('validates against the served catalog policies through the shared owner', async () => {
     const compatibility = createCoreWorkflowCompatibility();
     const validate = vi.fn().mockResolvedValue(valid);
     const options = createCoreAuthoringOptions(compatibility, { validate });
     const signal = new AbortController().signal;
     await options.validateAuthoringGraph(graph, { signal });
     const projected = compatibility.authoringPolicies;
-    expect(projected.releaseFingerprint).toBe(
-      compatibility.release.fingerprint,
-    );
     expect(projected.definitions.length).toBeGreaterThan(0);
     expect(validate).toHaveBeenCalledExactlyOnceWith(graph, projected, {
       signal,

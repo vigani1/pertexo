@@ -1,8 +1,4 @@
-import {
-  generateSchemaDocument,
-  type NodeManifest,
-  type NodeManifestV2,
-} from '@pertexo/node-sdk';
+import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 
 import { CORE_PARALLEL_BRANCH_PORTS } from '../parallel/validation.js';
 import { CORE_BOUNDED_JSON_POLICY } from '../policies.js';
@@ -24,7 +20,6 @@ export const CORE_MERGE_EXECUTOR = Object.freeze({
 });
 
 export const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_MERGE_DEFINITION,
   family: 'logic',
   configVersion: 1,
@@ -40,7 +35,6 @@ export const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze([]),
-  lifecycle: 'active',
   executor: CORE_MERGE_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
@@ -62,9 +56,8 @@ export const CORE_MERGE_EXECUTOR_V3 = Object.freeze({
   key: 'core.merge',
   version: 3,
 });
-export const CORE_MERGE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
+export const CORE_MERGE_MANIFEST_V2: NodeManifest = Object.freeze({
   ...CORE_MERGE_MANIFEST,
-  schemaVersion: 2,
   definition: CORE_MERGE_DEFINITION_V2,
   configVersion: 2,
   inputSchema: generateSchemaDocument(CORE_MERGE_INPUT_SCHEMA_V2),
@@ -73,7 +66,7 @@ export const CORE_MERGE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
   executorAbi: 1,
 });
 
-export const CORE_MERGE_MANIFEST_V3: NodeManifestV2 = Object.freeze({
+export const CORE_MERGE_MANIFEST_V3: NodeManifest = Object.freeze({
   ...CORE_MERGE_MANIFEST_V2,
   definition: CORE_MERGE_DEFINITION_V3,
   configVersion: 3,

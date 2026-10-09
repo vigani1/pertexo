@@ -113,8 +113,7 @@ export async function prepareWorkflowPortabilityBrowserFixture(
   );
   function node(key: string): WorkflowGraphContract['nodes'][number] {
     const definition = catalog.items.find(
-      (item) =>
-        item.definition.key === key && item.available && item.publishable,
+      (item) => item.definition.key === key,
     );
     if (definition === undefined)
       throw new Error('Portable browser fixture definition unavailable');

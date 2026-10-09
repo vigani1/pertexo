@@ -6,10 +6,10 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
@@ -18,108 +18,39 @@ import {
 } from '@pertexo/workflow-model/server';
 import { platformPortableDefinitionPolicy } from '@pertexo/node-catalog/server';
 
-type PlatformRegistryRelease = typeof PLATFORM_REGISTRY_RELEASE;
-type PlatformDefinitionManifest =
-  PlatformRegistryRelease['definitions'][number];
-type ProjectedDefinition = ReturnType<typeof projectDefinition>;
-
-function registryIdentity(value: {
-  readonly key: string;
-  readonly version: number;
-}): string {
-  return `${value.key}\u0000${String(value.version)}`;
-}
-
-function projectDefinition(manifest: PlatformDefinitionManifest) {
-  return Object.freeze({
-    lifecycle: manifest.lifecycle,
-    definition: Object.freeze({
-      ...manifest.definition,
-      ...(manifest.integration === undefined
-        ? {}
-        : {
-            integration: Object.freeze({
-              ...manifest.integration,
-              connectionSlots: Object.freeze([
-                ...manifest.connectionRequirements,
-              ]),
-            }),
-          }),
-    }),
-  });
-}
-
-function projectExecutableDefinitions(
-  release: PlatformRegistryRelease,
-): readonly ProjectedDefinition[] {
-  const activeExecutors = new Set(
-    release.executors
-      .filter((executor) => executor.lifecycle === 'active')
-      .map((executor) => registryIdentity(executor.executor)),
-  );
-  return Object.freeze(
-    release.definitions.flatMap((manifest) =>
-      activeExecutors.has(registryIdentity(manifest.executor))
-        ? [projectDefinition(manifest)]
-        : [],
-    ),
-  );
-}
-
-function definitionCatalog(
-  releaseFingerprint: string,
-  definitions: readonly ProjectedDefinition[],
-  include: (definition: ProjectedDefinition) => boolean,
-) {
+/** The definitions authoring accepts, with each integration's connection slots. */
+function projectDefinitionCatalog(catalog: typeof PLATFORM_NODE_CATALOG) {
   return Object.freeze({
     schemaVersion: 1 as const,
-    releaseFingerprint,
     definitions: Object.freeze(
-      definitions.filter(include).map(({ definition }) => definition),
-    ),
-  });
-}
-
-function projectDefinitionCatalogs(
-  release: PlatformRegistryRelease,
-  releaseFingerprint: string,
-) {
-  const definitions = projectExecutableDefinitions(release);
-  return Object.freeze({
-    definitionCatalog: definitionCatalog(
-      releaseFingerprint,
-      definitions,
-      (definition) =>
-        definition.lifecycle === 'active' ||
-        definition.lifecycle === 'deprecated',
-    ),
-    placementDefinitionCatalog: definitionCatalog(
-      releaseFingerprint,
-      definitions,
-      (definition) => definition.lifecycle === 'active',
+      catalog.definitions.map((manifest) =>
+        Object.freeze({
+          ...manifest.definition,
+          ...(manifest.integration === undefined
+            ? {}
+            : {
+                integration: Object.freeze({
+                  ...manifest.integration,
+                  connectionSlots: Object.freeze([
+                    ...manifest.connectionRequirements,
+                  ]),
+                }),
+              }),
+        }),
+      ),
     ),
   });
 }
 
 function buildCoreWorkflowCompatibility() {
-  const nodeRelease = PLATFORM_REGISTRY_RELEASE;
-  const release = composeExecutableCompatibilityRelease(nodeRelease);
-  const { definitionCatalog, placementDefinitionCatalog } =
-    projectDefinitionCatalogs(nodeRelease, release.fingerprint);
+  const nodeCatalog = PLATFORM_NODE_CATALOG;
   return Object.freeze({
-    release,
-    definitionCatalog,
-    placementDefinitionCatalog,
-    portableCatalog: Object.freeze({
-      ...platformPortableDefinitionPolicy(nodeRelease),
-      // Destination CAS belongs to the full served release, while
-      // requirements keep the definition-selection projection.
-      fingerprint: release.fingerprint,
-    }),
+    catalog: composeExecutableCatalog(nodeCatalog),
+    definitionCatalog: projectDefinitionCatalog(nodeCatalog),
+    portableCatalog: platformPortableDefinitionPolicy(),
     authoringPolicies: Object.freeze({
-      releaseFingerprint: release.fingerprint,
       definitions: Object.freeze(
-        nodeRelease.definitions.map((manifest) =>
+        nodeCatalog.definitions.map((manifest) =>
           Object.freeze({
             definition: Object.freeze({
               key: manifest.definition.key,
@@ -152,7 +83,6 @@ export function createCoreAuthoringOptions(
 ) {
   return {
     definitionCatalog: compatibility.definitionCatalog,
-    placementDefinitionCatalog: compatibility.placementDefinitionCatalog,
     portableCatalog: compatibility.portableCatalog,
     validateAuthoringGraph: (
       graph: WorkflowGraph,
@@ -163,7 +93,7 @@ export function createCoreAuthoringOptions(
     ) => {
       const compiled = buildWorkflowExecutable({
         graph,
-        release: compatibility.release,
+        catalog: compatibility.catalog,
       });
       return Object.freeze({
         checksum: compiled.checksum,

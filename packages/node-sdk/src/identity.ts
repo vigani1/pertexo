@@ -2,7 +2,7 @@ import type {
   DefinitionIdentity,
   ExecutorIdentity,
   PolicyReference,
-} from './release.js';
+} from './catalog.js';
 
 export type CompatibilityIdentity =
   DefinitionIdentity | ExecutorIdentity | PolicyReference;

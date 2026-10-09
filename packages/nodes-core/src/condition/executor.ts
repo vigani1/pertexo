@@ -13,7 +13,6 @@ export const coreConditionExecutor: NodeExecutorRegistration = Object.freeze({
   abiVersion: 1,
   definitions: Object.freeze([CORE_CONDITION_DEFINITION]),
   executor: CORE_CONDITION_EXECUTOR,
-  lifecycle: 'active',
   policyReferences: Object.freeze([
     CORE_BOUNDED_JSON_POLICY,
     CORE_JSONATA_POLICY,

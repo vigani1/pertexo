@@ -1075,7 +1075,7 @@ describe('API bootstrap ownership and health', () => {
       expect(changeWorkspaceMemberRole).toHaveBeenCalledOnce();
     });
 
-    it('lists every integration as available', async () => {
+    it('lists every integration', async () => {
       application = await createApiApplication(config, {
         ...dependencies(),
         identityRuntime: identityRuntime(undefined, true),
@@ -1093,20 +1093,14 @@ describe('API bootstrap ownership and health', () => {
           {
             providerKey: 'email',
             operationKey: 'send_notification',
-            available: true,
-            publishable: true,
           },
           {
             providerKey: 'http',
             operationKey: 'request',
-            available: true,
-            publishable: true,
           },
           {
             providerKey: 'slack',
             operationKey: 'send_message',
-            available: true,
-            publishable: true,
           },
         ],
       });

@@ -152,15 +152,11 @@ async function mockIdentity(
       });
     },
   );
-  const release = {
-    epoch: 1,
-    fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-  };
   await page.route('**/v1/node-definitions', async (route) => {
-    await route.fulfill({ json: { schemaVersion: 1, release, items: [] } });
+    await route.fulfill({ json: { schemaVersion: 1, items: [] } });
   });
   await page.route('**/v1/integrations', async (route) => {
-    await route.fulfill({ json: { schemaVersion: 1, release, items: [] } });
+    await route.fulfill({ json: { schemaVersion: 1, items: [] } });
   });
   await page.route(
     `**/v1/workspaces/${workspaceId}/connections?**`,

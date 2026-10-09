@@ -10,7 +10,6 @@ export const coreWaitExecutor: NodeExecutorRegistration = Object.freeze({
   abiVersion: 1,
   definitions: Object.freeze([CORE_WAIT_DEFINITION]),
   executor: CORE_WAIT_EXECUTOR,
-  lifecycle: 'active',
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
     Promise.resolve(invocation.input),

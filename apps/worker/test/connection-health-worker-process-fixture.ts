@@ -7,8 +7,7 @@ import {
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createTransportMetrics } from '@pertexo/observability/transport-metrics';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   ConnectionEnvelopeEncryption,
   createSlackClient,
@@ -420,18 +419,15 @@ async function construct(
       },
     },
     {
-      registry: createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE,
-        {
-          slackSendMessage: { client },
-          httpRequest: {
-            httpClient: {
-              executeStreaming: () =>
-                Promise.reject(new Error('HTTP outside health fixture')),
-            },
+      registry: createPlatformNodeRegistry({
+        slackSendMessage: { client },
+        httpRequest: {
+          httpClient: {
+            executeStreaming: () =>
+              Promise.reject(new Error('HTTP outside health fixture')),
           },
         },
-      ),
+      }),
       runtimeCapabilities: {
         ...capabilities.factories,
         artifacts: () => ({

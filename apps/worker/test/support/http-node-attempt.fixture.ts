@@ -15,10 +15,10 @@ import {
   type ConnectionSecretContext,
   type EnvelopeKeyProvider,
 } from '@pertexo/integrations/server';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
 } from '@pertexo/workflow-engine';
 import { Pool, type PoolClient } from 'pg';
@@ -76,9 +76,7 @@ export const emailRecipient = `recipient-${randomUUID()}@example.test`;
 export const emailSubject = `subject-${randomUUID()}`;
 export const emailText = `text-${randomUUID()}`;
 export const responseBytes = 70_000;
-const activeRelease = composeExecutableCompatibilityRelease(
-  PLATFORM_REGISTRY_RELEASE,
-);
+const activeCatalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
 
 export function databaseUrl(base: string): string {
   const url = new URL(base);
@@ -380,7 +378,7 @@ async function sealAndZero(
 export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
   const executable = buildWorkflowExecutable({
     graph: graph(),
-    release: activeRelease,
+    catalog: activeCatalog,
   });
   await withOwner(async (client) => {
     await client.query(
@@ -568,7 +566,7 @@ export async function acceptProviderScenarioRun(provider: ProviderScenario) {
   const scenarioGraph = providerScenarioGraph(provider);
   const executable = buildWorkflowExecutable({
     graph: scenarioGraph,
-    release: activeRelease,
+    catalog: activeCatalog,
   });
   await withOwner(async (client) => {
     await client.query(

@@ -74,15 +74,11 @@ async function installRoutes(page: Page) {
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );
-  const release = {
-    epoch: 1,
-    fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-  };
   await page.route('**/v1/node-definitions', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, release, items: [] } }),
+    route.fulfill({ json: { schemaVersion: 1, items: [] } }),
   );
   await page.route('**/v1/integrations', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, release, items: [] } }),
+    route.fulfill({ json: { schemaVersion: 1, items: [] } }),
   );
   await page.route(`**/v1/workspaces/${workspaceId}/connections?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),

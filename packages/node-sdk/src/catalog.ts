@@ -1,20 +1,12 @@
 import { z } from 'zod';
 
-import {
-  cloneAndFreeze,
-  computeCompatibilityReleaseFingerprint,
-  computeSelectionFingerprintFromParsedRelease,
-} from './compatibility-canonical.js';
+import { cloneAndFreeze } from './freeze.js';
 import { compareIdentity, identityToken } from './identity.js';
 import {
   schemaDocumentSchema,
   type SchemaDocument,
 } from './definitions/schema-document.js';
 
-export {
-  canonicalCompatibilityReleaseJson,
-  computeCompatibilityReleaseFingerprint,
-} from './compatibility-canonical.js';
 export {
   BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT,
   BOUNDED_NODE_JSON_SCHEMA_DOCUMENT,
@@ -50,12 +42,6 @@ export interface PolicyReference {
 export type NodeFamily =
   'trigger' | 'action' | 'logic' | 'transform' | 'output';
 
-export type DefinitionLifecycle =
-  'active' | 'deprecated' | 'migration_required' | 'retired';
-
-export type ExecutorLifecycle =
-  'staged' | 'active' | 'retained' | 'retirement_blocked' | 'retired';
-
 export type RetryClass = 'safe' | 'idempotent-with-key' | 'unsafe';
 export type ResourceClass = 'io' | 'cpu';
 
@@ -70,7 +56,8 @@ export interface NodeIntegrationOperation {
   readonly operationKey: string;
 }
 
-export interface NodeManifestFields {
+/** One node definition: its contract, ports, requirements and pinned executor. */
+export interface NodeManifest {
   readonly definition: DefinitionIdentity;
   readonly family: NodeFamily;
   readonly configVersion: number;
@@ -84,48 +71,20 @@ export interface NodeManifestFields {
   readonly retryClass: RetryClass;
   readonly resourceClass: ResourceClass;
   readonly capabilities: readonly string[];
-  readonly lifecycle: DefinitionLifecycle;
   readonly executor: ExecutorIdentity;
+  readonly executorAbi: number;
   readonly policyReferences: readonly PolicyReference[];
 }
-
-/** Retained manifest grammar. Its optional ABI is preserved for old fingerprints. */
-export type NodeManifestV1 = Readonly<
-  NodeManifestFields & {
-    readonly schemaVersion: 1;
-    readonly executorAbi?: number | undefined;
-  }
->;
-
-/** Current manifest grammar. New definitions must pin their executor ABI. */
-export type NodeManifestV2 = Readonly<
-  NodeManifestFields & {
-    readonly schemaVersion: 2;
-    readonly executorAbi: number;
-  }
->;
-
-export type NodeManifest = NodeManifestV1 | NodeManifestV2;
 
 export interface ExecutorManifest {
   readonly executor: ExecutorIdentity;
   readonly abiVersion: number;
   readonly definitions: readonly DefinitionIdentity[];
-  readonly lifecycle: ExecutorLifecycle;
   readonly policyReferences: readonly PolicyReference[];
 }
 
-export interface RegistryRelease {
-  readonly schemaVersion: 1;
-  readonly epoch: number;
-  readonly definitions: readonly NodeManifest[];
-  readonly executors: readonly ExecutorManifest[];
-  readonly policies: readonly PolicyReference[];
-  readonly fingerprint: string;
-}
-
-export interface RegistryReleaseInput {
-  readonly epoch: number;
+/** The nodes a deployment serves: definitions, their executors and the policies both reference. */
+export interface NodeCatalog {
   readonly definitions: readonly NodeManifest[];
   readonly executors: readonly ExecutorManifest[];
   readonly policies: readonly PolicyReference[];
@@ -170,87 +129,41 @@ export const definitionIdentitySchema = identitySchema;
 export const executorIdentitySchema = identitySchema;
 export const policyReferenceSchemaV1 = policyReferenceSchema;
 
-const nodeManifestShape = {
-  definition: definitionIdentitySchema,
-  family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
-  configVersion: z.number().int().positive(),
-  configSchema: schemaDocumentSchema,
-  inputSchema: schemaDocumentSchema,
-  outputSchema: schemaDocumentSchema,
-  ports: portsSchema,
-  credentialRequirements: identifiersSchema,
-  connectionRequirements: identifiersSchema,
-  integration: integrationOperationSchema.optional(),
-  retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
-  resourceClass: z.enum(['io', 'cpu']),
-  capabilities: identifiersSchema,
-  lifecycle: z.enum(['active', 'deprecated', 'migration_required', 'retired']),
-  executor: executorIdentitySchema,
-  policyReferences: z.array(policyReferenceSchema),
-} as const;
-
-export const nodeManifestSchema = z.discriminatedUnion('schemaVersion', [
-  z
-    .object({
-      schemaVersion: z.literal(1),
-      ...nodeManifestShape,
-      executorAbi: z.number().int().positive().optional(),
-    })
-    .strict(),
-  z
-    .object({
-      schemaVersion: z.literal(2),
-      ...nodeManifestShape,
-      executorAbi: z.number().int().positive(),
-    })
-    .strict(),
-]);
-
-export function createNodeManifestV2(
-  manifest: NodeManifestV1,
-  executorAbi: number,
-): NodeManifestV2 {
-  if (!Number.isSafeInteger(executorAbi) || executorAbi <= 0)
-    throw new TypeError('executor ABI must be a positive safe integer');
-  if (
-    manifest.executorAbi !== undefined &&
-    manifest.executorAbi !== executorAbi
-  )
-    throw new TypeError('executor ABI migration conflicts with manifest');
-  return cloneAndFreeze(
-    nodeManifestSchema.parse({ ...manifest, schemaVersion: 2, executorAbi }),
-  ) as NodeManifestV2;
-}
+export const nodeManifestSchema = z
+  .object({
+    definition: definitionIdentitySchema,
+    family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
+    configVersion: z.number().int().positive(),
+    configSchema: schemaDocumentSchema,
+    inputSchema: schemaDocumentSchema,
+    outputSchema: schemaDocumentSchema,
+    ports: portsSchema,
+    credentialRequirements: identifiersSchema,
+    connectionRequirements: identifiersSchema,
+    integration: integrationOperationSchema.optional(),
+    retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
+    resourceClass: z.enum(['io', 'cpu']),
+    capabilities: identifiersSchema,
+    executor: executorIdentitySchema,
+    executorAbi: z.number().int().positive(),
+    policyReferences: z.array(policyReferenceSchema),
+  })
+  .strict();
 
 export const executorManifestSchema = z
   .object({
     executor: executorIdentitySchema,
     abiVersion: z.number().int().positive(),
     definitions: z.array(definitionIdentitySchema),
-    lifecycle: z.enum([
-      'staged',
-      'active',
-      'retained',
-      'retirement_blocked',
-      'retired',
-    ]),
     policyReferences: z.array(policyReferenceSchema),
   })
   .strict();
 
-const registryReleaseInputSchema = z
+export const nodeCatalogSchema = z
   .object({
-    schemaVersion: z.literal(1).default(1),
-    epoch: z.number().int().positive(),
     definitions: z.array(nodeManifestSchema),
     executors: z.array(executorManifestSchema),
     policies: z.array(policyReferenceSchema),
-  })
-  .strict();
-
-export const registryReleaseSchema = registryReleaseInputSchema
-  .extend({
-    fingerprint: z.string().regex(/^node-compat:v1:sha256:[a-f0-9]{64}$/u),
   })
   .strict();
 
@@ -271,7 +184,7 @@ function rejectDuplicateIdentities(
   }
 }
 
-function validateReleaseEdges(input: RegistryReleaseInput): void {
+function validateCatalogEdges(input: NodeCatalog): void {
   rejectDuplicateIdentities(
     'definition',
     input.definitions.map(({ definition }) => definition),
@@ -310,10 +223,7 @@ function validateReleaseEdges(input: RegistryReleaseInput): void {
       throw new Error(
         `executor ${executor.executor.key}@${String(executor.executor.version)} does not declare definition ${manifest.definition.key}@${String(manifest.definition.version)}`,
       );
-    if (
-      manifest.executorAbi !== undefined &&
-      manifest.executorAbi !== executor.abiVersion
-    )
+    if (manifest.executorAbi !== executor.abiVersion)
       throw new Error(
         'definition executor ABI does not match its pinned executor',
       );
@@ -353,29 +263,10 @@ function sameIdentityLists(
   return left.every((identity) => rightTokens.has(identityToken(identity)));
 }
 
-export function computeCompatibilitySelectionFingerprint(
-  release: RegistryRelease,
-  selectedDefinitions: readonly DefinitionIdentity[],
-): string {
-  const parsedRelease = parseRegistryRelease(release);
-  rejectDuplicateIdentities('selected definition', selectedDefinitions);
-  return computeSelectionFingerprintFromParsedRelease(
-    parsedRelease,
-    selectedDefinitions,
-  );
-}
-
-export function createRegistryRelease(
-  input: RegistryReleaseInput,
-): RegistryRelease {
-  const parsed = registryReleaseInputSchema.parse({
-    ...input,
-    schemaVersion: 1,
-  });
-  validateReleaseEdges(parsed);
-  const normalized = {
-    schemaVersion: 1 as const,
-    epoch: parsed.epoch,
+function normalizeCatalog(input: unknown): NodeCatalog {
+  const parsed = nodeCatalogSchema.parse(input);
+  validateCatalogEdges(parsed);
+  return cloneAndFreeze({
     definitions: [...parsed.definitions].sort((left, right) =>
       compareIdentity(left.definition, right.definition),
     ),
@@ -383,21 +274,15 @@ export function createRegistryRelease(
       compareIdentity(left.executor, right.executor),
     ),
     policies: [...parsed.policies].sort(compareIdentity),
-  } satisfies RegistryReleaseInput & { readonly schemaVersion: 1 };
-  const release = {
-    ...normalized,
-    fingerprint: computeCompatibilityReleaseFingerprint(normalized),
-  } satisfies RegistryRelease;
-  return cloneAndFreeze(release);
+  });
 }
 
-export function parseRegistryRelease(input: unknown): RegistryRelease {
-  const parsed = registryReleaseSchema.parse(input);
-  validateReleaseEdges(parsed);
-  const expected = computeCompatibilityReleaseFingerprint(parsed);
-  if (parsed.fingerprint !== expected)
-    throw new Error(
-      'release fingerprint does not match its canonical projection',
-    );
-  return cloneAndFreeze(parsed);
+/** Validate a catalog's identities and edges, then return it sorted and frozen. */
+export function createNodeCatalog(input: NodeCatalog): NodeCatalog {
+  return normalizeCatalog(input);
+}
+
+/** Parse an untrusted catalog with the same checks. */
+export function parseNodeCatalog(input: unknown): NodeCatalog {
+  return normalizeCatalog(input);
 }

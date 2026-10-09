@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import type { AcceptedPreviewRun } from '@pertexo/database/testing';
@@ -164,7 +163,6 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE,
       undefined,
       evaluator,
     );
@@ -194,11 +192,7 @@ describe('node test application use case', () => {
       access,
       disclosure: 'not_found',
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      access,
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, access);
     await expect(
       useCase.execute({
         ...requestInput(),
@@ -233,11 +227,7 @@ describe('node test application use case', () => {
     const store = persistence({
       getDraft: vi.fn().mockResolvedValue(null),
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      authorization(),
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, authorization());
 
     await expect(
       useCase.execute({
@@ -252,11 +242,7 @@ describe('node test application use case', () => {
     const store = persistence({
       getDraft: vi.fn().mockResolvedValue(draft({ revision: 4 })),
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      authorization(),
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, authorization());
 
     await expect(
       useCase.execute({
@@ -266,7 +252,7 @@ describe('node test application use case', () => {
     ).rejects.toMatchObject({
       name: 'WorkflowRevisionConflictError',
       currentRevision: 4,
-      currentEtag: '"draft-v1.pkZI7s2aGUc_Bbvcw_hXCZcjUwzmyRvGf8YlrkeUFUQ"',
+      currentEtag: '"draft-v1.ZlzBDhh0AzNoc_Z85h_wGys0GJ60RlPO0SdvixXzXio"',
     });
   });
 
@@ -275,11 +261,7 @@ describe('node test application use case', () => {
     const store = persistence({
       getDraft: vi.fn().mockRejectedValue(failure),
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      authorization(),
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, authorization());
 
     await expect(
       useCase.execute({
@@ -317,11 +299,7 @@ describe('node test application use case', () => {
           }),
         ),
       });
-      const useCase = new TestWorkflowNodeUseCase(
-        store,
-        authorization(),
-        PLATFORM_REGISTRY_RELEASE,
-      );
+      const useCase = new TestWorkflowNodeUseCase(store, authorization());
 
       const result = await useCase
         .execute({
@@ -375,11 +353,7 @@ describe('node test application use case', () => {
         membershipStatus: 'active',
         workspaceStatus: 'active',
       });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      access,
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, access);
 
     await expect(
       useCase.execute({
@@ -411,11 +385,7 @@ describe('node test application use case', () => {
       membershipStatus: 'active',
       workspaceStatus: 'active',
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      access,
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, access);
 
     await expect(
       useCase.execute({
@@ -458,11 +428,7 @@ describe('node test application use case', () => {
         membershipStatus: 'active',
         workspaceStatus: 'active',
       });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      access,
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, access);
 
     await expect(
       useCase.execute({
@@ -488,11 +454,7 @@ describe('node test application use case', () => {
   });
 
   it('requires idempotency before accepting acknowledged execution', async () => {
-    const useCase = new TestWorkflowNodeUseCase(
-      persistence(),
-      authorization(),
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(persistence(), authorization());
     await expect(
       useCase.execute({
         ...requestInput(),
@@ -523,11 +485,7 @@ describe('node test application use case', () => {
         }),
       ),
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      authorization(),
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, authorization());
 
     await expect(
       useCase.execute({
@@ -563,11 +521,7 @@ describe('node test application use case', () => {
       resolvePreviewReplay: vi.fn().mockResolvedValue(retained),
     });
     const access = authorization();
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      access,
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, access);
 
     await expect(
       useCase.execute({
@@ -615,11 +569,7 @@ describe('node test application use case', () => {
         .fn()
         .mockRejectedValue(new PreviewIdempotencyConflictError()),
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      authorization(),
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, authorization());
 
     await expect(
       useCase.execute({
@@ -646,11 +596,7 @@ describe('node test application use case', () => {
         .fn()
         .mockRejectedValue(new PreviewIdempotencyConflictError()),
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      authorization(),
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, authorization());
 
     await expect(
       useCase.execute({
@@ -678,11 +624,7 @@ describe('node test application use case', () => {
     const store = persistence({
       getDraft: vi.fn().mockResolvedValue(draft({ revision: 4 })),
     });
-    const useCase = new TestWorkflowNodeUseCase(
-      store,
-      authorization(),
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const useCase = new TestWorkflowNodeUseCase(store, authorization());
 
     await expect(
       useCase.execute({
@@ -712,7 +654,6 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       access,
-      PLATFORM_REGISTRY_RELEASE,
       () => acceptedAt,
     );
     await expect(
@@ -798,7 +739,6 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE,
       () => acceptedAt,
     );
     const priorPreviewRunId = randomUUID();
@@ -828,7 +768,7 @@ describe('node test application use case', () => {
           graphJson: emailGraph(),
           compatibility: {
             compatible: true,
-            fingerprint: PLATFORM_REGISTRY_RELEASE.fingerprint,
+            fingerprint: `wf-compat:v1:sha256:${'c'.repeat(64)}`,
             issues: [],
           },
         }),
@@ -837,7 +777,6 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE,
       () => acceptedAt,
     );
 

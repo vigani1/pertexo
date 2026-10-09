@@ -14,7 +14,6 @@ export const CORE_SET_DEFINITION = Object.freeze({
 export const CORE_SET_EXECUTOR = Object.freeze({ key: 'core.set', version: 1 });
 
 export const CORE_SET_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_SET_DEFINITION,
   family: 'transform',
   configVersion: 1,
@@ -30,7 +29,6 @@ export const CORE_SET_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze([]),
-  lifecycle: 'active',
   executor: CORE_SET_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([

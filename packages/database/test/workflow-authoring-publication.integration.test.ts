@@ -471,9 +471,7 @@ describe('workflow publication projections', () => {
         {
           definitionCatalog: {
             schemaVersion: 1,
-            releaseFingerprint:
-              'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-            definitions: [],
+            definitions: [{ key: 'test.drifted', version: 1 }],
           },
           executableCompiler: () => ({
             checksum,

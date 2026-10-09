@@ -9,7 +9,7 @@ import type {
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   executeNodeAttempt,
   invocationKey,
@@ -17,7 +17,7 @@ import {
   verifyWorkflowExecutable,
 } from '../src/index.js';
 import {
-  nodeRelease,
+  nodeCatalog,
   pairedParallelGraph,
 } from './executable-workflow.fixtures.js';
 import { deriveReadyNodes } from './support/engine.js';
@@ -361,8 +361,8 @@ function conditionParallelGraph(kind: 'condition' | 'switch') {
 }
 
 async function runBypass(kind: 'condition' | 'switch') {
-  const release = composeExecutableCompatibilityRelease(
-    nodeRelease({
+  const catalog = composeExecutableCatalog(
+    nodeCatalog({
       condition: kind === 'condition',
       switch: kind === 'switch',
       parallel: true,
@@ -371,12 +371,12 @@ async function runBypass(kind: 'condition' | 'switch') {
   );
   const built = buildWorkflowExecutable({
     graph: conditionParallelGraph(kind),
-    release,
+    catalog,
   });
   let executable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(built.envelope)),
     checksum: built.checksum,
-    release: release,
+    catalog: catalog,
   });
   let checkpoint: WorkflowCheckpoint = createCheckpoint({
     engineVersion: 'engine-v2',
@@ -533,7 +533,7 @@ async function runBypass(kind: 'condition' | 'switch') {
   executable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(executable.envelope)),
     checksum: executable.checksum,
-    release: release,
+    catalog: catalog,
   });
   checkpoint = parseCheckpoint(
     JSON.parse(JSON.stringify(duplicate.checkpoint)),
@@ -604,7 +604,7 @@ async function runBypass(kind: 'condition' | 'switch') {
   const reconstructedExecutable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(executable.envelope)),
     checksum: executable.checksum,
-    release: release,
+    catalog: catalog,
   });
   const reconstructedCheckpoint = parseCheckpoint(
     JSON.parse(JSON.stringify(bypass.checkpoint)),

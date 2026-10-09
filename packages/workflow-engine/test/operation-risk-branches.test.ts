@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   executeNodeAttempt,
   invocationKey,
@@ -14,14 +14,14 @@ import {
 import {
   forEachGraph,
   graph,
-  nodeRelease,
+  nodeCatalog,
   completedOutputs,
 } from './executable-workflow.fixtures.js';
 
 function standardExecutable() {
   return buildWorkflowExecutable({
     graph: graph(),
-    release: composeExecutableCompatibilityRelease(nodeRelease()),
+    catalog: composeExecutableCatalog(nodeCatalog()),
   });
 }
 
@@ -650,7 +650,7 @@ describe('node operation risk branches', () => {
         setAttempt({
           executable: buildWorkflowExecutable({
             graph: disabledGraph,
-            release: composeExecutableCompatibilityRelease(nodeRelease()),
+            catalog: composeExecutableCatalog(nodeCatalog()),
           }),
         }),
       ),
@@ -702,9 +702,7 @@ describe('node operation risk branches', () => {
   it('requires a structured collection proof', async () => {
     const executable = buildWorkflowExecutable({
       graph: forEachGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true }),
-      ),
+      catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
     });
     const iterationPath = [{ loopNodeId: 'loop', ordinal: 0 }] as const;
     await expect(
@@ -730,9 +728,7 @@ describe('node operation risk branches', () => {
   ])('rejects an invalid structured collection proof %#', async (proof) => {
     const executable = buildWorkflowExecutable({
       graph: forEachGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true }),
-      ),
+      catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
     });
     const iterationPath = [
       { loopNodeId: 'loop', ordinal: proof.ordinal },

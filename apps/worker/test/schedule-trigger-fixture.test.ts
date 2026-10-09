@@ -1,6 +1,5 @@
 import type { WorkflowAuthoringDatabaseOptions } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -54,20 +53,15 @@ describe('Schedule fixture authoring admission ownership', () => {
       expect(validate).toHaveBeenLastCalledWith(
         scheduleGraph,
         {
-          releaseFingerprint: composeExecutableCompatibilityRelease(
-            PLATFORM_REGISTRY_RELEASE,
-          ).fingerprint,
-          definitions: PLATFORM_REGISTRY_RELEASE.definitions.map(
-            (manifest) => ({
-              definition: {
-                key: manifest.definition.key,
-                version: manifest.definition.version,
-              },
-              policyReferences: manifest.policyReferences.map(
-                ({ key, version }) => ({ key, version }),
-              ),
-            }),
-          ),
+          definitions: PLATFORM_NODE_CATALOG.definitions.map((manifest) => ({
+            definition: {
+              key: manifest.definition.key,
+              version: manifest.definition.version,
+            },
+            policyReferences: manifest.policyReferences.map(
+              ({ key, version }) => ({ key, version }),
+            ),
+          })),
         },
         command,
       );

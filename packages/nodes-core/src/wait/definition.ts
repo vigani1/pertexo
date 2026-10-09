@@ -16,7 +16,6 @@ export const CORE_WAIT_EXECUTOR = Object.freeze({
   version: 1,
 });
 export const CORE_WAIT_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_WAIT_DEFINITION,
   family: 'logic',
   configVersion: 1,
@@ -32,7 +31,6 @@ export const CORE_WAIT_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze(['suspends_run']),
-  lifecycle: 'active',
   executor: CORE_WAIT_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),

@@ -1,11 +1,9 @@
 import { invocationKey } from '../src/transition/scheduling.js';
 import {
-  createRegistryRelease,
-  type ExecutorLifecycle,
+  createNodeCatalog,
   type NodeManifest,
-  type NodeManifestV2,
   type PolicyReference,
-  type RegistryRelease,
+  type NodeCatalog,
 } from '@pertexo/node-sdk';
 
 export const boundedPolicy = { key: 'node.json.bounded', version: 1 } as const;
@@ -119,10 +117,9 @@ export function manifest(
   key: FixtureDefinitionKey,
   policies: readonly PolicyReference[] = [boundedPolicy],
   version: 1 | 2 | 3 = 1,
-): NodeManifest | NodeManifestV2 {
+): NodeManifest {
   const fixture = fixtureDefinitions[key];
   return {
-    schemaVersion: version === 1 ? 1 : 2,
     definition: { key, version },
     family: fixture.family,
     configVersion: version,
@@ -138,16 +135,13 @@ export function manifest(
     retryClass: 'safe',
     resourceClass: 'cpu',
     capabilities: fixture.capabilities,
-    lifecycle: 'active',
     executor: { key, version },
     executorAbi: 1,
     policyReferences: policies,
   };
 }
 
-export function nodeRelease(input?: {
-  readonly epoch?: number;
-  readonly executorLifecycle?: ExecutorLifecycle;
+export function nodeCatalog(input?: {
   readonly mutateSet?: boolean;
   readonly unrelated?: boolean;
   readonly driftCapability?: boolean;
@@ -163,7 +157,7 @@ export function nodeRelease(input?: {
   readonly webhook?: boolean;
   readonly extraPolicyVersion?: number;
   readonly structuredVersion?: 1 | 2 | 3;
-}): RegistryRelease {
+}): NodeCatalog {
   const definitions = [
     manifest('core.manual'),
     manifest(
@@ -199,14 +193,12 @@ export function nodeRelease(input?: {
   if (input?.driftCapability) {
     if (set !== undefined) Object.assign(set, { capabilities: ['drifted'] });
   }
-  return createRegistryRelease({
-    epoch: input?.epoch ?? 1,
+  return createNodeCatalog({
     definitions,
     executors: definitions.map((definition) => ({
       executor: definition.executor,
       abiVersion: 1,
       definitions: [definition.definition],
-      lifecycle: input?.executorLifecycle ?? 'active',
       policyReferences: definition.policyReferences,
     })),
     policies: [

@@ -23,10 +23,8 @@ export function createWorkflowAuthoringFixtureDatabase(
   let closed = false;
   function admission(
     catalog: WorkflowDefinitionCatalog,
-    fingerprint: string,
   ): WorkflowAuthoringGraphValidator {
     const projection = {
-      releaseFingerprint: fingerprint,
       definitions: catalog.definitions.map(({ key, version }) => ({
         definition: { key, version },
         policyReferences: [{ key: 'jsonata.restricted', version: 1 }],
@@ -42,11 +40,7 @@ export function createWorkflowAuthoringFixtureDatabase(
     ...options,
     validateAuthoringGraph:
       options.validateAuthoringGraph ??
-      admission(
-        options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG,
-        options.definitionCatalog?.releaseFingerprint ??
-          'synthetic-authoring-fixture',
-      ),
+      admission(options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG),
   });
   let closePromise: Promise<void> | undefined;
   async function dispose() {

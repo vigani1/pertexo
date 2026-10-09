@@ -77,7 +77,6 @@ function branchingGraph(): WorkflowGraphContract {
 }
 
 const definition = {
-  schemaVersion: 1,
   definition: { key: 'slack.send_message', version: 1 },
   family: 'action',
   configVersion: 1,
@@ -90,9 +89,6 @@ const definition = {
   retryClass: 'unsafe',
   resourceClass: 'io',
   capabilities: [],
-  lifecycle: 'active',
-  available: true,
-  publishable: true,
 } satisfies NodeDefinitionCatalogItem;
 
 describe('editor graph commands', () => {
@@ -301,59 +297,31 @@ describe('editor graph commands', () => {
 });
 
 describe('add-step choices', () => {
-  it('groups placeable steps by human family names and hides unavailable ones', () => {
-    const groups = groupStepChoices(
-      [
-        definition,
-        {
-          ...definition,
-          definition: { key: 'core.wait', version: 1 },
-          family: 'logic',
-          available: false,
-        },
-      ],
-      '',
-    );
+  it('groups placeable steps by human family names', () => {
+    const groups = groupStepChoices([definition], '');
     expect(groups.map((group) => group.title)).toEqual(['Do something']);
     expect(groupStepChoices([definition], 'slack')[0]?.choices).toHaveLength(1);
     expect(groupStepChoices([definition], 'channel post')).toEqual([]);
   });
 
-  it('offers one entry per step type, at its highest publishable version', () => {
-    const version = (
-      value: number,
-      extra: Partial<NodeDefinitionCatalogItem> = {},
-    ) =>
+  it('offers one entry per step type, at its highest version', () => {
+    const version = (value: number) =>
       ({
         ...definition,
         definition: { key: 'core.merge', version: value },
         family: 'logic',
-        ...extra,
       }) satisfies NodeDefinitionCatalogItem;
     const groups = groupStepChoices(
-      [
-        version(1),
-        version(3, { publishable: false }),
-        version(2),
-        version(4, { available: false }),
-        definition,
-      ],
+      [version(1), version(3), version(2), definition],
       '',
     );
     expect(
       groups.flatMap((group) => group.choices.map((choice) => choice.identity)),
-    ).toEqual(['slack.send_message@1', 'core.merge@2']);
+    ).toEqual(['slack.send_message@1', 'core.merge@3']);
     expect(
-      placeableDefinitions([
-        version(1, { publishable: false }),
-        version(2),
-      ]).map((item) => item.definition.version),
-    ).toEqual([2]);
-    expect(
-      placeableDefinitions([
-        version(1, { publishable: false }),
-        version(2, { publishable: false }),
-      ]).map((item) => item.definition.version),
+      placeableDefinitions([version(2), version(1)]).map(
+        (item) => item.definition.version,
+      ),
     ).toEqual([2]);
   });
 
@@ -395,15 +363,13 @@ describe('add-step choices', () => {
     expect(alone?.entries.map((entry) => entry.kind)).toEqual(['step']);
   });
 
-  it('starts drafts only with triggers that can be placed and published', () => {
+  it('starts drafts only with triggers', () => {
     const trigger = {
       ...definition,
       definition: { key: 'core.manual', version: 1 },
       family: 'trigger',
     } satisfies NodeDefinitionCatalogItem;
     expect(isStartTrigger(trigger)).toBe(true);
-    expect(isStartTrigger({ ...trigger, publishable: false })).toBe(false);
-    expect(isStartTrigger({ ...trigger, available: false })).toBe(false);
     expect(isStartTrigger(definition)).toBe(false);
   });
 });

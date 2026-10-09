@@ -1,7 +1,7 @@
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
@@ -18,10 +18,8 @@ import {
 
 describe('advanceRun decisions', () => {
   it('verifies the persisted projection before advancing the exact executable', async () => {
-    const release = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE,
-    );
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(CORE_NODE_CATALOG);
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const checkpoint = createCheckpoint({
       engineVersion: 'phase3-engine-v1',
       workflowVersionId: VERSION_ID,
@@ -29,7 +27,7 @@ describe('advanceRun decisions', () => {
       nextEventSequence: 2,
     });
     const engine = createDecisionEngine({
-      release,
+      catalog,
     });
 
     const result = await engine.advance({
@@ -91,10 +89,8 @@ describe('advanceRun decisions', () => {
   });
 
   it('returns a transition when a duplicate observation advances only the durable cursor', async () => {
-    const release = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE,
-    );
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(CORE_NODE_CATALOG);
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const projection = {
       id: VERSION_ID,
       workspaceId: WORKSPACE_ID,
@@ -106,7 +102,7 @@ describe('advanceRun decisions', () => {
       executableJson: executable.envelope,
     };
     const engine = createDecisionEngine({
-      release,
+      catalog,
     });
     const advance = (
       checkpoint: Parameters<typeof engine.advance>[0]['checkpoint'],

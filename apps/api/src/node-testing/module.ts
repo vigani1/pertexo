@@ -26,7 +26,6 @@ export class NodeTestingModule {
         useValue: new TestWorkflowNodeUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.release,
           undefined,
           dependencies.expressionEvaluator,
         ),

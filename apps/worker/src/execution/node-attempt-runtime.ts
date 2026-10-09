@@ -12,8 +12,8 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -28,7 +28,7 @@ import {
   unrecoverableQueueError,
 } from '@pertexo/queue';
 import {
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
@@ -223,14 +223,14 @@ async function createProductionNodeAttemptRuntime(
     expressionEvaluator?.shutdown.bind(expressionEvaluator),
   );
   const engineOptions: NodeAttemptExecutionEngineOptions = {
-    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
+    catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
     ...(expressionEvaluator === undefined ? {} : { expressionEvaluator }),
   };
   const engine =
     dependencies.engine ?? createNodeAttemptExecutionEngine(engineOptions);
   const registry =
     dependencies.registry ??
-    createPlatformNodeRegistryForRelease(PLATFORM_REGISTRY_RELEASE, {
+    createPlatformNodeRegistry({
       httpRequestTelemetry: createProductionHttpProviderTelemetry(),
       slackSendMessageTelemetry: createProductionSlackProviderTelemetry(),
       emailSendNotificationTelemetry: createProductionEmailProviderTelemetry(),

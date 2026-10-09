@@ -47,12 +47,7 @@ const workflow = {
   createdAt: timestamp,
   updatedAt: timestamp,
 };
-const release = {
-  epoch: 1,
-  fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-};
 const slackDefinition = {
-  schemaVersion: 1,
   definition: { key: 'slack.send', version: 1 },
   family: 'action',
   configVersion: 1,
@@ -65,9 +60,6 @@ const slackDefinition = {
   retryClass: 'safe',
   resourceClass: 'io',
   capabilities: [],
-  lifecycle: 'active',
-  available: true,
-  publishable: true,
 };
 
 async function installRoutes(page: Page) {
@@ -132,11 +124,11 @@ async function installRoutes(page: Page) {
   );
   await page.route('**/v1/node-definitions', (route) =>
     route.fulfill({
-      json: { schemaVersion: 1, release, items: [slackDefinition] },
+      json: { schemaVersion: 1, items: [slackDefinition] },
     }),
   );
   await page.route('**/v1/integrations', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, release, items: [] } }),
+    route.fulfill({ json: { schemaVersion: 1, items: [] } }),
   );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,

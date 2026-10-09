@@ -11,6 +11,7 @@ export {
   EMPTY_DEFINITION_CATALOG,
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
+  workflowDefinitionCatalogFingerprint,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,
   workflowIntegrationUsage,

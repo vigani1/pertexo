@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import { describe, expect, it } from 'vitest';
 import {
   HTTP_REQUEST_DEFINITION_REGISTRATION,
@@ -10,7 +9,6 @@ import {
   validateCuratedTemplateSetupValue,
   isCuratedHttpsEndpoint,
 } from '@pertexo/templates';
-import { PLATFORM_REGISTRY_RELEASE } from '../src/registry.js';
 import { platformPortableDefinitionPolicy } from '../src/portable-definition-policy.js';
 import { validateRegisteredCuratedTemplateSetup } from '../src/curated-template-policy.js';
 
@@ -73,8 +71,7 @@ const corpus = JSON.parse(
 ) as readonly CorpusCase[];
 
 describe('browser template setup versus registered server policy', () => {
-  const release = PLATFORM_REGISTRY_RELEASE;
-  const policy = platformPortableDefinitionPolicy(release);
+  const policy = platformPortableDefinitionPolicy();
   const http = required(
     policy.definitions.find(({ key }) => key === 'http.request'),
   );
@@ -291,7 +288,7 @@ describe('browser template setup versus registered server policy', () => {
     ).toBe(false);
   });
 
-  it('binds production template setup validation to the selected registered release', () => {
+  it('validates production template setup against the registered definitions', () => {
     const descriptor = required(CURATED_WORKFLOW_TEMPLATES[2]);
     const origin = {
       schemaVersion: 1,
@@ -300,25 +297,11 @@ describe('browser template setup versus registered server policy', () => {
       baseManifestDigest: descriptor.baseManifestDigest,
     };
     expect(
-      validateRegisteredCuratedTemplateSetup(
-        release,
-        descriptor.manifest,
-        origin,
-      ),
+      validateRegisteredCuratedTemplateSetup(descriptor.manifest, origin),
     ).toBe(true);
     expect(policy.validateTemplateSetup(descriptor.manifest, origin)).toBe(
       true,
     );
-    expect(
-      validateRegisteredCuratedTemplateSetup(
-        CORE_REGISTRY_RELEASE,
-        descriptor.manifest,
-        origin,
-      ),
-    ).toBe(false);
-    expect(
-      validateRegisteredCuratedTemplateSetup({}, descriptor.manifest, origin),
-    ).toBe(false);
     const invalid = structuredClone(descriptor.manifest);
     Object.assign(
       required(
@@ -328,7 +311,7 @@ describe('browser template setup versus registered server policy', () => {
     );
     expect(policy.validateTemplateSetup(invalid, origin)).toBe(false);
     expect(
-      validateRegisteredCuratedTemplateSetup(release, descriptor.manifest, {
+      validateRegisteredCuratedTemplateSetup(descriptor.manifest, {
         ...origin,
         templateVersion: 2,
       }),

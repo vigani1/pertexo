@@ -4,7 +4,7 @@ import {
   CORE_BOUNDED_JSON_POLICY,
   CORE_DEFINITION_MANIFESTS,
   CORE_NODE_DEFINITION_REGISTRATIONS,
-  CORE_REGISTRY_RELEASE,
+  CORE_NODE_CATALOG,
 } from '../src/index.js';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '../src/server.js';
 
@@ -48,19 +48,13 @@ describe('core node retained registry', () => {
       { key: 'core.set', version: 1 },
       { key: 'core.terminate', version: 1 },
     ]);
-    expect(
-      CORE_DEFINITION_MANIFESTS.every((item) => item.lifecycle === 'active'),
-    ).toBe(true);
     expect(CORE_DEFINITION_MANIFESTS.map((item) => item.executor)).toEqual([
       { key: 'core.manual', version: 1 },
       { key: 'core.set', version: 1 },
       { key: 'core.terminate', version: 1 },
     ]);
-    expect(CORE_REGISTRY_RELEASE.epoch).toBe(1);
-    expect(CORE_REGISTRY_RELEASE.policies).toContainEqual(
-      CORE_BOUNDED_JSON_POLICY,
-    );
-    expect(Object.isFrozen(CORE_REGISTRY_RELEASE)).toBe(true);
+    expect(CORE_NODE_CATALOG.policies).toContainEqual(CORE_BOUNDED_JSON_POLICY);
+    expect(Object.isFrozen(CORE_NODE_CATALOG)).toBe(true);
     expect(
       CORE_DEFINITION_MANIFESTS.every(
         (manifest) => manifest.credentialRequirements.length === 0,

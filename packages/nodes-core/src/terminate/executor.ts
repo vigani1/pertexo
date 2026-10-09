@@ -13,7 +13,6 @@ export const coreTerminateExecutor: NodeExecutorRegistration = Object.freeze({
   abiVersion: 1,
   definitions: Object.freeze([CORE_TERMINATE_DEFINITION]),
   executor: CORE_TERMINATE_EXECUTOR,
-  lifecycle: 'active',
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
     Promise.resolve(invocation.input),

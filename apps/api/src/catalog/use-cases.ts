@@ -20,7 +20,6 @@ export class ListNodeDefinitionsUseCase {
   public execute(): NodeDefinitionListResponse {
     return nodeDefinitionListResponseSchema.parse({
       schemaVersion: this.catalog.schemaVersion,
-      release: this.catalog.release,
       items: this.catalog.definitions,
     });
   }
@@ -65,12 +64,9 @@ export class ListIntegrationsUseCase {
         nodeDefinitions: definitions
           .sort(compareDefinition)
           .map(({ definition }) => definition),
-        available: definitions.some(({ available }) => available),
-        publishable: definitions.some(({ publishable }) => publishable),
       }));
     return integrationListResponseSchema.parse({
       schemaVersion: this.catalog.schemaVersion,
-      release: this.catalog.release,
       items,
     });
   }

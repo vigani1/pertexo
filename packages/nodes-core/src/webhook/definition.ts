@@ -16,7 +16,6 @@ export const CORE_WEBHOOK_EXECUTOR = Object.freeze({
   version: 1,
 });
 export const CORE_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_WEBHOOK_DEFINITION,
   family: 'trigger',
   configVersion: 1,
@@ -32,7 +31,6 @@ export const CORE_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze(['webhook']),
-  lifecycle: 'active',
   executor: CORE_WEBHOOK_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),

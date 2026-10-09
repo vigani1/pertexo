@@ -22,7 +22,6 @@ export const coreValidateExecutor: NodeExecutorRegistration = Object.freeze({
   abiVersion: 1,
   definitions: Object.freeze([CORE_VALIDATE_DEFINITION]),
   executor: CORE_VALIDATE_EXECUTOR,
-  lifecycle: 'active',
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) => {
     try {

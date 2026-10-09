@@ -33,10 +33,6 @@ export function templateUnavailableReasons(
     const pin = `${required.key}@${String(required.version)}`;
     if (item === undefined)
       return [`${pin} is missing from the current catalog.`];
-    if (!item.available)
-      return [`${pin} is unavailable in the current serving profile.`];
-    if (!item.publishable)
-      return [`${pin} is not publishable in the current serving profile.`];
     if (item.configVersion !== required.configVersion)
       return [`${pin} has a different config version in the current catalog.`];
     return [];

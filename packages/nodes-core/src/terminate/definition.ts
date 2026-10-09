@@ -21,7 +21,6 @@ export const CORE_TERMINATE_EXECUTOR = Object.freeze({
 });
 
 export const CORE_TERMINATE_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_TERMINATE_DEFINITION,
   family: 'output',
   configVersion: 1,
@@ -37,7 +36,6 @@ export const CORE_TERMINATE_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze([TERMINATES_RUN_CAPABILITY]),
-  lifecycle: 'active',
   executor: CORE_TERMINATE_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),

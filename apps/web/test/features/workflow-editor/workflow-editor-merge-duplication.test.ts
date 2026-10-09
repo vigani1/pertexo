@@ -1,8 +1,8 @@
 // Test-only admission proof against built public packages; never browser imports.
-import { PLATFORM_REGISTRY_RELEASE } from '../../../../../packages/node-catalog/dist/index.js';
+import { PLATFORM_NODE_CATALOG } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
 } from '../../../../../packages/workflow-engine/dist/index.js';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { describe, expect, it } from 'vitest';
@@ -11,9 +11,7 @@ import { createEditorStore } from '@/features/workflow-editor/model/editor.store
 import { loopStep, step } from '../../support/for-each-fixtures';
 import { etagA } from '../../support/workflow-editor-fixtures';
 
-const release = composeExecutableCompatibilityRelease(
-  PLATFORM_REGISTRY_RELEASE,
-);
+const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
 const groupIds = ['parallel', 'left', 'right', 'merge'];
 
 function parallelGroup(version: 1 | 2 | 3) {
@@ -94,7 +92,7 @@ function smallLoop(loop: ReturnType<typeof loopStep>) {
 }
 
 function admit(graph: WorkflowGraphContract) {
-  return buildWorkflowExecutable({ graph, release });
+  return buildWorkflowExecutable({ graph, catalog });
 }
 
 describe('duplicating a paired Parallel/Merge group', () => {

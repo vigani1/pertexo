@@ -11,7 +11,6 @@ export const coreSwitchExecutor: NodeExecutorRegistration = Object.freeze({
   abiVersion: 1,
   definitions: Object.freeze([CORE_SWITCH_DEFINITION]),
   executor: CORE_SWITCH_EXECUTOR,
-  lifecycle: 'active',
   policyReferences: Object.freeze([
     CORE_BOUNDED_JSON_POLICY,
     CORE_JSONATA_POLICY,

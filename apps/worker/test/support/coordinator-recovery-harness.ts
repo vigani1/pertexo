@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   createQueueProducer,
   JOB_NAME,
@@ -67,7 +67,6 @@ async function closeStartedWorkers(
 export async function createCoordinatorRecoveryHarness(input: {
   readonly accepted: AcceptedRun;
   readonly database: ReturnType<typeof parseDatabaseConfig>;
-  readonly registryRelease: unknown;
   readonly runtimeCapabilities: RecoveryRuntimeCapabilities;
   readonly workerIdPrefix: string;
 }): Promise<CoordinatorRecoveryHarness> {
@@ -102,7 +101,7 @@ export async function createCoordinatorRecoveryHarness(input: {
           },
         },
         {
-          registry: createPlatformNodeRegistryForRelease(input.registryRelease),
+          registry: createPlatformNodeRegistry(),
           runtimeCapabilities: input.runtimeCapabilities,
         },
       );

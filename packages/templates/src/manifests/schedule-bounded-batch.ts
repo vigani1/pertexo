@@ -168,8 +168,6 @@ export const SCHEDULE_BOUNDED_BATCH_MANIFEST: WorkflowPortableManifest = {
         configVersion: 1,
       },
     ],
-    selectionFingerprint:
-      'node-select:v1:sha256:b6b636ddd0e5c092bd3020641f09cfc86dd9445fb9f8cc38328c9c2b25b7f7ad',
   },
   connectionSlots: [],
 };

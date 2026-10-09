@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { DefinitionIdentity, ExecutorIdentity } from './release.js';
+import type { DefinitionIdentity, ExecutorIdentity } from './catalog.js';
 
 export type NodeExecutorErrorKind =
   | 'authentication'
@@ -107,7 +107,7 @@ export class DefinitionNotFoundError extends NodeSdkError {
   constructor(readonly definition: DefinitionIdentity) {
     super(
       'definition_not_found',
-      `definition ${definition.key}@${String(definition.version)} is not in the release`,
+      `definition ${definition.key}@${String(definition.version)} is not in the catalog`,
     );
     this.name = 'DefinitionNotFoundError';
   }
@@ -117,7 +117,7 @@ export class ExecutorNotFoundError extends NodeSdkError {
   constructor(readonly executor: ExecutorIdentity) {
     super(
       'executor_not_found',
-      `executor ${executor.key}@${String(executor.version)} is not in the release`,
+      `executor ${executor.key}@${String(executor.version)} is not in the catalog`,
     );
     this.name = 'ExecutorNotFoundError';
   }

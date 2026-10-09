@@ -18,7 +18,6 @@ export const CORE_SWITCH_EXECUTOR = Object.freeze({
 });
 
 export const CORE_SWITCH_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_SWITCH_DEFINITION,
   family: 'logic',
   configVersion: 1,
@@ -34,7 +33,6 @@ export const CORE_SWITCH_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze([]),
-  lifecycle: 'active',
   executor: CORE_SWITCH_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([

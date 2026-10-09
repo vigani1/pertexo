@@ -17,11 +17,6 @@ export const etagA = `"draft-v1.${'a'.repeat(43)}"`;
 export const etagB = `"draft-v1.${'b'.repeat(43)}"`;
 export const api = 'http://pertexo.test/v1';
 export const workflowApi = `${api}/workspaces/${workspaceId}/workflows/${workflowId}`;
-
-export const release = {
-  epoch: 1,
-  fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-};
 export const compatibility = {
   compatible: true,
   fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
@@ -68,7 +63,6 @@ export const emptyGraph: WorkflowGraphContract = {
 };
 
 export const setDefinition = {
-  schemaVersion: 1,
   definition: { key: 'core.set', version: 1 },
   family: 'transform',
   configVersion: 1,
@@ -84,9 +78,6 @@ export const setDefinition = {
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: [],
-  lifecycle: 'active',
-  available: true,
-  publishable: true,
 } satisfies NodeDefinitionCatalogItem;
 /** The Set step with no configurable fields, for pure graph and save tests. */
 export const bareSetDefinition = {
@@ -162,10 +153,10 @@ export function editorHandlers(
       HttpResponse.json({ items: [] }),
     ),
     http.get(`${api}/node-definitions`, () =>
-      HttpResponse.json({ schemaVersion: 1, release, items: definitions }),
+      HttpResponse.json({ schemaVersion: 1, items: definitions }),
     ),
     http.get(`${api}/integrations`, () =>
-      HttpResponse.json({ schemaVersion: 1, release, items: [] }),
+      HttpResponse.json({ schemaVersion: 1, items: [] }),
     ),
     http.get(`${api}/workspaces/${workspaceId}/connections`, () =>
       HttpResponse.json({ items: [], nextCursor: null }),

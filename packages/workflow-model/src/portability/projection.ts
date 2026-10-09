@@ -12,7 +12,6 @@ import {
 } from './contract.js';
 
 export type WorkflowPortabilityCatalog = Readonly<{
-  fingerprint: string;
   definitions: readonly Readonly<{
     key: string;
     version: number;
@@ -20,9 +19,6 @@ export type WorkflowPortabilityCatalog = Readonly<{
     slots: readonly PortableConnectionSlotPolicy[];
     validateConfig(config: Readonly<Record<string, JsonValue>>): boolean;
   }>[];
-  selectionFingerprint(
-    definitions: readonly Readonly<{ key: string; version: number }>[],
-  ): string;
 }>;
 export type PortableConnectionSlotPolicy = Readonly<{
   slot: string;
@@ -147,11 +143,7 @@ function facts(graph: WorkflowGraph, catalog: WorkflowPortabilityCatalog) {
   );
   if (slots.length > WORKFLOW_PORTABILITY_LIMITS.connectionSlots)
     throw new WorkflowPortabilityError('connection_slot_limit');
-  return {
-    definitions: selected,
-    selectionFingerprint: catalog.selectionFingerprint(selected),
-    slots,
-  };
+  return { definitions: selected, slots };
 }
 
 function replaceConnections(
@@ -188,10 +180,7 @@ export function projectWorkflowPortableManifest(
     format: 'pertexo.workflow',
     formatVersion: 1,
     graph: replaceConnections(graph, new Map()),
-    requirements: {
-      definitions: selected.definitions,
-      selectionFingerprint: selected.selectionFingerprint,
-    },
+    requirements: { definitions: selected.definitions },
     connectionSlots: selected.slots,
   });
 }
@@ -211,10 +200,7 @@ export function inspectWorkflowPortableManifest(
   const selected = facts(graph, catalog);
   if (
     canonicalWorkflowPortableJson(manifest.requirements) !==
-    canonicalWorkflowPortableJson({
-      definitions: selected.definitions,
-      selectionFingerprint: selected.selectionFingerprint,
-    })
+    canonicalWorkflowPortableJson({ definitions: selected.definitions })
   )
     throw new WorkflowPortabilityError('incompatible_requirements');
   if (

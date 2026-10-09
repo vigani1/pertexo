@@ -187,8 +187,6 @@ export const WEBHOOK_VALIDATION_ROUTING_MANIFEST: WorkflowPortableManifest = {
         configVersion: 1,
       },
     ],
-    selectionFingerprint:
-      'node-select:v1:sha256:a0be3045940d79316109ba42ce12878987f59a13a5ee16c352a70948f5ba1090',
   },
   connectionSlots: [],
 };

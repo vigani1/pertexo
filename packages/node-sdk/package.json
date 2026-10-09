@@ -10,12 +10,6 @@
       "node": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./release": {
-      "types": "./dist/release.d.ts",
-      "browser": "./dist/release.js",
-      "node": "./dist/release.js",
-      "default": "./dist/release.js"
-    },
     "./server": {
       "types": "./dist/server.d.ts",
       "browser": false,

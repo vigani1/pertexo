@@ -298,15 +298,10 @@
                 ],
                 "additionalProperties": false
               }
-            },
-            "selectionFingerprint": {
-              "type": "string",
-              "pattern": "^node-select:v1:sha256:[a-f0-9]{64}$"
             }
           },
           "required": [
-            "definitions",
-            "selectionFingerprint"
+            "definitions"
           ],
           "additionalProperties": false
         },
@@ -954,15 +949,10 @@
                     ],
                     "additionalProperties": false
                   }
-                },
-                "selectionFingerprint": {
-                  "type": "string",
-                  "pattern": "^node-select:v1:sha256:[a-f0-9]{64}$"
                 }
               },
               "required": [
-                "definitions",
-                "selectionFingerprint"
+                "definitions"
               ],
               "additionalProperties": false
             },
@@ -1627,15 +1617,10 @@
                     ],
                     "additionalProperties": false
                   }
-                },
-                "selectionFingerprint": {
-                  "type": "string",
-                  "pattern": "^node-select:v1:sha256:[a-f0-9]{64}$"
                 }
               },
               "required": [
-                "definitions",
-                "selectionFingerprint"
+                "definitions"
               ],
               "additionalProperties": false
             },
@@ -2159,7 +2144,7 @@
         },
         "expectedCompatibilityFingerprint": {
           "type": "string",
-          "pattern": "^node-compat:v1:sha256:[a-f0-9]{64}$"
+          "pattern": "^wf-compat:v1:sha256:[a-f0-9]{64}$"
         }
       },
       "required": [
@@ -2180,7 +2165,7 @@
         },
         "compatibilityFingerprint": {
           "type": "string",
-          "pattern": "^node-compat:v1:sha256:[a-f0-9]{64}$"
+          "pattern": "^wf-compat:v1:sha256:[a-f0-9]{64}$"
         },
         "compatible": {
           "type": "boolean"

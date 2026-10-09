@@ -2,21 +2,15 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import { expect } from 'vitest';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
-  platformBrowserNodeDefinitionCatalog,
-  PLATFORM_REGISTRY_RELEASE,
-} from '@pertexo/node-catalog';
-import {
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   verifyWorkflowExecutable,
 } from '@pertexo/workflow-engine';
 import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
-import { catalogReleaseSchema } from '@pertexo/contracts/schemas/catalog';
 
-export const scheduleCatalogRelease =
-  platformBrowserNodeDefinitionCatalog().release;
-const scheduleExecutableRelease = composeExecutableCompatibilityRelease(
-  PLATFORM_REGISTRY_RELEASE,
+const scheduleExecutableCatalog = composeExecutableCatalog(
+  PLATFORM_NODE_CATALOG,
 );
 export const scheduleScopeSchema = z.strictObject({
   workspaceId: z.uuid(),
@@ -35,7 +29,6 @@ export const scheduleEvidenceSchema = scheduleScopeSchema.extend({
   firstDueAt: z.iso.datetime().regex(/\.\d{3}Z$/u),
   publishKey: z.uuid(),
   disableKey: z.uuid(),
-  catalogRelease: catalogReleaseSchema,
 });
 type Scope = z.infer<typeof scheduleScopeSchema>;
 
@@ -123,9 +116,6 @@ export async function verifyScheduleEvidence(
     evidence.firstDueAt,
     evidence.scheduledAt,
   );
-  expect(catalogReleaseSchema.parse(evidence.catalogRelease)).toEqual(
-    scheduleCatalogRelease,
-  );
   const scope = [evidence.workspaceId, evidence.workflowId];
   const versions = await database.query<{
     id: string;
@@ -145,7 +135,7 @@ export async function verifyScheduleEvidence(
   verifyWorkflowExecutable({
     envelope: version.executable_json,
     checksum: version.checksum,
-    release: scheduleExecutableRelease,
+    catalog: scheduleExecutableCatalog,
   });
   const graph = workflowGraphSchema.parse(version.graph_json);
   const draft = await database.query<{ graph_json: unknown }>(

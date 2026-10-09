@@ -1,12 +1,12 @@
 import type { PublishedWorkflowV2Projection } from '@pertexo/database/runs';
 import { verifyWorkflowExecutable } from '@pertexo/workflow-engine';
 
-/** The release (node catalog plus engine policies) stored executables run on. */
+/** The served catalog (node catalog plus engine policies) stored executables run on. */
 export type PersistedWorkflowProjectionVerificationOptions = Readonly<{
-  release: unknown;
+  catalog: unknown;
 }>;
 
-/** Verifies a published version's stored executable against the served release. */
+/** Verifies a published version's stored executable against the served catalog. */
 export function verifyPersistedWorkflowProjection(
   projection: PublishedWorkflowV2Projection,
   options: PersistedWorkflowProjectionVerificationOptions,
@@ -14,6 +14,6 @@ export function verifyPersistedWorkflowProjection(
   return verifyWorkflowExecutable({
     envelope: projection.executableJson,
     checksum: projection.checksum,
-    release: options.release,
+    catalog: options.catalog,
   });
 }

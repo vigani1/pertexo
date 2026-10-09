@@ -3,11 +3,10 @@ import type { ZodType } from 'zod';
 import type {
   DefinitionIdentity,
   ExecutorIdentity,
-  ExecutorLifecycle,
   NodeManifest,
   PolicyReference,
-  RegistryRelease,
-} from './release.js';
+  NodeCatalog,
+} from './catalog.js';
 export type JsonValue =
   null | boolean | number | string | readonly JsonValue[] | JsonObject;
 
@@ -120,7 +119,6 @@ export interface NodeExecutorRegistration {
   readonly abiVersion: number;
   readonly definitions: readonly DefinitionIdentity[];
   readonly executor: ExecutorIdentity;
-  readonly lifecycle: ExecutorLifecycle;
   readonly policyReferences: readonly PolicyReference[];
   readonly execute: (
     invocation: NodeExecutionInvocation<unknown, unknown>,
@@ -135,7 +133,7 @@ export interface NodeDefinitionRegistration {
 }
 
 export interface NodeRegistryOptions {
-  readonly release: RegistryRelease;
+  readonly catalog: NodeCatalog;
   readonly definitions: readonly NodeDefinitionRegistration[];
   readonly executors: readonly NodeExecutorRegistration[];
 }

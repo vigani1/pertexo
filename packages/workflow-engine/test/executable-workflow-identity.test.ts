@@ -3,14 +3,14 @@ import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   computeWorkflowExecutableChecksum,
   parseWorkflowExecutable,
   verifyWorkflowExecutable,
   WORKFLOW_EXECUTABLE_LIMITS,
 } from '../src/index.js';
 import {
-  nodeRelease,
+  nodeCatalog,
   conditionGraph,
   switchGraph,
   parallelGraph,
@@ -21,22 +21,18 @@ import {
 
 describe('workflow executable V2 identity', () => {
   it('rejects a Condition edge through an undeclared output port', () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ condition: true }),
-    );
+    const catalog = composeExecutableCatalog(nodeCatalog({ condition: true }));
 
     expect(() =>
       buildWorkflowExecutable({
         graph: conditionGraph('out'),
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('rejects Condition branches that reconverge before Merge exists', () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ condition: true }),
-    );
+    const catalog = composeExecutableCatalog(nodeCatalog({ condition: true }));
     const reconverging = conditionGraph('true');
 
     expect(() =>
@@ -52,19 +48,17 @@ describe('workflow executable V2 identity', () => {
             },
           ],
         },
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('rejects Switch edges through unconfigured cases and pre-Merge reconvergence', () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ switch: true }),
-    );
+    const catalog = composeExecutableCatalog(nodeCatalog({ switch: true }));
     expect(() =>
       buildWorkflowExecutable({
         graph: switchGraph('case-03'),
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
 
@@ -82,26 +76,24 @@ describe('workflow executable V2 identity', () => {
             },
           ],
         },
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('requires every declared Parallel branch exactly once without pre-Merge reconvergence', () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ parallel: true }),
-    );
+    const catalog = composeExecutableCatalog(nodeCatalog({ parallel: true }));
     expect(() =>
       buildWorkflowExecutable({
         graph: parallelGraph('branch-03'),
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     const missing = parallelGraph();
     expect(() =>
       buildWorkflowExecutable({
         graph: { ...missing, edges: missing.edges.slice(0, 2) },
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     const reconverging = parallelGraph();
@@ -118,7 +110,7 @@ describe('workflow executable V2 identity', () => {
             },
           ],
         },
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
@@ -126,21 +118,21 @@ describe('workflow executable V2 identity', () => {
   it.each([1, 2, 3] as const)(
     'accepts direct Parallel V%s branches into paired Merge inputs',
     (structuredVersion) => {
-      const release = composeExecutableCompatibilityRelease(
-        nodeRelease({ parallel: true, merge: true, structuredVersion }),
+      const catalog = composeExecutableCatalog(
+        nodeCatalog({ parallel: true, merge: true, structuredVersion }),
       );
       expect(() =>
         buildWorkflowExecutable({
           graph: directPairedParallelGraph(structuredVersion),
-          release,
+          catalog,
         }),
       ).not.toThrow();
     },
   );
 
   it('composes engine-owned policies and produces the pre-publication golden checksum', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
     expect(compiled.envelope.graph.nodes.map(({ id }) => id)).toEqual([
       'manual',
       'set',
@@ -157,23 +149,23 @@ describe('workflow executable V2 identity', () => {
     expect(
       verifyWorkflowExecutable({
         ...compiled,
-        release,
+        catalog,
       }),
     ).toEqual(compiled);
   });
 
   it('is invariant to graph order and unrelated catalog additions', () => {
-    const firstRelease = composeExecutableCompatibilityRelease(nodeRelease());
-    const laterRelease = composeExecutableCompatibilityRelease(
-      nodeRelease({ epoch: 2, unrelated: true }),
+    const firstCatalog = composeExecutableCatalog(nodeCatalog());
+    const laterCatalog = composeExecutableCatalog(
+      nodeCatalog({ unrelated: true }),
     );
     const first = buildWorkflowExecutable({
       graph: graph(),
-      release: firstRelease,
+      catalog: firstCatalog,
     });
     const later = buildWorkflowExecutable({
       graph: graph(true),
-      release: laterRelease,
+      catalog: laterCatalog,
     });
     expect(later.checksum).toBe(first.checksum);
     const explicitFalse = structuredClone(graph());
@@ -182,7 +174,7 @@ describe('workflow executable V2 identity', () => {
     );
     const explicit = buildWorkflowExecutable({
       graph: explicitFalse,
-      release: firstRelease,
+      catalog: firstCatalog,
     });
     expect(explicit.checksum).toBe(first.checksum);
     expect(first.envelope.graph.nodes.every(({ disabled }) => !disabled)).toBe(
@@ -191,29 +183,27 @@ describe('workflow executable V2 identity', () => {
   });
 
   it('changes identity for a selected compatibility mutation', () => {
-    const original = composeExecutableCompatibilityRelease(nodeRelease());
-    const changed = composeExecutableCompatibilityRelease(
-      nodeRelease({ epoch: 2, mutateSet: true }),
-    );
+    const original = composeExecutableCatalog(nodeCatalog());
+    const changed = composeExecutableCatalog(nodeCatalog({ mutateSet: true }));
     expect(
-      buildWorkflowExecutable({ graph: graph(), release: changed }).checksum,
+      buildWorkflowExecutable({ graph: graph(), catalog: changed }).checksum,
     ).not.toBe(
-      buildWorkflowExecutable({ graph: graph(), release: original }).checksum,
+      buildWorkflowExecutable({ graph: graph(), catalog: original }).checksum,
     );
   });
 
   it('pins side-effect class into behavior identity and rejects a mutated pin', () => {
-    const safeRelease = composeExecutableCompatibilityRelease(nodeRelease());
-    const idempotentRelease = composeExecutableCompatibilityRelease(
-      nodeRelease({ setRetryClass: 'idempotent-with-key' }),
+    const safeCatalog = composeExecutableCatalog(nodeCatalog());
+    const idempotentCatalog = composeExecutableCatalog(
+      nodeCatalog({ setRetryClass: 'idempotent-with-key' }),
     );
     const safe = buildWorkflowExecutable({
       graph: graph(),
-      release: safeRelease,
+      catalog: safeCatalog,
     });
     const idempotent = buildWorkflowExecutable({
       graph: graph(),
-      release: idempotentRelease,
+      catalog: idempotentCatalog,
     });
     expect(
       idempotent.envelope.graph.nodes.find(({ id }) => id === 'set')
@@ -229,7 +219,7 @@ describe('workflow executable V2 identity', () => {
     expect(() =>
       parseWorkflowExecutable({
         envelope: mutated,
-        release: safeRelease,
+        catalog: safeCatalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
 
@@ -241,7 +231,7 @@ describe('workflow executable V2 identity', () => {
       expect(() =>
         parseWorkflowExecutable({
           envelope: wrong,
-          release: safeRelease,
+          catalog: safeCatalog,
         }),
       ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     }
@@ -253,24 +243,24 @@ describe('workflow executable V2 identity', () => {
     expect(() =>
       parseWorkflowExecutable({
         envelope: missing,
-        release: safeRelease,
+        catalog: safeCatalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
 
-    const driftedCurrent = composeExecutableCompatibilityRelease(
-      nodeRelease({ epoch: 2, setRetryClass: 'idempotent-with-key' }),
+    const driftedCurrent = composeExecutableCatalog(
+      nodeCatalog({ setRetryClass: 'idempotent-with-key' }),
     );
     expect(() =>
       parseWorkflowExecutable({
         envelope: safe.envelope,
-        release: driftedCurrent,
+        catalog: driftedCurrent,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('maps all manifest retry classes once into pinned ADR 007 vocabulary', () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({
+    const catalog = composeExecutableCatalog(
+      nodeCatalog({
         manualRetryClass: 'unsafe',
         setRetryClass: 'idempotent-with-key',
       }),
@@ -278,14 +268,14 @@ describe('workflow executable V2 identity', () => {
     expect(
       buildWorkflowExecutable({
         graph: graph(),
-        release,
+        catalog,
       }).envelope.graph.nodes.map(({ sideEffectClass }) => sideEffectClass),
     ).toEqual(['unsafe', 'idempotent_with_key', 'safe']);
   });
 
   it('fails closed for mutated pins, checksum, malformed envelopes, and V1 input', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
     const mutated = structuredClone(compiled.envelope);
     const set = mutated.graph.nodes.find(({ id }) => id === 'set');
     if (set === undefined) throw new Error('fixture set node missing');
@@ -293,26 +283,26 @@ describe('workflow executable V2 identity', () => {
     expect(() =>
       parseWorkflowExecutable({
         envelope: mutated,
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(() =>
       verifyWorkflowExecutable({
         envelope: compiled.envelope,
         checksum: compiled.checksum.replace(/.$/u, '0'),
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(() =>
       parseWorkflowExecutable({
         envelope: { ...compiled.envelope, unknown: true },
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(() =>
       parseWorkflowExecutable({
         envelope: { schemaVersion: 1 },
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     let trapCalls = 0;
@@ -325,14 +315,14 @@ describe('workflow executable V2 identity', () => {
     expect(() =>
       parseWorkflowExecutable({
         envelope: hostile,
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(trapCalls).toBe(0);
   });
 
   it('preserves escaped, control, and Unicode JSON while normalizing negative zero', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const catalog = composeExecutableCatalog(nodeCatalog());
     const source = structuredClone(graph());
     const set = source.nodes.find(({ id }) => id === 'set');
     if (set === undefined) throw new Error('fixture set node missing');
@@ -351,10 +341,10 @@ describe('workflow executable V2 identity', () => {
       },
     });
 
-    const compiled = buildWorkflowExecutable({ graph: source, release });
+    const compiled = buildWorkflowExecutable({ graph: source, catalog });
     const parsed = parseWorkflowExecutable({
       envelope: compiled.envelope,
-      release: release,
+      catalog: catalog,
     });
     const parsedSet = parsed.graph.nodes.find(({ id }) => id === 'set');
     const literal = parsedSet?.inputMappings.literal;
@@ -378,8 +368,8 @@ describe('workflow executable V2 identity', () => {
   });
 
   it('rejects hostile raw executable JSON without invoking accessors', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
     let getterCalls = 0;
     const accessor = Object.defineProperty({}, 'secret', {
       enumerable: true,
@@ -452,7 +442,7 @@ describe('workflow executable V2 identity', () => {
         literal: { kind: 'literal', value: hostile },
       });
       expect(
-        () => parseWorkflowExecutable({ envelope, release: release }),
+        () => parseWorkflowExecutable({ envelope, catalog: catalog }),
         name,
       ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     }
@@ -460,11 +450,11 @@ describe('workflow executable V2 identity', () => {
   });
 
   it('rejects malformed raw envelope and policy records at the public parser', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
 
     expect(() =>
-      parseWorkflowExecutable({ envelope: null, release: release }),
+      parseWorkflowExecutable({ envelope: null, catalog: catalog }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
 
     for (const mutate of [
@@ -496,18 +486,16 @@ describe('workflow executable V2 identity', () => {
       >;
       mutate(envelope);
       expect(() =>
-        parseWorkflowExecutable({ envelope, release: release }),
+        parseWorkflowExecutable({ envelope, catalog: catalog }),
       ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     }
   });
 
   it('recursively pins, orders, checksums, parses, and verifies For Each bodies', () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ forEach: true }),
-    );
+    const catalog = composeExecutableCatalog(nodeCatalog({ forEach: true }));
     const compiled = buildWorkflowExecutable({
       graph: forEachGraph(true),
-      release,
+      catalog,
     });
     const loop = compiled.envelope.graph.nodes.find(({ id }) => id === 'loop');
 
@@ -521,9 +509,9 @@ describe('workflow executable V2 identity', () => {
       ),
     ).toBe(true);
     expect(compiled.checksum).toBe(
-      buildWorkflowExecutable({ graph: forEachGraph(), release }).checksum,
+      buildWorkflowExecutable({ graph: forEachGraph(), catalog }).checksum,
     );
-    expect(verifyWorkflowExecutable({ ...compiled, release: release })).toEqual(
+    expect(verifyWorkflowExecutable({ ...compiled, catalog: catalog })).toEqual(
       compiled,
     );
 
@@ -537,23 +525,21 @@ describe('workflow executable V2 identity', () => {
     expect(() =>
       parseWorkflowExecutable({
         envelope: mutated,
-        release,
+        catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('applies port validation recursively and selects body-only definitions', () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ forEach: true }),
-    );
-    const changed = composeExecutableCompatibilityRelease(
-      nodeRelease({ epoch: 2, forEach: true, mutateSet: true }),
+    const catalog = composeExecutableCatalog(nodeCatalog({ forEach: true }));
+    const changed = composeExecutableCatalog(
+      nodeCatalog({ forEach: true, mutateSet: true }),
     );
     expect(
-      buildWorkflowExecutable({ graph: forEachGraph(), release: changed })
+      buildWorkflowExecutable({ graph: forEachGraph(), catalog: changed })
         .checksum,
     ).not.toBe(
-      buildWorkflowExecutable({ graph: forEachGraph(), release }).checksum,
+      buildWorkflowExecutable({ graph: forEachGraph(), catalog }).checksum,
     );
 
     const invalid = structuredClone(forEachGraph());
@@ -563,13 +549,13 @@ describe('workflow executable V2 identity', () => {
     Object.assign(loop.structured.body.edges[0]?.source ?? {}, {
       port: 'missing',
     });
-    expect(() => buildWorkflowExecutable({ graph: invalid, release })).toThrow(
+    expect(() => buildWorkflowExecutable({ graph: invalid, catalog })).toThrow(
       expect.objectContaining({ code: 'executable_invalid' }),
     );
   });
 
   it('rejects unpinned expression policy versions', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const catalog = composeExecutableCatalog(nodeCatalog());
     const expression = structuredClone(graph());
     Object.assign(expression.nodes[1], {
       inputMappings: {
@@ -582,13 +568,13 @@ describe('workflow executable V2 identity', () => {
       },
     });
     expect(() =>
-      buildWorkflowExecutable({ graph: expression, release }),
+      buildWorkflowExecutable({ graph: expression, catalog }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('enforces exact V2 byte accounting before canonical allocation', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
     const exact = structuredClone(compiled.envelope);
     const set = exact.graph.nodes.find(({ id }) => id === 'set');
     if (set === undefined) throw new Error('fixture set node missing');
@@ -604,7 +590,7 @@ describe('workflow executable V2 identity', () => {
       WORKFLOW_EXECUTABLE_LIMITS.bytes,
     );
     expect(
-      parseWorkflowExecutable({ envelope: exact, release: release })
+      parseWorkflowExecutable({ envelope: exact, catalog: catalog })
         .schemaVersion,
     ).toBe(2);
     const over = structuredClone(exact);
@@ -612,12 +598,12 @@ describe('workflow executable V2 identity', () => {
     if (overSet === undefined) throw new Error('fixture set node missing');
     Object.assign(overSet, { config: { padding: 'x'.repeat(4 * 1_048_576) } });
     expect(() =>
-      parseWorkflowExecutable({ envelope: over, release: release }),
+      parseWorkflowExecutable({ envelope: over, catalog: catalog }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('rejects a publish-valid near-limit graph when V2 pins exceed the envelope limit', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const catalog = composeExecutableCatalog(nodeCatalog());
     const nearLimit = structuredClone(graph());
     const set = nearLimit.nodes.find(({ id }) => id === 'set');
     if (set === undefined) throw new Error('fixture set node missing');
@@ -633,12 +619,12 @@ describe('workflow executable V2 identity', () => {
       WORKFLOW_EXECUTABLE_LIMITS.bytes - 1,
     );
     expect(() =>
-      buildWorkflowExecutable({ graph: nearLimit, release }),
+      buildWorkflowExecutable({ graph: nearLimit, catalog }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('compiles a chain at the node limit within the bounded publication budget', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const catalog = composeExecutableCatalog(nodeCatalog());
     const middle = Array.from(
       { length: WORKFLOW_GRAPH_LIMITS.nodes - 2 },
       (_, index) => ({
@@ -670,7 +656,7 @@ describe('workflow executable V2 identity', () => {
         nodes,
         edges,
       },
-      release,
+      catalog,
     });
 
     expect(executable.envelope.graph.nodes).toHaveLength(

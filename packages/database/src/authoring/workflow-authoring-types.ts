@@ -77,7 +77,6 @@ export type PortableCatalog = WorkflowPortabilityCatalog &
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
   portableCatalog?: PortableCatalog;
   definitionCatalog?: WorkflowDefinitionCatalog;
-  placementDefinitionCatalog?: WorkflowDefinitionCatalog;
   runtime?: DatabaseRuntime;
   executableCompiler?: WorkflowExecutableCompiler;
   validateAuthoringGraph?: WorkflowAuthoringGraphValidator;

@@ -18,6 +18,7 @@ import {
   WorkflowPortabilityError,
   workflowPortableManifestSchema,
 } from '@pertexo/workflow-model';
+import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
 
 import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
@@ -66,7 +67,7 @@ const importInput = previewInput
     name: z.string().trim().min(1).max(128),
     expectedCompatibilityFingerprint: z
       .string()
-      .regex(/^node-compat:v1:sha256:[a-f0-9]{64}$/u),
+      .regex(/^wf-compat:v1:sha256:[a-f0-9]{64}$/u),
     idempotencyKey: z.string(),
   })
   .strict();
@@ -99,10 +100,6 @@ function selectedPolicy(
   if (catalog === undefined)
     throw new WorkflowPortabilityUnavailableError(
       'Workflow portability catalog is not configured',
-    );
-  if (catalog.fingerprint !== selection.definitionCatalog.releaseFingerprint)
-    throw new WorkflowPortabilityUnavailableError(
-      'Workflow portability catalog does not match serving authority',
     );
   return catalog;
 }
@@ -314,7 +311,9 @@ function previewPortableWorkflow(
         const report = await inspectImport(client, context, input, selection);
         return {
           manifestDigest: await portableManifestDigest(input.manifest),
-          compatibilityFingerprint: selectedPolicy(selection).fingerprint,
+          compatibilityFingerprint: workflowDefinitionCatalogFingerprint(
+            selection.definitionCatalog,
+          ),
           compatible: report.hard.length === 0,
           issues: report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
           truncated: report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
@@ -377,7 +376,7 @@ function importPortableWorkflow(
       }
       const selection = await context.selectCatalogs(client);
       if (
-        selectedPolicy(selection).fingerprint !==
+        workflowDefinitionCatalogFingerprint(selection.definitionCatalog) !==
         input.expectedCompatibilityFingerprint
       )
         throw new WorkflowPortabilityCompatibilityConflictError(

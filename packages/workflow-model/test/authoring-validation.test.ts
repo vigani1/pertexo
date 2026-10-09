@@ -13,7 +13,6 @@ import * as policy from '../src/expressions/policy.js';
 import { validateAuthoringBatch } from '../src/authoring-validation/validation.js';
 
 const policies: WorkflowExpressionPolicyProjection = {
-  releaseFingerprint: 'test-selected-release',
   definitions: [
     {
       definition: { key: 'core.set', version: 1 },
@@ -397,10 +396,16 @@ describe('bounded authoring worker ownership', () => {
     const { owner, workers } = controlled();
     await expect(
       owner.validate(graph(), {
-        ...policies,
-        releaseFingerprint: 'x'.repeat(
-          AUTHORING_VALIDATION_BUDGET.envelopeBytes,
-        ),
+        definitions: [
+          ...policies.definitions,
+          {
+            definition: {
+              key: 'x'.repeat(AUTHORING_VALIDATION_BUDGET.envelopeBytes),
+              version: 1,
+            },
+            policyReferences: [],
+          },
+        ],
       }),
     ).rejects.toMatchObject({ reason: 'payload_limit' });
     expect(workers).toHaveLength(0);

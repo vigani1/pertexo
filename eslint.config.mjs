@@ -292,7 +292,7 @@ export default tseslint.config(
   {
     files: [
       'packages/node-sdk/src/index.ts',
-      'packages/node-sdk/src/release.ts',
+      'packages/node-sdk/src/catalog.ts',
     ],
     rules: {
       'no-restricted-imports': [

@@ -1,4 +1,4 @@
-import { parseRegistryRelease } from '@pertexo/node-sdk';
+import { parseNodeCatalog } from '@pertexo/node-sdk';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { computeWorkflowExecutableChecksum } from './identity.js';
 import {
@@ -25,7 +25,7 @@ import {
 
 export function parseBoundary(input: {
   readonly envelope: unknown;
-  readonly release: unknown;
+  readonly catalog: unknown;
 }): WorkflowExecutable {
   const normalizedEnvelope: unknown = normalizeBoundedEngineJson(
     input.envelope,
@@ -39,25 +39,25 @@ export function parseBoundary(input: {
   ]);
   if (envelope.schemaVersion !== 2 || envelope.sourceGraphSchemaVersion !== 1)
     fail('unsupported executable schema version');
-  const release = parseRegistryRelease(input.release);
+  const catalog = parseNodeCatalog(input.catalog);
   const runtimePolicies = parseGlobals(envelope.runtimePolicies);
-  validateGlobals(runtimePolicies, release);
+  validateGlobals(runtimePolicies, catalog);
   const rawGraph = readRawExecutableGraph(envelope.graph, false);
   const graph = parseWorkflowGraphForPublish(authoringGraph(rawGraph), {
     schemaVersion: 1,
-    definitions: release.definitions.map(({ definition }) => definition),
+    definitions: catalog.definitions.map(({ definition }) => definition),
   });
   return {
     schemaVersion: 2,
     sourceGraphSchemaVersion: 1,
-    graph: validateExecutableGraph(rawGraph, graph, release),
+    graph: validateExecutableGraph(rawGraph, graph, catalog),
     runtimePolicies,
   };
 }
 
 export function parseWorkflowExecutable(input: {
   readonly envelope: unknown;
-  readonly release: unknown;
+  readonly catalog: unknown;
 }): VerifiedWorkflowExecutable {
   try {
     return freezeExecutable(parseBoundary(input)) as VerifiedWorkflowExecutable;
@@ -66,11 +66,11 @@ export function parseWorkflowExecutable(input: {
   }
 }
 
-/** Parses a stored executable against the served release and checks its checksum. */
+/** Parses a stored executable against the served catalog and checks its checksum. */
 export function verifyWorkflowExecutable(input: {
   readonly envelope: unknown;
   readonly checksum: unknown;
-  readonly release: unknown;
+  readonly catalog: unknown;
 }): CompiledWorkflowExecutable {
   const envelope = parseWorkflowExecutable(input);
   const checksum = computeWorkflowExecutableChecksum(envelope);

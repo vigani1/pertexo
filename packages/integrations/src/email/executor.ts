@@ -291,13 +291,11 @@ async function execute(
 
 export function createEmailSendNotificationExecutorRegistration(
   dependencies: EmailSendNotificationExecutorDependencies,
-  lifecycle: NodeExecutorRegistration['lifecycle'] = 'staged',
 ): NodeExecutorRegistration {
   return Object.freeze({
     abiVersion: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
     definitions: Object.freeze([EMAIL_SEND_NOTIFICATION_DEFINITION]),
     executor: EMAIL_SEND_NOTIFICATION_EXECUTOR,
-    lifecycle,
     policyReferences: Object.freeze([EMAIL_SEND_NOTIFICATION_POLICY]),
     execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
       (dependencies.telemetry ?? NOOP_TELEMETRY).measure(() =>

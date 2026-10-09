@@ -5,8 +5,7 @@ import {
   parseDatabaseConfig,
   parseStoredExecutionValueV1,
 } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   CORE_VALIDATE_CONFIG_SCHEMA,
   evaluateCoreValidate,
@@ -60,9 +59,7 @@ async function createValidateRuntime() {
   const previewStore = createDatabasePreviewAttemptRunStore(
     parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
   );
-  const registry = createPlatformNodeRegistryForRelease(
-    PLATFORM_REGISTRY_RELEASE,
-  );
+  const registry = createPlatformNodeRegistry();
   const resolveConnection = vi.fn(() =>
     Promise.reject(new Error('Validate preview must not resolve a connection')),
   );
