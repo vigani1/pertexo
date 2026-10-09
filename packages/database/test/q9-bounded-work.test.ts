@@ -1,21 +1,12 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 
 import type { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
-import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 
-import {
-  parsePersistedWorkflowCheckpoint,
-  PERSISTED_WORKFLOW_CHECKPOINT_LIMITS,
-} from '../src/compatibility/persisted-workflow-checkpoint.js';
 import { NODE_ATTEMPT_INPUT_LIMITS } from '../src/execution/node-attempts/node-attempt-run-store-contract.js';
 import { loadNodeAttemptInputs } from '../src/execution/node-attempts/node-attempt-run-store-inputs.js';
-import { scopedInvocationKey } from '../src/execution/node-attempts/node-attempt-run-store-transactions.js';
-import { serializeStoredExecutionJsonValue } from '../src/execution/stored-execution-value.js';
-
-const INVOCATION_EFFECTIVE_UPPER = 1_996;
-const JOIN_EFFECTIVE_UPPER = 713;
+import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
 
 const inline = (value: unknown) => ({
   schemaVersion: 1,
@@ -58,52 +49,6 @@ function populations(upper: number): readonly number[] {
   return [...new Set([1, Math.ceil(upper / 2), upper])];
 }
 
-function assertEffectivePopulation(
-  declaredMaximum: number,
-  expectedMaximum: number,
-  checkpoint: (population: number) => unknown,
-): number {
-  expect(expectedMaximum).toBeLessThanOrEqual(declaredMaximum);
-  expect(() =>
-    parsePersistedWorkflowCheckpoint(checkpoint(expectedMaximum)),
-  ).not.toThrow();
-  // The next fixture crosses the stored-execution value limit before the
-  // checkpoint collection limit. Calling the serializer directly proves this
-  // is that limiting contract rather than an unrelated checkpoint invariant.
-  expect(() =>
-    serializeStoredExecutionJsonValue(checkpoint(expectedMaximum + 1)),
-  ).toThrow('Stored execution value violates the V1 persistence contract');
-  return expectedMaximum;
-}
-
-const structuredScopeNodeIds = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef'.split('');
-const structuredScopeUpperSupportedPopulation = (() => {
-  const workflowVersionId = '00000000-0000-4000-8000-000000000001';
-  const declaredMaximum = Math.min(
-    WORKFLOW_GRAPH_LIMITS.structuredDepth,
-    PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts,
-    structuredScopeNodeIds.length,
-  );
-  let accepted = 0;
-  for (let population = 1; population <= declaredMaximum; population += 1) {
-    const iterationPath = structuredScopeNodeIds
-      .slice(0, population)
-      .map((loopNodeId) => ({ loopNodeId, ordinal: 0 }));
-    if (
-      Buffer.byteLength(
-        scopedInvocationKey({
-          workflowVersionId,
-          nodeId: 'body',
-          iterationPath,
-        }),
-      ) > PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocationKeyBytes
-    )
-      break;
-    accepted = population;
-  }
-  return accepted;
-})();
-
 function baseCheckpoint(workflowVersionId: string) {
   return {
     schemaVersion: 1,
@@ -121,49 +66,6 @@ function baseCheckpoint(workflowVersionId: string) {
     cancelRequested: false,
     deadlineExpired: false,
   } as const;
-}
-
-function invocationCheckpoint(population: number, workflowVersionId: string) {
-  return {
-    ...baseCheckpoint(workflowVersionId),
-    schemaVersion: 2 as const,
-    invocations: Array.from({ length: population }, (_, index) => ({
-      invocationKey: `invocation-${String(index)}`,
-      nodeId: `node-${String(index)}`,
-      status: 'pending' as const,
-      attemptNumber: 0,
-    })),
-    branchSelections: [],
-    initialIterationBudget: 0,
-  };
-}
-
-function joinCheckpoint(population: number, workflowVersionId: string) {
-  const joins = Array.from({ length: population }, (_, index) => {
-    const joinId = `join-${String(index)}`;
-    return {
-      joinInvocationKey: scopedInvocationKey({
-        workflowVersionId,
-        nodeId: joinId,
-      }),
-      joinId,
-      policy: { kind: 'all' as const },
-      ledger: [{ branchId: 'branch', disposition: 'pending' as const }],
-    };
-  });
-  return {
-    ...baseCheckpoint(workflowVersionId),
-    schemaVersion: 2 as const,
-    invocations: joins.map((join) => ({
-      invocationKey: join.joinInvocationKey,
-      nodeId: join.joinId,
-      status: 'pending' as const,
-      attemptNumber: 0,
-    })),
-    joins,
-    branchSelections: [],
-    initialIterationBudget: 0,
-  };
 }
 
 function lease(
@@ -303,7 +205,10 @@ describe('Q9 bounded-work probes', () => {
           const nodeId = `upstream-${String(index)}`;
           return {
             nodeId,
-            invocationKey: scopedInvocationKey({ workflowVersionId, nodeId }),
+            invocationKey: encodeWorkflowInvocationKeyV2({
+              workflowVersionId,
+              nodeId,
+            }),
           };
         },
       );
@@ -358,184 +263,6 @@ describe('Q9 bounded-work probes', () => {
     },
   );
 
-  it('measures small, intermediate and effective-upper V2 invocation populations', () => {
-    const derivationIdentity = randomUUID();
-    const upperSupportedPopulation = assertEffectivePopulation(
-      PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocations,
-      INVOCATION_EFFECTIVE_UPPER,
-      (population) => invocationCheckpoint(population, derivationIdentity),
-    );
-    expect(upperSupportedPopulation).toBeGreaterThan(1);
-    for (const population of populations(upperSupportedPopulation)) {
-      const setupStarted = performance.now();
-      const checkpoint = invocationCheckpoint(population, randomUUID());
-      const setupMs = performance.now() - setupStarted;
-      const heapBefore = process.memoryUsage().heapUsed;
-      const started = performance.now();
-      const parsed = parsePersistedWorkflowCheckpoint(checkpoint);
-      const operationMs = performance.now() - started;
-      const processHeapDeltaBytes = process.memoryUsage().heapUsed - heapBefore;
-      expect(parsed.invocations).toHaveLength(population);
-      recordMeasurement({
-        family: 'checkpoint-invocation-validation-projection',
-        contractVersion: 'persisted-workflow-checkpoint-v2',
-        declaredUpperPopulation:
-          PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocations,
-        limitingConstraint: 'stored-execution-value-v1',
-        population,
-        upperSupportedPopulation,
-        completedOperations: parsed.invocations.length,
-        setupMs,
-        operationMs,
-        processHeapDeltaBytes,
-      });
-    }
-  });
-
-  it('measures small, intermediate and effective-upper V2 join populations', () => {
-    const derivationIdentity = randomUUID();
-    const upperSupportedPopulation = assertEffectivePopulation(
-      PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.joins,
-      JOIN_EFFECTIVE_UPPER,
-      (population) => joinCheckpoint(population, derivationIdentity),
-    );
-    expect(upperSupportedPopulation).toBeGreaterThan(1);
-    for (const population of populations(upperSupportedPopulation)) {
-      const setupStarted = performance.now();
-      const checkpoint = joinCheckpoint(population, randomUUID());
-      const setupMs = performance.now() - setupStarted;
-      const heapBefore = process.memoryUsage().heapUsed;
-      const started = performance.now();
-      const parsed = parsePersistedWorkflowCheckpoint(checkpoint);
-      const operationMs = performance.now() - started;
-      const processHeapDeltaBytes = process.memoryUsage().heapUsed - heapBefore;
-      expect(parsed.joins).toHaveLength(population);
-      recordMeasurement({
-        family: 'checkpoint-join-validation-projection',
-        contractVersion: 'persisted-workflow-checkpoint-v2',
-        declaredUpperPopulation: PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.joins,
-        limitingConstraint: 'stored-execution-value-v1',
-        population,
-        upperSupportedPopulation,
-        completedOperations: parsed.joins.length,
-        setupMs,
-        operationMs,
-        processHeapDeltaBytes,
-      });
-    }
-  });
-
   // The 256-byte durable invocation key is the tighter bound than the graph's
   // depth-32 structural parser for this fully materialized scope identity.
-  it.each(populations(structuredScopeUpperSupportedPopulation))(
-    'selects the nearest declaration for %i nested structured scopes with one lookup',
-    async (population) => {
-      const setupStarted = performance.now();
-      const workflowVersionId = randomUUID();
-      const loopIds = structuredScopeNodeIds.slice(0, population);
-      const scopes = loopIds.map((loopNodeId) => ({ loopNodeId, ordinal: 0 }));
-      const collection = [0];
-      const checksum = createHash('sha256')
-        .update(serializeStoredExecutionJsonValue(collection))
-        .digest('hex');
-      const loops = loopIds.map((loopId, index) => {
-        const iterationPath = scopes.slice(0, index);
-        const attemptId = randomUUID();
-        return {
-          controlInvocationKey: scopedInvocationKey({
-            workflowVersionId,
-            nodeId: loopId,
-            iterationPath,
-          }),
-          loopId,
-          branchPath: [],
-          iterationPath,
-          bodyRootNodeIds: ['body'],
-          bodySinkNodeId: 'body',
-          collection: { kind: 'inline' as const, attemptId },
-          collectionChecksum: checksum,
-          collectionSize: 1,
-          maxConcurrency: 1,
-          maxIterations: 1,
-          nextOrdinal: 1,
-          activeOrdinals: [0],
-          terminalOrdinals: [],
-        };
-      });
-      const checkpoint = {
-        ...baseCheckpoint(workflowVersionId),
-        schemaVersion: 2 as const,
-        invocations: loops.map((loop) => ({
-          invocationKey: loop.controlInvocationKey,
-          nodeId: loop.loopId,
-          status: 'waiting' as const,
-          attemptNumber: 1,
-          iterationPath: loop.iterationPath,
-          output: loop.collection,
-        })),
-        loops,
-        branchSelections: [],
-        remainingIterationBudget: 0,
-        initialIterationBudget: population,
-      };
-      const nearest = loops.at(-1);
-      if (nearest === undefined) throw new Error('missing nearest loop');
-      const stored = inline({ items: collection, iterationCount: 1 });
-      const attemptLease = lease(workflowVersionId, {
-        invocationKey: scopedInvocationKey({
-          workflowVersionId,
-          nodeId: 'body',
-          iterationPath: scopes,
-        }),
-        nodeId: 'body',
-        iterationPath: scopes,
-      });
-      const harness = mockPool({
-        workspaceId: attemptLease.workspaceId,
-        checkpoint,
-        declaration: {
-          attempt_id: nearest.collection.attemptId,
-          attempt_output_ref: stored,
-          node_output_ref: stored,
-          node_id: nearest.loopId,
-        },
-      });
-      const setupMs = performance.now() - setupStarted;
-      const heapBefore = process.memoryUsage().heapUsed;
-      const started = performance.now();
-      const result = await loadNodeAttemptInputs(harness.pool, {
-        lease: attemptLease,
-        upstreamNodeOutputs: [],
-        signal: new AbortController().signal,
-      });
-      const elapsedMs = performance.now() - started;
-      const heapDeltaBytes = process.memoryUsage().heapUsed - heapBefore;
-      expect(result.structuredCollection).toMatchObject({
-        loopNodeId: nearest.loopId,
-        ordinal: 0,
-        collectionSize: 1,
-      });
-      const work = harness.measurements();
-      expect(work).toEqual({
-        applicationQueries: 2,
-        clientsAcquired: 1,
-        releases: 1,
-      });
-      recordMeasurement({
-        family: 'structured-scope-declaration-lookup',
-        contractVersion: 'persisted-workflow-checkpoint-v2/workflow-graph-v1',
-        population,
-        upperSupportedPopulation: structuredScopeUpperSupportedPopulation,
-        completedOperations: result.structuredCollection === undefined ? 0 : 1,
-        setupMs,
-        operationMs: elapsedMs,
-        processHeapDeltaBytes: heapDeltaBytes,
-        sql: {
-          applicationQueries: work.applicationQueries,
-          clientsAcquired: work.clientsAcquired,
-          clientsReleased: work.releases,
-        },
-      });
-    },
-  );
 });

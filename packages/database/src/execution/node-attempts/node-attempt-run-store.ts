@@ -7,7 +7,10 @@ import { completeNodeAttempt } from './node-attempt-run-store-completion.js';
 import { markNodeAttemptDispatched } from './node-attempt-run-store-dispatch.js';
 import { heartbeatNodeAttempt } from './node-attempt-run-store-heartbeat.js';
 import { recordNodeAttemptInput } from './node-attempt-run-store-input-record.js';
-import { loadNodeAttemptInputs } from './node-attempt-run-store-inputs.js';
+import {
+  loadNodeAttemptInputs,
+  readNodeAttemptLoopDeclaration,
+} from './node-attempt-run-store-inputs.js';
 
 import {
   NodeAttemptConnectionFenceError,
@@ -20,7 +23,8 @@ import {
   type CompleteNodeAttemptResult,
   type NodeAttemptClaimResult,
   type NodeAttemptCompletion,
-  type NodeAttemptInputs,
+  type NodeAttemptLoopDeclaration,
+  type NodeAttemptStoredInputs,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
 } from './node-attempt-run-store-contract.js';
@@ -38,7 +42,8 @@ export type {
   CompleteNodeAttemptResult,
   NodeAttemptClaimResult,
   NodeAttemptCompletion,
-  NodeAttemptInputs,
+  NodeAttemptLoopDeclaration,
+  NodeAttemptStoredInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,
 };
@@ -55,6 +60,9 @@ export function createNodeAttemptRunStore(
     ) => claimNodeAttemptDelivery(pool, input),
     loadInputs: (input: Parameters<NodeAttemptRunStore['loadInputs']>[0]) =>
       loadNodeAttemptInputs(pool, input),
+    readLoopDeclaration: (
+      input: Parameters<NodeAttemptRunStore['readLoopDeclaration']>[0],
+    ) => readNodeAttemptLoopDeclaration(pool, input),
     markDispatched: (
       input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
     ) => markNodeAttemptDispatched(pool, input),

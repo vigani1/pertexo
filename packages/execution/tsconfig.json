@@ -23,6 +23,9 @@
     },
     {
       "path": "../workflow-engine/tsconfig.json"
+    },
+    {
+      "path": "../workflow-model/tsconfig.json"
     }
   ]
 }

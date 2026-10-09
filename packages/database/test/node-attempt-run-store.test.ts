@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -11,26 +9,6 @@ import {
   type NodeAttemptLease,
 } from '../src/testing.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
-import { scopedInvocationKey } from '../src/execution/node-attempts/node-attempt-run-store-transactions.js';
-
-const invocationKeyCases = JSON.parse(
-  readFileSync(
-    new URL('./fixtures/invocation-key-conformance.json', import.meta.url),
-    'utf8',
-  ),
-) as unknown as readonly Readonly<{
-  expected: string;
-  input: Readonly<{
-    branchPath?: readonly Readonly<{ nodeId: string; outputPort: string }>[];
-    iterationPath?: readonly Readonly<{
-      loopNodeId: string;
-      ordinal: number;
-    }>[];
-    nodeId: string;
-    workflowVersionId: string;
-  }>;
-  name: string;
-}>[];
 
 const config = parseDatabaseConfig({
   connectionString: 'postgresql://pertexo_app:unused@invalid.invalid/pertexo',
@@ -89,13 +67,6 @@ async function withNoCheckoutStore(
 }
 
 describe('NodeAttemptRunStore', () => {
-  it.each(invocationKeyCases)(
-    'keeps the $name invocation-key encoding byte-compatible',
-    ({ expected, input }) => {
-      expect(scopedInvocationKey(input)).toBe(expected);
-    },
-  );
-
   it.each([
     [
       'claim',

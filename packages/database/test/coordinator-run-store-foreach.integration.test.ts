@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  NodeAttemptStateCorruptError,
   asRuntime,
   checkpoint,
   createTestRunStore,
@@ -299,7 +298,7 @@ describe('Coordinator For Each persistence invariants', () => {
     ]);
   });
 
-  it('loads only exact ordinal-scoped body inputs and fails closed on loop proof drift', async () => {
+  it('loads body inputs and the loop declaration for an ordinal-scoped attempt', async () => {
     const controlKey = `${versionA}|loop|b:|i:`;
     const first0Key = `${versionA}|body-first|b:|i:loop%3A0`;
     const first1Key = `${versionA}|body-first|b:|i:loop%3A1`;
@@ -534,65 +533,19 @@ describe('Coordinator For Each persistence invariants', () => {
           value: { value: 'ordinal-one' },
         },
       ],
-      structuredCollection: {
-        loopNodeId: 'loop',
-        ordinal: 1,
-        collection: items,
-        collectionSize: 2,
-        declaredCollectionChecksum: collectionChecksum,
-      },
+      checkpoint: schedulerState,
     });
-    await expect(load(first0Key)).rejects.toBeInstanceOf(
-      NodeAttemptStateCorruptError,
-    );
-
-    const replaceCheckpoint = async (next: unknown): Promise<void> => {
-      const updated = await asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query<{ scheduler_state: unknown }>(
-          `update app.run_checkpoints set scheduler_state=$2::jsonb
-             where workflow_run_id=$1 returning scheduler_state`,
-          [runId, JSON.stringify(next)],
-        ),
-      );
-      expect(updated.rowCount).toBe(1);
-      expect(updated.rows[0]?.scheduler_state).toEqual(next);
-    };
-    await replaceCheckpoint({
-      ...schedulerState,
-      loops: [
-        { ...schedulerState.loops[0], collectionChecksum: 'f'.repeat(64) },
-      ],
+    // The loop item itself is projected by execution from these two reads.
+    await expect(
+      nodeAttemptStore.readLoopDeclaration({
+        lease,
+        controlInvocationKey: controlKey,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      nodeId: 'loop',
+      attemptId: declarationAttemptId,
+      output: { items, iterationCount: 2 },
     });
-    await expect(load()).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
-    await replaceCheckpoint({
-      ...schedulerState,
-      loops: [
-        {
-          ...schedulerState.loops[0],
-          activeOrdinals: [0],
-          terminalOrdinals: [1],
-        },
-      ],
-    });
-    await expect(load()).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
-    const wrongAttemptId = randomUUID();
-    await replaceCheckpoint({
-      ...schedulerState,
-      invocations: schedulerState.invocations.map((invocation) =>
-        invocation.invocationKey === controlKey
-          ? {
-              ...invocation,
-              output: { kind: 'inline', attemptId: wrongAttemptId },
-            }
-          : invocation,
-      ),
-      loops: [
-        {
-          ...schedulerState.loops[0],
-          collection: { kind: 'inline', attemptId: wrongAttemptId },
-        },
-      ],
-    });
-    await expect(load()).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
   });
 });

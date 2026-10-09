@@ -1,5 +1,4 @@
 import type {
-  NodeAttemptInputs,
   NodeAttemptLease,
   PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
@@ -24,6 +23,7 @@ import {
   isWorkerCoreParallelDefinition,
 } from './core-definition-identities.js';
 import {
+  type NodeAttemptInputs,
   verifyPersistedWorkflowProjection,
   type PersistedWorkflowProjectionVerificationOptions,
 } from '@pertexo/execution';

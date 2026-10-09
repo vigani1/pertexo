@@ -98,7 +98,8 @@ export {
   createNodeAttemptRunStore,
 } from './execution/node-attempts/node-attempt-run-store.js';
 export type {
-  NodeAttemptInputs,
+  NodeAttemptLoopDeclaration,
+  NodeAttemptStoredInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,
 } from './execution/node-attempts/node-attempt-run-store.js';

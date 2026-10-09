@@ -417,6 +417,9 @@ export async function createHttpNodeAttemptProofRuntime(
         },
         loadInputs: (input: Parameters<NodeAttemptRunStore['loadInputs']>[0]) =>
           baseRunStore.loadInputs(input),
+        readLoopDeclaration: (
+          input: Parameters<NodeAttemptRunStore['readLoopDeclaration']>[0],
+        ) => baseRunStore.readLoopDeclaration(input),
         markDispatched: async (
           input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
         ) => {

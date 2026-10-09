@@ -15,6 +15,7 @@ import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import {
   WorkflowEngineError,
   type NodeExecutionRegistry,
+  createCheckpoint,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -32,6 +33,13 @@ import {
   projection,
   registryPreparedAttempt,
 } from './support/node-attempt-handler.fixture.js';
+
+const STORED_CHECKPOINT = createCheckpoint({
+  engineVersion: 'phase3-engine-v1',
+  workflowVersionId: '33333333-3333-4333-8333-333333333333',
+  iterationBudget: 0,
+  nextEventSequence: 2,
+});
 
 function heartbeatCancellationHandler(
   runStore: NodeAttemptRunStore,
@@ -534,6 +542,7 @@ describe('NodeAttemptHandler', () => {
     'maps durable dispatch evidence failures to %s',
     async (error, code) => {
       const runStore = executionStore({
+        readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn().mockRejectedValue(error),
       });
 
@@ -591,9 +600,10 @@ describe('NodeAttemptHandler', () => {
         .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
       complete,
       loadInputs: vi.fn().mockResolvedValue({
+        checkpoint: STORED_CHECKPOINT,
         abortRequested: true,
         abortReason: 'canceled',
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         runInput: null,
       }),
       markDispatched,
@@ -633,11 +643,13 @@ describe('NodeAttemptHandler', () => {
         complete,
         heartbeat: vi.fn(),
         loadInputs: vi.fn().mockResolvedValue({
+          checkpoint: STORED_CHECKPOINT,
           abortRequested: true,
           abortReason,
-          completedNodeOutputs: {},
+          completedNodeOutputs: [],
           runInput: null,
         }),
+        readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;
       const reader = {
@@ -755,10 +767,12 @@ describe('NodeAttemptHandler', () => {
         complete,
         heartbeat: vi.fn(),
         loadInputs: vi.fn().mockResolvedValue({
+          checkpoint: STORED_CHECKPOINT,
           abortRequested: false,
-          completedNodeOutputs: {},
+          completedNodeOutputs: [],
           runInput: null,
         }),
+        readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;
       const reader = {
@@ -817,10 +831,12 @@ describe('NodeAttemptHandler', () => {
       complete,
       heartbeat: vi.fn(),
       loadInputs: vi.fn().mockResolvedValue({
+        checkpoint: STORED_CHECKPOINT,
         abortRequested: false,
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         runInput: null,
       }),
+      readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     } satisfies NodeAttemptRunStore;
     const reader = {
@@ -882,10 +898,12 @@ describe('NodeAttemptHandler', () => {
       complete,
       heartbeat: vi.fn(),
       loadInputs: vi.fn().mockResolvedValue({
+        checkpoint: STORED_CHECKPOINT,
         abortRequested: false,
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         runInput: null,
       }),
+      readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     } satisfies NodeAttemptRunStore;
     const handler = createNodeAttemptHandler({
@@ -1088,10 +1106,12 @@ describe('NodeAttemptHandler', () => {
         complete,
         heartbeat,
         loadInputs: vi.fn().mockResolvedValue({
+          checkpoint: STORED_CHECKPOINT,
           abortRequested: false,
-          completedNodeOutputs: {},
+          completedNodeOutputs: [],
           runInput: null,
         }),
+        readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;
       const handler = heartbeatCancellationHandler(store);

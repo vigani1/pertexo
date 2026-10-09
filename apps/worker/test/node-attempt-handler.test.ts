@@ -1,3 +1,4 @@
+import { createCheckpoint } from '@pertexo/workflow-engine';
 import type {
   NodeAttemptRunStore,
   PublishedWorkflowReader,
@@ -25,6 +26,13 @@ import {
   registryPreparedAttempt,
 } from './support/node-attempt-handler.fixture.js';
 
+const STORED_CHECKPOINT = createCheckpoint({
+  engineVersion: 'phase3-engine-v1',
+  workflowVersionId: '33333333-3333-4333-8333-333333333333',
+  iterationBudget: 0,
+  nextEventSequence: 2,
+});
+
 describe('NodeAttemptHandler', () => {
   it.each([9, 1_000.5, 30_000])(
     'rejects invalid heartbeat interval %s',
@@ -42,6 +50,7 @@ describe('NodeAttemptHandler', () => {
             complete: vi.fn(),
             heartbeat: vi.fn(),
             loadInputs: vi.fn(),
+            readLoopDeclaration: vi.fn(),
             markDispatched: vi.fn(),
           },
           workerId: 'worker-1',
@@ -76,6 +85,7 @@ describe('NodeAttemptHandler', () => {
           complete: vi.fn(),
           heartbeat: vi.fn(),
           loadInputs: vi.fn(),
+          readLoopDeclaration: vi.fn(),
           markDispatched: vi.fn(),
         },
         workerId: 'worker-1',
@@ -95,10 +105,12 @@ describe('NodeAttemptHandler', () => {
       complete: vi.fn(),
       heartbeat: vi.fn(),
       loadInputs: vi.fn().mockResolvedValue({
+        checkpoint: STORED_CHECKPOINT,
         abortRequested: true,
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         runInput: null,
       }),
+      readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     };
     const dependencies = {
@@ -169,10 +181,12 @@ describe('NodeAttemptHandler', () => {
         complete: vi.fn(),
         heartbeat: vi.fn(),
         loadInputs: vi.fn().mockResolvedValue({
+          checkpoint: STORED_CHECKPOINT,
           abortRequested: false,
-          completedNodeOutputs: {},
+          completedNodeOutputs: [],
           runInput: null,
         }),
+        readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       },
       workerId: 'worker-1',
@@ -209,11 +223,13 @@ describe('NodeAttemptHandler', () => {
           complete,
           heartbeat: vi.fn(),
           loadInputs: vi.fn().mockResolvedValue({
+            checkpoint: STORED_CHECKPOINT,
             abortRequested: false,
-            completedNodeOutputs: {},
+            completedNodeOutputs: [],
             resumeOutput: { resumed: true },
             runInput: null,
           }),
+          readLoopDeclaration: vi.fn(),
           markDispatched: vi.fn(),
         },
         workerId: 'worker-1',
@@ -254,6 +270,7 @@ describe('NodeAttemptHandler', () => {
       complete: vi.fn(),
       heartbeat: vi.fn(),
       loadInputs: vi.fn(),
+      readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     } satisfies NodeAttemptRunStore;
     const reader = {
@@ -296,10 +313,12 @@ describe('NodeAttemptHandler', () => {
       complete,
       heartbeat: vi.fn(),
       loadInputs: vi.fn().mockResolvedValue({
+        checkpoint: STORED_CHECKPOINT,
         abortRequested: false,
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         runInput: { hello: 'world' },
       }),
+      readLoopDeclaration: vi.fn(),
       markDispatched,
     } satisfies NodeAttemptRunStore;
     const reader = {
@@ -452,10 +471,12 @@ describe('NodeAttemptHandler', () => {
       complete,
       heartbeat: vi.fn(),
       loadInputs: vi.fn().mockResolvedValue({
+        checkpoint: STORED_CHECKPOINT,
         abortRequested: false,
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         runInput: {},
       }),
+      readLoopDeclaration: vi.fn(),
       markDispatched,
     } satisfies NodeAttemptRunStore;
     const reader = {

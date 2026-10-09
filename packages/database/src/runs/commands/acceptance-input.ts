@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
 
-import {
-  parseInitialWorkflowCheckpoint,
-  serializePersistedWorkflowCheckpoint,
-} from '../../compatibility/persisted-workflow-checkpoint.js';
+import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
 
+/**
+ * Serializes a new run's first checkpoint. The checkpoint comes from the
+ * engine (`InitialCheckpointFactory`); this checks only that it belongs to the
+ * run row being written.
+ */
 export function prepareWorkflowRunAcceptanceInput(
   input: Readonly<{
     engineVersion: string;
@@ -25,12 +27,16 @@ export function prepareWorkflowRunAcceptanceInput(
     (input.replayCommandId !== undefined)
   )
     throw new TypeError('Replay lineage must match the replay trigger type');
-  const initialCheckpointJson = serializePersistedWorkflowCheckpoint(
-    parseInitialWorkflowCheckpoint(input.initialCheckpoint, {
-      engineVersion: input.engineVersion,
-      workflowVersionId: input.workflowVersionId,
-    }),
-  );
+  const checkpoint = input.initialCheckpoint as Readonly<
+    Record<string, unknown>
+  > | null;
+  if (
+    checkpoint?.workflowVersionId !== input.workflowVersionId ||
+    checkpoint.engineVersion !== input.engineVersion ||
+    checkpoint.revision !== 0
+  )
+    throw new TypeError('Initial checkpoint does not belong to this run');
+  const initialCheckpointJson = serializeStoredExecutionJsonValue(checkpoint);
   return {
     initialCheckpointJson,
     initialCheckpointHash: createHash('sha256')

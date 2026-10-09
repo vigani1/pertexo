@@ -1,12 +1,12 @@
 import {
   canonicalOutboxPayloadChecksum,
   NodeAttemptOutputInvalidError,
-  type NodeAttemptInputs,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
   type PublishedWorkflowReader,
   type PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
+import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/execution';
 import type {
   QueueDelivery,
   QueueHandlerContext,
@@ -415,7 +415,7 @@ export function createNodeAttemptHandler(
         lease: claimed.lease,
         projection: published.workflowVersion,
       });
-      const inputs = await dependencies.runStore.loadInputs({
+      const inputs = await loadAttemptInputs(dependencies.runStore, {
         lease: claimed.lease,
         upstreamNodeOutputs: prepared.upstreamNodeOutputs,
         signal: context.signal,

@@ -162,20 +162,18 @@ describe('workflow run acceptance persistence and idempotency', () => {
     ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
   });
 
-  it('rejects an invalid initial checkpoint before persisting acceptance state', async () => {
+  it('rejects an initial checkpoint for another version before persisting acceptance state', async () => {
     await expect(
       apiDatabase.withWorkspace(workspaceA, (transaction) =>
         acceptWorkflowRun(transaction, {
           ...acceptanceInput(),
           initialCheckpoint: {
             ...initialCheckpoint(),
-            nextEventSequence: 1,
+            workflowVersionId: randomUUID(),
           },
         }),
       ),
-    ).rejects.toMatchObject({
-      name: 'PersistedWorkflowCheckpointInvalidError',
-    });
+    ).rejects.toThrow('Initial checkpoint does not belong to this run');
     await expectAcceptanceRecordCounts(0);
   });
 

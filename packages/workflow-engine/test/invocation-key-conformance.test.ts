@@ -6,10 +6,7 @@ import { invocationKey } from '../src/index.js';
 
 const invocationKeyCases = JSON.parse(
   readFileSync(
-    new URL(
-      '../../database/test/fixtures/invocation-key-conformance.json',
-      import.meta.url,
-    ),
+    new URL('./fixtures/invocation-key-conformance.json', import.meta.url),
     'utf8',
   ),
 ) as unknown as readonly Readonly<{
