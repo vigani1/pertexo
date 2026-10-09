@@ -7,7 +7,7 @@ import { describeWorkflowState } from '@/features/workflows/hub.public';
 import { recentWorkflowsQueryOptions } from '@/features/workflows/queries.public';
 import { WorkflowGlyph } from '@/features/workflows/shape.public';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { HomeBlock } from './home-block';
 import { queryBlockState } from '../model/home-block-state';
 

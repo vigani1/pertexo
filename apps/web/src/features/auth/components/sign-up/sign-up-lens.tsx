@@ -7,8 +7,8 @@ import { emailProblem, newPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { signUpFailure } from '../../model/auth-failure';
 import { returnToSearch } from '../../model/return-path';
-import { signUpWithEmail } from '../../native-auth.api';
-import { useAuthRequest } from '../../use-auth-request';
+import { signUpWithEmail } from '../../data/native-auth.api';
+import { useAuthRequest } from '../../hooks/use-auth-request';
 import {
   AuthLens,
   AuthLensDescription,

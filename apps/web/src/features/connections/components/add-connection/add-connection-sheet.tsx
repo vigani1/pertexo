@@ -19,12 +19,12 @@ import {
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/api-error';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
-import { connectionCommandError } from '../../connection-errors';
+import { connectionCommandError } from '../../model/connection-errors';
 import {
   useCreateConnectionMutation,
   type ConnectionMutationScope,
   type CreateConnectionCommand,
-} from '../../connections.mutations';
+} from '../../data/connections.mutations';
 import {
   connectionNameError,
   PROVIDERS,

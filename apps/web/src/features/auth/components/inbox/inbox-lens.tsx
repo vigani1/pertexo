@@ -6,8 +6,8 @@ import {
   resendFailure,
 } from '../../model/auth-failure';
 import { ProgressButton } from '@/components/ui/progress-button';
-import type { Countdown } from '@/lib/use-countdown';
-import { useLatestRequest } from '@/lib/use-latest-request';
+import type { Countdown } from '@/lib/hooks/use-countdown';
+import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import {
   AuthLens,
   AuthLensDescription,

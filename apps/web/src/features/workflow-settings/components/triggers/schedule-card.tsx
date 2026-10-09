@@ -9,7 +9,7 @@ import {
   describeMisfirePolicy,
   describeRecurrence,
 } from '@/features/catalog/presentation.public';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { describeScheduleHold } from '../../model/triggers/occurrence-outcome';
 import { describeTriggerState } from '../../model/triggers/trigger-state';
 

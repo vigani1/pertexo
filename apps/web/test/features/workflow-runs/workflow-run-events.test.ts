@@ -5,7 +5,7 @@ import { createElement, StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/api-error';
-import { useRunEvents } from '@/features/workflow-runs/use-run-events';
+import { useRunEvents } from '@/features/workflow-runs/hooks/use-run-events';
 import {
   appendRunEvent,
   classifyRunEvent,

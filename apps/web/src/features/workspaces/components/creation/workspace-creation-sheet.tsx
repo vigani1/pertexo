@@ -9,7 +9,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import type { ApiClient } from '@/lib/api/client';
-import { useWorkspaceCreation } from '../../mutations/use-workspace-creation';
+import { useWorkspaceCreation } from '../../data/mutations/use-workspace-creation';
 import { WorkspaceCreationForm } from './workspace-creation-form';
 
 /** "+ New workspace" from the picker: the same form, in a side lens. */

@@ -1,1 +1,1 @@
-export { LegacyMigrationPage } from './legacy-migration-page';
+export { LegacyMigrationPage } from './pages/legacy-migration';

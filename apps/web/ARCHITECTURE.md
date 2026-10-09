@@ -120,21 +120,20 @@ apps/web/
       app-providers.tsx          # dependency/context composition, when needed
       session-lifecycle.ts      # scoped cleanup on login/logout/identity change
     routes/
-      route-tree.ts             # small code-based route registration
-      root-layout.tsx           # public shell + top-level recovery
-      workspace-layout.tsx      # workspace navigation and route composition
-      workflows-route.tsx       # params/search/loader + feature composition
-      workflow-editor-route.tsx # lazy editor entry
-      run-route.tsx             # lazy run view entry
+      root/                     # route tree, root layout, pending/not-found pages
+      auth/                     # login, sign-up, password, invitation routes
+      workspace/                # workspace shell and its section routes
+      workflow/                 # workflow hub, build, runs, settings routes
     features/
       auth/                     # session query and login/logout behavior
       workspaces/               # discovery, membership and workspace UI
       workflows/
-        workflows.api.ts        # exact endpoint requests/response decoders
-        workflows.queries.ts    # keys + queryOptions factories
-        workflows.mutations.ts  # mutation hooks + cache effects
-        workflow-list.tsx       # feature presentation
-        create-workflow-form.tsx
+        data/                   # workflows.api.ts (requests and decoders),
+                                # workflows.queries.ts, *.mutations.ts
+        pages/                  # workflow-list.tsx and other screens
+        components/             # feature presentation
+        hooks/                  # feature hooks
+        model/                  # pure rules
         public.ts               # only exports needed outside this feature
       catalog/                  # API catalog queries + selection UI
       connections/              # credential forms, safe metadata and picker
@@ -214,25 +213,27 @@ it or a claim that enforcement is already implemented.
 
 ```text
 features/<feature>/
-  <feature-entry>.tsx          # compose the feature's UI and behavior
-  <feature>.api.ts             # requests and response decoding
-  <feature>.queries.ts         # scoped keys and query options
-  <feature>.mutations.ts       # server commands and cache effects
+  public.ts                   # only what outside callers actually need
+  <responsibility>.public.ts # optional loader/command interface kept separate from a lazy page export
+  pages/                      # screens a route renders (lazy-loaded)
   components/                 # separate feature-owned visual responsibilities
     <meaningful-name>.tsx
     <sub-area>/               # group a substantial area when needed
+  hooks/                      # use-* hooks that give the feature behavior
+  data/                       # server access
+    <subject>.api.ts          # requests and response decoding
+    <subject>.queries.ts      # scoped keys and query options
+    <subject>.mutations.ts    # server commands and cache effects
+    mutations/                # one command hook per file when there are several
   forms/                      # form UI and its input validation schemas
   model/                      # pure rules, transformations, complex local state
-  public.ts                   # only what outside callers actually need
-  <responsibility>.public.ts # optional loader/command interface kept separate from a lazy page export
 ```
 
-The template defines placement, not mandatory scaffolding. A small feature may
-keep its few files flat, as in the workflows map above. Once grouping helps, use
-these responsibility names rather than a different taxonomy per feature. Do not
-create empty folders, a store for every feature or a hook for every file. Tests
-mirror the owning feature under `test/features/`; shared test setup stays in
-`test/support/`.
+Only the public entry files sit at a feature's root; everything else lives in
+the folder for its role. Create a folder only when the feature has such files.
+Do not create empty folders, a store for every feature or a hook for every file.
+Tests mirror the owning feature under `test/features/`; shared test setup stays
+in `test/support/`.
 
 | Responsibility          | Consistent home and rule                                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |

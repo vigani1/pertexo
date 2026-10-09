@@ -5,7 +5,7 @@ import {
   LIFECYCLE_CONSEQUENCES,
   type LifecycleIntent,
 } from '../model/workflow-lifecycle';
-import { useWorkflowLifecycleCommand } from '../workflows.mutations';
+import { useWorkflowLifecycleCommand } from '../data/workflows.mutations';
 
 const COPY = {
   archive: {

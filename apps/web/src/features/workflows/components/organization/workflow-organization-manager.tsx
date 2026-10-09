@@ -28,12 +28,12 @@ import { LoadMore } from '@/components/patterns/load-more';
 import {
   workflowFoldersQueryOptions,
   workflowTagsInfiniteQueryOptions,
-} from '../../organization.queries';
+} from '../../data/organization.queries';
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
 } from '../../model/workflow-organization';
-import { useWorkflowOrganizationCommand } from '../../use-workflow-organization-command';
+import { useWorkflowOrganizationCommand } from '../../hooks/use-workflow-organization-command';
 import { WorkflowFolderPicker } from './workflow-folder-picker';
 import { OrganizationCommandFeedback } from './organization-command-feedback';
 import { WorkflowTagCleanup } from './workflow-tag-cleanup';

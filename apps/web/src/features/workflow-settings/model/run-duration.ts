@@ -1,5 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { formatDurationMs } from '@/lib/format-time';
+import { formatDurationMs } from '@/lib/format/time';
 
 /**
  * The longest a run may take (`WORKFLOW_EXECUTION_LIMITS` in

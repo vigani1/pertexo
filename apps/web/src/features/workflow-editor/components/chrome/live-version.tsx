@@ -4,7 +4,7 @@ import { statusToneText } from '@/components/ui/status-tone';
 import { describeWorkflowState } from '@/features/workflows/hub.public';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { liveVersionQueryOptions } from '../../workflow-editor.queries';
+import { liveVersionQueryOptions } from '../../data/workflow-editor.queries';
 
 /**
  * The number of the version that runs, after the state word: "Live v4".

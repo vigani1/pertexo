@@ -7,7 +7,7 @@ import {
   connectionKeys,
   connectionsInfiniteQueryOptions,
   connectionUsageQueryOptions,
-} from '@/features/connections/connections.queries';
+} from '@/features/connections/data/connections.queries';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

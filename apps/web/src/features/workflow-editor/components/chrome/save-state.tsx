@@ -1,4 +1,4 @@
-import { formatShortTime } from '@/lib/format-time';
+import { formatShortTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import type { EditorState } from '../../model/editor.store';
 import { useEditorStore } from '../../model/editor-store-context';

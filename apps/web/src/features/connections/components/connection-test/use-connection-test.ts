@@ -6,12 +6,12 @@ import type {
 } from '@pertexo/contracts';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
-import { connectionCommandError } from '../../connection-errors';
+import { connectionCommandError } from '../../model/connection-errors';
 import {
   useTestConnectionMutation,
   type ConnectionMutationScope,
   type TestConnectionCommand,
-} from '../../connections.mutations';
+} from '../../data/connections.mutations';
 import type { TestPhase } from '../../model/connection-health';
 
 export type ConnectionTest = Readonly<{

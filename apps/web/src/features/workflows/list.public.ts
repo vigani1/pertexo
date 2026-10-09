@@ -1,2 +1,2 @@
-export { WorkflowListPage } from './workflow-list-page';
-export type { StarterDraftWriter } from './workflows.mutations';
+export { WorkflowListPage } from './pages/workflow-list';
+export type { StarterDraftWriter } from './data/workflows.mutations';

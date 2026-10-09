@@ -4,7 +4,7 @@ import { renderHook, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
-import { useRunFailures } from '@/features/overview/use-run-failures';
+import { useRunFailures } from '@/features/overview/hooks/use-run-failures';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../support/mock-server';
 import { renderApp, testFetch } from '../support/render-app';

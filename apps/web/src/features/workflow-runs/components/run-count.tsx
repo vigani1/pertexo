@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Status, type StatusTone } from '@/components/ui/status';
-import type { RunStatistics } from '../workflow-runs.queries';
+import type { RunStatistics } from '../data/workflow-runs.queries';
 
 /** One exact count in a page header's mono line, e.g. "3 running". */
 export function RunCount({

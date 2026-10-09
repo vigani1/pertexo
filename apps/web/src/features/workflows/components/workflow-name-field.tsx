@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { canRenameWorkflow, workflowNameError } from '../model/workflow-rename';
-import { useWorkflowRename } from '../workflows.mutations';
+import { useWorkflowRename } from '../data/workflows.mutations';
 import { WorkflowRenameDialog } from './workflow-rename-dialog';
 
 type WorkflowNameProps = Readonly<{

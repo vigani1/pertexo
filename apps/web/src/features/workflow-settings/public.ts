@@ -1,3 +1,3 @@
-export { WorkflowSettingsPage } from './workflow-settings-page';
-export { WorkflowTriggersPage } from './workflow-triggers-page';
-export { WorkflowVersionsPage } from './workflow-versions-page';
+export { WorkflowSettingsPage } from './pages/workflow-settings';
+export { WorkflowTriggersPage } from './pages/workflow-triggers';
+export { WorkflowVersionsPage } from './pages/workflow-versions';

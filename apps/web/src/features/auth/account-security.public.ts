@@ -1,1 +1,1 @@
-export { AccountSecurityPage } from './account-security-page';
+export { AccountSecurityPage } from './pages/account-security';

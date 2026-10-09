@@ -3,7 +3,7 @@ import type {
   ConnectionTestResponse,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { formatElapsedTime } from '@/lib/format-time';
+import { formatElapsedTime } from '@/lib/format/time';
 import type { ProviderKey } from './connection-providers';
 
 /** Where a connection test stands, as the test thread draws it. */

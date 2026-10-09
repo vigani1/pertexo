@@ -6,7 +6,7 @@ import {
   useRef,
   type RefObject,
 } from 'react';
-import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
 import {
   CANVAS_COVER_ATTRIBUTE,
   cleanEdgeZoom,

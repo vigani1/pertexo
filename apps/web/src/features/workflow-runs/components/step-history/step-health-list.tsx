@@ -6,10 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDurationMs, formatRelativeTime } from '@/lib/format-time';
+import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import { describeNodeStatus } from '../../model/run-status';
-import { stepHealthQueryOptions } from '../../workflow-runs.queries';
+import { stepHealthQueryOptions } from '../../data/workflow-runs.queries';
 
 /** The steps that fail most come first, then the slowest. */
 function worstFirst(

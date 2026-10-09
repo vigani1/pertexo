@@ -8,8 +8,8 @@ import { WorkflowTemplateOrigin } from '@/features/workflows/components/template
 import {
   workflowTemplateOriginKey,
   workflowTemplateOriginPresentationEnabled,
-} from '@/features/workflows/workflow-origin.queries';
-import { workflowKeys } from '@/features/workflows/workflows.queries';
+} from '@/features/workflows/data/workflow-origin.queries';
+import { workflowKeys } from '@/features/workflows/data/workflows.queries';
 import { createApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/api-error';
 import { mockServer } from '../../support/mock-server';

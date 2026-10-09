@@ -13,7 +13,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { PatternGlyph } from '@/features/workflows/shape.public';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import {
   stepCountLabel,
   versionSteps,

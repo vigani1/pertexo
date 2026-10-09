@@ -2,7 +2,7 @@ import { MiniMap, Panel, useReactFlow, type Node } from '@xyflow/react';
 import { MaximizeIcon, MinusIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
 
 const MINIMAP_SIZE = Object.freeze({ width: 120, height: 60 });
 

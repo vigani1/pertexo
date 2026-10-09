@@ -6,7 +6,7 @@ export {
   describeDaylightSaving,
   describeMisfirePolicy,
   describeRecurrence,
-} from './schedule-sentence';
+} from './model/schedule-sentence';
 export {
   describeConnectionRequirement,
   describeRetryBehaviour,
@@ -17,4 +17,4 @@ export {
   stepGroups,
   type StepFamily,
   type StepPresentation,
-} from './step-presentation';
+} from './model/step-presentation';

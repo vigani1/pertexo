@@ -1,2 +1,2 @@
-export { failureNotificationDestinationsQueryOptions } from './failure-notifications.queries';
-export type { FailureNotificationDestinationList } from './failure-notifications.api';
+export { failureNotificationDestinationsQueryOptions } from './data/failure-notifications.queries';
+export type { FailureNotificationDestinationList } from './data/failure-notifications.api';

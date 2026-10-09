@@ -5,11 +5,11 @@ import { Notice } from '@/components/ui/notice';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
-import { destinationCommandError } from '../failure-notification-errors';
+import { destinationCommandError } from '../model/failure-notification-errors';
 import {
   useSetFailureNotificationDestinationStatusMutation,
   type DestinationMutationScope,
-} from '../failure-notifications.mutations';
+} from '../data/failure-notifications.mutations';
 
 type DestinationStatus = FailureNotificationDestinationResponse['status'];
 type StatusCommand = Readonly<{

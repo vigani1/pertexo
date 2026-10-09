@@ -6,12 +6,12 @@ import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/api-error';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
-import { connectionCommandError } from '../../connection-errors';
+import { connectionCommandError } from '../../model/connection-errors';
 import {
   useRotateConnectionMutation,
   type ConnectionMutationScope,
   type RotateConnectionCommand,
-} from '../../connections.mutations';
+} from '../../data/connections.mutations';
 import { PROVIDERS } from '../../model/connection-providers';
 import { CredentialFields } from '../credential/credential-fields';
 import {

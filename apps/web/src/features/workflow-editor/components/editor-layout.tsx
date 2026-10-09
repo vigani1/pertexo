@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CANVAS_COVER_ATTRIBUTE } from '../model/canvas-framing';
-import type { MobilePanel } from '../use-inspector-navigation';
+import type { MobilePanel } from '../hooks/use-inspector-navigation';
 
 // The canvas frames steps in the area these lenses leave uncovered.
 const covers = { [CANVAS_COVER_ATTRIBUTE]: '' };

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { useCanvasRenderer } from '@/lib/use-canvas-renderer';
-import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
+import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
 import { CoreOrbScene, type CoreOrbState } from './core-orb-scene';
 
 export type { CoreOrbState };

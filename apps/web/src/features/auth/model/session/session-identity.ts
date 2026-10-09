@@ -1,6 +1,6 @@
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
-import { getCurrentUser } from '../../auth.api';
+import { getCurrentUser } from '../../data/auth.api';
 
 class SessionIdentityChangedError extends Error {
   public override readonly name = 'SessionIdentityChangedError';

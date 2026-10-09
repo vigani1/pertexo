@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
-import { formatInitials } from '@/lib/format-initials';
+import { formatInitials } from '@/lib/format/initials';
 import { AccountSection } from './account-section';
 import { DisplayNameForm } from './display-name-form';
 

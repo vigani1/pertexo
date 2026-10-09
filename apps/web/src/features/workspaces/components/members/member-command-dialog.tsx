@@ -4,7 +4,7 @@ import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import {
   feedbackFor,
   type MemberCommandFeedback,
-} from '../../mutations/members/use-member-command';
+} from '../../data/mutations/members/use-member-command';
 
 /** The state of one member command that its confirmation shows. */
 export type MemberCommandView = Readonly<{
