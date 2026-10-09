@@ -58,7 +58,7 @@ export function createWorkspaceInboxRuntime(
   return createPollingRuntime({
     name: 'Workspace inbox',
     pollMillis: options.foldPollMillis,
-    checkCompatibility: (signal) => store.checkReadiness(signal),
+    checkStore: (signal) => store.checkReadiness(signal),
     cycle: fold,
     cycleFailed: diagnostics.cycleFailed,
     release: async () => {

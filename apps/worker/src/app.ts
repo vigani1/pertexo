@@ -120,7 +120,7 @@ export async function createWorkerApplication(
   try {
     await application
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
-      .checkCompatibility();
+      .checkReadiness();
     const readinessMonitor = application.get(WorkerReadinessMonitor);
     await readinessMonitor.check();
     const dispatcher = application.get<OutboxDispatcher>(OUTBOX_DISPATCHER);

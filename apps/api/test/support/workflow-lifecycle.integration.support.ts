@@ -420,7 +420,6 @@ function borrowedWorkspaceDatabase(
   return Object.freeze({
     withWorkspace: database.withWorkspace.bind(database),
     checkReadiness: database.checkReadiness.bind(database),
-    checkCompatibility: database.checkCompatibility.bind(database),
     close: () => Promise.resolve(),
   });
 }

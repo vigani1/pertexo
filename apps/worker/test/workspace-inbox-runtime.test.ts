@@ -100,7 +100,7 @@ describe('workspace inbox runtime', () => {
     try {
       runtime.start();
       await expect(runtime.checkReadiness()).rejects.toThrow(
-        'Workspace inbox commands are incompatible',
+        'Workspace inbox store is not ready',
       );
       expect(store.foldPending).not.toHaveBeenCalled();
       expect(observed.cycleFailed).toHaveBeenCalledOnce();

@@ -143,7 +143,7 @@ export async function createApiApplication(
     }
     await application
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
-      .checkCompatibility();
+      .checkReadiness();
     await scheduleRuntime?.checkReadiness();
     await notificationRuntime?.checkReadiness();
     await artifactRuntime?.checkReadiness();

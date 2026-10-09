@@ -24,10 +24,6 @@ export class NestWorkspaceDatabase implements WorkspaceDatabase {
     return this.database.checkReadiness();
   }
 
-  public checkCompatibility(): Promise<DatabaseReadiness> {
-    return this.database.checkCompatibility();
-  }
-
   public close(): ReturnType<WorkspaceDatabase['close']> {
     return this.database.close();
   }

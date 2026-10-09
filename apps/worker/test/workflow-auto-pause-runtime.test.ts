@@ -93,7 +93,7 @@ describe('workflow auto-pause runtime', () => {
     await runtime.close();
   });
 
-  it('is not ready when the fold command is incompatible or its cycle fails', async () => {
+  it('is not ready when its store check or its cycle fails', async () => {
     const incompatible = createWorkflowAutoPauseRuntime(
       fakeStore({
         checkReadiness: vi.fn(() => Promise.reject(new Error('changed'))),
@@ -104,7 +104,7 @@ describe('workflow auto-pause runtime', () => {
     );
     incompatible.start();
     await expect(incompatible.checkReadiness()).rejects.toThrow(
-      /incompatible/u,
+      /store is not ready/u,
     );
     await incompatible.close();
 

@@ -332,8 +332,6 @@ export function createArtifactUploadDatabase(
       finalizeUpload(pool, input),
     getMetadata: (input: ArtifactUploadAuthorization) =>
       readUploadArtifact(pool, input, 'read'),
-    checkCompatibility: (): Promise<DatabaseReadiness> =>
-      checkDatabaseReadiness(pool),
     checkReadiness: (): Promise<DatabaseReadiness> =>
       checkDatabaseReadiness(pool),
     close: lease.close,

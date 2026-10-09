@@ -52,7 +52,7 @@ export function createWorkflowAutoPauseRuntime(
   return createPollingRuntime({
     name: 'Workflow auto-pause',
     pollMillis: options.foldPollMillis,
-    checkCompatibility: (signal) => store.checkReadiness(signal),
+    checkStore: (signal) => store.checkReadiness(signal),
     cycle: async (signal) => {
       for (let round = 0; round < MAX_FOLDS_PER_CYCLE; round += 1) {
         const decided = await store.foldPending(
