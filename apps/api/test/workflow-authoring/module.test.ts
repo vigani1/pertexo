@@ -8,10 +8,10 @@ import {
   type WorkflowAuthoringDependencies,
 } from '../../src/workflow-authoring/index.js';
 import { WORKFLOW_AUTHORING_AUTHORIZATION } from '../../src/workflow-authoring/tokens.js';
-import { WorkflowConcurrencyController } from '../../src/workflow-authoring/concurrency-controller.js';
-import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/concurrency-use-case.js';
-import { WorkflowInputCasesController } from '../../src/workflow-authoring/input-case-controller.js';
-import { WorkflowInputCasesUseCase } from '../../src/workflow-authoring/input-case-use-case.js';
+import { WorkflowConcurrencyController } from '../../src/workflow-authoring/settings/concurrency-controller.js';
+import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/settings/concurrency.js';
+import { WorkflowInputCasesController } from '../../src/workflow-authoring/input-cases/controller.js';
+import { WorkflowInputCasesUseCase } from '../../src/workflow-authoring/input-cases/use-case.js';
 
 const dependencies = {
   persistence: {

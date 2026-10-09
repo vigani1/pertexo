@@ -18,14 +18,14 @@ import {
   BetterAuthSessionService,
   type AuthenticationMail,
   type BetterAuthRuntime,
-} from '../../identity-infrastructure/index.js';
+} from '../../authentication/index.js';
 import {
   DatabaseIdentityWorkspaceAdapter,
   IdentityWorkspaceModule,
   createIdentityWorkspaceTelemetry,
   type IdentityWorkspaceTelemetry,
   type IdentityWorkspaceDependencies,
-} from '../../identity-workspace/index.js';
+} from '../../workspaces/index.js';
 import type { IdentityClock } from '../../identity/index.js';
 import type { ApiIdentityConfig } from '../config/identity-config.js';
 import { composeBetterAuthRuntime } from './better-auth-composition.js';

@@ -6,7 +6,7 @@ import {
   throwApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
-import { AuthorizationError } from '../workspaces/index.js';
+import { AuthorizationError } from '../authorization/index.js';
 import { WorkflowRunNotFoundError } from './use-cases.js';
 
 export class WorkflowRunNotExecutableError extends Error {

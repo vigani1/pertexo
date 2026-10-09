@@ -40,7 +40,7 @@ vi.mock('@pertexo/database/testing', () => ({
   migrateDatabase: vi.fn(),
   createWorkspaceDatabase: () => ({ close: () => close('workspace database') }),
 }));
-vi.mock('../../src/identity-infrastructure/index.js', () => ({
+vi.mock('../../src/authentication/index.js', () => ({
   LocalAuthenticationMailSink: class {
     readForTesting = vi.fn(() => []);
   },

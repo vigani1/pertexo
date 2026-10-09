@@ -15,7 +15,7 @@ import {
   createStubApiWorkflowRuntime,
 } from '../support/api-platform.fixture.js';
 import { usageCapacitySnapshot } from '../support/usage-capacity.fixture.js';
-import type { WorkspaceStatus } from '../../src/workspaces/index.js';
+import type { WorkspaceStatus } from '../../src/authorization/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

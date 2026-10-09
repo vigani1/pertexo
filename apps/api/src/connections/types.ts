@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 
 export {
   connectionCreateRequestSchema,

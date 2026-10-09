@@ -3,8 +3,9 @@
 
 /.github/ @vigani1
 /apps/api/src/identity/ @vigani1
-/apps/api/src/identity-infrastructure/ @vigani1
-/apps/api/src/identity-workspace/ @vigani1
+/apps/api/src/authentication/ @vigani1
+/apps/api/src/authorization/ @vigani1
+/apps/api/src/workspaces/ @vigani1
 /infrastructure/ @vigani1
 /packages/database/migrations/ @vigani1
 /packages/database/src/ @vigani1

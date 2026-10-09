@@ -5,7 +5,7 @@ import type {
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,
-} from '../workspaces/index.js';
+} from '../authorization/index.js';
 
 export type WorkflowRunRecord = Readonly<{
   id: string;

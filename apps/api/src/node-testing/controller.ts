@@ -18,9 +18,9 @@ import {
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-} from '../identity-workspace/index.js';
-import { projectAuthenticatedWorkspaceContext } from '../identity-workspace/authenticated-command-context.js';
-import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+} from '../workspaces/index.js';
+import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { parseIdempotencyKey } from '../platform/http/index.js';
 import {
   requestHeaderValue,

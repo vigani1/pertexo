@@ -1,19 +1,19 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
-import { ConnectionsController } from './controllers.js';
+import { ConnectionsController } from './http/controllers.js';
 import {
   ConnectionUsageController,
   ListConnectionUsageUseCase,
-} from './connection-usage.js';
-import { FailureNotificationDestinationsController } from './failure-notification-destinations.controller.js';
-import { FailureNotificationDestinationUseCases } from './failure-notification-destinations.js';
+} from './use-cases/usage.js';
+import { FailureNotificationDestinationsController } from './failure-notifications/controller.js';
+import { FailureNotificationDestinationUseCases } from './failure-notifications/destinations.js';
 import {
   ConnectionManageGuard,
   ConnectionReadGuard,
   ConnectionUseGuard,
   FailureNotificationWorkflowEditGuard,
-} from './guards.js';
+} from './http/guards.js';
 import type { ConnectionDependencies } from './ports.js';
 import { NOOP_CONNECTION_TELEMETRY } from './telemetry.js';
 import { CONNECTION_AUTHORIZATION } from './tokens.js';
@@ -25,7 +25,7 @@ import {
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
-} from './use-cases.js';
+} from './use-cases/management.js';
 
 @Module({})
 // Nest dynamic modules require a class container.

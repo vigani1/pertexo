@@ -12,7 +12,7 @@ import {
   type ApiApplicationDependencies,
 } from '../src/app.js';
 import { IdentityError } from '../src/identity/index.js';
-import type { IdentityWorkspaceDependencies } from '../src/identity-workspace/index.js';
+import type { IdentityWorkspaceDependencies } from '../src/workspaces/index.js';
 import {
   GetPreviewRunUseCase,
   TestWorkflowNodeUseCase,
@@ -29,7 +29,7 @@ import type { ApiNotificationRuntime } from '../src/platform/notifications/notif
 import { WorkspaceInboxService } from '../src/notifications/service.js';
 import type { ApiArtifactRuntime } from '../src/platform/artifacts/artifact-runtime.module.js';
 import type { ApiIdentityConfig } from '../src/platform/config/identity-config.js';
-import type { BetterAuthRuntime } from '../src/identity-infrastructure/index.js';
+import type { BetterAuthRuntime } from '../src/authentication/index.js';
 import { ScheduleManagementService } from '../src/schedules/service.js';
 import { createApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
 import { createBetterAuthFixtureApplication } from './support/better-auth-fixture-application.js';
@@ -40,7 +40,7 @@ import {
   EMPTY_DEFINITION_CATALOG,
   workflowCompatibilityReport,
 } from '@pertexo/workflow-model/server';
-import { createDraftRepresentationTag } from '../src/workflow-authoring/etag.js';
+import { createDraftRepresentationTag } from '../src/workflow-authoring/http/etag.js';
 import {
   createApiPlatformFixture,
   createStubApiWorkflowRuntime,

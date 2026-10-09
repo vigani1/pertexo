@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   authorizeWorkspace,
   createActorContext,
-} from '../../src/workspaces/index.js';
+} from '../../src/authorization/index.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
@@ -19,7 +19,7 @@ import {
 import {
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
-} from '../../src/workflow-runs/run-data-use-cases.js';
+} from '../../src/workflow-runs/run-data/use-cases.js';
 import type {
   WorkflowRunEventStreamer,
   WorkflowRunPersistence,

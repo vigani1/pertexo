@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { WebhookManagementController } from './controllers.js';
 import { WebhookManagementService } from './service.js';
 import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';

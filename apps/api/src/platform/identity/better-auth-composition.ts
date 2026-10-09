@@ -13,7 +13,7 @@ import {
   printLocalAuthenticationMail,
   type AuthenticationMail,
   type BetterAuthRuntime,
-} from '../../identity-infrastructure/index.js';
+} from '../../authentication/index.js';
 import type { ApiIdentityConfig } from '../config/identity-config.js';
 
 type BetterAuthConfig = ApiIdentityConfig['betterAuth'];

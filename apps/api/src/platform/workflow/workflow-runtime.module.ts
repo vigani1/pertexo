@@ -30,7 +30,7 @@ import {
   RedisRunEventSource,
   type LiveRunEventSource,
   type RunEventNotificationPublisher,
-} from '../../executions/index.js';
+} from '../../workflow-runs/events/index.js';
 import {
   createWorkflowAuthoringTelemetry,
   WorkflowAuthoringModule,

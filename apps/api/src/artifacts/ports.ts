@@ -9,7 +9,7 @@ import type {
   ActorContext,
   AuthorizedWorkspaceContext,
   WorkspaceAuthorizationSource,
-} from '../workspaces/index.js';
+} from '../authorization/index.js';
 
 export type ArtifactRecord = ArtifactUploadResult['artifact'];
 

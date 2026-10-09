@@ -25,11 +25,11 @@ import {
   throwApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
-import { AuthorizationError } from '../workspaces/index.js';
-import { WorkflowHeaderError } from './preconditions.js';
+import { AuthorizationError } from '../authorization/index.js';
+import { WorkflowHeaderError } from './http/preconditions.js';
 import { InvalidWorkflowCursorError } from './cursor.js';
-import { mapWorkflowOrganizationError } from './organization-errors.js';
-import { mapWorkflowPortabilityError } from './portability-errors.js';
+import { mapWorkflowOrganizationError } from './organization/errors.js';
+import { mapWorkflowPortabilityError } from './portability/errors.js';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,

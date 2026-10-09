@@ -26,8 +26,8 @@ import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
 } from '../../src/workflow-authoring/graph.js';
-import { WorkflowHeaderError } from '../../src/workflow-authoring/preconditions.js';
-import { AuthorizationError } from '../../src/workspaces/index.js';
+import { WorkflowHeaderError } from '../../src/workflow-authoring/http/preconditions.js';
+import { AuthorizationError } from '../../src/authorization/index.js';
 
 const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 

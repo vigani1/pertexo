@@ -3,7 +3,7 @@ import { GUARDS_METADATA } from '@nestjs/common/constants.js';
 import { describe, expect, it } from 'vitest';
 
 import { CatalogController } from '../../src/catalog/controllers.js';
-import { SessionAuthenticationGuard } from '../../src/identity-workspace/index.js';
+import { SessionAuthenticationGuard } from '../../src/workspaces/index.js';
 import {
   platformBrowserNodeDefinitionCatalog,
   type PlatformNodeDefinitionBrowserCatalog,

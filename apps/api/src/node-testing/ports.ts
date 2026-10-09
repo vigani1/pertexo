@@ -1,7 +1,7 @@
 import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
-import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 
 export type NodeTestingPersistence = Pick<
   WorkflowAuthoringDatabase,

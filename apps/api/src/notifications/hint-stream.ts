@@ -3,7 +3,7 @@ import {
   type WorkspaceInboxStreamEventName,
 } from '@pertexo/contracts';
 
-import { nextFrameOrAuthorizationLoss } from '../workflow-runs/sse-authorization-lifetime.js';
+import { nextFrameOrAuthorizationLoss } from '../workflow-runs/events/sse-authorization-lifetime.js';
 import type { InboxHintSubscription } from './inbox-hint-hub.js';
 
 /** Keeps idle connections open through proxies with short idle timeouts. */

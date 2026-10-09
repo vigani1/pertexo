@@ -18,15 +18,15 @@ import {
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-} from '../identity-workspace/index.js';
+} from '../workspaces/index.js';
 import {
   optionalAuthorizedWorkspace,
   projectAuthenticatedWorkspaceContext,
-} from '../identity-workspace/authenticated-command-context.js';
+} from '../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import { singleRequestHeader } from '../platform/http/request-headers.js';
-import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
 import { ArtifactService } from './service.js';
 

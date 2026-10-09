@@ -29,12 +29,12 @@ import { z } from 'zod';
 import {
   authorizeWorkspace,
   authorizeWorkspaceOperation,
-} from '../workspaces/index.js';
+} from '../authorization/index.js';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,
-} from '../workspaces/index.js';
-import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
+} from '../authorization/index.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { NodeTestRequestError, NodeTestInvalidError } from './errors.js';
 import type { NodeTestingPersistence } from './ports.js';
 import { prepareNodeValidation } from './validation.js';

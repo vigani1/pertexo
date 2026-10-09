@@ -4,7 +4,7 @@ import {
   type ActorContext,
   type AuthorizedWorkspaceContext,
   type WorkspaceAuthorizationSource,
-} from '../workspaces/index.js';
+} from '../authorization/index.js';
 
 export type ConnectionAuthorizationInput = Readonly<{
   actor: ActorContext;

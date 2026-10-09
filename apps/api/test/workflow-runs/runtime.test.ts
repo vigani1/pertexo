@@ -9,7 +9,7 @@ import type {
 import type { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RunEventNotificationPublisher } from '../../src/executions/index.js';
+import type { RunEventNotificationPublisher } from '../../src/workflow-runs/events/index.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { createApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
 import type { WorkflowAuthoringTelemetry } from '../../src/workflow-authoring/index.js';

@@ -19,9 +19,9 @@ import type {
 import type {
   AuthenticatedRequestSession,
   IdentityWorkspaceRequest,
-} from '../src/identity-workspace/types.js';
+} from '../src/workspaces/types.js';
 import type { WorkflowAuthoringRequest } from '../src/workflow-authoring/types.js';
-import type { WorkflowRunsRequest } from '../src/workflow-runs/request-context.js';
+import type { WorkflowRunsRequest } from '../src/workflow-runs/http/request-context.js';
 import type { AbortableRequest } from '../src/platform/http/request-operation-signal.js';
 
 describe('validated response contract types', () => {

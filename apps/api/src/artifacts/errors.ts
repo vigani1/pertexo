@@ -5,8 +5,8 @@ import {
   isApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
-import { AuthorizationError } from '../workspaces/index.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../identity-workspace/authenticated-command-context-error.js';
+import { AuthorizationError } from '../authorization/index.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../workspaces/request/authenticated-context-error.js';
 
 export class ArtifactApiNotFoundError extends Error {
   public constructor() {

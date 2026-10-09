@@ -5,11 +5,11 @@ import type {
 } from '@pertexo/observability';
 import { vi } from 'vitest';
 
-import type { BetterAuthRuntime } from '../../src/identity-infrastructure/index.js';
+import type { BetterAuthRuntime } from '../../src/authentication/index.js';
 import type {
   IdentitySessionAuthority,
   IdentityWorkspaceDependencies,
-} from '../../src/identity-workspace/index.js';
+} from '../../src/workspaces/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import type { ApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';

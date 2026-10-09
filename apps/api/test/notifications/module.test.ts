@@ -5,7 +5,7 @@ import type { WorkspaceInboxDatabase } from '@pertexo/database/inbox';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
-import { SESSION_AUTHORITY } from '../../src/identity-workspace/index.js';
+import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
 import { NotificationsModule } from '../../src/notifications/module.js';
 import type {
   InboxHintSignal,

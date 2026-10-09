@@ -19,8 +19,8 @@ import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   authenticatedSession,
-} from '../identity-workspace/index.js';
-import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+} from '../workspaces/index.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import {
   InvalidIdempotencyKeyError,
   applicationError,

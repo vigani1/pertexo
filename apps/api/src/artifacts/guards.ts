@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import { WorkspaceCapabilityGuard } from '../identity-workspace/guards.js';
-import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
+import { WorkspaceCapabilityGuard } from '../workspaces/http/guards.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { RequestContextStore } from '../platform/http/index.js';
 import { ARTIFACT_AUTHORIZATION } from './tokens.js';
 

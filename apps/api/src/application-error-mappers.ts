@@ -1,6 +1,6 @@
 import { mapConnectionError } from './connections/errors.js';
 import { mapArtifactError } from './artifacts/errors.js';
-import { mapIdentityWorkspaceError } from './identity-workspace/errors.js';
+import { mapIdentityWorkspaceError } from './workspaces/errors.js';
 import { mapNodeTestingError } from './node-testing/errors.js';
 import { mapNotificationError } from './notifications/errors.js';
 import type {
