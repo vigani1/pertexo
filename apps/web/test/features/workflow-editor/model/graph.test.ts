@@ -32,7 +32,7 @@ import { describeTestPath } from '@/features/workflow-editor/model/test-path';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
-const etag = `"draft-v1.${'a'.repeat(43)}"`;
+const etag = `"draft.${'a'.repeat(43)}"`;
 
 function node(id: string, extra: Partial<WorkflowNode> = {}): WorkflowNode {
   return {

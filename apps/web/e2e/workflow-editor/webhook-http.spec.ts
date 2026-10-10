@@ -116,7 +116,7 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
         versionNumber: 1,
         schemaVersion: 1,
         graph: structuredClone(remote.graph),
-        checksum: `wf:v2:sha256:${'b'.repeat(64)}`,
+        checksum: `wf:sha256:${'b'.repeat(64)}`,
         publishedAt: user.updatedAt,
       });
       return route.fulfill({
@@ -138,7 +138,7 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
         graph: remote.graph,
         compatibility: {
           compatible: true,
-          fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+          fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
           issues: [],
         },
         updatedAt: user.updatedAt,

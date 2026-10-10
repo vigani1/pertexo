@@ -1118,7 +1118,7 @@ describeIntegration('active HTTP node attempt', () => {
           /^v1\.[0-9a-f]{64}$/u,
         );
         expect(emailTerminal[0]?.provider_dispatch_binding).toBe(
-          `email:v1:sha256:${createHash('sha256')
+          `email:sha256:${createHash('sha256')
             .update(`email\0${emailConnectionId}\0${emailSecretVersionId}`)
             .digest('hex')}`,
         );
@@ -2193,7 +2193,7 @@ describeIntegration('active HTTP node attempt', () => {
       });
       expect(firstAttempt.dispatch_marked_at).toBeInstanceOf(Date);
       expect(firstAttempt.provider_dispatch_binding).toMatch(
-        /^email:v1:sha256:[0-9a-f]{64}$/u,
+        /^email:sha256:[0-9a-f]{64}$/u,
       );
       expect(firstAttempt.provider_idempotency_key).toMatch(
         /^v1\.[0-9a-f]{64}$/u,

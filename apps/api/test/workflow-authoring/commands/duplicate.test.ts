@@ -10,7 +10,7 @@ const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const destinationId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const actorId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const tag = `"draft-v1.${'a'.repeat(43)}"`;
+const tag = `"draft.${'a'.repeat(43)}"`;
 function fixture(role: 'owner' | 'builder' | 'operator' | 'viewer' = 'owner') {
   const duplicateWorkflow = vi
     .fn()

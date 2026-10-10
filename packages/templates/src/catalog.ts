@@ -38,7 +38,7 @@ const templates: CuratedWorkflowTemplate[] = [
     templateId: 'webhook-validation-routing',
     templateVersion: 1,
     baseManifestDigest:
-      '85830aaf15308c7faa96b0102f32d99ef9c3ff14c4a0fc69a2ee819623031824',
+      'ef081e6554170e939e03a0e9d56fc41a8c99f4e244fadbe4fc10bdb89c636b3c',
     title: 'Validate and route a webhook',
     description:
       'Check a request type and route valid and invalid inputs to explicit outcomes.',
@@ -55,7 +55,7 @@ const templates: CuratedWorkflowTemplate[] = [
     templateId: 'schedule-bounded-batch',
     templateVersion: 1,
     baseManifestDigest:
-      'bec00fc0249043603d5d9ceb5f7e11246ccfd0a47fabebc2508dd164a93b7c78',
+      '67c189f246353edaa23ce674a044042717a0356d8050853198e05a5229e2a5c1',
     title: 'Schedule a bounded example batch',
     description: 'Process two fixed instructional items in a sequential loop.',
     inputSummary:
@@ -71,7 +71,7 @@ const templates: CuratedWorkflowTemplate[] = [
     templateId: 'controlled-http-notification',
     templateVersion: 1,
     baseManifestDigest:
-      'd1e96af269714534cc9126dcef54642823e20defa920ad2dc64bd2e052e444f4',
+      '78797c88cd2243a213822b4048a544b1f8aeb67eba96cf054800b4d0286e25a3',
     title: 'Check an endpoint and notify Slack',
     description:
       'Request an explicitly configured HTTPS endpoint and notify an explicitly configured channel only for status 200.',

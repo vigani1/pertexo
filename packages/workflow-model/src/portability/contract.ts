@@ -133,7 +133,7 @@ export async function portableGraphDigest(
   graph: WorkflowGraph,
 ): Promise<string> {
   return digest(
-    'pertexo.workflow.portable.source.v1',
+    'pertexo.workflow.portable.source',
     workflowGraphSchema.parse(graph),
   );
 }
@@ -212,7 +212,7 @@ export async function portableManifestDigest(
   manifest: WorkflowPortableManifest,
 ): Promise<string> {
   return digest(
-    'pertexo.workflow.portable.manifest.v1',
+    'pertexo.workflow.portable.manifest',
     workflowPortableManifestSchema.parse(manifest),
   );
 }

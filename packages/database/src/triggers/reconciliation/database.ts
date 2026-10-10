@@ -63,7 +63,7 @@ export {
   WorkflowTriggerStalePublicationError,
 } from './errors.js';
 
-const reconciliationConsumerName = 'trigger-runtime.reconciliation.v1';
+const reconciliationConsumerName = 'trigger-runtime.reconciliation';
 const transportChecksumMismatch = Symbol('transport-checksum-mismatch');
 
 type ReconciliationEvent = Readonly<{

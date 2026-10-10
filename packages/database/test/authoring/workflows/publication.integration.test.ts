@@ -409,7 +409,7 @@ describe('workflow publication projections', () => {
   });
 
   it('atomically persists an injected executable V2 publication projection', async () => {
-    const checksum = `wf:v2:sha256:${'a'.repeat(64)}` as const;
+    const checksum = `wf:sha256:${'a'.repeat(64)}` as const;
     const executableDefinitionCatalog = baselineEmptyDefinitionCatalog;
     const executableJson = {
       schemaVersion: 2,
@@ -505,7 +505,7 @@ describe('workflow publication projections', () => {
           randomUUID(),
           workspaceId,
           created.workflowId,
-          `wf:v2:sha256:${'b'.repeat(64)}`,
+          `wf:sha256:${'b'.repeat(64)}`,
           JSON.stringify(executableJson),
           actorId,
         ],

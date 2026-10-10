@@ -80,7 +80,7 @@ describe('workspace invitation delivery', () => {
         apiKey: 're_system',
         fromEmail: 'invites@example.test',
         toEmail: 'recipient@example.test',
-        idempotencyKey: `workspace-invitation:v1:${ATTEMPT_ID}`,
+        idempotencyKey: `workspace-invitation:${ATTEMPT_ID}`,
         subject: 'Join Acme workspace on Pertexo',
       }),
     );

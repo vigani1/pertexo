@@ -1,5 +1,5 @@
-const CHANNEL_NAME = 'pertexo-auth-session-v1';
-const STORAGE_KEY = 'pertexo:auth-session-change:v1';
+const CHANNEL_NAME = 'pertexo-auth-session';
+const STORAGE_KEY = 'pertexo:auth-session-change';
 const tabId = crypto.randomUUID();
 
 type SessionChangeSignal = Readonly<{

@@ -60,7 +60,7 @@ describe('workflow-authoring public contracts', () => {
       workflowCompatibilityReportSchema.safeParse({
         compatible: true,
         fingerprint:
-          'wf-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          'wf-compat:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         issues: [],
       }).success,
     ).toBe(true);
@@ -70,11 +70,11 @@ describe('workflow-authoring public contracts', () => {
         ownerId: 'must-not-be-public-input',
       }).success,
     ).toBe(false);
-    expect(strongEtagSchema.safeParse('W/"draft-v1:weak"').success).toBe(false);
-    expect(strongEtagSchema.safeParse('"draft-v1.opaque"').success).toBe(false);
+    expect(strongEtagSchema.safeParse('W/"draft:weak"').success).toBe(false);
+    expect(strongEtagSchema.safeParse('"draft.opaque"').success).toBe(false);
     expect(
       strongEtagSchema.safeParse(
-        '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+        '"draft.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
       ).success,
     ).toBe(true);
     expect(
@@ -170,7 +170,7 @@ describe('workflow-authoring public contracts', () => {
       code: 'workflow.revision_conflict',
       requestId: 'request-42',
       currentRevision: 2,
-      currentEtag: '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+      currentEtag: '"draft.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
     };
     expect(workflowRevisionConflictProblemSchema.parse(conflict)).toMatchObject(
       {

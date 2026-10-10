@@ -4,7 +4,7 @@ import {
   subscribeSessionChanges,
 } from '@/features/auth/session-sync.public';
 
-const storageKey = 'pertexo:auth-session-change:v1';
+const storageKey = 'pertexo:auth-session-change';
 
 afterEach(() => {
   localStorage.clear();

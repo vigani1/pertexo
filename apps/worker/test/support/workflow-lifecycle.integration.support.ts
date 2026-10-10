@@ -264,11 +264,11 @@ async function seedWorkflowRows(
     nodes: [],
     edges: [],
   };
-  const workflowFingerprint = `wf:v2:sha256:${'c'.repeat(64)}`;
-  const activeWebhookFingerprint = `trigger:v1:sha256:${'1'.repeat(64)}`;
-  const activeScheduleFingerprint = `trigger:v1:sha256:${'2'.repeat(64)}`;
-  const disabledWebhookFingerprint = `trigger:v1:sha256:${'3'.repeat(64)}`;
-  const disabledScheduleFingerprint = `trigger:v1:sha256:${'4'.repeat(64)}`;
+  const workflowFingerprint = `wf:sha256:${'c'.repeat(64)}`;
+  const activeWebhookFingerprint = `trigger:sha256:${'1'.repeat(64)}`;
+  const activeScheduleFingerprint = `trigger:sha256:${'2'.repeat(64)}`;
+  const disabledWebhookFingerprint = `trigger:sha256:${'3'.repeat(64)}`;
+  const disabledScheduleFingerprint = `trigger:sha256:${'4'.repeat(64)}`;
   const activeScheduleConfig = {
     kind: 'interval',
     intervalMinutes: 60,

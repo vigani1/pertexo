@@ -532,6 +532,15 @@ now, as one ordered program — not "whenever we touch it".
         `workspace-invitation:v1:`, `pertexo/authentication-mail/v1/`), the
         checkpoint `engineVersion` and the `serializeStoredExecutionValueV1`
         value format go with them.
+    - [x] Versioned names go (migration 0022): digests are
+          `<kind>:sha256:<hex>` (`wf:`, `wf-compat:`, `trigger:`, `email:`
+          and provider dispatch bindings), the draft ETag is
+          `"draft.<hash>"`, and hash domains, sealing contexts, provider
+          idempotency keys, pub/sub channels, the trigger reconciliation
+          consumer and browser storage keys drop their `v1`/`v2`. Key
+          versions stay: they name rotated keys, not formats. Rows written
+          before this cannot be verified or decrypted, so local databases
+          are recreated.
 
 **Package pass checklist** (every package, every file):
 1. Purpose: the package does one clear job; anything else moves to its owner.

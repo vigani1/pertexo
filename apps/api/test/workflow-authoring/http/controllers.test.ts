@@ -7,7 +7,7 @@ const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const guardActorId = '99999999-9999-4999-8999-999999999999';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
+const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 const body = {
   workflowId,
   revision: 1,
@@ -16,7 +16,7 @@ const body = {
   compatibility: {
     compatible: true,
     fingerprint:
-      'wf-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      'wf-compat:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     issues: [],
   },
   updatedAt: '2026-08-20T12:00:00.000Z',
@@ -40,7 +40,7 @@ const version = {
   schemaVersion: 1 as const,
   graph: body.graph,
   checksum:
-    'wf:v2:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    'wf:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   publishedAt: '2026-08-20T12:00:00.000Z',
 };
 

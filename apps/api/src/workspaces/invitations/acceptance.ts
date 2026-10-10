@@ -73,7 +73,7 @@ export class InvitationAcceptanceUseCase {
       prior === null
         ? undefined
         : [
-            'pertexo-invitation-resolution-v1',
+            'pertexo-invitation-resolution',
             parsed.workspaceId,
             parsed.invitationId,
             parsed.secret,

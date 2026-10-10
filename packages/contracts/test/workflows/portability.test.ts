@@ -44,7 +44,7 @@ describe('portable workflow public HTTP contract', () => {
         ...old,
         templateOrigin: origin,
         name: 'Example',
-        expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'b'.repeat(64)}`,
+        expectedCompatibilityFingerprint: `wf-compat:sha256:${'b'.repeat(64)}`,
       }).templateOrigin,
     ).toEqual(origin);
     expect(

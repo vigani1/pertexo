@@ -46,7 +46,7 @@ export function workspaceInboxChannel(workspaceId: string): string {
   const digest = createHash('sha256')
     .update(`v1\0workspace-inbox\0${z.uuid().parse(workspaceId)}`)
     .digest('base64url');
-  return `workspace-inbox:v1:${digest}`;
+  return `workspace-inbox:${digest}`;
 }
 
 export function encodeWorkspaceInboxHint(revision: string): string {

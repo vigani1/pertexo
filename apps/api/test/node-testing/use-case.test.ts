@@ -252,7 +252,7 @@ describe('node test application use case', () => {
     ).rejects.toMatchObject({
       name: 'WorkflowRevisionConflictError',
       currentRevision: 4,
-      currentEtag: '"draft-v1.ZlzBDhh0AzNoc_Z85h_wGys0GJ60RlPO0SdvixXzXio"',
+      currentEtag: '"draft.er2kl7SSFkyaTw0mPZhMbvS2nfj5oliOsdisfcSBW3E"',
     });
   });
 
@@ -768,7 +768,7 @@ describe('node test application use case', () => {
           graphJson: emailGraph(),
           compatibility: {
             compatible: true,
-            fingerprint: `wf-compat:v1:sha256:${'c'.repeat(64)}`,
+            fingerprint: `wf-compat:sha256:${'c'.repeat(64)}`,
             issues: [],
           },
         }),

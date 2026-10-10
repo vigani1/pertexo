@@ -98,7 +98,7 @@ describe('workflow settings: run duration', () => {
           current = { graph: graphWithNode('theirs'), etag: etagB };
           return problem(412, 'workflow.revision_conflict');
         }
-        current = { graph: body.graph, etag: `"draft-v1.${'d'.repeat(43)}"` };
+        current = { graph: body.graph, etag: `"draft.${'d'.repeat(43)}"` };
         return draftResponse(current.graph, current.etag);
       }),
     );

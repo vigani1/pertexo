@@ -12,7 +12,7 @@ describe('published workflow rows', () => {
     workflow_id: '33333333-3333-4333-8333-333333333333',
     version_number: 2,
     schema_version: 1,
-    checksum: `wf:v2:sha256:${'2'.repeat(64)}`,
+    checksum: `wf:sha256:${'2'.repeat(64)}`,
     executable_json: { deliberately: 'shallow projection only' },
   } as const;
 
@@ -31,7 +31,7 @@ describe('published workflow rows', () => {
 
   it.each([
     ['null row', null],
-    ['malformed checksum', { ...row, checksum: 'wf:v2:sha256:nope' }],
+    ['malformed checksum', { ...row, checksum: 'wf:sha256:nope' }],
     ['array executable', { ...row, executable_json: [] }],
     ['null executable', { ...row, executable_json: null }],
     ['unexpected column', { ...row, graph_json: {} }],

@@ -119,7 +119,7 @@ async function insertScheduleTrigger(): Promise<string> {
   const workflowId = randomUUID();
   const workflowVersionId = randomUUID();
   const triggerId = randomUUID();
-  const fingerprint = `trigger:v1:sha256:${'c'.repeat(64)}`;
+  const fingerprint = `trigger:sha256:${'c'.repeat(64)}`;
   await admin.query(
     `insert into app.workflows(id,workspace_id,name,created_by)
      values($1,$2,'Retention trigger',$3)`,
@@ -134,7 +134,7 @@ async function insertScheduleTrigger(): Promise<string> {
       workflowVersionId,
       workspaceId,
       workflowId,
-      `wf:v2:sha256:${'b'.repeat(64)}`,
+      `wf:sha256:${'b'.repeat(64)}`,
       userId,
     ],
   );

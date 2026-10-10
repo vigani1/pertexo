@@ -85,7 +85,7 @@ export type NodeAttemptDelivery = Readonly<z.output<typeof deliverySchema>>;
 const providerDispatchBindingSchema = z
   .string()
   .max(128)
-  .regex(/^[a-z][a-z0-9._-]{0,31}:v[1-9][0-9]{0,2}:sha256:[0-9a-f]{64}$/u);
+  .regex(/^[a-z][a-z0-9._-]{0,31}:sha256:[0-9a-f]{64}$/u);
 export const connectionDispatchFenceSchema = z
   .object({
     connectionId: z.uuid(),

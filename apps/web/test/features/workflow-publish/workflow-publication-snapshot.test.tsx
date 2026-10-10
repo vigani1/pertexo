@@ -10,15 +10,15 @@ import { validateWorkflow } from '@/features/workflow-publish/data/workflow-publ
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const etagA = `"draft-v1.${'a'.repeat(43)}"`;
-const etagB = `"draft-v1.${'b'.repeat(43)}"`;
+const etagA = `"draft.${'a'.repeat(43)}"`;
+const etagB = `"draft.${'b'.repeat(43)}"`;
 const graph = { schemaVersion: 1 as const, nodes: [], edges: [], settings: {} };
 const report = {
   valid: true,
   issues: [],
   compatibility: {
     compatible: true,
-    fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+    fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
     issues: [],
   },
 };
@@ -122,7 +122,7 @@ describe('publication checked-snapshot ownership', () => {
             versionNumber: 1,
             schemaVersion: 1,
             graph,
-            checksum: `wf:v2:sha256:${'c'.repeat(64)}`,
+            checksum: `wf:sha256:${'c'.repeat(64)}`,
             publishedAt: '2026-09-15T10:00:00.000Z',
           },
           reused: true,
@@ -199,7 +199,7 @@ describe('publication checked-snapshot ownership', () => {
                     versionNumber: 1,
                     schemaVersion: 1,
                     graph,
-                    checksum: `wf:v2:sha256:${'c'.repeat(64)}`,
+                    checksum: `wf:sha256:${'c'.repeat(64)}`,
                     publishedAt: '2026-09-15T10:00:00.000Z',
                   },
                   reused: false,
@@ -324,7 +324,7 @@ describe('publication checked-snapshot ownership', () => {
                 versionNumber: 1,
                 schemaVersion: 1,
                 graph,
-                checksum: `wf:v2:sha256:${'c'.repeat(64)}`,
+                checksum: `wf:sha256:${'c'.repeat(64)}`,
                 publishedAt: '2026-09-15T10:00:00.000Z',
               },
               reused: false,
@@ -503,7 +503,7 @@ describe('publication checked-snapshot ownership', () => {
               versionNumber: 1,
               schemaVersion: 1,
               graph,
-              checksum: `wf:v2:sha256:${'c'.repeat(64)}`,
+              checksum: `wf:sha256:${'c'.repeat(64)}`,
               publishedAt: '2026-09-15T10:00:00.000Z',
             },
             reused: false,

@@ -25,7 +25,7 @@ const telemetry = { connectionEvent: vi.fn(), operationFinished: vi.fn() };
 describe('workspace inbox hints', () => {
   it('derives an opaque, stable channel per workspace', () => {
     const channel = workspaceInboxChannel(workspaceId);
-    expect(channel).toMatch(/^workspace-inbox:v1:[A-Za-z0-9_-]{43}$/u);
+    expect(channel).toMatch(/^workspace-inbox:[A-Za-z0-9_-]{43}$/u);
     expect(channel).toBe(workspaceInboxChannel(workspaceId));
     expect(channel).not.toBe(workspaceInboxChannel(otherWorkspaceId));
     expect(channel).not.toContain(workspaceId);

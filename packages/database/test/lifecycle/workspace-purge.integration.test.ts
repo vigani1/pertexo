@@ -317,9 +317,9 @@ describe('workspace purge', () => {
           publishedVersionId,
           workspaceId,
           workflowId,
-          `wf:v2:sha256:${'7'.repeat(64)}`,
+          `wf:sha256:${'7'.repeat(64)}`,
           userId,
-          `wf:v2:sha256:${'8'.repeat(64)}`,
+          `wf:sha256:${'8'.repeat(64)}`,
         ],
       );
       await owner.query(

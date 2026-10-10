@@ -39,7 +39,7 @@ const inputSchema = z
     ]),
     representationTag: z
       .string()
-      .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u)
+      .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u)
       .optional(),
     idempotencyKey: z.string(),
     requestId: z.string().optional(),

@@ -261,7 +261,7 @@ export const runFailureNotificationIntents = appSchema.table(
     ),
     check(
       'run_failure_notification_intents_delivery_binding_format',
-      sql`(delivery_binding IS NULL) OR ((delivery_binding)::text ~ '^email:v1:sha256:[0-9a-f]{64}$'::text)`,
+      sql`(delivery_binding IS NULL) OR ((delivery_binding)::text ~ '^email:sha256:[0-9a-f]{64}$'::text)`,
     ),
     check(
       'run_failure_notification_intents_destination_version_positive',

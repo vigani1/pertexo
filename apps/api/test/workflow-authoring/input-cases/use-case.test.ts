@@ -47,7 +47,7 @@ const item = {
   workspaceId,
   workflowId,
   workflowVersionId: versionId,
-  versionChecksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+  versionChecksum: `wf:sha256:${'a'.repeat(64)}`,
   name: 'Synthetic',
   revision: 1,
   createdAt: new Date('2026-10-01T00:00:00.000Z'),

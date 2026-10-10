@@ -421,7 +421,7 @@ async function seedIdentityAndExecutables(): Promise<void> {
           versionId,
           workspaceId,
           workflowId,
-          `wf:v2:sha256:${suffix.repeat(64)}`,
+          `wf:sha256:${suffix.repeat(64)}`,
           JSON.stringify({
             schemaVersion: 2,
             graph: {

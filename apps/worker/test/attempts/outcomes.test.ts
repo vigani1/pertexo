@@ -301,7 +301,7 @@ describe('NodeAttemptHandler', () => {
           expectedAuthType: 'resend_api_key',
           secretVersionId: '22222222-2222-4222-8222-222222222222',
         },
-        providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'a'.repeat(64),
       } as const;
       const secondEvidence = useDifferentEvidence
         ? {
@@ -309,7 +309,7 @@ describe('NodeAttemptHandler', () => {
               ...firstEvidence.connectionFence,
               secretVersionId: '33333333-3333-4333-8333-333333333333',
             },
-            providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
+            providerDispatchBinding: 'email:sha256:' + 'b'.repeat(64),
           }
         : firstEvidence;
       const registry: NodeExecutionRegistry = {
@@ -474,7 +474,7 @@ describe('NodeAttemptHandler', () => {
             await Promise.resolve();
             await expect(
               request.runtime?.beforeDispatch({
-                providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+                providerDispatchBinding: 'email:sha256:' + 'c'.repeat(64),
               }),
             ).rejects.toMatchObject({ code: 'duplicate_dispatch' });
             marker.reject(markerError);

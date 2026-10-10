@@ -47,7 +47,7 @@ describe('workflow draft persistence', () => {
       authoring.saveDraft({ ...input, representationTag: 'not-a-draft-tag' }),
     ).rejects.toMatchObject({ name: 'ZodError' });
 
-    const wrongTag = `"draft-v1.${'A'.repeat(43)}"`;
+    const wrongTag = `"draft.${'A'.repeat(43)}"`;
     await expect(
       authoring.saveDraft({ ...input, representationTag: wrongTag }),
     ).rejects.toEqual(
@@ -309,7 +309,7 @@ describe('workflow draft persistence', () => {
           randomUUID(),
           otherWorkspaceId,
           otherWorkflowId,
-          `wf:v2:sha256:${'1'.repeat(64)}`,
+          `wf:sha256:${'1'.repeat(64)}`,
           otherActorId,
         ],
       ],

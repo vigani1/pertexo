@@ -393,7 +393,7 @@ describe('route loading', () => {
 
   it('names a known workspace while it opens and admits a slow connection', async () => {
     localStorage.setItem(
-      'pertexo:last-workspace:v1',
+      'pertexo:last-workspace',
       JSON.stringify({
         userId: fixtureIds.user,
         workspaceId,

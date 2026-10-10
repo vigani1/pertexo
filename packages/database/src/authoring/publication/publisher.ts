@@ -48,7 +48,7 @@ const uuidSchema = z.uuid();
 const digestSchema = sha256HexSchema;
 const workflowDraftTagSchema = z
   .string()
-  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+  .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u);
 const providerKeySchema = z
   .string()
   .min(1)
@@ -61,7 +61,7 @@ const operationKeySchema = z
   .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
 const executableSchema = z
   .object({
-    checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
+    checksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
     executableJson: z.record(z.string(), z.unknown()),
   })
   .strict();

@@ -68,7 +68,7 @@ const importInput = previewInput
     name: z.string().trim().min(1).max(128),
     expectedCompatibilityFingerprint: z
       .string()
-      .regex(/^wf-compat:v1:sha256:[a-f0-9]{64}$/u),
+      .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),
     idempotencyKey: z.string(),
   })
   .strict();
@@ -83,7 +83,7 @@ const exportInput = scope
     reviewedGraphDigest: z.string().regex(/^[a-f0-9]{64}$/u),
     representationTag: z
       .string()
-      .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u)
+      .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u)
       .optional(),
   })
   .strict()

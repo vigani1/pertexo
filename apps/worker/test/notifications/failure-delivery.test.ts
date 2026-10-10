@@ -39,8 +39,7 @@ const identity = {
   destinationId: '66666666-6666-4666-8666-666666666666',
   destinationConfigVersion: 2,
   connectionSecretVersionId: '77777777-7777-4777-8777-777777777777',
-  idempotencyKey:
-    'failure-notification:v1:55555555-5555-4555-8555-555555555555',
+  idempotencyKey: 'failure-notification:55555555-5555-4555-8555-555555555555',
   deliveryUnresolved: false,
   context,
   signal: new AbortController().signal,
@@ -475,9 +474,7 @@ describe('provider failure notification delivery', () => {
     ).resolves.toMatchObject({ kind: 'retry', possiblyDispatched: false });
     expect(vi.mocked(persistence.fenceDispatch)).toHaveBeenCalledWith(
       expect.objectContaining({
-        deliveryBinding: expect.stringMatching(
-          /^email:v1:sha256:[0-9a-f]{64}$/u,
-        ),
+        deliveryBinding: expect.stringMatching(/^email:sha256:[0-9a-f]{64}$/u),
         signal: identity.signal,
       }),
     );
@@ -549,7 +546,7 @@ describe('provider failure notification delivery', () => {
 
     const baseline = await bindingFor();
     await expect(bindingFor()).resolves.toBe(baseline);
-    expect(baseline).toMatch(/^email:v1:sha256:[0-9a-f]{64}$/u);
+    expect(baseline).toMatch(/^email:sha256:[0-9a-f]{64}$/u);
     const variants = [
       await bindingFor({
         secretVersionId: '99999999-9999-4999-8999-999999999999',
@@ -834,7 +831,7 @@ describe('provider failure notification delivery', () => {
       delivery.deliver({
         ...identity,
         sideEffectClass: 'idempotent_with_key',
-        deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+        deliveryBinding: `email:sha256:${'a'.repeat(64)}`,
       }),
     ).resolves.toMatchObject({
       kind: 'definite_failure',
@@ -844,7 +841,7 @@ describe('provider failure notification delivery', () => {
       delivery.deliver({
         ...identity,
         sideEffectClass: 'idempotent_with_key',
-        deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+        deliveryBinding: `email:sha256:${'a'.repeat(64)}`,
         deliveryUnresolved: true,
       }),
     ).resolves.toMatchObject({

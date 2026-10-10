@@ -71,7 +71,7 @@ describe('Redis run event source', () => {
     expect(channel).toBe(runEventChannel(WORKSPACE_ID, RUN_ID));
     expect(channel).not.toContain(WORKSPACE_ID);
     expect(channel).not.toContain(RUN_ID);
-    expect(channel).toMatch(/^run-events:v1:[\w-]{43}$/);
+    expect(channel).toMatch(/^run-events:[\w-]{43}$/);
   });
 
   it('rejects unsafe Redis configuration', () => {
@@ -381,7 +381,7 @@ describe('Redis run event source', () => {
 
     fake.emit(
       'message',
-      'run-events:v1:wrong-channel',
+      'run-events:wrong-channel',
       JSON.stringify({ kind: 'resync' }),
     );
     fake.emit(

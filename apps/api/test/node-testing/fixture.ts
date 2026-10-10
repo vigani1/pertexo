@@ -54,7 +54,7 @@ export function nodeTestingDraft(
     graphJson: httpNodeTestingGraph(),
     compatibility: {
       compatible: true,
-      fingerprint: `wf-compat:v1:sha256:${'c'.repeat(64)}`,
+      fingerprint: `wf-compat:sha256:${'c'.repeat(64)}`,
       issues: [],
     },
     updatedBy: nodeTestingIds.actorId,

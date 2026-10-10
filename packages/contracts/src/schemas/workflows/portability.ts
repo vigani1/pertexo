@@ -33,14 +33,14 @@ export const workflowImportRequestSchema =
     name: z.string().trim().min(1).max(128),
     expectedCompatibilityFingerprint: z
       .string()
-      .regex(/^wf-compat:v1:sha256:[a-f0-9]{64}$/u),
+      .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),
   });
 export const workflowImportPreviewResponseSchema = z
   .object({
     manifestDigest: z.string().regex(/^[a-f0-9]{64}$/u),
     compatibilityFingerprint: z
       .string()
-      .regex(/^wf-compat:v1:sha256:[a-f0-9]{64}$/u),
+      .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),
     compatible: z.boolean(),
     issues: z
       .array(portableIssueSchema)

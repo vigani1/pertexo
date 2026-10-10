@@ -9,7 +9,7 @@ export const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 export const secondWorkflowId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 export const thirdWorkflowId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 export const versionId = '12121212-1212-4121-8121-121212121212';
-export const etag = `"draft-v1.${'a'.repeat(43)}"`;
+export const etag = `"draft.${'a'.repeat(43)}"`;
 export const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
 
 export const user = {
@@ -95,7 +95,7 @@ export function draftBody(id: string, graph: unknown = emptyGraph) {
     graph,
     compatibility: {
       compatible: true,
-      fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+      fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
       issues: [],
     },
     updatedAt: '2026-09-14T10:00:00.000Z',

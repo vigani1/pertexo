@@ -140,7 +140,7 @@ beforeAll(async () => {
           nodes: [],
           edges: [],
         }),
-        `wf:v2:sha256:${'a'.repeat(64)}`,
+        `wf:sha256:${'a'.repeat(64)}`,
         ownerUserId,
       ],
     );
@@ -160,9 +160,9 @@ beforeAll(async () => {
         workflowId,
         workflowVersionId,
         JSON.stringify({ recurrence: 'interval' }),
-        `trigger:v1:sha256:${'b'.repeat(64)}`,
+        `trigger:sha256:${'b'.repeat(64)}`,
         webhookTriggerId,
-        `trigger:v1:sha256:${'c'.repeat(64)}`,
+        `trigger:sha256:${'c'.repeat(64)}`,
       ],
     );
     await owner.query(
@@ -175,7 +175,7 @@ beforeAll(async () => {
       [
         scheduleTriggerId,
         workspaceId,
-        `trigger:v1:sha256:${'b'.repeat(64)}`,
+        `trigger:sha256:${'b'.repeat(64)}`,
         randomUUID(),
       ],
     );

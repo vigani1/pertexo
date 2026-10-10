@@ -153,7 +153,7 @@ export const workflowInputCaseMetadataSchema = z
     workspaceId: z.uuid(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
-    versionChecksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
+    versionChecksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
     name: workflowInputCaseNameSchema,
     revision: workflowInputCaseRevisionSchema,
     representationTag: workflowInputCaseTagSchema,

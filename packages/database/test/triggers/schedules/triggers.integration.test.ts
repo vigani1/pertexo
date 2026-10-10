@@ -318,7 +318,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         otherVersionId,
         otherWorkspaceId,
         otherWorkflowId,
-        `wf:v2:sha256:${'b'.repeat(64)}`,
+        `wf:sha256:${'b'.repeat(64)}`,
         actorId,
       ],
       otherWorkspaceId,
@@ -338,7 +338,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         '20 minutes',
       ],
     ] as const) {
-      const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(id).digest('hex')}`;
+      const fingerprint = `trigger:sha256:${createHash('sha256').update(id).digest('hex')}`;
       await ownerQuery(
         `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
            node_id,kind,status,desired_config,config_fingerprint,health_status)
@@ -428,7 +428,7 @@ describe('schedule trigger PostgreSQL slice', () => {
 
   it('marks a claimed permanent scan failure degraded without advancing the occurrence', async () => {
     const failedTriggerId = randomUUID();
-    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(failedTriggerId).digest('hex')}`;
+    const fingerprint = `trigger:sha256:${createHash('sha256').update(failedTriggerId).digest('hex')}`;
     await ownerQuery(
       `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
          node_id,kind,status,desired_config,config_fingerprint,health_status)
@@ -488,7 +488,7 @@ describe('schedule trigger PostgreSQL slice', () => {
 
   it('records a due occurrence as paused, without a run, while the workflow is paused', async () => {
     const pausedTriggerId = randomUUID();
-    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(pausedTriggerId).digest('hex')}`;
+    const fingerprint = `trigger:sha256:${createHash('sha256').update(pausedTriggerId).digest('hex')}`;
     await ownerQuery(
       `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
          node_id,kind,status,desired_config,config_fingerprint,health_status)

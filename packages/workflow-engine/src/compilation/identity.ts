@@ -12,9 +12,9 @@ function executableProjection(envelope: WorkflowExecutable): unknown {
 /** The executable's checksum, stored beside it when a workflow is published. */
 export function computeWorkflowExecutableChecksum(
   envelope: WorkflowExecutable,
-): `wf:v2:sha256:${string}` {
-  return `wf:v2:sha256:${digest(
-    'pertexo.workflow-executable.v2',
+): `wf:sha256:${string}` {
+  return `wf:sha256:${digest(
+    'pertexo.workflow-executable',
     executableProjection(envelope),
   )}`;
 }

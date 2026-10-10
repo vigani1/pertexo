@@ -21,9 +21,9 @@ export const webhookId = '22222222-2222-4222-8222-222222222222';
 export const secondWebhookId = '55555555-5555-4555-8555-555555555555';
 export const destinationId = '33333333-3333-4333-8333-333333333333';
 export const connectionId = '44444444-4444-4444-8444-444444444444';
-export const etag = `"draft-v1.${'a'.repeat(43)}"`;
-export const etagB = `"draft-v1.${'b'.repeat(43)}"`;
-export const etagC = `"draft-v1.${'c'.repeat(43)}"`;
+export const etag = `"draft.${'a'.repeat(43)}"`;
+export const etagB = `"draft.${'b'.repeat(43)}"`;
+export const etagC = `"draft.${'c'.repeat(43)}"`;
 export const workflowApi = `${api}/workflows/${workflowId}`;
 
 /** Beyond reading the workspace and its workflows. */
@@ -42,7 +42,7 @@ export const emptyGraph = {
 
 export const compatibility = {
   compatible: true,
-  fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+  fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
   issues: [],
 };
 
@@ -148,7 +148,7 @@ export function version(
     versionNumber,
     schemaVersion: 1,
     graph,
-    checksum: `wf:v2:sha256:${'b'.repeat(64)}`,
+    checksum: `wf:sha256:${'b'.repeat(64)}`,
     publishedAt: '2026-09-14T10:00:00.000Z',
   };
 }

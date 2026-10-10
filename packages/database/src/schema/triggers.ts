@@ -160,7 +160,7 @@ export const triggerSchedules = appSchema.table(
     timezone: varchar('timezone', { length: 128 }),
     intervalMinutes: integer('interval_minutes'),
     misfirePolicy: varchar('misfire_policy', { length: 32 }).notNull(),
-    configFingerprint: varchar('config_fingerprint', { length: 82 }).notNull(),
+    configFingerprint: varchar('config_fingerprint', { length: 79 }).notNull(),
     anchorAt: timestamp('anchor_at', {
       withTimezone: true,
       mode: 'date',

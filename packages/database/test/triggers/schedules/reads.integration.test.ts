@@ -63,7 +63,7 @@ beforeAll(async () => {
      values($1,$2,'viewer','active')`,
     [workspaceId, viewerId],
   );
-  const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(cronTriggerId).digest('hex')}`;
+  const fingerprint = `trigger:sha256:${createHash('sha256').update(cronTriggerId).digest('hex')}`;
   await ownerQuery(
     `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
        node_id,kind,status,desired_config,config_fingerprint,health_status)
@@ -185,7 +185,7 @@ describe('schedule occurrence history', () => {
         workspaceId,
         workflowId,
         versionId,
-        `trigger:v1:sha256:${'b'.repeat(64)}`,
+        `trigger:sha256:${'b'.repeat(64)}`,
       ],
     );
     for (const hidden of [

@@ -73,7 +73,7 @@ export function workflowTriggerProjection(
             nodeId: node.id,
             kind,
             config: Object.freeze(config),
-            configFingerprint: `trigger:v1:sha256:${digest}`,
+            configFingerprint: `trigger:sha256:${digest}`,
           }),
         ];
       })

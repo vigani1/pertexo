@@ -102,7 +102,7 @@ async function addWorkflows(
         published_by)
      select gen_random_uuid(), $1, created.id, 1, 1,
             '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
-            'wf:v2:sha256:' || repeat('e', 64),
+            'wf:sha256:' || repeat('e', 64),
             '{"schemaVersion":2}'::jsonb, $2
      from created`,
     [

@@ -32,7 +32,7 @@ const first = CURATED_WORKFLOW_TEMPLATES[0];
 const controlled = CURATED_WORKFLOW_TEMPLATES[2];
 if (first === undefined || controlled === undefined)
   throw new Error('Missing reviewed fixtures');
-const fingerprint = `wf-compat:v1:sha256:${'a'.repeat(64)}`;
+const fingerprint = `wf-compat:sha256:${'a'.repeat(64)}`;
 
 function supportedCatalog() {
   const requirements = new Map(

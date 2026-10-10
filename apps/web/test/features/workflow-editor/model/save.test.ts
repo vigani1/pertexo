@@ -11,8 +11,8 @@ import { createSaveCoordinator } from '@/features/workflow-editor/model/persiste
 import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/data/workflow-editor.api';
 import { bareSetDefinition as definition } from '../../../support/fixtures/workflow-editor';
 
-const etagA = `"draft-v1.${'a'.repeat(43)}"`;
-const etagB = `"draft-v1.${'b'.repeat(43)}"`;
+const etagA = `"draft.${'a'.repeat(43)}"`;
+const etagB = `"draft.${'b'.repeat(43)}"`;
 
 function emptyGraph(): WorkflowGraphContract {
   return { schemaVersion: 1, nodes: [], edges: [], settings: {} };
@@ -32,7 +32,7 @@ function snapshot(
       graph,
       compatibility: {
         compatible: true,
-        fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+        fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
         issues: [],
       },
       updatedAt: '2026-09-14T10:00:00.000Z',

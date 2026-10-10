@@ -375,7 +375,7 @@ async function deliverEmail(
       );
     }
     const message = render(input.context);
-    const binding = `email:v1:sha256:${createHash('sha256')
+    const binding = `email:sha256:${createHash('sha256')
       .update(
         JSON.stringify({
           secretVersionId: destination.secretVersionId,

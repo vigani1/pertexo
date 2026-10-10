@@ -48,7 +48,7 @@ export function projection(): PublishedWorkflow {
     versionNumber: 1,
     schemaVersion: 1,
     checksum:
-      'wf:v2:sha256:1111111111111111111111111111111111111111111111111111111111111111',
+      'wf:sha256:1111111111111111111111111111111111111111111111111111111111111111',
     executableJson: { schemaVersion: 2 },
   };
 }

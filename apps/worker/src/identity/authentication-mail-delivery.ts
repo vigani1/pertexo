@@ -66,7 +66,7 @@ async function deliverClaim(
     });
     return;
   }
-  const associatedData = `pertexo/authentication-mail/v1/${claim.purpose}/${claim.id}/${claim.expiresAt.toISOString()}`;
+  const associatedData = `pertexo/authentication-mail/${claim.purpose}/${claim.id}/${claim.expiresAt.toISOString()}`;
   const message = payload.parse(
     JSON.parse(
       dependencies.envelope.open(claim.sealedPayload, associatedData),
@@ -80,7 +80,7 @@ async function deliverClaim(
       toEmail: message.toEmail,
       subject: message.subject,
       text: message.text,
-      idempotencyKey: `authentication-mail:v1:${claim.id}`,
+      idempotencyKey: `authentication-mail:${claim.id}`,
       timeoutMillis: dependencies.timeoutMillis,
       beforeDispatch: () => Promise.resolve(),
       ...(signal === undefined ? {} : { signal }),

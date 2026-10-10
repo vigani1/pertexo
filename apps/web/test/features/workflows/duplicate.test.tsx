@@ -248,7 +248,7 @@ describe('Duplicate workflow', () => {
 
   it('reads a changed draft only on explicit refresh and needs a new confirmation/key', async () => {
     const requests: Attempt[] = [];
-    const nextTag = `"draft-v1.${'b'.repeat(43)}"`;
+    const nextTag = `"draft.${'b'.repeat(43)}"`;
     mockServer.use(
       http.post(
         `${api}/workflows/${workflowId}/duplicate`,

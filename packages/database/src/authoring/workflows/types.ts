@@ -10,7 +10,7 @@ import type { WorkflowTemplateOriginRequest } from '@pertexo/templates';
 
 /** Compiles a graph into the executable a published version stores. */
 export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
-  checksum: `wf:v2:sha256:${string}`;
+  checksum: `wf:sha256:${string}`;
   executableJson: unknown;
 }>;
 

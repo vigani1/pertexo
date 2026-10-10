@@ -29,7 +29,7 @@ import {
 import { WorkflowHeaderError } from '../../src/workflow-authoring/http/preconditions.js';
 import { AuthorizationError } from '../../src/authorization/index.js';
 
-const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
+const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 
 describe('workflow authoring error mapping', () => {
   it('maps unsupported historical origin readers to a dedicated sanitized unavailable problem', () => {

@@ -38,7 +38,7 @@ import {
   workspaceId,
 } from './list/fixtures';
 
-const fingerprint = `wf-compat:v1:sha256:${'a'.repeat(64)}`;
+const fingerprint = `wf-compat:sha256:${'a'.repeat(64)}`;
 const manifest = {
   format: 'pertexo.workflow',
   formatVersion: 1,
@@ -691,7 +691,7 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
     await event.click(screen.getByRole('button', { name: 'Cancel' }));
     window.dispatchEvent(
       new StorageEvent('storage', {
-        key: 'pertexo:auth-session-change:v1',
+        key: 'pertexo:auth-session-change',
         newValue: JSON.stringify({
           event: 'changed',
           generation: 'new-session',

@@ -49,7 +49,7 @@ async function publishDuration(maxRunDurationMs?: number): Promise<void> {
           edges: [],
           settings: { maxRunDurationMs },
         }),
-        `wf:v2:sha256:${'a'.repeat(64)}`,
+        `wf:sha256:${'a'.repeat(64)}`,
         workspaceCreatorId,
       ],
     );

@@ -443,7 +443,7 @@ describeIntegration('Failure notification transport resilience', () => {
           sendNotification: async (input) => {
             await input.beforeDispatch();
             expect(input.idempotencyKey).toBe(
-              `failure-notification:v1:${intentId}`,
+              `failure-notification:${intentId}`,
             );
             if (input.signal === undefined)
               throw new Error('blocked email dispatch signal missing');
@@ -540,7 +540,7 @@ describeIntegration('Failure notification transport resilience', () => {
         status: 'retry',
         possibly_dispatched: true,
       });
-      expect(drainedEmail?.delivery_binding).toMatch(/^email:v1:sha256:/u);
+      expect(drainedEmail?.delivery_binding).toMatch(/^email:sha256:/u);
     } finally {
       await store.close();
     }
@@ -600,7 +600,7 @@ describeIntegration('Failure notification transport resilience', () => {
             await input.beforeDispatch();
             expect(input).toMatchObject({
               toEmail: 'failure-notification@example.test',
-              idempotencyKey: `failure-notification:v1:${intentId}`,
+              idempotencyKey: `failure-notification:${intentId}`,
             });
             deliveries.push(input.idempotencyKey);
             return { kind: 'succeeded', emailId: randomUUID() };
@@ -720,7 +720,7 @@ describeIntegration('Failure notification transport resilience', () => {
       expect(emailTerminal).toEqual([
         { status: 'delivered', safe_error_code: null },
       ]);
-      expect(deliveries).toEqual([`failure-notification:v1:${intentId}`]);
+      expect(deliveries).toEqual([`failure-notification:${intentId}`]);
       await waitFor(
         () =>
           workerQuery<{ status: string }>(

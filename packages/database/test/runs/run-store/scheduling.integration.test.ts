@@ -1430,7 +1430,7 @@ describe('Coordinator scheduling and notification invariants', () => {
           workspaceId: workspaceA,
           intentId: first.intent_id,
           attemptNumber: firstReady.attemptNumber,
-          deliveryBinding: `email:v1:sha256:${'c'.repeat(64)}`,
+          deliveryBinding: `email:sha256:${'c'.repeat(64)}`,
         }),
       ).resolves.toBeUndefined();
       await expect(deliveryStore.claimDelivery(claim(first))).resolves.toEqual({
@@ -1808,7 +1808,7 @@ describe('Coordinator scheduling and notification invariants', () => {
       workspaceId: workspaceA,
       intentId: first.intent_id,
       attemptNumber: claimed.attemptNumber,
-      deliveryBinding: `email:v1:sha256:${'9'.repeat(64)}`,
+      deliveryBinding: `email:sha256:${'9'.repeat(64)}`,
     });
     const { store: uncertainStore } = createTestFailureNotificationStore({
       matches: (sql) => sql.trim().toLowerCase() === 'commit',
@@ -2042,7 +2042,7 @@ describe('Coordinator scheduling and notification invariants', () => {
             workspaceId: workspaceA,
             intentId: first.intent_id,
             attemptNumber: ready.attemptNumber,
-            deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+            deliveryBinding: `email:sha256:${'a'.repeat(64)}`,
           })
           .then(
             () => ({ kind: 'resolved' as const }),
@@ -2076,7 +2076,7 @@ describe('Coordinator scheduling and notification invariants', () => {
           workspaceId: workspaceA,
           intentId: first.intent_id,
           attemptNumber: ready.attemptNumber,
-          deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+          deliveryBinding: `email:sha256:${'a'.repeat(64)}`,
         }),
       ).resolves.toBeUndefined();
       await asRuntime(apiBaseUrl, workspaceA, (client) =>
@@ -2238,7 +2238,7 @@ describe('Coordinator scheduling and notification invariants', () => {
           workspaceId: workspaceA,
           intentId: first.intent_id,
           attemptNumber: firstClaim.attemptNumber,
-          deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+          deliveryBinding: `email:sha256:${'a'.repeat(64)}`,
         }),
       ).resolves.toBeUndefined();
       await asRuntime(workerBaseUrl, workspaceA, (client) =>
@@ -2271,14 +2271,14 @@ describe('Coordinator scheduling and notification invariants', () => {
           throw new Error('retry was not claimable');
         if (attempt === 2) {
           expect(claimed.deliveryBinding).toBe(
-            `email:v1:sha256:${'a'.repeat(64)}`,
+            `email:sha256:${'a'.repeat(64)}`,
           );
           await expect(
             deliveryStore.fenceDispatch({
               workspaceId: workspaceA,
               intentId: first.intent_id,
               attemptNumber: claimed.attemptNumber,
-              deliveryBinding: `email:v1:sha256:${'b'.repeat(64)}`,
+              deliveryBinding: `email:sha256:${'b'.repeat(64)}`,
             }),
           ).rejects.toThrow('Delivery dispatch fence failed');
           await expect(
@@ -2286,7 +2286,7 @@ describe('Coordinator scheduling and notification invariants', () => {
               workspaceId: workspaceA,
               intentId: first.intent_id,
               attemptNumber: claimed.attemptNumber,
-              deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+              deliveryBinding: `email:sha256:${'a'.repeat(64)}`,
             }),
           ).resolves.toBeUndefined();
           const rotatedSecretVersionId = randomUUID();
@@ -2421,7 +2421,7 @@ describe('Coordinator scheduling and notification invariants', () => {
                       connection_secret_version_id,$3,context,context_checksum,
                       'dispatching',3,clock_timestamp(),clock_timestamp()+interval '1 minute',true
                  from app.run_failure_notification_intents where id=$2`,
-          [exhaustedId, first.intent_id, `email:v1:sha256:${'b'.repeat(64)}`],
+          [exhaustedId, first.intent_id, `email:sha256:${'b'.repeat(64)}`],
         ),
       );
       await expect(

@@ -161,7 +161,7 @@ beforeAll(async () => {
       workspaceId,
       workflowId,
       JSON.stringify({ edges: [], nodes: [], schemaVersion: 1, settings: {} }),
-      `wf:v2:sha256:${'2'.repeat(64)}`,
+      `wf:sha256:${'2'.repeat(64)}`,
       JSON.stringify({ schemaVersion: 2, nodes: [], edges: [] }),
       actorId,
     ],
@@ -201,7 +201,7 @@ describe('PublishedWorkflowReader', () => {
         workflowVersionId: versionId,
       }),
     ).resolves.toEqual({
-      checksum: `wf:v2:sha256:${'2'.repeat(64)}`,
+      checksum: `wf:sha256:${'2'.repeat(64)}`,
       executableJson: { schemaVersion: 2, nodes: [], edges: [] },
       id: versionId,
       schemaVersion: 1,
@@ -249,14 +249,14 @@ describe('PublishedWorkflowReader', () => {
     await expect(
       executeAsOwner(
         `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 10,
-          1, '{}', 'wf:v2:sha256:${'a'.repeat(64)}', null, '${actorId}')`,
+          1, '{}', 'wf:sha256:${'a'.repeat(64)}', null, '${actorId}')`,
       ),
     ).rejects.toSatisfy(expectPgCode('23502'));
     const cases = [
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 11,
-        1, '{}', 'wf:v2:sha256:${'b'.repeat(64)}', '[]', '${actorId}')`,
+        1, '{}', 'wf:sha256:${'b'.repeat(64)}', '[]', '${actorId}')`,
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 12,
-        1, '{}', 'wf:v1:sha256:${'c'.repeat(64)}', '{}', '${actorId}')`,
+        1, '{}', 'wf:sha256:${'C'.repeat(64)}', '{}', '${actorId}')`,
     ];
     for (const statement of cases) {
       await expect(executeAsOwner(statement)).rejects.toSatisfy(
@@ -271,7 +271,7 @@ describe('PublishedWorkflowReader', () => {
           randomUUID(),
           workspaceId,
           workflowId,
-          `wf:v2:sha256:${'d'.repeat(64)}`,
+          `wf:sha256:${'d'.repeat(64)}`,
           'x'.repeat(1_048_576),
           actorId,
         ],

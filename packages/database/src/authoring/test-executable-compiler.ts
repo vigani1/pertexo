@@ -34,7 +34,7 @@ function executableShape(graph: WorkflowGraph): unknown {
  * so republishing a relabeled graph reuses the version.
  */
 export const testExecutableCompiler: WorkflowExecutableCompiler = (graph) => ({
-  checksum: `wf:v2:sha256:${createHash('sha256')
+  checksum: `wf:sha256:${createHash('sha256')
     .update(canonicalJson(executableShape(graph)))
     .digest('hex')}`,
   executableJson: { graph },

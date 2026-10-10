@@ -95,7 +95,7 @@ export async function observeScheduleBeforeDue(database: Pool, scope: Scope) {
             (select count(*)::int from app.trigger_schedule_occurrences where workspace_id=$1 and trigger_id=$3) occurrences,
             (select count(*)::int from app.inbox_receipts receipt join app.outbox_events event on event.id=receipt.message_id
               where event.workspace_id=$1 and event.aggregate_id=$2 and event.job_name='reconcile-workflow-triggers'
-              and receipt.consumer_name='trigger-runtime.reconciliation.v1' and receipt.completed_at is not null) receipts`,
+              and receipt.consumer_name='trigger-runtime.reconciliation' and receipt.completed_at is not null) receipts`,
     [scope.workspaceId, scope.workflowId, schedule.id],
   );
   expect(facts.rows).toEqual([{ runs: 0, occurrences: 0, receipts: 1 }]);
@@ -291,7 +291,7 @@ export async function verifyScheduleEvidence(
   const reconciliation = await database.query(
     `select count(*)::int events,count(receipt.completed_at)::int completed
        from app.outbox_events event left join app.inbox_receipts receipt
-         on receipt.message_id=event.id and receipt.consumer_name='trigger-runtime.reconciliation.v1'
+         on receipt.message_id=event.id and receipt.consumer_name='trigger-runtime.reconciliation'
       where event.workspace_id=$1 and event.aggregate_id=$2 and event.job_name='reconcile-workflow-triggers'`,
     scope,
   );

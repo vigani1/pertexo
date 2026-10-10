@@ -21,7 +21,7 @@ export const workflowVersionRowSelection =
   'id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,published_by,published_at';
 export const workflowRowSelection =
   'id,workspace_id,name,name_revision,lifecycle_status,lifecycle_revision,activation_status,published_version_id,created_by,created_at,updated_at';
-const checksumSchema = z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u);
+const checksumSchema = z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u);
 const workflowRowSchema = z
   .object({
     id: uuidSchema,
