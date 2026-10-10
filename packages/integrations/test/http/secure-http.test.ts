@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { assertPublicAddress } from '../../src/http/address-policy.js';
+import { assertPublicAddress } from '../../src/http/transport/address-policy.js';
 import {
   NodeHttpTransport,
   SECURE_HTTP_ERROR_CODE,

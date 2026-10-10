@@ -54,7 +54,7 @@ export {
   createNodeSecureHttpClient,
   NodeDnsResolver,
   NodeHttpTransport,
-} from './http/node-transport.js';
+} from './http/transport/node.js';
 export {
   classifySecureHttpError,
   classifySecureHttpResponse,
