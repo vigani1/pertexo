@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Transform } from 'node:stream';
-import type { TransformCallback , Readable} from 'node:stream';
+import type { TransformCallback, Readable } from 'node:stream';
 
 import {
   ArtifactInputIntegrityError,

@@ -514,6 +514,28 @@ now, as one ordered program — not "whenever we touch it".
         no longer repeat their folder, and the database schema, run advance
         and attempt folders split the same way. CI selects the owned-fixture
         and browser suites by folder.
+  - [x] Naming and layout follow-up — redundant folder prefixes go, crowded
+        areas split by responsibility, and source/test paths mirror each other.
+        Artifact storage groups S3 and configuration; observability groups
+        telemetry. Stream verification and folder/tag controls have their own
+        modules. The HTTP transport and queue consumer keep their cohesive
+        cancellation, retry and shutdown lifecycles.
+    - [x] Small database doors fold into neighbors: identity into tenant-access,
+          inbox into notifications, artifacts and operator into runs. The twelve
+          remaining doors are attempts, authoring, connections, lifecycle,
+          notifications, outbox, platform, previews, runs, tenant-access,
+          triggers and testing. Runtime areas have substantial implementations;
+          outbox owns leased dispatch and lifecycle owns retention and purge.
+          Testing remains the fixture boundary. Pool telemetry keeps its actual
+          measurements and lifecycle, without guards around owned instruments.
+    - [x] Authentication persistence is typed database commands, preserving user
+          locks and Better Auth behavior. Better Auth retains its pool wiring.
+          Read-only admission and invitation checks follow the SQL decisions
+          below. The mail test hook goes; tests observe the local sink.
+    - [x] Equivalent record, ordinal, UUID and database serializer helpers are
+          shared. Distinct digest, stored-value and PostgreSQL payload encodings
+          stay distinct. Owned config guards, obsolete catalog names and manual
+          promise rejection settlements go; unknown boundary validation stays.
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
   - [ ] SQL the reset moved out of the passes goes with the re-squash: the
