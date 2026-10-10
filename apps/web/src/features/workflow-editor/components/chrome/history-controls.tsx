@@ -10,8 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
-import type { EditorState } from '../../model/editor.store';
-import { useEditorStore } from '../../model/editor-store-context';
+import type { EditorState } from '../../model/state/store';
+import { useEditorStore } from '../../model/state/context';
 import { shortcut } from '@/lib/shortcut-keys';
 
 const canUndo = (state: EditorState) =>

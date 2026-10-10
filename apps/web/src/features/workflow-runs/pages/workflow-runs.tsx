@@ -8,7 +8,7 @@ import { RunFilters } from '../components/run-filters/run-filters';
 import {
   NoWorkflowRunsYet,
   RunsForbidden,
-} from '../components/run-list/run-list-states';
+} from '../components/run-list/states';
 import { RunResults } from '../components/run-list/run-results';
 import { RunsToolbar } from '../components/run-list/runs-toolbar';
 import {

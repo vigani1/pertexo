@@ -10,7 +10,7 @@ import { NotificationsProvider } from '@/components/ui/toast';
 import { createQueryClient } from './app/query-client';
 import { createAppRouter } from './app/router';
 import { createBrowserApiClient } from './lib/api/browser-client';
-import { subscribeSessionChanges } from './features/auth/session-sync.public';
+import { subscribeSessionChanges } from './features/auth/session/session-sync.public';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Missing application root');

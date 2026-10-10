@@ -4,11 +4,8 @@ import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { authenticationCapabilitiesQueryOptions } from '../data/auth.queries';
 import { EmailRequestLens } from '../components/inbox/email-request-lens';
-import {
-  InboxLens,
-  RESEND_COOLDOWN_SECONDS,
-} from '../components/inbox/inbox-lens';
-import { SignInLens } from '../components/sign-in/sign-in-lens';
+import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
+import { SignInLens } from '../components/sign-in/lens';
 import { AuthLensFooter } from '../components/stage/auth-lens';
 import { LensLoading, LensUnavailable } from '../components/stage/lens-states';
 import { resendFailure } from '../model/auth-failure';

@@ -11,7 +11,7 @@ import {
   fieldControlId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
-import type { WorkflowNode } from '../../../model/graph/graph-scopes';
+import type { WorkflowNode } from '../../../model/graph/scopes';
 import {
   parseChannelId,
   SLACK_CONNECTION,

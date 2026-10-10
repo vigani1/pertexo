@@ -6,11 +6,11 @@ import type { FinalConnectionState } from '@xyflow/react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { createEditorStore } from '@/features/workflow-editor/model/editor.store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/store';
 import {
   addStepAfter,
   positionAfter,
-} from '@/features/workflow-editor/model/graph/graph-commands';
+} from '@/features/workflow-editor/model/graph/commands';
 import {
   followingSteps,
   gestureEndPoint,

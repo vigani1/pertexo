@@ -5,11 +5,8 @@ import {
   returnToSearch,
 } from '@/features/auth/return-path.public';
 import { firstNameOf } from '../../model/workspace-roles';
-import { feedbackFor } from '../../data/mutations/members/use-member-command';
-import {
-  MemberCommandDialog,
-  type MemberCommandView,
-} from './member-command-dialog';
+import { feedbackFor } from '../../data/mutations/members/use-command';
+import { MemberCommandDialog, type MemberCommandView } from './command-dialog';
 
 /**
  * Confirms handing the workspace to another member (ADR 047). Every

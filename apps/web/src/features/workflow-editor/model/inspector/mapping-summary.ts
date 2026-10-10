@@ -1,5 +1,5 @@
-import { stepTitle } from '../graph/graph-adapter';
-import type { GraphLevel } from '../graph/graph-scopes';
+import { stepTitle } from '../graph/adapter';
+import type { GraphLevel } from '../graph/scopes';
 import type { InputMappingDraftRow } from './input-mappings';
 
 /**

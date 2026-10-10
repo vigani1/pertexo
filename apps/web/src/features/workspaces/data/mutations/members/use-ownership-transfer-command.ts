@@ -1,10 +1,7 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { transferWorkspaceOwnership } from '../../workspaces.api';
-import {
-  useMemberCommand,
-  type MemberCommandAttempt,
-} from './use-member-command';
+import { useMemberCommand, type MemberCommandAttempt } from './use-command';
 
 type TransferAttempt = MemberCommandAttempt &
   Readonly<{ expectedOwnerRoleRevision: number }>;

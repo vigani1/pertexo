@@ -5,7 +5,7 @@ import {
   type StepFamily,
   type StepPresentation,
 } from '@/features/catalog/presentation.public';
-import { definitionIdentity } from './graph/graph-adapter';
+import { definitionIdentity } from './graph/adapter';
 
 /** The drag payload an add-step item carries onto the canvas. */
 export const STEP_DRAG_TYPE = 'application/x-pertexo-step';

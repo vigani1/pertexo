@@ -1,9 +1,6 @@
 import { useRef } from 'react';
-import { isApiError } from '@/lib/api/api-error';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 
 export type CommandAttemptStore = Readonly<{
   begin: (

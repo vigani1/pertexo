@@ -1,7 +1,7 @@
 import { GitCompareArrowsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
-import { useEditorStore } from '../../model/editor-store-context';
+import { useEditorStore } from '../../model/state/context';
 
 /**
  * A draft conflict never blocks the canvas: an amber bar says what happened

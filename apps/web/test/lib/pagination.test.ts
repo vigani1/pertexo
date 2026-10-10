@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isApiError } from '../../src/lib/api/api-error';
+import { isApiError } from '../../src/lib/api/error';
 import {
   collectPages,
   cursorPages,

@@ -7,7 +7,7 @@ import {
 import {
   endBrowserSession,
   logoutErrorMessage,
-} from '@/features/auth/session-actions.public';
+} from '@/features/auth/session/session-actions.public';
 import type { ApiClient } from '@/lib/api/client';
 
 export function useLogout(

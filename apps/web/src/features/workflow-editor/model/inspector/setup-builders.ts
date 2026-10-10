@@ -1,5 +1,5 @@
 import { parseJsonPath } from '@pertexo/workflow-model';
-import type { FieldParseResult, NodeConfig } from './inspector-draft';
+import type { FieldParseResult, NodeConfig } from './draft';
 
 // Setup for the steps whose settings are lists (Switch cases, Parallel
 // branches, Validate rules), read from and written back to the step's

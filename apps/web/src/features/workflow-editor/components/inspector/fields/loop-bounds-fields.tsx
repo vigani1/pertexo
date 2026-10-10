@@ -7,8 +7,8 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import type { WorkflowNode } from '../../../model/graph/graph-scopes';
-import { parseNumberField } from '../../../model/inspector/inspector-draft';
+import type { WorkflowNode } from '../../../model/graph/scopes';
+import { parseNumberField } from '../../../model/inspector/draft';
 import {
   fieldControlId,
   type NodeFormApi,

@@ -8,7 +8,7 @@ import {
   resolveInvitation,
   verifyInvitationSession,
 } from '../data/invitation-acceptance.api';
-import { isUnauthenticated } from '@/features/auth/session-identity.public';
+import { isUnauthenticated } from '@/features/auth/session/session-identity.public';
 import {
   acceptanceFailure,
   isProofExpired,

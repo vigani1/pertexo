@@ -50,7 +50,7 @@ import {
 } from '../root/route-context';
 import { rootRoute } from '../root/route';
 import type { RunCrumb } from '../root/breadcrumbs';
-import { WorkspaceBootPage } from '../root/system-pages';
+import { WorkspaceBootPage } from '../root/status/pages';
 
 function assertWorkspaceOpenable(
   workspace: AccessibleWorkspace | null,

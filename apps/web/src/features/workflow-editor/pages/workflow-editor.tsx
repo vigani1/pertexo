@@ -37,13 +37,10 @@ import {
 } from '../components/chrome/editor-dialogs';
 import { EditorPaused } from '../components/chrome/editor-paused';
 import { EditorWorkspace } from '../components/editor-workspace';
-import { EditorProvider } from '../model/editor-provider';
+import { EditorProvider } from '../model/state/provider';
 import { isStartTrigger } from '../model/step-catalog';
 import { useCanvasEffects } from '../hooks/use-canvas-effects';
-import {
-  useEditorStore,
-  useEditorStoreApi,
-} from '../model/editor-store-context';
+import { useEditorStore, useEditorStoreApi } from '../model/state/context';
 import { useEditorActions } from '../hooks/use-editor-actions';
 import { useEditorSavePipeline } from '../hooks/use-editor-save-pipeline';
 import { useEditorSessionVerification } from '../hooks/use-editor-session-verification';

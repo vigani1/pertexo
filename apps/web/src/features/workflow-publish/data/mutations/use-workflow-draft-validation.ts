@@ -1,8 +1,8 @@
 import type { WorkflowValidateResponse } from '@pertexo/contracts';
 import { useCallback, useRef, useState, type RefObject } from 'react';
-import { retryAfterSeconds } from '@/lib/api/api-error-copy';
+import { retryAfterSeconds } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import { useNow } from '@/lib/hooks/use-now';
 import { validateWorkflow } from '../workflow-publish.api';
 import { commandErrorMessage } from './command-utils';

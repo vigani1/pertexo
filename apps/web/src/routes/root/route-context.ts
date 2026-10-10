@@ -1,13 +1,13 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { redirect } from '@tanstack/react-router';
 import { workspaceIdentifierSchema } from '@pertexo/contracts';
-import { isNotFound } from '@/lib/api/api-error-copy';
+import { isNotFound } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   currentUserQueryOptions,
   isUnauthenticated,
-} from '@/features/auth/queries.public';
-import { publishSessionChange } from '@/features/auth/session-sync.public';
+} from '@/features/auth/session/queries.public';
+import { publishSessionChange } from '@/features/auth/session/session-sync.public';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';

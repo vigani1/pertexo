@@ -1,0 +1,358 @@
+import '@xyflow/react/dist/style.css';
+import {
+  ReactFlow,
+  useReactFlow,
+  type Connection,
+  type Edge,
+  type EdgeChange,
+  type FinalConnectionState,
+  type NodeChange,
+} from '@xyflow/react';
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type DragEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import { levelPositions } from '../../model/graph/for-each-body-layout';
+import { forEachBodyIssues } from '../../model/graph/for-each-body-rules';
+import {
+  projectWorkflowGraph,
+  type CanvasDecorations,
+  type WorkflowFlowEdge,
+  type WorkflowFlowNode,
+} from '../../model/graph/adapter';
+import {
+  connectWorkflowNodes,
+  moveWorkflowNodes,
+  type PortRef,
+} from '../../model/graph/commands';
+import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
+import { canConnectSteps } from '../../model/graph/scopes';
+import { gestureEndPoint, portDropSource } from '../../model/quick-add';
+import { STEP_DRAG_TYPE } from '../../model/step-catalog';
+import { CanvasActionsContext } from '../../model/canvas/actions-context';
+import { useCanvasFraming } from './use-framing';
+import { CanvasZoomLens } from './zoom-lens';
+import { ForEachNodeCard } from './cards/for-each';
+import { WorkflowEdge } from './workflow-edge';
+import { WorkflowNodeCard } from './cards/node';
+
+// Module-level so React Flow never sees new node types between renders.
+const nodeTypes = Object.freeze({
+  workflow: WorkflowNodeCard,
+  forEach: ForEachNodeCard,
+});
+const edgeTypes = Object.freeze({ workflow: WorkflowEdge });
+const multiSelectionKeys = ['Meta', 'Control', 'Shift'];
+
+type Position = Readonly<{ x: number; y: number }>;
+type Size = Readonly<{ width: number; height: number }>;
+
+export type CanvasOverlays = Pick<
+  CanvasDecorations,
+  'issuesByNode' | 'flowingEdgeIds' | 'weaveOrder' | 'testOutputBytes'
+>;
+
+/**
+ * The workflow drawn on the weave. Gestures become editor commands: drags
+ * move steps as one change when they end, selection goes through the
+ * editor's guard, ⌫ is handled by the editor rather than React Flow, and a
+ * connection dropped on empty canvas (or an empty part of a For each body)
+ * asks which step to add there. For each bodies are edited in place: their
+ * steps are the container's children, and connections never cross a body's
+ * edge.
+ */
+export function WorkflowCanvas({
+  definitions,
+  editable,
+  overlays,
+  containerRef,
+  onSelectNodes,
+  onRemoveEdge,
+  onDropStep,
+  onPortDrop,
+  onAddToBody,
+  children,
+}: Readonly<{
+  definitions: readonly NodeDefinitionCatalogItem[];
+  editable: boolean;
+  overlays: CanvasOverlays;
+  containerRef: RefObject<HTMLDivElement | null>;
+  onSelectNodes: (nodeIds: readonly string[]) => void;
+  onRemoveEdge: (edgeId: string) => void;
+  onDropStep: (identity: string, position: Position) => void;
+  /** A connection from `from` ended over empty canvas at `point`. */
+  onPortDrop: (from: PortRef, point: Position) => void;
+  onAddToBody: (loopId: string, opener: HTMLElement) => void;
+  children?: ReactNode;
+}>) {
+  const store = useEditorStoreApi();
+  const { screenToFlowPosition } = useReactFlow();
+  const fit = useCanvasFraming(containerRef);
+  const { projection, onNodesChange } = useCanvasProjection({
+    definitions,
+    overlays,
+    editable,
+    onSelectNodes,
+  });
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange<WorkflowFlowEdge>[]) => {
+      const selection = new Set(store.getState().selectedEdgeIds);
+      let changed = false;
+      for (const change of changes) {
+        if (change.type !== 'select') continue;
+        changed = true;
+        if (change.selected) selection.add(change.id);
+        else selection.delete(change.id);
+      }
+      if (changed) store.getState().selectEdges([...selection]);
+    },
+    [store],
+  );
+
+  const connections = useConnectionGestures(store, editable, onPortDrop);
+
+  const actions = useMemo(
+    () => ({ editable, removeEdge: onRemoveEdge, addToBody: onAddToBody }),
+    [editable, onAddToBody, onRemoveEdge],
+  );
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    const identity = event.dataTransfer.getData(STEP_DRAG_TYPE);
+    if (!editable || identity === '') return;
+    event.preventDefault();
+    onDropStep(
+      identity,
+      screenToFlowPosition({ x: event.clientX, y: event.clientY }),
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      data-workflow-canvas
+      tabIndex={0}
+      aria-label="Workflow canvas"
+      role="region"
+      className="weave absolute inset-0 overflow-hidden outline-none"
+      onDragOver={(event) => {
+        if (!editable || !event.dataTransfer.types.includes(STEP_DRAG_TYPE))
+          return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={onDrop}
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_55%_40%,transparent_30%,color-mix(in_srgb,var(--background)_85%,transparent)_90%)]"
+      />
+      <CanvasActionsContext value={actions}>
+        <ReactFlow<WorkflowFlowNode, WorkflowFlowEdge>
+          nodes={projection.nodes}
+          edges={projection.edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          isValidConnection={connections.isValidConnection}
+          onConnect={connections.onConnect}
+          onConnectEnd={connections.onConnectEnd}
+          onPaneClick={(event) => {
+            event.currentTarget
+              .closest<HTMLElement>('[data-workflow-canvas]')
+              ?.focus();
+          }}
+          minZoom={0.2}
+          maxZoom={1.8}
+          deleteKeyCode={null}
+          multiSelectionKeyCode={multiSelectionKeys}
+          selectionKeyCode="Shift"
+          nodesDraggable={editable}
+          nodesConnectable={editable}
+          proOptions={{ hideAttribution: true }}
+          // React Flow's own stylesheet sets the *-default variables and
+          // isn't layered, so it outranks utilities; the plain variables it
+          // reads first are ours to set.
+          className="!bg-transparent [--xy-edge-stroke:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke:var(--primary)] [--xy-selection-background-color:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
+        >
+          <CanvasZoomLens
+            onFit={() => {
+              fit(true);
+            }}
+          />
+        </ReactFlow>
+      </CanvasActionsContext>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The graph as React Flow draws it, and the node changes React Flow reports
+ * back: drags move steps as one change when they end, selection goes
+ * through the editor's guard, and measured sizes return with each
+ * projection.
+ */
+function useCanvasProjection({
+  definitions,
+  overlays,
+  editable,
+  onSelectNodes,
+}: Readonly<{
+  definitions: readonly NodeDefinitionCatalogItem[];
+  overlays: CanvasOverlays;
+  editable: boolean;
+  onSelectNodes: (nodeIds: readonly string[]) => void;
+}>) {
+  const store = useEditorStoreApi();
+  const graph = useEditorStore((state) => state.graph);
+  const selectedNodeIds = useEditorStore((state) => state.selectedNodeIds);
+  const selectedEdgeIds = useEditorStore((state) => state.selectedEdgeIds);
+  const [dragPositions, setDragPositions] = useState<
+    ReadonlyMap<string, Position>
+  >(() => new Map());
+  // React Flow marks its own copy of a node selected before asking us. When
+  // the editor's guard declines a selection, fresh node objects re-sync it.
+  const [selectionResync, setSelectionResync] = useState(0);
+  // Measured sizes go back into every projection: React Flow's overview map
+  // draws the nodes we pass it, and a node without a size isn't drawn.
+  const [measuredSizes, setMeasuredSizes] = useState<ReadonlyMap<string, Size>>(
+    () => new Map(),
+  );
+
+  const projection = useMemo(
+    () =>
+      projectWorkflowGraph(graph, definitions, {
+        ...overlays,
+        selectedNodeIds,
+        selectedEdgeIds,
+        dragPositions,
+        bodyIssues: forEachBodyIssues(graph),
+        measuredSizes,
+      }),
+    // selectionResync only forces fresh node objects for React Flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      definitions,
+      dragPositions,
+      graph,
+      measuredSizes,
+      overlays,
+      selectedEdgeIds,
+      selectedNodeIds,
+      selectionResync,
+    ],
+  );
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange<WorkflowFlowNode>[]) => {
+      const moving = new Map<string, Position>();
+      const settled = new Map<string, Position>();
+      const sized = new Map<string, Size>();
+      let selection: Set<string> | undefined;
+      for (const change of changes) {
+        if (change.type === 'dimensions') {
+          if (change.dimensions !== undefined)
+            sized.set(change.id, change.dimensions);
+        } else if (change.type === 'select') {
+          selection ??= new Set(store.getState().selectedNodeIds);
+          if (change.selected) selection.add(change.id);
+          else selection.delete(change.id);
+        } else if (change.type === 'position' && editable) {
+          const position = change.position ?? dragPositions.get(change.id);
+          if (position === undefined) continue;
+          if (change.dragging === true) moving.set(change.id, position);
+          else settled.set(change.id, position);
+        }
+      }
+      if (selection !== undefined) {
+        const requested = [...selection];
+        onSelectNodes(requested);
+        const applied = new Set(store.getState().selectedNodeIds);
+        if (
+          applied.size !== requested.length ||
+          requested.some((id) => !applied.has(id))
+        )
+          setSelectionResync((current) => current + 1);
+      }
+      if (sized.size > 0)
+        setMeasuredSizes((current) => new Map([...current, ...sized]));
+      if (moving.size > 0)
+        setDragPositions((current) => new Map([...current, ...moving]));
+      if (settled.size === 0) return;
+      const state = store.getState();
+      state.transact(
+        moveWorkflowNodes(state.graph, levelPositions(state.graph, settled)),
+        { coalesceKey: `move:${[...settled.keys()].join(',')}` },
+      );
+      setDragPositions((current) => {
+        const next = new Map(current);
+        for (const id of settled.keys()) next.delete(id);
+        return next;
+      });
+    },
+    [dragPositions, editable, onSelectNodes, store],
+  );
+  return { projection, onNodesChange } as const;
+}
+
+/**
+ * Connections drawn on the canvas: only between steps on the same level (a
+ * body's steps connect only to each other), added as one change, and a
+ * connection dropped on empty canvas opens quick add there.
+ */
+function useConnectionGestures(
+  store: ReturnType<typeof useEditorStoreApi>,
+  editable: boolean,
+  onPortDrop: (from: PortRef, point: Position) => void,
+) {
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) =>
+      canConnectSteps(
+        store.getState().graph,
+        connection.source,
+        connection.target,
+      ),
+    [store],
+  );
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (!editable) return;
+      const state = store.getState();
+      const next = connectWorkflowNodes(state.graph, connection);
+      if (next !== null) state.transact(next);
+    },
+    [editable, store],
+  );
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
+      const point = gestureEndPoint(event);
+      if (!editable || point === null) return;
+      const from = portDropSource(state, isOverStep(point));
+      if (from !== null) onPortDrop(from, point);
+    },
+    [editable, onPortDrop],
+  );
+  return { isValidConnection, onConnect, onConnectEnd } as const;
+}
+
+/**
+ * Whether a point in the viewport is over a step card rather than canvas.
+ * The empty part of a For each body counts as canvas: body steps are drawn
+ * above it, so a point over one of them finds that step first.
+ */
+function isOverStep(point: Position): boolean {
+  if (typeof document.elementFromPoint !== 'function') return false;
+  const element = document.elementFromPoint(point.x, point.y);
+  if (element === null) return false;
+  return (
+    element.closest('.react-flow__node') !== null &&
+    element.closest('[data-for-each-body]') === null
+  );
+}

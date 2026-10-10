@@ -6,8 +6,8 @@ import {
 } from '../../../../../../packages/workflow-engine/dist/index.js';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
-import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/graph-copies';
-import { createEditorStore } from '@/features/workflow-editor/model/editor.store';
+import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
+import { createEditorStore } from '@/features/workflow-editor/model/state/store';
 import { loopStep, step } from '../../../support/fixtures/for-each';
 import { etagA } from '../../../support/fixtures/workflow-editor';
 

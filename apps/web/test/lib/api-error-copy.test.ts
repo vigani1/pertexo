@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ApiError } from '@/lib/api/api-error';
-import { readFailureReason } from '@/lib/api/api-error-copy';
+import { ApiError } from '@/lib/api/error';
+import { readFailureReason } from '@/lib/api/error-copy';
 
 describe('read failure reasons', () => {
   it('says why a read failed without repeating what failed', () => {

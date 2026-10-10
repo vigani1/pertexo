@@ -1,5 +1,5 @@
-import { isApiError } from '@/lib/api/api-error';
-import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 
 export type AcceptanceFailure = Readonly<{
   kind:

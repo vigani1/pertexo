@@ -1,5 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import type { EditorStore } from '../editor.store';
+import type { EditorStore } from '../state/store';
 import type { WorkflowDraftSnapshot } from '../../data/workflow-editor.api';
 
 export type SaveCoordinatorTransport = Readonly<{

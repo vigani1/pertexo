@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FieldParseResult } from '../../model/inspector/inspector-draft';
+import type { FieldParseResult } from '../../model/inspector/draft';
 
 type InspectorDraftFieldState<Value, Text> = Readonly<{
   text: Text;

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { isApiError } from '@/lib/api/api-error';
-import { describeCommandError } from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { cancelWorkflowRun } from '../workflow-runs.api';
 import { workflowRunKeys } from '../workflow-runs.queries';

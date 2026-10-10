@@ -1,6 +1,6 @@
 import { slackChannelLookupIdSchema } from '@pertexo/contracts';
-import type { WorkflowNode } from '../graph/graph-scopes';
-import type { FieldParseResult } from './inspector-draft';
+import type { WorkflowNode } from '../graph/scopes';
+import type { FieldParseResult } from './draft';
 
 // The Slack step posts to the channel in its `channelId` input (ADR 023),
 // through the bot token of its `slack_bot_token` connection. Setup edits

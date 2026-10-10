@@ -1,7 +1,7 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { parseJsonPath } from '@pertexo/workflow-model';
-import { stepTitle } from '../graph/graph-adapter';
-import type { GraphLevel, WorkflowNode } from '../graph/graph-scopes';
+import { stepTitle } from '../graph/adapter';
+import type { GraphLevel, WorkflowNode } from '../graph/scopes';
 
 export type InputMapping = WorkflowNode['inputMappings'][string];
 type JsonValue = Extract<InputMapping, { readonly kind: 'literal' }>['value'];

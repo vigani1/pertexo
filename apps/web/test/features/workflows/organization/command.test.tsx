@@ -5,17 +5,17 @@ import {
   accessibleWorkspaceSchema,
   apiProblemSchema,
 } from '@pertexo/contracts';
-import { assertSessionIdentity } from '@/features/auth/session-identity.public';
+import { assertSessionIdentity } from '@/features/auth/session/session-identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-import { sendWorkflowOrganizationCommand } from '@/features/workflows/data/organization.api';
+import { sendWorkflowOrganizationCommand } from '@/features/workflows/data/organization/api';
 import {
   useWorkflowOrganizationCommand,
   type WorkflowOrganizationCommandOptions,
 } from '@/features/workflows/hooks/use-workflow-organization-command';
 import type { WorkflowOrganizationAttempt } from '@/features/workflows/model/organization/requests';
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization.queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
 import { workflowKeys } from '@/features/workflows/data/workflows.queries';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import { createApiClient } from '@/lib/api/client';
 import {
   user,
@@ -30,20 +30,23 @@ const session = vi.hoisted(() => ({
   listener: undefined as (() => void) | undefined,
   unsubscribe: vi.fn(),
 }));
-vi.mock('@/features/auth/session-sync.public', () => ({
+vi.mock('@/features/auth/session/session-sync.public', () => ({
   subscribeSessionChanges: (listener: () => void) => {
     session.listener = listener;
     return session.unsubscribe;
   },
 }));
-vi.mock('@/features/auth/session-identity.public', async (original) => ({
-  ...(await original<object>()),
-  assertSessionIdentity: vi.fn(),
-}));
+vi.mock(
+  '@/features/auth/session/session-identity.public',
+  async (original) => ({
+    ...(await original<object>()),
+    assertSessionIdentity: vi.fn(),
+  }),
+);
 vi.mock('@/features/workspaces/queries.public', () => ({
   getAllAccessibleWorkspaces: vi.fn(),
 }));
-vi.mock('@/features/workflows/data/organization.api', async (original) => ({
+vi.mock('@/features/workflows/data/organization/api', async (original) => ({
   ...(await original<object>()),
   sendWorkflowOrganizationCommand: vi.fn(),
 }));

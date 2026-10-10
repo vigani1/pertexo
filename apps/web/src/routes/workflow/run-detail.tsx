@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { RunDetailPage } from '@/features/workflow-runs/public';
-import { ResourceNotFound } from '../root/system-pages';
+import { ResourceNotFound } from '../root/status/pages';
 import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 
 export function RunDetailRoute() {

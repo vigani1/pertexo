@@ -21,7 +21,7 @@ import {
   type FieldParseResult,
   type NodeConfig,
   type SchemaFieldSpec,
-} from '../../../model/inspector/inspector-draft';
+} from '../../../model/inspector/draft';
 import { useInspectorDraftField } from '../use-draft-field';
 import { ChoiceSelect } from './choice-select';
 import {

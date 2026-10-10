@@ -4,8 +4,8 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { isApiError } from '@/lib/api/api-error';
-import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { connectionCommandError } from '../../model/connection-errors';
 import {
   useRotateConnectionMutation,
@@ -13,11 +13,8 @@ import {
   type RotateConnectionCommand,
 } from '../../data/connections.mutations';
 import { PROVIDERS } from '../../model/connection-providers';
-import { CredentialFields } from '../credential/credential-fields';
-import {
-  createHeaderRowId,
-  useCredentialForm,
-} from '../credential/use-credential-form';
+import { CredentialFields } from '../credential/fields';
+import { createHeaderRowId, useCredentialForm } from '../credential/use-form';
 
 /**
  * Replaces a connection's stored credential. The command names the secret

@@ -11,10 +11,10 @@ import {
   workflowPortableManifestSchema,
   WORKFLOW_PORTABILITY_LIMITS,
 } from '@pertexo/workflow-model';
-import { WorkflowExportDialog } from '@/features/workflows/portability.public';
+import { WorkflowExportDialog } from '@/features/workflows/creation/portability.public';
 import { WorkflowImportDialog } from '@/features/workflows/components/portability/workflow-import-dialog';
 import { createApiClient } from '@/lib/api/client';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import {
   readPortableWorkflowFile,
   downloadPortableWorkflow,

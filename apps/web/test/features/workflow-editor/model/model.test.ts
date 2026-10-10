@@ -3,18 +3,18 @@ import {
   type WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
-import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/graph-adapter';
+import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 import {
   addDefinitionNode,
   connectWorkflowNodes,
   moveWorkflowNode,
   removeWorkflowNode,
   updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/graph-commands';
+} from '@/features/workflow-editor/model/graph/commands';
 import {
   parseNumberField,
   schemaFields,
-} from '@/features/workflow-editor/model/inspector/inspector-draft';
+} from '@/features/workflow-editor/model/inspector/draft';
 import {
   changeInputMappingKind,
   directPredecessorOptions,

@@ -13,7 +13,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { SkeletonRows } from '@/components/ui/skeleton';
-import { readFailureReason } from '@/lib/api/api-error-copy';
+import { readFailureReason } from '@/lib/api/error-copy';
 import type { FailureNotificationDestinationList } from '../data/failure-notifications.api';
 import type { ChannelNames } from '../model/channel-names';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';

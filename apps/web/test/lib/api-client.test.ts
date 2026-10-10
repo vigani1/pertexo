@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isApiError, type ApiError } from '../../src/lib/api/api-error';
+import { isApiError, type ApiError } from '../../src/lib/api/error';
 import { createApiClient } from '../../src/lib/api/client';
 import { readBrowserCsrfToken } from '../../src/lib/api/csrf';
 

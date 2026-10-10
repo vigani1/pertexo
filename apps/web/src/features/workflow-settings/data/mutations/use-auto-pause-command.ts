@@ -1,11 +1,8 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import { commandAutoPause, type AutoPauseCommand } from '../auto-pause.api';
 import { autoPauseKeys } from '../auto-pause.queries';
 import { settingsCommandError } from './settings-command';

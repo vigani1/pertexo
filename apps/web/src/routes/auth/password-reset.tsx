@@ -1,5 +1,5 @@
 import { useLoaderData, useRouteContext } from '@tanstack/react-router';
-import { PasswordResetPage } from '@/features/auth/password-reset.public';
+import { PasswordResetPage } from '@/features/auth/recovery/password-reset.public';
 
 export function PasswordResetRoute() {
   const { apiClient } = useRouteContext({ from: '/_stage/reset-password' });

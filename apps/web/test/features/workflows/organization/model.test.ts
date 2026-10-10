@@ -13,13 +13,13 @@ import {
   getWorkflowTagAssignmentsPage,
   sendWorkflowOrganizationCommand,
   getWorkflowFolders,
-} from '../../../../src/features/workflows/data/organization.api';
+} from '../../../../src/features/workflows/data/organization/api';
 import {
   workflowOrganizationKeys,
   workflowOrganizationProjectionQueryOptions,
   workflowOrganizationInfiniteQueryOptions,
   workflowFoldersQueryOptions,
-} from '../../../../src/features/workflows/data/organization.queries';
+} from '../../../../src/features/workflows/data/organization/queries';
 import {
   summary,
   userId,

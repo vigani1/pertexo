@@ -1,7 +1,7 @@
 import { formatShortTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
-import type { EditorState } from '../../model/editor.store';
-import { useEditorStore } from '../../model/editor-store-context';
+import type { EditorState } from '../../model/state/store';
+import { useEditorStore } from '../../model/state/context';
 
 /**
  * The save state as a sentence under the workflow name: Saved 14:31,

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AccountMenu } from '../components/shell/account-menu';
-import { ShellBreadcrumb } from '../components/shell/shell-breadcrumb';
+import { ShellBreadcrumb } from '../components/shell/breadcrumb';
 import { WorkspaceBanners } from '../components/shell/workspace-banners';
 import { WorkspaceMobileBar } from '../components/shell/workspace-mobile-bar';
 import { WorkspaceSpine } from '../components/shell/workspace-spine';

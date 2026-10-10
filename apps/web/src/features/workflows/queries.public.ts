@@ -8,4 +8,4 @@ export {
 export {
   workflowListQueryOptions,
   workflowOrganizationKeys,
-} from './data/organization.queries';
+} from './data/organization/queries';

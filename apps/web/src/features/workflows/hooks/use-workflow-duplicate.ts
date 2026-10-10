@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { WorkflowDuplicateRequest } from '@pertexo/contracts';
-import { subscribeSessionChanges } from '@/features/auth/session-sync.public';
-import { describeCommandError } from '@/lib/api/api-error-copy';
+import { subscribeSessionChanges } from '@/features/auth/session/session-sync.public';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   duplicateWorkflow,
@@ -10,7 +10,7 @@ import {
   type WorkflowDuplicateAttempt,
 } from '../data/workflows.api';
 import { workflowKeys } from '../data/workflows.queries';
-import { workflowOrganizationKeys } from '../data/organization.queries';
+import { workflowOrganizationKeys } from '../data/organization/queries';
 import {
   duplicateFailureState,
   type DuplicatePhase,

@@ -5,17 +5,17 @@ import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
 import { accountSecurityQueryOptions } from '../data/account-security.queries';
-import { AccountEmailSection } from '../components/account/account-email-section';
-import { AccountFactsSection } from '../components/account/account-facts-section';
-import { AccountMethodsSection } from '../components/account/account-methods-section';
-import { AccountPasswordSection } from '../components/account/account-password-section';
-import { AccountProfileSection } from '../components/account/account-profile-section';
+import { AccountEmailSection } from '../components/account/email-section';
+import { AccountFactsSection } from '../components/account/facts-section';
+import { AccountMethodsSection } from '../components/account/methods-section';
+import { AccountPasswordSection } from '../components/account/password-section';
+import { AccountProfileSection } from '../components/account/profile/section';
 import {
   AccountReadFailure,
   AccountRowsPending,
-} from '../components/account/account-section';
-import { AccountSessionsSection } from '../components/account/account-sessions-section';
-import { accountReadFailure } from '../model/account/account-failure';
+} from '../components/account/section';
+import { AccountSessionsSection } from '../components/account/sessions-section';
+import { accountReadFailure } from '../model/account/failure';
 import { Notice } from '@/components/ui/notice';
 
 type LinkOutcome = 'returned' | 'failed';

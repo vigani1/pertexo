@@ -7,17 +7,17 @@ import {
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
-} from '@/features/auth/session-identity.public';
-import { subscribeSessionChanges } from '@/features/auth/session-sync.public';
+} from '@/features/auth/session/session-identity.public';
+import { subscribeSessionChanges } from '@/features/auth/session/session-sync.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
 } from '../model/organization/requests';
-import { sendWorkflowOrganizationCommand } from '../data/organization.api';
-import { workflowOrganizationKeys } from '../data/organization.queries';
+import { sendWorkflowOrganizationCommand } from '../data/organization/api';
+import { workflowOrganizationKeys } from '../data/organization/queries';
 import { workflowKeys } from '../data/workflows.queries';
 
 type RequiredRole = 'member' | 'editor' | 'admin';

@@ -1,6 +1,6 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
-import { addDefinitionNode } from '@/features/workflow-editor/model/graph/graph-commands';
+import { addDefinitionNode } from '@/features/workflow-editor/model/graph/commands';
 import { describeMappingSource } from '@/features/workflow-editor/model/inspector/mapping-summary';
 import { bareSetDefinition as definition } from '../../../support/fixtures/workflow-editor';
 

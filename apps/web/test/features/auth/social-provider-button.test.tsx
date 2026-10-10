@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { SocialProviderButton } from '@/features/auth/components/social/social-provider-button';
+import { SocialProviderButton } from '@/features/auth/components/social/provider-button';
 import type { SocialProvider } from '@/features/auth/model/social-provider';
 
 describe('SocialProviderButton', () => {

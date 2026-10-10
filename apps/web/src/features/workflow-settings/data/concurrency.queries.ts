@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import { getWorkflowConcurrency } from './concurrency.api';
 
 export const concurrencyKey = (

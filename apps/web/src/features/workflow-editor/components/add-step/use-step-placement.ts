@@ -2,14 +2,14 @@ import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { useReactFlow } from '@xyflow/react';
 import type { RefObject } from 'react';
 import { shownLevel, STEP_CARD } from '../../model/graph/for-each-body-layout';
-import type { EditorStore } from '../../model/editor.store';
+import type { EditorStore } from '../../model/state/store';
 import {
   addBodyStep,
   addDefinitionNode,
   addStepAfter,
   freePosition,
-} from '../../model/graph/graph-commands';
-import { scopeOf, type ScopePath } from '../../model/graph/graph-scopes';
+} from '../../model/graph/commands';
+import { scopeOf, type ScopePath } from '../../model/graph/scopes';
 import { findDefinitionByIdentity } from '../../model/step-catalog';
 import type { QuickAddTarget } from './use-quick-add';
 

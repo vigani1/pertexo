@@ -7,7 +7,7 @@ import {
   portName,
 } from '@/features/catalog/presentation.public';
 import { describeAmount } from './field-units';
-import type { GraphLevel, WorkflowNode } from './graph/graph-scopes';
+import type { GraphLevel, WorkflowNode } from './graph/scopes';
 
 // What a step card says about its step, from the step's own setup and its
 // connections: which ports it draws (and where they lead), and a short

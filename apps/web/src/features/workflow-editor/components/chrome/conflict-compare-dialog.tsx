@@ -13,9 +13,9 @@ import {
   diffWorkflowGraphs,
   type StepChangeAspect,
 } from '@/features/workflow-drafts/public';
-import { useEditorStore } from '../../model/editor-store-context';
-import { stepTitle } from '../../model/graph/graph-adapter';
-import { adoptStepFrom } from '../../model/graph/graph-copies';
+import { useEditorStore } from '../../model/state/context';
+import { stepTitle } from '../../model/graph/adapter';
+import { adoptStepFrom } from '../../model/graph/copies';
 
 const aspectWords: Readonly<Record<StepChangeAspect, string>> = {
   label: 'name',

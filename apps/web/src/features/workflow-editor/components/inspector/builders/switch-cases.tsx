@@ -19,7 +19,7 @@ import {
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from '../fields/choice-select';
-import { BuilderCard, EntryActions, LiveTextField } from './builder-parts';
+import { BuilderCard, EntryActions, LiveTextField } from './parts';
 
 const KIND_CHOICES: readonly Readonly<{ value: ScalarKind; label: string }>[] =
   [

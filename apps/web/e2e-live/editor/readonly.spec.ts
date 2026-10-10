@@ -9,7 +9,7 @@ import {
   workflowVersionsResponseSchema,
   workflowRunListResponseSchema,
 } from '@pertexo/contracts';
-import { uncoveredArea } from '../../src/features/workflow-editor/model/canvas-framing';
+import { uncoveredArea } from '../../src/features/workflow-editor/model/canvas/framing';
 import { test } from '../support/browser-fixture';
 import {
   createEditorWorkspace,

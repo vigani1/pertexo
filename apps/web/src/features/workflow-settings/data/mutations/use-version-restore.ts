@@ -6,11 +6,8 @@ import {
   workflowDraftKeys,
 } from '@/features/workflow-editor/draft.public';
 import { restoreWorkflowVersion } from '@/features/workflow-versions/public';
-import { isApiError } from '@/lib/api/api-error';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { canonicalizeJson } from '@/lib/canonical-json';
 

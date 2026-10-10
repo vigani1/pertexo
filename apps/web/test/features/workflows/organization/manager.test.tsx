@@ -5,9 +5,9 @@ import { HttpResponse, http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { createApiClient } from '../../../../src/lib/api/client';
-import { WorkflowOrganizationManager } from '../../../../src/features/workflows/components/organization/workflow-organization-manager';
-import { WorkflowFolderPicker } from '../../../../src/features/workflows/components/organization/workflow-folder-picker';
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization.queries';
+import { WorkflowOrganizationManager } from '../../../../src/features/workflows/components/organization/manager';
+import { WorkflowFolderPicker } from '../../../../src/features/workflows/components/organization/folders/picker';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';
 import {

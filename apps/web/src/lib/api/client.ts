@@ -4,7 +4,7 @@ import {
   type ApiProblem,
   csrfTokenSchema,
 } from '@pertexo/contracts';
-import { ApiError, isApiError } from './api-error';
+import { ApiError, isApiError } from './error';
 import { requestController } from './request-controller';
 
 type ApiPath = `/v1${string}`;

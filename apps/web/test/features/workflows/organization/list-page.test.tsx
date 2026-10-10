@@ -15,7 +15,7 @@ import {
   workspaceId,
   userId,
 } from '../list/fixtures';
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization.queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
 
 const folderId = '11111111-1111-4111-8111-111111111111';
 const tagId = '22222222-2222-4222-8222-222222222222';

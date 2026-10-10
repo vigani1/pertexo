@@ -6,23 +6,23 @@ import { describe, expect, it } from 'vitest';
 import {
   createEditorStore,
   EDIT_COALESCE_WINDOW_MS,
-} from '@/features/workflow-editor/model/editor.store';
-import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/graph-adapter';
+} from '@/features/workflow-editor/model/state/store';
+import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 import {
   freePosition,
   moveWorkflowNodes,
   removeWorkflowElements,
   restoreWorkflowElements,
   updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/graph-commands';
+} from '@/features/workflow-editor/model/graph/commands';
 import {
   adoptStepFrom,
   duplicateWorkflowNodes,
-} from '@/features/workflow-editor/model/graph/graph-copies';
+} from '@/features/workflow-editor/model/graph/copies';
 import {
   edgeWeaveOrder,
   upstreamEdgeIds,
-} from '@/features/workflow-editor/model/graph/graph-order';
+} from '@/features/workflow-editor/model/graph/order';
 import {
   groupStepChoices,
   isStartTrigger,

@@ -4,9 +4,9 @@ import type {
 } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { describeStep } from '@/features/catalog/presentation.public';
-import { useEditorStore } from '../../model/editor-store-context';
-import { findDefinition } from '../../model/graph/graph-adapter';
-import { locateStep } from '../../model/graph/graph-scopes';
+import { useEditorStore } from '../../model/state/context';
+import { findDefinition } from '../../model/graph/adapter';
+import { locateStep } from '../../model/graph/scopes';
 import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';

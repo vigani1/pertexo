@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useArrivalSwipe } from '@/features/inbox/components/arrivals/use-arrival-swipe';
+import { useArrivalSwipe } from '@/features/inbox/components/arrivals/use-swipe';
 
 function Notice({
   direction,

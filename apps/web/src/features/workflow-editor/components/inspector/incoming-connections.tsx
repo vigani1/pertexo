@@ -4,8 +4,8 @@ import { LinkIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { findDefinition, stepTitle } from '../../model/graph/graph-adapter';
-import type { GraphLevel, WorkflowNode } from '../../model/graph/graph-scopes';
+import { findDefinition, stepTitle } from '../../model/graph/adapter';
+import type { GraphLevel, WorkflowNode } from '../../model/graph/scopes';
 import { ChoiceSelect } from './fields/choice-select';
 
 /**

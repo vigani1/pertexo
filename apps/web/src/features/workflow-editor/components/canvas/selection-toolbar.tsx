@@ -1,7 +1,7 @@
 import { CopyPlusIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
-import { useEditorStore } from '../../model/editor-store-context';
+import { useEditorStore } from '../../model/state/context';
 import { shortcut } from '@/lib/shortcut-keys';
 
 /**

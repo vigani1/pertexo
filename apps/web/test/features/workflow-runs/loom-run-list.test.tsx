@@ -1,10 +1,10 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { LoomRunList } from '@/features/workflow-runs/components/loom/loom-run-list';
+import { LoomRunList } from '@/features/workflow-runs/components/loom/run-list';
 import type {
   LoomModel,
   LoomRun,
-} from '@/features/workflow-runs/model/loom/loom-model';
+} from '@/features/workflow-runs/model/loom/model';
 import { renderInRouter } from '../../support/render-in-router';
 
 const run: LoomRun = {

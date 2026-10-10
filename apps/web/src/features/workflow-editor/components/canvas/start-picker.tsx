@@ -1,8 +1,8 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
-import { useEditorStore } from '../../model/editor-store-context';
-import { definitionIdentity } from '../../model/graph/graph-adapter';
+import { useEditorStore } from '../../model/state/context';
+import { definitionIdentity } from '../../model/graph/adapter';
 import { isStartTrigger, placeableDefinitions } from '../../model/step-catalog';
 
 /**

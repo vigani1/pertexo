@@ -11,8 +11,8 @@ import { describeWorkflowState } from '../model/state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
 import { WorkflowDuplicateAction } from './workflow-duplicate-dialog';
 import { WorkflowExportAction } from './portability/workflow-export-dialog';
-import { WorkflowTemplateOrigin } from './templates/workflow-template-origin';
-import { InputCasesAction } from './input-cases/input-cases-action';
+import { WorkflowTemplateOrigin } from './templates/origin';
+import { InputCasesAction } from './input-cases/action';
 
 export type WorkflowHubTab =
   'build' | 'runs' | 'triggers' | 'versions' | 'settings';
