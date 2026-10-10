@@ -816,7 +816,8 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         name,
         spawn(process.execPath, args, {
           cwd: webDirectory,
-          env: childEnvironment,
+          // Vitest's NODE_ENV=test must not select React's development runtime.
+          env: { ...childEnvironment, NODE_ENV: 'production' },
           stdio: ['ignore', 'pipe', 'pipe'],
           detached: true,
         }),

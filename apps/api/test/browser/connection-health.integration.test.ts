@@ -75,7 +75,10 @@ describe.skipIf(!enabled)(
       const start = (args: string[], kind: 'vite' | 'browser') => {
         const child = spawn(process.execPath, args, {
           cwd: webDirectory,
-          env: environment,
+          env:
+            kind === 'vite'
+              ? { ...environment, NODE_ENV: 'production' }
+              : environment,
           stdio: ['ignore', 'pipe', 'pipe'],
           detached: true,
         });

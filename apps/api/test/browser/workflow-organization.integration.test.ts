@@ -497,7 +497,10 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
         ownChild(
           spawn(process.execPath, args, {
             cwd: webDirectory,
-            env: environment,
+            env:
+              kind === 'vite'
+                ? { ...environment, NODE_ENV: 'production' }
+                : environment,
             stdio: 'ignore',
             detached: true,
           }),
