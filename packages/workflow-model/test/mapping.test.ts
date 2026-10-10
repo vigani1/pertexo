@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ExpressionEvaluator } from '../src/expressions/policy.js';
-import { resolveJsonPath } from '../src/json/json-path.js';
+import { resolveJsonPath } from '../src/json/path.js';
 import { resolveValueSource } from '../src/mapping.js';
 
 describe('value sources', () => {

@@ -1,6 +1,6 @@
 import type { WorkflowGraph } from '../graph/contract.js';
-import { parseWorkflowGraphDraft } from '../graph/preflight.js';
-import type { JsonValue } from '../json/canonical-json.js';
+import { parseWorkflowGraphDraft } from '../graph/validation/preflight.js';
+import type { JsonValue } from '../json/canonical.js';
 import {
   canonicalWorkflowPortableJson,
   workflowPortableManifestSchema,

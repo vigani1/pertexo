@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   workflowControlOutputKind,
   workflowControlOutputNodeIds,
-} from '../src/graph/control-output-selection.js';
+} from '../../src/graph/control-output-selection.js';
 
 describe('immutable executable control-output selection', () => {
   it('selects current control identities across structured bodies, not output-shaped Set nodes', () => {

@@ -1,22 +1,22 @@
 import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
-import { workflowGraphSchema } from '../src/graph/contract.js';
+import { workflowGraphSchema } from '../../src/graph/contract.js';
 import {
   EMPTY_WORKFLOW_GRAPH,
   type WorkflowGraph,
-} from '../src/graph/contract.js';
+} from '../../src/graph/contract.js';
 import {
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
   workflowIntegrationUsage,
-} from '../src/graph/identity.js';
-import { parseWorkflowGraphDraft } from '../src/graph/preflight.js';
+} from '../../src/graph/identity.js';
+import { parseWorkflowGraphDraft } from '../../src/graph/validation/preflight.js';
 import {
   InvalidWorkflowGraphError,
   WORKFLOW_GRAPH_LIMITS,
   WorkflowGraphContractError,
-} from '../src/graph/validation-contract.js';
+} from '../../src/graph/validation/contract.js';
 
 const TEST_DEFINITION_CATALOG_V1 = {
   schemaVersion: 1 as const,

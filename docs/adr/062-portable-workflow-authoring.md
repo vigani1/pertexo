@@ -30,7 +30,7 @@ number after that reviewed decision, despite its absence from this main baseline
   creates a different workflow, so preserving IDs avoids breaking dynamic
   `$lookup(nodeOutputs, runInput.stepId)` references without runtime aliases.
 - [Graph contract](../../packages/workflow-model/src/graph-contract.ts),
-  [draft preflight](../../packages/workflow-model/src/graph/preflight.ts) and
+  [draft preflight](../../packages/workflow-model/src/graph/validation/preflight.ts) and
   [placement](../../packages/workflow-model/src/graph/definition-placement.ts)
   own bounded graph parsing and new-placement semantics. Import compares with
   the empty destination, never with the source's grandfathered definitions.
