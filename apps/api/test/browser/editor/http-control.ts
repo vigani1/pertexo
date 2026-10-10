@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import { sendBoundedWebhook } from '../../webhooks/bounded-webhook-client.js';
+import { sendBoundedWebhook } from '../../webhooks/support/bounded-client.js';
 import { createEditorWebhookLossProxy } from './webhook-loss-proxy.js';
 import {
   httpActionBody,

@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEditorWebhookLossProxy } from './webhook-loss-proxy.js';
-import { sendBoundedWebhook } from '../../webhooks/bounded-webhook-client.js';
+import { sendBoundedWebhook } from '../../webhooks/support/bounded-client.js';
 
 describe('one owned post-acceptance loss proxy', () => {
   const closes: (() => Promise<void>)[] = [];

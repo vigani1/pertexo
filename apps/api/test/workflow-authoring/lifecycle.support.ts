@@ -21,7 +21,7 @@ import { expect } from 'vitest';
 import {
   issueBrowserSession,
   type HttpSessionCookies,
-} from '../webhooks/browser-session.fixture.js';
+} from '../webhooks/support/browser-session.fixture.js';
 import {
   FixtureResourceOwner,
   rethrowFixtureSetupFailure,

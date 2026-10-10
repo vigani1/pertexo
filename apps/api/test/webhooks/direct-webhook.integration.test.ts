@@ -32,7 +32,7 @@ import {
 } from '../../src/platform/identity/identity-runtime.module.js';
 import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow/workflow-runtime.module.js';
 import { WebhookManagementService } from '../../src/webhooks/service.js';
-import { issueBrowserSession } from './browser-session.fixture.js';
+import { issueBrowserSession } from './support/browser-session.fixture.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
 import {
   FixtureResourceOwner,
@@ -42,7 +42,7 @@ import { assertIntegrationGateConfigured } from '../support/integration-gate.js'
 import {
   sendBoundedWebhook,
   type BoundedWebhookResponse,
-} from './bounded-webhook-client.js';
+} from './support/bounded-client.js';
 
 function recordBenchmarkOperation(startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;

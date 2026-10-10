@@ -2,7 +2,7 @@ import { createServer, type RequestListener, type Server } from 'node:http';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { sendBoundedWebhook } from './bounded-webhook-client.js';
+import { sendBoundedWebhook } from './bounded-client.js';
 
 const endpointKey = 'a'.repeat(43);
 const secret = Buffer.alloc(32, 7).toString('base64url');

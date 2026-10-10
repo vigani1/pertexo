@@ -14,7 +14,7 @@ import {
   workflowRunResponseSchema,
 } from '@pertexo/contracts';
 import type { useBetterAuthRealApi } from '../../support/better-auth/real-api.support.js';
-import { sendBoundedWebhook } from '../../webhooks/bounded-webhook-client.js';
+import { sendBoundedWebhook } from '../../webhooks/support/bounded-client.js';
 import { curatedWebhookInputCases } from './worker-evidence.js';
 
 type Api = ReturnType<typeof useBetterAuthRealApi>;
