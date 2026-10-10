@@ -4,7 +4,7 @@ import {
   RequestContextMiddleware,
   RequestContextStore,
   createRequestContext,
-} from '../../src/platform/http/index.js';
+} from '../../../src/platform/http/index.js';
 
 const workspaceA = '11111111-1111-4111-8111-111111111111';
 const workspaceB = '22222222-2222-4222-8222-222222222222';
