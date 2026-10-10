@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@opentelemetry/api": "1.9.1",
-    "bullmq": "6.3.9",
+    "bullmq": "6.3.11",
     "ioredis": "6.0.0",
     "zod": "4.4.3"
   }
