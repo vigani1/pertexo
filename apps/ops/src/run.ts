@@ -3,7 +3,7 @@ import type {
   OperatorCommandRecord,
   OperatorCommandResult,
   GenericOperatorCommandResult,
-} from '@pertexo/database/operator';
+} from '@pertexo/database/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import { classifyProcessError } from '@pertexo/observability/startup';

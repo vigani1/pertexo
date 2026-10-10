@@ -4,10 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./artifacts": {
-      "types": "./dist/artifacts/index.d.ts",
-      "default": "./dist/artifacts/index.js"
-    },
     "./attempts": {
       "types": "./dist/attempts/index.d.ts",
       "default": "./dist/attempts/index.js"
@@ -20,14 +16,6 @@
       "types": "./dist/connections/index.d.ts",
       "default": "./dist/connections/index.js"
     },
-    "./identity": {
-      "types": "./dist/identity/index.d.ts",
-      "default": "./dist/identity/index.js"
-    },
-    "./inbox": {
-      "types": "./dist/inbox/index.d.ts",
-      "default": "./dist/inbox/index.js"
-    },
     "./lifecycle": {
       "types": "./dist/lifecycle/index.d.ts",
       "default": "./dist/lifecycle/index.js"
@@ -35,10 +23,6 @@
     "./notifications": {
       "types": "./dist/notifications/index.d.ts",
       "default": "./dist/notifications/index.js"
-    },
-    "./operator": {
-      "types": "./dist/operator/index.d.ts",
-      "default": "./dist/operator/index.js"
     },
     "./outbox": {
       "types": "./dist/outbox/index.d.ts",

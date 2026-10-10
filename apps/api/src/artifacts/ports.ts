@@ -4,7 +4,7 @@ import type {
   ArtifactUploadIdentity,
   ArtifactUploadResult,
   FinalizeArtifactUploadInput,
-} from '@pertexo/database/artifacts';
+} from '@pertexo/database/runs';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,

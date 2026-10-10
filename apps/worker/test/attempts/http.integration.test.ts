@@ -7,7 +7,7 @@ import {
   createNodeAttemptRunStore,
   type NodeAttemptLease,
 } from '@pertexo/database/attempts';
-import { createOperatorCommandDatabase } from '@pertexo/database/operator';
+import { createOperatorCommandDatabase } from '@pertexo/database/runs';
 import { parseOperatorDatabaseConfig } from '@pertexo/database/platform';
 import {
   NodeAttemptReconciliationRequiredError,

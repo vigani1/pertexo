@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   AuthenticationMailEnqueueStore,
   SealedAuthenticationMailPayload,
-} from '@pertexo/database/identity';
+} from '@pertexo/database/tenant-access';
 import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
 
 export type PreparedAuthenticationProofMail = Readonly<{

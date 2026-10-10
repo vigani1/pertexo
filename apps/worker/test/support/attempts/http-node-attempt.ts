@@ -10,7 +10,7 @@ import {
   requestWorkflowRunCancellation,
   type ConnectionDatabase,
 } from '@pertexo/database/testing';
-import { createOperatorCommandDatabase } from '@pertexo/database/operator';
+import { createOperatorCommandDatabase } from '@pertexo/database/runs';
 import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,

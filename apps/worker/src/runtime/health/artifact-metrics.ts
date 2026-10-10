@@ -2,7 +2,7 @@ import {
   readArtifactCapacity,
   readExecutionStorageCapacity,
   type ArtifactCapacityObservation,
-} from '@pertexo/database/artifacts';
+} from '@pertexo/database/runs';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import type { TransportMetrics } from '@pertexo/observability';
 

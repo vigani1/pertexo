@@ -8,7 +8,7 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { FailureNotificationStore } from '@pertexo/database/notifications';
-import type { OperatorRunReplayStore } from '@pertexo/database/operator';
+import type { OperatorRunReplayStore } from '@pertexo/database/runs';
 import type { PreviewReconciliationStore } from '@pertexo/database/previews';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {

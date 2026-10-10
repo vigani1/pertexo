@@ -11,7 +11,7 @@ import {
   createPendingArtifact,
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
-} from '@pertexo/database/artifacts';
+} from '@pertexo/database/runs';
 import {
   createWorkspaceDatabase,
   type DatabaseConfig,

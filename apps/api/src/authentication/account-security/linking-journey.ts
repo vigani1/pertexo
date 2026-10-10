@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 
-import { recordIdentitySecurityFact } from '@pertexo/database/identity';
+import { recordIdentitySecurityFact } from '@pertexo/database/tenant-access';
 import type { Pool, PoolClient } from 'pg';
 
 /*

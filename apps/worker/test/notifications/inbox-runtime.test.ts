@@ -1,7 +1,7 @@
 import type {
   WorkspaceInboxChange,
   WorkspaceInboxFoldStore,
-} from '@pertexo/database/inbox';
+} from '@pertexo/database/notifications';
 import type { WorkspaceInboxHintPublisher } from '@pertexo/queue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

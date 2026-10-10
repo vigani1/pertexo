@@ -1,7 +1,7 @@
 import {
   createWorkspaceInboxDatabase,
   type WorkspaceInboxDatabase,
-} from '@pertexo/database/inbox';
+} from '@pertexo/database/notifications';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

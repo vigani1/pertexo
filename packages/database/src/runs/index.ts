@@ -48,3 +48,47 @@ export type { DeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
 export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
 export type { DueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
 export { createPublishedWorkflowReader } from './published-workflow.js';
+
+export {
+  createOperatorRunReplayStore,
+  OperatorRunReplayMismatchError,
+  OperatorRunReplayNotExecutableError,
+} from '../operator/run-replay.js';
+export type { OperatorRunReplayStore } from '../operator/run-replay.js';
+export { createOperatorCommandDatabase } from '../operator/commands.js';
+export type {
+  GenericOperatorCommandResult,
+  OperatorCommandDatabase,
+  OperatorCommandRecord,
+  OperatorCommandResult,
+  RedispatchFailedOutboxInput,
+  ReplayOperatorRunInput,
+} from '../operator/commands.js';
+
+export {
+  ARTIFACT_UPLOAD_PENDING_MS,
+  ARTIFACT_UPLOAD_PURPOSE,
+  ArtifactQuotaExceededError,
+  ArtifactUploadConflictError,
+  ArtifactUploadIdempotencyConflictError,
+  ArtifactUploadNotFoundError,
+  createArtifactUploadDatabase,
+} from '../artifacts/upload.js';
+export type {
+  ArtifactUploadActor,
+  ArtifactUploadAuthorization,
+  ArtifactUploadDatabase,
+  ArtifactUploadIdentity,
+  ArtifactUploadResult,
+  BeginArtifactUploadInput,
+  FinalizeArtifactUploadInput,
+} from '../artifacts/upload.js';
+export {
+  artifactStorageKey,
+  createPendingArtifact,
+  createPendingPreviewArtifact,
+  finalizeArtifactUpload,
+  readArtifactCapacity,
+  readExecutionStorageCapacity,
+} from '../artifacts/store.js';
+export type { ArtifactCapacityObservation } from '../artifacts/store.js';
