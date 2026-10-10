@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { JOB_NAME, type QueueJob } from '../src/index.js';
+import { JOB_NAME, type QueueJob } from '../../src/index.js';
 import {
   parseQueueJob,
   QUEUE_JOB_REGISTRY,
   safeParseQueueJob,
-} from '../src/jobs/contracts.js';
+} from '../../src/jobs/contracts.js';
 
 const IDS = {
   workspaceId: '11111111-1111-4111-8111-111111111111',
