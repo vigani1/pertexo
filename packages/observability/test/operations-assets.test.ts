@@ -11,7 +11,7 @@ const emitterPaths = [
   '../../../apps/api/src/platform/observability/api-metrics.ts',
   '../../../apps/api/src/platform/observability/sse-visibility-metrics.ts',
   '../../../apps/api/src/webhooks/telemetry.ts',
-  '../../../apps/worker/src/providers/http-telemetry.ts',
+  '../../../apps/worker/src/providers/telemetry.ts',
   '../../../apps/worker/src/retention/metrics.ts',
   '../../../apps/worker/src/runs/telemetry.ts',
   '../../../apps/worker/src/triggers/telemetry.ts',
