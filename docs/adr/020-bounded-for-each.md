@@ -142,7 +142,7 @@ The authoring limits now fit the checkpoint with headroom: at most 200 nodes,
 concurrent items per loop, and node IDs, ports and other graph identifiers of
 at most 64 characters. With maximum-length IDs, a For Each at the limit peaks
 at 141 KB, two nested loops at 191 KB and a 200-node chain at 87 KB
-(`packages/workflow-engine/test/checkpoint-capacity.test.ts`). The run's
+(`packages/workflow-engine/test/checkpoint/capacity.test.ts`). The run's
 iteration budget is the same 200. Raising these limits means removing finished
 iterations from the checkpoint, not raising the checkpoint cap: the checkpoint
 is rewritten on every transition, so its size multiplies write volume.
