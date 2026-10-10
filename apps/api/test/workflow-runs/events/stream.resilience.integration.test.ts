@@ -24,7 +24,7 @@ import {
 import {
   FixtureResourceOwner,
   rethrowFixtureSetupFailure,
-} from '../../support/fixture-resource-owner.js';
+} from '../../browser/harness/resource-owner.js';
 import {
   NO_STREAM_FAILURE,
   preserveFailureDuringStreamCleanup,

@@ -9,7 +9,7 @@ import {
   type WorkflowLifecycleApiFixture,
   type WorkflowHistory,
   workflowLifecycleIntegrationEnabled,
-} from '../../support/workflow-lifecycle.integration.support.js';
+} from '../lifecycle.support.js';
 
 const describeIntegration = workflowLifecycleIntegrationEnabled
   ? describe

@@ -6,11 +6,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import type { RateLimitDecision } from '@pertexo/rate-limit';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
-import type { FixtureRedisProxy } from '../support/rate-limit-integration-fixture.js';
+import type { FixtureRedisProxy } from './integration.fixture.js';
 import {
   cleanupRedisRateLimitFixture,
   initializeRedisRateLimitFixture,
-} from '../support/rate-limit-integration-fixture.js';
+} from './integration.fixture.js';
 
 const redisUrl = process.env.REDIS_URL;
 const requested = process.env.REDIS_RATE_LIMIT_INTEGRATION === 'true';

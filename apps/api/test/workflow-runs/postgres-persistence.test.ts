@@ -11,7 +11,7 @@ import { WorkflowPublishedVersionConflictError } from '@pertexo/database/runs';
 
 import { createInitialCheckpoint, ENGINE_VERSION } from '@pertexo/execution';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
-import { usageCapacitySnapshot } from '../support/usage-capacity.fixture.js';
+import { usageCapacitySnapshot } from './usage/capacity.fixture.js';
 import {
   WorkflowRunIdempotencyConflictError,
   WorkflowRunNotCancelableError,

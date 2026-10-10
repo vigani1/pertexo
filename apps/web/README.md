@@ -75,7 +75,7 @@ same local and CI command; it does not depend on another CI job's build output.
 Use the script rather than a direct Playwright invocation when those package
 artifacts have not been built.
 
-CI's e2e job also runs `test/usage-browser.integration.test.ts` explicitly with
+CI's e2e job also runs `test/browser/usage.integration.test.ts` explicitly with
 `USAGE_BROWSER_INTEGRATION=true`, after building the API dependency closure and
 starting its owned PostgreSQL/Redis services. This real Usage journey owns its
 disposable database, API and browser processes; its JSON report must contain one
@@ -84,7 +84,7 @@ local-quality cohort exclude that browser-only file. To run it locally, install
 Chromium, build with `pnpm --filter @pertexo/api... build`, provide isolated
 `DATABASE_ADMIN_URL`, `DATABASE_MIGRATION_URL`, `DATABASE_URL` and `REDIS_URL`,
 then run
-`USAGE_BROWSER_INTEGRATION=true pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts test/usage-browser.integration.test.ts`.
+`USAGE_BROWSER_INTEGRATION=true pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts test/browser/usage.integration.test.ts`.
 
 Root build/typecheck/lint/test commands include this workspace. CI runs both its
 unit tests and the authenticated Chromium journeys. The production output is

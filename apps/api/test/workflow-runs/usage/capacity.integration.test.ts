@@ -6,7 +6,7 @@ import {
   betterAuthIntegrationEnabled,
   expectProblem,
   useBetterAuthRealApi,
-} from '../../support/better-auth-real-api.integration.support.js';
+} from '../../support/better-auth/real-api.support.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'workspace usage capacity real HTTP authority',

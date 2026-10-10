@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { expectProblem } from '../../support/better-auth-real-api.integration.support.js';
-import { useOrganizationOwnedApi } from '../../support/workflow-organization-owned-api.fixture.js';
+import { expectProblem } from '../../support/better-auth/real-api.support.js';
+import { useOrganizationOwnedApi } from './owned-api.fixture.js';
 
 describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
   'owned real session organization HTTP',

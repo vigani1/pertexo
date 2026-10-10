@@ -102,7 +102,7 @@ workspace-controlled starts. Mocked UI tests are not the runtime proof.
 ## Required browser CI owner
 
 The [browser job](../../.github/workflows/ci.yml) explicitly runs
-`test/workflow-concurrency-browser.integration.test.ts` with
+`test/browser/workflow-concurrency.integration.test.ts` with
 `WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true`. It builds the API and worker
 dependency closures after installing browsers, starts PostgreSQL/Redis in its
 unique Compose project, validates the JSON report with the existing strict

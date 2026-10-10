@@ -22,7 +22,7 @@ export async function verifyCuratedFixtureOwnership(
     ).stdout,
 ) {
   const { verifyEditorBrowserOwnership } = await tsImport(
-    '../../apps/api/test/support/editor-browser-ownership.ts',
+    '../../apps/api/test/browser/harness/ownership.ts',
     import.meta.url,
   );
   await verifyEditorBrowserOwnership(environment, inspect);

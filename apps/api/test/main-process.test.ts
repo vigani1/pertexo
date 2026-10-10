@@ -4,13 +4,13 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const fixturePath = fileURLToPath(
-  new URL('./api-main-process.fixture.mjs', import.meta.url),
+  new URL('./main-process.fixture.mjs', import.meta.url),
 );
 const entrypointPath = fileURLToPath(
   new URL('../dist/main.js', import.meta.url),
 );
 const signalFixturePath = fileURLToPath(
-  new URL('./api-signal-process.fixture.mjs', import.meta.url),
+  new URL('./signal-process.fixture.mjs', import.meta.url),
 );
 
 // The same budgets as the compiled worker lifecycle tests: a cold compiled
