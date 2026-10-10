@@ -19,7 +19,7 @@ describe('bounded background task settlement', () => {
   });
 
   it('preserves an undefined task rejection and clears the timer', async () => {
-    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- hostile legacy boundary regression
+    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- promise rejection behavior
     const task = Promise.reject(undefined);
 
     await expect(boundedBackgroundTask(task, 100)).rejects.toBeUndefined();

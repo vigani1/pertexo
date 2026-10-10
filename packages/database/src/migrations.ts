@@ -133,7 +133,6 @@ export async function migrateDatabase(
         'Migration connection acquisition and pool cleanup failed',
       );
     }
-    // Preserve legacy non-Error adapter rejection values.
     throw error;
   }
   const transaction = async <T>(work: () => Promise<T>): Promise<T> => {
