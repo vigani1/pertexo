@@ -1,4 +1,4 @@
-import { canonicalJson } from '../../platform/canonical-json.js';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
