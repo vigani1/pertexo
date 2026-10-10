@@ -86,7 +86,6 @@ describe('the nested graph layer', () => {
       maxIterations: 50,
       maxConcurrency: 1,
       body: {
-        schemaVersion: 1,
         nodes: [],
         edges: [],
         settings: {},

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { JOB_NAME, parseQueueJob } from '../../src/index.js';
 
 describe('queue contract compatibility', () => {
-  it('accepts every canonical V1 wire fixture', async () => {
+  it('accepts every canonical wire fixture', async () => {
     const serialized = await readFile(
       new URL('../fixtures/queue-jobs.json', import.meta.url),
       'utf8',

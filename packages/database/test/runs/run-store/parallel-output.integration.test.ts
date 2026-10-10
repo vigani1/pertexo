@@ -40,7 +40,6 @@ describe('persisted Parallel output material', () => {
       });
       const { attemptId } = await seedSucceededFact(runId, invocationKey, {
         kind: 'inline',
-        schemaVersion: 1,
         value,
       });
       const expected = {
@@ -98,7 +97,6 @@ describe('immutable control-output selection', () => {
       });
       const { attemptId } = await seedSucceededFact(runId, invocationKey, {
         kind: 'inline',
-        schemaVersion: 1,
         value,
       });
       await expect(
@@ -139,7 +137,6 @@ describe('immutable control-output selection', () => {
     });
     await seedSucceededFact(runId, invocationKey, {
       kind: 'inline',
-      schemaVersion: 1,
       value,
     });
     await expect(

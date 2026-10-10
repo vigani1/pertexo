@@ -682,7 +682,6 @@ export function useConnectionHealthFixture(
           providerKey: 'slack',
           name: 'Incident Slack',
           credential: {
-            schemaVersion: 1,
             type: 'slack_bot_token',
             botToken: token,
           },
@@ -711,7 +710,6 @@ export function useConnectionHealthFixture(
         headers: { 'if-match': String(draft.headers.etag) },
         payload: {
           graph: {
-            schemaVersion: 1,
             nodes: [
               {
                 id: nodeId,

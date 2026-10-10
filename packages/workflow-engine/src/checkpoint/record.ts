@@ -14,10 +14,7 @@ import {
   parseInvocations,
   sortedUnique,
 } from './fields.js';
-import {
-  assertPersistedEngineVersion,
-  assertPersistedWorkflowVersionId,
-} from './identity.js';
+import { assertPersistedWorkflowVersionId } from './identity.js';
 import { parseJoin } from './joins.js';
 import { parseLoop } from './loops.js';
 
@@ -100,16 +97,14 @@ function parseBranchSelections(
 }
 
 export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
-  if (!isRecord(value) || value.schemaVersion !== 2)
+  if (!isRecord(value))
     throw new WorkflowEngineError(
-      'checkpoint_unsupported',
-      `Unsupported checkpoint schema version: ${String(isRecord(value) ? value.schemaVersion : undefined)}`,
+      'checkpoint_invalid',
+      'Checkpoint must be an object',
     );
   assertExactKeys(
     value,
     [
-      'schemaVersion',
-      'engineVersion',
       'workflowVersionId',
       'revision',
       'runStatus',
@@ -125,7 +120,6 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     ],
     ['deadlineExpired', 'initialIterationBudget'],
   );
-  const engineVersion = assertPersistedEngineVersion(value.engineVersion);
   const workflowVersionId = assertPersistedWorkflowVersionId(
     value.workflowVersionId,
   );
@@ -286,8 +280,6 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     );
 
   return {
-    schemaVersion: 2,
-    engineVersion,
     workflowVersionId,
     revision: value.revision,
     runStatus: value.runStatus,

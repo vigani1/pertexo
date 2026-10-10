@@ -310,7 +310,6 @@ export function transitionEvent(
   dueAt?: string,
 ): Omit<EngineEventPlan, 'sequence'> {
   return {
-    schemaVersion: 1,
     name,
     occurredAt,
     ...(invocation === undefined

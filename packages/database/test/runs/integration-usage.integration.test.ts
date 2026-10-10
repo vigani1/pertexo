@@ -54,9 +54,9 @@ describe('workflow integration usage pagination', () => {
         );
         await owner.query(
           `insert into app.workflow_versions
-             (id,workspace_id,workflow_id,version_number,schema_version,
+             (id,workspace_id,workflow_id,version_number,
               graph_json,checksum,executable_json,published_by)
-           values ($1,$2,$3,1,1,'{}'::jsonb,$4,'{}'::jsonb,$5)`,
+           values ($1,$2,$3,1,'{}'::jsonb,$4,'{}'::jsonb,$5)`,
           [
             versionId,
             workspaceA,

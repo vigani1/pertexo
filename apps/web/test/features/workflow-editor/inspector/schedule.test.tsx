@@ -251,7 +251,6 @@ function scheduleGraph(
   config: WorkflowGraphContract['nodes'][number]['config'],
 ): WorkflowGraphContract {
   return {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'nightly',

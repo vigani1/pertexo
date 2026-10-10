@@ -41,7 +41,7 @@ export function createFailureNotificationDestinationStore(
         async (client) => {
           const result = await client.query<Record<string, unknown>>(
             `select version.kind, version.config, intent.connection_secret_version_id,
-                  secret.schema_version, secret.kms_key_reference,
+                  secret.kms_key_reference,
                   secret.encrypted_data_key, secret.ciphertext, secret.nonce,
                   secret.auth_tag
              from app.run_failure_notification_intents intent
@@ -97,7 +97,6 @@ export function createFailureNotificationDestinationStore(
             connectionId,
             secretVersionId,
             sealed: Object.freeze({
-              schemaVersion: z.literal(1).parse(row.schema_version),
               kmsKeyReference: z.string().parse(row.kms_key_reference),
               encryptedDataKey: z.string().parse(row.encrypted_data_key),
               ciphertext: z.string().parse(row.ciphertext),

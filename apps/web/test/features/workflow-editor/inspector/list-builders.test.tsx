@@ -161,7 +161,6 @@ function switchGraph(): WorkflowGraphContract {
     connectionRefs: {},
   });
   return {
-    schemaVersion: 1,
     nodes: [
       step('route', 'Route', 'core.switch', 80),
       step('ship', 'Ship', 'core.set', 400),

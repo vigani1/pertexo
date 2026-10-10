@@ -27,7 +27,6 @@ test('shows a Slack step’s channel name beside its ID, and why when it can’t
 }) => {
   const lookups: string[] = [];
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [
       {
         ...editorNode('post', 'Tell ops', 'unused', 80),

@@ -53,7 +53,6 @@ function event(overrides: Partial<LeasedOutboxEvent> = {}): LeasedOutboxEvent {
     payload,
     payloadChecksum: checksum(payload),
     publishAttempts: 1,
-    schemaVersion: 1,
     workspaceId: WORKSPACE_ID,
   };
   return Object.freeze({
@@ -202,7 +201,6 @@ describe('outbox dispatcher', () => {
       data: {
         outboxEventId: EVENT_ID,
         runId: RUN_ID,
-        schemaVersion: 1,
         workspaceId: WORKSPACE_ID,
       },
     } satisfies QueueJob);

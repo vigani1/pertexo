@@ -54,7 +54,6 @@ export function createConnectionResolutionPersistence(
           const result = await client.query<Record<string, unknown>>(
             `select connection.*,
                     secret.id as secret_id,
-                    secret.schema_version,
                     secret.kms_key_reference,
                     secret.encrypted_data_key,
                     secret.ciphertext,

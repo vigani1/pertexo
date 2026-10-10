@@ -19,7 +19,6 @@ import {
 const {
   databaseUrl,
   enabled,
-  engineVersion,
   redisConnection,
   redisUrl,
   restoreServicesAndClose,
@@ -92,7 +91,6 @@ describeIntegration('Linear node execution resilience', () => {
       const initialJob = await producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1,
           workspaceId,
           runId: accepted.runId,
           outboxEventId: accepted.outboxEventId,
@@ -134,7 +132,6 @@ describeIntegration('Linear node execution resilience', () => {
         await producer.publish({
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: attempt.nodeRunId,
@@ -167,7 +164,6 @@ describeIntegration('Linear node execution resilience', () => {
         await producer.publish({
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: attempt.nodeRunId,
@@ -193,7 +189,6 @@ describeIntegration('Linear node execution resilience', () => {
         await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: continuation,
@@ -272,7 +267,6 @@ describeIntegration('Linear node execution resilience', () => {
           node_id: 'manual',
           node_status: 'succeeded',
           output_ref: {
-            schemaVersion: 1,
             kind: 'inline',
             value: { name: 'Ada' },
           },
@@ -282,7 +276,6 @@ describeIntegration('Linear node execution resilience', () => {
           node_id: 'set',
           node_status: 'succeeded',
           output_ref: {
-            schemaVersion: 1,
             kind: 'inline',
             value: {
               fromRun: 'Ada',
@@ -295,7 +288,6 @@ describeIntegration('Linear node execution resilience', () => {
           node_id: 'terminate',
           node_status: 'succeeded',
           output_ref: {
-            schemaVersion: 1,
             kind: 'inline',
             value: {
               result: {
@@ -314,8 +306,6 @@ describeIntegration('Linear node execution resilience', () => {
         invocationKey({ workflowVersionId, nodeId }),
       );
       expect(terminal[0]?.scheduler_state).toEqual({
-        schemaVersion: 2,
-        engineVersion,
         workflowVersionId,
         revision: 4,
         runStatus: 'succeeded',

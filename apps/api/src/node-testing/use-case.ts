@@ -360,7 +360,6 @@ function previewExecutionIdentity(
     keyHash: createHash('sha256').update(input.idempotencyKey).digest('hex'),
     requestHash: digest({
       domain: 'pertexo.preview.execute-request',
-      schemaVersion: 1,
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       workflowId: input.workflowId,

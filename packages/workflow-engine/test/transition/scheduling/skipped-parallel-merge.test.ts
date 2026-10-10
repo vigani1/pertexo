@@ -379,7 +379,6 @@ async function runBypass(kind: 'condition' | 'switch') {
     catalog: catalog,
   });
   let checkpoint: WorkflowCheckpoint = createCheckpoint({
-    engineVersion: 'engine-v2',
     workflowVersionId,
     iterationBudget: 0,
   });

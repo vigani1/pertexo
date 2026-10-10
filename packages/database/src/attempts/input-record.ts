@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 
 import { recordInputSchema, type NodeAttemptRunStore } from './contract.js';
 import { withWorkspaceWriteClient } from './transactions.js';
-import { serializeStoredExecutionValueV1 } from '../platform/stored-execution-value.js';
+import { serializeStoredExecutionValue } from '../platform/stored-execution-value.js';
 
 type RecordInputRequest = Parameters<
   NonNullable<NodeAttemptRunStore['recordInput']>
@@ -24,8 +24,7 @@ export async function recordNodeAttemptInput(
   const { lease, signal } = parsed.data;
   let stored: string;
   try {
-    stored = serializeStoredExecutionValueV1({
-      schemaVersion: 1,
+    stored = serializeStoredExecutionValue({
       kind: 'inline',
       value: parsed.data.input,
     });

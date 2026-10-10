@@ -38,7 +38,7 @@ function leaseFixture(): PreviewAttemptLease {
     executorVersion: 1,
     executionDeadlineAt: new Date(Date.now() + 4 * 60 * 1_000),
     retentionExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1_000),
-    input: { kind: 'inline', schemaVersion: 1, value: { n: 1 } },
+    input: { kind: 'inline', value: { n: 1 } },
     mayCauseExternalSideEffect: false,
     mayContactProvider: true,
     nodeId: 'node-1',
@@ -60,7 +60,6 @@ function deliveryFixture(): Parameters<
       outboxEventId,
       previewAttemptId,
       previewRunId,
-      schemaVersion: 1,
       traceparent: '00-' + 'a'.repeat(32) + '-' + 'b'.repeat(16) + '-01',
       workspaceId,
     },
@@ -333,7 +332,6 @@ describe('preview attempt handler', () => {
     expect(calls.completions[0]).toMatchObject({
       output: {
         kind: 'inline',
-        schemaVersion: 1,
         value: { body: { kind: 'artifact', artifactId } },
       },
       status: 'succeeded',

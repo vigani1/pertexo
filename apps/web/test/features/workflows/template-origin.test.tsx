@@ -23,7 +23,6 @@ import {
 } from './list/fixtures';
 
 const origin = {
-  schemaVersion: 1,
   templateId: 'retired-reviewed-example',
   templateVersion: 7,
   baseManifestDigest: 'a'.repeat(64),
@@ -291,7 +290,7 @@ describe('Scoped historical template origin projection', () => {
 
   it.each([
     'missing-projection',
-    'unknown-version',
+    'extra-field',
     'unsupported',
     'unavailable',
   ] as const)('does not infer null from %s', async (failure) => {
@@ -299,10 +298,10 @@ describe('Scoped historical template origin projection', () => {
       http.get(`${api}/workflows/${workflowId}`, () => {
         if (failure === 'missing-projection')
           return HttpResponse.json(summary(workflowId, 'Old reader'));
-        if (failure === 'unknown-version')
+        if (failure === 'extra-field')
           return HttpResponse.json({
             workflow: summary(workflowId, 'Future reader'),
-            templateOrigin: { ...origin, schemaVersion: 2 },
+            templateOrigin: { ...origin, unexpected: true },
           });
         return HttpResponse.json(
           {},

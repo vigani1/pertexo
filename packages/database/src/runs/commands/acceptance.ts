@@ -12,7 +12,7 @@ import {
   runEvents,
   workflowRuns,
 } from '../../schema.js';
-import { serializeStoredExecutionValueV1 } from '../../platform/stored-execution-value.js';
+import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema as sha256Schema } from '../../platform/persisted-primitives.js';
@@ -26,7 +26,6 @@ const traceparentSchema = z
 
 const acceptWorkflowRunInputSchema = z
   .object({
-    engineVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u),
     initialCheckpoint: z.unknown(),
     deadlineAt: z.date().optional(),
     keyHash: sha256Schema,
@@ -272,8 +271,7 @@ export async function acceptWorkflowRun(
   const storedRunInputJson =
     parsed.runInput === undefined
       ? null
-      : serializeStoredExecutionValueV1({
-          schemaVersion: 1,
+      : serializeStoredExecutionValue({
           kind: 'inline',
           value: parsed.runInput,
         });
@@ -360,8 +358,6 @@ export async function acceptWorkflowRun(
         ...(failureNotificationPolicy === undefined
           ? {}
           : {
-              failureNotificationPolicyVersion:
-                failureNotificationPolicy.policyVersion,
               failureNotificationDestinationId:
                 failureNotificationPolicy.destinationId,
               failureNotificationDestinationConfigVersion:
@@ -400,19 +396,17 @@ export async function acceptWorkflowRun(
     workflowRunId: runId,
     sequence: 1,
     type: 'run.queued',
-    payload: { schemaVersion: 1 },
+    payload: {},
   });
   await transaction.db.insert(runCheckpoints).values({
     workflowRunId: runId,
     workspaceId: transaction.workspaceId,
     workflowVersionId: parsed.workflowVersionId,
     revision: 0,
-    engineVersion: parsed.engineVersion,
     schedulerState: sql`${initialCheckpointJson}::jsonb`,
   });
 
   const payload = {
-    schemaVersion: 1,
     workspaceId: transaction.workspaceId,
     outboxEventId,
     runId,
@@ -423,7 +417,6 @@ export async function acceptWorkflowRun(
   await insertOutboxEvent(transaction, {
     id: outboxEventId,
     jobName: 'advance-workflow-run',
-    schemaVersion: 1,
     aggregateType: 'workflow-run',
     aggregateId: runId,
     payload,

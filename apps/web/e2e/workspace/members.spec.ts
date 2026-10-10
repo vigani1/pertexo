@@ -75,10 +75,10 @@ async function installRoutes(page: Page) {
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );
   await page.route('**/v1/node-definitions', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, items: [] } }),
+    route.fulfill({ json: { items: [] } }),
   );
   await page.route('**/v1/integrations', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, items: [] } }),
+    route.fulfill({ json: { items: [] } }),
   );
   await page.route(`**/v1/workspaces/${workspaceId}/connections?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),

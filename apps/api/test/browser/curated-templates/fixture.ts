@@ -47,7 +47,6 @@ export async function prepareCuratedTemplateBrowserFixture(
       'http',
       'F06 controlled HTTP account',
       {
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { Authorization: 'Bearer f06-synthetic-fixture-only' },
       },
@@ -56,7 +55,6 @@ export async function prepareCuratedTemplateBrowserFixture(
       'slack',
       'F06 controlled Slack account',
       {
-        schemaVersion: 1,
         type: 'slack_bot_token',
         botToken: 'xoxb-f06-synthetic-fixture-only',
       },
@@ -144,7 +142,6 @@ export async function prepareCuratedTemplateBrowserFixture(
         if (descriptor === undefined)
           throw new Error('Missing reviewed template descriptor');
         expect(snapshot.templateOrigin).toMatchObject({
-          schemaVersion: 1,
           templateId: descriptor.templateId,
           templateVersion: descriptor.templateVersion,
           baseManifestDigest: descriptor.baseManifestDigest,

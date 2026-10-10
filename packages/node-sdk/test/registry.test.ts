@@ -27,7 +27,7 @@ import {
   NodeInputValidationError,
   NodeOutputValidationError,
   NodeRegistryCompatibilityError,
-  NODE_EXECUTION_LIMITS_V1,
+  NODE_EXECUTION_LIMITS,
   canonicalizeBoundedJson,
   createNodeRegistry,
   type NodeExecutorRegistration,
@@ -373,8 +373,8 @@ describe('node-sdk bounded JSON contracts', () => {
       generateSchemaDocument(boundedNodeJsonSchema)[
         'x-pertexo-node-json-limits'
       ],
-    ).toEqual(NODE_EXECUTION_LIMITS_V1);
-    const exact = 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes - 2);
+    ).toEqual(NODE_EXECUTION_LIMITS);
+    const exact = 'x'.repeat(NODE_EXECUTION_LIMITS.bytes - 2);
     const over = `${exact}x`;
     expect(boundedNodeJsonSchema.safeParse(exact).success).toBe(true);
     expect(() => canonicalizeBoundedJson(exact)).not.toThrow();
@@ -397,7 +397,7 @@ describe('node-sdk bounded JSON contracts', () => {
     );
 
     const oversizedSparse = new Array<unknown>(
-      NODE_EXECUTION_LIMITS_V1.members + 1,
+      NODE_EXECUTION_LIMITS.members + 1,
     );
     expect(boundedNodeJsonSchema.safeParse(oversizedSparse).success).toBe(
       false,
@@ -473,7 +473,7 @@ describe('node-sdk bounded JSON contracts', () => {
     let getterCalls = 0;
     let methodCalls = 0;
     const oversized = Object.defineProperty(
-      { value: 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes) },
+      { value: 'x'.repeat(NODE_EXECUTION_LIMITS.bytes) },
       'toJSON',
       {
         get: () => {
@@ -492,7 +492,7 @@ describe('node-sdk bounded JSON contracts', () => {
       },
     });
     const oversizedMethod = Object.defineProperty(
-      { value: 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes) },
+      { value: 'x'.repeat(NODE_EXECUTION_LIMITS.bytes) },
       'toJSON',
       {
         value: () => {
@@ -730,15 +730,15 @@ describe('node-sdk bounded JSON contracts', () => {
   });
 
   it('enforces scalar byte limits before returning normalized JSON', () => {
-    const exact = 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes - 2);
+    const exact = 'x'.repeat(NODE_EXECUTION_LIMITS.bytes - 2);
     expect(canonicalizeBoundedJson(exact)).toBe(exact);
     expect(() => canonicalizeBoundedJson(`${exact}x`)).toThrow(
       InvalidBoundedJsonError,
     );
-    const unicodePayloadBytes = NODE_EXECUTION_LIMITS_V1.bytes - 2;
+    const unicodePayloadBytes = NODE_EXECUTION_LIMITS.bytes - 2;
     const unicodeExact = `${'🚀'.repeat(Math.floor(unicodePayloadBytes / 4))}${'x'.repeat(unicodePayloadBytes % 4)}`;
     expect(new TextEncoder().encode(JSON.stringify(unicodeExact))).toHaveLength(
-      NODE_EXECUTION_LIMITS_V1.bytes,
+      NODE_EXECUTION_LIMITS.bytes,
     );
     expect(boundedNodeJsonSchema.parse(unicodeExact)).toBe(unicodeExact);
     expect(canonicalizeBoundedJson(unicodeExact)).toBe(unicodeExact);
@@ -755,7 +755,7 @@ describe('node-sdk bounded JSON contracts', () => {
     ).byteLength;
     const aggregateExact = {
       ...envelope,
-      config: { value: 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes - overhead) },
+      config: { value: 'x'.repeat(NODE_EXECUTION_LIMITS.bytes - overhead) },
     };
     expect(canonicalizeBoundedJson(aggregateExact)).toEqual(aggregateExact);
     expect(() =>
@@ -851,7 +851,7 @@ describe('node-sdk exact server registry', () => {
       catalog: catalog(),
     });
     expect(Object.keys(registry).sort()).toEqual(['dispatchMode', 'execute']);
-    const half = 'x'.repeat(Math.ceil(NODE_EXECUTION_LIMITS_V1.bytes / 2));
+    const half = 'x'.repeat(Math.ceil(NODE_EXECUTION_LIMITS.bytes / 2));
     await expect(
       registry.execute({
         config: { value: half },

@@ -11,7 +11,6 @@ import {
 
 export const occurredAt = '2026-08-20T10:00:00.000Z';
 export const chainGraph = {
-  schemaVersion: 1,
   settings: {},
   nodes: ['a', 'b'].map((id) => ({
     id,
@@ -33,7 +32,6 @@ export const chainGraph = {
 
 export function checkpoint(): WorkflowCheckpoint {
   return createCheckpoint({
-    engineVersion: 'engine-v1',
     workflowVersionId: '00000000-0000-4000-8000-000000000001',
     iterationBudget: 1_000,
   });

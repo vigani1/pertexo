@@ -360,7 +360,6 @@ export function createWorkerTransportTestEnvironment() {
           jobName: JOB_NAME.advanceWorkflowRun,
           payload,
           payloadChecksum: checksum(payload),
-          schemaVersion: 1,
         });
       },
     );
@@ -420,7 +419,6 @@ export function createWorkerTransportTestEnvironment() {
             jobName: JOB_NAME.executeNodeAttempt,
             payload,
             payloadChecksum: checksum(payload),
-            schemaVersion: 1,
           });
           await db.execute(sql`
             insert into app.queue_duplicate_probe_provider_intents

@@ -11,7 +11,6 @@ const payloadSchema = z
     attemptId: z.uuid(),
     evidenceCommandId: z.uuid(),
     outboxEventId: z.uuid(),
-    schemaVersion: z.literal(1),
     workspaceId: z.uuid(),
   })
   .strict();
@@ -81,9 +80,8 @@ export async function reconcileUnknownOutcomeEvidence(
         job_name: string;
         payload: unknown;
         payload_checksum: string;
-        schema_version: number;
       }>(sql`
-        select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
+        select aggregate_id,aggregate_type,job_name,payload,payload_checksum
         from app.outbox_events
         where workspace_id=${transaction.workspaceId}
           and id=${parsed.delivery.outboxEventId}
@@ -101,7 +99,6 @@ export async function reconcileUnknownOutcomeEvidence(
         row.aggregate_id !== parsed.attemptId ||
         row.aggregate_type !== 'node-attempt' ||
         row.job_name !== 'reconcile-unknown-outcome' ||
-        row.schema_version !== 1 ||
         row.payload_checksum !== parsed.delivery.payloadChecksum ||
         canonicalOutboxPayloadChecksum(payload) !== row.payload_checksum ||
         payload.workspaceId !== transaction.workspaceId ||

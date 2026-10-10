@@ -103,11 +103,11 @@ describe('workflow draft persistence', () => {
     workflowId = created.workflowId;
     expect(created).toMatchObject({
       workflow: { id: workflowId, name: 'First workflow' },
-      draft: { workflowId, revision: 1, schemaVersion: 1, workspaceId },
+      draft: { workflowId, revision: 1, workspaceId },
     });
     await expect(
       authoring.getDraft(workspaceId, workflowId, actorId),
-    ).resolves.toMatchObject({ revision: 1, schemaVersion: 1, workspaceId });
+    ).resolves.toMatchObject({ revision: 1, workspaceId });
     await expect(authoring.createWorkflow(createInput)).resolves.toMatchObject({
       workflowId,
     });
@@ -302,9 +302,9 @@ describe('workflow draft persistence', () => {
     const attempts: readonly (readonly [string, unknown[]])[] = [
       [
         `insert into app.workflow_versions
-          (id, workspace_id, workflow_id, version_number, schema_version,
+          (id, workspace_id, workflow_id, version_number,
            graph_json, checksum, executable_json, published_by)
-         values ($1, $2, $3, 999, 1, '{}'::jsonb, $4, '{}'::jsonb, $5)`,
+         values ($1, $2, $3, 999, '{}'::jsonb, $4, '{}'::jsonb, $5)`,
         [
           randomUUID(),
           otherWorkspaceId,
@@ -336,9 +336,9 @@ describe('workflow draft persistence', () => {
       ],
       [
         `insert into app.outbox_events
-          (id, workspace_id, job_name, schema_version, aggregate_type,
+          (id, workspace_id, job_name, aggregate_type,
            aggregate_id, payload, payload_checksum)
-         values ($1, $2, 'reconcile-workflow-triggers', 1, 'workflow',
+         values ($1, $2, 'reconcile-workflow-triggers', 'workflow',
            $3, '{}'::jsonb, $4)`,
         [randomUUID(), otherWorkspaceId, otherWorkflowId, '4'.repeat(64)],
       ],

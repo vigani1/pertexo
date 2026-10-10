@@ -2,8 +2,6 @@ import { z } from 'zod';
 
 import { JOB_NAME, QUEUE_FOR_JOB, type JobName } from './names.js';
 
-export const QUEUE_SCHEMA_VERSION = 1 as const;
-
 const traceparentSchema = z
   .string()
   .regex(
@@ -20,7 +18,6 @@ const traceparentSchema = z
   );
 
 const commonJobShape = {
-  schemaVersion: z.literal(QUEUE_SCHEMA_VERSION),
   workspaceId: z.uuid(),
   outboxEventId: z.uuid(),
   traceparent: traceparentSchema.optional(),

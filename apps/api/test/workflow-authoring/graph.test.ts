@@ -9,20 +9,16 @@ describe('workflow authoring validation seam', () => {
   it('accepts the canonical empty draft and rejects malformed graph input', () => {
     expect(
       parseWorkflowGraphDraft({
-        schemaVersion: 1,
         nodes: [],
         edges: [],
         settings: {},
       }),
-    ).toEqual({ schemaVersion: 1, nodes: [], edges: [], settings: {} });
-    expect(() =>
-      parseWorkflowGraphDraft({ schemaVersion: 1, nodes: [], edges: [] }),
-    ).toThrow();
+    ).toEqual({ nodes: [], edges: [], settings: {} });
+    expect(() => parseWorkflowGraphDraft({ nodes: [], edges: [] })).toThrow();
   });
 
   it('reports cycles and dangling edges', () => {
     const graph = parseWorkflowGraphDraft({
-      schemaVersion: 1,
       nodes: [
         {
           id: 'a',

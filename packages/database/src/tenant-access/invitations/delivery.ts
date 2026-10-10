@@ -112,9 +112,8 @@ export function createWorkspaceInvitationDeliveryStore(
           job_name: string;
           payload: unknown;
           payload_checksum: string;
-          schema_version: number;
         }>(
-          `select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
+          `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
              from app.outbox_events where workspace_id=$1 and id=$2`,
           [workspaceId, outboxEventId],
         );
@@ -129,7 +128,6 @@ export function createWorkspaceInvitationDeliveryStore(
           outbox?.aggregate_id !== invitationId ||
           outbox.aggregate_type !== 'workspace-invitation' ||
           outbox.job_name !== 'deliver-workspace-invitation' ||
-          outbox.schema_version !== 1 ||
           outbox.payload_checksum !== checksum
         )
           throw new Error('Workspace invitation delivery identity mismatch');

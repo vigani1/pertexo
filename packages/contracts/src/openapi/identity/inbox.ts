@@ -78,7 +78,6 @@ const commandProblems = {
 
 /** ADR 055: failure threads read on demand, with private read state. */
 export const workspaceInboxClientContract = Object.freeze({
-  schemaVersion: 2,
   routes: Object.freeze([
     { method: 'GET', path: '/v1/workspaces/:workspaceId/notifications' },
     {

@@ -9,7 +9,6 @@ export function rejectedLoopGraph(items: readonly string[]) {
     connectionRefs: {},
   });
   return {
-    schemaVersion: 1,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       node('manual', 'core.manual'),
@@ -21,7 +20,6 @@ export function rejectedLoopGraph(items: readonly string[]) {
           maxIterations: 3,
           maxConcurrency: 1,
           body: {
-            schemaVersion: 1,
             settings: {},
             nodes: [node('body', 'core.set')],
             edges: [],

@@ -47,7 +47,6 @@ const node = (
   position: { x: 0, y: 0 },
 });
 const graph = (nodes: WorkflowGraph['nodes']): WorkflowGraph => ({
-  schemaVersion: 1,
   nodes,
   edges: [],
   settings: {},
@@ -152,7 +151,6 @@ describe('portable authoring projection and rebinding', () => {
         body: {
           kind: 'expression' as const,
           language: 'jsonata' as const,
-          policyVersion: 1,
           expression: '$lookup(nodeOutputs, runInput.stepId).value',
         },
       },
@@ -201,7 +199,6 @@ describe('portable authoring projection and rebinding', () => {
         settings: {},
         edges: [],
         nodes: source.nodes,
-        schemaVersion: 1,
       }),
     ).toEqual(await portableGraphDigest(source));
   });
@@ -277,7 +274,7 @@ describe('portable authoring projection and rebinding', () => {
       projectWorkflowPortableManifest(graph([node('a'), node('a')]), catalog),
     ).toThrow(WorkflowPortabilityError);
   });
-  it('rejects manifest metadata, unsupported format/version and embedded tenant connection references', () => {
+  it('rejects manifest metadata, unsupported formats and embedded tenant connection references', () => {
     const manifest = projectWorkflowPortableManifest(
       graph([node('http', 'http.request')]),
       catalog,
@@ -285,7 +282,6 @@ describe('portable authoring projection and rebinding', () => {
     for (const changed of [
       { ...manifest, workspaceId: connectionId },
       { ...manifest, format: 'foreign' },
-      { ...manifest, formatVersion: 2 },
       {
         ...manifest,
         graph: graph([

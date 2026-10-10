@@ -33,7 +33,6 @@ const schemas = Object.freeze({
   ),
 });
 export const artifactTransferClientContract = Object.freeze({
-  schemaVersion: '1.0.0',
   schemas,
 });
 const responses = Object.freeze({

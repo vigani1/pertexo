@@ -3,7 +3,7 @@ import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews
 
 import {
   parseDatabaseConfig,
-  parseStoredExecutionValueV1,
+  parseStoredExecutionValue,
 } from '@pertexo/database/testing';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
@@ -138,10 +138,9 @@ describeIntegration('core.validate persisted preview execution', () => {
         delivery,
         async ({ job, queue, state }) => {
           expect(state?.dispatch_marked_at).toBeNull();
-          const persisted = parseStoredExecutionValueV1(state?.output_ref);
+          const persisted = parseStoredExecutionValue(state?.output_ref);
           expect(persisted).toEqual({
             kind: 'inline',
-            schemaVersion: 1,
             value: expected,
           });
           if (persisted.kind !== 'inline')
@@ -229,10 +228,9 @@ describeIntegration('core.validate persisted preview execution', () => {
           restartedRuntime,
           matchingDelivery,
           ({ state }) => {
-            const persisted = parseStoredExecutionValueV1(state?.output_ref);
+            const persisted = parseStoredExecutionValue(state?.output_ref);
             expect(persisted).toEqual({
               kind: 'inline',
-              schemaVersion: 1,
               value: matchingExpected,
             });
             if (persisted.kind !== 'inline')
@@ -395,7 +393,6 @@ describeIntegration('core.validate persisted workflow execution', () => {
       const published = await producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1 as const,
           workspaceId: delivery.job.data.workspaceId,
           runId: delivery.accepted.runId,
           outboxEventId,
@@ -413,7 +410,6 @@ describeIntegration('core.validate persisted workflow execution', () => {
       const published = await producer.publish({
         name: JOB_NAME.executeNodeAttempt,
         data: {
-          schemaVersion: 1 as const,
           workspaceId: delivery.job.data.workspaceId,
           runId: delivery.accepted.runId,
           nodeRunId: attempt.node_run_id,
@@ -465,7 +461,6 @@ describeIntegration('core.validate persisted workflow execution', () => {
         attempt_status: 'succeeded',
         node_status: 'succeeded',
         output_ref: {
-          schemaVersion: 1,
           kind: 'inline',
           value: expected,
         },

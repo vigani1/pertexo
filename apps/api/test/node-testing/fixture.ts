@@ -16,7 +16,6 @@ export const nodeTestingExpiresAt = new Date('2026-08-29T20:00:00.000Z');
 
 export function httpNodeTestingGraph() {
   return {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'http',
@@ -50,7 +49,6 @@ export function nodeTestingDraft(
     workflowId: nodeTestingIds.workflowId,
     workspaceId: nodeTestingIds.workspaceId,
     revision: 3,
-    schemaVersion: 1,
     graphJson: httpNodeTestingGraph(),
     compatibility: {
       compatible: true,

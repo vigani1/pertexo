@@ -72,7 +72,6 @@ const responses = Object.freeze({
 });
 
 export const schedulesClientContract = Object.freeze({
-  schemaVersion: 1,
   routes: Object.freeze([
     {
       method: 'GET',

@@ -43,7 +43,6 @@ const loopBody = {
 
 function checkpoint(): ReturnType<typeof createCheckpoint> {
   return createCheckpoint({
-    engineVersion: 'engine-v2',
     workflowVersionId,
     iterationBudget: 100,
   });

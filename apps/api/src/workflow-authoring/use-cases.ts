@@ -422,7 +422,6 @@ function publishRequestHash(input: PublishWorkflowInput): string {
     .update(
       canonicalJson({
         domain: 'pertexo.workflow.publish-request',
-        version: 1,
         actorId: input.actor.actorId,
         workspaceId: input.routeWorkspaceId,
         workflowId: input.workflowId,

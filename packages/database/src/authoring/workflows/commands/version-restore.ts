@@ -96,18 +96,17 @@ async function restoreWorkflowVersion(
 
     const updatedResult = await client.query<Record<string, unknown>>(
       `update app.workflow_drafts set graph_json=$1::jsonb,
-         schema_version=$2,revision=revision+1,updated_by=$3,
+         revision=revision+1,updated_by=$2,
          updated_at=transaction_timestamp()
-       where workspace_id=$4 and workflow_id=$5 and revision=$6
+       where workspace_id=$3 and workflow_id=$4 and revision=$5
          and exists (
            select 1 from app.workflows workflow
-           where workflow.workspace_id=$4 and workflow.id=$5
+           where workflow.workspace_id=$3 and workflow.id=$4
              and workflow.lifecycle_status='active'
          )
        returning *`,
       [
         JSON.stringify(sourceVersion.graphJson),
-        sourceVersion.schemaVersion,
         actorId,
         workspaceId,
         workflowId,

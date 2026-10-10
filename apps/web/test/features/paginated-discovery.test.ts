@@ -44,8 +44,7 @@ describe('bounded paginated discovery', () => {
       id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
       workflowId,
       versionNumber: 1,
-      schemaVersion: 1,
-      graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+      graph: { nodes: [], edges: [], settings: {} },
       checksum: `wf:sha256:${'a'.repeat(64)}`,
       publishedAt: '2026-09-15T10:00:00.000Z',
     };

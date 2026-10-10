@@ -170,7 +170,6 @@ export const workflowDraftResponseSchema = z
   .object({
     workflowId: workflowIdentifierSchema,
     revision: z.number().int().positive(),
-    schemaVersion: z.literal(1),
     graph: workflowGraphSchema,
     compatibility: workflowCompatibilityReportSchema,
     updatedAt: z.iso.datetime(),
@@ -185,7 +184,6 @@ export const workflowVersionResponseSchema = z
     id: z.uuid(),
     workflowId: z.uuid(),
     versionNumber: z.number().int().positive(),
-    schemaVersion: z.literal(1),
     graph: workflowGraphSchema,
     checksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
     publishedAt: z.iso.datetime(),

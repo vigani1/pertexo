@@ -4,7 +4,7 @@ import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
 
 import { CoordinatorRunStateCorruptError } from '../contract.js';
 import {
-  parseStoredExecutionValueV1,
+  parseStoredExecutionValue,
   serializeStoredExecutionJsonValue,
 } from '../../../platform/stored-execution-value.js';
 import {
@@ -268,7 +268,6 @@ function attemptFact(
 
 export function mapEvent(row: EventRow): unknown {
   const payload = eventPayloadRecord(row.payload);
-  if (payload.schemaVersion !== 1) throw new CoordinatorRunStateCorruptError();
   const occurredAt = new Date(row.created_at).toISOString();
   if (row.type === 'run.cancel_requested')
     return { kind: 'cancel_requested', sequence: row.sequence, occurredAt };
@@ -343,7 +342,7 @@ export function mapEvent(row: EventRow): unknown {
   if (row.attempt_output_ref !== null) {
     let stored;
     try {
-      stored = parseStoredExecutionValueV1(row.attempt_output_ref);
+      stored = parseStoredExecutionValue(row.attempt_output_ref);
     } catch {
       throw new CoordinatorRunStateCorruptError();
     }
@@ -379,7 +378,7 @@ export function completedInlineOutput(
   const identity = attemptFact(row);
   let stored;
   try {
-    stored = parseStoredExecutionValueV1(row.attempt_output_ref);
+    stored = parseStoredExecutionValue(row.attempt_output_ref);
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }

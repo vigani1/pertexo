@@ -307,11 +307,11 @@ describe('workspace purge', () => {
       );
       await owner.query(
         `insert into app.workflow_versions(
-          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+          id,workspace_id,workflow_id,version_number,graph_json,
           checksum,executable_json,published_by,published_at
         ) values
-          ($1,$3,$4,1,1,'{}',$5,'{}',$6,clock_timestamp()),
-          ($2,$3,$4,2,1,'{}',$7,'{}',$6,clock_timestamp())`,
+          ($1,$3,$4,1,'{}',$5,'{}',$6,clock_timestamp()),
+          ($2,$3,$4,2,'{}',$7,'{}',$6,clock_timestamp())`,
         [
           historicalVersionId,
           publishedVersionId,
@@ -333,9 +333,9 @@ describe('workspace purge', () => {
           id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
           input_ref,input_ref_expires_at,output_ref,started_at,completed_at
         ) values($1,$2,$3,$4,'manual','succeeded',
-          '{"kind":"inline","schemaVersion":1,"value":"input"}',
+          '{"kind":"inline","value":"input"}',
           clock_timestamp()+interval '1 day',
-          '{"kind":"inline","schemaVersion":1,"value":"output"}',
+          '{"kind":"inline","value":"output"}',
           clock_timestamp(),clock_timestamp())`,
         [workflowRunId, workspaceId, workflowId, publishedVersionId],
       );
@@ -345,8 +345,8 @@ describe('workspace purge', () => {
           branch_context,status,side_effect_class,input_ref,output_ref,
           started_at,completed_at
         ) values($1,$2,$3,'node-1','node-1','{}','succeeded','safe',
-          '{"kind":"inline","schemaVersion":1,"value":"input"}',
-          '{"kind":"inline","schemaVersion":1,"value":"output"}',
+          '{"kind":"inline","value":"input"}',
+          '{"kind":"inline","value":"output"}',
           clock_timestamp(),clock_timestamp())`,
         [nodeRunId, workspaceId, workflowRunId],
       );
@@ -355,7 +355,7 @@ describe('workspace purge', () => {
           id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
           output_ref,started_at,completed_at
         ) values($1,$2,$3,1,'succeeded','safe',
-          '{"kind":"inline","schemaVersion":1,"value":"output"}',
+          '{"kind":"inline","value":"output"}',
           clock_timestamp(),clock_timestamp())`,
         [nodeAttemptId, workspaceId, nodeRunId],
       );
@@ -375,9 +375,9 @@ describe('workspace purge', () => {
       for (const secretId of [firstSecretId, currentSecretId])
         await owner.query(
           `insert into app.connection_secret_versions(
-            id,workspace_id,connection_id,schema_version,kms_key_reference,
+            id,workspace_id,connection_id,kms_key_reference,
             encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-          ) values($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+          ) values($1,$2,$3,'kms','key','cipher','AAAAAAAAAAAAAAAA',
             'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
           [secretId, workspaceId, connectionId, userId],
         );
@@ -424,7 +424,7 @@ describe('workspace purge', () => {
         select $1,$2,$3,1,$4,'node-1','core.set',1,'core.set',1,
           $5,$6,$7,
           '{"id":"node-1","type":"core.set"}'::jsonb,
-          '{"kind":"inline","schemaVersion":1,"value":null}'::jsonb,
+          '{"kind":"inline","value":null}'::jsonb,
           'safe',false,false,'not_supported',
           clock_timestamp()+interval '1 hour',
           clock_timestamp()+interval '2 days'`,

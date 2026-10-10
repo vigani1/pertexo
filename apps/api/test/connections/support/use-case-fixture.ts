@@ -20,7 +20,6 @@ export const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 export const secretVersionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 export const nextSecretVersionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 export const credential = {
-  schemaVersion: 1,
   type: 'http_headers',
   headers: { Authorization: 'Bearer deeply-secret-value' },
 } as const;
@@ -90,7 +89,6 @@ export function commandPersistence(
 }
 
 export const sealed = Object.freeze({
-  schemaVersion: 1 as const,
   kmsKeyReference: 'alias/pertexo-connections',
   encryptedDataKey: 'encrypted-key',
   ciphertext: 'ciphertext',

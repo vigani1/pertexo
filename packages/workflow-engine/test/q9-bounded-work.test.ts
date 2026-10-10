@@ -8,8 +8,6 @@ const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 
 function checkpoint(population: number) {
   return {
-    schemaVersion: 2,
-    engineVersion: 'engine-v1',
     workflowVersionId,
     revision: 0,
     runStatus: 'running',
@@ -65,10 +63,9 @@ describe('Q9 workflow-engine bounded-work consumer', () => {
       const processHeapDeltaBytes = process.memoryUsage().heapUsed - heapBefore;
       expect(parsed.invocations).toHaveLength(population);
       console.info(
-        `Q9_BOUNDED_WORK_V1=${JSON.stringify({
-          schemaVersion: 1,
+        `Q9_BOUNDED_WORK=${JSON.stringify({
           family: 'workflow-engine-checkpoint-validation-projection',
-          contractVersion: 'workflow-engine-checkpoint-v1',
+
           population,
           upperSupportedPopulation,
           completedOperations: parsed.invocations.length,

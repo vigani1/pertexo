@@ -1,7 +1,7 @@
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { types as nodeTypes } from 'node:util';
 
-export const STORED_EXECUTION_VALUE_LIMITS_V1 = Object.freeze({
+export const STORED_EXECUTION_VALUE_LIMITS = Object.freeze({
   inlineBytes: 262_144,
   depth: 64,
   members: 10_000,
@@ -9,7 +9,7 @@ export const STORED_EXECUTION_VALUE_LIMITS_V1 = Object.freeze({
 
 // PostgreSQL jsonb::text is only a storage backstop, not the application byte
 // definition. Numeric exponents may expand by hundreds of bytes per member.
-export const EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1 = 4_194_304;
+export const EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES = 4_194_304;
 
 export type StoredExecutionJsonValue =
   | null
@@ -19,14 +19,12 @@ export type StoredExecutionJsonValue =
   | readonly StoredExecutionJsonValue[]
   | Readonly<{ [key: string]: StoredExecutionJsonValue }>;
 
-export type StoredExecutionValueV1 =
+export type StoredExecutionValue =
   | Readonly<{
-      schemaVersion: 1;
       kind: 'inline';
       value: StoredExecutionJsonValue;
     }>
   | Readonly<{
-      schemaVersion: 1;
       kind: 'artifact';
       artifactId: string;
     }>;
@@ -35,7 +33,7 @@ export class StoredExecutionValueInvalidError extends TypeError {
   public override readonly name = 'StoredExecutionValueInvalidError';
 
   public constructor() {
-    super('Stored execution value violates the V1 persistence contract');
+    super('Stored execution value violates the persistence contract');
   }
 }
 
@@ -47,7 +45,7 @@ function jsonStringBytes(value: string): number {
   let bytes = 2;
   const add = (amount: number): void => {
     bytes += amount;
-    if (bytes > STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes) invalid();
+    if (bytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes) invalid();
   };
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
@@ -150,7 +148,7 @@ function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
   let bytes = 0;
   const addBytes = (amount: number): void => {
     bytes += amount;
-    if (bytes > STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes) invalid();
+    if (bytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes) invalid();
   };
 
   while (pending.length !== 0) {
@@ -186,15 +184,14 @@ function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
       continue;
     }
     if (typeof item !== 'object' || nodeTypes.isProxy(item)) invalid();
-    if (frame.containerDepth > STORED_EXECUTION_VALUE_LIMITS_V1.depth)
-      invalid();
+    if (frame.containerDepth > STORED_EXECUTION_VALUE_LIMITS.depth) invalid();
     if (active.has(item)) invalid();
 
     const isArray = Array.isArray(item);
     const prototype = Object.getPrototypeOf(item) as unknown;
     if (!isArray && prototype !== Object.prototype && prototype !== null)
       invalid();
-    if (isArray && item.length > STORED_EXECUTION_VALUE_LIMITS_V1.members)
+    if (isArray && item.length > STORED_EXECUTION_VALUE_LIMITS.members)
       invalid();
     const children: { key: string | number; value: unknown }[] = [];
     let enumerableCount = 0;
@@ -208,7 +205,7 @@ function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
       )
         invalid();
       members += 1;
-      if (members > STORED_EXECUTION_VALUE_LIMITS_V1.members) invalid();
+      if (members > STORED_EXECUTION_VALUE_LIMITS.members) invalid();
       if (isArray && key !== String(enumerableCount)) invalid();
       if (!isArray) addBytes(jsonStringBytes(key) + 1);
       children.push({
@@ -302,14 +299,13 @@ function canonicalJson(value: StoredExecutionJsonValue): string {
   return chunks.join('');
 }
 
-export function parseStoredExecutionValueV1(
+export function parseStoredExecutionValue(
   value: unknown,
-): StoredExecutionValueV1 {
+): StoredExecutionValue {
   let input = value;
   if (typeof input === 'string') {
     if (
-      Buffer.byteLength(input, 'utf8') >
-      EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1
+      Buffer.byteLength(input, 'utf8') > EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES
     )
       invalid();
     try {
@@ -318,22 +314,19 @@ export function parseStoredExecutionValueV1(
       invalid();
     }
   }
-  const fields = ownDataRecord(input, 3);
-  const schemaVersion = fields.get('schemaVersion');
+  const fields = ownDataRecord(input, 2);
   const kind = fields.get('kind');
-  if (schemaVersion !== 1) invalid();
 
   if (kind === 'artifact') {
-    if (fields.size !== 3) invalid();
+    if (fields.size !== 2) invalid();
     const artifactId = fields.get('artifactId');
     if (typeof artifactId !== 'string' || !UUID_PATTERN.test(artifactId))
       invalid();
-    return Object.freeze({ schemaVersion: 1, kind, artifactId });
+    return Object.freeze({ kind, artifactId });
   }
   if (kind === 'inline') {
-    if (fields.size !== 3 || !fields.has('value')) invalid();
+    if (fields.size !== 2 || !fields.has('value')) invalid();
     return Object.freeze({
-      schemaVersion: 1,
       kind,
       value: cloneInlineJson(fields.get('value')),
     });
@@ -341,16 +334,15 @@ export function parseStoredExecutionValueV1(
   invalid();
 }
 
-export function serializeStoredExecutionValueV1(value: unknown): string {
-  const parsed = parseStoredExecutionValueV1(value);
+export function serializeStoredExecutionValue(value: unknown): string {
+  const parsed = parseStoredExecutionValue(value);
   return parsed.kind === 'artifact'
-    ? `{"artifactId":${JSON.stringify(parsed.artifactId)},"kind":"artifact","schemaVersion":1}`
-    : `{"kind":"inline","schemaVersion":1,"value":${canonicalJson(parsed.value)}}`;
+    ? `{"artifactId":${JSON.stringify(parsed.artifactId)},"kind":"artifact"}`
+    : `{"kind":"inline","value":${canonicalJson(parsed.value)}}`;
 }
 
 export function serializeStoredExecutionJsonValue(value: unknown): string {
-  const parsed = parseStoredExecutionValueV1({
-    schemaVersion: 1,
+  const parsed = parseStoredExecutionValue({
     kind: 'inline',
     value,
   });

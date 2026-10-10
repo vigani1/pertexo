@@ -236,7 +236,6 @@ export function createConnectionTestPersistence(
           const resolved = await client.query<Record<string, unknown>>(
             `select connection.*,
                     secret.id as secret_id,
-                    secret.schema_version,
                     secret.kms_key_reference,
                     secret.encrypted_data_key,
                     secret.ciphertext,
@@ -418,7 +417,7 @@ export function createConnectionTestPersistence(
           await client.query(
             `update app.idempotency_records
              set status = 'failed',
-                 result_ref = '{"schemaVersion":1,"state":"failed"}'::jsonb,
+                 result_ref = '{"state":"failed"}'::jsonb,
                  updated_at = transaction_timestamp()
              where workspace_id = $1 and operation = 'connection.test'
                 and scope = $2 and key_hash = $3 and request_hash = $4

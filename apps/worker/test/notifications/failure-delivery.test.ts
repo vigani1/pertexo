@@ -14,7 +14,6 @@ import { createProviderFailureNotificationDelivery } from '../../src/notificatio
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method -- Vitest asymmetric matchers and injected spies */
 
 const context = {
-  schemaVersion: 1 as const,
   runId: '22222222-2222-4222-8222-222222222222',
   workflowId: '33333333-3333-4333-8333-333333333333',
   workflowVersionId: '44444444-4444-4444-8444-444444444444',
@@ -45,7 +44,6 @@ const identity = {
   signal: new AbortController().signal,
 };
 const sealed = {
-  schemaVersion: 1 as const,
   kmsKeyReference: 'kms',
   encryptedDataKey: 'key',
   ciphertext: 'cipher',
@@ -87,7 +85,6 @@ function successfulSlackDelivery(persistence: FailureNotificationStore) {
       open: vi.fn().mockResolvedValue(
         new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'slack_bot_token',
             botToken: 'xoxb-1234567890',
           }),
@@ -319,9 +316,7 @@ describe('provider failure notification delivery', () => {
       const delivery = createProviderFailureNotificationDelivery({
         store: persistence,
         encryption: {
-          open: vi
-            .fn()
-            .mockResolvedValue(new TextEncoder().encode('{"schemaVersion":1}')),
+          open: vi.fn().mockResolvedValue(new TextEncoder().encode('{}')),
         },
         slack: { sendMessage },
         email: { sendNotification },
@@ -367,12 +362,10 @@ describe('provider failure notification delivery', () => {
                 JSON.stringify(
                   kind === 'slack'
                     ? {
-                        schemaVersion: 1,
                         type: 'slack_bot_token',
                         botToken: 'xoxb-1234567890',
                       }
                     : {
-                        schemaVersion: 1,
                         type: 'resend_api_key',
                         apiKey: 're_12345678',
                         fromEmail: 'sender@example.test',
@@ -452,7 +445,6 @@ describe('provider failure notification delivery', () => {
           Promise.resolve(
             new TextEncoder().encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'resend_api_key',
                 apiKey: 're_12345678',
                 fromEmail: 'sender@example.test',
@@ -510,7 +502,6 @@ describe('provider failure notification delivery', () => {
             Promise.resolve(
               new TextEncoder().encode(
                 JSON.stringify({
-                  schemaVersion: 1,
                   type: 'resend_api_key',
                   apiKey: 're_12345678',
                   fromEmail: overrides.fromEmail ?? 'sender@example.test',
@@ -587,7 +578,6 @@ describe('provider failure notification delivery', () => {
           open: vi.fn(() => {
             const bytes = new TextEncoder().encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'resend_api_key',
                 apiKey: 're_12345678',
                 fromEmail: 'sender@example.test',
@@ -632,7 +622,6 @@ describe('provider failure notification delivery', () => {
           Promise.resolve(
             new TextEncoder().encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'resend_api_key',
                 apiKey: 're_12345678',
                 fromEmail: 'sender@example.test',
@@ -697,7 +686,6 @@ describe('provider failure notification delivery', () => {
           open: vi.fn().mockResolvedValue(
             new TextEncoder().encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'slack_bot_token',
                 botToken: 'xoxb-1234567890',
               }),
@@ -734,12 +722,10 @@ describe('provider failure notification delivery', () => {
                 JSON.stringify(
                   kind === 'slack'
                     ? {
-                        schemaVersion: 1,
                         type: 'slack_bot_token',
                         botToken: 'xoxb-1234567890',
                       }
                     : {
-                        schemaVersion: 1,
                         type: 'resend_api_key',
                         apiKey: 're_12345678',
                         fromEmail: 'sender@example.test',
@@ -797,7 +783,6 @@ describe('provider failure notification delivery', () => {
           Promise.resolve(
             new TextEncoder().encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'resend_api_key',
                 apiKey: 're_12345678',
                 fromEmail: 'sender@example.test',
@@ -865,7 +850,6 @@ describe('provider failure notification delivery', () => {
           open: vi.fn().mockResolvedValue(
             new TextEncoder().encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'slack_bot_token',
                 botToken: 'xoxb-1234567890',
               }),
@@ -904,7 +888,6 @@ describe('provider failure notification delivery', () => {
           open: vi.fn().mockResolvedValue(
             new TextEncoder().encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'resend_api_key',
                 apiKey: 're_12345678',
                 fromEmail: 'sender@example.test',
@@ -942,7 +925,6 @@ describe('provider failure notification delivery', () => {
           open: vi.fn().mockResolvedValue(
             new TextEncoder().encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'slack_bot_token',
                 botToken: 'xoxb-1234567890',
               }),

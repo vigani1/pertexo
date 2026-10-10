@@ -158,8 +158,6 @@ function checkpoint(input: {
   admittedInvocationKeys?: readonly string[];
 }) {
   return {
-    schemaVersion: 2,
-    engineVersion: 'engine-v1',
     workflowVersionId: input.workflowVersionId ?? versionA,
     revision: input.revision ?? 0,
     runStatus: input.runStatus ?? 'queued',
@@ -307,14 +305,14 @@ function testDelivery(
   if (existing !== undefined) return existing;
   const created = (async (): Promise<CommitInput['delivery']> => {
     const outboxEventId = randomUUID();
-    const payload = { schemaVersion: 1, workspaceId, outboxEventId, runId };
+    const payload = { workspaceId, outboxEventId, runId };
     const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
     await asRuntime(workerBaseUrl, workspaceId, (client) =>
       client.query(
         `insert into app.outbox_events (
-           id,workspace_id,job_name,schema_version,aggregate_type,
+           id,workspace_id,job_name,aggregate_type,
            aggregate_id,payload,payload_checksum
-         ) values ($1,$2,'advance-workflow-run',1,'workflow-run',$3,$4::jsonb,$5)`,
+         ) values ($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5)`,
         [
           outboxEventId,
           workspaceId,
@@ -414,16 +412,15 @@ async function seedIdentityAndExecutables(): Promise<void> {
       );
       await client.query(
         `insert into app.workflow_versions (
-           id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+           id,workspace_id,workflow_id,version_number,graph_json,
            checksum,executable_json,published_by
-         ) values ($1,$2,$3,1,1,'{}'::jsonb,$4,$5::jsonb,$6)`,
+         ) values ($1,$2,$3,1,'{}'::jsonb,$4,$5::jsonb,$6)`,
         [
           versionId,
           workspaceId,
           workflowId,
           `wf:sha256:${suffix.repeat(64)}`,
           JSON.stringify({
-            schemaVersion: 2,
             graph: {
               nodes: [
                 {
@@ -464,9 +461,9 @@ async function seedIdentityAndExecutables(): Promise<void> {
     );
     await client.query(
       `insert into app.connection_secret_versions (
-         id,workspace_id,connection_id,schema_version,kms_key_reference,
+         id,workspace_id,connection_id,kms_key_reference,
          encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-       ) values ($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+       ) values ($1,$2,$3,'kms','key','cipher','AAAAAAAAAAAAAAAA',
          'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
       [
         notificationSecretVersionId,
@@ -548,14 +545,12 @@ async function insertRun(input: {
       `insert into app.workflow_runs (
          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
            deadline_at,input_ref,input_ref_expires_at,
-           failure_notification_policy_version,
           failure_notification_destination_id,
            failure_notification_destination_config_version,
            failure_notification_side_effect_class,
            failure_notification_connection_secret_version_id
-          ) values ($1,$2,$3,$4,$13,$5,$6,$7::jsonb,
-            case when $7::jsonb is null then null else now()+interval '30 days' end,
-            $8,$9,$10,$11,$12)`,
+          ) values ($1,$2,$3,$4,$12,$5,$6,$7::jsonb,
+            case when $7::jsonb is null then null else now()+interval '30 days' end,$8,$9,$10,$11)`,
       [
         runId,
         workspaceId,
@@ -564,7 +559,6 @@ async function insertRun(input: {
         input.status ?? 'queued',
         input.deadlineAt ?? null,
         input.inputRef === undefined ? null : JSON.stringify(input.inputRef),
-        input.failureNotificationPolicy === undefined ? null : 1,
         input.failureNotificationPolicy?.destinationId ?? null,
         input.failureNotificationPolicy?.destinationConfigVersion ?? null,
         input.failureNotificationPolicy?.sideEffectClass ?? null,
@@ -575,7 +569,7 @@ async function insertRun(input: {
     await client.query(
       `insert into app.run_events
          (workspace_id,workflow_run_id,sequence,type,payload)
-       values ($1,$2,1,'run.queued','{"schemaVersion":1}'::jsonb)`,
+       values ($1,$2,1,'run.queued','{}'::jsonb)`,
       [workspaceId, runId],
     );
     const state = input.schedulerState ?? checkpoint({ workflowVersionId });
@@ -588,9 +582,8 @@ async function insertRun(input: {
         : 0;
     await client.query(
       `insert into app.run_checkpoints (
-         workflow_run_id,workspace_id,workflow_version_id,revision,
-         engine_version,scheduler_state
-       ) values ($1,$2,$3,$4,'engine-v1',$5::jsonb)`,
+         workflow_run_id,workspace_id,workflow_version_id,revision,scheduler_state
+       ) values ($1,$2,$3,$4,$5::jsonb)`,
       [
         runId,
         workspaceId,
@@ -636,11 +629,7 @@ async function seedSucceededFact(
       `insert into app.run_events
          (workspace_id,workflow_run_id,sequence,type,payload)
        values ($1,$2,2,'node.succeeded',$3::jsonb)`,
-      [
-        workspaceA,
-        runId,
-        JSON.stringify({ schemaVersion: 1, nodeRunId, attemptId }),
-      ],
+      [workspaceA, runId, JSON.stringify({ nodeRunId, attemptId })],
     );
   });
   return { nodeRunId, attemptId };

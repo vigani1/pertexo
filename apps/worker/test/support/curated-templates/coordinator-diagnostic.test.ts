@@ -56,7 +56,6 @@ it('records at most 32 failures and preserves the actual rejected error', async 
         {
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             outboxEventId: '00000000-0000-4000-8000-000000000001',
             workspaceId: '00000000-0000-4000-8000-000000000002',
             runId: '00000000-0000-4000-8000-000000000003',

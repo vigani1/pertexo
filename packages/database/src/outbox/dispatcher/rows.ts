@@ -16,7 +16,6 @@ const claimedRowSchema = z
     payload: z.unknown(),
     payload_checksum: sha256HexSchema,
     publish_attempts: z.number().int().positive(),
-    schema_version: z.number().int().positive(),
     workspace_id: z.uuid(),
   })
   .strict();
@@ -44,7 +43,6 @@ export function toLeasedEvent(
     payload: row.payload,
     payloadChecksum: row.payload_checksum,
     publishAttempts: row.publish_attempts,
-    schemaVersion: row.schema_version,
     workspaceId: row.workspace_id,
   });
 }

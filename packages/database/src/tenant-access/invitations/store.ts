@@ -250,15 +250,14 @@ async function insertDelivery(
     deliveryAttemptId: input.deliveryAttemptId,
     invitationId: input.invitationId,
     outboxEventId,
-    schemaVersion: 1,
     workspaceId: input.workspaceId,
   };
   const payloadJson = canonicalJson(payload);
   await client.query(
     `insert into app.outbox_events
-       (id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+       (id,workspace_id,job_name,aggregate_type,aggregate_id,
         payload,payload_checksum)
-     values($1,$2,'deliver-workspace-invitation',1,'workspace-invitation',$3,$4::jsonb,$5)`,
+     values($1,$2,'deliver-workspace-invitation','workspace-invitation',$3,$4::jsonb,$5)`,
     [
       outboxEventId,
       input.workspaceId,

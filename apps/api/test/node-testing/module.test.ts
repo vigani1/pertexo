@@ -126,7 +126,6 @@ describe('node testing Nest module', () => {
                   kind: 'expression',
                   language: 'jsonata',
                   expression: 'runInput.body',
-                  policyVersion: 1,
                 },
               },
             },

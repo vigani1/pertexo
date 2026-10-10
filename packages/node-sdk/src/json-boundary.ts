@@ -2,7 +2,7 @@ import type { JsonValue } from './executor-contracts.js';
 import { InvalidBoundedJsonError } from './executor-errors.js';
 import {
   inspectBoundedJson,
-  NODE_JSON_LIMITS_V1,
+  NODE_JSON_LIMITS,
   type BoundedJsonLimits,
 } from './bounded-json.js';
 
@@ -11,7 +11,7 @@ interface JsonObject {
   readonly [key: string]: JsonValue;
 }
 
-export const NODE_EXECUTION_LIMITS_V1 = NODE_JSON_LIMITS_V1;
+export const NODE_EXECUTION_LIMITS = NODE_JSON_LIMITS;
 
 export function isJsonObject(value: JsonValue): value is JsonObject {
   return value !== null && !Array.isArray(value) && typeof value === 'object';
@@ -19,7 +19,7 @@ export function isJsonObject(value: JsonValue): value is JsonObject {
 
 export function canonicalizeBoundedJson(
   value: unknown,
-  limits: BoundedJsonLimits = NODE_EXECUTION_LIMITS_V1,
+  limits: BoundedJsonLimits = NODE_EXECUTION_LIMITS,
 ): JsonValue {
   if (
     !Number.isSafeInteger(limits.bytes) ||

@@ -108,7 +108,6 @@ export let otherVersionId = '';
 export const emptyGraph = {
   edges: [],
   nodes: [],
-  schemaVersion: 1,
   settings: {},
 };
 export const draftNode = (
@@ -124,13 +123,11 @@ export const draftNode = (
   connectionRefs: {},
 });
 export const testDefinitionCatalog = Object.freeze({
-  schemaVersion: 1 as const,
   definitions: Object.freeze([
     Object.freeze({ key: 'test.placeholder', version: 1 }),
   ]),
 });
 export const baselineEmptyDefinitionCatalog = Object.freeze({
-  schemaVersion: 1 as const,
   definitions: Object.freeze([]),
 });
 export let authoring: WorkflowAuthoringDatabase;

@@ -18,8 +18,7 @@ import {
   WorkflowGraphContractError,
 } from '../../src/graph/validation/contract.js';
 
-const TEST_DEFINITION_CATALOG_V1 = {
-  schemaVersion: 1 as const,
+const TEST_DEFINITION_CATALOG = {
   definitions: [
     { key: 'core.other', version: 1 },
     { key: 'core.set', version: 1 },
@@ -42,7 +41,6 @@ const node = (id: string) => ({
 
 describe('workflow integration usage projection', () => {
   const catalog = {
-    schemaVersion: 1 as const,
     definitions: [
       {
         key: 'core.set',
@@ -66,7 +64,6 @@ describe('workflow integration usage projection', () => {
         maxIterations: 2,
         maxConcurrency: 1,
         body: {
-          schemaVersion: 1,
           nodes: [nested],
           edges: [],
           settings: {},
@@ -109,7 +106,6 @@ describe('workflow integration usage projection', () => {
 
   it('does not let projection metadata change compatibility identity', () => {
     const withoutMetadata = {
-      schemaVersion: 1 as const,
       definitions: [{ key: 'core.set', version: 1 }],
     };
     const graph = { ...EMPTY_WORKFLOW_GRAPH, nodes: [node('usage')] };
@@ -120,7 +116,6 @@ describe('workflow integration usage projection', () => {
 });
 
 const fixture = (): WorkflowGraph => ({
-  schemaVersion: 1,
   nodes: [node('a'), node('b')],
   edges: [
     {
@@ -184,30 +179,29 @@ function contractError(input: unknown): WorkflowGraphContractError {
   throw new Error('expected workflow graph contract rejection');
 }
 
-describe('workflow graph V1 public contract', () => {
-  it('parses the V1 empty graph and reports deterministic empty-catalog compatibility', () => {
+describe('workflow graph public contract', () => {
+  it('parses the empty graph and reports deterministic empty-catalog compatibility', () => {
     expect(parseWorkflowGraphDraft(EMPTY_WORKFLOW_GRAPH)).toEqual(
       EMPTY_WORKFLOW_GRAPH,
     );
     expect(workflowCompatibilityReport(EMPTY_WORKFLOW_GRAPH)).toEqual({
       compatible: true,
       fingerprint:
-        'wf-compat:sha256:1b272141677a1d308d454d2f22a9d00cfe040d48b54ef926e9c02132b206239e',
+        'wf-compat:sha256:16d5657818e64f80125a016b47a7bf2797b35d723d2259a216ffc7c167b58e74',
       issues: [],
     });
     expect(workflowCompatibilityReport(fixture())).toEqual({
       compatible: false,
       fingerprint:
-        'wf-compat:sha256:1b272141677a1d308d454d2f22a9d00cfe040d48b54ef926e9c02132b206239e',
+        'wf-compat:sha256:16d5657818e64f80125a016b47a7bf2797b35d723d2259a216ffc7c167b58e74',
       issues: [
         { code: 'unknown_definition', definitionKey: 'core.set', version: 1 },
       ],
     });
   });
 
-  it('strictly rejects unknown schema versions, graph fields, settings, and nested fields', () => {
+  it('strictly rejects unknown graph fields, settings, and nested fields', () => {
     for (const input of [
-      { ...EMPTY_WORKFLOW_GRAPH, schemaVersion: 2 },
       { ...EMPTY_WORKFLOW_GRAPH, unknown: true },
       { ...EMPTY_WORKFLOW_GRAPH, settings: { unknown: true } },
       {
@@ -219,6 +213,21 @@ describe('workflow graph V1 public contract', () => {
     }
   });
 
+  it('preserves format-like field names inside literal user input', () => {
+    const value = {
+      schemaVersion: 17,
+      engineVersion: 'customer-engine',
+      policyVersion: 42,
+      formatVersion: 3,
+    };
+    const graph = {
+      ...EMPTY_WORKFLOW_GRAPH,
+      nodes: [
+        { ...node('a'), inputMappings: { value: { kind: 'literal', value } } },
+      ],
+    };
+    expect(parseWorkflowGraphDraft(graph)).toEqual(graph);
+  });
   it('accepts exact node, edge, duration, and byte limits and rejects one unit over', () => {
     const exactNodes = Array.from(
       { length: WORKFLOW_GRAPH_LIMITS.nodes },
@@ -367,10 +376,9 @@ describe('workflow graph V1 public contract', () => {
       const operationMs = performance.now() - started;
       const processHeapDeltaBytes = process.memoryUsage().heapUsed - heapBefore;
       console.info(
-        `Q9_BOUNDED_WORK_V1=${JSON.stringify({
-          schemaVersion: 1,
+        `Q9_BOUNDED_WORK=${JSON.stringify({
           family: 'workflow-model-structured-graph-validation',
-          contractVersion: 'workflow-graph-v1',
+
           population,
           upperSupportedPopulation: WORKFLOW_GRAPH_LIMITS.structuredDepth,
           completedOperations: population,
@@ -481,13 +489,13 @@ describe('workflow graph V1 public contract', () => {
       issues: [{ code: 'unknown_definition' }],
     });
     expect(() =>
-      parseWorkflowGraphForPublish(intermediate, TEST_DEFINITION_CATALOG_V1),
+      parseWorkflowGraphForPublish(intermediate, TEST_DEFINITION_CATALOG),
     ).toThrow(InvalidWorkflowGraphError);
     expect(() => parseWorkflowGraphForPublish(fixture())).toThrow(
       InvalidWorkflowGraphError,
     );
     expect(
-      parseWorkflowGraphForPublish(fixture(), TEST_DEFINITION_CATALOG_V1),
+      parseWorkflowGraphForPublish(fixture(), TEST_DEFINITION_CATALOG),
     ).toEqual(fixture());
   });
 });
@@ -497,7 +505,7 @@ describe('workflow draft representation tag', () => {
     const graph = fixture();
     const fingerprint = workflowCompatibilityReport(
       graph,
-      TEST_DEFINITION_CATALOG_V1,
+      TEST_DEFINITION_CATALOG,
     ).fingerprint;
     const input = {
       workflowId: '11111111-1111-4111-8111-111111111111',
@@ -506,7 +514,7 @@ describe('workflow draft representation tag', () => {
       compatibilityFingerprint: fingerprint,
     } as const;
     expect(workflowDraftRepresentationTag(input)).toBe(
-      '"draft.QqrJbZejFAbUNwXK_kmy-dfSWGsZmWGq7hl1KEvtzDU"',
+      '"draft.kXWuFnYb2U3wZ8REJuajiu5znEpT229xvo1daf6a7Nc"',
     );
     expect(
       workflowDraftRepresentationTag({

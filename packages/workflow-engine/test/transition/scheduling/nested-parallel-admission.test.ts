@@ -240,7 +240,6 @@ async function createDriver(maxConcurrency: number, branchCount = 2) {
     signal: new AbortController().signal,
   };
   let checkpoint: WorkflowCheckpoint = createCheckpoint({
-    engineVersion: 'engine-v2',
     workflowVersionId: base.workflowVersionId,
     iterationBudget: 2,
   });
@@ -374,7 +373,6 @@ describe('nested Parallel admission through the public engine', () => {
         signal: new AbortController().signal,
       } as const;
       let checkpoint: WorkflowCheckpoint = createCheckpoint({
-        engineVersion: 'engine-v2',
         workflowVersionId: base.workflowVersionId,
         iterationBudget: 2,
       });
@@ -504,7 +502,6 @@ describe('nested Parallel admission through the public engine', () => {
       signal: new AbortController().signal,
     } as const;
     let checkpoint: WorkflowCheckpoint = createCheckpoint({
-      engineVersion: 'engine-v2',
       workflowVersionId: base.workflowVersionId,
       iterationBudget: 6,
     });

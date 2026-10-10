@@ -133,7 +133,6 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
           },
           {
             checkpointFactory: () => ({
-              engineVersion: 'test',
               checkpoint: {},
             }),
             reconciliation,
@@ -145,7 +144,6 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
         const publication = await producer.publish({
           name: JOB_NAME.reconcileWorkflowTriggers,
           data: {
-            schemaVersion: 1,
             workspaceId,
             workflowId,
             publishedVersionId,

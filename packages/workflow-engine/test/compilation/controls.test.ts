@@ -27,7 +27,6 @@ describe('wait and control production operations', () => {
     const started = await advanceWorkflow({
       ...input,
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: input.workflowVersionId,
         iterationBudget: 0,
       }),
@@ -92,7 +91,6 @@ describe('wait and control production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -275,7 +273,6 @@ describe('wait and control production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -327,7 +324,6 @@ describe('wait and control production operations', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const initial = createCheckpoint({
-      engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 0,
     });
@@ -392,7 +388,6 @@ describe('wait and control production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -460,7 +455,6 @@ describe('wait and control production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -628,7 +622,6 @@ describe('wait and control production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),

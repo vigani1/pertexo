@@ -305,13 +305,6 @@ export function validateGraphStructure(
   context: ValidationContext,
   structuredInputPorts?: ReadonlySet<string>,
 ): Totals {
-  if (graph.schemaVersion !== 1) {
-    context.issue(
-      'invalid_graph',
-      `${path}.schemaVersion`,
-      'schemaVersion must be exactly 1',
-    );
-  }
   context.aggregate.nodes += graph.nodes.length;
   context.aggregate.edges += graph.edges.length;
   if (

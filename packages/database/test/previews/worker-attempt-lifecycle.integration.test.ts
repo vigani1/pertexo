@@ -76,7 +76,6 @@ describe('preview worker attempt lifecycle', () => {
       lease: claimed.lease,
       outcome: {
         output: {
-          schemaVersion: 1,
           kind: 'inline',
           value: { done: true },
         },
@@ -108,13 +107,11 @@ describe('preview worker attempt lifecycle', () => {
     );
     expect(runState.rows[0]).toMatchObject({
       attempt_output_ref: {
-        schemaVersion: 1,
         kind: 'inline',
         value: { done: true },
       },
       attempt_output_type: 'object',
       output_ref: {
-        schemaVersion: 1,
         kind: 'inline',
         value: { done: true },
       },
@@ -136,7 +133,6 @@ describe('preview worker attempt lifecycle', () => {
         actor_user_id: actorUserId,
         id: auditId,
         metadata: {
-          schemaVersion: 1,
           status: PREVIEW_STATUS.succeeded,
           workflowId,
           nodeId: 'node-1',
@@ -160,7 +156,6 @@ describe('preview worker attempt lifecycle', () => {
         id: usageId,
         idempotency_key: `preview-terminal:${claimed.fixture.previewRunId}`,
         metadata: {
-          schemaVersion: 1,
           status: PREVIEW_STATUS.succeeded,
           definitionKey: 'http.request',
           executorKey: 'http.request',
@@ -236,7 +231,6 @@ describe('preview worker attempt lifecycle', () => {
       'worker-preview-exact-success',
     );
     const originalOutput = {
-      schemaVersion: 1,
       kind: 'inline',
       value: { quoted: 'a "quote" and a \\ slash' },
     } as const;
@@ -260,7 +254,6 @@ describe('preview worker attempt lifecycle', () => {
         lease: success.lease,
         outcome: {
           output: {
-            schemaVersion: 1,
             kind: 'inline',
             value: { quoted: 'changed' },
           },
@@ -421,7 +414,7 @@ describe('preview worker attempt lifecycle', () => {
         delivery: first.fixture.delivery,
         lease: first.lease,
         outcome: {
-          output: { schemaVersion: 1, kind: 'inline', value: 'stale' },
+          output: { kind: 'inline', value: 'stale' },
           status: PREVIEW_STATUS.succeeded,
         },
         workerId: first.workerId,
@@ -457,9 +450,9 @@ describe('preview worker attempt lifecycle', () => {
       );
       await client.query(
         `insert into app.connection_secret_versions (
-           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           id,workspace_id,connection_id,kms_key_reference,
            encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-         ) values ($1,$2,$3,1,'kms','a','a',$4,$5,$6)`,
+         ) values ($1,$2,$3,'kms','a','a',$4,$5,$6)`,
         [
           secretVersionId,
           workspaceId,
@@ -539,9 +532,9 @@ describe('preview worker attempt lifecycle', () => {
       ]);
       await client.query(
         `insert into app.connection_secret_versions (
-           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           id,workspace_id,connection_id,kms_key_reference,
            encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-         ) values ($1,$2,$3,1,'kms','b','b',$4,$5,$6)`,
+         ) values ($1,$2,$3,'kms','b','b',$4,$5,$6)`,
         [
           nextSecretVersionId,
           workspaceId,
@@ -596,7 +589,7 @@ describe('preview worker attempt lifecycle', () => {
         delivery: claimed.fixture.delivery,
         lease: claimed.lease,
         outcome: {
-          output: { schemaVersion: 1, kind: 'inline', value: 'confirmed' },
+          output: { kind: 'inline', value: 'confirmed' },
           status: PREVIEW_STATUS.succeeded,
         },
         workerId: claimed.workerId,

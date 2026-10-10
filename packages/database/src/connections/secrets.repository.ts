@@ -132,15 +132,14 @@ export function createConnectionSecretPersistence(
             );
           await client.query(
             `insert into app.connection_secret_versions
-               (id, workspace_id, connection_id, schema_version,
+               (id, workspace_id, connection_id,
                 kms_key_reference, encrypted_data_key, ciphertext, nonce,
                 auth_tag, created_by)
-             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+             values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
             [
               secretVersionId,
               workspaceId,
               connectionId,
-              sealed.schemaVersion,
               sealed.kmsKeyReference,
               sealed.encryptedDataKey,
               sealed.ciphertext,

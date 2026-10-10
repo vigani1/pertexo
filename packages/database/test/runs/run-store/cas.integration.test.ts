@@ -112,7 +112,6 @@ describe('Coordinator CAS and transition invariants', () => {
         }),
         events: [
           {
-            schemaVersion: 1 as const,
             sequence: 2,
             name: 'run.started' as const,
             occurredAt: '2026-09-13T00:00:00.000Z',
@@ -222,13 +221,11 @@ describe('Coordinator CAS and transition invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 2,
               name: 'run.started',
               occurredAt: '2026-08-21T00:00:00.000Z',
             },
             {
-              schemaVersion: 1,
               sequence: 3,
               name: 'node.ready',
               occurredAt: '2026-08-21T00:00:00.000Z',
@@ -237,7 +234,6 @@ describe('Coordinator CAS and transition invariants', () => {
               attemptNumber: 0,
             },
             {
-              schemaVersion: 1,
               sequence: 4,
               name: 'node.failed',
               occurredAt: '2026-08-21T00:00:00.000Z',
@@ -297,7 +293,6 @@ describe('Coordinator CAS and transition invariants', () => {
     const skippedKey = `${versionA}|skipped|b:condition%3Afalse|i:`;
     const initial = {
       ...checkpoint({}),
-      schemaVersion: 2,
       branchSelections: [],
     } as const;
     const runId = await insertRun({ schedulerState: initial });
@@ -337,13 +332,11 @@ describe('Coordinator CAS and transition invariants', () => {
           },
           events: [
             {
-              schemaVersion: 1,
               sequence: 2,
               name: 'run.started',
               occurredAt: '2026-08-24T00:00:00.000Z',
             },
             {
-              schemaVersion: 1,
               sequence: 3,
               name: 'node.ready',
               occurredAt: '2026-08-24T00:00:00.000Z',
@@ -352,7 +345,6 @@ describe('Coordinator CAS and transition invariants', () => {
               attemptNumber: 0,
             },
             {
-              schemaVersion: 1,
               sequence: 4,
               name: 'node.skipped',
               occurredAt: '2026-08-24T00:00:00.000Z',

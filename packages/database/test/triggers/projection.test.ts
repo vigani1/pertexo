@@ -20,7 +20,6 @@ const node = (
 describe('workflow trigger projection', () => {
   it('extracts and deterministically fingerprints supported trigger configs', () => {
     const graph = {
-      schemaVersion: 1,
       settings: {},
       nodes: [
         node('webhook', 'core.webhook', {}),
@@ -60,7 +59,6 @@ describe('workflow trigger projection', () => {
 
   it('projects strict Schedule definitions for reconciliation', () => {
     const projected = workflowTriggerProjection({
-      schemaVersion: 1,
       settings: {},
       nodes: [
         node('schedule', 'core.schedule', {
@@ -81,7 +79,6 @@ describe('workflow trigger projection', () => {
     ]);
     expect(() =>
       workflowTriggerProjection({
-        schemaVersion: 1,
         settings: {},
         nodes: [
           node('schedule', 'core.schedule', {
@@ -100,7 +97,6 @@ describe('workflow trigger projection', () => {
     const expression = `${Array(150).fill('0').join(',')} * * * *`;
     expect(() =>
       workflowTriggerProjection({
-        schemaVersion: 1,
         settings: {},
         nodes: [
           node('oversized', 'core.schedule', {
@@ -134,7 +130,6 @@ describe('workflow trigger projection', () => {
         const triggerNode = node(id, key, config, version);
         if (disabled !== undefined) triggerNode.disabled = disabled;
         return workflowTriggerProjection({
-          schemaVersion: 1,
           settings: {},
           nodes: [triggerNode],
           edges: [],
@@ -150,7 +145,6 @@ describe('workflow trigger projection', () => {
   it('rejects trigger config outside the published contracts', () => {
     expect(() =>
       workflowTriggerProjection({
-        schemaVersion: 1,
         settings: {},
         nodes: [node('webhook', 'core.webhook', { secret: 'not-graph-state' })],
         edges: [],
@@ -158,7 +152,6 @@ describe('workflow trigger projection', () => {
     ).toThrow();
     expect(() =>
       workflowTriggerProjection({
-        schemaVersion: 1,
         settings: {},
         nodes: [
           node('schedule', 'core.schedule', {

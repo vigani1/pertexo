@@ -108,7 +108,6 @@ describe('value sources', () => {
         kind: 'expression',
         language: 'jsonata',
         expression: '"ok"',
-        policyVersion: 1,
       },
       { runInput: null, nodeOutputs: {} },
       evaluator,

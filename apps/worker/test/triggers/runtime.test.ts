@@ -134,7 +134,6 @@ describe('trigger runtime', () => {
           options,
           {
             checkpointFactory: () => ({
-              engineVersion: 'test',
               checkpoint: {},
             }),
           },
@@ -171,7 +170,7 @@ describe('trigger runtime', () => {
       { ...options, pollIntervalMillis: 10 },
       {
         ...selected,
-        checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+        checkpointFactory: () => ({ checkpoint: {} }),
       },
     );
     let readinessSettled = false;
@@ -219,7 +218,7 @@ describe('trigger runtime', () => {
       { ...options, pollIntervalMillis: 10 },
       {
         ...selected,
-        checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+        checkpointFactory: () => ({ checkpoint: {} }),
       },
     );
 
@@ -249,7 +248,7 @@ describe('trigger runtime', () => {
       { ...options, backgroundTaskShutdownTimeoutMillis: 5 },
       {
         ...selected,
-        checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+        checkpointFactory: () => ({ checkpoint: {} }),
       },
     );
     await vi.waitFor(() => {
@@ -281,7 +280,7 @@ describe('trigger runtime', () => {
     const selected = dependencies();
     const runtime = await createTriggerRuntime(options, {
       ...selected,
-      checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+      checkpointFactory: () => ({ checkpoint: {} }),
     });
 
     expect(selected.consumerOptions()).toMatchObject({
@@ -329,7 +328,7 @@ describe('trigger runtime', () => {
       });
     const runtime = await createTriggerRuntime(options, {
       ...selected,
-      checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+      checkpointFactory: () => ({ checkpoint: {} }),
     });
 
     await vi.waitFor(() =>
@@ -367,7 +366,7 @@ describe('trigger runtime', () => {
     await expect(
       createTriggerRuntime(options, {
         ...selected,
-        checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+        checkpointFactory: () => ({ checkpoint: {} }),
         consumerFactory: () => {
           throw startupFailure;
         },
@@ -381,7 +380,7 @@ describe('trigger runtime', () => {
     const selected = dependencies();
     const runtime = await createTriggerRuntime(options, {
       ...selected,
-      checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+      checkpointFactory: () => ({ checkpoint: {} }),
     });
 
     await expect(
@@ -389,7 +388,6 @@ describe('trigger runtime', () => {
         {
           name: JOB_NAME.reconcileWorkflowTriggers,
           data: {
-            schemaVersion: 1,
             workspaceId: '11111111-1111-4111-8111-111111111111',
             workflowId: '22222222-2222-4222-8222-222222222222',
             publishedVersionId: '33333333-3333-4333-8333-333333333333',
@@ -413,7 +411,7 @@ describe('trigger runtime', () => {
     const selected = dependencies();
     const runtime = await createTriggerRuntime(options, {
       ...selected,
-      checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+      checkpointFactory: () => ({ checkpoint: {} }),
     });
 
     await expect(
@@ -421,7 +419,6 @@ describe('trigger runtime', () => {
         {
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId: '11111111-1111-4111-8111-111111111111',
             runId: '22222222-2222-4222-8222-222222222222',
             outboxEventId: '44444444-4444-4444-8444-444444444444',

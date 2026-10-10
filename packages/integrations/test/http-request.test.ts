@@ -54,7 +54,6 @@ function config(overrides: Record<string, unknown> = {}) {
 function credentialBytes(): Uint8Array {
   return encoder.encode(
     JSON.stringify({
-      schemaVersion: 1,
       type: 'http_headers',
       headers: { authorization: 'Bearer executor-secret' },
     }),
@@ -899,7 +898,6 @@ describe('http.request@1 server executor', () => {
                   secretVersionId,
                   secret: encoder.encode(
                     JSON.stringify({
-                      schemaVersion: 1,
                       type: 'http_headers',
                       headers: { 'x-tenant': 'credential' },
                     }),
@@ -951,7 +949,6 @@ describe('http.request@1 server executor', () => {
             secretVersionId,
             secret: encoder.encode(
               JSON.stringify({
-                schemaVersion: 1,
                 type: 'http_headers',
                 headers,
               }),

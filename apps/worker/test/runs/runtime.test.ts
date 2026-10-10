@@ -482,7 +482,6 @@ describe('coordinator runtime', () => {
         {
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId: WORKSPACE_ID,
             runId: RUN_ID,
             outboxEventId: OUTBOX_EVENT_ID,
@@ -500,7 +499,6 @@ describe('coordinator runtime', () => {
         {
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId: WORKSPACE_ID,
             runId: RUN_ID,
             outboxEventId: OUTBOX_EVENT_ID,

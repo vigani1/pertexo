@@ -56,7 +56,6 @@ export function emptyLoopStructure(): LoopStructure {
     kind: 'for_each',
     ...DEFAULT_LOOP_BOUNDS,
     body: {
-      schemaVersion: 1,
       nodes: [],
       edges: [],
       settings: {},

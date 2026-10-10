@@ -8,9 +8,7 @@ describe('workflow import command digest', () => {
     const body = {
       manifest: {
         format: 'pertexo.workflow' as const,
-        formatVersion: 1 as const,
         graph: {
-          schemaVersion: 1 as const,
           nodes: [],
           edges: [],
           settings: {},
@@ -34,7 +32,6 @@ describe('workflow import command digest', () => {
         .digest('hex'),
     );
     const origin = {
-      schemaVersion: 1 as const,
       templateId: 'example',
       templateVersion: 1,
       baseManifestDigest: 'c'.repeat(64),

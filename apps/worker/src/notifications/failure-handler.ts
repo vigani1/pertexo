@@ -136,7 +136,6 @@ export function createFailureNotificationHandler(
           result = settlement.value;
         } catch {
           result = {
-            schemaVersion: 1,
             kind: 'retry',
             safeErrorCode: deliveryFailureCode(controller.signal),
             possiblyDispatched: true,

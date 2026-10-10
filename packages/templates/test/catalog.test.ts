@@ -21,7 +21,6 @@ function required<T>(value: T | undefined): T {
 
 function origin(descriptor: CuratedWorkflowTemplate) {
   return {
-    schemaVersion: 1,
     templateId: descriptor.templateId,
     templateVersion: descriptor.templateVersion,
     baseManifestDigest: descriptor.baseManifestDigest,
@@ -103,7 +102,6 @@ describe('reviewed browser-safe curated templates', () => {
         .byteLength,
     ).toBeLessThanOrEqual(512);
     for (const patch of [
-      { schemaVersion: 2 },
       { templateId: '' },
       { templateId: 'A-b' },
       { templateId: 'a--b' },

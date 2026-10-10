@@ -165,9 +165,9 @@ describe('workflow run notification pinning', () => {
       ]);
       await rotating.query(
         `insert into app.connection_secret_versions (
-           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           id,workspace_id,connection_id,kms_key_reference,
            encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-         ) values ($1,$2,$3,1,'kms','new-key','new-cipher','BBBBBBBBBBBBBBBB',
+         ) values ($1,$2,$3,'kms','new-key','new-cipher','BBBBBBBBBBBBBBBB',
            'BBBBBBBBBBBBBBBBBBBBBB',$4)`,
         [
           nextSecretVersionId,
@@ -248,9 +248,9 @@ describe('workflow run notification pinning', () => {
       );
       await client.query(
         `insert into app.connection_secret_versions (
-           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           id,workspace_id,connection_id,kms_key_reference,
            encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-         ) values ($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+         ) values ($1,$2,$3,'kms','key','cipher','AAAAAAAAAAAAAAAA',
            'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
         [secretVersionId, workspaceA, connectionId, workspaceCreatorId],
       );
@@ -315,9 +315,9 @@ describe('workflow run notification pinning', () => {
       `);
       await db.execute(sql`
         insert into app.connection_secret_versions (
-          id,workspace_id,connection_id,schema_version,kms_key_reference,
+          id,workspace_id,connection_id,kms_key_reference,
           encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-        ) values (${nextSecretVersionId},${workspaceA},${connectionId},1,
+        ) values (${nextSecretVersionId},${workspaceA},${connectionId},
           'kms','key2','cipher2','BBBBBBBBBBBBBBBB',
           'BBBBBBBBBBBBBBBBBBBBBB',${workspaceCreatorId})
       `);

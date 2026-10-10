@@ -25,7 +25,6 @@ const actor = createActorContext({
   requestId: 'connection-test-regression',
 });
 const sealed = Object.freeze({
-  schemaVersion: 1 as const,
   kmsKeyReference: 'alias/pertexo-connections',
   encryptedDataKey: 'encrypted-key',
   ciphertext: 'ciphertext',
@@ -177,7 +176,6 @@ describe('connection testing security and cleanup regressions', () => {
       const cleanupFailure = new Error('abandon failed');
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
-          schemaVersion: 1,
           type: 'http_headers',
           headers: { authorization: 'Bearer secret' },
         }),
@@ -210,7 +208,6 @@ describe('connection testing security and cleanup regressions', () => {
     const markerFailure = new Error('dispatch marker failed');
     const plaintext = new TextEncoder().encode(
       JSON.stringify({
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { authorization: 'Bearer secret' },
       }),
@@ -266,7 +263,6 @@ describe('connection testing security and cleanup regressions', () => {
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'slack_bot_token',
             botToken: 'short',
           }),
@@ -282,7 +278,6 @@ describe('connection testing security and cleanup regressions', () => {
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'http_headers',
             headers: { authorization: 'Bearer secret' },
           }),
@@ -298,7 +293,6 @@ describe('connection testing security and cleanup regressions', () => {
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'resend_api_key',
             apiKey: 're_123456789_secret',
             fromEmail: 'sender@example.com',
@@ -312,7 +306,6 @@ describe('connection testing security and cleanup regressions', () => {
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'http_headers',
             headers: { authorization: 'Bearer secret' },
           }),
@@ -325,7 +318,6 @@ describe('connection testing security and cleanup regressions', () => {
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'slack_bot_token',
             botToken: 'xoxb-123456789-secret',
           }),
@@ -338,7 +330,6 @@ describe('connection testing security and cleanup regressions', () => {
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'slack_bot_token',
             botToken: 'xoxb-123456789-secret',
           }),
@@ -434,7 +425,6 @@ describe('connection provider outcome projection', () => {
       const store = persistence();
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
-          schemaVersion: 1,
           type: 'http_headers',
           headers: { authorization: 'Bearer secret' },
         }),
@@ -585,7 +575,6 @@ describe('connection provider outcome projection', () => {
       });
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
-          schemaVersion: 1,
           type: 'slack_bot_token',
           botToken: 'xoxb-123456789-secret',
         }),
@@ -681,7 +670,6 @@ describe('connection provider outcome projection', () => {
       });
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
-          schemaVersion: 1,
           type: 'resend_api_key',
           apiKey: 're_123456789_secret',
           fromEmail: 'sender@example.com',

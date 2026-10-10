@@ -47,7 +47,6 @@ export function destinationError(
 
 const replaySchema = z
   .object({
-    schemaVersion: z.literal(1),
     result: z.unknown(),
   })
   .strict();
@@ -100,7 +99,6 @@ export async function completeNotificationCommand(
   result: unknown,
 ): Promise<void> {
   await completeCommand(client, commandIdentity(input, operation, scope), {
-    schemaVersion: 1,
     result,
   });
 }

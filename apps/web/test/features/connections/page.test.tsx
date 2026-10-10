@@ -379,7 +379,6 @@ describe('connections page', () => {
           providerKey: 'slack',
           name: 'Operations Slack',
           credential: {
-            schemaVersion: 1,
             type: 'slack_bot_token',
             botToken: token,
           },
@@ -588,7 +587,6 @@ describe('connections page', () => {
         providerKey: 'http',
         name: 'Billing API',
         credential: {
-          schemaVersion: 1,
           type: 'http_headers',
           headers: { authorization: 'Bearer secret-value', 'x-team': 'x' },
         },
@@ -664,7 +662,6 @@ describe('connections page', () => {
       providerKey: 'email',
       name: 'Receipts',
       credential: {
-        schemaVersion: 1,
         type: 'resend_api_key',
         apiKey: 're_live_123456',
         fromEmail: 'billing@northwind.dev',
@@ -778,7 +775,6 @@ describe('connections page', () => {
     expect(bodies[0]).toEqual({
       expectedSecretVersionId: secretVersionId,
       credential: {
-        schemaVersion: 1,
         type: 'slack_bot_token',
         botToken: nextToken,
       },
@@ -872,7 +868,6 @@ describe('connections page', () => {
       expect(bodies[0]).toEqual({
         expectedSecretVersionId: secretVersionId,
         credential: {
-          schemaVersion: 1,
           type: 'slack_bot_token',
           botToken: nextToken,
         },

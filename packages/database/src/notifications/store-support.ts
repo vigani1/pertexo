@@ -25,16 +25,15 @@ export async function insertFailureNotificationDeliveryOutbox(
     input.intentId,
   );
   const payload = {
-    schemaVersion: 1,
     workspaceId: input.workspaceId,
     notificationIntentId: input.intentId,
     outboxEventId,
   } as const;
   await client.query(
     `insert into app.outbox_events (
-       id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+       id,workspace_id,job_name,aggregate_type,aggregate_id,
        payload,payload_checksum,available_at
-     ) values ($1,$2,'deliver-run-failure-notification',1,
+     ) values ($1,$2,'deliver-run-failure-notification',
        'run-failure-notification',$3,$4::jsonb,$5,$6)
      on conflict (id) do nothing`,
     [

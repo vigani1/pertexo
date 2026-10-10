@@ -59,7 +59,6 @@ function fixture(
       plaintext = new TextEncoder().encode(
         JSON.stringify(
           options.plaintext ?? {
-            schemaVersion: 1,
             type: 'slack_bot_token',
             botToken,
           },

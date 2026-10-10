@@ -30,10 +30,9 @@ export async function validateAuthoritativeAdvanceDelivery(
     job_name: string;
     payload: unknown;
     payload_checksum: string;
-    schema_version: number;
   }>(
     `select aggregate_id, aggregate_type, job_name, payload,
-            payload_checksum, schema_version
+            payload_checksum
      from app.outbox_events
      where workspace_id=$1 and id=$2`,
     [workspaceId, delivery.outboxEventId],
@@ -54,7 +53,6 @@ export async function validateAuthoritativeAdvanceDelivery(
     row?.aggregate_id !== runId ||
     row.aggregate_type !== 'workflow-run' ||
     row.job_name !== 'advance-workflow-run' ||
-    row.schema_version !== 1 ||
     row.payload_checksum !== delivery.payloadChecksum ||
     storedChecksum !== row.payload_checksum
   )
@@ -144,7 +142,6 @@ export async function deferCoordinatorForActiveCapacity(
 
   const outboxEventId = generatePersistedId();
   const payload = {
-    schemaVersion: 1,
     workspaceId: input.workspaceId,
     outboxEventId,
     runId: input.runId,
@@ -154,9 +151,9 @@ export async function deferCoordinatorForActiveCapacity(
   } as const;
   await client.query(
     `insert into app.outbox_events (
-       id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+       id,workspace_id,job_name,aggregate_type,aggregate_id,
        payload,payload_checksum,available_at
-     ) values ($1,$2,'advance-workflow-run',1,'workflow-run',$3,$4::jsonb,$5,
+     ) values ($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5,
        clock_timestamp() + interval '5 seconds')`,
     [
       outboxEventId,

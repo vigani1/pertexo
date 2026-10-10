@@ -203,8 +203,6 @@ export interface BranchSelection {
 }
 
 export interface WorkflowCheckpoint {
-  readonly schemaVersion: 2;
-  readonly engineVersion: string;
   readonly workflowVersionId: string;
   readonly revision: number;
   readonly runStatus: RunStatus;
@@ -241,7 +239,6 @@ export type EngineEventName =
   | 'node.outcome_unknown';
 
 export interface EngineEventPlan {
-  readonly schemaVersion: 1;
   readonly sequence: number;
   readonly name: EngineEventName;
   readonly occurredAt: string;

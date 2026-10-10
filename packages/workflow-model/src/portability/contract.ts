@@ -166,7 +166,6 @@ export const portableIssueSchema = z
 const manifestObject = z
   .object({
     format: z.literal('pertexo.workflow'),
-    formatVersion: z.literal(1),
     graph: workflowGraphSchema,
     requirements: z
       .object({

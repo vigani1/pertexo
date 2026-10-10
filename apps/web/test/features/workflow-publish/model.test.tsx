@@ -39,7 +39,7 @@ function graph(
   nodes: readonly WorkflowNode[],
   edges: WorkflowGraphContract['edges'] = [],
 ): WorkflowGraphContract {
-  return { schemaVersion: 1, nodes, edges, settings: {} };
+  return { nodes, edges, settings: {} };
 }
 
 const compatibility = {
@@ -139,7 +139,6 @@ describe('publish summary', () => {
       id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
       workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       versionNumber: 7,
-      schemaVersion: 1,
       graph: live,
       checksum: `wf:sha256:${'b'.repeat(64)}`,
       publishedAt: '2026-09-14T10:02:00.000Z',
@@ -314,7 +313,6 @@ describe('publication', () => {
             id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
             workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
             versionNumber: 3,
-            schemaVersion: 1,
             graph: graph([]),
             checksum: `wf:sha256:${'c'.repeat(64)}`,
             publishedAt: '2026-09-15T10:00:00.000Z',

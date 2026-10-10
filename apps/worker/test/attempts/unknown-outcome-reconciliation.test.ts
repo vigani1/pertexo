@@ -21,7 +21,6 @@ function delivery() {
     attemptId: randomUUID(),
     evidenceCommandId: randomUUID(),
     outboxEventId: randomUUID(),
-    schemaVersion: 1 as const,
     workspaceId: randomUUID(),
   };
   return {

@@ -16,7 +16,7 @@ import {
   workflowRuns,
 } from '../../../src/schema.js';
 import {
-  STORED_EXECUTION_VALUE_LIMITS_V1,
+  STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
 } from '../../../src/platform/stored-execution-value.js';
 import {
@@ -113,7 +113,6 @@ describe('workflow run acceptance persistence and idempotency', () => {
           payload: {
             outboxEventId: accepted.outboxEventId,
             runId: accepted.runId,
-            schemaVersion: 1,
             workspaceId: workspaceA,
           },
         },
@@ -178,9 +177,7 @@ describe('workflow run acceptance persistence and idempotency', () => {
   });
 
   it('atomically stores a tagged inline run input at the exact application byte limit', async () => {
-    const runInput = 'x'.repeat(
-      STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes - 2,
-    );
+    const runInput = 'x'.repeat(STORED_EXECUTION_VALUE_LIMITS.inlineBytes - 2);
     const accepted = await apiDatabase.withWorkspace(
       workspaceA,
       (transaction) =>
@@ -198,7 +195,7 @@ describe('workflow run acceptance persistence and idempotency', () => {
           .where(eq(workflowRuns.id, accepted.runId)),
       ).resolves.toEqual([
         {
-          inputRef: { schemaVersion: 1, kind: 'inline', value: runInput },
+          inputRef: { kind: 'inline', value: runInput },
           inputRefExpiresAt: new Date(
             accepted.acceptedAt.getTime() + 30 * 24 * 60 * 60 * 1_000,
           ),
@@ -225,7 +222,7 @@ describe('workflow run acceptance persistence and idempotency', () => {
             typeof this === 'object' &&
             this !== null &&
             Object.hasOwn(this, 'kind') &&
-            Object.hasOwn(this, 'schemaVersion')
+            Object.hasOwn(this, 'value')
           )
             inputHookCalls += 1;
           return this;
@@ -255,7 +252,6 @@ describe('workflow run acceptance persistence and idempotency', () => {
         ).resolves.toEqual([
           {
             inputRef: {
-              schemaVersion: 1,
               kind: 'inline',
               value: { nested: [1, 2, 3] },
             },
@@ -283,7 +279,7 @@ describe('workflow run acceptance persistence and idempotency', () => {
       },
     });
     for (const runInput of [
-      'x'.repeat(STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes - 1),
+      'x'.repeat(STORED_EXECUTION_VALUE_LIMITS.inlineBytes - 1),
       hostile,
     ]) {
       await expect(
@@ -323,7 +319,6 @@ describe('workflow run acceptance persistence and idempotency', () => {
       ).resolves.toEqual([
         {
           inputRef: {
-            schemaVersion: 1,
             kind: 'inline',
             value: { retained: true },
           },

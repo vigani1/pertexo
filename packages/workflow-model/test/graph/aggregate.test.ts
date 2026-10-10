@@ -29,7 +29,7 @@ const forEachNode = (id: string, bodyNodes = [node(`${id}-body`)]) => ({
 const graph = (
   nodes: WorkflowGraph['nodes'],
   edges: WorkflowGraph['edges'] = [],
-): WorkflowGraph => ({ schemaVersion: 1, nodes, edges, settings: {} });
+): WorkflowGraph => ({ nodes, edges, settings: {} });
 
 describe('workflow graph validation', () => {
   it('accepts a DAG and rejects duplicate IDs, dangling edges, and arbitrary cycles', () => {
@@ -331,18 +331,6 @@ describe('workflow graph validation', () => {
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: 'invalid_structured_body' }),
-      ]),
-    );
-  });
-  it('requires the exact published graph and structured schema versions', () => {
-    expect(
-      validateWorkflowGraph({ ...graph([]), schemaVersion: 2 }).issues,
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'invalid_graph',
-          path: '$.schemaVersion',
-        }),
       ]),
     );
   });

@@ -77,7 +77,6 @@ const responses = Object.freeze({
 });
 
 export const webhooksClientContract = Object.freeze({
-  schemaVersion: 1,
   routes: Object.freeze([
     {
       method: 'GET',

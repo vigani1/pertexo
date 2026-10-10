@@ -10,7 +10,7 @@ import {
 export {
   BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT,
   BOUNDED_NODE_JSON_SCHEMA_DOCUMENT,
-  NODE_JSON_LIMITS_V1,
+  NODE_JSON_LIMITS,
   boundedNodeJsonRecordSchema,
   boundedNodeJsonSchema,
   generateSchemaDocument,

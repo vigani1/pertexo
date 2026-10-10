@@ -8,7 +8,6 @@ import {
   jsonb,
   primaryKey,
   type PgTableExtraConfigValue,
-  smallint,
   timestamp,
   unique,
   uuid,
@@ -206,7 +205,6 @@ export const runFailureNotificationIntents = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowRunId: uuid('workflow_run_id').notNull(),
     terminalEventSequence: integer('terminal_event_sequence').notNull(),
-    policyVersion: smallint('policy_version').notNull(),
     destinationId: uuid('destination_id').notNull(),
     destinationConfigVersion: integer('destination_config_version').notNull(),
     sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
@@ -272,10 +270,6 @@ export const runFailureNotificationIntents = appSchema.table(
       sql`(((status)::text = 'pending'::text) AND (delivery_attempts = 0) AND (dispatch_marked_at IS NULL) AND (recovery_at IS NULL) AND (next_delivery_at IS NULL) AND (completed_at IS NULL)) OR (((status)::text = 'claimed'::text) AND (delivery_attempts > 0) AND (dispatch_marked_at IS NULL) AND (recovery_at IS NOT NULL) AND (next_delivery_at IS NULL) AND (completed_at IS NULL)) OR (((status)::text = 'dispatching'::text) AND (delivery_attempts > 0) AND (dispatch_marked_at IS NOT NULL) AND (recovery_at IS NOT NULL) AND (next_delivery_at IS NULL) AND (completed_at IS NULL)) OR (((status)::text = 'retry'::text) AND (delivery_attempts > 0) AND (dispatch_marked_at IS NULL) AND (recovery_at IS NULL) AND (next_delivery_at IS NOT NULL) AND (completed_at IS NULL)) OR (((status)::text = ANY (ARRAY[('delivered'::character varying)::text, ('dead_letter'::character varying)::text, ('outcome_unknown'::character varying)::text])) AND (dispatch_marked_at IS NULL) AND (recovery_at IS NULL) AND (next_delivery_at IS NULL) AND (completed_at IS NOT NULL))`,
     ),
     check(
-      'run_failure_notification_intents_policy_supported',
-      sql`policy_version = 1`,
-    ),
-    check(
       'run_failure_notification_intents_safe_error_code_format',
       sql`(safe_error_code IS NULL) OR ((safe_error_code)::text ~ '^[a-z][a-z0-9._:-]{0,127}$'::text)`,
     ),
@@ -294,7 +288,6 @@ export const runFailureNotificationIntents = appSchema.table(
     unique('run_failure_notification_intents_logical_unique').on(
       table.workflowRunId,
       table.terminalEventSequence,
-      table.policyVersion,
     ),
     unique('run_failure_notification_intents_workspace_identity_unique').on(
       table.workspaceId,
@@ -331,7 +324,6 @@ export const runFailureNotificationIntents = appSchema.table(
       columns: [
         table.workspaceId,
         table.workflowRunId,
-        table.policyVersion,
         table.destinationId,
         table.destinationConfigVersion,
         table.sideEffectClass,
@@ -340,7 +332,6 @@ export const runFailureNotificationIntents = appSchema.table(
       foreignColumns: [
         workflowRuns.workspaceId,
         workflowRuns.id,
-        workflowRuns.failureNotificationPolicyVersion,
         workflowRuns.failureNotificationDestinationId,
         workflowRuns.failureNotificationDestinationConfigVersion,
         workflowRuns.failureNotificationSideEffectClass,

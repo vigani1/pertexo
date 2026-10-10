@@ -34,7 +34,6 @@ describe('connection management use cases', () => {
           providerKey: 'http',
           name: 'Operations API',
           credential: {
-            schemaVersion: 1,
             type: 'http_headers',
             headers: { Host: 'metadata.internal' },
           },

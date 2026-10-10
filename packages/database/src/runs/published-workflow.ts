@@ -22,7 +22,6 @@ const publishedRowSchema = z
         value !== null && typeof value === 'object' && !Array.isArray(value),
     ),
     id: z.uuid(),
-    schema_version: z.number().int().positive(),
     version_number: z.number().int().positive(),
     workflow_id: z.uuid(),
     workspace_id: z.uuid(),
@@ -34,7 +33,6 @@ export type PublishedWorkflow = Readonly<{
   checksum: string;
   executableJson: unknown;
   id: string;
-  schemaVersion: number;
   versionNumber: number;
   workflowId: string;
   workspaceId: string;
@@ -73,7 +71,6 @@ export function parsePublishedWorkflowRow(
     checksum: parsed.data.checksum,
     executableJson: parsed.data.executable_json,
     id: parsed.data.id,
-    schemaVersion: parsed.data.schema_version,
     versionNumber: parsed.data.version_number,
     workflowId: parsed.data.workflow_id,
     workspaceId: parsed.data.workspace_id,
@@ -107,7 +104,6 @@ export function createPublishedWorkflowReader(
                 workspace_id,
                 workflow_id,
                 version_number,
-                schema_version,
                 checksum,
                 executable_json
               from app.workflow_versions

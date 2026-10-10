@@ -143,7 +143,7 @@ beforeAll(async () => {
   workflowId = (
     await authoring.createWorkflow({
       actorId,
-      emptyGraph: { edges: [], nodes: [], schemaVersion: 1, settings: {} },
+      emptyGraph: { edges: [], nodes: [], settings: {} },
       idempotencyKey: `published-reader-workflow-${actorId}`,
       name: 'Executable workflow',
       workspaceId,
@@ -153,16 +153,16 @@ beforeAll(async () => {
   versionId = randomUUID();
   await executeAsOwner(
     `insert into app.workflow_versions (
-       id, workspace_id, workflow_id, version_number, schema_version,
+       id, workspace_id, workflow_id, version_number,
        graph_json, checksum, executable_json, published_by
-     ) values ($1, $2, $3, 2, 1, $4::jsonb, $5, $6::jsonb, $7)`,
+     ) values ($1, $2, $3, 2, $4::jsonb, $5, $6::jsonb, $7)`,
     [
       versionId,
       workspaceId,
       workflowId,
-      JSON.stringify({ edges: [], nodes: [], schemaVersion: 1, settings: {} }),
+      JSON.stringify({ edges: [], nodes: [], settings: {} }),
       `wf:sha256:${'2'.repeat(64)}`,
-      JSON.stringify({ schemaVersion: 2, nodes: [], edges: [] }),
+      JSON.stringify({ nodes: [], edges: [] }),
       actorId,
     ],
   );
@@ -202,9 +202,8 @@ describe('PublishedWorkflowReader', () => {
       }),
     ).resolves.toEqual({
       checksum: `wf:sha256:${'2'.repeat(64)}`,
-      executableJson: { schemaVersion: 2, nodes: [], edges: [] },
+      executableJson: { nodes: [], edges: [] },
       id: versionId,
-      schemaVersion: 1,
       versionNumber: 2,
       workflowId,
       workspaceId,
@@ -220,8 +219,7 @@ describe('PublishedWorkflowReader', () => {
   it('enforces forced RLS and denies version updates and deletes', async () => {
     await expect(
       queryAsWorker(
-        `select id, workspace_id, workflow_id, version_number, schema_version,
-                checksum, executable_json
+        `select id, workspace_id, workflow_id, version_number, checksum, executable_json
          from app.workflow_versions where id = $1`,
         [versionId],
         workspaceId,
@@ -244,19 +242,18 @@ describe('PublishedWorkflowReader', () => {
 
   it('rejects missing, malformed and oversized executable rows and keeps versions append-only', async () => {
     const insertPrefix = `insert into app.workflow_versions
-      (id, workspace_id, workflow_id, version_number, schema_version,
-       graph_json, checksum, executable_json, published_by) values`;
+      (id, workspace_id, workflow_id, version_number, graph_json, checksum, executable_json, published_by) values`;
     await expect(
       executeAsOwner(
         `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 10,
-          1, '{}', 'wf:sha256:${'a'.repeat(64)}', null, '${actorId}')`,
+          '{}', 'wf:sha256:${'a'.repeat(64)}', null, '${actorId}')`,
       ),
     ).rejects.toSatisfy(expectPgCode('23502'));
     const cases = [
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 11,
-        1, '{}', 'wf:sha256:${'b'.repeat(64)}', '[]', '${actorId}')`,
+        '{}', 'wf:sha256:${'b'.repeat(64)}', '[]', '${actorId}')`,
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 12,
-        1, '{}', 'wf:sha256:${'C'.repeat(64)}', '{}', '${actorId}')`,
+        '{}', 'wf:sha256:${'C'.repeat(64)}', '{}', '${actorId}')`,
     ];
     for (const statement of cases) {
       await expect(executeAsOwner(statement)).rejects.toSatisfy(
@@ -265,7 +262,7 @@ describe('PublishedWorkflowReader', () => {
     }
     await expect(
       executeAsOwner(
-        `${insertPrefix} ($1, $2, $3, 13, 1, '{}', $4,
+        `${insertPrefix} ($1, $2, $3, 13, '{}', $4,
           jsonb_build_object('payload', $5::text), $6)`,
         [
           randomUUID(),

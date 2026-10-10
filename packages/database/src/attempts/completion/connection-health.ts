@@ -66,7 +66,6 @@ export async function persistConnectionHealthObservation(
   );
   if (recorded.rowCount !== 1) throw new NodeAttemptStateCorruptError();
   const payload = {
-    schemaVersion: 1,
     workspaceId: input.lease.workspaceId,
     outboxEventId,
     observationId,
@@ -75,8 +74,8 @@ export async function persistConnectionHealthObservation(
       : { traceparent: input.traceparent }),
   };
   await client.query(
-    `insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum)
-    values($1,$2,'apply-connection-health-observation',1,'connection-health-observation',$3,$4::jsonb,$5)`,
+    `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum)
+    values($1,$2,'apply-connection-health-observation','connection-health-observation',$3,$4::jsonb,$5)`,
     [
       outboxEventId,
       input.lease.workspaceId,

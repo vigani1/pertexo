@@ -35,7 +35,6 @@ function lease(overrides: Partial<NodeAttemptLease> = {}): NodeAttemptLease {
 function checkpoint(overrides: Record<string, unknown> = {}) {
   return {
     ...createCheckpoint({
-      engineVersion: 'phase3-engine-v1',
       workflowVersionId: VERSION_ID,
       iterationBudget: 10,
       nextEventSequence: 2,

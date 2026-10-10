@@ -27,7 +27,6 @@ async function startForEach() {
   const initial = await advanceWorkflow({
     ...base,
     checkpoint: createCheckpoint({
-      engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 2,
     }),

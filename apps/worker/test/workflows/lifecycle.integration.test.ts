@@ -236,7 +236,6 @@ async function latestEventForWorkflow(
   expect(row.payload).toEqual({
     outboxEventId: row.id,
     publishedVersionId: environment.ids.version,
-    schemaVersion: 1,
     workflowId: environment.ids.workflow,
     workspaceId: environment.workspaceId,
   });

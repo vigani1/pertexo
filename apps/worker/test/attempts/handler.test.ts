@@ -27,7 +27,6 @@ import {
 } from '../support/attempts/handler.js';
 
 const STORED_CHECKPOINT = createCheckpoint({
-  engineVersion: 'phase3-engine-v1',
   workflowVersionId: '33333333-3333-4333-8333-333333333333',
   iterationBudget: 0,
   nextEventSequence: 2,

@@ -83,7 +83,6 @@ export const workspaceInboxStreamEventNameSchema = z.enum([
 ]);
 export const workspaceInboxStreamEventSchema = z
   .object({
-    schemaVersion: z.literal(1),
     /** Newest known revision, or null when hints may have been missed. */
     revision: workspaceInboxRevisionSchema.nullable(),
   })

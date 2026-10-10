@@ -9,7 +9,6 @@ const MAX_ENCRYPTED_DATA_KEY_BYTES = 8_192;
 const MAX_KEY_REFERENCE_BYTES = 2_048;
 
 export const encodedEnvelopeSchemaFields = Object.freeze({
-  schemaVersion: z.literal(1),
   kmsKeyReference: z.string().min(1).max(MAX_KEY_REFERENCE_BYTES),
   encryptedDataKey: z.string().min(1),
   ciphertext: z.string().min(1),

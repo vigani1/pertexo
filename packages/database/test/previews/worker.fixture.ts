@@ -136,13 +136,13 @@ async function insertIdentity(): Promise<void> {
     );
     await client.query(
       `insert into app.workflow_drafts
-         (workflow_id, workspace_id, revision, schema_version, graph_json,
+         (workflow_id, workspace_id, revision, graph_json,
           updated_by)
-       values ($1, $2, 3, 1, $3::jsonb, $4)`,
+       values ($1, $2, 3, $3::jsonb, $4)`,
       [
         workflowId,
         workspaceId,
-        '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}',
+        '{"nodes":[],"edges":[],"settings":{}}',
         actorUserId,
       ],
     );
@@ -224,7 +224,6 @@ export async function acceptFixture(
   // The transport payload mirrors acceptance exactly, including optional
   // trace context; the checksum must cover those same bytes.
   const payload = {
-    schemaVersion: 1,
     workspaceId,
     outboxEventId: accepted.outboxEventId,
     previewRunId: accepted.previewRunId,

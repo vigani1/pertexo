@@ -42,7 +42,6 @@ describeIntegration('preview reconciliation transport', () => {
       }),
     );
     const executionPayload = {
-      schemaVersion: 1 as const,
       workspaceId,
       outboxEventId: accepted.outboxEventId,
       previewRunId: accepted.previewRunId,

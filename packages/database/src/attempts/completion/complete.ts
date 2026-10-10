@@ -20,7 +20,7 @@ import {
   type LockedAttemptRow,
 } from './outcomes.js';
 import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
-import { serializeStoredExecutionValueV1 } from '../../platform/stored-execution-value.js';
+import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 
 export async function completeNodeAttempt(
   pool: Pool,
@@ -39,8 +39,7 @@ export async function completeNodeAttempt(
     input.outcome.status === 'suspended'
   ) {
     try {
-      serializedOutput = serializeStoredExecutionValueV1({
-        schemaVersion: 1,
+      serializedOutput = serializeStoredExecutionValue({
         kind: 'inline',
         value: input.outcome.output,
       });

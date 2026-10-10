@@ -91,7 +91,7 @@ async function mockInbox(page: Page) {
   await page.route(`${base}/events`, (route) =>
     route.fulfill({
       headers: { 'content-type': 'text/event-stream' },
-      body: 'event: inbox.ready\ndata: {"schemaVersion":1,"revision":null}\n\n',
+      body: 'event: inbox.ready\ndata: {"revision":null}\n\n',
     }),
   );
   await page.route(`${base}/summary`, (route) =>

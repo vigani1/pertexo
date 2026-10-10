@@ -31,25 +31,15 @@ export function parseBoundary(input: {
     input.envelope,
   );
   const envelope = record(normalizedEnvelope, 'executable envelope');
-  exactKeys(envelope, [
-    'schemaVersion',
-    'sourceGraphSchemaVersion',
-    'graph',
-    'runtimePolicies',
-  ]);
-  if (envelope.schemaVersion !== 2 || envelope.sourceGraphSchemaVersion !== 1)
-    fail('unsupported executable schema version');
+  exactKeys(envelope, ['graph', 'runtimePolicies']);
   const catalog = parseNodeCatalog(input.catalog);
   const runtimePolicies = parseGlobals(envelope.runtimePolicies);
   validateGlobals(runtimePolicies, catalog);
   const rawGraph = readRawExecutableGraph(envelope.graph, false);
   const graph = parseWorkflowGraphForPublish(authoringGraph(rawGraph), {
-    schemaVersion: 1,
     definitions: catalog.definitions.map(({ definition }) => definition),
   });
   return {
-    schemaVersion: 2,
-    sourceGraphSchemaVersion: 1,
     graph: validateExecutableGraph(rawGraph, graph, catalog),
     runtimePolicies,
   };

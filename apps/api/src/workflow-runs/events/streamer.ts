@@ -25,7 +25,6 @@ const rawPersistedEventSchema = z
   })
   .strict();
 const PUBLIC_PAYLOAD_KEYS = Object.freeze([
-  'schemaVersion',
   'invocationKey',
   'nodeId',
   'nodeRunId',

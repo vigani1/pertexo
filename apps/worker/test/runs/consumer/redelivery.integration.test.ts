@@ -24,7 +24,7 @@ describeIntegration('Coordinator exact redelivery resilience', () => {
   beforeAll(setup, 60_000);
   afterAll(restoreServicesAndClose);
 
-  it('advances an accepted V2 run once across exact BullMQ redelivery', async () => {
+  it('advances an accepted run once across exact BullMQ redelivery', async () => {
     const accepted = await acceptRun();
     const recovery = await createCoordinatorRedeliveryHarness(accepted);
 
@@ -119,7 +119,6 @@ describeIntegration('Coordinator exact redelivery resilience', () => {
       ]);
       expect(lineage?.input_ref).toEqual({
         kind: 'inline',
-        schemaVersion: 1,
         value: { name: 'Replay' },
       });
       expect(lineage?.replay_command_id).toEqual(expect.any(String));
@@ -211,7 +210,6 @@ describeIntegration('Coordinator exact redelivery resilience', () => {
           attempt_count: 3,
           output_ref: {
             kind: 'inline',
-            schemaVersion: 1,
             value: { result: { literal: 1, fromRun: 'Replay' } },
           },
         },

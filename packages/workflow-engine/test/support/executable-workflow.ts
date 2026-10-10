@@ -481,7 +481,6 @@ export function graph(reverse = false) {
     },
   ] as const;
   return {
-    schemaVersion: 1,
     settings: { maxRunDurationMs: 60_000 },
     nodes: reverse ? [...nodes].reverse() : nodes,
     edges: reverse ? [...edges].reverse() : edges,
@@ -533,7 +532,6 @@ export function forEachGraph(reverse = false) {
       maxIterations: 2,
       maxConcurrency: 1,
       body: {
-        schemaVersion: 1 as const,
         settings: {},
         nodes: reverse ? [...bodyNodes].reverse() : bodyNodes,
         edges: reverse ? [...bodyEdges].reverse() : bodyEdges,
@@ -569,7 +567,6 @@ export function forEachGraph(reverse = false) {
     },
   ];
   return {
-    schemaVersion: 1 as const,
     settings: base.settings,
     nodes: reverse ? [...nodes].reverse() : nodes,
     edges: reverse ? [...edges].reverse() : edges,
@@ -595,7 +592,6 @@ export function nestedForEachGraph() {
       maxIterations: 2,
       maxConcurrency: 1,
       body: {
-        schemaVersion: 1,
         settings: {},
         nodes: [
           {

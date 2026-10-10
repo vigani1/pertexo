@@ -29,7 +29,6 @@ const {
   conditionWorkflowId,
   conditionWorkflowVersionId,
   databaseUrl,
-  engineVersion,
   forEachWorkflowId,
   forEachWorkflowVersionId,
   apiUrl,
@@ -104,7 +103,6 @@ export async function createCoordinatorRedeliveryHarness(
   const job = {
     name: JOB_NAME.advanceWorkflowRun,
     data: {
-      schemaVersion: 1 as const,
       workspaceId,
       runId: accepted.runId,
       outboxEventId: accepted.outboxEventId,
@@ -205,7 +203,6 @@ async function acceptFixtureRun(
   }>,
 ): Promise<AcceptedRun> {
   const checkpointInput = {
-    engineVersion,
     workflowVersionId: input.workflowVersionId,
     iterationBudget: input.iterationBudget,
     nextEventSequence: 2,
@@ -214,7 +211,6 @@ async function acceptFixtureRun(
     workspaceId,
     (transaction) =>
       acceptManualFixtureRun(transaction, actorId, {
-        engineVersion,
         initialCheckpoint: createCheckpoint(checkpointInput),
         keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
         operation: 'workflow.run.accept',
@@ -280,9 +276,7 @@ export async function acceptReplayRun(): Promise<AcceptedReplayRun> {
       scope: `workflow:${source.runId}:replay`,
       input: { name: 'Replay' },
       checkpointFactory: (projection) => ({
-        engineVersion,
         checkpoint: createCheckpoint({
-          engineVersion,
           workflowVersionId: projection.id,
           iterationBudget: 0,
           nextEventSequence: 2,
@@ -462,7 +456,6 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
   const attemptId = randomUUID();
   const running = {
     ...createCheckpoint({
-      engineVersion,
       workflowVersionId,
       iterationBudget: 0,
       nextEventSequence: 2,
@@ -526,7 +519,6 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
       consumedThroughEventSequence: 1,
       checkpoint: {
         ...createCheckpoint({
-          engineVersion,
           workflowVersionId,
           iterationBudget: 0,
           nextEventSequence: 4,
@@ -545,7 +537,6 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
       },
       events: [
         {
-          schemaVersion: 1,
           sequence: 2,
           name: 'node.failed',
           occurredAt: '2026-08-24T10:01:00.000Z',
@@ -555,7 +546,6 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
           reasonCode: 'provider.unavailable',
         },
         {
-          schemaVersion: 1,
           sequence: 3,
           name: 'run.failed',
           occurredAt: '2026-08-24T10:01:00.000Z',

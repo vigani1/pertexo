@@ -44,7 +44,6 @@ function linearGraph() {
     connectionRefs: {},
   });
   return {
-    schemaVersion: 1,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       node('manual', 'core.manual', 0),
@@ -132,7 +131,6 @@ function branchGraph(kind: 'condition' | 'switch') {
         };
   const controlId = control.id;
   return {
-    schemaVersion: 1 as const,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       manualNode,
@@ -168,7 +166,6 @@ function branchGraph(kind: 'condition' | 'switch') {
 
 function forEachGraph(maxConcurrency = 2) {
   return {
-    schemaVersion: 1 as const,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       manualNode,
@@ -194,7 +191,6 @@ function forEachGraph(maxConcurrency = 2) {
           maxIterations: 3,
           maxConcurrency,
           body: {
-            schemaVersion: 1 as const,
             settings: {},
             inputPorts: ['item', 'ordinal'],
             outputPorts: ['result'],
@@ -270,7 +266,6 @@ function forEachGraph(maxConcurrency = 2) {
 
 function nestedParallelGraph() {
   return {
-    schemaVersion: 1 as const,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       manualNode,
@@ -289,7 +284,6 @@ function nestedParallelGraph() {
           maxIterations: 2,
           maxConcurrency: 2,
           body: {
-            schemaVersion: 1 as const,
             settings: {},
             inputPorts: ['item', 'ordinal'],
             outputPorts: ['result'],
@@ -363,7 +357,6 @@ function nestedParallelGraph() {
 
 function parallelGraph() {
   return {
-    schemaVersion: 1 as const,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       manualNode,
@@ -416,7 +409,6 @@ function parallelGraph() {
 
 function waitGraph() {
   return {
-    schemaVersion: 1 as const,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       manualNode,
@@ -476,10 +468,10 @@ async function insertCompiledWorkflow(
   );
   await query(
     `insert into app.workflow_versions (
-       id, workspace_id, workflow_id, version_number, schema_version,
+       id, workspace_id, workflow_id, version_number,
        graph_json, checksum, executable_json,
        published_by
-     ) values ($1, $2, $3, 1, 1, $4::jsonb, $5, $6::jsonb, $7)`,
+     ) values ($1, $2, $3, 1, $4::jsonb, $5, $6::jsonb, $7)`,
     [
       input.identity.workflowVersionId,
       input.workspaceId,
@@ -535,7 +527,6 @@ export async function seedStructuredForEachWorkflow(
         maxIterations: 1,
         maxConcurrency: 1,
         body: {
-          schemaVersion: 1,
           settings: {},
           inputPorts: ['item', 'ordinal'],
           outputPorts: ['result'],

@@ -75,9 +75,8 @@ describe('schedule trigger PostgreSQL slice', () => {
       [dedupeWorkflowId, workspaceId, actorId],
     );
     await ownerQuery(
-      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-         schema_version,graph_json,checksum,executable_json,published_by)
-       values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+       values($1,$2,$3,1,'{"settings":{},"nodes":[],"edges":[]}'::jsonb,
          $4,'{}'::jsonb,$5)`,
       [
         dedupeVersionId,
@@ -266,9 +265,8 @@ describe('schedule trigger PostgreSQL slice', () => {
       [healthWorkflowId, workspaceId, actorId],
     );
     await ownerQuery(
-      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-         schema_version,graph_json,checksum,executable_json,published_by)
-       values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+       values($1,$2,$3,1,'{"settings":{},"nodes":[],"edges":[]}'::jsonb,
          $4,'{}'::jsonb,$5)`,
       [
         healthVersionId,
@@ -433,9 +431,9 @@ describe('schedule trigger PostgreSQL slice', () => {
     const outboxEventId = randomUUID();
     const fingerprint = `trigger:sha256:${createHash('sha256').update(nextTriggerId).digest('hex')}`;
     await ownerQuery(
-      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
          graph_json,checksum,executable_json,published_by)
-       values($1,$2,$3,2,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+       values($1,$2,$3,2,'{"settings":{},"nodes":[],"edges":[]}'::jsonb,
          $4,'{}'::jsonb,$5)`,
       [
         nextVersionId,
@@ -467,22 +465,20 @@ describe('schedule trigger PostgreSQL slice', () => {
       ],
     );
     await ownerQuery(
-      `insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,
+      `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,
          aggregate_id,payload,payload_checksum)
-       values($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,$4::jsonb,$5)`,
+       values($1,$2,'reconcile-workflow-triggers','workflow',$3,$4::jsonb,$5)`,
       [
         outboxEventId,
         workspaceId,
         workflowId,
         JSON.stringify({
-          schemaVersion: 1,
           workspaceId,
           outboxEventId,
           workflowId,
           publishedVersionId: nextVersionId,
         }),
         canonicalOutboxPayloadChecksum({
-          schemaVersion: 1,
           workspaceId,
           outboxEventId,
           workflowId,
@@ -596,7 +592,6 @@ describe('schedule trigger PostgreSQL slice', () => {
       throw new Error('Current publication missing');
     const outboxEventId = randomUUID();
     const payload = {
-      schemaVersion: 1,
       workspaceId,
       outboxEventId,
       workflowId,
@@ -605,9 +600,9 @@ describe('schedule trigger PostgreSQL slice', () => {
     const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
     await ownerQuery(
       `insert into app.outbox_events (
-         id,workspace_id,job_name,schema_version,aggregate_type,
+         id,workspace_id,job_name,aggregate_type,
          aggregate_id,payload,payload_checksum
-       ) values ($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,$4::jsonb,$5)`,
+       ) values ($1,$2,'reconcile-workflow-triggers','workflow',$3,$4::jsonb,$5)`,
       [
         outboxEventId,
         workspaceId,
@@ -647,9 +642,9 @@ describe('schedule trigger PostgreSQL slice', () => {
     const conflictingPayload = { ...payload, outboxEventId: conflictingId };
     await ownerQuery(
       `insert into app.outbox_events (
-         id,workspace_id,job_name,schema_version,aggregate_type,
+         id,workspace_id,job_name,aggregate_type,
          aggregate_id,payload,payload_checksum
-       ) values ($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,$4::jsonb,$5)`,
+       ) values ($1,$2,'reconcile-workflow-triggers','workflow',$3,$4::jsonb,$5)`,
       [
         conflictingId,
         workspaceId,

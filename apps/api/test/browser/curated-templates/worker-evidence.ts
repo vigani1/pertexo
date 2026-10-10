@@ -81,7 +81,6 @@ export const curatedWebhookInputCases = Object.freeze({
 // Synthetic manual input matching schedule@3's registered trigger envelope;
 // not evidence of a persisted trigger registration or automatic timer delivery.
 export const curatedScheduleInputCase = Object.freeze({
-  schemaVersion: 1,
   triggerId: '00000000-0000-4000-8000-000000000006',
   nodeId: 'schedule-start',
   scheduledAt: '2026-10-02T00:00:00.000Z',

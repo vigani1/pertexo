@@ -1,18 +1,11 @@
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
 
-const engineVersionPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
 const canonicalTimestampPattern =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 
 function invalid(message: string): never {
   throw new WorkflowEngineError('checkpoint_invalid', message);
-}
-
-export function assertPersistedEngineVersion(value: unknown): string {
-  if (typeof value !== 'string' || !engineVersionPattern.test(value))
-    invalid('engineVersion is invalid');
-  return value;
 }
 
 export function assertPersistedWorkflowVersionId(value: unknown): string {

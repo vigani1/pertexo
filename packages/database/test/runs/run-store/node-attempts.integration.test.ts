@@ -62,7 +62,6 @@ async function claimDispatchAttempt(
   const runId = await insertRun({
     workflowVersionId,
     inputRef: {
-      schemaVersion: 1,
       kind: 'inline',
       value: options.runInput ?? { nodeId },
     },
@@ -94,13 +93,11 @@ async function claimDispatchAttempt(
       }),
       events: [
         {
-          schemaVersion: 1,
           sequence: 2,
           name: 'run.started',
           occurredAt: '2026-08-21T00:00:00.000Z',
         },
         {
-          schemaVersion: 1,
           sequence: 3,
           name: 'node.ready',
           occurredAt: '2026-08-21T00:00:00.000Z',
@@ -191,9 +188,9 @@ async function seedDispatchConnection(input: {
     );
     await client.query(
       `insert into app.connection_secret_versions (
-           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           id,workspace_id,connection_id,kms_key_reference,
            encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-         ) values ($1,$2,$3,1,'kms','a','a',$4,$5,$6)`,
+         ) values ($1,$2,$3,'kms','a','a',$4,$5,$6)`,
       [
         input.secretVersionId,
         workspaceA,
@@ -220,17 +217,15 @@ async function seedSlackDispatchPublication(connectionId: string) {
   const versionId = randomUUID();
   await asOwner(workspaceA, (client) =>
     client.query(
-      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,
-      graph_json,checksum,executable_json,published_by)
-     select $1,$2,$3,coalesce(max(version_number),0)+1,1,'{}'::jsonb,$4,$5::jsonb,$6
-     from app.workflow_versions where workspace_id=$2 and workflow_id=$3`,
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+     select $1,$2,$3,coalesce(max(version_number),0)+1,'{}'::jsonb,$4,$5::jsonb,$6
+      from app.workflow_versions where workspace_id=$2 and workflow_id=$3`,
       [
         versionId,
         workspaceA,
         workflowA,
         `wf:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
         JSON.stringify({
-          schemaVersion: 2,
           graph: {
             nodes: [
               {
@@ -475,7 +470,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
       }),
     ).resolves.toEqual({ recorded: true });
     const recorded = {
-      schemaVersion: 1,
       kind: 'inline',
       value: { orderId: 'A-17' },
     };
@@ -912,7 +906,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 5,
               name: 'node.failed',
               occurredAt: '2026-09-27T12:00:00.000Z',
@@ -922,7 +915,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
               reasonCode: 'Provider.Failure',
             },
             {
-              schemaVersion: 1,
               sequence: 6,
               name: 'run.failed',
               occurredAt: '2026-09-27T12:00:00.000Z',
@@ -1029,9 +1021,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       );
       await client.query(
         `insert into app.connection_secret_versions (
-             id,workspace_id,connection_id,schema_version,kms_key_reference,
+             id,workspace_id,connection_id,kms_key_reference,
              encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-           ) values ($1,$2,$3,1,'kms','a','a',$4,$5,$6)`,
+           ) values ($1,$2,$3,'kms','a','a',$4,$5,$6)`,
         [
           secretVersionId,
           workspaceA,
@@ -1114,9 +1106,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
     await asOwner(workspaceA, async (client) => {
       await client.query(
         `insert into app.connection_secret_versions (
-             id,workspace_id,connection_id,schema_version,kms_key_reference,
+             id,workspace_id,connection_id,kms_key_reference,
              encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-           ) values ($1,$2,$3,1,'kms','b','b',$4,$5,$6)`,
+           ) values ($1,$2,$3,'kms','b','b',$4,$5,$6)`,
         [
           nextSecretVersionId,
           workspaceA,
@@ -1406,7 +1398,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
         }),
         events: [
           {
-            schemaVersion: 1,
             sequence: 6,
             name: 'node.ready',
             occurredAt: '2026-08-21T00:00:01.000Z',
@@ -1543,9 +1534,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
       await asOwner(workspaceA, async (client) => {
         await client.query(
           `insert into app.connection_secret_versions (
-               id,workspace_id,connection_id,schema_version,kms_key_reference,
+               id,workspace_id,connection_id,kms_key_reference,
                encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-             ) values ($1,$2,$3,1,'kms','b','b',$4,$5,$6)`,
+             ) values ($1,$2,$3,'kms','b','b',$4,$5,$6)`,
           [
             rotatedSecretVersionId,
             workspaceA,
@@ -1628,7 +1619,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
 
   it('atomically suspends an attempt from database time without an early wakeup', async () => {
     const runId = await insertRun({
-      inputRef: { schemaVersion: 1, kind: 'inline', value: { held: true } },
+      inputRef: { kind: 'inline', value: { held: true } },
     });
     const invocationKey = `${versionA}|wait|b:|i:`;
     const committed = await ownedDeliveryStore.commitAdvancePlan({
@@ -1656,13 +1647,11 @@ describe('Coordinator node-attempt persistence invariants', () => {
         }),
         events: [
           {
-            schemaVersion: 1,
             sequence: 2,
             name: 'run.started',
             occurredAt: '2026-08-21T00:00:00.000Z',
           },
           {
-            schemaVersion: 1,
             sequence: 3,
             name: 'node.ready',
             occurredAt: '2026-08-21T00:00:00.000Z',
@@ -1874,7 +1863,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 6,
               name: 'run.waiting',
               occurredAt: '2026-08-21T00:00:01.000Z',
@@ -1926,7 +1914,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
         }),
         events: [
           {
-            schemaVersion: 1,
             sequence: 7,
             name: 'node.ready',
             occurredAt: resumeAt,
@@ -1982,7 +1969,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
     // Resuming receives no new input, so the input the wait received stays,
     // and the attempt that recorded it can no longer write once superseded.
     const waitInput = {
-      schemaVersion: 1,
       kind: 'inline',
       value: { attempt: 1 },
     };

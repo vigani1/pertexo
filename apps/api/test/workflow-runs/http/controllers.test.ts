@@ -103,7 +103,7 @@ function controller() {
             sequence: 2,
             type: 'run.started',
             createdAt: '2026-08-21T12:00:00.000Z',
-            payload: { schemaVersion: 1 },
+            payload: {},
           }),
         };
       },
@@ -399,7 +399,7 @@ describe('workflow runs controller public seam', () => {
       }),
     );
     expect(reply.raw.chunks).toEqual([
-      'id: 2\nevent: run.started\ndata: {"sequence":2,"type":"run.started","createdAt":"2026-08-21T12:00:00.000Z","payload":{"schemaVersion":1}}\n\n',
+      'id: 2\nevent: run.started\ndata: {"sequence":2,"type":"run.started","createdAt":"2026-08-21T12:00:00.000Z","payload":{}}\n\n',
     ]);
   });
 
@@ -415,7 +415,7 @@ describe('workflow runs controller public seam', () => {
               sequence: 2,
               type: 'run.started',
               createdAt: '2026-08-21T12:00:00.000Z',
-              payload: { schemaVersion: 1 },
+              payload: {},
             }),
             visibilityPath: 'live_wakeup' as const,
           };
@@ -462,7 +462,7 @@ describe('workflow runs controller public seam', () => {
                   sequence,
                   type: 'run.started',
                   createdAt: '2026-08-21T12:00:00.000Z',
-                  payload: { schemaVersion: 1 },
+                  payload: {},
                 }),
                 visibilityPath: 'live_wakeup' as const,
               };

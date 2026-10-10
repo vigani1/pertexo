@@ -56,7 +56,6 @@ test('builds a schedule with a sentence preview and saves the step’s own confi
   page,
 }) => {
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [
       {
         id: 'nightly',

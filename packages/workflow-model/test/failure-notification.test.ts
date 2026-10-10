@@ -20,13 +20,13 @@ async function contextFixture(): Promise<Record<string, unknown>> {
 }
 
 describe('failure notification contracts', () => {
-  it('reads a stored context and refuses another schema version', async () => {
+  it('reads a stored context and rejects extra fields', async () => {
     const context = await contextFixture();
     expect(FailureNotificationContextSchema.parse(context)).toEqual(context);
     expect(
       FailureNotificationContextSchema.safeParse({
         ...context,
-        schemaVersion: 2,
+        unexpected: true,
       }).success,
     ).toBe(false);
   });
@@ -48,7 +48,6 @@ describe('failure notification contracts', () => {
   it('accepts bounded channel-neutral context and results', () => {
     expect(
       FailureNotificationContextSchema.parse({
-        schemaVersion: 1,
         runId: id('2'),
         workflowId: id('3'),
         workflowVersionId: id('4'),
@@ -69,7 +68,6 @@ describe('failure notification contracts', () => {
     ).toMatchObject({ totalFailureCount: 1 });
     expect(
       FailureNotificationContextSchema.parse({
-        schemaVersion: 1,
         runId: id('2'),
         workflowId: id('3'),
         workflowVersionId: id('4'),
@@ -88,7 +86,6 @@ describe('failure notification contracts', () => {
     ).toMatchObject({ primaryFailure: { source: 'run' } });
     expect(
       FailureNotificationDeliveryResultSchema.parse({
-        schemaVersion: 1,
         kind: 'delivered',
         possiblyDispatched: true,
         providerReference: 'opaque-123',
@@ -98,7 +95,6 @@ describe('failure notification contracts', () => {
 
   it('rejects unsafe detail and unbounded fields', () => {
     const base = {
-      schemaVersion: 1,
       runId: id('2'),
       workflowId: id('3'),
       workflowVersionId: id('4'),
@@ -129,7 +125,6 @@ describe('failure notification contracts', () => {
     }
     expect(
       FailureNotificationDeliveryResultSchema.safeParse({
-        schemaVersion: 1,
         kind: 'definite_failure',
         possiblyDispatched: false,
         safeErrorCode: 'UPPER CASE AND UNSAFE',
@@ -159,7 +154,6 @@ describe('failure notification contracts', () => {
     (_name, kind, possiblyDispatched, safeErrorCode) => {
       expect(
         FailureNotificationDeliveryResultSchema.safeParse({
-          schemaVersion: 1,
           kind,
           possiblyDispatched,
           ...(safeErrorCode === undefined ? {} : { safeErrorCode }),

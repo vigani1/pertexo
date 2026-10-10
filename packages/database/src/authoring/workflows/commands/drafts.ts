@@ -79,15 +79,9 @@ async function createWorkflow(
       );
       await client.query(
         `insert into app.workflow_drafts
-           (workflow_id, workspace_id, revision, schema_version, graph_json, updated_by)
-         values ($1, $2, 1, $3, $4::jsonb, $5)`,
-        [
-          workflowId,
-          input.workspaceId,
-          graph.schemaVersion,
-          JSON.stringify(graph),
-          input.actorId,
-        ],
+           (workflow_id, workspace_id, revision, graph_json, updated_by)
+         values ($1, $2, 1, $3::jsonb, $4)`,
+        [workflowId, input.workspaceId, JSON.stringify(graph), input.actorId],
       );
       await client.query(
         `insert into app.audit_events
@@ -162,18 +156,17 @@ async function saveDraft(
       placementDefinitionCatalog,
     );
     const result = await client.query<Record<string, unknown>>(
-      `update app.workflow_drafts set graph_json = $1::jsonb, schema_version = $2,
-       revision = revision + 1, updated_by = $3, updated_at = transaction_timestamp()
-       where workspace_id = $4 and workflow_id = $5 and revision = $6
+      `update app.workflow_drafts set graph_json = $1::jsonb,
+       revision = revision + 1, updated_by = $2, updated_at = transaction_timestamp()
+       where workspace_id = $3 and workflow_id = $4 and revision = $5
          and exists (
            select 1 from app.workflows workflow
-           where workflow.workspace_id = $4 and workflow.id = $5
+           where workflow.workspace_id = $3 and workflow.id = $4
              and workflow.lifecycle_status = 'active'
          )
        returning *`,
       [
         JSON.stringify(graph),
-        graph.schemaVersion,
         input.actorId,
         input.workspaceId,
         workflowId,

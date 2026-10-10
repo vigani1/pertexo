@@ -34,7 +34,6 @@ export const defaultCapabilities = [
 ] as const;
 
 export const emptyGraph = {
-  schemaVersion: 1,
   nodes: [],
   edges: [],
   settings: {},
@@ -146,7 +145,6 @@ export function version(
     id,
     workflowId,
     versionNumber,
-    schemaVersion: 1,
     graph,
     checksum: `wf:sha256:${'b'.repeat(64)}`,
     publishedAt: '2026-09-14T10:00:00.000Z',
@@ -165,7 +163,6 @@ export function draftResponse(currentGraph: unknown, currentEtag: string) {
     {
       workflowId,
       revision: currentEtag === etag ? 3 : currentEtag === etagB ? 4 : 5,
-      schemaVersion: 1,
       graph: currentGraph,
       compatibility,
       updatedAt: '2026-09-14T10:01:00.000Z',

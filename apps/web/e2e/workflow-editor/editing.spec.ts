@@ -239,7 +239,6 @@ test('confirms leaving a dirty editor before revoking the session', async ({
   page,
 }) => {
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [editorNode('node-a', 'Original label', 'value', 80)],
     edges: [],
     settings: {},
@@ -332,7 +331,6 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
   page,
 }, testInfo) => {
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [editorNode('node-a', 'Selected node', 'value', 80)],
     edges: [],
     settings: {},
@@ -463,7 +461,6 @@ test('gives a read-only actor the canvas and a read-only step panel', async ({
   page,
 }) => {
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [
       {
         ...editorNode('node-a', 'Read-only node', 'value', 80),

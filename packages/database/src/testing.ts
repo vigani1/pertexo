@@ -172,8 +172,8 @@ export {
   outboxChecksumSchema,
 } from './outbox/events.js';
 export {
-  parseStoredExecutionValueV1,
-  serializeStoredExecutionValueV1,
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
 } from './platform/stored-execution-value.js';
 export {
   isValidStoredExecutionOutput,

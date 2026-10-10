@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
-  NODE_JSON_LIMITS_V1,
+  NODE_JSON_LIMITS,
   type DefinitionIdentity,
   type ExecutorIdentity,
   type PolicyReference,
@@ -29,8 +29,8 @@ export const BASELINE_RUNTIME_POLICIES = Object.freeze({
  * graph's node limit rather than for one node's input or output.
  */
 export const WORKFLOW_EXECUTABLE_LIMITS = Object.freeze({
-  bytes: NODE_JSON_LIMITS_V1.bytes,
-  depth: NODE_JSON_LIMITS_V1.depth,
+  bytes: NODE_JSON_LIMITS.bytes,
+  depth: NODE_JSON_LIMITS.depth,
   members: 100_000,
 });
 
@@ -76,8 +76,6 @@ export interface WorkflowExecutableForEach {
 }
 
 export interface WorkflowExecutable {
-  readonly schemaVersion: 2;
-  readonly sourceGraphSchemaVersion: 1;
   readonly graph: WorkflowExecutableGraph;
   readonly runtimePolicies: ExecutableRuntimePolicies;
 }

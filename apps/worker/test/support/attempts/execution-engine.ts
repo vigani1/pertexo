@@ -5,7 +5,6 @@ export const WORKFLOW_ID = '44444444-4444-4444-8444-444444444444';
 
 export function graph() {
   return {
-    schemaVersion: 1 as const,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       {

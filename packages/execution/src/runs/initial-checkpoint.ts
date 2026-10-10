@@ -13,8 +13,6 @@ import {
   type PersistedWorkflowProjectionVerificationOptions,
 } from '../workflows/verify-projection.js';
 
-export const ENGINE_VERSION = 'phase3-engine-v1';
-
 /**
  * The first checkpoint of a new run of a published workflow, for every way a
  * run starts. Throws `WorkflowEngineError` when the served catalog cannot run it.
@@ -22,12 +20,10 @@ export const ENGINE_VERSION = 'phase3-engine-v1';
 export function createInitialCheckpoint(
   projection: PublishedWorkflow,
   verification: PersistedWorkflowProjectionVerificationOptions,
-): Readonly<{ engineVersion: string; checkpoint: WorkflowCheckpoint }> {
+): Readonly<{ checkpoint: WorkflowCheckpoint }> {
   verifyPersistedWorkflowProjection(projection, verification);
   return Object.freeze({
-    engineVersion: ENGINE_VERSION,
     checkpoint: createCheckpoint({
-      engineVersion: ENGINE_VERSION,
       workflowVersionId: projection.id,
       iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
       nextEventSequence: 2,

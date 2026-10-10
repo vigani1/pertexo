@@ -36,7 +36,6 @@ function secondsAgo(seconds: number): string {
 }
 
 const graph = {
-  schemaVersion: 1,
   nodes: [
     {
       id: 'send-receipt',
@@ -73,7 +72,6 @@ function stepEvent(type: string, secondsBack: number, payload = {}) {
     type,
     createdAt: secondsAgo(secondsBack),
     payload: {
-      schemaVersion: 1,
       nodeId: 'send-receipt',
       invocationKey: 'send-receipt:0',
       ...payload,

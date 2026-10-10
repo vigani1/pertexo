@@ -1,5 +1,4 @@
 {
-  "schemaVersion": "1.0.0",
   "schemas": {
     "ApiProblem": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -166,17 +165,9 @@
           "type": "string",
           "const": "pertexo.workflow"
         },
-        "formatVersion": {
-          "type": "number",
-          "const": 1
-        },
         "graph": {
           "type": "object",
           "properties": {
-            "schemaVersion": {
-              "type": "number",
-              "const": 1
-            },
             "nodes": {
               "maxItems": 200,
               "type": "array",
@@ -257,7 +248,6 @@
             }
           },
           "required": [
-            "schemaVersion",
             "nodes",
             "edges",
             "settings"
@@ -342,7 +332,6 @@
       },
       "required": [
         "format",
-        "formatVersion",
         "graph",
         "requirements",
         "connectionSlots"
@@ -484,18 +473,12 @@
                       },
                       "expression": {
                         "type": "string"
-                      },
-                      "policyVersion": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 9007199254740991
                       }
                     },
                     "required": [
                       "kind",
                       "language",
-                      "expression",
-                      "policyVersion"
+                      "expression"
                     ],
                     "additionalProperties": false
                   },
@@ -562,10 +545,6 @@
                 "body": {
                   "type": "object",
                   "properties": {
-                    "schemaVersion": {
-                      "type": "number",
-                      "const": 1
-                    },
                     "nodes": {
                       "type": "array",
                       "items": {
@@ -660,7 +639,6 @@
                     }
                   },
                   "required": [
-                    "schemaVersion",
                     "nodes",
                     "edges",
                     "settings",
@@ -817,17 +795,9 @@
               "type": "string",
               "const": "pertexo.workflow"
             },
-            "formatVersion": {
-              "type": "number",
-              "const": 1
-            },
             "graph": {
               "type": "object",
               "properties": {
-                "schemaVersion": {
-                  "type": "number",
-                  "const": 1
-                },
                 "nodes": {
                   "maxItems": 200,
                   "type": "array",
@@ -908,7 +878,6 @@
                 }
               },
               "required": [
-                "schemaVersion",
                 "nodes",
                 "edges",
                 "settings"
@@ -993,7 +962,6 @@
           },
           "required": [
             "format",
-            "formatVersion",
             "graph",
             "requirements",
             "connectionSlots"
@@ -1135,18 +1103,12 @@
                           },
                           "expression": {
                             "type": "string"
-                          },
-                          "policyVersion": {
-                            "type": "integer",
-                            "exclusiveMinimum": 0,
-                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
                           "kind",
                           "language",
-                          "expression",
-                          "policyVersion"
+                          "expression"
                         ],
                         "additionalProperties": false
                       },
@@ -1213,10 +1175,6 @@
                     "body": {
                       "type": "object",
                       "properties": {
-                        "schemaVersion": {
-                          "type": "number",
-                          "const": 1
-                        },
                         "nodes": {
                           "type": "array",
                           "items": {
@@ -1311,7 +1269,6 @@
                         }
                       },
                       "required": [
-                        "schemaVersion",
                         "nodes",
                         "edges",
                         "settings",
@@ -1439,10 +1396,6 @@
         "templateOrigin": {
           "type": "object",
           "properties": {
-            "schemaVersion": {
-              "type": "number",
-              "const": 1
-            },
             "templateId": {
               "type": "string",
               "minLength": 1,
@@ -1460,7 +1413,6 @@
             }
           },
           "required": [
-            "schemaVersion",
             "templateId",
             "templateVersion",
             "baseManifestDigest"
@@ -1485,17 +1437,9 @@
               "type": "string",
               "const": "pertexo.workflow"
             },
-            "formatVersion": {
-              "type": "number",
-              "const": 1
-            },
             "graph": {
               "type": "object",
               "properties": {
-                "schemaVersion": {
-                  "type": "number",
-                  "const": 1
-                },
                 "nodes": {
                   "maxItems": 200,
                   "type": "array",
@@ -1576,7 +1520,6 @@
                 }
               },
               "required": [
-                "schemaVersion",
                 "nodes",
                 "edges",
                 "settings"
@@ -1661,7 +1604,6 @@
           },
           "required": [
             "format",
-            "formatVersion",
             "graph",
             "requirements",
             "connectionSlots"
@@ -1803,18 +1745,12 @@
                           },
                           "expression": {
                             "type": "string"
-                          },
-                          "policyVersion": {
-                            "type": "integer",
-                            "exclusiveMinimum": 0,
-                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
                           "kind",
                           "language",
-                          "expression",
-                          "policyVersion"
+                          "expression"
                         ],
                         "additionalProperties": false
                       },
@@ -1881,10 +1817,6 @@
                     "body": {
                       "type": "object",
                       "properties": {
-                        "schemaVersion": {
-                          "type": "number",
-                          "const": 1
-                        },
                         "nodes": {
                           "type": "array",
                           "items": {
@@ -1979,7 +1911,6 @@
                         }
                       },
                       "required": [
-                        "schemaVersion",
                         "nodes",
                         "edges",
                         "settings",
@@ -2107,10 +2038,6 @@
         "templateOrigin": {
           "type": "object",
           "properties": {
-            "schemaVersion": {
-              "type": "number",
-              "const": 1
-            },
             "templateId": {
               "type": "string",
               "minLength": 1,
@@ -2128,7 +2055,6 @@
             }
           },
           "required": [
-            "schemaVersion",
             "templateId",
             "templateVersion",
             "baseManifestDigest"

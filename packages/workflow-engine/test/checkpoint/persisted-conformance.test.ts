@@ -25,8 +25,6 @@ function checkpoint(
   status: 'pending' | 'succeeded' | 'failed' | 'canceled',
 ) {
   return {
-    schemaVersion: 2,
-    engineVersion: 'engine-v1',
     workflowVersionId,
     revision: 1,
     runStatus: status === 'failed' ? 'failed' : 'running',

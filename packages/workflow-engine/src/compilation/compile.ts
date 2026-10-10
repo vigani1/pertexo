@@ -93,13 +93,10 @@ function buildBoundary(input: {
   const catalog = parseNodeCatalog(input.catalog);
   validateGlobals(BASELINE_RUNTIME_POLICIES, catalog);
   const graph = parseWorkflowGraphForPublish(input.graph, {
-    schemaVersion: 1,
     definitions: catalog.definitions.map(({ definition }) => definition),
   });
   const executableGraph = compileExecutableGraph(graph, catalog);
   const envelope: WorkflowExecutable = {
-    schemaVersion: 2,
-    sourceGraphSchemaVersion: 1,
     graph: executableGraph,
     runtimePolicies: BASELINE_RUNTIME_POLICIES,
   };

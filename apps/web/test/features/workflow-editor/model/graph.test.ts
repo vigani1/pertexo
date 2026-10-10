@@ -58,7 +58,6 @@ function edge(id: string, source: string, target: string, port = 'out') {
 /** trigger → check → (true: finance, false: post) */
 function branchingGraph(): WorkflowGraphContract {
   return {
-    schemaVersion: 1,
     nodes: [
       node('trigger'),
       node('check'),
@@ -380,7 +379,6 @@ describe('editor history', () => {
   it('coalesces live edits of one field into one undo step within the window', () => {
     let now = 1_000;
     const start: WorkflowGraphContract = {
-      schemaVersion: 1,
       nodes: [node('a')],
       edges: [],
       settings: {},
@@ -419,7 +417,6 @@ describe('editor history', () => {
 
   it('forgets inspector scratch when the inspected step goes away', () => {
     const start: WorkflowGraphContract = {
-      schemaVersion: 1,
       nodes: [node('a'), node('b')],
       edges: [],
       settings: {},

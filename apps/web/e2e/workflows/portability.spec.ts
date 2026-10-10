@@ -16,7 +16,6 @@ import {
 const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const destinationId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const graph = workflowGraphSchema.parse({
-  schemaVersion: 1,
   nodes: [
     {
       id: 'sender',
@@ -29,7 +28,6 @@ const graph = workflowGraphSchema.parse({
           kind: 'expression',
           language: 'jsonata',
           expression: '$lookup(private)',
-          policyVersion: 1,
         },
       },
       connectionRefs: {},
@@ -41,7 +39,6 @@ const graph = workflowGraphSchema.parse({
 });
 const manifest = {
   format: 'pertexo.workflow',
-  formatVersion: 1,
   graph,
   requirements: {
     definitions: [{ key: 'slack.send_message', version: 1, configVersion: 1 }],

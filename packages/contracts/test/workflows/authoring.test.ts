@@ -80,7 +80,6 @@ describe('workflow-authoring public contracts', () => {
     expect(
       workflowDraftSaveRequestSchema.safeParse({
         graph: {
-          schemaVersion: 1,
           nodes: [],
           edges: [],
           settings: {},
@@ -90,7 +89,6 @@ describe('workflow-authoring public contracts', () => {
     ).toBe(false);
     expect(
       workflowGraphSchema.safeParse({
-        schemaVersion: 1,
         nodes: [],
         edges: [],
         settings: {},
@@ -199,14 +197,12 @@ describe('workflow-authoring public contracts', () => {
 
   it('rejects hostile recursive graphs without overflowing the stack', () => {
     let graph: Record<string, unknown> = {
-      schemaVersion: 1,
       nodes: [],
       edges: [],
       settings: {},
     };
     for (let index = 0; index < 500; index += 1)
       graph = {
-        schemaVersion: 1,
         nodes: [
           {
             id: `node-${String(index)}`,

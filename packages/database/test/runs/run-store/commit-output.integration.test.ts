@@ -57,7 +57,6 @@ describe('Coordinator output commit invariants', () => {
       byteLength: 1,
       kind: 'artifact',
       mediaType: 'application/json',
-      schemaVersion: 1,
       sha256: 'd'.repeat(64),
     });
     const runId = await insertRun({
@@ -181,13 +180,11 @@ describe('Coordinator output commit invariants', () => {
         checkpoint: next,
         events: [
           {
-            schemaVersion: 1,
             sequence: 2,
             name: 'run.started',
             occurredAt: '2026-08-21T00:00:00.000Z',
           },
           {
-            schemaVersion: 1,
             sequence: 3,
             name: 'node.ready',
             occurredAt: '2026-08-21T00:00:00.000Z',
@@ -196,7 +193,6 @@ describe('Coordinator output commit invariants', () => {
             attemptNumber: 0,
           },
           {
-            schemaVersion: 1,
             sequence: 4,
             name: 'node.ready',
             occurredAt: '2026-08-21T00:00:00.000Z',
@@ -236,7 +232,7 @@ describe('Coordinator output commit invariants', () => {
              (select count(*)::int from app.outbox_events where job_name='execute-node-attempt' and payload->>'runId'=$1::text) outbox_count,
              (select array_agg(key order by key) from app.outbox_events, lateral jsonb_object_keys(payload) key where job_name='execute-node-attempt' and payload->>'runId'=$1::text) payload_keys,
              (select count(*)=2 and bool_and(
-                payload->>'schemaVersion'='1'
+                jsonb_typeof(payload)='object'
                 and payload->>'invocationKey' in ($2,$3)
                 and payload->>'nodeId' in ('a','b')
                 and (payload->>'attemptNumber')::int =
@@ -258,7 +254,6 @@ describe('Coordinator output commit invariants', () => {
         'nodeRunId',
         'outboxEventId',
         'runId',
-        'schemaVersion',
         'workspaceId',
       ],
       engine_node_events_valid: true,
@@ -285,7 +280,6 @@ describe('Coordinator output commit invariants', () => {
     const nodeRunId = randomUUID();
     const attemptId = randomUUID();
     const firstAttemptInput = {
-      schemaVersion: 1,
       kind: 'inline',
       value: { attempt: 1 },
     };
@@ -321,7 +315,6 @@ describe('Coordinator output commit invariants', () => {
           workspaceA,
           runId,
           JSON.stringify({
-            schemaVersion: 1,
             nodeRunId,
             attemptId,
             dueAt,
@@ -374,7 +367,6 @@ describe('Coordinator output commit invariants', () => {
           checkpoint: waitingCheckpoint,
           events: [
             {
-              schemaVersion: 1,
               sequence: 3,
               name: 'run.waiting',
               occurredAt: '2026-08-21T00:00:00.000Z',
@@ -417,7 +409,6 @@ describe('Coordinator output commit invariants', () => {
       }),
       events: [
         {
-          schemaVersion: 1,
           sequence: 4,
           name: 'node.ready',
           occurredAt: '2026-08-21T00:00:00.000Z',
@@ -501,7 +492,6 @@ describe('Coordinator output commit invariants', () => {
           workspaceA,
           runId,
           JSON.stringify({
-            schemaVersion: 1,
             nodeRunId,
             attemptId,
             dueAt: resumeAt,
@@ -535,7 +525,6 @@ describe('Coordinator output commit invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 3,
               name: 'run.waiting',
               occurredAt: '2026-08-21T00:00:00.000Z',
@@ -599,7 +588,6 @@ describe('Coordinator output commit invariants', () => {
     });
     const events = [
       ...invocations.map((invocation, index) => ({
-        schemaVersion: 1 as const,
         sequence: index + 2,
         name: 'node.ready' as const,
         occurredAt: '2026-08-21T00:00:00.000Z',
@@ -646,7 +634,7 @@ describe('Coordinator output commit invariants', () => {
              (select count(*)::int from app.node_runs where workflow_run_id=$1 and status='ready') ready,
              (select count(*)::int from app.node_attempts attempt join app.node_runs node on node.id=attempt.node_run_id where node.workflow_run_id=$1 and attempt.attempt_number > 1) new_attempts,
              (select count(*)=65 and bool_and(
-                payload->>'schemaVersion'='1'
+                jsonb_typeof(payload)='object'
                 and (payload->>'attemptNumber')::int=1
                 and payload ? 'nodeRunId' and payload ? 'attemptId'
               ) from app.run_events where workflow_run_id=$1 and type='node.ready') due_payloads_valid`,

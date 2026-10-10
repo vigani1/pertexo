@@ -123,7 +123,6 @@ describe('node operation risk branches', () => {
         executable: standardExecutable(),
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint: createCheckpoint({
-          engineVersion: 'engine-v1',
           workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
@@ -147,7 +146,6 @@ describe('node operation risk branches', () => {
         executable: standardExecutable(),
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint: createCheckpoint({
-          engineVersion: 'engine-v1',
           workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
@@ -170,7 +168,6 @@ describe('node operation risk branches', () => {
       executable: standardExecutable(),
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 100,
       }),
@@ -426,7 +423,6 @@ describe('node operation risk branches', () => {
           executable: standardExecutable(),
           workflowVersionId: '00000000-0000-4000-8000-000000000001',
           checkpoint: createCheckpoint({
-            engineVersion: 'engine-v1',
             workflowVersionId: '00000000-0000-4000-8000-000000000001',
             iterationBudget: 100,
           }),
@@ -446,7 +442,6 @@ describe('node operation risk branches', () => {
         executable: standardExecutable(),
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint: createCheckpoint({
-          engineVersion: 'engine-v1',
           workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
@@ -476,7 +471,6 @@ describe('node operation risk branches', () => {
         executable: standardExecutable(),
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint: createCheckpoint({
-          engineVersion: 'engine-v1',
           workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
@@ -607,7 +601,6 @@ describe('node operation risk branches', () => {
     async ({ change }) => {
       const checkpoint = {
         ...createCheckpoint({
-          engineVersion: 'engine-v1',
           workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),

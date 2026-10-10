@@ -162,7 +162,6 @@ export async function createCoordinatorRecoveryHarness(input: {
     const published = await ownedProducer.publish({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId,
         runId: input.accepted.runId,
         outboxEventId,
@@ -244,7 +243,6 @@ export async function createCoordinatorRecoveryHarness(input: {
     const published = await ownedProducer.publish({
       name: JOB_NAME.executeNodeAttempt,
       data: {
-        schemaVersion: 1,
         workspaceId,
         runId: input.accepted.runId,
         nodeRunId: attempt.node_run_id,
@@ -297,7 +295,6 @@ export async function createCoordinatorRecoveryHarness(input: {
     const published = await ownedProducer.publish({
       name: JOB_NAME.executeNodeAttempt,
       data: {
-        schemaVersion: 1,
         workspaceId,
         runId: input.accepted.runId,
         nodeRunId: attempt.nodeRunId,

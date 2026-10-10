@@ -21,7 +21,6 @@ describe('advanceRun decisions', () => {
     const catalog = composeExecutableCatalog(CORE_NODE_CATALOG);
     const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const checkpoint = createCheckpoint({
-      engineVersion: 'phase3-engine-v1',
       workflowVersionId: VERSION_ID,
       iterationBudget: 0,
       nextEventSequence: 2,
@@ -38,7 +37,6 @@ describe('advanceRun decisions', () => {
         workspaceId: WORKSPACE_ID,
         workflowId: WORKFLOW_ID,
         versionNumber: 1,
-        schemaVersion: 1,
         checksum: executable.checksum,
         executableJson: executable.envelope,
       },
@@ -73,7 +71,6 @@ describe('advanceRun decisions', () => {
           workspaceId: WORKSPACE_ID,
           workflowId: WORKFLOW_ID,
           versionNumber: 1,
-          schemaVersion: 1,
           checksum: executable.checksum,
           executableJson: executable.envelope,
         },
@@ -94,7 +91,6 @@ describe('advanceRun decisions', () => {
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       versionNumber: 1,
-      schemaVersion: 1 as const,
       checksum: executable.checksum,
       executableJson: executable.envelope,
     };
@@ -118,7 +114,6 @@ describe('advanceRun decisions', () => {
       });
     const started = await advance(
       createCheckpoint({
-        engineVersion: 'phase3-engine-v1',
         workflowVersionId: VERSION_ID,
         iterationBudget: 0,
         nextEventSequence: 2,

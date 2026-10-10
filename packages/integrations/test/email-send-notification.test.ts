@@ -40,7 +40,6 @@ function runtime(
 ) {
   const secret = new TextEncoder().encode(
     JSON.stringify({
-      schemaVersion: 1,
       type: 'resend_api_key',
       apiKey: 're_123456789_secret',
       fromEmail: 'Notifications@Example.COM',

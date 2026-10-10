@@ -126,16 +126,15 @@ beforeAll(async () => {
     );
     await owner.query(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,
-         version_number,schema_version,graph_json,checksum,
+         version_number,graph_json,checksum,
          executable_json,
          published_by)
-       values($1,$2,$3,1,1,$4::jsonb,$5,'{}'::jsonb,$6)`,
+       values($1,$2,$3,1,$4::jsonb,$5,'{}'::jsonb,$6)`,
       [
         workflowVersionId,
         workspaceId,
         workflowId,
         JSON.stringify({
-          schemaVersion: 1,
           settings: {},
           nodes: [],
           edges: [],
@@ -186,10 +185,10 @@ beforeAll(async () => {
          values($1,$2,'http','Lifecycle connection','http_headers','active',$3,$4)
          returning id
        ) insert into app.connection_secret_versions(id,workspace_id,connection_id,
-         schema_version,kms_key_reference,encrypted_data_key,ciphertext,nonce,
+         kms_key_reference,encrypted_data_key,ciphertext,nonce,
          auth_tag,created_by)
-       select $3,$2,id,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
-         'AAAAAAAAAAAAAAAAAAAAAA',$4 from connection`,
+       select $3,$2,id,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+         'AAAAAAAAAAAAAAAAAAAAAA',$4  from connection`,
       [connectionId, workspaceId, connectionSecretId, ownerUserId],
     );
     await owner.query('commit');
@@ -201,8 +200,6 @@ beforeAll(async () => {
   }
   api = new Pool({ connectionString: apiUrl, max: 2 });
   const queuedCheckpoint = {
-    schemaVersion: 2,
-    engineVersion: 'phase0-engine-v1',
     workflowVersionId,
     revision: 0,
     runStatus: 'queued',
@@ -238,10 +235,9 @@ beforeAll(async () => {
     [workspaceId, queuedRunId, runningRunId],
   );
   await apiWorkspaceQuery(
-    `insert into app.run_checkpoints(workflow_run_id,workspace_id,revision,
-       engine_version,scheduler_state,workflow_version_id)
-     values($1,$3,0,'phase0-engine-v1',$4::jsonb,$6),
-           ($2,$3,1,'phase0-engine-v1',$5::jsonb,$6)`,
+    `insert into app.run_checkpoints(workflow_run_id,workspace_id,revision,scheduler_state,workflow_version_id)
+     values($1,$3,0,$4::jsonb,$6),
+           ($2,$3,1,$5::jsonb,$6)`,
     [
       queuedRunId,
       runningRunId,

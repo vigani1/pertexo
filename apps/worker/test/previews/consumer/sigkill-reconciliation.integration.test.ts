@@ -91,7 +91,6 @@ describeIntegration('preview SIGKILL reconciliation', () => {
           acceptanceInput(traceparent, selected.overrides),
         );
         const payload = {
-          schemaVersion: 1 as const,
           workspaceId,
           outboxEventId: accepted.outboxEventId,
           previewRunId: accepted.previewRunId,

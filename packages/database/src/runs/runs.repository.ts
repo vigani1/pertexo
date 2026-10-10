@@ -310,7 +310,6 @@ async function startInTransaction(
   const initial = input.checkpointFactory(projection);
   return acceptWorkflowRunWithAudit(transaction, {
     acceptance: {
-      engineVersion: initial.engineVersion,
       initialCheckpoint: initial.checkpoint,
       keyHash: input.idempotencyKeyHash,
       operation: 'workflow.run.accept',
@@ -329,7 +328,7 @@ async function startInTransaction(
     },
     actorId: input.actorId,
     auditAction: 'workflow.run.started',
-    auditMetadata: sql`jsonb_build_object('schemaVersion', 1, 'workflowId', ${input.workflowId}::text, 'workflowVersionId', ${projection.id}::text)`,
+    auditMetadata: sql`jsonb_build_object('workflowId', ${input.workflowId}::text, 'workflowVersionId', ${projection.id}::text)`,
     ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
     ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
   });
@@ -345,7 +344,6 @@ async function lockPublishedExecution(
       v.workspace_id,
       v.workflow_id,
       v.version_number,
-      v.schema_version,
       v.checksum,
       v.executable_json
     from app.workflows w
@@ -417,7 +415,6 @@ async function cancelInTransaction(
   if (!cancellation.duplicate) {
     const outboxEventId = generatePersistedId();
     const payload = {
-      schemaVersion: 1,
       workspaceId: transaction.workspaceId,
       runId: input.runId,
       outboxEventId,
@@ -428,7 +425,6 @@ async function cancelInTransaction(
     await insertOutboxEvent(transaction, {
       id: outboxEventId,
       jobName: 'advance-workflow-run',
-      schemaVersion: 1,
       aggregateType: 'workflow-run',
       aggregateId: input.runId,
       payload,
@@ -440,7 +436,7 @@ async function cancelInTransaction(
       runId: input.runId,
       ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
       ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-      metadata: sql`jsonb_build_object('schemaVersion', 1, 'reasonProvided', ${input.reason !== undefined}::boolean)`,
+      metadata: sql`jsonb_build_object('reasonProvided', ${input.reason !== undefined}::boolean)`,
     });
   }
   const run = await readWorkflowRunRecord(transaction, input.runId);

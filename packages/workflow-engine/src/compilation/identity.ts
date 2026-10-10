@@ -2,8 +2,6 @@ import { type WorkflowExecutable, digest } from './foundation.js';
 
 function executableProjection(envelope: WorkflowExecutable): unknown {
   return {
-    schemaVersion: envelope.schemaVersion,
-    sourceGraphSchemaVersion: envelope.sourceGraphSchemaVersion,
     graph: envelope.graph,
     runtimePolicies: envelope.runtimePolicies,
   };

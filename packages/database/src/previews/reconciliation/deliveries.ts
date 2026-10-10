@@ -20,9 +20,9 @@ import {
   validatePreviewReconciliationDelivery,
 } from '../attempts/delivery.js';
 import {
-  parseStoredExecutionValueV1,
-  serializeStoredExecutionValueV1,
-  type StoredExecutionValueV1,
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
+  type StoredExecutionValue,
 } from '../../platform/stored-execution-value.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
@@ -74,14 +74,14 @@ type LockedPreviewReconciliationState = Readonly<{
 
 export function isValidStoredExecutionOutput(
   value: unknown,
-): value is StoredExecutionValueV1 {
+): value is StoredExecutionValue {
   try {
     // The descriptor-based stored-value module is the single admission
     // contract. It rejects accessors, proxies and lossy JSON shapes without
     // invoking caller-controlled properties, then proves canonical stability.
-    const serialized = serializeStoredExecutionValueV1(value);
-    const reparsed = parseStoredExecutionValueV1(serialized);
-    return serializeStoredExecutionValueV1(reparsed) === serialized;
+    const serialized = serializeStoredExecutionValue(value);
+    const reparsed = parseStoredExecutionValue(serialized);
+    return serializeStoredExecutionValue(reparsed) === serialized;
   } catch {
     return false;
   }
@@ -107,7 +107,6 @@ async function completeExpiredOrUnsafePreview(
     ? 'lease_expired_after_unsafe_dispatch'
     : 'run_deadline_expired_before_reclaim';
   const reconciliationRef = JSON.stringify({
-    schemaVersion: 1,
     reason,
     attemptFenceToken: scope.attemptFenceToken,
   });
@@ -319,7 +318,6 @@ export async function reconcilePreviewDelivery(
             scope.previewAttemptId,
             scope.previewRunId,
             JSON.stringify({
-              schemaVersion: 1,
               reason: 'lease_expired_redelivery',
               attemptFenceToken: scope.attemptFenceToken,
             }),

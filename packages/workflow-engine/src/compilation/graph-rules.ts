@@ -244,11 +244,7 @@ export function assertExpressionPolicies(
   for (const source of Object.values(node.inputMappings))
     if (
       source.kind === 'expression' &&
-      !policies.some(
-        (policy) =>
-          policy.key === 'jsonata.restricted' &&
-          policy.version === source.policyVersion,
-      )
+      !policies.some((policy) => policy.key === 'jsonata.restricted')
     )
-      fail('expression policy is not pinned by the node definition');
+      fail('expression policy is not available for the node definition');
 }

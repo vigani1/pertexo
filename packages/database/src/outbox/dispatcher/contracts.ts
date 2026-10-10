@@ -10,6 +10,5 @@ export type LeasedOutboxEvent = Readonly<{
   payload: unknown;
   payloadChecksum: string;
   publishAttempts: number;
-  schemaVersion: number;
   workspaceId: string;
 }>;

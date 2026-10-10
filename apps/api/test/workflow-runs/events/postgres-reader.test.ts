@@ -173,7 +173,7 @@ describe('PostgreSQL run event reader', () => {
         {
           created_at: new Date('2026-08-20T00:00:00.000Z'),
           high_water: 8,
-          payload: { schemaVersion: 1 },
+          payload: {},
           sequence: 8,
           type: 'run.started',
         },

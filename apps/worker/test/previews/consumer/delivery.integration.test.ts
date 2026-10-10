@@ -3,7 +3,7 @@ import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews
 
 import {
   parseDatabaseConfig,
-  parseStoredExecutionValueV1,
+  parseStoredExecutionValue,
 } from '@pertexo/database/testing';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { describe, expect, it } from 'vitest';
@@ -69,7 +69,7 @@ describeIntegration('preview delivery transport', () => {
           // core.set is a safe node: dispatch evidence is not required before
           // its pure execution, so no marker exists for this preview.
           expect(state?.dispatch_marked_at).toBeNull();
-          expect(parseStoredExecutionValueV1(state?.output_ref)).toMatchObject({
+          expect(parseStoredExecutionValue(state?.output_ref)).toMatchObject({
             value: { hello: 'transport' },
           });
           expect(invocationCount).toBe(1);

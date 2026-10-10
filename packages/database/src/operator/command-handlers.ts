@@ -58,13 +58,11 @@ async function enqueue(
   const payload = {
     ...job.fields,
     outboxEventId: id,
-    schemaVersion: 1,
     workspaceId: transaction.workspaceId,
   };
   await insertOutboxEvent(transaction, {
     id,
     jobName: job.jobName,
-    schemaVersion: 1,
     aggregateType: job.aggregateType,
     aggregateId: job.aggregateId,
     payload,
@@ -137,7 +135,7 @@ export async function redispatchFailedOutbox(
   };
   return {
     outcome,
-    result: { schemaVersion: 1, outcome, ...prior },
+    result: { outcome, ...prior },
     auditMetadata: prior,
   };
 }
@@ -271,7 +269,6 @@ export async function reconcileAttempt(
   return {
     outcome,
     result: withoutNulls({
-      schemaVersion: 1,
       action,
       fenceToken: changed ? fence + 1 : fence,
       outboxEventId,
@@ -304,7 +301,6 @@ export async function resumeDueWork(
     return {
       outcome: 'not_found',
       result: {
-        schemaVersion: 1,
         dueNodeCount: 0,
         dueWorkflowWait: false,
         outcome: 'not_found',
@@ -365,7 +361,6 @@ export async function resumeDueWork(
   return {
     outcome,
     result: withoutNulls({
-      schemaVersion: 1,
       dueNodeCount,
       dueNodesRemaining: state.due_nodes > RESUME_PAGE,
       dueWorkflowWait: state.due_wait,
@@ -424,7 +419,6 @@ export async function cancelRun(
   return {
     outcome,
     result: withoutNulls({
-      schemaVersion: 1,
       eventSequence,
       outboxEventId,
       outcome,
@@ -477,7 +471,6 @@ export async function recordUnknownOutcomeEvidence(
   return {
     outcome,
     result: {
-      schemaVersion: 1,
       evidenceKind: input.evidenceKind,
       outboxEventId,
       outcome,
@@ -520,7 +513,6 @@ export async function retryTriggerReconciliation(
   return {
     outcome,
     result: withoutNulls({
-      schemaVersion: 1,
       outboxEventId,
       outcome,
       publishedVersionId,
@@ -589,7 +581,6 @@ export async function requestRunReplay(
     outcome,
     pending: outcome === 'replay_requested',
     result: withoutNulls({
-      schemaVersion: 1,
       outboxEventId,
       outcome,
       sourceRunId: input.sourceRunId,

@@ -26,7 +26,6 @@ import {
 
 function delivery() {
   const data = {
-    schemaVersion: 1 as const,
     workspaceId: randomUUID(),
     outboxEventId: randomUUID(),
     previewRunId: randomUUID(),
@@ -74,7 +73,6 @@ function routedDelivery(name: string) {
   return {
     name,
     data: {
-      schemaVersion: 1,
       workspaceId: randomUUID(),
       outboxEventId,
       previewRunId: randomUUID(),

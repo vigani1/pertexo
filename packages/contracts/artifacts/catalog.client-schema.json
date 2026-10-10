@@ -1,5 +1,4 @@
 {
-  "schemaVersion": "1.0.0",
   "schemas": {
     "CatalogQuery": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -169,10 +168,6 @@
       "readOnly": true,
       "type": "object",
       "properties": {
-        "schemaVersion": {
-          "type": "number",
-          "const": 1
-        },
         "items": {
           "maxItems": 256,
           "type": "array",
@@ -364,7 +359,6 @@
         }
       },
       "required": [
-        "schemaVersion",
         "items"
       ],
       "additionalProperties": false,
@@ -407,10 +401,6 @@
       "readOnly": true,
       "type": "object",
       "properties": {
-        "schemaVersion": {
-          "type": "number",
-          "const": 1
-        },
         "items": {
           "maxItems": 128,
           "type": "array",
@@ -467,7 +457,6 @@
         }
       },
       "required": [
-        "schemaVersion",
         "items"
       ],
       "additionalProperties": false

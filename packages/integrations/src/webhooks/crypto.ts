@@ -69,7 +69,6 @@ function encryptionContext(
 ): Readonly<Record<string, string>> {
   return Object.freeze({
     purpose: 'pertexo-webhook-trigger-secret',
-    schemaVersion: '1',
     workspaceId: context.workspaceId,
     triggerId: context.triggerId,
     secretVersionId: context.secretVersionId,
@@ -182,7 +181,6 @@ export class WebhookTriggerEnvelopeEncryption {
         signal,
       );
       return sealedSchema.parse({
-        schemaVersion: 1,
         kmsKeyReference: sealed.keyReference,
         encryptedDataKey: sealed.encryptedDataKey,
         ciphertext: sealed.ciphertext,

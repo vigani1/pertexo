@@ -80,8 +80,6 @@ function digest(value: string): string {
 
 function checkpoint(versionId: string = workflowVersionId) {
   return {
-    schemaVersion: 2,
-    engineVersion: 'phase3-engine-v1',
     workflowVersionId: versionId,
     revision: 0,
     runStatus: 'queued',
@@ -123,7 +121,6 @@ function startInput(
     checkpointFactory: (projection: Readonly<{ id: string }>) => {
       expect(projection.id).toBe(inputWorkflowVersionId);
       return {
-        engineVersion: 'phase3-engine-v1',
         checkpoint: checkpoint(inputWorkflowVersionId),
       };
     },
@@ -151,7 +148,6 @@ function replayInput(
     checkpointFactory: (projection: Readonly<{ id: string }>) => {
       expect(projection.id).toBe(selectedWorkflowVersionId);
       return {
-        engineVersion: 'phase3-engine-v1',
         checkpoint: checkpoint(selectedWorkflowVersionId),
       };
     },
@@ -290,25 +286,24 @@ async function resetFixture(): Promise<void> {
   );
   await ownerQuery(
     `insert into app.workflow_versions
-       (id, workspace_id, workflow_id, version_number, schema_version,
+       (id, workspace_id, workflow_id, version_number,
         graph_json, checksum, executable_json, published_by)
      values
-       ($1, $2, $3, 1, 1, $4::jsonb, $5, $6::jsonb, $7),
-       ($8, $2, $3, 2, 1,
+       ($1, $2, $3, 1, $4::jsonb, $5, $6::jsonb, $7),
+       ($8, $2, $3, 2,
         jsonb_set($4::jsonb, '{settings}', '{"maxRunDurationMs":5000}'::jsonb),
         $9, $10::jsonb, $7)`,
     [
       workflowVersionId,
       workspaceId,
       workflowId,
-      JSON.stringify({ edges: [], nodes: [], schemaVersion: 1, settings: {} }),
+      JSON.stringify({ edges: [], nodes: [], settings: {} }),
       `wf:sha256:${'a'.repeat(64)}`,
-      JSON.stringify({ schemaVersion: 2, marker: 'run-api' }),
+      JSON.stringify({ marker: 'run-api' }),
       actorId,
       retainedWorkflowVersionId,
       `wf:sha256:${'b'.repeat(64)}`,
       JSON.stringify({
-        schemaVersion: 2,
         marker: 'run-api-retained',
         graph: { settings: { maxRunDurationMs: 5_000 } },
       }),
@@ -316,16 +311,16 @@ async function resetFixture(): Promise<void> {
   );
   await ownerQuery(
     `insert into app.workflow_versions
-       (id, workspace_id, workflow_id, version_number, schema_version,
+       (id, workspace_id, workflow_id, version_number,
         graph_json, checksum, executable_json, published_by)
-     values ($1, $2, $3, 1, 1, $4::jsonb, $5, $6::jsonb, $7)`,
+     values ($1, $2, $3, 1, $4::jsonb, $5, $6::jsonb, $7)`,
     [
       otherWorkflowVersionId,
       otherWorkspaceId,
       otherWorkflowId,
-      JSON.stringify({ edges: [], nodes: [], schemaVersion: 1, settings: {} }),
+      JSON.stringify({ edges: [], nodes: [], settings: {} }),
       `wf:sha256:${'c'.repeat(64)}`,
-      JSON.stringify({ schemaVersion: 2, marker: 'run-api-other' }),
+      JSON.stringify({ marker: 'run-api-other' }),
       actorId,
     ],
     otherWorkspaceId,
@@ -582,13 +577,12 @@ describe('workflow run API persistence', () => {
     );
     await ownerQuery(
       `insert into app.workflow_versions
-         (id, workspace_id, workflow_id, version_number, schema_version,
-          graph_json, checksum, executable_json, published_by)
-       select gen_random_uuid(), $1, workflow.id, 1, 1,
-              '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
+         (id, workspace_id, workflow_id, version_number, graph_json, checksum, executable_json, published_by)
+       select gen_random_uuid(), $1, workflow.id, 1,
+              '{"nodes":[],"edges":[],"settings":{}}'::jsonb,
               'wf:sha256:' || repeat('d', 64),
-              '{"schemaVersion":2}'::jsonb, $2
-       from app.workflows workflow
+              '{}'::jsonb, $2
+        from app.workflows workflow
        where workflow.workspace_id = $1
          and workflow.name similar to '(Common|Selective|Other)%'`,
       [workspaceId, actorId],
@@ -852,7 +846,6 @@ describe('workflow run API persistence', () => {
       database.start({
         ...input,
         checkpointFactory: () => ({
-          engineVersion: 'phase3-engine-v1',
           checkpoint: checkpoint(retainedWorkflowVersionId),
         }),
       }),
@@ -972,7 +965,7 @@ describe('workflow run API persistence', () => {
     ).toEqual([{ count: 0 }]);
   });
 
-  it('atomically starts, exactly replays, reads, and cancels one published V2 run', async () => {
+  it('atomically starts, exactly replays, reads, and cancels one published run', async () => {
     const first = await database.start(startInput());
     expect(first.replayed).toBe(false);
     expect(first.run).toMatchObject({
@@ -1570,12 +1563,10 @@ describe('workflow run API persistence', () => {
         workspaceId,
         started.run.id,
         JSON.stringify({
-          schemaVersion: 1,
           kind: 'inline',
           value: { report: 'daily-summary', rows: 42 },
         }),
         JSON.stringify({
-          schemaVersion: 1,
           kind: 'inline',
           value: { customerId: 'customer-42' },
         }),
@@ -1646,15 +1637,14 @@ describe('workflow run API persistence', () => {
     });
     await ownerQuery(
       `insert into app.workflow_versions
-         (id, workspace_id, workflow_id, version_number, schema_version,
+         (id, workspace_id, workflow_id, version_number,
           graph_json, checksum, executable_json, published_by)
-       values ($1, $2, $3, 3, 1, $4::jsonb, $5, $6::jsonb, $7)`,
+       values ($1, $2, $3, 3, $4::jsonb, $5, $6::jsonb, $7)`,
       [
         loopVersionId,
         workspaceId,
         workflowId,
         JSON.stringify({
-          schemaVersion: 1,
           settings: {},
           edges: [],
           nodes: [
@@ -1671,7 +1661,7 @@ describe('workflow run API persistence', () => {
           ],
         }),
         `wf:sha256:${'d'.repeat(64)}`,
-        JSON.stringify({ schemaVersion: 2, marker: 'run-api-loop' }),
+        JSON.stringify({ marker: 'run-api-loop' }),
         actorId,
       ],
     );

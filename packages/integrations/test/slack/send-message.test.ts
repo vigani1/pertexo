@@ -30,7 +30,6 @@ const secretVersionId = '33333333-3333-4333-8333-333333333333';
 function runtime(clientResult: SlackApiResult | Error | undefined) {
   const secret = new TextEncoder().encode(
     JSON.stringify({
-      schemaVersion: 1,
       type: 'slack_bot_token',
       botToken: 'xoxb-123456789-secret',
     }),

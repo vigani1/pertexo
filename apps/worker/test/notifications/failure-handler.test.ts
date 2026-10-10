@@ -8,7 +8,6 @@ import { createFailureNotificationHandler } from '../../src/notifications/failur
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method -- Vitest asymmetric matchers and injected spies */
 
 const context = {
-  schemaVersion: 1 as const,
   runId: '22222222-2222-4222-8222-222222222222',
   workflowId: '33333333-3333-4333-8333-333333333333',
   workflowVersionId: '44444444-4444-4444-8444-444444444444',
@@ -30,7 +29,6 @@ const context = {
 const delivery = {
   name: 'deliver-run-failure-notification' as const,
   data: {
-    schemaVersion: 1 as const,
     workspaceId: '11111111-1111-4111-8111-111111111111',
     notificationIntentId: '55555555-5555-4555-8555-555555555555',
     outboxEventId: '66666666-6666-4666-8666-666666666666',
@@ -72,7 +70,6 @@ describe('failure notification handler', () => {
   it('delivers loaded immutable context and persists a bounded result', async () => {
     const repository = store();
     const deliver = vi.fn().mockResolvedValue({
-      schemaVersion: 1,
       kind: 'delivered',
       possiblyDispatched: true,
       providerReference: 'opaque-ref',
@@ -258,7 +255,6 @@ describe('failure notification handler', () => {
     expect(repository.completeDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
         result: {
-          schemaVersion: 1,
           kind: 'retry',
           safeErrorCode: 'delivery.provider_failure',
           possiblyDispatched: true,
@@ -356,7 +352,6 @@ describe('failure notification handler', () => {
     expect(repository.completeDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
         result: {
-          schemaVersion: 1,
           kind: 'retry',
           safeErrorCode: 'delivery.timeout',
           possiblyDispatched: true,
@@ -413,7 +408,6 @@ describe('failure notification handler', () => {
       store: repository,
       delivery: {
         deliver: vi.fn().mockResolvedValue({
-          schemaVersion: 1,
           kind: 'delivered',
           possiblyDispatched: true,
         }),
@@ -450,7 +444,6 @@ describe('failure notification handler', () => {
       store: repository,
       delivery: {
         deliver: vi.fn().mockResolvedValue({
-          schemaVersion: 1,
           kind: 'delivered',
           possiblyDispatched: true,
           providerReference: 'opaque-ref',
@@ -508,7 +501,6 @@ describe('failure notification handler', () => {
 
 function readyDeliveryResult() {
   return {
-    schemaVersion: 1 as const,
     kind: 'delivered' as const,
     possiblyDispatched: true as const,
     providerReference: 'late-provider-reference',

@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { createScheduleTriggerFixture } from './schedule-trigger-fixture.js';
 
 const scheduleGraph: WorkflowGraph = {
-  schemaVersion: 1,
   settings: {},
   nodes: [
     {
@@ -100,7 +99,6 @@ describe('Schedule fixture authoring admission ownership', () => {
               result: {
                 kind: 'expression',
                 language: 'jsonata',
-                policyVersion: 1,
                 expression: '(',
               },
             },

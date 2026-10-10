@@ -5,7 +5,6 @@ import {
   integer,
   jsonb,
   primaryKey,
-  smallint,
   timestamp,
   uniqueIndex,
   uuid,
@@ -25,9 +24,6 @@ export const workflowRuns = appSchema.table(
     replaySourceRunId: uuid('replay_source_run_id'),
     replayCommandId: uuid('replay_command_id'),
     triggerType: varchar('trigger_type', { length: 32 }).notNull(),
-    failureNotificationPolicyVersion: smallint(
-      'failure_notification_policy_version',
-    ),
     failureNotificationDestinationId: uuid(
       'failure_notification_destination_id',
     ),
@@ -158,7 +154,6 @@ export const runCheckpoints = appSchema.table(
       length: 64,
     }),
     revision: integer('revision').notNull(),
-    engineVersion: varchar('engine_version', { length: 64 }).notNull(),
     schedulerState: jsonb('scheduler_state').notNull(),
     resumeAt: timestamp('resume_at', { withTimezone: true, mode: 'date' }),
     resumeLeaseOwner: varchar('resume_lease_owner', { length: 128 }),

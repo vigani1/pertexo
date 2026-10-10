@@ -421,28 +421,27 @@ describe('workflow run application seams', () => {
     expect(reordered.idempotencyKeyHash).toBe(canonical.idempotencyKeyHash);
   });
 
-  it('preserves legacy start hash bytes and binds only explicit publication expectations', async () => {
-    const legacy = await startCommand({ input: { a: 1 } });
+  it('hashes the sole start shape and binds only explicit publication expectations', async () => {
+    const unchecked = await startCommand({ input: { a: 1 } });
     const expectedHash = createHash('sha256')
       .update(
         JSON.stringify({
           actorId,
           domain: 'pertexo.workflow-run.start-request',
           input: { a: 1 },
-          version: 1,
           workflowId,
           workspaceId,
         }),
       )
       .digest('hex');
-    expect(legacy.requestHash).toBe(expectedHash);
-    expect(legacy).not.toHaveProperty('expectedPublishedVersionId');
+    expect(unchecked.requestHash).toBe(expectedHash);
+    expect(unchecked).not.toHaveProperty('expectedPublishedVersionId');
     const checked = await startCommand({
       input: { a: 1 },
       expectedPublishedVersionId: workflowVersionId,
     });
     expect(checked.expectedPublishedVersionId).toBe(workflowVersionId);
-    expect(checked.requestHash).not.toBe(legacy.requestHash);
+    expect(checked.requestHash).not.toBe(unchecked.requestHash);
     const changed = await startCommand({
       input: { a: 1 },
       expectedPublishedVersionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

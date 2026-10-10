@@ -11,8 +11,7 @@ const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 const body = {
   workflowId,
   revision: 1,
-  schemaVersion: 1,
-  graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+  graph: { nodes: [], edges: [], settings: {} },
   compatibility: {
     compatible: true,
     fingerprint:
@@ -37,7 +36,6 @@ const version = {
   id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   workflowId,
   versionNumber: 1,
-  schemaVersion: 1 as const,
   graph: body.graph,
   checksum:
     'wf:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',

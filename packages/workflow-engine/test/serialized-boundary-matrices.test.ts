@@ -20,7 +20,6 @@ const occurredAt = '2026-09-12T00:00:00.000Z';
 function executable() {
   return buildWorkflowExecutable({
     graph: {
-      schemaVersion: 1,
       settings: {},
       nodes: [
         {
@@ -41,7 +40,6 @@ function executable() {
 
 function baseCheckpoint() {
   return createCheckpoint({
-    engineVersion: 'engine-v1',
     workflowVersionId,
     iterationBudget: 10,
   });
@@ -167,9 +165,8 @@ describe('serialized workflow boundary matrices', () => {
     },
   );
 
-  it('rejects an altered serialized V2 selection at the checkpoint decoder', async () => {
+  it('rejects an altered serialized selection at the checkpoint decoder', async () => {
     const source = createCheckpoint({
-      engineVersion: 'engine-v2',
       workflowVersionId,
       iterationBudget: 10,
     });
@@ -198,7 +195,6 @@ describe('serialized workflow boundary matrices', () => {
     });
     const mergeKey = invocationKey({ workflowVersionId, nodeId: 'merge' });
     const source = createCheckpoint({
-      engineVersion: 'engine-v2',
       workflowVersionId,
       iterationBudget: 10,
     });
@@ -240,7 +236,6 @@ describe('serialized workflow boundary matrices', () => {
     });
     const loopKey = invocationKey({ workflowVersionId, nodeId: 'loop' });
     const source = createCheckpoint({
-      engineVersion: 'engine-v2',
       workflowVersionId,
       iterationBudget: 10,
     });

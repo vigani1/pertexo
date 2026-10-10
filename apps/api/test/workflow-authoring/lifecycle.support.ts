@@ -70,7 +70,6 @@ export type WorkflowHistory = Readonly<{
   draft: Readonly<{
     revision: number;
     graph: unknown;
-    schemaVersion: number;
   }>;
   versions: readonly Readonly<{
     id: string;
@@ -399,7 +398,6 @@ async function seedWorkflowRows(
   ids: LifecycleWorkflowIds,
 ): Promise<void> {
   const graph = JSON.stringify({
-    schemaVersion: 1,
     nodes: [],
     edges: [],
     settings: {},
@@ -418,17 +416,17 @@ async function seedWorkflowRows(
   );
   await client.query(
     `insert into app.workflow_drafts
-       (workflow_id,workspace_id,revision,schema_version,graph_json,updated_by)
+       (workflow_id,workspace_id,revision,graph_json,updated_by)
      values
-       ($1,$2,7,1,$3::jsonb,$4),
-       ($5,$2,11,1,$3::jsonb,$4)`,
+       ($1,$2,7,$3::jsonb,$4),
+       ($5,$2,11,$3::jsonb,$4)`,
     [ids.unpublished, workspaceId, graph, ownerUserId, ids.published],
   );
   await client.query(
     `insert into app.workflow_versions
-       (id,workspace_id,workflow_id,version_number,schema_version,
+       (id,workspace_id,workflow_id,version_number,
         graph_json,checksum,executable_json,published_by)
-     values ($1,$2,$3,4,1,$4::jsonb,$5,$6::jsonb,$7)`,
+     values ($1,$2,$3,4,$4::jsonb,$5,$6::jsonb,$7)`,
     [
       ids.publishedVersion,
       workspaceId,
@@ -453,7 +451,6 @@ async function createForeignVersionWithOwner(
   const foreignWorkflowId = randomUUID();
   const foreignVersionId = randomUUID();
   const graph = parseWorkflowGraphDraft({
-    schemaVersion: 1,
     nodes: [],
     edges: [],
     settings: {},
@@ -478,9 +475,9 @@ async function createForeignVersionWithOwner(
     );
     await client.query(
       `insert into app.workflow_versions
-         (id,workspace_id,workflow_id,version_number,schema_version,
+         (id,workspace_id,workflow_id,version_number,
           graph_json,checksum,executable_json,published_by)
-       values ($1,$2,$3,1,1,$4::jsonb,$5,$6::jsonb,$7)`,
+       values ($1,$2,$3,1,$4::jsonb,$5,$6::jsonb,$7)`,
       [
         foreignVersionId,
         foreignWorkspaceId,
@@ -530,10 +527,9 @@ async function readWorkflowHistory(
   return withApi(async (client) => {
     const draft = await client.query<{
       revision: number;
-      schema_version: number;
       graph_json: unknown;
     }>(
-      `select revision,schema_version,graph_json
+      `select revision,graph_json
        from app.workflow_drafts where workflow_id=$1`,
       [workflowId],
     );
@@ -562,7 +558,6 @@ async function readWorkflowHistory(
     return {
       draft: {
         revision: draftRow.revision,
-        schemaVersion: draftRow.schema_version,
         graph: draftRow.graph_json,
       },
       versions: versions.rows.map((row) => ({

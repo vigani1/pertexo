@@ -353,7 +353,6 @@ async function openSecret(
 ) {
   return encryption.open(
     {
-      schemaVersion: sealed.schemaVersion,
       kmsKeyReference: sealed.kmsKeyReference,
       encryptedDataKey: sealed.encryptedDataKey,
       ciphertext: sealed.ciphertext,

@@ -16,8 +16,7 @@ const tag = `"draft.${'a'.repeat(43)}"`;
 const fingerprint = `wf-compat:sha256:${'a'.repeat(64)}`;
 const manifest = {
   format: 'pertexo.workflow',
-  formatVersion: 1,
-  graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+  graph: { nodes: [], edges: [], settings: {} },
   requirements: {
     definitions: [],
   },
@@ -104,7 +103,6 @@ function fixture(role: 'owner' | 'builder' | 'operator' | 'viewer' = 'owner') {
 }
 describe('workflow portability application authority and exact commands', () => {
   const templateOrigin = {
-    schemaVersion: 1,
     templateId: 'retired-reviewed-example',
     templateVersion: 1,
     baseManifestDigest: 'a'.repeat(64),

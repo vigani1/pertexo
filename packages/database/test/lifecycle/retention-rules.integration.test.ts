@@ -14,8 +14,7 @@ import {
 
 const DAY = 86_400_000;
 const daysAgo = (days: number) => new Date(Date.now() - days * DAY);
-const inline = (value: unknown) =>
-  JSON.stringify({ kind: 'inline', schemaVersion: 1, value });
+const inline = (value: unknown) => JSON.stringify({ kind: 'inline', value });
 
 let admin!: Client;
 
@@ -127,9 +126,9 @@ async function insertScheduleTrigger(): Promise<string> {
   );
   await admin.query(
     `insert into app.workflow_versions
-      (id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+      (id,workspace_id,workflow_id,version_number,graph_json,
        checksum,executable_json,published_by,published_at)
-     values($1,$2,$3,1,1,'{}',$4,'{}',$5,clock_timestamp())`,
+     values($1,$2,$3,1,'{}',$4,'{}',$5,clock_timestamp())`,
     [
       workflowVersionId,
       workspaceId,
@@ -209,7 +208,7 @@ describe('retention rules', () => {
       Object.fromEntries(inputs.rows.map((row) => [row.id, row.input_ref])),
     ).toEqual({
       ...Object.fromEntries(runIds.map((id) => [id, null])),
-      [pending]: { kind: 'inline', schemaVersion: 1, value: 'kept' },
+      [pending]: { kind: 'inline', value: 'kept' },
     });
   });
 

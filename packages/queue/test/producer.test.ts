@@ -126,7 +126,6 @@ describe('BullMQ queue producer', () => {
     const enqueued = await producer.publish({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId: IDS.workspaceId,
         runId: IDS.runId,
         outboxEventId: IDS.outboxEventId,
@@ -148,7 +147,6 @@ describe('BullMQ queue producer', () => {
     expect(coordinator?.add).toHaveBeenCalledWith(
       JOB_NAME.advanceWorkflowRun,
       expect.objectContaining({
-        schemaVersion: 1,
         workspaceId: IDS.workspaceId,
         runId: IDS.runId,
         outboxEventId: IDS.outboxEventId,
@@ -187,7 +185,6 @@ describe('BullMQ queue producer', () => {
       producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           runId: IDS.runId,
           outboxEventId: IDS.outboxEventId,
@@ -224,7 +221,6 @@ describe('BullMQ queue producer', () => {
       producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           runId: IDS.runId,
           outboxEventId: IDS.outboxEventId,
@@ -377,7 +373,6 @@ describe('BullMQ queue producer', () => {
       const publishing = producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           runId: IDS.runId,
           outboxEventId: IDS.outboxEventId,
@@ -409,7 +404,6 @@ describe('BullMQ queue producer', () => {
       producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           runId: IDS.runId,
           outboxEventId: IDS.outboxEventId,

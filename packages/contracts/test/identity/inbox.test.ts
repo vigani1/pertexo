@@ -154,13 +154,11 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
   it('keeps stream events content-free', () => {
     expect(
       workspaceInboxStreamEventSchema.parse({
-        schemaVersion: 1,
         revision: null,
       }),
-    ).toEqual({ schemaVersion: 1, revision: null });
+    ).toEqual({ revision: null });
     expect(
       workspaceInboxStreamEventSchema.safeParse({
-        schemaVersion: 1,
         revision: '3',
         workflowName: 'Nightly import',
       }).success,

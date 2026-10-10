@@ -62,13 +62,11 @@ function authenticatedHandlers() {
     ),
     http.get('http://pertexo.test/v1/node-definitions', () =>
       HttpResponse.json({
-        schemaVersion: 1,
         items: [],
       }),
     ),
     http.get('http://pertexo.test/v1/integrations', () =>
       HttpResponse.json({
-        schemaVersion: 1,
         items: [],
       }),
     ),

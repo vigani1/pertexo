@@ -91,9 +91,9 @@ describe('inbox hint stream', () => {
     controller.abort();
     await streaming;
     expect(events(destination)).toEqual([
-      'event: inbox.ready\ndata: {"schemaVersion":1,"revision":null}\n\n',
-      'event: inbox.changed\ndata: {"schemaVersion":1,"revision":"12"}\n\n',
-      'event: inbox.changed\ndata: {"schemaVersion":1,"revision":null}\n\n',
+      'event: inbox.ready\ndata: {"revision":null}\n\n',
+      'event: inbox.changed\ndata: {"revision":"12"}\n\n',
+      'event: inbox.changed\ndata: {"revision":null}\n\n',
     ]);
     expect(access.reauthorize).toHaveBeenCalledTimes(2);
     expect(hints.close).toHaveBeenCalled();

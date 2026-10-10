@@ -15,7 +15,7 @@ import { completeReceipt } from '../receipts.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import {
   serializeStoredExecutionJsonValue,
-  serializeStoredExecutionValueV1,
+  serializeStoredExecutionValue,
 } from '../../platform/stored-execution-value.js';
 
 import {
@@ -129,7 +129,7 @@ async function duplicateCompletion(
   const persistedOutput =
     row.output_ref === null
       ? null
-      : serializeStoredExecutionValueV1(row.output_ref);
+      : serializeStoredExecutionValue(row.output_ref);
   const executorMismatch =
     fields.executorOutcome !== undefined &&
     (row.executor_failure_kind !== fields.executorOutcome.failureKind ||
@@ -214,7 +214,6 @@ async function enqueueAdvance(
 ): Promise<string> {
   const outboxEventId = generatePersistedId();
   const payload = {
-    schemaVersion: 1,
     workspaceId: input.lease.workspaceId,
     runId: input.lease.runId,
     outboxEventId,
@@ -224,9 +223,9 @@ async function enqueueAdvance(
   } as const;
   await client.query(
     `insert into app.outbox_events (
-       id,workspace_id,job_name,schema_version,aggregate_type,
+       id,workspace_id,job_name,aggregate_type,
        aggregate_id,payload,payload_checksum
-     ) values ($1,$2,'advance-workflow-run',1,'workflow-run',$3,$4::jsonb,$5)`,
+     ) values ($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5)`,
     [
       outboxEventId,
       input.lease.workspaceId,
@@ -288,7 +287,6 @@ async function commitSuspension(
       input.lease.runId,
       sequence,
       serializeStoredExecutionJsonValue({
-        schemaVersion: 1,
         nodeRunId: input.lease.nodeRunId,
         attemptId: input.lease.attemptId,
         invocationKey: input.lease.invocationKey,
@@ -340,7 +338,6 @@ async function commitTerminal(
       sequence,
       `node.${input.outcome.status}`,
       serializeStoredExecutionJsonValue({
-        schemaVersion: 1,
         nodeRunId: input.lease.nodeRunId,
         attemptId: input.lease.attemptId,
         invocationKey: input.lease.invocationKey,

@@ -40,14 +40,11 @@ function baselineCatalog(): NodeCatalog {
 }
 
 describe('expanded public workflow-engine boundaries', () => {
-  it('rejects an unknown schema version or extra envelope fields', () => {
+  it('rejects extra envelope fields', () => {
     const catalog = baselineCatalog();
     const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
 
     for (const mutate of [
-      (envelope: Record<string, unknown>) => {
-        envelope.schemaVersion = 3;
-      },
       (envelope: Record<string, unknown>) => {
         envelope.unexpected = 1;
       },

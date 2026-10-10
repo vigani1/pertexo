@@ -115,9 +115,8 @@ export function createFailureNotificationStore(
           job_name: string;
           payload: unknown;
           payload_checksum: string;
-          schema_version: number;
         }>(
-          `select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
+          `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
            from app.outbox_events where workspace_id=$1 and id=$2`,
           [workspaceId, delivery.outboxEventId],
         );
@@ -132,7 +131,6 @@ export function createFailureNotificationStore(
           outbox?.aggregate_id !== intentId ||
           outbox.aggregate_type !== 'run-failure-notification' ||
           outbox.job_name !== 'deliver-run-failure-notification' ||
-          outbox.schema_version !== 1 ||
           outbox.payload_checksum !== delivery.payloadChecksum ||
           actualChecksum !== delivery.payloadChecksum
         )

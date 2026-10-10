@@ -464,7 +464,6 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
       if (publishCalls === 1)
         throw new Error('controlled interrupted publication');
       expect(payload).toEqual({
-        schemaVersion: 1,
         workspaceId: command.workspaceId,
         outboxEventId: command.delivery.outboxEventId,
         observationId: command.observationId,

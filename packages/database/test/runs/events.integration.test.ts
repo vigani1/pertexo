@@ -79,10 +79,7 @@ async function acceptRun(): Promise<string> {
   return worker.withWorkspace(workspaceId, async (transaction) => {
     const workflowVersionId = randomUUID();
     const accepted = await acceptWorkflowRun(transaction, {
-      engineVersion: 'run-events-v1',
       initialCheckpoint: {
-        schemaVersion: 2,
-        engineVersion: 'run-events-v1',
         workflowVersionId,
         revision: 0,
         runStatus: 'queued',
@@ -157,7 +154,7 @@ describe('run event persistence', () => {
     expect(page).toMatchObject({
       events: [
         {
-          payload: { progress: 25, schemaVersion: 1 },
+          payload: { progress: 25 },
           sequence: 2,
           type: 'node.progress',
         },
@@ -174,7 +171,7 @@ describe('run event persistence', () => {
         insert into app.run_events
           (workspace_id, workflow_run_id, sequence, type, payload)
         values (${workspaceId}, ${runId}, 3, 'node.progress',
-          '{"schemaVersion":1,"progress":50}'::jsonb)
+          '{"progress":50}'::jsonb)
       `),
     );
     await expect(
@@ -287,12 +284,9 @@ describe('run event persistence', () => {
     expect(proxyTrapCalls).toBe(0);
   });
 
-  it('enforces the event limit after adding the schema version', async () => {
+  it('enforces the event payload limit', async () => {
     const runId = await acceptRun();
-    const envelopeBytes = Buffer.byteLength(
-      '{"data":"","schemaVersion":1}',
-      'utf8',
-    );
+    const envelopeBytes = Buffer.byteLength('{"data":""}', 'utf8');
     const exactData = 'x'.repeat(4096 - envelopeBytes);
     await expect(
       worker.withWorkspace(workspaceId, (transaction) =>

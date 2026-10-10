@@ -214,7 +214,6 @@ export async function createOrganizationOwnedFixture() {
             actorId: actor,
             name,
             emptyGraph: {
-              schemaVersion: 1,
               nodes: [],
               edges: [],
               settings: {},

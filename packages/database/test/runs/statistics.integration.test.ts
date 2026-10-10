@@ -97,14 +97,13 @@ async function addWorkflows(
        returning id
      )
      insert into app.workflow_versions
-       (id, workspace_id, workflow_id, version_number, schema_version,
-        graph_json, checksum, executable_json,
+       (id, workspace_id, workflow_id, version_number, graph_json, checksum, executable_json,
         published_by)
-     select gen_random_uuid(), $1, created.id, 1, 1,
-            '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
+     select gen_random_uuid(), $1, created.id, 1,
+            '{"nodes":[],"edges":[],"settings":{}}'::jsonb,
             'wf:sha256:' || repeat('e', 64),
-            '{"schemaVersion":2}'::jsonb, $2
-     from created`,
+            '{}'::jsonb, $2
+      from created`,
     [
       workspace,
       person,
@@ -282,8 +281,8 @@ describe('ADR 057 current capacity authority', () => {
         `with selected as (
       select id from app.workflow_runs where workspace_id=$1 and status='queued' limit 1
     ), event as (
-      insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum)
-      select gen_random_uuid(),$1,'advance-workflow-run',1,'workflow-run',id,'{}'::jsonb,repeat('a',64) from selected returning id,aggregate_id
+      insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum)
+      select gen_random_uuid(),$1,'advance-workflow-run','workflow-run',id,'{}'::jsonb,repeat('a',64)  from selected returning id,aggregate_id
     ) insert into app.workflow_run_active_admissions(workspace_id,workflow_run_id,outbox_event_id)
       select $1,aggregate_id,id from event`,
         [workspace],
@@ -751,9 +750,9 @@ describe('run statistics query-plan budget', () => {
         'owner',
         workspace,
         `with event as (
-        insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum)
-        select gen_random_uuid(),$1,'advance-workflow-run',1,'workflow-run',id,'{}'::jsonb,repeat('a',64)
-          from app.workflow_runs where workspace_id=$1 and status='queued' returning id,aggregate_id
+        insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum)
+        select gen_random_uuid(),$1,'advance-workflow-run','workflow-run',id,'{}'::jsonb,repeat('a',64)
+           from app.workflow_runs where workspace_id=$1 and status='queued' returning id,aggregate_id
       ) insert into app.workflow_run_active_admissions(workspace_id,workflow_run_id,outbox_event_id)
         select $1,aggregate_id,id from event`,
         [workspace],

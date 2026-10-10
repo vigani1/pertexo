@@ -32,7 +32,6 @@ type BodyGraph = Readonly<{
 /** Each order (check → reserve), then After the loop. */
 function orderLoopDraft(): RemoteDraft {
   return remoteDraft({
-    schemaVersion: 1,
     nodes: [
       {
         ...editorNode('loop', 'Each order', 'unused', 80),
@@ -43,7 +42,6 @@ function orderLoopDraft(): RemoteDraft {
           maxIterations: 100,
           maxConcurrency: 5,
           body: {
-            schemaVersion: 1,
             nodes: [
               editorNode('check', 'Check stock', 'a', 0),
               editorNode('reserve', 'Reserve item', 'b', 300),
@@ -276,7 +274,6 @@ test('adds a first body step from the container and never connects across the bo
   page,
 }) => {
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [
       {
         ...editorNode('loop', 'Each order', 'unused', 80),

@@ -38,7 +38,6 @@ export {
 };
 
 export const sealedHealthSecret = (marker = 1) => ({
-  schemaVersion: 1 as const,
   kmsKeyReference: 'kms-owned-health-fixture',
   encryptedDataKey: Buffer.alloc(96, marker).toString('base64url'),
   ciphertext: Buffer.from(`encrypted-owned-${String(marker)}`).toString(
@@ -98,17 +97,15 @@ export async function createHealthConnection(
   const versionId = randomUUID();
   await asOwner(workspaceA, async (client) => {
     await client.query(
-      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,
-      graph_json,checksum,executable_json,published_by)
-      select $1,$2,$3,coalesce(max(version_number),0)+1,1,'{}'::jsonb,$4,$5::jsonb,$6
-      from app.workflow_versions where workspace_id=$2 and workflow_id=$3`,
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+      select $1,$2,$3,coalesce(max(version_number),0)+1,'{}'::jsonb,$4,$5::jsonb,$6
+       from app.workflow_versions where workspace_id=$2 and workflow_id=$3`,
       [
         versionId,
         workspaceA,
         workflowA,
         `wf:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
         JSON.stringify({
-          schemaVersion: 2,
           graph: {
             nodes: [
               {
@@ -159,13 +156,11 @@ export async function claimHealthAttempt(
       }),
       events: [
         {
-          schemaVersion: 1,
           sequence: 2,
           name: 'run.started',
           occurredAt: '2026-10-01T00:00:00.000Z',
         },
         {
-          schemaVersion: 1,
           sequence: 3,
           name: 'node.ready',
           occurredAt: '2026-10-01T00:00:00.000Z',

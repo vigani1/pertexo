@@ -23,7 +23,7 @@ function recordBenchmarkOperation(name: string, startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
   const endedAt = performance.now();
   process.stdout.write(
-    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 128, boundary: `For Each ${name} database call through returned durable result` })}\n`,
+    `PERTEXO_Q11_OPERATION=${JSON.stringify({ name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 128, boundary: `For Each ${name} database call through returned durable result` })}\n`,
   );
 }
 
@@ -52,7 +52,6 @@ describe('Coordinator For Each persistence invariants', () => {
         ],
         admittedInvocationKeys: [controlKey],
       }),
-      schemaVersion: 2,
       branchSelections: [],
       initialIterationBudget: 128,
       remainingIterationBudget: 128,
@@ -62,7 +61,6 @@ describe('Coordinator For Each persistence invariants', () => {
       status: 'running',
     });
     const storedOutput = {
-      schemaVersion: 1,
       kind: 'inline',
       value: { items: loopItems, iterationCount: loopItems.length },
     };
@@ -101,7 +99,6 @@ describe('Coordinator For Each persistence invariants', () => {
           workspaceA,
           runId,
           JSON.stringify({
-            schemaVersion: 1,
             nodeRunId: controlNodeRunId,
             attemptId: controlAttemptId,
           }),
@@ -179,7 +176,6 @@ describe('Coordinator For Each persistence invariants', () => {
       checkpoint: next,
       events: [
         {
-          schemaVersion: 1,
           sequence: 3,
           name: 'node.ready',
           occurredAt: '2026-08-24T00:00:00.000Z',
@@ -316,18 +312,14 @@ describe('Coordinator For Each persistence invariants', () => {
       .update(JSON.stringify(items))
       .digest('hex');
     const declarationOutput = {
-      schemaVersion: 1,
       kind: 'inline',
       value: { items, iterationCount: 2 },
     };
     const inline = (value: unknown) => ({
-      schemaVersion: 1,
       kind: 'inline',
       value,
     });
     const schedulerState = {
-      schemaVersion: 2,
-      engineVersion: 'engine-v1',
       workflowVersionId: versionA,
       revision: 1,
       runStatus: 'running',

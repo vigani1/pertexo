@@ -24,7 +24,6 @@ export type { WorkflowTriggerHealth } from './health.js';
 const uuidSchema = z.uuid();
 const reconciliationPayloadSchema = z
   .object({
-    schemaVersion: z.literal(1),
     workspaceId: z.uuid(),
     outboxEventId: z.uuid(),
     workflowId: z.uuid(),
@@ -86,9 +85,8 @@ async function readReconciliationEvent(
     job_name: string;
     payload: unknown;
     payload_checksum: string;
-    schema_version: number;
   }>(
-    `select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
+    `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
        from app.outbox_events where workspace_id=$1 and id=$2`,
     [input.workspaceId, identity.outboxEventId],
   );
@@ -116,7 +114,6 @@ function assertStoredReconciliationIdentity(
     aggregate_type: string;
     job_name: string;
     payload_checksum: string;
-    schema_version: number;
   }>,
   payload: z.output<typeof reconciliationPayloadSchema>,
   identity: Readonly<{
@@ -129,7 +126,6 @@ function assertStoredReconciliationIdentity(
     eventRow.aggregate_id !== identity.workflowId ||
     eventRow.aggregate_type !== 'workflow' ||
     eventRow.job_name !== 'reconcile-workflow-triggers' ||
-    eventRow.schema_version !== 1 ||
     payload.workspaceId !== input.workspaceId ||
     payload.workflowId !== identity.workflowId ||
     payload.publishedVersionId !== identity.versionId ||

@@ -32,7 +32,7 @@ function recordBenchmarkOperation(name: string, startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
   const endedAt = performance.now();
   process.stdout.write(
-    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: name === 'workflow-create' ? 'createWorkflow call through durable returned result' : 'publishWorkflow call with precomputed representation tag through durable returned result' })}\n`,
+    `PERTEXO_Q11_OPERATION=${JSON.stringify({ name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: name === 'workflow-create' ? 'createWorkflow call through durable returned result' : 'publishWorkflow call with precomputed representation tag through durable returned result' })}\n`,
   );
 }
 
@@ -78,7 +78,6 @@ describe('workflow publication projections', () => {
               value: {
                 kind: 'expression',
                 language: 'jsonata',
-                policyVersion: 1,
                 expression: '(',
               },
             },
@@ -408,11 +407,10 @@ describe('workflow publication projections', () => {
     }
   });
 
-  it('atomically persists an injected executable V2 publication projection', async () => {
+  it('atomically persists an injected executable publication projection', async () => {
     const checksum = `wf:sha256:${'a'.repeat(64)}` as const;
     const executableDefinitionCatalog = baselineEmptyDefinitionCatalog;
     const executableJson = {
-      schemaVersion: 2,
       marker: 'compiled-in-api',
     };
     const executableAuthoring = createWorkflowAuthoringDatabase(
@@ -430,7 +428,7 @@ describe('workflow publication projections', () => {
         actorId,
         emptyGraph,
         idempotencyKey: 'create-v2-publication-proof',
-        name: 'V2 publication proof',
+        name: 'Publication proof',
         workspaceId,
       });
       const representationTag = await currentRepresentationTag(
@@ -470,7 +468,6 @@ describe('workflow publication projections', () => {
         parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
         {
           definitionCatalog: {
-            schemaVersion: 1,
             definitions: [{ key: 'test.drifted', version: 1 }],
           },
           executableCompiler: () => ({
@@ -497,9 +494,9 @@ describe('workflow publication projections', () => {
 
       await queryAsOwner(
         `insert into app.workflow_versions
-           (id,workspace_id,workflow_id,version_number,schema_version,
+           (id,workspace_id,workflow_id,version_number,
             graph_json,checksum,executable_json,published_by)
-         values($1,$2,$3,2,1,'{}'::jsonb,$4,$5::jsonb,$6)
+         values($1,$2,$3,2,'{}'::jsonb,$4,$5::jsonb,$6)
          returning id`,
         [
           randomUUID(),
@@ -541,7 +538,6 @@ describe('workflow publication projections', () => {
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
     const usageCatalog = Object.freeze({
-      schemaVersion: 1 as const,
       definitions: Object.freeze([
         Object.freeze({
           key: 'test.placeholder',
@@ -568,7 +564,6 @@ describe('workflow publication projections', () => {
         name: `Usage ${connectionId.slice(0, 8)}`,
         authType: CONNECTION_AUTH_TYPE.httpHeaders,
         sealed: {
-          schemaVersion: 1,
           kmsKeyReference:
             'arn:aws:kms:eu-central-1:123456789012:key/usage-proof',
           encryptedDataKey: Buffer.alloc(32, 1).toString('base64url'),

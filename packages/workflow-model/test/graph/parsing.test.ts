@@ -10,14 +10,12 @@ import {
 describe('graph parsing in the browser schema and the server parser', () => {
   it('safely rejects deeply nested input', () => {
     let graph: Record<string, unknown> = {
-      schemaVersion: 1,
       nodes: [],
       edges: [],
       settings: {},
     };
     for (let index = 0; index < 500; index += 1)
       graph = {
-        schemaVersion: 1,
         nodes: [
           {
             id: `loop-${String(index)}`,
@@ -60,7 +58,6 @@ describe('graph parsing in the browser schema and the server parser', () => {
       connectionRefs: {},
     });
     const candidate = (innerCount: number) => ({
-      schemaVersion: 1,
       nodes: [
         {
           ...innerNode(-1),
@@ -69,7 +66,6 @@ describe('graph parsing in the browser schema and the server parser', () => {
             maxIterations: 1,
             maxConcurrency: 1,
             body: {
-              schemaVersion: 1,
               nodes: Array.from({ length: innerCount }, (_, index) =>
                 innerNode(index),
               ),
@@ -108,7 +104,6 @@ describe('graph parsing in the browser schema and the server parser', () => {
 
   it('preserves distinct browser and server diagnostics for non-finite numbers', () => {
     const graph = {
-      schemaVersion: 1,
       nodes: [
         {
           id: 'non-finite',
@@ -143,7 +138,6 @@ describe('graph parsing in the browser schema and the server parser', () => {
 
   it('parses the admitted snapshot without rereading source descriptors', () => {
     const graph = {
-      schemaVersion: 1,
       nodes: [],
       edges: [],
       settings: {},
@@ -189,7 +183,6 @@ describe('graph parsing in the browser schema and the server parser', () => {
       connectionRefs: {},
     });
     const graph = (candidate: ReturnType<typeof node>) => ({
-      schemaVersion: 1,
       nodes: [candidate],
       edges: [],
       settings: {},
@@ -277,7 +270,6 @@ describe('graph parsing in the browser schema and the server parser', () => {
 
   it('contains hostile reflection failures and parses descriptor snapshots', () => {
     const graph = {
-      schemaVersion: 1,
       nodes: [],
       edges: [],
       settings: {},
@@ -335,7 +327,7 @@ describe('graph parsing in the browser schema and the server parser', () => {
       inputMappings: {},
       connectionRefs: shared,
     };
-    const graph = { schemaVersion: 1, nodes: [node], edges: [], settings: {} };
+    const graph = { nodes: [node], edges: [], settings: {} };
     expect(workflowGraphSchema.safeParse(graph).success).toBe(true);
     expect(safeParseWorkflowGraphDraft(graph).success).toBe(true);
 
@@ -369,7 +361,6 @@ describe('graph parsing in the browser schema and the server parser', () => {
       },
     );
     const graph = {
-      schemaVersion: 1,
       nodes: oversized,
       edges: [],
       settings: {},

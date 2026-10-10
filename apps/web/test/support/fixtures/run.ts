@@ -162,7 +162,6 @@ export function fixtureVersion(graph: unknown = emptyGraph) {
     id: fixtureIds.version,
     workflowId: fixtureIds.workflow,
     versionNumber: 7,
-    schemaVersion: 1,
     graph,
     checksum: `wf:sha256:${'a'.repeat(64)}`,
     publishedAt: fixtureTimestamp,
@@ -170,7 +169,6 @@ export function fixtureVersion(graph: unknown = emptyGraph) {
 }
 
 export const emptyGraph = {
-  schemaVersion: 1,
   nodes: [],
   edges: [],
   settings: {},
@@ -196,7 +194,7 @@ export function sseEvents(events: readonly Readonly<{ type: string }>[]) {
       const body = {
         sequence: index + 1,
         createdAt: fixtureTimestamp,
-        payload: { schemaVersion: 1 },
+        payload: {},
         ...event,
       };
       return `id: ${String(body.sequence)}\nevent: ${body.type}\ndata: ${JSON.stringify(body)}\n\n`;

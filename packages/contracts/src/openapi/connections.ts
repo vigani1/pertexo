@@ -82,7 +82,6 @@ const schemas = Object.freeze({
 });
 
 export const connectionsClientContract = Object.freeze({
-  schemaVersion: '1.3.0',
   schemas,
 });
 

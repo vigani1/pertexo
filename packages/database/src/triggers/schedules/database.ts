@@ -369,7 +369,6 @@ async function completeScheduleCommand(
     identity.triggerId,
   );
   await completeCommand(client, scheduleCommand(input, identity), {
-    schemaVersion: 1,
     trigger,
   });
   return Object.freeze({ trigger, replayed: false });

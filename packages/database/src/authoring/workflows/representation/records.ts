@@ -23,7 +23,6 @@ export type WorkflowDraftRecord = Readonly<{
   workflowId: string;
   workspaceId: string;
   revision: number;
-  schemaVersion: number;
   graphJson: WorkflowGraph;
   compatibility: ReturnType<typeof workflowCompatibilityReport>;
   updatedBy: string;
@@ -35,7 +34,6 @@ export type WorkflowVersionRecord = Readonly<{
   workspaceId: string;
   workflowId: string;
   versionNumber: number;
-  schemaVersion: number;
   graphJson: WorkflowGraph;
   checksum: string;
   publishedBy: string;

@@ -5,7 +5,6 @@ import jsonata from 'jsonata';
 import { canonicalizeJson, type JsonValue } from '../json/canonical.js';
 
 export const EXPRESSION_POLICY = Object.freeze({
-  policyVersion: 1 as const,
   expressionBytes: 16_384,
   astDepth: 64,
   astNodes: 2_048,
@@ -60,7 +59,6 @@ export interface ExpressionContext {
 
 export interface ExpressionRequest {
   readonly expression: string;
-  readonly policyVersion: number;
   readonly context: ExpressionContext;
   readonly signal?: AbortSignal;
 }
@@ -256,15 +254,7 @@ function astSize(root: JsonataAst): {
     : { nodes, depth, disallowed };
 }
 
-export function validateExpression(
-  source: string,
-  policyVersion: number,
-): ExpressionValidation {
-  if (policyVersion !== 1)
-    return expressionError(
-      'invalid_expression',
-      `unsupported expression policy ${String(policyVersion)}`,
-    );
+export function validateExpression(source: string): ExpressionValidation {
   if (Buffer.byteLength(source, 'utf8') > EXPRESSION_POLICY.expressionBytes)
     return expressionError(
       'limit_exceeded',
@@ -303,7 +293,6 @@ export function validateExpression(
 export const JSONATA_EVALUATOR_DIAGNOSTICS = Object.freeze({
   library: 'jsonata',
   libraryVersion: '2.2.2',
-  policyVersion: 1 as const,
   isolation: 'bounded_one_shot_worker' as const,
 });
 

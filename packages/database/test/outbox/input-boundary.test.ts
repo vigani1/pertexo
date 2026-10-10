@@ -47,7 +47,6 @@ describe('transport persistence input boundary', () => {
       insertOutboxEvent(null as never, {
         id: '11111111-1111-4111-8111-111111111111',
         jobName: 'advance-workflow-run',
-        schemaVersion: 1,
         aggregateType: 'workflow-run',
         aggregateId: '22222222-2222-4222-8222-222222222222',
         payload: { value: 'x'.repeat(4_096) },
@@ -61,7 +60,6 @@ describe('transport persistence input boundary', () => {
       insertOutboxEvent(null as never, {
         id: '11111111-1111-4111-8111-111111111111',
         jobName: 'advance-workflow-run',
-        schemaVersion: 1,
         aggregateType: 'workflow-run',
         aggregateId: '22222222-2222-4222-8222-222222222222',
         payload: {},
@@ -167,7 +165,6 @@ describe('transport persistence input boundary', () => {
       insertOutboxEvent(null as never, {
         id: '11111111-1111-4111-8111-111111111111',
         jobName: 'advance-workflow-run',
-        schemaVersion: 1,
         aggregateType: 'workflow-run',
         aggregateId: '22222222-2222-4222-8222-222222222222',
         payload: { runId: '33333333-3333-4333-8333-333333333333' },

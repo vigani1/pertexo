@@ -516,7 +516,6 @@ describe('AdvanceWorkflow branching', () => {
     const plan = advanceWorkflowForTesting({
       checkpoint: {
         ...createCheckpoint({
-          engineVersion: 'engine-v2',
           workflowVersionId: '00000000-0000-4000-8000-000000000003',
           iterationBudget: 0,
         }),
@@ -617,7 +616,7 @@ describe('AdvanceWorkflow branching', () => {
     ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
   });
 
-  it('persists selected and skipped Condition branches in checkpoint V2', () => {
+  it('persists selected and skipped Condition branches in checkpoint', () => {
     const conditionKey = invocationKey({
       workflowVersionId: '00000000-0000-4000-8000-000000000002',
       nodeId: 'condition',
@@ -625,7 +624,6 @@ describe('AdvanceWorkflow branching', () => {
     const plan = advanceWorkflowForTesting({
       checkpoint: {
         ...createCheckpoint({
-          engineVersion: 'engine-v2',
           workflowVersionId: '00000000-0000-4000-8000-000000000002',
           iterationBudget: 1_000,
         }),
@@ -681,7 +679,6 @@ describe('AdvanceWorkflow branching', () => {
     });
 
     expect(plan.checkpoint).toMatchObject({
-      schemaVersion: 2,
       branchSelections: [
         {
           invocationKey: conditionKey,

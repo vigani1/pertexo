@@ -1,6 +1,5 @@
 export type EngineErrorCode =
   | 'checkpoint_invalid'
-  | 'checkpoint_unsupported'
   | 'graph_invalid'
   | 'executable_invalid'
   | 'observation_invalid'

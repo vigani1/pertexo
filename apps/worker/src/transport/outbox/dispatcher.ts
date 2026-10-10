@@ -125,7 +125,6 @@ function toQueueJob(event: LeasedOutboxEvent): QueueJob {
       data: {
         ...event.payload,
         outboxEventId: event.id,
-        schemaVersion: event.schemaVersion,
         workspaceId: event.workspaceId,
       },
     });

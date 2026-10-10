@@ -7,7 +7,6 @@ import {
 } from '../../src/index.js';
 
 const data = {
-  schemaVersion: 1,
   workspaceId: '11111111-1111-4111-8111-111111111111',
   outboxEventId: '22222222-2222-4222-8222-222222222222',
   observationId: '33333333-3333-4333-8333-333333333333',
@@ -38,10 +37,9 @@ describe('ID-only connection health application job', () => {
       }),
     ).toThrow();
   });
-  it('rejects malformed identity and versions', () => {
+  it('rejects malformed identities', () => {
     for (const invalid of [
       { ...data, observationId: 'bad' },
-      { ...data, schemaVersion: 2 },
       { ...data, workspaceId: undefined },
     ])
       expect(() =>

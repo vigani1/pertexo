@@ -19,7 +19,6 @@ import { maintenanceDeliveryHandler } from '../../src/maintenance/delivery-handl
 import { createMaintenanceRuntime } from '../../src/maintenance/runtime.js';
 
 const data = {
-  schemaVersion: 1 as const,
   workspaceId: '11111111-1111-4111-8111-111111111111',
   outboxEventId: '22222222-2222-4222-8222-222222222222',
   observationId: '33333333-3333-4333-8333-333333333333',

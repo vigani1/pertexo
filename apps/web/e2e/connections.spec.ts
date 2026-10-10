@@ -86,7 +86,6 @@ async function installRoutes(page: Page) {
         providerKey: 'slack',
         name: 'Incident Slack',
         credential: {
-          schemaVersion: 1,
           type: 'slack_bot_token',
           botToken,
         },
@@ -131,11 +130,11 @@ async function installRoutes(page: Page) {
   );
   await page.route('**/v1/node-definitions', (route) =>
     route.fulfill({
-      json: { schemaVersion: 1, items: [slackDefinition] },
+      json: { items: [slackDefinition] },
     }),
   );
   await page.route('**/v1/integrations', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, items: [] } }),
+    route.fulfill({ json: { items: [] } }),
   );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
@@ -152,9 +151,7 @@ async function installRoutes(page: Page) {
         body: JSON.stringify({
           workflowId,
           revision: 1,
-          schemaVersion: 1,
           graph: {
-            schemaVersion: 1,
             nodes: [
               {
                 id: 'slack-node',
@@ -365,7 +362,6 @@ test('recovers run-rejected health, pages published usage, rotates to unknown an
       expect(route.request().postDataJSON()).toEqual({
         expectedSecretVersionId: secretVersionId,
         credential: {
-          schemaVersion: 1,
           type: 'slack_bot_token',
           botToken: nextToken,
         },

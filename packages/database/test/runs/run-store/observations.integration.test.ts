@@ -50,8 +50,7 @@ async function measureObservationLoad<T>(
     clearInterval(sampler);
     peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
     console.info(
-      `Q12_OBSERVATION_MATERIALIZATION_V1=${JSON.stringify({
-        schemaVersion: 1,
+      `Q12_OBSERVATION_MATERIALIZATION=${JSON.stringify({
         scenario,
         outcome,
         operationMs: performance.now() - startedAt,
@@ -234,11 +233,7 @@ function observedKinds(
 }
 
 describe('Coordinator observation integrity invariants', () => {
-  it.each([
-    { schemaVersion: 2 },
-    { schemaVersion: 2, graph: {} },
-    { schemaVersion: 1, graph: { nodes: [] } },
-  ])(
+  it.each([{}, { graph: {} }])(
     'rejects persisted invalid executable control metadata %j',
     async (executableJson) => {
       const workflowVersionId = generatePersistedId();
@@ -246,13 +241,12 @@ describe('Coordinator observation integrity invariants', () => {
       await asOwner(workspaceA, (client) =>
         client.query(
           `insert into app.workflow_versions (
-         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         id,workspace_id,workflow_id,version_number,graph_json,
          checksum,executable_json,published_by
        ) select $1,$2,workflow.id,
            (select coalesce(max(version_number),0)+1 from app.workflow_versions
-             where workspace_id=$2 and workflow_id=workflow.id),
-           1,'{}'::jsonb,$3,$4::jsonb,workflow.created_by
-         from app.workflows workflow where workflow.workspace_id=$2 and workflow.id=$5`,
+             where workspace_id=$2 and workflow_id=workflow.id),'{}'::jsonb,$3,$4::jsonb,workflow.created_by
+          from app.workflows workflow where workflow.workspace_id=$2 and workflow.id=$5`,
           [
             workflowVersionId,
             workspaceA,
@@ -310,7 +304,6 @@ describe('Coordinator observation integrity invariants', () => {
       status: 'running',
     });
     await seedSucceededFact(runId, invocationKey, {
-      schemaVersion: 1,
       kind: 'artifact',
       artifactId,
     });
@@ -350,7 +343,6 @@ describe('Coordinator observation integrity invariants', () => {
         status: 'running',
       });
       await seedSucceededFact(runId, invocationKey, {
-        schemaVersion: 1,
         kind: 'artifact',
         artifactId,
       });
@@ -493,7 +485,6 @@ describe('Coordinator observation integrity invariants', () => {
           invocationKey,
           attemptId,
           JSON.stringify({
-            schemaVersion: 1,
             kind: 'inline',
             value: { selectedPort: 'true' },
           }),
@@ -508,7 +499,6 @@ describe('Coordinator observation integrity invariants', () => {
           workspaceA,
           nodeRunId,
           JSON.stringify({
-            schemaVersion: 1,
             kind: 'inline',
             value: { selectedPort: 'true' },
           }),
@@ -527,7 +517,7 @@ describe('Coordinator observation integrity invariants', () => {
             runId,
             sequence,
             type,
-            JSON.stringify({ schemaVersion: 1, nodeRunId, attemptId }),
+            JSON.stringify({ nodeRunId, attemptId }),
           ],
         );
     });
@@ -603,7 +593,7 @@ describe('Coordinator observation integrity invariants', () => {
           [
             workspaceA,
             runId,
-            JSON.stringify({ schemaVersion: 1, nodeRunId, attemptId }),
+            JSON.stringify({ nodeRunId, attemptId }),
             factCount,
           ],
         );
@@ -677,7 +667,7 @@ describe('Coordinator observation integrity invariants', () => {
       client.query(
         `insert into app.run_events
              (workspace_id,workflow_run_id,sequence,type,payload)
-           values ($1,$2,3,'run.cancel_requested','{"schemaVersion":1}')`,
+           values ($1,$2,3,'run.cancel_requested','{}')`,
         [workspaceA, gapRun],
       ),
     );
@@ -685,23 +675,6 @@ describe('Coordinator observation integrity invariants', () => {
       ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: gapRun,
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
-
-    const unversionedRun = await insertRun({});
-    await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query(
-        `insert into app.run_events
-             (workspace_id,workflow_run_id,sequence,type,payload)
-           values ($1,$2,2,'run.cancel_requested','{}'::jsonb)`,
-        [workspaceA, unversionedRun],
-      ),
-    );
-    await expect(
-      ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId: unversionedRun,
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
@@ -719,7 +692,6 @@ describe('Coordinator observation integrity invariants', () => {
           workspaceA,
           corruptRun,
           JSON.stringify({
-            schemaVersion: 1,
             nodeRunId: randomUUID(),
             attemptId: randomUUID(),
           }),
@@ -742,7 +714,7 @@ describe('Coordinator observation integrity invariants', () => {
         `insert into app.run_events
              (workspace_id,workflow_run_id,sequence,type,payload)
            values ($1,$2,2,'run.cancel_requested',
-             jsonb_build_object('schemaVersion',1,'ignored',repeat('x',100000)))`,
+             jsonb_build_object('ignored',repeat('x',100000)))`,
         [workspaceA, oversizedRun],
       ),
     );
@@ -772,7 +744,6 @@ describe('Coordinator observation integrity invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 3,
               name: 'run.started',
               occurredAt: '2026-08-21T00:00:00.000Z',
@@ -796,7 +767,7 @@ describe('Coordinator observation integrity invariants', () => {
              (workspace_id,workflow_run_id,sequence,type,payload)
            select $1,$2,sequence,'run.cancel_requested',
                   jsonb_build_object(
-                    'schemaVersion',1,'ignored',repeat('x',520000)
+                    'ignored',repeat('x',520000)
                   )
            from generate_series(2,131) sequence`,
           [workspaceA, aggregateRun],
@@ -835,7 +806,6 @@ describe('Coordinator observation integrity invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 132,
               name: 'run.started',
               occurredAt: '2026-08-21T00:00:00.000Z',
@@ -859,7 +829,6 @@ describe('Coordinator observation integrity invariants', () => {
           workspaceA,
           malformedRun,
           JSON.stringify({
-            schemaVersion: 1,
             nodeRunId: 'not-a-uuid',
             attemptId: 'also-not-a-uuid',
           }),
@@ -923,7 +892,7 @@ describe('Coordinator observation integrity invariants', () => {
                workspace_id,workflow_run_id,sequence,type,payload
              )
              select $1,$2,sequence,'node.progress',jsonb_build_object(
-               'schemaVersion',1,'nodeRunId',$3::text,'attemptId',$4::text,
+               'nodeRunId',$3::text,'attemptId',$4::text,
                'numbers',numbers.value
              )
              from generate_series(2,451) sequence cross join numbers`,
@@ -1014,9 +983,8 @@ describe('Coordinator observation integrity invariants', () => {
         eventType: 'node.succeeded',
         nodeStatus: 'running',
         attemptStatus: 'succeeded',
-        nodeValue: { schemaVersion: 1, kind: 'inline', value: { ok: true } },
+        nodeValue: { kind: 'inline', value: { ok: true } },
         attemptValue: {
-          schemaVersion: 1,
           kind: 'inline',
           value: { ok: true },
         },
@@ -1027,12 +995,10 @@ describe('Coordinator observation integrity invariants', () => {
         nodeStatus: 'succeeded',
         attemptStatus: 'succeeded',
         nodeValue: {
-          schemaVersion: 1,
           kind: 'inline',
           value: { side: 'node' },
         },
         attemptValue: {
-          schemaVersion: 1,
           kind: 'inline',
           value: { side: 'attempt' },
         },
@@ -1096,7 +1062,7 @@ describe('Coordinator observation integrity invariants', () => {
             workspaceA,
             runId,
             variant.eventType,
-            JSON.stringify({ schemaVersion: 1, nodeRunId, attemptId }),
+            JSON.stringify({ nodeRunId, attemptId }),
           ],
         );
       });
@@ -1146,11 +1112,7 @@ describe('Coordinator observation integrity invariants', () => {
         `insert into app.run_events
              (workspace_id,workflow_run_id,sequence,type,payload)
            values ($1,$2,2,'node.succeeded',$3::jsonb)`,
-        [
-          workspaceA,
-          runId,
-          JSON.stringify({ schemaVersion: 1, nodeRunId, attemptId }),
-        ],
+        [workspaceA, runId, JSON.stringify({ nodeRunId, attemptId })],
       );
     });
 
@@ -1215,7 +1177,7 @@ describe('Coordinator observation integrity invariants', () => {
             attemptId,
             workspaceA,
             nodeRunId,
-            JSON.stringify({ schemaVersion: 1, kind: 'artifact', artifactId }),
+            JSON.stringify({ kind: 'artifact', artifactId }),
           ],
         );
       }),

@@ -75,7 +75,6 @@ export const CORE_SCHEDULE_CONFIG_SCHEMA = z.discriminatedUnion('kind', [
 
 const scheduleTriggerEnvelopeSchema = z
   .object({
-    schemaVersion: z.literal(1),
     triggerId: z.uuid(),
     nodeId: z.string().trim().min(1).max(128),
     scheduledAt: z.iso.datetime({ offset: true }),

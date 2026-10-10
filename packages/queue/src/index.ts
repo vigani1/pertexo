@@ -5,7 +5,6 @@ export {
   ExecutePreviewAttemptJobSchema,
   DeliverRunFailureNotificationJobSchema,
   QUEUE_JOB_REGISTRY,
-  QUEUE_SCHEMA_VERSION,
   ReconcileWorkflowTriggersJobSchema,
   ReconcilePreviewAttemptJobSchema,
   ReconcileUnknownOutcomeJobSchema,

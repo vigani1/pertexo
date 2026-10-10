@@ -52,11 +52,10 @@ async function expireLease(id: string): Promise<void> {
 }
 
 function outboxInput(id: string = randomUUID()) {
-  const payload = { probeId: randomUUID(), schemaVersion: 1 };
+  const payload = { probeId: randomUUID() };
   return {
     id,
     jobName: 'phase0-duplicate-proof',
-    schemaVersion: 1,
     aggregateType: 'queue-proof',
     aggregateId: randomUUID(),
     payload,
@@ -94,7 +93,6 @@ describe('transactional outbox persistence', () => {
           id: randomUUID(),
           workspaceId,
           jobName: 'phase0-duplicate-proof',
-          schemaVersion: 1,
           aggregateType: 'queue-proof',
           aggregateId: randomUUID(),
           payload: { value: 'x'.repeat(4_096) },
@@ -547,18 +545,17 @@ describe('transactional outbox persistence', () => {
           from generate_series(1, 2000)
         )
         insert into app.outbox_events
-          (id, workspace_id, job_name, schema_version, aggregate_type,
+          (id, workspace_id, job_name, aggregate_type,
            aggregate_id, payload, payload_checksum, available_at)
-        select id, ${workspaceA}, 'reconcile-workflow-triggers', 1,
+        select id, ${workspaceA}, 'reconcile-workflow-triggers',
           'workflow', aggregate_id,
           jsonb_build_object(
-            'schemaVersion', 1,
             'workspaceId', ${workspaceA}::uuid,
             'outboxEventId', id,
             'workflowId', aggregate_id,
             'publishedVersionId', aggregate_id
           ), repeat('0', 64), to_timestamp(0)
-        from held_rows
+         from held_rows
       `),
     );
     const ownerPool = new Pool({ connectionString: migrationUrl, max: 1 });
@@ -929,7 +926,6 @@ describe('transactional outbox persistence', () => {
       payloadChecksum: before[0]?.payloadChecksum,
       publishAttempts: 0,
       publishedAt: null,
-      schemaVersion: before[0]?.schemaVersion,
       workspaceId: before[0]?.workspaceId,
     });
     const reclaimed = await dispatcher.claimBatch({

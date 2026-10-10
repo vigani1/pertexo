@@ -11,7 +11,6 @@ import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 
 const payloadSchema = z
   .object({
-    schemaVersion: z.literal(1),
     workspaceId: z.uuid(),
     outboxEventId: z.uuid(),
     observationId: z.uuid(),
@@ -156,11 +155,10 @@ export async function applyConnectionHealthObservation(
         aggregate_id: string;
         aggregate_type: string;
         job_name: string;
-        schema_version: number;
         payload: unknown;
         payload_checksum: string;
       }>(sql`
-      select aggregate_id,aggregate_type,job_name,schema_version,payload,payload_checksum from app.outbox_events
+      select aggregate_id,aggregate_type,job_name,payload,payload_checksum from app.outbox_events
       where workspace_id=${transaction.workspaceId} and id=${parsed.delivery.outboxEventId}`);
       const row = outbox.rows[0];
       if (row === undefined) {
@@ -179,7 +177,6 @@ export async function applyConnectionHealthObservation(
         row.aggregate_id !== parsed.observationId ||
         row.aggregate_type !== 'connection-health-observation' ||
         row.job_name !== 'apply-connection-health-observation' ||
-        row.schema_version !== 1 ||
         row.payload_checksum !== parsed.delivery.payloadChecksum ||
         canonicalOutboxPayloadChecksum(payload.data) !== row.payload_checksum ||
         payload.data.workspaceId !== transaction.workspaceId ||

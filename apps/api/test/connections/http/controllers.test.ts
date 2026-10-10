@@ -107,7 +107,6 @@ function controller() {
 }
 
 const credential = {
-  schemaVersion: 1,
   type: 'http_headers',
   headers: { Authorization: 'Bearer secret' },
 } as const;
@@ -325,7 +324,6 @@ describe('connections controller public seam', () => {
       providerKey: 'http',
       name: 'Operations API',
       credential: {
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { Host: 'metadata.internal' },
       },

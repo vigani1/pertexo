@@ -935,7 +935,7 @@ describe('generic webhook ingress', () => {
     registerWebhookIngress(application, {
       database: database as unknown as WebhookTriggerDatabase,
       encryption,
-      checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+      checkpointFactory: () => ({ checkpoint: {} }),
       telemetry,
     });
     return {
@@ -1054,7 +1054,6 @@ async function sendRawWebhook(
 function sealed(id: string) {
   return {
     id,
-    schemaVersion: 1 as const,
     kmsKeyReference: 'key',
     encryptedDataKey: 'key',
     ciphertext: 'ciphertext',

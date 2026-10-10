@@ -15,7 +15,6 @@ import {
 } from './validation/contract.js';
 
 export interface WorkflowDefinitionCatalog {
-  readonly schemaVersion: 1;
   readonly definitions: readonly {
     readonly key: string;
     readonly version: number;
@@ -35,7 +34,7 @@ export type WorkflowIntegrationUsage = Readonly<{
 }>;
 
 export const EMPTY_DEFINITION_CATALOG: WorkflowDefinitionCatalog =
-  Object.freeze({ schemaVersion: 1, definitions: Object.freeze([]) });
+  Object.freeze({ definitions: Object.freeze([]) });
 
 export interface WorkflowCompatibilityIssue {
   readonly code: 'unknown_definition';
@@ -57,7 +56,6 @@ export function workflowDefinitionCatalogFingerprint(
     .update(
       canonicalJson({
         domain: 'pertexo.workflow.definition-compatibility',
-        catalogVersion: catalog.schemaVersion,
         definitions: [...catalog.definitions]
           .map(({ key, version }) => ({ key, version }))
           .sort(
@@ -221,7 +219,6 @@ export function workflowDraftRepresentationTag(input: {
         domain: 'pertexo.workflow.draft-representation',
         workflowId,
         revision,
-        schemaVersion: graph.schemaVersion,
         graph,
         compatibilityFingerprint,
       }),

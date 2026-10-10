@@ -45,9 +45,9 @@ async function rejectedFixture() {
     );
     await client.query(
       `insert into app.workflow_versions (
-         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         id,workspace_id,workflow_id,version_number,graph_json,
          checksum,executable_json,published_by
-       ) values ($1,$2,$3,1,1,$4::jsonb,$5,$6::jsonb,$7)`,
+       ) values ($1,$2,$3,1,$4::jsonb,$5,$6::jsonb,$7)`,
       [
         versionId,
         fixture.workspaceA,
@@ -63,7 +63,7 @@ async function rejectedFixture() {
   const manualKey = `${versionId}|manual|b:|i:`;
   const manualAttemptId = fixture.randomUUID();
   const manualNodeRunId = fixture.randomUUID();
-  const manualOutput = { schemaVersion: 1, kind: 'inline', value: {} };
+  const manualOutput = { kind: 'inline', value: {} };
   const current = {
     ...fixture.checkpoint({
       workflowVersionId: versionId,
@@ -88,7 +88,6 @@ async function rejectedFixture() {
       ],
       admittedInvocationKeys: [key, manualKey],
     }),
-    schemaVersion: 2,
     branchSelections: [],
     initialIterationBudget: 20,
     remainingIterationBudget: 20,
@@ -102,7 +101,6 @@ async function rejectedFixture() {
   const nodeRunId = fixture.randomUUID();
   const attemptId = fixture.randomUUID();
   const output = {
-    schemaVersion: 1,
     kind: 'inline',
     value: { items, iterationCount: 4 },
   };
@@ -142,7 +140,6 @@ async function rejectedFixture() {
           fixture.workspaceA,
           runId,
           JSON.stringify({
-            schemaVersion: 1,
             nodeRunId: manualNodeRunId,
             attemptId: manualAttemptId,
             invocationKey: manualKey,
@@ -179,7 +176,6 @@ async function rejectedFixture() {
           fixture.workspaceA,
           runId,
           JSON.stringify({
-            schemaVersion: 1,
             nodeRunId,
             attemptId,
             invocationKey: key,

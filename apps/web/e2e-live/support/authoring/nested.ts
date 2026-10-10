@@ -76,7 +76,6 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
       kind: 'expression',
       language: 'jsonata',
       expression: 'runInput.amount > 5000',
-      policyVersion: 1,
     },
     missingProof: { kind: 'run_input', path: '$.notProvided' },
   } satisfies WorkflowDraftResponse['graph']['nodes'][number]['inputMappings'];

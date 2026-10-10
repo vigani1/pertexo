@@ -206,7 +206,7 @@ async function admitScheduledRun(
   if (!(await isScheduleClaimEligible(transaction, claim)))
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
   const version = await transaction.db.execute(sql<Record<string, unknown>>`
-    select id,workspace_id,workflow_id,version_number,schema_version,checksum,
+    select id,workspace_id,workflow_id,version_number,checksum,
            executable_json
       from app.workflow_versions
      where workspace_id=${claim.workspace_id}
@@ -218,7 +218,6 @@ async function admitScheduledRun(
   const initial = checkpointFactory(published);
   const identity = `${claim.trigger_id}:${scheduledAt.toISOString()}`;
   const result = await acceptWorkflowRun(transaction, {
-    engineVersion: initial.engineVersion,
     initialCheckpoint: initial.checkpoint,
     keyHash: createHash('sha256').update(identity).digest('hex'),
     operation: 'workflow.run.accept',
@@ -230,7 +229,6 @@ async function admitScheduledRun(
     workflowId: claim.workflow_id,
     workflowVersionId: claim.workflow_version_id,
     runInput: {
-      schemaVersion: 1,
       triggerId: claim.trigger_id,
       nodeId: claim.node_id,
       scheduledAt: scheduledAt.toISOString(),

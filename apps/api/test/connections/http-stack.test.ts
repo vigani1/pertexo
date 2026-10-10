@@ -111,7 +111,6 @@ function connectionRuntime(
   );
   const encryption = {
     seal: vi.fn().mockResolvedValue({
-      schemaVersion: 1,
       kmsKeyReference: 'alias/pertexo-connections',
       encryptedDataKey: 'encrypted-key',
       ciphertext: 'ciphertext',
@@ -122,7 +121,6 @@ function connectionRuntime(
       Promise.resolve(
         new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'http_headers',
             headers: { authorization: credentialValue },
           }),
@@ -253,7 +251,6 @@ function connectionRuntime(
             connection: stored,
             secretVersionId: stored.currentSecretVersionId,
             sealed: {
-              schemaVersion: 1 as const,
               kmsKeyReference: 'alias/pertexo-connections',
               encryptedDataKey: 'encrypted-key',
               ciphertext: 'ciphertext',
@@ -316,7 +313,6 @@ const connectionPayload = {
   providerKey: 'http',
   name: 'Operations API',
   credential: {
-    schemaVersion: 1,
     type: 'http_headers',
     headers: { Authorization: credentialValue },
   },

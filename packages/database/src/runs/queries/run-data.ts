@@ -7,7 +7,7 @@ import {
   type WorkspaceTransaction,
 } from '../../tenant-access/transactions.js';
 import {
-  parseStoredExecutionValueV1,
+  parseStoredExecutionValue,
   type StoredExecutionJsonValue,
 } from '../../platform/stored-execution-value.js';
 
@@ -62,7 +62,7 @@ const failedStepRowSchema = z
   .strict();
 
 function toRunData(stored: unknown): WorkflowRunData {
-  const value = parseStoredExecutionValueV1(stored);
+  const value = parseStoredExecutionValue(stored);
   return value.kind === 'inline'
     ? Object.freeze({ kind: 'inline', value: value.value })
     : Object.freeze({ kind: 'artifact', artifactId: value.artifactId });

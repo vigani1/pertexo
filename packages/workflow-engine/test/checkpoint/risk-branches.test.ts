@@ -10,7 +10,6 @@ const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 
 function base() {
   return createCheckpoint({
-    engineVersion: 'engine-v1',
     workflowVersionId,
     iterationBudget: 100,
   });
@@ -94,7 +93,6 @@ describe('checkpoint risk branches', () => {
       subject === 'invocation'
         ? {
             ...createCheckpoint({
-              engineVersion: 'engine-v2',
               workflowVersionId,
               iterationBudget: 100,
             }),
@@ -120,15 +118,6 @@ describe('checkpoint risk branches', () => {
       expect.objectContaining({ code: 'checkpoint_invalid', message }),
     );
   });
-
-  it.each(['\u001f', '\u007f', '\u07ff', '\u0800', '\ud800', '\udc00', '-0'])(
-    'rejects a persistence-invalid engine version containing %j',
-    (engineVersion) => {
-      expect(() => parseCheckpoint({ ...base(), engineVersion })).toThrow(
-        expect.objectContaining({ code: 'checkpoint_invalid' }),
-      );
-    },
-  );
 
   it('preserves a negative-zero numeric field', () => {
     expect(
@@ -168,11 +157,10 @@ describe('checkpoint risk branches', () => {
     { iterationPath: [{ loopNodeId: '', ordinal: 0 }] },
     { iterationPath: [{ loopNodeId: 'loop', ordinal: 0.5 }] },
     { iterationPath: [{ loopNodeId: 'loop', ordinal: -1 }] },
-  ])('rejects malformed V2 invocation scope %#', (scope) => {
+  ])('rejects malformed invocation scope %#', (scope) => {
     expect(() =>
       parseCheckpoint({
         ...createCheckpoint({
-          engineVersion: 'engine-v2',
           workflowVersionId,
           iterationBudget: 100,
         }),
@@ -360,7 +348,7 @@ describe('checkpoint risk branches', () => {
 
   it('rejects non-object checkpoints', () => {
     expect(() => parseCheckpoint(null)).toThrow(
-      expect.objectContaining({ code: 'checkpoint_unsupported' }),
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
     );
   });
 
@@ -390,7 +378,6 @@ describe('checkpoint risk branches', () => {
     for (const nextEventSequence of [0, 1.5]) {
       expect(() =>
         createCheckpoint({
-          engineVersion: 'engine-v1',
           workflowVersionId,
           iterationBudget: 1,
           nextEventSequence,

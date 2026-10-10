@@ -87,7 +87,6 @@ export function serializeWorkflowDraft(
     body: workflowDraftResponseSchema.parse({
       workflowId: draft.workflowId,
       revision: draft.revision,
-      schemaVersion: draft.schemaVersion,
       graph,
       compatibility: draft.compatibility,
       updatedAt: draft.updatedAt.toISOString(),
@@ -164,7 +163,6 @@ function workflowVersion(
     id: version.id,
     workflowId: version.workflowId,
     versionNumber: version.versionNumber,
-    schemaVersion: version.schemaVersion,
     graph: parseWorkflowGraphDraft(version.graphJson),
     checksum: version.checksum,
     publishedAt: version.publishedAt.toISOString(),

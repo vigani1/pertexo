@@ -43,7 +43,6 @@ it('the actual reviewed For Each fails its pinned bound before any body admissio
   let result = await advanceWorkflow({
     ...base,
     checkpoint: createCheckpoint({
-      engineVersion: 'engine-v1',
       workflowVersionId: version,
       iterationBudget: 10,
     }),

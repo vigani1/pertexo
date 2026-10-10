@@ -409,10 +409,6 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
-          "schemaVersion": {
-            "type": "number",
-            "const": 1
-          },
           "revision": {
             "anyOf": [
               {
@@ -426,7 +422,6 @@
           }
         },
         "required": [
-          "schemaVersion",
           "revision"
         ],
         "additionalProperties": false

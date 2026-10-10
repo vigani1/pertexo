@@ -166,7 +166,6 @@ async function migrateDatabase(): Promise<void> {
 
 function graph() {
   return {
-    schemaVersion: 1 as const,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       {
@@ -313,7 +312,6 @@ function providerScenarioNode(provider: ProviderScenario) {
 
 function providerScenarioGraph(provider: ProviderScenario) {
   return {
-    schemaVersion: 1 as const,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       {
@@ -403,10 +401,10 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
     );
     await client.query(
       `insert into app.workflow_versions (
-         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         id,workspace_id,workflow_id,version_number,graph_json,
          checksum,executable_json,
          published_by
-       ) values ($1,$2,$3,1,1,$4::jsonb,$5,$6::jsonb,$7)`,
+       ) values ($1,$2,$3,1,$4::jsonb,$5,$6::jsonb,$7)`,
       [
         workflowVersionId,
         workspaceId,
@@ -422,7 +420,6 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
   const encryption = new ConnectionEnvelopeEncryption(new ContextKeyProvider());
   const secret = new TextEncoder().encode(
     JSON.stringify({
-      schemaVersion: 1,
       type: 'http_headers',
       headers: { authorization: plaintextSecret },
     }),
@@ -450,7 +447,6 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
   });
   const slackSecret = new TextEncoder().encode(
     JSON.stringify({
-      schemaVersion: 1,
       type: 'slack_bot_token',
       botToken: slackBotToken,
     }),
@@ -474,7 +470,6 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
   });
   const emailSecret = new TextEncoder().encode(
     JSON.stringify({
-      schemaVersion: 1,
       type: 'resend_api_key',
       apiKey: resendApiKey,
       fromEmail: 'sender@example.test',
@@ -540,9 +535,7 @@ export async function resetProviderScenarioIsolation(
 export async function acceptRun() {
   return apiDatabase.withWorkspace(workspaceId, (transaction) =>
     acceptManualFixtureRun(transaction, actorId, {
-      engineVersion: 'http-attempt-engine-v1',
       initialCheckpoint: createCheckpoint({
-        engineVersion: 'http-attempt-engine-v1',
         workflowVersionId,
         iterationBudget: 0,
         nextEventSequence: 2,
@@ -580,10 +573,10 @@ export async function acceptProviderScenarioRun(provider: ProviderScenario) {
     );
     await client.query(
       `insert into app.workflow_versions (
-         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         id,workspace_id,workflow_id,version_number,graph_json,
          checksum,executable_json,
          published_by
-       ) values ($1,$2,$3,1,1,$4::jsonb,$5,$6::jsonb,$7)`,
+       ) values ($1,$2,$3,1,$4::jsonb,$5,$6::jsonb,$7)`,
       [
         scenarioWorkflowVersionId,
         workspaceId,
@@ -597,9 +590,7 @@ export async function acceptProviderScenarioRun(provider: ProviderScenario) {
   });
   const accepted = await apiDatabase.withWorkspace(workspaceId, (transaction) =>
     acceptManualFixtureRun(transaction, actorId, {
-      engineVersion: 'http-attempt-engine-v1',
       initialCheckpoint: createCheckpoint({
-        engineVersion: 'http-attempt-engine-v1',
         workflowVersionId: scenarioWorkflowVersionId,
         iterationBudget: 0,
         nextEventSequence: 2,

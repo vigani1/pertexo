@@ -41,7 +41,6 @@ export async function insertPreviewOutboxDelivery(
   const payload =
     input.jobName === 'execute-preview-attempt'
       ? previewDeliveryPayloadSchema.parse({
-          schemaVersion: 1,
           workspaceId: input.workspaceId,
           outboxEventId,
           previewRunId: input.previewRunId,
@@ -51,7 +50,6 @@ export async function insertPreviewOutboxDelivery(
             : { traceparent: input.traceparent }),
         })
       : previewReconciliationPayloadSchema.parse({
-          schemaVersion: 1,
           workspaceId: input.workspaceId,
           outboxEventId,
           previewRunId: input.previewRunId,
@@ -64,10 +62,10 @@ export async function insertPreviewOutboxDelivery(
   const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
   const inserted = await client.query(
     `insert into app.outbox_events (
-       id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+       id,workspace_id,job_name,aggregate_type,aggregate_id,
        payload,payload_checksum,available_at
      ) values (
-       $1,$2,$3,1,'preview-run',$4,$5::jsonb,$6,
+       $1,$2,$3,'preview-run',$4,$5::jsonb,$6,
        coalesce($7::timestamptz,clock_timestamp())
      )`,
     [
@@ -100,10 +98,9 @@ export async function validatePreviewDelivery(
     job_name: string;
     payload: unknown;
     payload_checksum: string;
-    schema_version: number;
   }>(
     `select aggregate_id,aggregate_type,job_name,payload,
-            payload_checksum,schema_version
+            payload_checksum
      from app.outbox_events
      where workspace_id=$1 and id=$2`,
     [input.workspaceId, input.delivery.outboxEventId],
@@ -126,7 +123,6 @@ export async function validatePreviewDelivery(
     row.aggregate_id !== input.previewRunId ||
     row.aggregate_type !== 'preview-run' ||
     row.job_name !== 'execute-preview-attempt' ||
-    row.schema_version !== 1 ||
     row.payload_checksum !== input.delivery.payloadChecksum ||
     checksum !== row.payload_checksum ||
     payload.workspaceId !== input.workspaceId ||
@@ -153,10 +149,9 @@ export async function validatePreviewReconciliationDelivery(
     job_name: string;
     payload: unknown;
     payload_checksum: string;
-    schema_version: number;
   }>(
     `select aggregate_id,aggregate_type,job_name,payload,
-            payload_checksum,schema_version
+            payload_checksum
      from app.outbox_events
      where workspace_id=$1 and id=$2`,
     [input.workspaceId, input.delivery.outboxEventId],
@@ -176,7 +171,6 @@ export async function validatePreviewReconciliationDelivery(
     row.aggregate_id !== input.previewRunId ||
     row.aggregate_type !== 'preview-run' ||
     row.job_name !== 'reconcile-preview-attempt' ||
-    row.schema_version !== 1 ||
     row.payload_checksum !== input.delivery.payloadChecksum ||
     checksum !== row.payload_checksum ||
     payload.workspaceId !== input.workspaceId ||

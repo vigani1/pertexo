@@ -14,7 +14,6 @@ describe('preview stored output validation', () => {
     };
     Object.setPrototypeOf(nullPrototypeValue, null);
     const nullPrototypeEnvelope = {
-      schemaVersion: 1,
       kind: 'inline',
       value: nullPrototypeValue,
     };
@@ -23,14 +22,12 @@ describe('preview stored output validation', () => {
     expect(isValidStoredExecutionOutput(nullPrototypeEnvelope)).toBe(true);
     expect(
       isValidStoredExecutionOutput({
-        schemaVersion: 1,
         kind: 'artifact',
         artifactId: randomUUID(),
       }),
     ).toBe(true);
     expect(
       isValidStoredExecutionOutput({
-        schemaVersion: 1,
         kind: 'inline',
         value: null,
       }),
@@ -61,15 +58,14 @@ describe('preview stored output validation', () => {
     const symbolMember = { ok: true } as Record<PropertyKey, unknown>;
     symbolMember[Symbol('hidden')] = true;
     const cases = [
-      { schemaVersion: 1, kind: 'inline', value: accessorValue },
-      { schemaVersion: 1, kind: 'inline', value: throwingProxy },
-      { schemaVersion: 1, kind: 'inline', value: revocable.proxy },
-      { schemaVersion: 1, kind: 'inline', value: () => undefined },
-      { schemaVersion: 1, kind: 'inline', value: Symbol('invalid') },
-      { schemaVersion: 1, kind: 'inline', value: sparse },
-      { schemaVersion: 1, kind: 'inline', value: symbolMember },
+      { kind: 'inline', value: accessorValue },
+      { kind: 'inline', value: throwingProxy },
+      { kind: 'inline', value: revocable.proxy },
+      { kind: 'inline', value: () => undefined },
+      { kind: 'inline', value: Symbol('invalid') },
+      { kind: 'inline', value: sparse },
+      { kind: 'inline', value: symbolMember },
       {
-        schemaVersion: 1,
         kind: 'inline',
         value: 'x'.repeat(262_145),
       },
@@ -86,7 +82,6 @@ describe('preview stored output validation', () => {
 
     expect(
       isValidStoredExecutionOutput({
-        schemaVersion: 1,
         kind: 'inline',
         value,
       }),

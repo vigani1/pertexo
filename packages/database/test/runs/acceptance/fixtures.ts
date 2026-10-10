@@ -100,7 +100,6 @@ export function acceptanceInput(
   runInput?: unknown,
 ) {
   return {
-    engineVersion: 'phase0-engine-v1',
     initialCheckpoint: initialCheckpoint(),
     keyHash,
     operation: 'workflow.run.accept',
@@ -129,8 +128,6 @@ export async function lockManualFixtureStart(
 
 export function initialCheckpoint() {
   return {
-    schemaVersion: 2,
-    engineVersion: 'phase0-engine-v1',
     workflowVersionId,
     revision: 0,
     runStatus: 'queued',
@@ -327,9 +324,9 @@ export async function createNotificationFixture(
     );
     await client.query(
       `insert into app.connection_secret_versions (
-         id,workspace_id,connection_id,schema_version,kms_key_reference,
+         id,workspace_id,connection_id,kms_key_reference,
          encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-       ) values ($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+       ) values ($1,$2,$3,'kms','key','cipher','AAAAAAAAAAAAAAAA',
          'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
       [secretVersionId, workspaceA, connectionId, workspaceCreatorId],
     );
@@ -383,13 +380,12 @@ export async function insertDirectPinnedRun(
         sql`
       insert into app.workflow_runs (
         id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
-        failure_notification_policy_version,
         failure_notification_destination_id,
         failure_notification_destination_config_version,
         failure_notification_side_effect_class,
         failure_notification_connection_secret_version_id
       ) values (${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},
-        'api','queued',1,${pin.destinationId},1,${pin.sideEffectClass},
+        'api','queued',${pin.destinationId},1,${pin.sideEffectClass},
         ${pin.secretVersionId})
     `,
       )

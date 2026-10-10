@@ -21,8 +21,8 @@ import {
   validatePreviewDelivery,
 } from './delivery.js';
 import {
-  parseStoredExecutionValueV1,
-  serializeStoredExecutionValueV1,
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
 } from '../../platform/stored-execution-value.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
@@ -85,7 +85,6 @@ export async function appendPreviewTerminalFacts(
   if (run === undefined)
     throw new PreviewAttemptStateError('terminal_facts_run_missing');
   const metadata = {
-    schemaVersion: 1,
     status: input.status,
     workflowId: run.workflow_id,
     nodeId: run.node_id,
@@ -124,7 +123,6 @@ export async function appendPreviewTerminalFacts(
       input.previewRunId,
       `preview-terminal:${input.previewRunId}`,
       JSON.stringify({
-        schemaVersion: 1,
         status: input.status,
         definitionKey: run.definition_key,
         executorKey: run.executor_key,
@@ -172,11 +170,11 @@ async function exactDuplicateCompletion(
   if (outcome.status === PREVIEW_STATUS.succeeded) {
     try {
       valuesMatch =
-        serializeStoredExecutionValueV1(
-          parseStoredExecutionValueV1(row.attempt_output_ref),
+        serializeStoredExecutionValue(
+          parseStoredExecutionValue(row.attempt_output_ref),
         ) === outcome.outputRef &&
-        serializeStoredExecutionValueV1(
-          parseStoredExecutionValueV1(row.run_output_ref),
+        serializeStoredExecutionValue(
+          parseStoredExecutionValue(row.run_output_ref),
         ) === outcome.outputRef &&
         row.attempt_safe_error_code === null &&
         row.run_safe_error_code === null;
@@ -229,7 +227,7 @@ export async function completePreviewAttempt(
     input.outcome.status === PREVIEW_STATUS.succeeded
       ? ({
           status: PREVIEW_STATUS.succeeded,
-          outputRef: serializeStoredExecutionValueV1(input.outcome.output),
+          outputRef: serializeStoredExecutionValue(input.outcome.output),
         } as const)
       : ({
           safeErrorCode: safeErrorCodeSchema.parse(input.outcome.safeErrorCode),

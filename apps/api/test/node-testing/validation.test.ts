@@ -7,7 +7,6 @@ import { prepareNodeValidation } from '../../src/node-testing/validation.js';
 
 function graph(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'http',
@@ -143,7 +142,6 @@ describe('pure node preview validation', () => {
               maxIterations: 2,
               maxConcurrency: 1,
               body: {
-                schemaVersion: 1,
                 nodes: [selected],
                 edges: [],
                 settings: {},
@@ -212,7 +210,6 @@ describe('pure node preview validation', () => {
             kind: 'expression',
             language: 'jsonata',
             expression: '$',
-            policyVersion: 1,
           },
         },
       }),

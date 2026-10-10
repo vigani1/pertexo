@@ -39,7 +39,6 @@ const errorCodeSchema = z
   .regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
 export const sealedSecretSchema = z
   .object({
-    schemaVersion: z.literal(1),
     kmsKeyReference: z.string().min(1).max(2048),
     encryptedDataKey: z
       .string()
@@ -453,7 +452,6 @@ export function mapConnection(
 
 export function mapSealed(row: Readonly<Record<string, unknown>>) {
   return sealedSecretSchema.parse({
-    schemaVersion: row.schema_version,
     kmsKeyReference: row.kms_key_reference,
     encryptedDataKey: row.encrypted_data_key,
     ciphertext: row.ciphertext,
@@ -598,7 +596,6 @@ export const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
 
 const durableConnectionTestResultSchema = z
   .object({
-    schemaVersion: z.literal(1),
     connection: durableConnectionSnapshotSchema,
     outcome: connectionTestOutcomeSchema,
   })
@@ -618,7 +615,6 @@ export function serializeConnectionTestResult(
   result: ConnectionTestResult,
 ): Readonly<Record<string, unknown>> {
   return Object.freeze({
-    schemaVersion: 1,
     connection: serializeConnectionSnapshot(result.connection),
     outcome: result.outcome,
   });

@@ -11,7 +11,6 @@ describe('published workflow rows', () => {
     workspace_id: '22222222-2222-4222-8222-222222222222',
     workflow_id: '33333333-3333-4333-8333-333333333333',
     version_number: 2,
-    schema_version: 1,
     checksum: `wf:sha256:${'2'.repeat(64)}`,
     executable_json: { deliberately: 'shallow projection only' },
   } as const;
@@ -22,7 +21,6 @@ describe('published workflow rows', () => {
       checksum: row.checksum,
       executableJson: row.executable_json,
       id: row.id,
-      schemaVersion: 1,
       versionNumber: 2,
       workflowId: row.workflow_id,
       workspaceId: row.workspace_id,

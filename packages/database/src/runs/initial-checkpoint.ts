@@ -6,4 +6,4 @@ import type { PublishedWorkflow } from './published-workflow.js';
  */
 export type InitialCheckpointFactory = (
   projection: PublishedWorkflow,
-) => Readonly<{ engineVersion: string; checkpoint: unknown }>;
+) => Readonly<{ checkpoint: unknown }>;
