@@ -15,6 +15,13 @@
       "when": 1791673864376,
       "tag": "0001_workflow_calls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791674442972,
+      "tag": "0002_workflow_call_capacity",
+      "breakpoints": true
     }
   ]
 }
