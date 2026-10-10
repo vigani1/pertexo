@@ -1,4 +1,7 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
+
+import { identitySecurityAuditFacts } from '../schema/authentication.js';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 
@@ -16,13 +19,13 @@ export type IdentitySecurityEvent =
 
 /** Records a security fact about a user in the caller's transaction. */
 export async function recordIdentitySecurityFact(
-  client: Pick<PoolClient, 'query'>,
+  client: PoolClient,
   userId: string,
   event: IdentitySecurityEvent,
 ): Promise<void> {
-  await client.query(
-    `insert into app.identity_security_audit_facts (id, user_id, event_type)
-     values ($1, $2, $3)`,
-    [generatePersistedId(), userId, event],
-  );
+  await drizzle(client).insert(identitySecurityAuditFacts).values({
+    id: generatePersistedId(),
+    userId,
+    eventType: event,
+  });
 }
