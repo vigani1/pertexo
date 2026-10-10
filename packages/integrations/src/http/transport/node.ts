@@ -9,8 +9,8 @@ import type {
   SecureHttpTransport,
   SecureHttpTransportRequest,
   SecureHttpTransportResponse,
-} from './secure-http.js';
-import { SecureHttpClient } from './secure-http.js';
+} from '../secure-http.js';
+import { SecureHttpClient } from '../secure-http.js';
 
 export class NodeDnsResolver implements SecureHttpResolver {
   public async resolve(hostname: string): Promise<readonly ResolvedAddress[]> {

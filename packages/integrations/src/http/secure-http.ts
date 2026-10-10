@@ -19,7 +19,7 @@ import {
   assertPublicAddress,
   normalizeUrlHostname,
   type ResolvedAddress,
-} from './address-policy.js';
+} from './transport/address-policy.js';
 import {
   parseRequest,
   type ParsedSecureHttpRequest,
