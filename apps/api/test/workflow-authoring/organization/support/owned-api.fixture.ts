@@ -4,8 +4,8 @@ import {
   verifyCuratedFixtureOwnership,
   recheckCuratedFixtureOwnership,
   type CuratedOwnedFixture,
-} from '../../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
-import { useBetterAuthRealApi } from '../../support/better-auth/real-api.support.js';
+} from '../../../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
+import { useBetterAuthRealApi } from '../../../support/better-auth/real-api.support.js';
 
 /** Separate application/counter namespace per suite; real limits remain intact. */
 export function useOrganizationOwnedApi(

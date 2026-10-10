@@ -28,7 +28,7 @@ import {
   closeOrganizationBrowserBarriers,
   waitForOwnedOrganizationPreview,
 } from './workflow-organization-lifetime.js';
-import { useOrganizationOwnedApi } from '../workflow-authoring/organization/owned-api.fixture.js';
+import { useOrganizationOwnedApi } from '../workflow-authoring/organization/support/owned-api.fixture.js';
 
 const enabled =
   process.env.F07_ORGANIZATION_BROWSER_INTEGRATION === 'true' &&

@@ -6,7 +6,7 @@ import {
   verifyCuratedFixtureOwnership,
   recheckCuratedFixtureOwnership,
   type CuratedOwnedFixture,
-} from '../../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
+} from '../../../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
 
 /** F07 owns its own fresh namespace; canonical attestation never supplies a
  * default port, shared database, or authority to reuse F06 fixture databases. */

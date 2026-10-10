@@ -31,7 +31,7 @@ import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import {
   issueBrowserSession,
   type HttpSessionCookies,
-} from '../webhooks/browser-session.fixture.js';
+} from '../webhooks/support/browser-session.fixture.js';
 import {
   FixtureResourceOwner,
   rethrowFixtureSetupFailure,

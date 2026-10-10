@@ -1,5 +1,5 @@
-import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
-import type { IdentitySessionAuthority } from '../../src/workspaces/index.js';
+import { DoubleSubmitCsrfPolicy } from '../../../src/identity/index.js';
+import type { IdentitySessionAuthority } from '../../../src/workspaces/index.js';
 
 export type HttpSessionCookies = Readonly<{
   rawSession: string;
