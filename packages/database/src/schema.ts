@@ -61,9 +61,9 @@ import {
   workflows,
   workflowDrafts,
   workflowVersions,
-  workflowIntegrationUsage,
   workflowTriggers,
 } from './schema/authoring/workflows.js';
+import { workflowIntegrationUsage } from './schema/authoring/integrations.js';
 import {
   workspaceInboxEvents,
   workspaceInboxReads,
@@ -95,20 +95,24 @@ import {
   failureNotificationDestinations,
   failureNotificationDestinationVersions,
   workflowFailureNotificationPolicies,
+} from './schema/notifications.js';
+import {
   runFailureNotificationIntents,
   runFailureNotificationAuditFacts,
-} from './schema/notifications.js';
+} from './schema/runs/notifications.js';
 import {
   operatorCommands,
   operatorRunReplayRequests,
   operatorUnknownOutcomeEvidence,
 } from './schema/runs/operator.js';
 import {
-  workspaceExecutionEntitlements,
-  workspaceExecutionEntitlementVersions,
   workspaceExecutionAdmissionCounters,
   workflowRunActiveAdmissions,
 } from './schema/runs/admission.js';
+import {
+  workspaceExecutionEntitlements,
+  workspaceExecutionEntitlementVersions,
+} from './schema/runs/entitlements.js';
 export {
   authAccounts,
   authSessions,
@@ -146,9 +150,9 @@ export {
   workflows,
   workflowDrafts,
   workflowVersions,
-  workflowIntegrationUsage,
   workflowTriggers,
 } from './schema/authoring/workflows.js';
+export { workflowIntegrationUsage } from './schema/authoring/integrations.js';
 export {
   webhookTriggerSecretVersions,
   webhookTriggerEndpoints,
