@@ -546,6 +546,9 @@ now, as one ordered program — not "whenever we touch it".
   - [x] Final baseline generated from Drizzle: all 80 tables, 800 columns,
         330 checks, 122 foreign keys, 51 unique constraints, 80 primary keys,
         261 indexes and two sequences. `pnpm db:generate` produces no drift.
+        Drizzle's legacy config loader is scoped to patched esbuild 0.25.12;
+        Better Auth's optional peer otherwise pulls 0.18.20 into the production
+        audit. The audit gate remains unchanged.
         The live pre-squash catalog was compared with a fresh baseline for
         columns, indexes, policies, functions, triggers, sequences and grants.
         Five deferred foreign keys and two covering indexes are completed in
