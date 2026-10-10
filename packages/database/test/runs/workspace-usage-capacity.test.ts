@@ -1,3 +1,5 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { databaseSchema } from '../../src/schema.js';
 import type { Pool } from 'pg';
 import type { WorkspaceTransaction } from '../../src/tenant-access/transactions.js';
 import { WorkspaceAccessDeniedError } from '../../src/tenant-access/errors.js';
@@ -37,7 +39,9 @@ beforeEach(() => {
     ) =>
       operation({
         workspaceId: scope,
-        db: { execute: fixture.execute },
+        db: Object.assign(drizzle.mock({ schema: databaseSchema }), {
+          execute: fixture.execute,
+        }),
       } as unknown as WorkspaceTransaction),
   );
 });

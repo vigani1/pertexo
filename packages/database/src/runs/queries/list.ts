@@ -1,4 +1,7 @@
-import { sql } from 'drizzle-orm';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { workflowRunReadQuery, runAdmissionBlockers } from './admission.js';
+import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -80,10 +83,6 @@ const inputSchema = z
   })
   .strict();
 
-const rowSchema = z
-  .object({ created_at_cursor: timestampCursorSchema })
-  .loose();
-
 /** One newest-first page, read in a workspace-scoped snapshot. */
 export async function readWorkflowRunListPage(
   pool: Pool,
@@ -124,68 +123,49 @@ async function listWorkflowRunsInTransaction(
     input.workflowNamePrefix === undefined
       ? null
       : escapeLikePattern(input.workflowNamePrefix);
-  const result = input.includeWorkflowName
-    ? await transaction.db.execute(sql`
-    select
-      run.id, run.workspace_id, run.workflow_id, run.workflow_version_id,
-      run.status, run.trigger_type, run.created_at, run.updated_at,
-      run.started_at, run.completed_at, run.deadline_at,
-      run.cancel_requested_at, workflow.name as workflow_name,
-      run.replay_source_run_id,
-      app.workflow_run_admission_blockers(run.workspace_id,run.id) as admission_blockers,
-      to_char(
-        run.created_at at time zone 'UTC',
-        'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
-      ) as created_at_cursor
-    from app.workflow_runs run
-    left join app.workflows workflow
-      on workflow.workspace_id = run.workspace_id
-     and workflow.id = run.workflow_id
-    where run.workspace_id = ${transaction.workspaceId}
-      and (${input.workflowId ?? null}::uuid is null
-        or run.workflow_id = ${input.workflowId ?? null}::uuid)
-      and (${escapedPrefix}::text is null
-        or lower(workflow.name) like lower(${escapedPrefix}::text) || '%' escape '\')
-      and (${input.status ?? null}::text is null
-        or run.status = ${input.status ?? null}::text)
-      and (${input.createdAtFrom ?? null}::timestamptz is null
-        or run.created_at >= ${input.createdAtFrom ?? null}::timestamptz)
-      and (${input.createdAtBefore ?? null}::timestamptz is null
-        or run.created_at < ${input.createdAtBefore ?? null}::timestamptz)
-      and (${input.after?.createdAt ?? null}::timestamptz is null
-        or run.created_at < ${input.after?.createdAt ?? null}::timestamptz
-        or (
-          run.created_at = ${input.after?.createdAt ?? null}::timestamptz
-          and run.id < ${input.after?.id ?? null}::uuid
-        ))
-    order by run.created_at desc, run.id desc
-    limit ${input.limit + 1}
-  `)
-    : await transaction.db.execute(sql`
-      select
-        id, workspace_id, workflow_id, workflow_version_id, status,
-        trigger_type, created_at, updated_at, started_at, completed_at,
-        deadline_at, cancel_requested_at, null::text as workflow_name,
-        replay_source_run_id,
-        app.workflow_run_admission_blockers(workspace_id,id) as admission_blockers,
-        to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
-      from app.workflow_runs
-      where workspace_id = ${transaction.workspaceId}
-        and (${input.workflowId ?? null}::uuid is null
-          or workflow_id = ${input.workflowId ?? null}::uuid)
-        and (${input.status ?? null}::text is null or status = ${input.status ?? null}::text)
-        and (${input.createdAtFrom ?? null}::timestamptz is null or created_at >= ${input.createdAtFrom ?? null}::timestamptz)
-        and (${input.createdAtBefore ?? null}::timestamptz is null or created_at < ${input.createdAtBefore ?? null}::timestamptz)
-        and (${input.after?.createdAt ?? null}::timestamptz is null
-          or created_at < ${input.after?.createdAt ?? null}::timestamptz
-          or (created_at = ${input.after?.createdAt ?? null}::timestamptz and id < ${input.after?.id ?? null}::uuid))
-      order by created_at desc, id desc
-      limit ${input.limit + 1}
-    `);
-  const rows = result.rows.map((value) => {
-    const { created_at_cursor: cursor, ...runRow } = rowSchema.parse(value);
-    return { cursor, run: toWorkflowRunReadRecord(runRow) };
-  });
+  const result = await workflowRunReadQuery(
+    transaction,
+    input.includeWorkflowName ?? false,
+  )
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        input.workflowId === undefined
+          ? undefined
+          : eq(workflowRuns.workflowId, input.workflowId),
+        !input.includeWorkflowName || escapedPrefix === null
+          ? undefined
+          : sql`lower(${workflows.name}) like lower(${escapedPrefix}::text) || '%' escape '\\'`,
+        input.status === undefined
+          ? undefined
+          : eq(workflowRuns.status, input.status),
+        input.createdAtFrom === undefined
+          ? undefined
+          : sql`${workflowRuns.createdAt} >= ${input.createdAtFrom}::timestamptz`,
+        input.createdAtBefore === undefined
+          ? undefined
+          : sql`${workflowRuns.createdAt} < ${input.createdAtBefore}::timestamptz`,
+        input.after === undefined
+          ? undefined
+          : or(
+              sql`${workflowRuns.createdAt} < ${input.after.createdAt}::timestamptz`,
+              and(
+                sql`${workflowRuns.createdAt} = ${input.after.createdAt}::timestamptz`,
+                lt(workflowRuns.id, input.after.id),
+              ),
+            ),
+      ),
+    )
+    .orderBy(desc(workflowRuns.createdAt), desc(workflowRuns.id))
+    .limit(input.limit + 1);
+  const rows = result.map((row) => ({
+    cursor: row.cursor,
+    run: toWorkflowRunReadRecord({
+      ...row.run,
+      workflow_name: row.workflowName,
+      admission_blockers: runAdmissionBlockers(row),
+    }),
+  }));
   const hasMore = rows.length > input.limit;
   const visible = rows.slice(0, input.limit);
   const last = visible.at(-1);

@@ -69,10 +69,10 @@ export function createRetentionDatabase(
               [RETENTION_LOCK_CLASS, index],
             );
             if (lock.rows[0]?.locked !== true) return 0;
-            return (
-              (await client.query(rule.statement, [options.pageSize]))
-                .rowCount ?? 0
-            );
+            return 'run' in rule
+              ? rule.run(client, options.pageSize)
+              : ((await client.query(rule.statement, [options.pageSize]))
+                  .rowCount ?? 0);
           },
         );
       return Object.freeze({

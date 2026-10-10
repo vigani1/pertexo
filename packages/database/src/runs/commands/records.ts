@@ -1,4 +1,9 @@
-import { sql } from 'drizzle-orm';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import {
+  workflowRunReadQuery,
+  runAdmissionBlockers,
+} from '../queries/admission.js';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -115,35 +120,21 @@ export async function readWorkflowRunReadRecord(
   runId: string,
   includeWorkflowName: boolean,
 ): Promise<WorkflowRunReadRecord | undefined> {
-  const result = includeWorkflowName
-    ? await transaction.db.execute(sql`
-        select
-          run.id, run.workspace_id, run.workflow_id, run.workflow_version_id,
-          run.status, run.trigger_type, run.created_at, run.updated_at,
-          run.started_at, run.completed_at, run.deadline_at,
-          run.cancel_requested_at, workflow.name as workflow_name,
-          run.replay_source_run_id,
-          app.workflow_run_admission_blockers(run.workspace_id,run.id) as admission_blockers
-        from app.workflow_runs run
-        left join app.workflows workflow
-          on workflow.workspace_id = run.workspace_id
-         and workflow.id = run.workflow_id
-        where run.workspace_id = ${transaction.workspaceId} and run.id = ${runId}
-        limit 1
-      `)
-    : await transaction.db.execute(sql`
-        select
-          id, workspace_id, workflow_id, workflow_version_id, status,
-          trigger_type, created_at, updated_at, started_at, completed_at,
-          deadline_at, cancel_requested_at, null::text as workflow_name,
-          replay_source_run_id,
-          app.workflow_run_admission_blockers(workspace_id,id) as admission_blockers
-        from app.workflow_runs
-        where workspace_id = ${transaction.workspaceId} and id = ${runId}
-        limit 1
-      `);
-  const row = result.rows[0];
-  return row === undefined ? undefined : toWorkflowRunReadRecord(row);
+  const [row] = await workflowRunReadQuery(transaction, includeWorkflowName)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, runId),
+      ),
+    )
+    .limit(1);
+  return row === undefined
+    ? undefined
+    : toWorkflowRunReadRecord({
+        ...row.run,
+        workflow_name: row.workflowName,
+        admission_blockers: runAdmissionBlockers(row),
+      });
 }
 
 export async function requireWorkflowRunRecord(
