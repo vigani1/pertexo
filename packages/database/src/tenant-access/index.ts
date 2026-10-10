@@ -77,3 +77,10 @@ export type {
   AuthenticationMailPurpose,
   SealedAuthenticationMailPayload,
 } from '../identity/authentication-mail.js';
+
+export {
+  changePasswordAndRevokeSessions,
+  setupPasswordAndRevokeSessions,
+  resetPasswordAndRevokeSessions,
+  unlinkMethodAndRevokeSessions,
+} from '../identity/account-security.js';
