@@ -116,7 +116,7 @@ function applyInvocationObservation(
   state: MutableWorkflowTransition,
   observation: Extract<
     WorkflowObservation,
-    { kind: 'outcome' | 'ready' | 'resume' | 'wait' }
+    { kind: 'outcome' | 'ready' | 'resume' | 'wait' | 'call_started' }
   >,
   occurredAt: string,
 ): void {
@@ -150,6 +150,18 @@ function applyInvocationObservation(
       'checkpoint_invalid',
       `unknown invocation ${observation.invocationKey}`,
     );
+  if (observation.kind === 'call_started') {
+    if (isTerminalNodeStatus(existing.status)) return;
+    if (existing.waitKind === 'workflow_call') return;
+    assertNodeTransition(existing.status, 'waiting');
+    state.invocations.set(existing.invocationKey, {
+      ...existing,
+      status: 'waiting',
+      waitKind: 'workflow_call',
+    });
+    state.eventDrafts.push(event('node.waiting', occurredAt, existing));
+    return;
+  }
   if (observation.kind === 'wait') {
     assertNodeTransition(existing.status, 'waiting');
     state.invocations.set(existing.invocationKey, {
@@ -203,8 +215,9 @@ function applyInvocationObservation(
       'ordinary waiting invocation must resume before terminal settlement',
     );
   assertNodeTransition(existing.status, observation.status);
+  const { waitKind: _waitKind, ...withoutWaitKind } = existing;
   const completed: InvocationState = {
-    ...existing,
+    ...withoutWaitKind,
     status: observation.status,
     ...(observation.output === undefined ? {} : { output: observation.output }),
   };

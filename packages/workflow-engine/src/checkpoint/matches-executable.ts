@@ -1,3 +1,4 @@
+import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import type { parseCheckpoint } from './create-and-parse.js';
 import { isCoreMergeDefinition } from '../core-definition-identities.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
@@ -99,6 +100,12 @@ function assertInvocationBelongsToExecutable(
       'checkpoint invocation does not belong to the executable graph',
     );
   if (!nodeIds.has(invocation.nodeId)) invalidInvocationIdentity();
+  if (
+    (invocation.waitKind === 'workflow_call' ||
+      invocation.output?.kind === 'call') &&
+    !isWorkflowCallDefinition(nodesById.get(invocation.nodeId)?.definition)
+  )
+    invalidInvocationIdentity();
   const branchPath = invocation.branchPath ?? [];
   const ancestors = findExecutableNodeContext(
     executable.envelope.graph,

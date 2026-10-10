@@ -83,6 +83,7 @@ export function buildWorkflowTransitionPlan(
     consumedObservationCount: number;
     consumedThroughEventSequence: number;
     maximumAdmissions: number;
+    hasExecutionSlot: boolean;
     occurredAt: string;
   }>,
 ): WorkflowTransitionPlan {
@@ -102,7 +103,7 @@ export function buildWorkflowTransitionPlan(
     .filter(({ status }) => status === 'ready')
     .map(({ invocationKey }) => invocationKey);
   const admittedKeys =
-    cancelRequested || deadlineExpired
+    cancelRequested || deadlineExpired || !input.hasExecutionSlot
       ? []
       : boundedReadyAdmissions({
           invocations: [...invocations.values()],
@@ -183,7 +184,10 @@ export function buildWorkflowTransitionPlan(
   } else if (
     state.runStatus === 'running' &&
     nonterminal.length > 0 &&
-    nonterminal.every(({ status }) => status === 'waiting')
+    nonterminal.every(
+      ({ status }) =>
+        status === 'waiting' || (!input.hasExecutionSlot && status === 'ready'),
+    )
   ) {
     assertRunTransition(state.runStatus, 'waiting');
     state.runStatus = 'waiting';
@@ -257,7 +261,8 @@ export function buildWorkflowTransitionPlan(
     ...(pruned.prunedInvocations.length === 0
       ? {}
       : { prunedInvocations: pruned.prunedInvocations }),
-    ...(attempts.length === 0 &&
+    ...(input.hasExecutionSlot &&
+    attempts.length === 0 &&
     ['running', 'waiting'].includes(state.runStatus) &&
     hasUnsettledSchedulerWork(state)
       ? { immediateContinuation: true as const }

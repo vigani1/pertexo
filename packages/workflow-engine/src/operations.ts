@@ -18,6 +18,10 @@ import {
   branchSelectionObservations,
   mergeCoordinatorObservations,
 } from './observation/coordinator.js';
+import {
+  callDeclarationObservations,
+  callOutcomeObservations,
+} from './observation/coordinator-calls.js';
 import { forEachCoordinatorObservations } from './observation/coordinator-loops.js';
 import {
   indexPersistedSuccessfulOutcomes,
@@ -70,6 +74,8 @@ export interface AdvanceWorkflowInput {
   readonly completedOutputs?: unknown;
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
+  readonly hasExecutionSlot?: boolean;
+  readonly callOutcomes?: unknown;
   readonly signal: AbortSignal;
 }
 
@@ -128,6 +134,14 @@ export async function advanceWorkflow(
   input: AdvanceWorkflowInput,
 ): Promise<WorkflowTransitionPlan> {
   assertAuthenticExecutableIdentity(input.executable);
+  if (
+    input.hasExecutionSlot !== undefined &&
+    typeof input.hasExecutionSlot !== 'boolean'
+  )
+    operationError(
+      'observation_invalid',
+      'execution slot availability is invalid',
+    );
   assertIdentity(input.runId, 'runId', 'workflow_identity_invalid');
   assertIdentity(
     input.workflowVersionId,
@@ -188,26 +202,44 @@ export async function advanceWorkflow(
     controlCanceled,
     controlDeadline,
   });
+  const calls = callDeclarationObservations(
+    successfulOutcomes,
+    checkpoint,
+    nodesById,
+  );
+  const callOutcomes = callOutcomeObservations(
+    input.callOutcomes,
+    checkpoint,
+    nodesById,
+    input.executable.envelope.graph,
+  );
   const forEach = forEachCoordinatorObservations(
     completedOutputItems,
-    persistedObservations.facts,
+    persistedObservations.facts.filter((fact) => {
+      const value = record(fact, 'observation_invalid', 'persisted fact');
+      return (
+        value.kind !== 'outcome' ||
+        !calls.declarationInvocationKeys.has(value.invocationKey as string)
+      );
+    }),
     successfulOutcomes,
     checkpoint,
     invocationsByKey,
     nodesById,
-    resolvedFailures,
+    [...resolvedFailures, ...callOutcomes],
   );
   const executionObservations = persistedObservations.observations.map(
     (observation): WorkflowObservation =>
       observation.kind === 'outcome' &&
-      forEach.declarationInvocationKeys.has(observation.invocationKey)
+      (forEach.declarationInvocationKeys.has(observation.invocationKey) ||
+        calls.declarationInvocationKeys.has(observation.invocationKey))
         ? { kind: 'cursor_only' }
         : observation,
   );
   const coordinatorObservations = mergeCoordinatorObservations(
     input.executable,
     checkpoint,
-    [...executionObservations, ...resolvedFailures],
+    [...executionObservations, ...resolvedFailures, ...callOutcomes],
     nodesById,
   );
   const plan = advanceWorkflowFromSchedulerState({
@@ -217,6 +249,8 @@ export async function advanceWorkflow(
       ...executionObservations,
       ...branchSelections,
       ...resolvedFailures,
+      ...calls.observations,
+      ...callOutcomes,
       ...forEach.observations,
       ...coordinatorObservations,
     ],
@@ -231,6 +265,7 @@ export async function advanceWorkflow(
     dueResumptions: persistedObservations.dueResumptions,
     occurredAt: input.occurredAt,
     maximumAdmissions: input.maximumAdmissions,
+    hasExecutionSlot: input.hasExecutionSlot ?? true,
   });
   assertNotAborted(input.signal);
   const providerKey = (
@@ -248,6 +283,7 @@ export async function advanceWorkflow(
   };
   return Object.freeze({
     ...plan,
+    ...(calls.intents.length === 0 ? {} : { callIntents: calls.intents }),
     attempts: plan.attempts.map((attempt) => {
       const key = providerKey(attempt.nodeId, attempt.invocationKey);
       return Object.freeze({

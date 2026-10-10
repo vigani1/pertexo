@@ -276,6 +276,14 @@ export function parseOutputReference(
     );
     return { kind: value.kind, attemptId: value.attemptId };
   }
+  if (value.kind === 'call') {
+    assertExactKeys(value, ['kind', 'callId']);
+    assertCheckpoint(
+      typeof value.callId === 'string' && UUID_PATTERN.test(value.callId),
+      `${label} callId must be a canonical UUID`,
+    );
+    return { kind: value.kind, callId: value.callId };
+  }
   if (value.kind === 'artifact') {
     assertExactKeys(value, ['kind', 'artifactId']);
     assertCheckpoint(
@@ -319,7 +327,11 @@ function parseInvocation(value: unknown): InvocationState {
   assertCheckpoint(
     value.waitKind === undefined ||
       ((value.status === 'waiting' || value.status === 'ready') &&
-        (value.waitKind === 'node_wait' || value.waitKind === 'retry_backoff')),
+        (value.waitKind === 'node_wait' ||
+          value.waitKind === 'retry_backoff' ||
+          (value.waitKind === 'workflow_call' &&
+            value.status === 'waiting' &&
+            value.resumeAt === undefined))),
     'waitKind must identify delayed work only',
   );
   const output =
