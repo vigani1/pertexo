@@ -19,14 +19,10 @@ export function instrumentPoolCheckout(
   ): unknown => {
     const startedAt = performance.now();
     const record = (outcome: 'error' | 'success'): void => {
-      try {
-        histogram.record((performance.now() - startedAt) / 1_000, {
-          outcome,
-          pool_role: role,
-        });
-      } catch {
-        // Observability must never affect a database acquisition's result.
-      }
+      histogram.record((performance.now() - startedAt) / 1_000, {
+        outcome,
+        pool_role: role,
+      });
     };
     if (callback !== undefined) {
       originalConnect((error, client, release) => {
