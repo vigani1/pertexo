@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { platformBrowserNodeDefinitionCatalog } from '../../../packages/node-catalog/dist/index.js';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
 import {
   nodeDefinitionListResponseSchema,
   workflowDraftResponseSchema,
   workflowVersionResponseSchema,
   type WorkflowVersionResponse,
 } from '@pertexo/contracts';
-import { authorWebhookHttpGraph } from '../e2e-live/support/webhook-http-authoring';
+import { authorWebhookHttpGraph } from '../../e2e-live/support/authoring/webhook-http';
 import {
   addCsrfCookie,
   currentEtag,
@@ -18,7 +18,7 @@ import {
   workflowSummary,
   workspace,
   workspaceId,
-} from './workflow-editor-support';
+} from './support';
 
 test('authors, reloads and publishes the complete real-pin webhook HTTP recipe through ordinary controls', async ({
   context,

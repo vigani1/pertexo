@@ -883,18 +883,18 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
                   : scenario === 'duplication'
                     ? 'workflow-duplication.spec.ts'
                     : scenario === 'nested-conflict'
-                      ? 'editor-execution.spec.ts'
+                      ? 'editor/execution.spec.ts'
                       : scenario === 'receipts'
-                        ? 'editor-receipts.spec.ts'
+                        ? 'editor/receipts.spec.ts'
                         : scenario === 'run-recovery'
-                          ? 'editor-run-recovery.spec.ts'
+                          ? 'editor/run-recovery.spec.ts'
                           : scenario === 'expression-admission'
-                            ? 'editor-expression-admission.spec.ts'
+                            ? 'editor/expression-admission.spec.ts'
                             : scenario === 'readonly'
-                              ? 'editor-readonly.spec.ts'
+                              ? 'editor/readonly.spec.ts'
                               : scenario === 'schedule'
-                                ? 'editor-schedule.spec.ts'
-                                : 'editor-webhook-controlled-http.spec.ts',
+                                ? 'editor/schedule.spec.ts'
+                                : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,

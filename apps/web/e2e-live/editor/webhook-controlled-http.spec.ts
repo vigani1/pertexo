@@ -6,22 +6,22 @@ import {
   webhookTriggerListResponseSchema,
   workflowNodeRunOutputResponseSchema,
 } from '@pertexo/contracts';
-import { test } from './support/browser-fixture';
+import { test } from '../support/browser-fixture';
 import {
   createEditorWorkspace,
   registerEditorUser,
-} from './support/ordinary-editor-session';
+} from '../support/ordinary-editor-session';
 import {
   createEditorWorkflow,
   publishSingleStep,
   readEditorDraft,
   waitForRun,
-} from './support/single-step-authoring';
-import { authorWebhookHttpGraph } from './support/webhook-http-authoring';
+} from '../support/authoring/single-step';
+import { authorWebhookHttpGraph } from '../support/authoring/webhook-http';
 import {
   fillOwnedHttpCredential,
   invokeOwnedWebhook,
-} from './support/http-secret-actions';
+} from '../support/http-secret-actions';
 
 test('signed acceptance replay produces two immutable runs and one actual controlled HTTP effect', async ({
   page,

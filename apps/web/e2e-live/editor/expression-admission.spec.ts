@@ -8,20 +8,20 @@ import {
   workflowNodeRunOutputResponseSchema,
   workflowRunStartResponseSchema,
 } from '@pertexo/contracts';
-import { test } from './support/browser-fixture';
+import { test } from '../support/browser-fixture';
 import {
   registerEditorUser,
   createEditorWorkspace,
-} from './support/ordinary-editor-session';
+} from '../support/ordinary-editor-session';
 import {
   authorNestedExpressionGraph,
   readTaggedExpressionDraft,
-} from './support/expression-editor-authoring';
+} from '../support/authoring/expression';
 import {
   createEditorWorkflow,
   startSingleStep,
   waitForRun,
-} from './support/single-step-authoring';
+} from '../support/authoring/single-step';
 
 function isPost(request: Request, path: string) {
   return (

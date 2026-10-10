@@ -4,11 +4,11 @@ import {
   workflowNodeRunOutputResponseSchema,
   workflowRunStartResponseSchema,
 } from '@pertexo/contracts';
-import { test } from './support/browser-fixture';
+import { test } from '../support/browser-fixture';
 import {
   createEditorWorkspace,
   registerEditorUser,
-} from './support/ordinary-editor-session';
+} from '../support/ordinary-editor-session';
 import {
   addSingleStep,
   createEditorWorkflow,
@@ -16,7 +16,7 @@ import {
   readEditorDraft,
   startSingleStep,
   waitForRun,
-} from './support/single-step-authoring';
+} from '../support/authoring/single-step';
 
 test('inspects a real failed Condition, replays its version and cancels a waiting run', async ({
   page,

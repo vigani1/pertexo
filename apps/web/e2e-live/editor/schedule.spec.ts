@@ -9,18 +9,18 @@ import {
   workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
 } from '@pertexo/contracts';
-import { test } from './support/browser-fixture';
+import { test } from '../support/browser-fixture';
 import {
   registerEditorUser,
   createEditorWorkspace,
-} from './support/ordinary-editor-session';
-import { authorScheduledNestedGraph } from './support/scheduled-editor-authoring';
+} from '../support/ordinary-editor-session';
+import { authorScheduledNestedGraph } from '../support/authoring/scheduled';
 import {
   createEditorWorkflow,
   publishSingleStep,
   readEditorDraft,
   waitForRun,
-} from './support/single-step-authoring';
+} from '../support/authoring/single-step';
 
 // Test-control receipt only, not a new application wire contract/dependency.
 function readRestartReceipt(value: unknown) {

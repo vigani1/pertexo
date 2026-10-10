@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { readEditorDraft } from './single-step-authoring';
+import { readEditorDraft } from './single-step';
 
 /** Ordinary inspector edits and wiring, never a seeded graph/save request. */
 export async function authorWebhookHttpGraph(

@@ -14,7 +14,7 @@ import {
   workflowSummary,
   type Graph,
   type RemoteDraft,
-} from './workflow-editor-support';
+} from './support';
 
 const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const previewId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';

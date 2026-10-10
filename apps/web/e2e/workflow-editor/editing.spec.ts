@@ -15,7 +15,7 @@ import {
   workflowSummary,
   workspace,
   workspaceId,
-} from './workflow-editor-support';
+} from './support';
 
 test('edits typed input mappings live, saves them and restores rendered controls after reload', async ({
   context,

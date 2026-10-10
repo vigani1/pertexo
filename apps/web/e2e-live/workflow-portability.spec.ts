@@ -10,7 +10,7 @@ import {
   type WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
 import { test } from './support/browser-fixture';
-import { startSingleStep, waitForRun } from './support/single-step-authoring';
+import { startSingleStep, waitForRun } from './support/authoring/single-step';
 
 interface Seed {
   sourceWorkspaceId: string;

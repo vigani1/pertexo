@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   routeEmptyWorkflowOrganization,
   workflowListBody,
-} from './workflow-list-support';
+} from './workflows/list-support';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

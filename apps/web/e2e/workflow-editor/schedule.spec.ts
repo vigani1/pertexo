@@ -5,7 +5,7 @@ import {
   editorUrl,
   installEditorRoutes,
   remoteDraft,
-} from './workflow-editor-support';
+} from './support';
 
 const misfirePolicy = {
   default: 'catch_up_once',

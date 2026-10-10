@@ -9,12 +9,12 @@ import {
   workflowVersionsResponseSchema,
   workflowRunListResponseSchema,
 } from '@pertexo/contracts';
-import { uncoveredArea } from '../src/features/workflow-editor/model/canvas-framing';
-import { test } from './support/browser-fixture';
+import { uncoveredArea } from '../../src/features/workflow-editor/model/canvas-framing';
+import { test } from '../support/browser-fixture';
 import {
   createEditorWorkspace,
   registerEditorUser,
-} from './support/ordinary-editor-session';
+} from '../support/ordinary-editor-session';
 import {
   addSingleStep,
   createEditorWorkflow,
@@ -22,7 +22,7 @@ import {
   readEditorDraft,
   startSingleStep,
   waitForRun,
-} from './support/single-step-authoring';
+} from '../support/authoring/single-step';
 
 /** A focusable control must also be usable by pointer in the visible viewport. */
 async function expectUnobstructedControl(control: Locator) {

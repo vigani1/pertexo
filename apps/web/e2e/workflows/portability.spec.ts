@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { workflowGraphSchema } from '@pertexo/contracts';
 import { portableGraphDigest } from '@pertexo/workflow-model';
-import { fixtureStatistics } from '../test/support/fixtures/run';
+import { fixtureStatistics } from '../../test/support/fixtures/run';
 import {
   addCsrfCookie,
   currentEtag,
@@ -11,7 +11,7 @@ import {
   workflowId,
   workspace,
   workspaceId,
-} from './workflow-editor-support';
+} from '../workflow-editor/support';
 
 const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const destinationId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
