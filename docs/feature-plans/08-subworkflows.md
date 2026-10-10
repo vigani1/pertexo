@@ -383,8 +383,10 @@ references inform the accepted behavior, not acceptance evidence.
 - [x] Finished-iteration pruning and limit-increase evidence planned.
 - [x] Owner approved the plan and ADR 070 on 2026-10-10, with slot handoff and
       the pinned-parent archive warning; all other recommendations accepted.
-- [ ] Reset follow-up PR: deterministic canonical JSON, live organization test
-      investigation and remaining redundant file names.
+- [x] Reset follow-up: deterministic canonical JSON, live organization test
+      investigation and 42 redundant filenames implemented and verified.
+      Full reset gate and the three live role cases pass; slice 1 starts after
+      the follow-up's green CI and merge.
 - [ ] Slice 1: finished-loop pruning implemented and verified at current limits.
 - [ ] Callable contract implemented and verified.
 - [ ] Parent/child acceptance, completion and controls implemented and verified.

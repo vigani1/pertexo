@@ -541,6 +541,17 @@ now, as one ordered program — not "whenever we touch it".
           shared. Distinct digest, stored-value and PostgreSQL payload encodings
           stay distinct. Owned config guards, obsolete catalog names and manual
           promise rejection settlements go; unknown boundary validation stays.
+    - [x] Owner post-plan follow-up: database receipts and trigger fingerprints
+          import workflow-model's canonical JSON; both duplicate serializers
+          go. The live organization test waits for the final authority check,
+          with a controlled delay reproducing the old failure and passing after
+          the repair. Forty-two remaining redundant filenames go in separate
+          move commits, preserving public/module/repository names. Package
+          gates and three live role cases pass. The full reset gate is green:
+          677 database, 46 database-owned, 47 worker, 117 API, 13 API-owned
+          and 90 browser tests; all unit suites pass. Remaining descriptor and
+          reflection sites serve unknown JSON/graph/schema boundaries or
+          dynamic-key reads; boundary validation remains.
 - [x] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
   - [x] Current architecture map, root/web setup and ownership docs, script
