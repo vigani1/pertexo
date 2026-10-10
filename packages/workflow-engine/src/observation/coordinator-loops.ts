@@ -15,7 +15,7 @@ import {
   operationError,
   record,
 } from '../operation-values.js';
-import { compareOrdinal } from '../ordering.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
 import { uuidPattern } from './persisted.js';
 import {

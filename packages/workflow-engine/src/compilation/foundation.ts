@@ -15,7 +15,7 @@ import {
 } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
 import type { SideEffectClass } from '../types.js';
-export { compareOrdinal } from '../ordering.js';
+export { compareOrdinal } from '@pertexo/workflow-model';
 
 export const BASELINE_RUNTIME_POLICIES = Object.freeze({
   scheduler: Object.freeze({ key: 'engine.scheduler', version: 1 }),

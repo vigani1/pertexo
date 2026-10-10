@@ -1,5 +1,5 @@
 import { WorkflowEngineError } from '../errors.js';
-import { compareOrdinal } from '../ordering.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameIterationPath } from '../scope.js';
 import { completeLoopIteration } from './scheduling/loops.js';
 import { assertNodeTransition } from './status-transitions.js';

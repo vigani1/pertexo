@@ -3,7 +3,7 @@ import { workflowControlOutputKind } from '@pertexo/workflow-model';
 import { invocationKey } from './loops.js';
 import { WorkflowEngineError } from '../../errors.js';
 import { indexSchedulerGraph, type SchedulerGraphIndexes } from './indexes.js';
-import { compareOrdinal } from '../../ordering.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
 import { branchPathHasPrefix, sameIterationPath } from '../../scope.js';
 import type {
   BranchScopePart,

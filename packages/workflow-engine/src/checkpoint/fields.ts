@@ -11,7 +11,7 @@ import {
 } from '../types.js';
 import { types as nodeTypes } from 'node:util';
 import { invocationKey } from '../transition/scheduling/loops.js';
-import { compareOrdinal } from '../ordering.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
 import { assertCanonicalTimestamp } from './identity.js';
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>

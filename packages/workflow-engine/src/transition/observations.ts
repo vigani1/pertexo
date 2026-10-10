@@ -1,5 +1,5 @@
 import { WorkflowEngineError } from '../errors.js';
-import { compareOrdinal } from '../ordering.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
 import { recordBranchDisposition } from './scheduling/loops.js';
 import { sameOutputReference } from '../output-reference.js';
 import {
