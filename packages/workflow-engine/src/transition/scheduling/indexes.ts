@@ -16,13 +16,7 @@ export interface SchedulerGraphIndexes {
 
 function configuredPairedParallelId(node: SchedulerNode): string | undefined {
   if (!isCoreMergeDefinition(node.definition)) return undefined;
-  if (
-    typeof node.config !== 'object' ||
-    node.config === null ||
-    Array.isArray(node.config)
-  )
-    return undefined;
-  const parallelNodeId = Reflect.get(node.config, 'parallelNodeId') as unknown;
+  const parallelNodeId = node.config?.parallelNodeId;
   return typeof parallelNodeId === 'string' ? parallelNodeId : undefined;
 }
 
