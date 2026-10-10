@@ -1,4 +1,4 @@
-import { infiniteQueryOptions, skipToken } from '@tanstack/react-query';
+import { infiniteQueryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { listInputCases } from './api';
 import { workflowKeys } from '../workflows.queries';
@@ -14,7 +14,7 @@ export const inputCasesKey = (
   ] as const;
 
 export function inputCasesQueryOptions(
-  api: ApiClient | undefined,
+  api: ApiClient,
   userId: string,
   workspaceId: string,
   workflowId: string,
@@ -22,11 +22,8 @@ export function inputCasesQueryOptions(
   return infiniteQueryOptions({
     queryKey: inputCasesKey(userId, workspaceId, workflowId),
     initialPageParam: undefined as string | undefined,
-    queryFn:
-      api === undefined
-        ? skipToken
-        : ({ signal, pageParam }) =>
-            listInputCases(api, workspaceId, workflowId, signal, pageParam),
+    queryFn: ({ signal, pageParam }) =>
+      listInputCases(api, workspaceId, workflowId, signal, pageParam),
     getNextPageParam: (page, _pages, _pageParam, pageParams) =>
       page.nextCursor !== undefined && !pageParams.includes(page.nextCursor)
         ? page.nextCursor

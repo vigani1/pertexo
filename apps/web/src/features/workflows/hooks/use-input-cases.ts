@@ -136,14 +136,10 @@ export function useInputCases(
   enabled = true,
 ) {
   const cache = useQueryClient();
-  const query = useInfiniteQuery(
-    inputCasesQueryOptions(
-      enabled ? api : undefined,
-      userId,
-      workspaceId,
-      workflowId,
-    ),
-  );
+  const query = useInfiniteQuery({
+    ...inputCasesQueryOptions(api, userId, workspaceId, workflowId),
+    enabled,
+  });
   const [selected, setSelected] = useState<WorkflowInputCase>();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
