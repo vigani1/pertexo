@@ -336,7 +336,9 @@ now, as one ordered program — not "whenever we touch it".
     - [x] The SQL that stays is listed with its reason under *Database
           design*. The manual-start writer fence (an authority check the API
           already makes), the preview artifact retention trigger and the
-          lifecycle time trigger are SQL; they go in step 9's re-squash.
+          lifecycle time trigger are removed by migration 0025 before the
+          final re-squash. Their commands own key serialization, expiry checks
+          and canonical receipt time.
     - [x] Repository review.
       - Every area is grouped by sub-area (authoring `workflows/`,
         `portability/`, `publication/`, `settings/`; tenant access
@@ -538,10 +540,16 @@ now, as one ordered program — not "whenever we touch it".
           promise rejection settlements go; unknown boundary validation stays.
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
-  - [ ] SQL the reset moved out of the passes goes with the re-squash: the
-        manual-start writer fence and the workflow input case writer fence
-        (authority checks the API already makes), the preview artifact
-        retention trigger and the lifecycle time trigger.
+  - [x] SQL fences and leftovers removed before the re-squash (migration
+        0025): the manual-start authority function and writer trigger, preview
+        artifact retention trigger, lifecycle receipt-time trigger and unused
+        checkpoint transition fingerprint. The input-case fences already went
+        in 0009. Manual commands and fixtures share one transaction advisory
+        key lock; HTTP checks current authority before acceptance or recovery.
+        Preview expiry is checked before metadata is inserted, and receipt
+        dates are written with millisecond precision in TypeScript. Outbox
+        payload checksums stay for integrity, reused delivery identities and
+        recovery after an unknown commit.
   - [x] Numbered stored formats removed before the re-squash: digest
         prefixes, hash domains, idempotency namespaces and sealing contexts
         are unversioned. The graph/catalog/executable/checkpoint, expression,
@@ -703,6 +711,10 @@ payload, provider response). Inner layers trust typed values.
     `lock_execution_artifact_references`): every writer that references or
     removes an artifact keeps the per-workspace byte count and the reference
     locks exact.
+  - *Delivery integrity*: the outbox payload checksum binds each persisted
+    delivery identity to its exact payload. Consumers compare it before
+    effects or receipt recovery, including a retry after an unknown commit;
+    this is an integrity check, not a stored-format version.
   - *Public webhook lookup and ingress limit*: the endpoint is resolved from
     its public key before its workspace is known, and the limit is an atomic
     counter.

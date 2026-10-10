@@ -229,7 +229,7 @@ async function apiQuery<T extends Record<string, unknown>>(
       workspaceId,
       statement,
       parameters,
-      manualStart === undefined ? undefined : { ...manualStart, actorId },
+      manualStart,
     );
   } finally {
     await pool.end();

@@ -9,6 +9,7 @@ import { createWorkspaceDatabase } from '../../../src/database.js';
 import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/database.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { generatePersistedId } from '../../../src/platform/persisted-id.js';
+import { lockManualStartCommand } from '../../../src/runs/commands/manual-start.js';
 import {
   idempotencyRecords,
   outboxEvents,
@@ -107,23 +108,21 @@ export function acceptanceInput(
     ...(runInput === undefined ? {} : { runInput }),
     scope: `workflow:${workflowId}:manual`,
     // Generic admission tests exercise the API trigger. Explicit manual tests
-    // must use the serialized, current-authority manual command protocol.
+    // use the same serialized key as the manual command.
     triggerType: 'api',
     workflowId,
     workflowVersionId,
   } as const;
 }
 
-/** Explicit manual tests use the real serialized authority protocol, not a GUC bypass. */
+/** Explicit manual tests use the command's production key lock. */
 export async function lockManualFixtureStart(
   transaction: WorkspaceTransaction,
 ): Promise<void> {
-  await transaction.db.execute(
-    sql`select set_config('app.actor_id',${workspaceCreatorId},true)`,
-  );
-  await transaction.db.execute(
-    sql`select app.lock_manual_workflow_run_start(${workspaceCreatorId}::uuid,${workflowId}::uuid,${`workflow:${workflowId}:manual`},${keyHash})`,
-  );
+  await lockManualStartCommand(transaction, {
+    scope: `workflow:${workflowId}:manual`,
+    idempotencyKeyHash: keyHash,
+  });
 }
 
 export function initialCheckpoint() {

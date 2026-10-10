@@ -536,6 +536,26 @@ describe('workflow run application seams', () => {
     }
   });
 
+  it('checks current start authority before recovering an accepted command', async () => {
+    const fixture = persistence();
+    const input = {
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      idempotencyKey: 'accepted-run-recovery',
+    };
+    await new StartWorkflowRunUseCase(fixture.store, authorization()).execute(
+      input,
+    );
+    await expect(
+      new StartWorkflowRunUseCase(
+        fixture.store,
+        authorization('viewer'),
+      ).execute(input),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    expect(fixture.start).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps start and replay capabilities distinct', async () => {
     const fixture = persistence();
     const access = authorization('builder');

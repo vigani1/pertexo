@@ -208,14 +208,10 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
     const accepted = await apiDatabase.withWorkspace(
       workspaceId,
       async (transaction) => {
-        // Even low-level stream fixtures are real manual writers: lock current
-        // actor authority and this exact command identity before acceptance.
+        // Stream fixtures serialize the same command key as the HTTP start.
         await lockManualStartCommand(transaction, {
-          actorId,
-          workflowId,
           scope,
           idempotencyKeyHash: keyHash,
-          requestHash,
         });
         return acceptWorkflowRun(transaction, {
           initialCheckpoint: initialCheckpoint(workflowVersionId),

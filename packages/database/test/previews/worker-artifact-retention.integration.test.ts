@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   artifactStorageKey,
+  ArtifactLifecycleConflictError,
   createPendingPreviewArtifact,
 } from '../../src/artifacts/store.js';
 import { parseDatabaseConfig } from '../../src/config.js';
@@ -22,7 +23,6 @@ import {
   acceptFixture,
   claimFixture,
   databaseUrl,
-  expectPgCode,
   maintenanceBaseUrl,
   ownerPool,
   scopedQuery,
@@ -102,7 +102,7 @@ describe('preview artifact retention lifecycle', () => {
           },
         ),
       ),
-    ).rejects.toSatisfy(expectPgCode('23514'));
+    ).rejects.toBeInstanceOf(ArtifactLifecycleConflictError);
     const rolledBack = await scopedQuery<{ count: string }>(
       `select count(*)::text as count from app.artifacts
        where workspace_id=$1 and id=$2`,

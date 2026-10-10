@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { requestActiveRunCancellations } from '../runs/runs.repository.js';
 import { IdempotencyRequestConflictError } from '../runs/commands/acceptance.js';
 import { databaseSchema } from '../schema.js';
+import { workspaceLifecycleOperations } from '../schema/foundation.js';
 import { WorkspaceLifecycleConflictError } from '../tenant-access/errors.js';
 import { parseWorkspaceId } from '../tenant-access/transactions.js';
 
@@ -245,21 +246,23 @@ export async function changeWorkspaceLifecycle(
         : 'workspace.deletion_restored',
     ],
   );
-  const inserted = await client.query(
-    `insert into app.workspace_lifecycle_operations
-       (id, workspace_id, idempotency_key_hash, command_type, actor_user_id,
-        reason, request_hash, occurred_at)
-     values ($1, $2, $3, $4, $5, $6, $7, clock_timestamp())
-     returning ${OPERATION_COLUMNS}`,
-    [
-      change.operationId,
-      change.workspaceId,
-      change.idempotencyKeyHash,
-      change.commandType,
-      change.actorUserId,
-      change.reason,
-      change.requestHash,
-    ],
-  );
-  return operation(operationRowSchema.parse(inserted.rows[0]));
+  const occurredAt = new Date();
+  await drizzle(client, { schema: databaseSchema })
+    .insert(workspaceLifecycleOperations)
+    .values({
+      id: change.operationId,
+      workspaceId: change.workspaceId,
+      idempotencyKeyHash: change.idempotencyKeyHash,
+      commandType: change.commandType,
+      actorUserId: change.actorUserId,
+      reason: change.reason,
+      requestHash: change.requestHash,
+      occurredAt: occurredAt.toISOString(),
+    });
+  return Object.freeze({
+    id: change.operationId,
+    workspaceId: change.workspaceId,
+    commandType: change.commandType,
+    submittedAt: occurredAt,
+  });
 }

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   artifactLinks,
   artifacts,
+  previewRuns,
   runCheckpoints,
   runEvents,
 } from '../schema.js';
@@ -199,7 +200,13 @@ export async function createPendingArtifact(
   transaction: WorkspaceTransaction,
   input: CreatePendingArtifactInput,
 ): Promise<ArtifactRecord> {
-  const parsed = pendingArtifactSchema.parse(input);
+  return insertPendingArtifact(transaction, pendingArtifactSchema.parse(input));
+}
+
+async function insertPendingArtifact(
+  transaction: WorkspaceTransaction,
+  parsed: z.output<typeof pendingArtifactSchema>,
+): Promise<ArtifactRecord> {
   if (
     parsed.storageKey !==
     artifactStorageKey(transaction.workspaceId, parsed.artifactId)
@@ -230,15 +237,31 @@ export async function createPendingArtifact(
 
 /**
  * Creates preview artifact metadata and its immutable owner link in the same
- * tenant transaction. PostgreSQL independently enforces that the artifact
- * expiry cannot exceed the owning preview's retention deadline.
+ * tenant transaction, within the owning preview's immutable retention deadline.
  */
 export async function createPendingPreviewArtifact(
   transaction: WorkspaceTransaction,
   input: CreatePendingPreviewArtifactInput,
 ): Promise<ArtifactRecord> {
   const parsed = pendingPreviewArtifactSchema.parse(input);
-  const artifact = await createPendingArtifact(transaction, parsed);
+  const [owner] = await transaction.db
+    .select({ expiresAt: previewRuns.expiresAt })
+    .from(previewRuns)
+    .where(
+      and(
+        eq(previewRuns.workspaceId, transaction.workspaceId),
+        eq(previewRuns.id, parsed.previewRunId),
+      ),
+    );
+  if (owner === undefined)
+    throw new ArtifactLifecycleConflictError(
+      'Preview artifact owner is unavailable',
+    );
+  if (parsed.expiresAt.getTime() > owner.expiresAt.getTime())
+    throw new ArtifactLifecycleConflictError(
+      'Preview artifact retention exceeds its owner',
+    );
+  const artifact = await insertPendingArtifact(transaction, parsed);
   await transaction.db.insert(artifactLinks).values({
     artifactId: artifact.id,
     ownerId: parsed.previewRunId,

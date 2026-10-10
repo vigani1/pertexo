@@ -219,7 +219,7 @@ export function createScheduleTriggerFixture(
       if (manualStart !== undefined)
         await lockManualFixtureClient(
           client,
-          actorId,
+          scopedWorkspaceId,
           manualStart.workflowId,
           manualStart.keyHash,
         );

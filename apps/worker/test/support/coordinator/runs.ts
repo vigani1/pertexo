@@ -210,7 +210,7 @@ async function acceptFixtureRun(
   return coordinatorFixture.apiDatabase.withWorkspace(
     workspaceId,
     (transaction) =>
-      acceptManualFixtureRun(transaction, actorId, {
+      acceptManualFixtureRun(transaction, {
         initialCheckpoint: createCheckpoint(checkpointInput),
         keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
         operation: 'workflow.run.accept',
