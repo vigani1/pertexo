@@ -29,6 +29,27 @@ test('validates a minimal typed inventory', () => {
   });
 });
 
+test('reads Drizzle quoted identifiers and mixed quoted migration history', () => {
+  const quoted = `
+    CREATE TABLE "app"."first_table"(id uuid primary key);
+    CREATE TABLE app."second_table"(id uuid primary key);
+    CREATE TABLE "app".retired_table(id uuid primary key);
+    DROP TABLE IF EXISTS "app"."retired_table";
+  `;
+  assert.deepEqual(
+    validateDatabaseSchemaSources({ ...validSources, migrationSql: quoted }),
+    { tableCount: 2 },
+  );
+  assert.throws(
+    () =>
+      validateDatabaseSchemaSources({
+        ...validSources,
+        migrationSql: `${quoted}\nCREATE TABLE "app"."untyped"(id uuid primary key);`,
+      }),
+    /Migration tables without a typed schema: untyped/u,
+  );
+});
+
 test('ignores tables a later migration drops', () => {
   const retired = `${validSources.migrationSql}
     CREATE TABLE app.retired_table(id uuid primary key);

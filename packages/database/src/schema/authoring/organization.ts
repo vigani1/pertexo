@@ -1,4 +1,5 @@
 import {
+  type PgTableExtraConfigValue,
   bigint,
   check,
   foreignKey,
@@ -23,19 +24,19 @@ export const workflowFolders = appSchema.table(
     nameKey: textC('name_key').notNull(),
     revision: bigint({ mode: 'number' }).default(1).notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'workflow_folders_check',
-      sql`name_key = translate(name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'::text, 'abcdefghijklmnopqrstuvwxyz'::text)`,
+      sql`(name_key = translate(name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'::text, 'abcdefghijklmnopqrstuvwxyz'::text))`,
     ),
-    check('workflow_folders_check1', sql`parent_id IS DISTINCT FROM id`),
+    check('workflow_folders_check1', sql`(parent_id IS DISTINCT FROM id)`),
     check(
       'workflow_folders_name_check',
-      sql`(name = btrim(name, ' '::text)) AND ((octet_length(name) >= 1) AND (octet_length(name) <= 128)) AND ((name COLLATE "C") !~ '[[:cntrl:]]'::text)`,
+      sql`((name = btrim(name, ' '::text)) AND ((octet_length(name) >= 1) AND (octet_length(name) <= 128)) AND ((name COLLATE "C") !~ '[[:cntrl:]]'::text))`,
     ),
     check(
       'workflow_folders_revision_check',
-      sql`(revision >= 1) AND (revision <= '9007199254740991'::bigint)`,
+      sql`((revision >= 1) AND (revision <= '9007199254740991'::bigint))`,
     ),
     primaryKey({
       name: 'workflow_folders_pkey',
@@ -44,11 +45,6 @@ export const workflowFolders = appSchema.table(
     unique('workflow_folders_workspace_id_parent_id_name_key_key')
       .on(table.workspaceId, table.parentId, table.nameKey)
       .nullsNotDistinct(),
-    index('workflow_folders_parent_idx').on(
-      table.workspaceId,
-      table.parentId,
-      table.id,
-    ),
     foreignKey({
       name: 'workflow_folders_workspace_id_fkey',
       columns: [table.workspaceId],
@@ -59,6 +55,11 @@ export const workflowFolders = appSchema.table(
       columns: [table.workspaceId, table.parentId],
       foreignColumns: [table.workspaceId, table.id],
     }),
+    index('workflow_folders_parent_idx').on(
+      table.workspaceId,
+      table.parentId,
+      table.id,
+    ),
   ],
 );
 
@@ -70,14 +71,14 @@ export const workflowTags = appSchema.table(
     key: textC('key').notNull(),
     revision: bigint({ mode: 'number' }).default(1).notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'workflow_tags_key_check',
-      sql`(octet_length(key) >= 1) AND (octet_length(key) <= 32) AND ((key COLLATE "C") ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text)`,
+      sql`((octet_length(key) >= 1) AND (octet_length(key) <= 32) AND ((key COLLATE "C") ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))`,
     ),
     check(
       'workflow_tags_revision_check',
-      sql`(revision >= 1) AND (revision <= '9007199254740991'::bigint)`,
+      sql`((revision >= 1) AND (revision <= '9007199254740991'::bigint))`,
     ),
     primaryKey({
       name: 'workflow_tags_pkey',
@@ -103,20 +104,15 @@ export const workflowOrganizationState = appSchema.table(
     revision: bigint({ mode: 'number' }).default(1).notNull(),
     folderId: uuid('folder_id'),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'workflow_organization_state_revision_check',
-      sql`(revision >= 1) AND (revision <= '9007199254740991'::bigint)`,
+      sql`((revision >= 1) AND (revision <= '9007199254740991'::bigint))`,
     ),
     primaryKey({
       name: 'workflow_organization_state_pkey',
       columns: [table.workspaceId, table.workflowId],
     }),
-    index('workflow_organization_state_folder_idx').on(
-      table.workspaceId,
-      table.folderId,
-      table.workflowId,
-    ),
     foreignKey({
       name: 'workflow_organization_state_folder_fk',
       columns: [table.workspaceId, table.folderId],
@@ -127,6 +123,11 @@ export const workflowOrganizationState = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }),
+    index('workflow_organization_state_folder_idx').on(
+      table.workspaceId,
+      table.folderId,
+      table.workflowId,
+    ),
   ],
 );
 
@@ -137,16 +138,11 @@ export const workflowTagAssignments = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     tagId: uuid('tag_id').notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     primaryKey({
       name: 'workflow_tag_assignments_pkey',
       columns: [table.workspaceId, table.workflowId, table.tagId],
     }),
-    index('workflow_tag_assignments_tag_idx').on(
-      table.workspaceId,
-      table.tagId,
-      table.workflowId,
-    ),
     foreignKey({
       name: 'workflow_tag_assignments_workspace_id_tag_id_fkey',
       columns: [table.workspaceId, table.tagId],
@@ -157,6 +153,11 @@ export const workflowTagAssignments = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }),
+    index('workflow_tag_assignments_tag_idx').on(
+      table.workspaceId,
+      table.tagId,
+      table.workflowId,
+    ),
   ],
 );
 
@@ -167,20 +168,20 @@ export const workflowFavorites = appSchema.table(
     actorId: uuid('actor_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     primaryKey({
       name: 'workflow_favorites_pkey',
       columns: [table.workspaceId, table.actorId, table.workflowId],
+    }),
+    foreignKey({
+      name: 'workflow_favorites_workspace_id_workflow_id_fkey',
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [workflows.workspaceId, workflows.id],
     }),
     index('workflow_favorites_workflow_idx').on(
       table.workspaceId,
       table.workflowId,
       table.actorId,
     ),
-    foreignKey({
-      name: 'workflow_favorites_workspace_id_workflow_id_fkey',
-      columns: [table.workspaceId, table.workflowId],
-      foreignColumns: [workflows.workspaceId, workflows.id],
-    }),
   ],
 );

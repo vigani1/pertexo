@@ -1,4 +1,5 @@
 import {
+  type PgTableExtraConfigValue,
   check,
   foreignKey,
   index,
@@ -21,7 +22,7 @@ export const workspaceExecutionEntitlements = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     foreignKey({
       name: 'workspace_execution_entitlements_version_fk',
       columns: [table.workspaceId, table.currentVersion],
@@ -52,36 +53,36 @@ export const workspaceExecutionEntitlementVersions = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'workspace_execution_entitlement_versions_limits_valid',
-      sql`(active_run_limit >= 1) AND (active_run_limit <= 10000) AND ((queued_run_limit >= 1) AND (queued_run_limit <= 100000))`,
+      sql`((active_run_limit >= 1) AND (active_run_limit <= 10000) AND ((queued_run_limit >= 1) AND (queued_run_limit <= 100000)))`,
     ),
     check(
       'workspace_execution_entitlement_versions_status_valid',
-      sql`(status)::text = ANY (ARRAY[('active'::character varying)::text, ('suspended'::character varying)::text])`,
+      sql`((status)::text = ANY (ARRAY[('active'::character varying)::text, ('suspended'::character varying)::text]))`,
     ),
     check(
       'workspace_execution_entitlement_versions_time_valid',
-      sql`(expires_at IS NULL) OR (expires_at > effective_at)`,
+      sql`((expires_at IS NULL) OR (expires_at > effective_at))`,
     ),
     check(
       'workspace_execution_entitlement_versions_version_positive',
-      sql`version > 0`,
+      sql`(version > 0)`,
     ),
     primaryKey({
       name: 'workspace_execution_entitlement_versions_pkey',
       columns: [table.workspaceId, table.version],
     }),
-    index('workspace_execution_entitlement_versions_workspace_time_idx').on(
-      table.workspaceId,
-      table.effectiveAt.desc().nullsFirst(),
-      table.version.desc().nullsFirst(),
-    ),
     foreignKey({
       name: 'workspace_execution_entitlement_versions_workspace_fk',
       columns: [table.workspaceId],
       foreignColumns: [workspaces.id],
     }).onDelete('restrict'),
+    index('workspace_execution_entitlement_versions_workspace_time_idx').on(
+      table.workspaceId,
+      table.effectiveAt.desc().nullsFirst(),
+      table.version.desc().nullsFirst(),
+    ),
   ],
 );

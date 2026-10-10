@@ -1,4 +1,5 @@
 import {
+  type PgTableExtraConfigValue,
   bigint,
   boolean,
   check,
@@ -29,10 +30,10 @@ export const workspaceExecutionAdmissionCounters = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'workspace_execution_admission_counters_nonnegative',
-      sql`(queued_runs >= 0) AND (active_runs >= 0)`,
+      sql`((queued_runs >= 0) AND (active_runs >= 0))`,
     ),
     foreignKey({
       name: 'workspace_execution_admission_counters_workspace_fk',
@@ -62,15 +63,14 @@ export const workflowRunActiveAdmissions = appSchema.table(
       .default(true)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'workflow_run_active_admissions_recovery_count_valid',
-      sql`recovery_count >= 0`,
+      sql`(recovery_count >= 0)`,
     ),
     unique('workflow_run_active_admissions_outbox_event_id_key').on(
       table.outboxEventId,
     ),
-    index('workflow_run_active_admissions_workspace_idx').on(table.workspaceId),
     foreignKey({
       name: 'workflow_run_active_admissions_outbox_fk',
       columns: [table.outboxEventId],
@@ -86,5 +86,10 @@ export const workflowRunActiveAdmissions = appSchema.table(
       columns: [table.workspaceId],
       foreignColumns: [workspaces.id],
     }).onDelete('restrict'),
+    index('workflow_run_active_admissions_workspace_idx').on(table.workspaceId),
   ],
+);
+
+export const workflowRunAdmissionTicketSequence = appSchema.sequence(
+  'workflow_run_admission_ticket_seq',
 );

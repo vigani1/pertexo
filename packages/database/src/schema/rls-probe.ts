@@ -1,4 +1,10 @@
-import { index, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  type PgTableExtraConfigValue,
+  index,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 import { appSchema } from './app-schema.js';
 
@@ -13,7 +19,7 @@ export const rlsProbeRecords = appSchema.table(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     index('rls_probe_records_workspace_idx').on(table.workspaceId, table.id),
   ],
 );

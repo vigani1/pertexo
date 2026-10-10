@@ -38,6 +38,13 @@
           "src/expressions/evaluation-thread.ts",
           "src/authoring-validation/validation-thread.ts"
         ]
+      },
+      "packages/database": {
+        "drizzle": {
+          "config": [
+            "drizzle.config.mjs"
+          ]
+        }
       }
     }
   },
@@ -49,6 +56,7 @@
     "contracts:generate": "pnpm --filter @pertexo/contracts contracts:generate",
     "database:schema:check": "node --test infrastructure/checks/validate-database-schema.test.mjs && node infrastructure/checks/validate-database-schema.mjs",
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
+    "db:generate": "pnpm --filter @pertexo/database db:generate",
     "dependencies:check": "knip",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "dev": "node infrastructure/development/dev.mjs",

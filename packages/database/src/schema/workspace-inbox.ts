@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm';
 import {
+  type PgTableExtraConfigValue,
   bigint,
+  check,
   foreignKey,
   index,
   primaryKey,
@@ -38,7 +40,15 @@ export const workspaceInboxEvents = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
+    check(
+      'workspace_inbox_events_kind_check',
+      sql`((kind)::text = ANY (ARRAY[('failed'::character varying)::text, ('timed_out'::character varying)::text, ('outcome_unknown'::character varying)::text]))`,
+    ),
+    check(
+      'workspace_inbox_events_terminal_event_sequence_check',
+      sql`(terminal_event_sequence > 0)`,
+    ),
     foreignKey({
       name: 'workspace_inbox_events_run_fk',
       columns: [table.workspaceId, table.runId],
@@ -49,12 +59,12 @@ export const workspaceInboxEvents = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('cascade'),
+    index('workspace_inbox_events_pending_idx').on(table.createdAt, table.id),
     uniqueIndex('workspace_inbox_events_terminal_unique').on(
       table.workspaceId,
       table.runId,
       table.terminalEventSequence,
     ),
-    index('workspace_inbox_events_pending_idx').on(table.createdAt, table.id),
     index('workspace_inbox_events_workflow_idx').on(
       table.workspaceId,
       table.workflowId,
@@ -84,7 +94,20 @@ export const workspaceInboxThreads = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
+    check(
+      'workspace_inbox_threads_latest_kind_check',
+      sql`((latest_kind)::text = ANY (ARRAY[('failed'::character varying)::text, ('timed_out'::character varying)::text, ('outcome_unknown'::character varying)::text]))`,
+    ),
+    check(
+      'workspace_inbox_threads_occurrence_count_check',
+      sql`(occurrence_count > 0)`,
+    ),
+    check(
+      'workspace_inbox_threads_occurrence_order',
+      sql`(latest_occurred_at >= first_occurred_at)`,
+    ),
+    check('workspace_inbox_threads_revision_check', sql`(revision > 0)`),
     primaryKey({
       name: 'workspace_inbox_threads_pkey',
       columns: [table.workspaceId, table.workflowId],
@@ -94,15 +117,15 @@ export const workspaceInboxThreads = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('restrict'),
-    index('workspace_inbox_threads_recent_idx').on(
-      table.workspaceId,
-      table.latestOccurredAt.desc(),
-      table.workflowId.desc(),
-    ),
     index('workspace_inbox_threads_expiry_idx').on(
       table.latestOccurredAt,
       table.workspaceId,
       table.workflowId,
+    ),
+    index('workspace_inbox_threads_recent_idx').on(
+      table.workspaceId,
+      table.latestOccurredAt.desc().nullsFirst(),
+      table.workflowId.desc().nullsFirst(),
     ),
   ],
 );
@@ -119,19 +142,15 @@ export const workspaceInboxReads = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
+    check(
+      'workspace_inbox_reads_read_revision_check',
+      sql`(read_revision > 0)`,
+    ),
     primaryKey({
       name: 'workspace_inbox_reads_pkey',
       columns: [table.workspaceId, table.userId, table.workflowId],
     }),
-    foreignKey({
-      name: 'workspace_inbox_reads_thread_fk',
-      columns: [table.workspaceId, table.workflowId],
-      foreignColumns: [
-        workspaceInboxThreads.workspaceId,
-        workspaceInboxThreads.workflowId,
-      ],
-    }).onDelete('cascade'),
     foreignKey({
       name: 'workspace_inbox_reads_membership_fk',
       columns: [table.workspaceId, table.userId],
@@ -140,5 +159,13 @@ export const workspaceInboxReads = appSchema.table(
         workspaceMemberships.userId,
       ],
     }).onDelete('restrict'),
+    foreignKey({
+      name: 'workspace_inbox_reads_thread_fk',
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [
+        workspaceInboxThreads.workspaceId,
+        workspaceInboxThreads.workflowId,
+      ],
+    }).onDelete('cascade'),
   ],
 );
