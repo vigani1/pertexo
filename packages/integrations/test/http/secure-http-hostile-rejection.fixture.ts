@@ -2,7 +2,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
   type SecureHttpTransportResponse,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 const hostile = new Proxy(
   {},

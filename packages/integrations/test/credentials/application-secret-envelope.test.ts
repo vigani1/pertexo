@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createApplicationSecretEnvelope } from '../src/security/application-secret-envelope.js';
+import { createApplicationSecretEnvelope } from '../../src/security/application-secret-envelope.js';
 
 describe('application secret envelope', () => {
   it('rejects malformed keys and bounded inputs', () => {

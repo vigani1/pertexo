@@ -10,7 +10,7 @@ import {
   type ConnectionSecretContext,
   type EnvelopeKeyProvider,
   type KmsCommand,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 const context = (): ConnectionSecretContext => ({
   workspaceId: randomUUID(),

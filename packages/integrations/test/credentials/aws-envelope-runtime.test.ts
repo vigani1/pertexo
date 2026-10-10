@@ -7,14 +7,14 @@ const fixtures = vi.hoisted(() => ({
   createBoundedKmsClient: vi.fn(),
 }));
 
-vi.mock('../src/credentials/kms-client.js', () => ({
+vi.mock('../../src/credentials/kms-client.js', () => ({
   createBoundedKmsClient: fixtures.createBoundedKmsClient,
 }));
 
 import {
   createAwsConnectionEnvelopeEncryption,
   createAwsWebhookTriggerEnvelopeEncryption,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 const identity = {
   workspaceId: randomUUID(),

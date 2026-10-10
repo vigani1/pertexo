@@ -5,7 +5,7 @@ import {
   SLACK_API_ENDPOINTS,
   type SecureHttpRequest,
   type SecureHttpResponse,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 const botToken = 'xoxb-123456789-secret';
 

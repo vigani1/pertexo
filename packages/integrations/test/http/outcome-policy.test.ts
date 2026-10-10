@@ -8,7 +8,7 @@ import {
   type HttpExecutionErrorKind,
   type HttpOutcomeDecision,
   type HttpSideEffectClass,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 const CLASSES = [
   'safe',
