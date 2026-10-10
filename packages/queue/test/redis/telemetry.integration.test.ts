@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   instrumentRedisCommands,
   type RedisOperationObservation,
-} from '../src/redis/telemetry-contracts.js';
+} from '../../src/redis/telemetry-contracts.js';
 
 const redisUrl = process.env.REDIS_URL;
 const requested = process.env.QUEUE_INTEGRATION === 'true';

@@ -4,7 +4,7 @@ import {
   QUEUE_FOR_JOB,
   QUEUE_NAME,
   parseQueueJob,
-} from '../src/index.js';
+} from '../../src/index.js';
 
 const data = {
   schemaVersion: 1,

@@ -6,7 +6,7 @@ import {
   QUEUE_NAME,
   type JobName,
   type QueueName,
-} from '../src/jobs/names.js';
+} from '../../src/jobs/names.js';
 
 describe('queue names', () => {
   it('owns the literal queue names from the execution contract', () => {

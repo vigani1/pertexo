@@ -4,12 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   REDIS_METRIC_NAME,
   createRedisTelemetryObserver,
-} from '../src/redis/telemetry.js';
+} from '../../src/redis/telemetry.js';
 import {
   instrumentRedisCommands,
   observeRedisOperation,
   type RedisOperationObservation,
-} from '../src/redis/telemetry-contracts.js';
+} from '../../src/redis/telemetry-contracts.js';
 
 describe('Redis telemetry', () => {
   it('records bounded operation and connection attributes', () => {
