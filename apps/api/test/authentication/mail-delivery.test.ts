@@ -4,13 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,
+  type LocalAuthenticationMailMessage,
   authenticationMailAssociatedData,
   printLocalAuthenticationMail,
 } from '../../src/authentication/mail/delivery.js';
 
 describe('local authentication mail', () => {
-  it('keeps every message and shows each one to its observer', async () => {
-    const observe = vi.fn();
+  it('shows every message to its observer', async () => {
+    const observe = vi.fn<(message: LocalAuthenticationMailMessage) => void>();
     const mail = new LocalAuthenticationMailSink(observe);
 
     await mail.sendVerification({
@@ -25,15 +26,13 @@ describe('local authentication mail', () => {
       url: 'http://127.0.0.1:5173/verify-email?token=change',
     });
 
-    const kept = mail.readForTesting('ada@example.test');
+    const kept = observe.mock.calls.map(([message]) => message);
     expect(kept.map((message) => message.purpose)).toEqual([
       'verification',
       'email_change_confirmation',
     ]);
     expect(kept[1]).toMatchObject({ newEmail: 'ada@new.example.test' });
-    expect(observe.mock.calls.map(([message]: unknown[]) => message)).toEqual(
-      kept,
-    );
+    expect(observe).toHaveBeenCalledTimes(2);
   });
 
   it('prints the link on its own line for the developer', () => {

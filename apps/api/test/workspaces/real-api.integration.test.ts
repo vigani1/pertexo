@@ -1,3 +1,4 @@
+import { captureLocalAuthenticationMail } from '../support/better-auth/mail-capture.js';
 import { randomUUID } from 'node:crypto';
 import {
   request as httpRequest,
@@ -32,7 +33,6 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
-import { LocalAuthenticationMailSink } from '../../src/authentication/index.js';
 import {
   SESSION_AUTHORITY,
   type IdentitySessionAuthority,
@@ -91,7 +91,7 @@ type SessionCookies = Readonly<{
 }>;
 
 describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
-  const mail = new LocalAuthenticationMailSink();
+  const { mail, mailedMessages } = captureLocalAuthenticationMail();
   const ownerEmail = `${randomUUID()}@example.test`;
   let application: Awaited<ReturnType<typeof createApiApplication>>;
   let identityDatabase: IdentityWorkspaceDatabase;
@@ -1295,8 +1295,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       callbackURL: '/login?verified=true',
     });
     expect(created.statusCode, created.payload).toBe(200);
-    const message = mail
-      .readForTesting(email)
+    const message = mailedMessages(email)
       .filter((item) => item.purpose === 'verification')
       .at(-1);
     if (message === undefined) throw new Error('No verification mail');
