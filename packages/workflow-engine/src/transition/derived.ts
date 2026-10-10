@@ -1,6 +1,6 @@
 import { WorkflowEngineError } from '../errors.js';
 import { deriveReadyNodes } from './scheduling/readiness.js';
-import { compareOrdinal } from '../ordering.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
 import {
   admitLoopIterations,
   invocationKey as createInvocationKey,

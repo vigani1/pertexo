@@ -91,3 +91,5 @@ export {
   projectWorkflowPortableManifest,
   type WorkflowPortabilityCatalog,
 } from './portability/projection.js';
+
+export { compareOrdinal } from './ordering.js';

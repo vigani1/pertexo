@@ -8,7 +8,7 @@ import {
 import type { parseCheckpoint } from '../checkpoint/create-and-parse.js';
 import { normalizeBoundedEngineJson } from '../compilation/validation.js';
 import { operationError } from '../operation-values.js';
-import { compareOrdinal } from '../ordering.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameOutputReference } from '../output-reference.js';
 import { parsePersistedObservation } from './persisted-parser.js';
 import type { OutputReference, WorkflowObservation } from '../types.js';

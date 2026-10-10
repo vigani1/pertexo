@@ -10,7 +10,7 @@ import {
   configuredScopedOutputPorts,
 } from '../transition/scheduling/readiness.js';
 import { operationError } from '../operation-values.js';
-import { compareOrdinal } from '../ordering.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
 import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
 
