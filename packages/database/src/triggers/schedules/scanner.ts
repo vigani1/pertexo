@@ -219,6 +219,9 @@ async function admitScheduledRun(
   const identity = `${claim.trigger_id}:${scheduledAt.toISOString()}`;
   const result = await acceptWorkflowRun(transaction, {
     initialCheckpoint: initial.checkpoint,
+    ...(initial.validateInput === undefined
+      ? {}
+      : { validateInput: initial.validateInput }),
     keyHash: createHash('sha256').update(identity).digest('hex'),
     operation: 'workflow.run.accept',
     requestHash: createHash('sha256')

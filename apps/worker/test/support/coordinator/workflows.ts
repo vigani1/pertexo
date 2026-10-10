@@ -1,4 +1,5 @@
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
+import type { CallableDeclaration } from '@pertexo/workflow-model';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
@@ -456,7 +457,7 @@ async function insertCompiledWorkflow(
     catalog: Parameters<typeof composeExecutableCatalog>[0];
     workspaceId: string;
   }>,
-): Promise<void> {
+) {
   const executable = buildWorkflowExecutable({
     graph: input.graph,
     catalog: composeExecutableCatalog(input.catalog),
@@ -482,6 +483,24 @@ async function insertCompiledWorkflow(
       input.actorId,
     ],
   );
+  return executable;
+}
+
+export function seedCallableWorkflow(
+  query: Query,
+  input: Readonly<{
+    actorId: string;
+    workspaceId: string;
+    identity: WorkflowIdentity;
+    callable: CallableDeclaration;
+  }>,
+) {
+  return insertCompiledWorkflow(query, {
+    ...input,
+    graph: { ...linearGraph(), callable: input.callable },
+    name: 'Callable contract proof',
+    catalog: PLATFORM_NODE_CATALOG,
+  });
 }
 
 export async function seedSerialForEachWorkflow(

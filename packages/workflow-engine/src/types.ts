@@ -1,3 +1,5 @@
+import type { JsonValue } from '@pertexo/workflow-model';
+
 export const RUN_STATUSES = [
   'queued',
   'running',
@@ -274,6 +276,8 @@ export interface NodeRunAdmissionPlan {
 }
 
 export interface WorkflowTransitionPlan {
+  /** A validated callable result for ordinary run storage, never checkpoint data. */
+  readonly runResult?: JsonValue;
   readonly expectedRevision: number;
   readonly expectedNextEventSequence: number;
   readonly consumedThroughEventSequence: number;

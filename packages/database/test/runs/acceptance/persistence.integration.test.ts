@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto';
 
 import { count, eq } from 'drizzle-orm';
 import { Pool } from 'pg';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  CallableInputInvalidError,
+  validateCallableValue,
+  type JsonValue,
+} from '@pertexo/workflow-model';
 import {
   acceptWorkflowRun,
   IdempotencyRecordCorruptError,
@@ -35,6 +40,50 @@ import {
 installExecutionAcceptanceFixture();
 
 describe('workflow run acceptance persistence and idempotency', () => {
+  it('validates a fresh callable input after storage admission and before any acceptance effects', async () => {
+    const validateInput = vi.fn(
+      (value: JsonValue | undefined, storedBytes: number) => {
+        expect(storedBytes).toBe(
+          Buffer.byteLength('{"kind":"inline","value":"valid"}'),
+        );
+        if (
+          value === undefined ||
+          validateCallableValue({ type: 'number' }, value) !== undefined
+        )
+          throw new CallableInputInvalidError('missing');
+      },
+    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, {
+          ...acceptanceInput(requestHash, 'valid'),
+          validateInput,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(CallableInputInvalidError);
+    expect(validateInput).toHaveBeenCalledTimes(1);
+    await expectAcceptanceRecordCounts(0);
+  });
+
+  it('passes immutable JSON to input validation and does not revalidate an accepted redelivery', async () => {
+    const value = { name: 'hello' };
+    const validateInput = vi.fn((input: JsonValue | undefined) => {
+      expect(input).toEqual(value);
+      expect(input).not.toBe(value);
+      expect(Object.isFrozen(input)).toBe(true);
+    });
+    const request = { ...acceptanceInput(requestHash, value), validateInput };
+    const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptWorkflowRun(transaction, request),
+    );
+    const replay = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptWorkflowRun(transaction, request),
+    );
+    expect(replay).toMatchObject({ runId: first.runId, duplicate: true });
+    expect(validateInput).toHaveBeenCalledTimes(1);
+    await expectAcceptanceRecordCounts(1);
+  });
+
   it('fails closed for a malformed completed idempotency record', async () => {
     const input = acceptanceInput();
     await apiDatabase.withWorkspace(workspaceA, ({ db }) =>

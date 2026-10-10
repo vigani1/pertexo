@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import type { ValueSource } from '../graph/contract.js';
+
+export interface CallableDeclaration {
+  readonly input: CallableType;
+  readonly resultType: CallableType;
+  readonly result: ValueSource;
+}
 
 /** A JSON type declaration, rather than an executable JSON Schema document. */
 export type CallableType =

@@ -17,7 +17,7 @@ const leaveCopy: Readonly<
   unfinished: {
     title: 'Leave with an unfinished edit?',
     description:
-      'A field in the step panel isn’t valid yet, so it hasn’t been saved. Leaving discards it.',
+      'An editor field hasn’t been applied yet. Leaving discards it.',
   },
   comparison: {
     title: 'Discard your kept copy?',

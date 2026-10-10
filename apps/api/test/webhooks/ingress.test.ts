@@ -1,4 +1,6 @@
 import { createHmac } from 'node:crypto';
+import { CallableInputInvalidError } from '@pertexo/workflow-model';
+import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
 import { request as sendHttpRequest } from 'node:http';
 
 import type {
@@ -53,6 +55,33 @@ describe('generic webhook ingress', () => {
       applications.splice(0).map((application) => application.close()),
     );
   });
+
+  it.each([
+    {
+      name: 'callable input contract',
+      error: new CallableInputInvalidError({
+        code: 'type_mismatch',
+        path: ['private-name'],
+      }),
+    },
+    {
+      name: 'stored JSON bounds',
+      error: new StoredExecutionValueInvalidError(),
+    },
+  ])(
+    'returns a safe 400 when a signed delivery violates $name',
+    async ({ error }) => {
+      const { application, database } = setup();
+      database.acceptVerifiedDelivery.mockRejectedValue(error);
+      const response = await application.inject(
+        request('{"private-name":"private-value"}', currentSecret),
+      );
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: 'request.invalid' });
+      expect(response.payload).not.toContain('private-name');
+      expect(response.payload).not.toContain('private-value');
+    },
+  );
 
   it('verifies exact raw bytes before parsing and returns strict 202', async () => {
     const { application, database, delivery, deduplication, health, trace } =

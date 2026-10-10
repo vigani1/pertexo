@@ -79,6 +79,18 @@ export function validateAuthoringBatch(
   );
   const sources = new Map<string, ExpressionValidation>();
   const issues: GraphValidationIssue[] = [];
+  if (graph.callable?.result.kind === 'expression') {
+    const validation = validateExpression(graph.callable.result.expression);
+    if (validation.kind !== 'valid') {
+      const issue: GraphValidationIssue = {
+        code: 'invalid_expression',
+        path: '$.callable.result',
+        message: safeExpressionMessage(validation),
+      };
+      admitIssue(issue);
+      issues.push(issue);
+    }
+  }
   const pending: { graph: WorkflowGraph; path: string }[] = [
     { graph, path: '$' },
   ];

@@ -79,6 +79,7 @@ function compileExecutableGraph(
   assertBranchesDoNotReconverge(graph, index);
   return {
     settings: graph.settings,
+    ...(graph.callable === undefined ? {} : { callable: graph.callable }),
     nodes: [...graph.nodes]
       .sort((left, right) => compareOrdinal(left.id, right.id))
       .map((node) => executableNode(node, catalog)),

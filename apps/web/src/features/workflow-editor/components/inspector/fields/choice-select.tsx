@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { Ref } from 'react';
 
 export type Choice = Readonly<{ value: string | null; label: string }>;
 
@@ -18,18 +19,23 @@ export function ChoiceSelect({
   invalid,
   describedBy,
   onChange,
+  ref,
+  name,
 }: Readonly<{
   id: string;
   value: string | null;
   choices: readonly Choice[];
   disabled: boolean;
   invalid?: boolean;
-  describedBy?: string;
+  describedBy?: string | undefined;
   onChange: (value: string | null) => void;
+  ref?: Ref<HTMLButtonElement>;
+  name?: string;
 }>) {
   return (
     <Select<string | null>
       items={choices}
+      name={name}
       value={value}
       disabled={disabled}
       onValueChange={(next) => {
@@ -38,6 +44,7 @@ export function ChoiceSelect({
     >
       <SelectTrigger
         id={id}
+        ref={ref}
         aria-invalid={invalid === true ? true : undefined}
         aria-describedby={describedBy}
       >

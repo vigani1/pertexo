@@ -30,6 +30,7 @@ import {
   unrecoverableQueueError,
 } from '@pertexo/queue';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 
 import {
   createCoordinatorTelemetry,
@@ -141,6 +142,12 @@ export async function createCoordinatorRuntime(
   let dueWakeupScanner: DueNodeWakeupScanner | undefined;
   let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
   let consumer: QueueConsumer | undefined;
+  const expressionEvaluator =
+    dependencies.advance === undefined ? new JsonataEvaluator() : undefined;
+  const expressionOwner =
+    expressionEvaluator === undefined
+      ? undefined
+      : { close: () => expressionEvaluator.shutdown() };
   try {
     runStore =
       dependencies.runStore ??
@@ -159,6 +166,7 @@ export async function createCoordinatorRuntime(
       verification: { catalog },
       maximumAdmissions: options.maximumAdmissions,
       now: () => clock.now(),
+      ...(expressionEvaluator === undefined ? {} : { expressionEvaluator }),
     });
     const handler = createCoordinatorHandler({
       advance:
@@ -176,7 +184,13 @@ export async function createCoordinatorRuntime(
     });
   } catch (error: unknown) {
     const cleanup = await closeOwners(
-      [dueWakeupScanner, deadlineWakeupScanner, notifications, runStore],
+      [
+        dueWakeupScanner,
+        deadlineWakeupScanner,
+        notifications,
+        runStore,
+        expressionOwner,
+      ],
       backgroundTaskShutdownTimeoutMillis,
     );
     if (cleanup.length > 0)
@@ -191,7 +205,13 @@ export async function createCoordinatorRuntime(
   return createScannerRuntime({
     name: 'Coordinator',
     consumer,
-    owners: [dueWakeupScanner, deadlineWakeupScanner, notifications, runStore],
+    owners: [
+      dueWakeupScanner,
+      deadlineWakeupScanner,
+      notifications,
+      runStore,
+      expressionOwner,
+    ],
     pollIntervalMillis: dueWakeupPollIntervalMillis,
     shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
     scan: async (signal) => {

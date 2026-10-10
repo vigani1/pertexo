@@ -64,9 +64,11 @@ export function createTestRunStore(
           workspaceId: input.workspaceId,
           runId: input.runId,
         });
-        return loaded.kind === 'loaded'
-          ? Object.freeze({ kind: 'ready' as const, state: loaded.state })
-          : loaded;
+        if (loaded.kind !== 'loaded') return loaded;
+        // This snapshot outlives the transaction; its transaction-bound reader must not escape.
+        const { readCompletionValues: _readCompletionValues, ...state } =
+          loaded.state;
+        return Object.freeze({ kind: 'ready' as const, state });
       } finally {
         await client.query('rollback');
         client.release();

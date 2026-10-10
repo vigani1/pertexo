@@ -57,6 +57,7 @@ export function readRawExecutableGraph(
     body
       ? ['settings', 'nodes', 'edges', 'inputPorts', 'outputPorts']
       : ['settings', 'nodes', 'edges'],
+    body ? [] : ['callable'],
   );
   if (!Array.isArray(raw.nodes)) fail('executable nodes must be an array');
   const nodes = raw.nodes.map((value, index): RawExecutableNode => {
@@ -120,6 +121,7 @@ export function authoringGraph(tree: RawExecutableGraph): unknown {
     settings: tree.raw.settings,
     nodes: tree.nodes.map(authoringNode),
     edges: tree.raw.edges,
+    ...(tree.raw.callable === undefined ? {} : { callable: tree.raw.callable }),
     ...(tree.body
       ? {
           inputPorts: tree.raw.inputPorts,
@@ -213,5 +215,10 @@ export function validateExecutableGraph(
     canonicalJson(graph.edges) !== canonicalJson(sortedEdges)
   )
     fail('executable graph is not canonically ordered');
-  return { settings: graph.settings, nodes, edges: sortedEdges };
+  return {
+    settings: graph.settings,
+    nodes,
+    edges: sortedEdges,
+    ...(graph.callable === undefined ? {} : { callable: graph.callable }),
+  };
 }

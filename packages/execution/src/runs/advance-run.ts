@@ -5,7 +5,13 @@ import type {
   RunAdvanceResult,
   RunAdvanceStore,
 } from '@pertexo/database/runs';
-import { advanceWorkflow, parseCheckpoint } from '@pertexo/workflow-engine';
+import {
+  advanceWorkflow,
+  parseCheckpoint,
+  settleCallableResult,
+} from '@pertexo/workflow-engine';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
+import { resolveRunResult } from './resolve-result.js';
 
 import {
   verifyPersistedWorkflowProjection,
@@ -18,6 +24,7 @@ export type AdvanceRunDependencies = Readonly<{
   /** Most node attempts one transition may admit. */
   maximumAdmissions: number;
   now(): string;
+  expressionEvaluator?: ExpressionEvaluator;
 }>;
 
 /**
@@ -31,13 +38,14 @@ export function advanceRun(
 ): Promise<RunAdvanceResult> {
   return dependencies.runs.advance(input, async (state) => {
     const previous = parseCheckpoint(state.checkpoint);
-    const plan = await advanceWorkflow({
+    const executable = verifyPersistedWorkflowProjection(
+      state.workflow,
+      dependencies.verification,
+    );
+    let plan = await advanceWorkflow({
       runId: state.runId,
       workflowVersionId: state.workflowVersionId,
-      executable: verifyPersistedWorkflowProjection(
-        state.workflow,
-        dependencies.verification,
-      ),
+      executable,
       checkpoint: state.checkpoint,
       observations: state.observations,
       completedOutputs: state.completedOutputs,
@@ -45,6 +53,20 @@ export function advanceRun(
       maximumAdmissions: dependencies.maximumAdmissions,
       signal: input.signal,
     });
+    const callable = executable.envelope.graph.callable;
+    if (
+      callable !== undefined &&
+      plan.events.some(({ name }) => name === 'run.succeeded')
+    )
+      plan = settleCallableResult(
+        plan,
+        await resolveRunResult(
+          callable,
+          state,
+          input.signal,
+          dependencies.expressionEvaluator,
+        ),
+      );
     const unchanged =
       plan.events.length === 0 &&
       plan.nodeRunAdmissions.length === 0 &&

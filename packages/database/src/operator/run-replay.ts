@@ -169,6 +169,9 @@ export function createOperatorRunReplayStore(
           const initial = checkpointFactory(version);
           const accepted = await acceptWorkflowRun(transaction, {
             initialCheckpoint: initial.checkpoint,
+            ...(initial.validateInput === undefined
+              ? {}
+              : { validateInput: initial.validateInput }),
             keyHash: request.data.request_fingerprint,
             operation: 'workflow.run.accept',
             replayCommandId: parsed.commandId,

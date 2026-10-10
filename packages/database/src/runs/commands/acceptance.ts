@@ -12,7 +12,8 @@ import {
   runEvents,
   workflowRuns,
 } from '../../schema.js';
-import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
+import { prepareStoredExecutionValue } from '../../platform/stored-execution-value.js';
+import type { RunInputValidator } from '../initial-checkpoint.js';
 import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema as sha256Schema } from '../../platform/persisted-primitives.js';
@@ -27,6 +28,9 @@ const traceparentSchema = z
 const acceptWorkflowRunInputSchema = z
   .object({
     initialCheckpoint: z.unknown(),
+    validateInput: z
+      .custom<RunInputValidator>((value) => typeof value === 'function')
+      .optional(),
     deadlineAt: z.date().optional(),
     keyHash: sha256Schema,
     operation: z.literal('workflow.run.accept'),
@@ -268,13 +272,14 @@ export async function acceptWorkflowRun(
   input: AcceptWorkflowRunInput,
 ): Promise<AcceptedWorkflowRun> {
   const parsed = acceptWorkflowRunInputSchema.parse(input);
-  const storedRunInputJson =
+  const preparedRunInput =
     parsed.runInput === undefined
       ? null
-      : serializeStoredExecutionValue({
+      : prepareStoredExecutionValue({
           kind: 'inline',
           value: parsed.runInput,
         });
+  const storedRunInputJson = preparedRunInput?.json ?? null;
   const { initialCheckpointJson, initialCheckpointHash } =
     prepareWorkflowRunAcceptanceInput(parsed);
   const existing = await readExistingAcceptance(transaction, parsed, {
@@ -282,6 +287,12 @@ export async function acceptWorkflowRun(
     hash: initialCheckpointHash,
   });
   if (existing !== null) return existing;
+  parsed.validateInput?.(
+    preparedRunInput?.value.kind === 'inline'
+      ? preparedRunInput.value.value
+      : undefined,
+    storedRunInputJson === null ? 0 : Buffer.byteLength(storedRunInputJson),
+  );
 
   try {
     await assertWorkspaceAcceptsNewRuns(transaction);

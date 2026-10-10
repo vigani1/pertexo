@@ -231,7 +231,7 @@ jobs:
           USAGE_BROWSER_INTEGRATION=true live test/browser/usage.integration.test.ts
           WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/browser/workflow-concurrency.integration.test.ts
           CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/browser/connection-health.integration.test.ts
-          for browser_case in duplication portability input-cases curated-templates; do
+          for browser_case in duplication portability input-cases curated-templates callable; do
             EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE="$browser_case" EDITOR_BROWSER_OWNED_FIXTURE=true \
               live test/browser/editor.integration.test.ts
           done

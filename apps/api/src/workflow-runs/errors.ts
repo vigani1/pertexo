@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CallableInputInvalidError } from '@pertexo/workflow-model';
 
 import {
   applicationError,
@@ -38,6 +39,11 @@ export function mapWorkflowRunError(error: unknown): ApplicationError {
   if (error instanceof WorkflowRunIdempotencyConflictError)
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
+    });
+  if (error instanceof CallableInputInvalidError)
+    return applicationError('request.invalid', {
+      safeDetail:
+        'The input does not satisfy this workflow’s callable contract.',
     });
   if (error instanceof z.ZodError || error instanceof TypeError)
     return applicationError('request.invalid', {

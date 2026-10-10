@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 import type { JsonValue } from '../json/canonical.js';
+import {
+  callableTypeStructuralSchema,
+  type CallableDeclaration,
+} from '../callable/contract.js';
 
 import { hasBoundedGraphAggregateUnsafe } from './aggregate.js';
 import { inspectWorkflowGraphAdmission } from './validation/admission.js';
@@ -36,7 +40,7 @@ export interface WorkflowEdge {
 export interface WorkflowSettings {
   readonly maxRunDurationMs?: number | undefined;
 }
-export interface StructuredBody extends WorkflowGraph {
+export interface StructuredBody extends Omit<WorkflowGraph, 'callable'> {
   readonly inputPorts: readonly string[];
   readonly outputPorts: readonly string[];
 }
@@ -62,6 +66,7 @@ export interface WorkflowGraph {
   readonly nodes: readonly WorkflowNode[];
   readonly edges: readonly WorkflowEdge[];
   readonly settings: WorkflowSettings;
+  readonly callable?: CallableDeclaration | undefined;
 }
 
 /**
@@ -124,6 +129,14 @@ const workflowSettingsSchema = z
       .positive()
       .max(WORKFLOW_EXECUTION_LIMITS.maxRunDurationMs)
       .optional(),
+  })
+  .strict();
+
+const callableDeclarationSchema = z
+  .object({
+    input: callableTypeStructuralSchema,
+    resultType: callableTypeStructuralSchema,
+    result: valueSourceSchema,
   })
   .strict();
 
@@ -203,6 +216,7 @@ export const workflowGraphStructuralSchema: z.ZodType<WorkflowGraph> = z.lazy(
           .array(workflowEdgeSchema)
           .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.edges),
         settings: workflowSettingsSchema,
+        callable: callableDeclarationSchema.optional(),
       })
       .strict(),
 );

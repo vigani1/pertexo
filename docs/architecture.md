@@ -64,6 +64,14 @@ restart; ordinary node/attempt outputs and events retain inspection history. The
 [F08 plan](feature-plans/08-subworkflows.md) records the pruning evidence and
 unchanged limits.
 
+Callable workflows declare bounded JSON types and one result selector on their
+graph. The immutable executable retains that declaration. Execution supplies
+the acceptance validator and resolves the result once before success; the
+database persists it with the ordinary terminal transition. Selecting a step
+output requires exactly one successful invocation, including retained loop
+scopes. The editor applies contract edits through its existing draft history.
+Call execution remains the next F08 slice.
+
 Manual acceptance, cancellation and replay persist through
 `database/src/runs/commands/`. HTTP owns actor authorization. Accepted commands
 share workspace idempotency records; manual starts serialize a key with one

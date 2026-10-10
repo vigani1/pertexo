@@ -8,6 +8,7 @@ import { CompactHistoryMenu, HistoryControls } from './history-controls';
 import { LiveVersion } from './live-version';
 import { SaveState } from './save-state';
 import { ShortcutSheet } from './shortcut-sheet';
+import { DeclarationDialog } from '../callable/declaration-dialog';
 
 /**
  * The Build tab's hub bar: the draft's pattern glyph before the name, the
@@ -28,6 +29,7 @@ export function EditorCommandBar({
   onUndo,
   onRedo,
   commands,
+  paused,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -41,6 +43,7 @@ export function EditorCommandBar({
   onUndo: () => void;
   onRedo: () => void;
   commands: ReactNode;
+  paused: boolean;
 }>) {
   const graph = useEditorStore((state) => state.graph);
   const duplicateBlocked = useEditorStore(
@@ -75,6 +78,11 @@ export function EditorCommandBar({
             workflow={workflow}
           />
           <SaveState onRetry={onRetrySave} onReview={onReviewConflict} />
+          <DeclarationDialog
+            editable={
+              !paused && workspace.capabilities.includes('workflow:update')
+            }
+          />
         </>
       }
       actions={

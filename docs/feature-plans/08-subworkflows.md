@@ -1,8 +1,9 @@
 # F08 — Reusable subworkflows after the architecture reset
 
 Status: accepted by the owner on 2026-10-10; slice 1 implements finished-loop
-pruning at the current limits. Callable contracts and Call execution remain
-pending. This document replaces the former F08 outline; it does not restore the
+pruning at the current limits. Slice 2 implements and qualifies standalone
+callable contracts; Call execution remains pending. This document
+replaces the former F08 outline; it does not restore the
 reverted implementation. [ADR 070](../adr/070-workflow-call-boundaries.md)
 records the accepted decisions. [Architecture](../architecture.md) and
 [ADR 069](../adr/069-architecture-reset.md) describe the current foundation.
@@ -394,6 +395,71 @@ Call-in-loop evidence remains required before any later increase.
 
 ## Delivery slices and evidence
 
+### Slice 2 implementation and evidence (2026-10-11)
+
+Callable declarations now use six JSON value kinds, bounded arrays and closed
+objects. Object properties are ordered entries with their own `required` flag;
+this follows the recommended small descriptor rather than duplicating names in
+a separate required-property list. The ordinary bounded graph parser owns the
+untrusted declaration boundary. Accepted input is cloned and validated once
+before fresh acceptance effects; an accepted receipt is recovered before the
+callable validator runs again. Manual, Webhook and replay acceptance share this
+path. A callable declaration requires one enabled Manual/Webhook entry.
+
+The immutable executable retains the declaration and includes it in its existing
+checksum. A fresh success is provisional until execution resolves and validates
+the selected result. The database provides an on-demand reader within the same
+locked advance transaction, including retained outputs from pruned scopes.
+Selection requires one physical successful invocation; equal values from two
+invocations remain ambiguous. Missing, invalid, ambiguous or oversized results
+produce a safe run-level failure without changing successful node outcomes.
+The ordinary run stores the inline result and notification intent. No checkpoint
+result copy, artifact borrowing or replacement format is introduced.
+
+The editor authors the declaration as one undoable draft edit. Local property
+identities preserve focus while names change; inline errors focus the invalid
+field. Reader access can inspect the contract without saving it. The existing
+dialog owns keyboard focus and discard confirmation, with a scrolling body and
+visible actions on a narrow screen. Public controls describe standalone
+contracts; Call pins and the memoized weighted dependency validator remain
+private until slice 3 exposes supported Call execution.
+
+Qualification uses existing test owners, including the existing editor CI job:
+
+- Model tests cover closed properties, own `__proto__` names, depth and member
+  bounds, required values, disabled/unsupported entries, result paths and
+  private exact-pin/workspace/cycle/weighted-closure behavior.
+- Engine and execution tests cover checksum identity, input cloning, stored
+  wrapper bounds, selection ambiguity, missing paths, artifacts, expression
+  evaluation/abort and provisional success settlement.
+- Real PostgreSQL tests cover no acceptance effects on invalid input, immutable
+  accepted input, receipt recovery and one notification intent when every node
+  succeeded but the declared result failed.
+- Real PostgreSQL/Redis workers complete valid input and JSONata results, reject
+  invalid input before acceptance, persist safe result failures, and retain one
+  terminal outcome after fresh-worker restart and transport redelivery.
+- The real API/editor browser fixture authors with keyboard controls, publishes
+  two immutable contracts, rejects missing/type/extra-property HTTP input, runs
+  a valid result and a missing-path failure, and verifies stored identities,
+  output, events and successful node history. Desktop and 390-pixel layouts
+  retain visible dialog actions.
+- Frontend qualification passes 1,053 existing/new unit tests plus the added
+  reader case in the focused three-test suite, and all 93 browser tests. React
+  Doctor reports 100/100 with no diagnostics on the changed React files; this
+  is a regression scan, not a new whole-application score. An initial combined
+  run overloaded local workers and timed out; bounded reruns passed. The mobile
+  header test also exposed a real oversized contract action, corrected before
+  the successful rerun.
+
+The full repository check passes. The complete live database suite passes 681
+tests (46 optional tests skipped); the real worker callable suite passes all
+four cases and the real editor/API fixture passes. The final changed-file React
+Doctor scan covers 12 files. Commit and CI evidence accompany the slice PR.
+This slice adds about 3,380 authored lines, including tests and documentation;
+the generated contract artifacts add 4,440 and remove 84 lines. This excludes
+slice 1 pruning. The remaining Call/control work still needs its own evidence
+and size comparison against the 4,000–8,000 authored-line forecast.
+
 | Slice                  | Behavior at its end                                                                                                                           | Required evidence                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0. Review              | Accepted callable/pin/authority/capacity/retention decisions and bounded contract                                                             | Owner accepted on 2026-10-10 with slot handoff and archive warning; reconcile exact source/interfaces before each runtime slice                                                                                                                   |
@@ -459,11 +525,13 @@ references inform the accepted behavior, not acceptance evidence.
 - [x] Slice 1: finished-loop pruning implemented and verified at current limits;
       engine/database/worker restart, delivery, history and retention evidence
       and checkpoint/WAL measurements recorded above.
-- [ ] Callable contract implemented and verified.
+- [x] Slice 2: callable contract implemented and verified for standalone runs;
+      editor, HTTP input/result, immutable executable, real persistence,
+      worker restart/redelivery and private dependency evidence recorded above.
 - [ ] Parent/child acceptance, completion and controls implemented and verified.
 - [ ] Real integrated editor/history/recovery evidence recorded.
 - [ ] Call waits inside pruned loops qualified with the slice 3 runtime.
 - [ ] Retention, rollout/rollback and any measured limit change verified.
 
-Existing For Each pruning is implemented. No callable contract, Call node or
-parent/child runtime is exposed yet.
+Existing For Each pruning and standalone callable contracts are implemented.
+The Call node and parent/child runtime remain pending.

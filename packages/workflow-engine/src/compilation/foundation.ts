@@ -59,6 +59,7 @@ export interface WorkflowExecutableNode {
 
 export interface WorkflowExecutableGraph {
   readonly settings: WorkflowGraph['settings'];
+  readonly callable?: WorkflowGraph['callable'];
   readonly nodes: readonly WorkflowExecutableNode[];
   readonly edges: readonly WorkflowEdge[];
 }
