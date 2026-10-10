@@ -16,13 +16,13 @@ import {
   RequestContextStore,
   applicationError,
   isApplicationError,
-} from '../../src/platform/http/index.js';
-import { IdentityError } from '../../src/identity/index.js';
-import { mapIdentityWorkspaceError } from '../../src/workspaces/index.js';
-import { APPLICATION_ERROR_MAPPERS } from '../../src/application-error-mappers.js';
+} from '../../../src/platform/http/index.js';
+import { IdentityError } from '../../../src/identity/index.js';
+import { mapIdentityWorkspaceError } from '../../../src/workspaces/index.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-error-mappers.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { WorkflowTagConflictError } from '@pertexo/database/authoring';
-import { mapWorkflowOrganizationError } from '../../src/workflow-authoring/organization/errors.js';
+import { mapWorkflowOrganizationError } from '../../../src/workflow-authoring/organization/errors.js';
 
 interface ResponseMock {
   body?: unknown;

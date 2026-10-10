@@ -4,7 +4,7 @@ import {
   firstRequestHeader,
   requestHeaderValue,
   singleRequestHeader,
-} from '../../src/platform/http/request-headers.js';
+} from '../../../src/platform/http/request-headers.js';
 
 describe('HTTP request-header policies', () => {
   const headers = {
