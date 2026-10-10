@@ -1,7 +1,7 @@
 import { availableParallelism } from 'node:os';
 import type { Worker, WorkerOptions } from 'node:worker_threads';
 import jsonata from 'jsonata';
-import { canonicalizeJson, type JsonValue } from '../json/canonical-json.js';
+import { canonicalizeJson, type JsonValue } from '../json/canonical.js';
 
 export const EXPRESSION_POLICY = Object.freeze({
   policyVersion: 1 as const,

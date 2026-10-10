@@ -1,5 +1,5 @@
 import { Worker } from 'node:worker_threads';
-import { canonicalizeJson, inspectJsonValue } from '../json/canonical-json.js';
+import { canonicalizeJson, inspectJsonValue } from '../json/canonical.js';
 import {
   EXPRESSION_POLICY,
   JSONATA_EVALUATOR_DIAGNOSTICS,

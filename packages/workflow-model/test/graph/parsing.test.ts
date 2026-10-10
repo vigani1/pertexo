@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { safeParseWorkflowGraphDraft } from '../src/graph/preflight.js';
-import { WorkflowGraphContractError } from '../src/graph/validation-contract.js';
+import { safeParseWorkflowGraphDraft } from '../../src/graph/validation/preflight.js';
+import { WorkflowGraphContractError } from '../../src/graph/validation/contract.js';
 import {
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
   workflowGraphSchema,
-} from '../src/graph/contract.js';
+} from '../../src/graph/contract.js';
 
 describe('graph parsing in the browser schema and the server parser', () => {
   it('safely rejects deeply nested input', () => {

@@ -5,12 +5,12 @@ import {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
   type WorkflowExpressionPolicyProjection,
-} from '../src/authoring-validation/contracts.js';
-import { WorkflowAuthoringValidator } from '../src/authoring-validation/validator.js';
-import { parseWorkflowGraphDraft } from '../src/graph/preflight.js';
-import { validateWorkflowGraph } from '../src/graph/validation.js';
-import * as policy from '../src/expressions/policy.js';
-import { validateAuthoringBatch } from '../src/authoring-validation/validation.js';
+} from '../../../src/authoring-validation/contracts.js';
+import { WorkflowAuthoringValidator } from '../../../src/authoring-validation/validator.js';
+import { parseWorkflowGraphDraft } from '../../../src/graph/validation/preflight.js';
+import { validateWorkflowGraph } from '../../../src/graph/validation/index.js';
+import * as policy from '../../../src/expressions/policy.js';
+import { validateAuthoringBatch } from '../../../src/authoring-validation/validation.js';
 
 const policies: WorkflowExpressionPolicyProjection = {
   definitions: [

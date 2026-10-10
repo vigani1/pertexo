@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { WorkflowGraph, WorkflowNode } from '../src/graph/contract.js';
-import { workflowDefinitionPlacementIssues } from '../src/graph/definition-placement.js';
-import { EMPTY_DEFINITION_CATALOG } from '../src/graph/identity.js';
+import type { WorkflowGraph, WorkflowNode } from '../../src/graph/contract.js';
+import { workflowDefinitionPlacementIssues } from '../../src/graph/definition-placement.js';
+import { EMPTY_DEFINITION_CATALOG } from '../../src/graph/identity.js';
 
 const unavailable = { key: 'legacy.unavailable', version: 1 } as const;
 const node = (id: string): WorkflowNode => ({

@@ -1,4 +1,4 @@
-import type { JsonValue } from './canonical-json.js';
+import type { JsonValue } from './canonical.js';
 
 export type JsonPathSegment = string | number;
 

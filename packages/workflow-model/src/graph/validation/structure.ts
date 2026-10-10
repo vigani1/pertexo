@@ -1,13 +1,10 @@
-import { canonicalJson } from '../json/canonical-json.js';
+import { canonicalJson } from '../../json/canonical.js';
 import type {
   ForEachStructure,
   WorkflowGraph,
   WorkflowNode,
-} from './contract.js';
-import type {
-  GraphIssueCode,
-  WorkflowGraphLimits,
-} from './validation-contract.js';
+} from '../contract.js';
+import type { GraphIssueCode, WorkflowGraphLimits } from './contract.js';
 
 type Issue = (code: GraphIssueCode, path: string, message: string) => void;
 interface Totals {

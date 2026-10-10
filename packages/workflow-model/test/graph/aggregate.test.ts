@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { WorkflowGraph } from '../src/graph/contract.js';
-import { validateWorkflowGraph } from '../src/graph/validation.js';
-import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../src/graph/contract.js';
+import type { WorkflowGraph } from '../../src/graph/contract.js';
+import { validateWorkflowGraph } from '../../src/graph/validation/index.js';
+import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../../src/graph/contract.js';
 
 const node = (id: string) => ({
   id,

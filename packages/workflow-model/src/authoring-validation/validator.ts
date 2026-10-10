@@ -1,9 +1,9 @@
 import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { z } from 'zod';
-import { canonicalizeJson } from '../json/canonical-json.js';
-import { parseWorkflowGraphDraft } from '../graph/preflight.js';
+import { canonicalizeJson } from '../json/canonical.js';
+import { parseWorkflowGraphDraft } from '../graph/validation/preflight.js';
 import type { WorkflowGraph } from '../graph/contract.js';
-import type { GraphValidationResult } from '../graph/validation-contract.js';
+import type { GraphValidationResult } from '../graph/validation/contract.js';
 import {
   AUTHORING_VALIDATION_BUDGET as budget,
   AuthoringValidationUnavailableError,

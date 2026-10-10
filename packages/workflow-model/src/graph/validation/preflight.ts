@@ -3,17 +3,17 @@ import { z } from 'zod';
 import {
   workflowGraphStructuralSchema,
   type WorkflowGraph,
-} from './contract.js';
+} from '../contract.js';
 import { inspectWorkflowGraphAdmission } from './admission.js';
-import { hasBoundedGraphAggregateUnsafe } from './aggregate.js';
+import { hasBoundedGraphAggregateUnsafe } from '../aggregate.js';
 import {
   escapeDroppedInputMappingKeys,
   restoreDroppedInputMappingKeys,
-} from './input-mapping-keys.js';
+} from '../input-mapping-keys.js';
 import {
   WORKFLOW_GRAPH_LIMITS,
   WorkflowGraphContractError,
-} from './validation-contract.js';
+} from './contract.js';
 
 const workflowGraphAggregateAdmissionSchema = z
   .unknown()

@@ -40,22 +40,22 @@ export {
 export {
   parseWorkflowGraphDraft,
   safeParseWorkflowGraphDraft,
-} from './graph/preflight.js';
-export { validateWorkflowGraph } from './graph/validation.js';
+} from './graph/validation/preflight.js';
+export { validateWorkflowGraph } from './graph/validation/index.js';
 export {
   InvalidWorkflowGraphError,
   WORKFLOW_GRAPH_LIMITS,
   WorkflowGraphContractError,
   type GraphValidationResult,
-} from './graph/validation-contract.js';
+} from './graph/validation/contract.js';
 export {
   CANONICAL_JSON_MAX_DEPTH,
   canonicalJson,
   canonicalizeJson,
   inspectJsonValue,
   type JsonValue,
-} from './json/canonical-json.js';
-export { parseJsonPath, resolveJsonPath } from './json/json-path.js';
+} from './json/canonical.js';
+export { parseJsonPath, resolveJsonPath } from './json/path.js';
 export {
   planWorkflowLifecycleCommand,
   workflowActivationAfterReconciliation,

@@ -1,17 +1,17 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { canonicalJson } from '../json/canonical-json.js';
+import { canonicalJson } from '../json/canonical.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
 } from './contract.js';
-import { parseWorkflowGraphDraft } from './preflight.js';
-import { validateWorkflowGraph } from './validation.js';
+import { parseWorkflowGraphDraft } from './validation/preflight.js';
+import { validateWorkflowGraph } from './validation/index.js';
 import {
   InvalidWorkflowGraphError,
   type GraphValidationIssue,
-} from './validation-contract.js';
+} from './validation/contract.js';
 
 export interface WorkflowDefinitionCatalog {
   readonly schemaVersion: 1;

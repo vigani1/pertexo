@@ -2,11 +2,11 @@ import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
 } from '../graph/contract.js';
-import { validateWorkflowGraph } from '../graph/validation.js';
+import { validateWorkflowGraph } from '../graph/validation/index.js';
 import type {
   GraphValidationIssue,
   GraphValidationResult,
-} from '../graph/validation-contract.js';
+} from '../graph/validation/contract.js';
 import {
   validateExpression,
   EXPRESSION_POLICY,

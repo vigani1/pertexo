@@ -1,6 +1,6 @@
 import { availableParallelism } from 'node:os';
 import { z } from 'zod';
-import { GRAPH_ISSUE_CODES } from '../graph/validation-contract.js';
+import { GRAPH_ISSUE_CODES } from '../graph/validation/contract.js';
 import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../graph/contract.js';
 
 /** Operational admission, not expression-language or graph limits. */

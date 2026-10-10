@@ -1,8 +1,8 @@
-import { inspectJsonValue } from '../json/canonical-json.js';
+import { inspectJsonValue } from '../../json/canonical.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
-} from './contract.js';
+} from '../contract.js';
 import { validateGraphStructure } from './structure.js';
 import {
   WORKFLOW_GRAPH_LIMITS,
@@ -10,7 +10,7 @@ import {
   type GraphValidationIssue,
   type GraphValidationResult,
   type WorkflowGraphLimits,
-} from './validation-contract.js';
+} from './contract.js';
 
 /**
  * Checks a parsed graph against the structural rules and limits. Authoring

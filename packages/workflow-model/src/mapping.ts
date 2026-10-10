@@ -1,11 +1,11 @@
-import { canonicalizeJson, type JsonValue } from './json/canonical-json.js';
+import { canonicalizeJson, type JsonValue } from './json/canonical.js';
 import type {
   ExpressionContext,
   ExpressionEvaluator,
   ExpressionResult,
 } from './expressions/policy.js';
 import type { ValueSource } from './graph/contract.js';
-import { resolveJsonPath } from './json/json-path.js';
+import { resolveJsonPath } from './json/path.js';
 
 export type ValueResolution =
   | { readonly kind: 'value'; readonly value: JsonValue }

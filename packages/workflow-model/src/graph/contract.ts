@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import type { JsonValue } from '../json/canonical-json.js';
+import type { JsonValue } from '../json/canonical.js';
 
 import { hasBoundedGraphAggregateUnsafe } from './aggregate.js';
-import { inspectWorkflowGraphAdmission } from './admission.js';
+import { inspectWorkflowGraphAdmission } from './validation/admission.js';
 import {
   escapeDroppedInputMappingKeys,
   restoreDroppedInputMappingKeys,
