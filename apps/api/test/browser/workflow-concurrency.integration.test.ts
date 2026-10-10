@@ -380,7 +380,10 @@ describe.skipIf(!enabled)(
         own(
           spawn(process.execPath, args, {
             cwd: webDirectory,
-            env: environment,
+            env:
+              kind === 'vite'
+                ? { ...environment, NODE_ENV: 'production' }
+                : environment,
             stdio: 'ignore',
             detached: true,
           }),

@@ -1218,7 +1218,10 @@ in the same slice that introduces them:
 - Keep both Playwright lanes in CI: journeys against the mocked API drive the
   production browser, transport and decoders, and browser journeys against the
   real stack run from the API integration suite with isolated users and
-  workspaces. Do not put test bypasses into production auth.
+  workspaces. Vite child processes explicitly use `NODE_ENV=production` so
+  Vitest’s `test` environment cannot select React’s development runtime.
+  StrictMode effect replay and reconnection remain covered by component tests.
+  Do not put test bypasses into production auth.
 
 ### Required regression scenarios, introduced with their slice
 

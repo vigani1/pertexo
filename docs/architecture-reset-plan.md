@@ -562,6 +562,10 @@ now, as one ordered program — not "whenever we touch it".
           Full React Doctor 0.9.17: 77 to 82, 32 to eight reviewed warnings,
           zero errors and no suppressions. Local verification: 1,050 unit tests,
           93 browser cases, lint, typecheck/build and architecture checks.
+          Live Vite children explicitly use production NODE_ENV instead of
+          inheriting Vitest test mode; the unchanged real organization role
+          journeys pass within the existing identity limits. StrictMode and
+          effect reconnection retain their focused unit coverage.
           F08 runtime implementation is unchanged.
 - [x] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.

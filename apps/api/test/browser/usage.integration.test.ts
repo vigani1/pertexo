@@ -224,7 +224,10 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
       ownChild(
         spawn(process.execPath, args, {
           cwd: webDirectory,
-          env: environment,
+          env:
+            kind === 'vite'
+              ? { ...environment, NODE_ENV: 'production' }
+              : environment,
           stdio: 'ignore',
           detached: true,
         }),
