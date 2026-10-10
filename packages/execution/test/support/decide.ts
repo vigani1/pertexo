@@ -37,6 +37,11 @@ export function createDecisionEngine(
                 observations: input.observations,
                 completedOutputs: input.completedOutputs ?? [],
                 workflow: input.projection,
+                readCompletionValues: () =>
+                  Promise.resolve({
+                    runInput: undefined,
+                    outputs: [],
+                  }),
               });
               return { kind: 'no_change', revision: 0 };
             },

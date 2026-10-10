@@ -1,4 +1,5 @@
 import { inspectJsonValue } from '../../json/canonical.js';
+import { callableDeclarationIssues } from '../../callable/validate-declaration.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
@@ -65,6 +66,8 @@ export function validateWorkflowGraph(
     });
     expandedInvocations = totals.expanded;
     worstCaseLoopIterations = totals.iterations;
+    for (const candidate of callableDeclarationIssues(graph, allNodeIds))
+      issue(candidate.code, candidate.path, candidate.message);
   } catch (error) {
     // Collector refusal is operational, not evidence that the graph is invalid.
     if (issueCollection.failed) throw error;

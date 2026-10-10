@@ -154,12 +154,17 @@ export async function persistCoordinatorRunTransition(
     ({ name }) =>
       name.startsWith('run.') && terminalRunStatuses.has(name.slice(4)),
   )?.occurredAt;
+  const runFailure = plan.events.find(
+    ({ name }) => name === 'run.failed',
+  )?.reasonCode;
   await client.query(
     `update app.workflow_runs
        set status=$1,
            started_at=coalesce(started_at,$2::timestamptz),
            completed_at=case when $3::timestamptz is null
              then completed_at else $3::timestamptz end,
+           output_ref=case when $6::jsonb is null then output_ref else $6::jsonb end,
+           error_summary=coalesce($7::varchar,error_summary),
            updated_at=clock_timestamp()
        where workspace_id=$4 and id=$5`,
     [
@@ -168,6 +173,10 @@ export async function persistCoordinatorRunTransition(
       completedAt ?? null,
       workspaceId,
       runId,
+      plan.runResult === undefined
+        ? null
+        : JSON.stringify({ kind: 'inline', value: plan.runResult }),
+      runFailure ?? null,
     ],
   );
   const scheduleDueAt = scheduledOccurrence(row, plan);

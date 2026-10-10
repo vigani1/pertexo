@@ -17,6 +17,12 @@ export function escapeDroppedInputMappingKeys(snapshot: unknown): unknown {
 export function restoreDroppedInputMappingKeys(
   graph: WorkflowGraph,
 ): WorkflowGraph {
+  if (graph.callable !== undefined)
+    Reflect.set(
+      graph.callable,
+      'result',
+      restoreLiteralSource(graph.callable.result),
+    );
   visitGraphNodes(graph, (node) => {
     const config = Reflect.get(node, 'config');
     if (isObjectRecord(config))
@@ -57,6 +63,16 @@ function cloneGraphWithEscapedInputMappings(graph: unknown): unknown {
   if (!Array.isArray(nodes)) return graph;
 
   const clonedGraph = cloneOwnData(graph);
+  const callable = Reflect.get(graph, 'callable');
+  if (isObjectRecord(callable)) {
+    const clonedCallable = cloneOwnData(callable);
+    defineOwn(
+      clonedCallable,
+      'result',
+      escapeLiteralSource(Reflect.get(callable, 'result')),
+    );
+    defineOwn(clonedGraph, 'callable', clonedCallable);
+  }
   defineOwn(
     clonedGraph,
     'nodes',

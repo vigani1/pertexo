@@ -11,5 +11,10 @@ export type {
 export { generatePersistedId } from './persisted-id.js';
 export { IdempotencyConflictError } from './idempotency.js';
 export type { DatabaseReadiness } from './readiness.js';
+export {
+  prepareStoredExecutionValue,
+  STORED_EXECUTION_VALUE_LIMITS,
+  StoredExecutionValueInvalidError,
+} from './stored-execution-value.js';
 export { createWorkspaceDatabase } from '../database.js';
 export type { WorkspaceDatabase } from '../database.js';

@@ -19,6 +19,10 @@ import { createCuratedTemplateEnvelopeContext } from '../../../../infrastructure
 import { createEditorWebhookRuntime } from './editor/webhook-runtime.js';
 import { createEditorHttpControl } from './editor/http-control.js';
 import {
+  callableEvidenceSchema,
+  verifyCallableEvidence,
+} from './editor/evidence/callable.js';
+import {
   httpEffectsSchema,
   submittedHttpEvidenceIds,
   verifyHttpEvidence,
@@ -88,6 +92,7 @@ const scenario = z
     'portability',
     'input-cases',
     'curated-templates',
+    'callable',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -158,6 +163,7 @@ let portabilityEvidence:
   z.infer<typeof workflowPortabilityBrowserEvidenceSchema> | undefined;
 let inputCasesEvidence:
   z.infer<typeof workflowInputCasesEvidenceSchema> | undefined;
+let callableEvidence: z.infer<typeof callableEvidenceSchema> | undefined;
 let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
 let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
 let expressionEvidence:
@@ -707,6 +713,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           url.pathname === '/evidence/portability' ||
           url.pathname === '/evidence/curated-templates' ||
           url.pathname === '/input-cases-evidence' ||
+          url.pathname === '/evidence/callable' ||
           url.pathname === '/evidence/readonly' ||
           url.pathname === '/evidence/schedule')
       ) {
@@ -719,6 +726,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           try {
             const value: unknown = JSON.parse(body);
             if (
+              url.pathname === '/evidence/callable' &&
+              scenario === 'callable'
+            )
+              callableEvidence = callableEvidenceSchema.parse(value);
+            else if (
               url.pathname === '/evidence/curated-templates' &&
               scenario === 'curated-templates'
             )
@@ -875,27 +887,29 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'curated-templates'
-              ? 'curated-templates.spec.ts'
-              : scenario === 'portability'
-                ? 'workflow-portability.spec.ts'
-                : scenario === 'input-cases'
-                  ? 'workflow-input-cases.spec.ts'
-                  : scenario === 'duplication'
-                    ? 'workflow-duplication.spec.ts'
-                    : scenario === 'nested-conflict'
-                      ? 'editor/execution.spec.ts'
-                      : scenario === 'receipts'
-                        ? 'editor/receipts.spec.ts'
-                        : scenario === 'run-recovery'
-                          ? 'editor/run-recovery.spec.ts'
-                          : scenario === 'expression-admission'
-                            ? 'editor/expression-admission.spec.ts'
-                            : scenario === 'readonly'
-                              ? 'editor/readonly.spec.ts'
-                              : scenario === 'schedule'
-                                ? 'editor/schedule.spec.ts'
-                                : 'editor/webhook-controlled-http.spec.ts',
+            scenario === 'callable'
+              ? 'editor/callable.spec.ts'
+              : scenario === 'curated-templates'
+                ? 'curated-templates.spec.ts'
+                : scenario === 'portability'
+                  ? 'workflow-portability.spec.ts'
+                  : scenario === 'input-cases'
+                    ? 'workflow-input-cases.spec.ts'
+                    : scenario === 'duplication'
+                      ? 'workflow-duplication.spec.ts'
+                      : scenario === 'nested-conflict'
+                        ? 'editor/execution.spec.ts'
+                        : scenario === 'receipts'
+                          ? 'editor/receipts.spec.ts'
+                          : scenario === 'run-recovery'
+                            ? 'editor/run-recovery.spec.ts'
+                            : scenario === 'expression-admission'
+                              ? 'editor/expression-admission.spec.ts'
+                              : scenario === 'readonly'
+                                ? 'editor/readonly.spec.ts'
+                                : scenario === 'schedule'
+                                  ? 'editor/schedule.spec.ts'
+                                  : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -915,6 +929,15 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'callable') {
+      if (callableEvidence === undefined)
+        throw new Error('Callable browser evidence missing');
+      await verifyCallableEvidence(api.database(), callableEvidence);
+      process.stdout.write(
+        `Live browser callable verified identities ${JSON.stringify(callableEvidence)}\n`,
+      );
+      return;
+    }
     if (scenario === 'curated-templates') {
       if (curatedFixture === undefined || curatedEvidence === undefined)
         throw new Error('Curated template browser evidence missing');

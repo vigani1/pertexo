@@ -240,6 +240,7 @@ function WorkflowEditorSession({
           effects={effects}
           bar={(chrome) => (
             <EditorCommandBar
+              paused={paused}
               apiClient={apiClient}
               userId={userId}
               workspace={workspace}

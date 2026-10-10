@@ -58,7 +58,7 @@ export const FailureNotificationContextSchema = z
       z
         .object({
           source: z.literal('run'),
-          runStatus: z.literal('timed_out'),
+          runStatus: z.enum(['failed', 'timed_out']),
           safeErrorCode: safeCodeSchema,
         })
         .strict(),

@@ -20,6 +20,44 @@ import {
 } from '../support/executable-workflow.js';
 
 describe('workflow executable identity', () => {
+  it('retains callable contracts and includes every declaration in the immutable identity', () => {
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const callable = {
+      input: { type: 'string' },
+      resultType: { type: 'string' },
+      result: { kind: 'run_input', path: '$' },
+    } as const;
+    const executable = buildWorkflowExecutable({
+      graph: { ...graph(), callable },
+      catalog,
+    });
+    expect(
+      parseWorkflowExecutable({
+        envelope: JSON.parse(JSON.stringify(executable.envelope)),
+        catalog,
+      }).graph.callable,
+    ).toEqual(callable);
+    const original = executable.checksum;
+    for (const changed of [
+      { ...callable, input: { type: 'number' } as const },
+      { ...callable, resultType: { type: 'number' } as const },
+      { ...callable, result: { kind: 'literal', value: 'fixed' } as const },
+    ]) {
+      const revised = buildWorkflowExecutable({
+        graph: { ...graph(), callable: changed },
+        catalog,
+      });
+      expect(revised.checksum).not.toBe(original);
+      expect(() =>
+        verifyWorkflowExecutable({
+          envelope: revised.envelope,
+          checksum: original,
+          catalog,
+        }),
+      ).toThrow();
+    }
+  });
+
   it('rejects a Condition edge through an undeclared output port', () => {
     const catalog = composeExecutableCatalog(nodeCatalog({ condition: true }));
 

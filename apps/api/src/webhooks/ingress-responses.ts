@@ -10,6 +10,8 @@ import {
   WorkspaceRunQuotaExceededError,
 } from '@pertexo/database/runs';
 import type { FastifyReply } from 'fastify';
+import { CallableInputInvalidError } from '@pertexo/workflow-model';
+import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
 
 import { REJECTED_ATTEMPT, type RejectedAttempt } from './delivery-log.js';
 import type { WebhookIngressTelemetry } from './telemetry.js';
@@ -22,6 +24,17 @@ export async function rejectAcceptance(
   telemetry: WebhookIngressTelemetry,
   reject: (attempt: RejectedAttempt) => Promise<void>,
 ): Promise<void> {
+  if (
+    error instanceof CallableInputInvalidError ||
+    error instanceof StoredExecutionValueInvalidError
+  ) {
+    await reject(REJECTED_ATTEMPT.invalidRequest);
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    await problem(reply, 400, 'request.invalid', requestId);
+    return;
+  }
   if (error instanceof WebhookDeliveryReplayMismatchError) {
     await reject(REJECTED_ATTEMPT.conflict);
     record(() => {

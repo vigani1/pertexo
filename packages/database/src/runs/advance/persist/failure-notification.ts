@@ -64,11 +64,17 @@ export async function persistFailureNotificationIntent(
   const primary = failures[0];
   let primaryFailure: Record<string, unknown>;
   if (primary === undefined) {
-    if (input.plan.checkpoint.runStatus !== 'timed_out')
+    if (
+      input.plan.checkpoint.runStatus !== 'timed_out' &&
+      !(
+        input.plan.checkpoint.runStatus === 'failed' &&
+        terminalEvent.reasonCode?.startsWith('callable_result_')
+      )
+    )
       throw new CoordinatorRunStateCorruptError();
     primaryFailure = {
       source: 'run',
-      runStatus: 'timed_out',
+      runStatus: input.plan.checkpoint.runStatus,
       safeErrorCode: terminalEvent.reasonCode ?? 'execution.deadline_exceeded',
     };
   } else {

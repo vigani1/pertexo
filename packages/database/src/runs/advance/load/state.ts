@@ -15,6 +15,7 @@ import {
   readPersistedFacts,
 } from './facts.js';
 import { pendingFailureObservations } from './pending-failures.js';
+import { readRunCompletionValues } from './completion.js';
 
 /** The locked run row the transition is saved against. */
 export type CoordinatorCommitRow = Readonly<{
@@ -227,6 +228,13 @@ export async function loadRunForAdvance(
         ),
       ),
       workflow: version,
+      readCompletionValues: (nodeIds?: readonly string[]) =>
+        readRunCompletionValues(client, {
+          workspaceId,
+          runId,
+          inputRef: row.input_ref,
+          nodeIds,
+        }),
     }),
   });
 }

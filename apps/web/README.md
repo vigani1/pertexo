@@ -27,6 +27,12 @@ carry the expected publication; conflicts require explicit review. Uncertain
 commands retain their exact input, deadline, version and key for the original
 24-hour recovery window. Input cases are always available.
 
+The editor's Contract control declares bounded JSON input and result types for
+workflows with one Manual or Webhook entry. Property names, required fields,
+array bounds and the result source are edited locally, then applied as one
+undoable draft change. Published standalone runs enforce the contract. Call
+Workflow execution and child-version selection remain pending F08 slice 3.
+
 Read [Frontend architecture](ARCHITECTURE.md) for folder ownership, shared
 contracts, state, forms, saving conflicts, auth, SSE, Weft and verification.
 [The repository architecture map](../../docs/architecture.md) describes backend

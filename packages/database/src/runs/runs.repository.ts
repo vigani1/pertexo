@@ -311,6 +311,9 @@ async function startInTransaction(
   return acceptWorkflowRunWithAudit(transaction, {
     acceptance: {
       initialCheckpoint: initial.checkpoint,
+      ...(initial.validateInput === undefined
+        ? {}
+        : { validateInput: initial.validateInput }),
       keyHash: input.idempotencyKeyHash,
       operation: 'workflow.run.accept',
       requestHash: input.requestHash,

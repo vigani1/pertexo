@@ -1,9 +1,11 @@
 // Safe anywhere, including the browser. Node-only parts are in ./server.ts.
 export { assertNever } from './assert-never.js';
+export { CallableInputInvalidError } from './callable/errors.js';
 export {
   callableTypeStructuralSchema,
   callableTypeIssues,
   type CallableType,
+  type CallableDeclaration,
   type CallableTypeIssue,
 } from './callable/contract.js';
 export {

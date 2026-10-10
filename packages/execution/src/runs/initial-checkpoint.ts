@@ -2,11 +2,17 @@ import type {
   InitialCheckpointFactory,
   PublishedWorkflow,
 } from '@pertexo/database/runs';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/database/platform';
 import {
   createCheckpoint,
   type WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
-import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
+import {
+  CallableInputInvalidError,
+  validateCallableValue,
+  WORKFLOW_GRAPH_LIMITS,
+  type JsonValue,
+} from '@pertexo/workflow-model';
 
 import {
   verifyPersistedWorkflowProjection,
@@ -20,14 +26,34 @@ import {
 export function createInitialCheckpoint(
   projection: PublishedWorkflow,
   verification: PersistedWorkflowProjectionVerificationOptions,
-): Readonly<{ checkpoint: WorkflowCheckpoint }> {
-  verifyPersistedWorkflowProjection(projection, verification);
+): ReturnType<InitialCheckpointFactory> &
+  Readonly<{ checkpoint: WorkflowCheckpoint }> {
+  const executable = verifyPersistedWorkflowProjection(
+    projection,
+    verification,
+  );
+  const callable = executable.envelope.graph.callable;
   return Object.freeze({
     checkpoint: createCheckpoint({
       workflowVersionId: projection.id,
       iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
       nextEventSequence: 2,
     }),
+    ...(callable === undefined
+      ? {}
+      : {
+          validateInput: (
+            value: JsonValue | undefined,
+            storedBytes: number,
+          ) => {
+            if (value === undefined)
+              throw new CallableInputInvalidError('missing');
+            if (storedBytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes)
+              throw new CallableInputInvalidError('bounds');
+            const issue = validateCallableValue(callable.input, value);
+            if (issue !== undefined) throw new CallableInputInvalidError(issue);
+          },
+        }),
   });
 }
 

@@ -528,6 +528,9 @@ export function createWebhookTriggerDatabase(
           const initial = input.checkpointFactory(projection);
           const accepted = await acceptWorkflowRun(transaction, {
             initialCheckpoint: initial.checkpoint,
+            ...(initial.validateInput === undefined
+              ? {}
+              : { validateInput: initial.validateInput }),
             keyHash: createHash('sha256').update(deliveryId).digest('hex'),
             operation: 'workflow.run.accept',
             requestHash: requestFingerprint,

@@ -2,6 +2,7 @@ import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import type { PublishedWorkflow } from '../published-workflow.js';
+import type { JsonValue } from '@pertexo/workflow-model';
 import type { RunTransitionPlan } from './plan.js';
 
 export const coordinatorIdentitySchema = z.uuid();
@@ -25,6 +26,17 @@ export type RunAdvanceState = Readonly<{
   observations: readonly unknown[];
   completedOutputs: readonly unknown[];
   workflow: PublishedWorkflow;
+  /** On-demand completion projection using the already locked run transaction. */
+  readCompletionValues(nodeIds?: readonly string[]): Promise<
+    Readonly<{
+      runInput: JsonValue | undefined;
+      outputs: readonly Readonly<{
+        nodeId: string;
+        invocationKey: string;
+        value: JsonValue | undefined;
+      }>[];
+    }>
+  >;
 }>;
 
 export type RunAdvanceDecision =

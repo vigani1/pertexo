@@ -307,6 +307,27 @@ function inspectGraphFacts(
     if (typeof current.value !== 'object' || Array.isArray(current.value))
       continue;
     const graph = current.value as Record<string, unknown>;
+    const callable = graph.callable;
+    if (
+      callable !== null &&
+      typeof callable === 'object' &&
+      !Array.isArray(callable)
+    ) {
+      const result = (callable as Record<string, unknown>).result;
+      if (
+        result !== null &&
+        typeof result === 'object' &&
+        !Array.isArray(result) &&
+        (result as Record<string, unknown>).kind === 'literal'
+      ) {
+        const issue = valueDepthFailure(
+          (result as Record<string, unknown>).value,
+          `${current.path}.callable.result.value`,
+          limits.jsonValueDepth,
+        );
+        if (issue !== undefined) return issue;
+      }
+    }
     const graphNodes: unknown = graph.nodes;
     if (!Array.isArray(graphNodes)) continue;
     for (let index = 0; index < graphNodes.length; index += 1) {

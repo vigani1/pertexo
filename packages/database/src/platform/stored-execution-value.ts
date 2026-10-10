@@ -334,11 +334,20 @@ export function parseStoredExecutionValue(
   invalid();
 }
 
-export function serializeStoredExecutionValue(value: unknown): string {
+export function prepareStoredExecutionValue(value: unknown): Readonly<{
+  value: StoredExecutionValue;
+  json: string;
+}> {
   const parsed = parseStoredExecutionValue(value);
-  return parsed.kind === 'artifact'
-    ? `{"artifactId":${JSON.stringify(parsed.artifactId)},"kind":"artifact"}`
-    : `{"kind":"inline","value":${canonicalJson(parsed.value)}}`;
+  const json =
+    parsed.kind === 'artifact'
+      ? `{"artifactId":${JSON.stringify(parsed.artifactId)},"kind":"artifact"}`
+      : `{"kind":"inline","value":${canonicalJson(parsed.value)}}`;
+  return { value: parsed, json };
+}
+
+export function serializeStoredExecutionValue(value: unknown): string {
+  return prepareStoredExecutionValue(value).json;
 }
 
 export function serializeStoredExecutionJsonValue(value: unknown): string {

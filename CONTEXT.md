@@ -45,6 +45,10 @@ _Avoid_: Workflow restoration, rollback of execution history
 input, linked to a source run whose history remains unchanged. _Avoid_: Queue
 redelivery, retry
 
+**Callable workflow**: A reusable workflow that declares the input it accepts
+and the result it returns. It can run on its own. _Avoid_: A loop body, a
+different trigger kind
+
 **Run-input case**: A named, shared workflow input with an explicit published
 version context. Loading it supplies editable input for a separately confirmed
 real manual run; it is not an execution or a substitute for provider effects.
