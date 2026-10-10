@@ -11,13 +11,7 @@ import {
   runAttentionItems,
   workflowAttentionItems,
 } from '@/features/overview/model/needs-attention';
-import {
-  hitTestLoom,
-  loomLaneY,
-  loomLayout,
-  loomX,
-  shapeLoom,
-} from '@/features/workflow-runs/model/loom/model';
+import { shapeLoom } from '@/features/workflow-runs/model/loom/model';
 import {
   groupRunsByDay,
   threadBarScale,
@@ -135,25 +129,6 @@ describe('loom', () => {
     expect(
       loomCaption({ phrase, capped: false, total: undefined }),
     ).toBeUndefined();
-  });
-
-  it('hit-tests the thread under the pointer', () => {
-    const model = shapeLoom(
-      [
-        run('r1', 'wf-a', 'succeeded', 40, 20),
-        run('r2', 'wf-b', 'running', 10, null),
-      ],
-      { windowMs: 60 * minute, nowMs: now },
-    );
-    const layout = loomLayout(model, 1000, 320);
-    const x = loomX(layout, model.windowMs, now, now - 30 * minute);
-    expect(hitTestLoom(model, layout, now, x, loomLaneY(layout, 1))?.id).toBe(
-      'r1',
-    );
-    expect(
-      hitTestLoom(model, layout, now, x, loomLaneY(layout, 0)),
-    ).toBeUndefined();
-    expect(layout.core.x).toBe(1000 - 95);
   });
 });
 

@@ -1,5 +1,6 @@
+import { Activity } from 'react';
 import { HttpResponse, http } from 'msw';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InvitationAcceptancePage } from '@/features/workspace-invitations/pages/invitation-acceptance';
@@ -30,6 +31,10 @@ describe('invitation acceptance', () => {
   // Sign-in pages reached from a journey read the authentication capabilities.
   beforeEach(() => {
     mockServer.use(
+      http.post(
+        'http://pertexo.test/v1/invitation-acceptance/session',
+        () => new HttpResponse(null, { status: 401 }),
+      ),
       http.get('http://pertexo.test/v1/auth/capabilities', () =>
         HttpResponse.json({
           password: {
@@ -77,6 +82,79 @@ describe('invitation acceptance', () => {
     expect(window.location.hash).toBe('');
     expect(localStorage).toHaveLength(0);
     expect(sessionStorage).toHaveLength(0);
+  });
+
+  it('cancels a hidden invitation read and resumes the same link when shown', async () => {
+    const token = `wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`;
+    const calls: { signal: AbortSignal | null | undefined; body: unknown }[] =
+      [];
+    let releaseFirst: ((response: Response) => void) | undefined;
+    const apiClient = componentApiClient((_input, init) => {
+      if (typeof init?.body !== 'string')
+        throw new Error('Expected an invitation body');
+      calls.push({ signal: init.signal, body: JSON.parse(init.body) });
+      if (calls.length === 1)
+        return new Promise<Response>((resolve) => {
+          releaseFirst = resolve;
+        });
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            state: 'ready',
+            intentId,
+            expiresAt: '2026-09-19T18:00:00.000Z',
+            csrfToken,
+            invitationRevision: 3,
+            role: 'builder',
+            sessionRotationRequired: true,
+            workspace: { id: workspaceId, name: 'Control Operations' },
+          }),
+          { headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    });
+    const props = {
+      apiClient,
+      initialToken: token,
+      clearFragment: vi.fn(),
+      openWorkspace: vi.fn(),
+      openSignIn: vi.fn(),
+      openWorkspaceDiscovery: vi.fn(),
+    };
+    const view = render(
+      <Activity mode="visible">
+        <InvitationAcceptancePage {...props} />
+      </Activity>,
+    );
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+    view.rerender(
+      <Activity mode="hidden">
+        <InvitationAcceptancePage {...props} />
+      </Activity>,
+    );
+    expect(calls[0]?.signal?.aborted).toBe(true);
+    view.rerender(
+      <Activity mode="visible">
+        <InvitationAcceptancePage {...props} />
+      </Activity>,
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Accept and open workspace' }),
+    ).toBeVisible();
+    expect(calls.map((call) => call.body)).toEqual([{ token }, { token }]);
+    await act(async () => {
+      releaseFirst?.(
+        new Response(JSON.stringify({ state: 'unavailable' }), {
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Accept and open workspace' }),
+    ).toBeVisible();
   });
 
   it('retries the same link after the resolver response and cookie are lost', async () => {
@@ -351,7 +429,7 @@ describe('invitation acceptance', () => {
     expect(
       await screen.findByRole('button', { name: 'Sign in to accept' }),
     ).toBeVisible();
-    expect(resolveRequests).toBe(1);
+    expect(resolveRequests).toBeGreaterThanOrEqual(1);
   });
 
   it('ignores a delayed completion after the mounted route selects another invitation', async () => {

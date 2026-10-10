@@ -23,7 +23,7 @@ export function WorkspaceLeave({
 }: Readonly<{
   apiClient: ApiClient;
   workspace: AccessibleWorkspace;
-  onLeft: () => void;
+  onLeft: () => void | Promise<void>;
 }>) {
   const notifications = useNotifications();
   const [confirming, setConfirming] = useState(false);
@@ -36,7 +36,7 @@ export function WorkspaceLeave({
           title: `You left ${workspace.name}`,
           description: 'Sign in again to reach your other workspaces.',
         });
-      onLeft();
+      return onLeft();
     },
   });
   const isOwner = !canLeaveWorkspace(workspace.role);

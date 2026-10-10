@@ -1,32 +1,18 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
-import { useNavigate } from '@tanstack/react-router';
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { CoreOrb } from '@/components/patterns/core/orb';
-import { Status } from '@/components/ui/status';
-import { formatDateTime, formatDurationMs } from '@/lib/format/time';
 import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
 import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
 import {
-  runsAtPointer,
   LOOM_TALL_HEIGHT,
   loomHeight,
-  loomLayout,
   shapeLoom,
   type LoomModel,
-  type LoomRun,
 } from '../../model/loom/model';
-import { describeRunStatus } from '../../model/run-status';
 import { useNow } from '@/lib/hooks/use-now';
 import { LoomRunList } from './run-list';
+import { LoomThreadLinks } from './thread-links';
 import { LoomRenderer } from '../../model/loom/renderer';
-
-type Hover = Readonly<{
-  run: LoomRun;
-  /** Other runs drawn at the same spot, which the pointer can't separate. */
-  alsoHere: number;
-  x: number;
-  y: number;
-}>;
 
 function coreEnergy(liveCount: number): number {
   return 0.6 + Math.min(liveCount, 6) * 0.15;
@@ -34,8 +20,8 @@ function coreEnergy(liveCount: number): number {
 
 /**
  * The Loom: one lane per workflow, runs drawn from start to end, running
- * threads growing into the Core at "now". Pointer users hover and click a
- * thread; everyone can open the list of plotted runs below it.
+ * threads growing into the Core at "now". Native links over each thread
+ * provide pointer and keyboard navigation; the list offers a text view.
  */
 export function RunLoom({
   runs,
@@ -62,20 +48,6 @@ export function RunLoom({
       }),
     [runs, windowMs, nowMs, laneTotals],
   );
-  const navigate = useNavigate();
-  const [hover, setHover] = useState<Hover>();
-
-  function locate(event: MouseEvent<HTMLCanvasElement>) {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
-    const layout = loomLayout(model, bounds.width, bounds.height);
-    const hits = runsAtPointer(model, layout, Date.now(), x, y);
-    const run = hits.at(-1);
-    return run === undefined
-      ? undefined
-      : { run, alsoHere: hits.length - 1, x, y };
-  }
 
   const summary = `Timeline of ${String(model.runCount)} ${
     model.runCount === 1 ? 'run' : 'runs'
@@ -90,24 +62,12 @@ export function RunLoom({
         className="@container relative overflow-hidden rounded-xl border border-white/6 bg-linear-to-b from-white/[0.018] to-transparent transition-[height] duration-300 ease-out motion-reduce:transition-none"
         style={{ height }}
       >
-        <LoomCanvas
+        <LoomCanvas model={model} label={summary} />
+        <LoomThreadLinks
           model={model}
-          label={summary}
-          interactive={hover !== undefined}
-          onPointerMove={(event) => {
-            setHover(locate(event));
-          }}
-          onPointerLeave={() => {
-            setHover(undefined);
-          }}
-          onClick={(event) => {
-            const hit = locate(event);
-            if (hit === undefined) return;
-            void navigate({
-              to: '/w/$workspaceId/runs/$runId',
-              params: { workspaceId, runId: hit.run.id },
-            });
-          }}
+          workspaceId={workspaceId}
+          height={height}
+          nowMs={nowMs}
         />
         <div className="pointer-events-none absolute top-[28px] right-0 bottom-[30px] flex w-[56px] flex-col items-center justify-center gap-1 @min-[640px]:top-[18px] @min-[640px]:w-[190px]">
           <CoreOrb
@@ -128,7 +88,6 @@ export function RunLoom({
             No runs in {windowLabel}.
           </p>
         ) : null}
-        {hover === undefined ? null : <LoomLens hover={hover} nowMs={nowMs} />}
       </div>
       <LoomRunList
         model={model}
@@ -142,18 +101,7 @@ export function RunLoom({
 function LoomCanvas({
   model,
   label,
-  interactive,
-  onPointerMove,
-  onPointerLeave,
-  onClick,
-}: Readonly<{
-  model: LoomModel;
-  label: string;
-  interactive: boolean;
-  onPointerMove: (event: MouseEvent<HTMLCanvasElement>) => void;
-  onPointerLeave: () => void;
-  onClick: (event: MouseEvent<HTMLCanvasElement>) => void;
-}>) {
+}: Readonly<{ model: LoomModel; label: string }>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reducedMotion = usePrefersReducedMotion();
   const rendererRef = useCanvasRenderer(
@@ -174,52 +122,7 @@ function LoomCanvas({
       role="img"
       aria-label={label}
       data-slot="run-loom"
-      className={
-        interactive
-          ? 'absolute inset-0 size-full cursor-pointer'
-          : 'absolute inset-0 size-full'
-      }
-      onPointerMove={onPointerMove}
-      onPointerLeave={onPointerLeave}
-      // Pointer shortcut only: every run on the Loom is also a link in the
-      // run list beside it, which is the keyboard path.
-      onClick={onClick}
+      className="absolute inset-0 size-full"
     />
-  );
-}
-
-function LoomLens({ hover, nowMs }: Readonly<{ hover: Hover; nowMs: number }>) {
-  const { run } = hover;
-  const look = describeRunStatus(run.status);
-  const durationMs = (run.endMs ?? nowMs) - run.startMs;
-  return (
-    <div
-      aria-hidden="true"
-      className="lens pointer-events-none absolute z-10 w-60 rounded-lg px-3 py-2.5 text-xs"
-      // Above the pointer when there's room, else below it: never on top of
-      // the thread being pointed at.
-      style={{
-        left: Math.max(8, hover.x - 120),
-        top: hover.y - 96 >= 8 ? hover.y - 96 : hover.y + 16,
-      }}
-    >
-      <p className="truncate text-sm font-semibold">{run.workflowName}</p>
-      <div className="mt-1.5 flex items-center justify-between gap-3">
-        <Status tone={look.tone}>{look.label}</Status>
-        <span className="font-mono text-subtle-foreground">
-          {formatDurationMs(durationMs)}
-        </span>
-      </div>
-      <p className="mt-1 font-mono text-subtle-foreground">
-        {formatDateTime(run.createdAt)}
-      </p>
-      {hover.alsoHere === 0 ? null : (
-        <p className="mt-1.5 text-subtle-foreground">
-          {hover.alsoHere === 1
-            ? '1 more run here: list them below the Loom.'
-            : `${String(hover.alsoHere)} more runs here: list them below the Loom.`}
-        </p>
-      )}
-    </div>
   );
 }

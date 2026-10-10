@@ -2,7 +2,6 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts';
-import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { CopyButton } from '@/components/ui/copy-button';
@@ -20,7 +19,6 @@ import { WorkspaceAccess } from '../components/settings/workspace-access';
 import { WorkspaceOverview } from '../components/settings/workspace-overview';
 import { WorkspaceMark } from '../components/shell/workspace-mark';
 import { ROLE_SUMMARIES, withArticle } from '../model/workspace-roles';
-import { accessibleWorkspacesQueryOptions } from '../data/workspaces.queries';
 
 function Fact({
   term,
@@ -50,11 +48,10 @@ export function WorkspaceGeneralPage({
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
-  onWorkspaceChanged: () => void;
+  onWorkspaceChanged: () => void | Promise<void>;
   /** The person left; their sessions have ended. */
-  onLeft: () => void;
+  onLeft: () => void | Promise<void>;
 }>) {
-  const queryClient = useQueryClient();
   const canManage = workspace.capabilities.includes('workspace:manage');
   return (
     <div className="flex max-w-5xl flex-col gap-6">
@@ -78,8 +75,12 @@ export function WorkspaceGeneralPage({
                 userId={user.id}
                 workspace={workspace}
                 nameClassName="font-display text-2xl leading-tight [--display-optical-size:24] [--display-width:84%]"
-                onWorkspaceChanged={onWorkspaceChanged}
-                onAccessLost={onWorkspaceChanged}
+                onWorkspaceChanged={() => {
+                  void onWorkspaceChanged();
+                }}
+                onAccessLost={() => {
+                  void onWorkspaceChanged();
+                }}
               />
               <span className="text-xs text-muted-foreground">
                 You’re {withArticle(workspace.role)} here.
@@ -135,14 +136,8 @@ export function WorkspaceGeneralPage({
             <WorkspaceLifecycleControls
               apiClient={apiClient}
               workspace={workspace}
-              onCompleted={() => {
-                // Deletion and restore change the workspace itself.
-                void queryClient.invalidateQueries({
-                  queryKey: accessibleWorkspacesQueryOptions(apiClient, user.id)
-                    .queryKey,
-                });
-                onWorkspaceChanged();
-              }}
+              userId={user.id}
+              onCompleted={onWorkspaceChanged}
             />
           ) : null}
           <WorkspaceLeave

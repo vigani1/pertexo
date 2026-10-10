@@ -1,5 +1,7 @@
+import { Activity, StrictMode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -247,6 +249,119 @@ describe('Portable workflow review and import', () => {
       expect(click).toHaveBeenCalledOnce();
     });
     click.mockRestore();
+  });
+
+  it('restarts export reads after effect reconnection and ignores the cancelled source', async () => {
+    const oldGraph = graphOf([
+      { id: 'old', key: 'core.manual', label: 'Old private source', x: 0 },
+    ]);
+    const currentGraph = graphOf([
+      { id: 'current', key: 'core.manual', label: 'Current source', x: 0 },
+    ]);
+    const requests: AbortSignal[] = [];
+    let releaseFirst: ((response: Response) => void) | undefined;
+    mockServer.use(
+      ...discoveryHandlers(),
+      http.get(`${api}/workflows/${workflowId}/draft`, ({ request }) => {
+        requests.push(request.signal);
+        if (requests.length === 1)
+          return new Promise<Response>((resolve) => {
+            releaseFirst = resolve;
+          });
+        return HttpResponse.json(draftBody(workflowId, currentGraph), {
+          headers: { etag },
+        });
+      }),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const props = {
+      apiClient: client(),
+      userId,
+      workspace: workspace(),
+      workflow: workflowSummarySchema.parse(summary(workflowId, 'Source')),
+      source: { kind: 'draft' as const },
+      onClose: vi.fn(),
+    };
+    const content = (mode: 'visible' | 'hidden') => (
+      <QueryClientProvider client={queryClient}>
+        <StrictMode>
+          <Activity mode={mode}>
+            <WorkflowExportDialog {...props} />
+          </Activity>
+        </StrictMode>
+      </QueryClientProvider>
+    );
+    const view = render(content('visible'));
+    await waitFor(() => {
+      expect(requests).toHaveLength(1);
+    });
+    view.rerender(content('hidden'));
+    expect(requests[0]?.aborted).toBe(true);
+    view.rerender(content('visible'));
+    expect(
+      await screen.findByLabelText('Complete saved source graph'),
+    ).toHaveTextContent('Current source');
+    await act(async () => {
+      releaseFirst?.(
+        HttpResponse.json(draftBody(workflowId, oldGraph), {
+          headers: { etag },
+        }),
+      );
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByLabelText('Complete saved source graph'),
+    ).not.toHaveTextContent('Old private source');
+    view.unmount();
+    queryClient.clear();
+  });
+
+  it('disposes an export review when permission changes and requires a fresh acknowledgement', async () => {
+    mockServer.use(
+      ...discoveryHandlers(),
+      http.get(`${api}/workflows/${workflowId}/draft`, () =>
+        HttpResponse.json(draftBody(workflowId, emptyGraph), {
+          headers: { etag },
+        }),
+      ),
+    );
+    const queryClient = new QueryClient();
+    const props = {
+      apiClient: client(),
+      userId,
+      workspace: workspace(),
+      workflow: workflowSummarySchema.parse(summary(workflowId, 'Source')),
+      source: { kind: 'draft' as const },
+      onClose: vi.fn(),
+    };
+    const content = (allowed: boolean) => (
+      <QueryClientProvider client={queryClient}>
+        <WorkflowExportDialog {...props} allowed={allowed} />
+      </QueryClientProvider>
+    );
+    const view = render(content(true));
+    await screen.findByLabelText('Complete saved source graph');
+    await userEvent.setup().click(screen.getByRole('checkbox'));
+    expect(
+      screen.getByRole('button', { name: 'Download workflow JSON' }),
+    ).toBeEnabled();
+    view.rerender(content(false));
+    expect(
+      screen.getByText('Access changed. The reviewed source has been cleared.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByLabelText('Complete saved source graph'),
+    ).not.toBeInTheDocument();
+    view.rerender(content(true));
+    await screen.findByLabelText('Complete saved source graph');
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Download workflow JSON' }),
+    ).toBeDisabled();
+    view.unmount();
+    queryClient.clear();
   });
 
   it('invalidates the advisory preview when the name changes and never imports incompatibility', async () => {

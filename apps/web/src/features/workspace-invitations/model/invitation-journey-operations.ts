@@ -25,15 +25,10 @@ type CompletionAttempt = Readonly<{
   idempotencyKey: string;
 }>;
 
-/**
- * The mutable seams of one mounted journey. `lifecycle` counts effect runs
- * (StrictMode remounts); `ownership` changes whenever a new invitation link
- * takes over. A late answer only acts while both still match.
- */
+/** One invitation owner; cleanup invalidates every outstanding answer. */
 export type JourneyRuntime = Readonly<{
   apiClient: ApiClient;
   token: RefObject<string | undefined>;
-  lifecycle: RefObject<number>;
   ownership: RefObject<number>;
   bootstrapController: RefObject<AbortController | undefined>;
   verifyController: RefObject<AbortController | undefined>;
@@ -45,25 +40,12 @@ export type JourneyRuntime = Readonly<{
   setTokenAvailable: (available: boolean) => void;
 }>;
 
-type Snapshot = Readonly<{ generation: number; ownership: number }>;
-
-function snapshot(runtime: JourneyRuntime): Snapshot {
-  return {
-    generation: runtime.lifecycle.current,
-    ownership: runtime.ownership.current,
-  };
-}
-
 function stillOwned(
   runtime: JourneyRuntime,
-  owned: Snapshot,
+  owned: number,
   signal?: AbortSignal,
 ): boolean {
-  return (
-    signal?.aborted !== true &&
-    runtime.lifecycle.current === owned.generation &&
-    runtime.ownership.current === owned.ownership
-  );
+  return signal?.aborted !== true && runtime.ownership.current === owned;
 }
 
 function replaceController(
@@ -81,8 +63,8 @@ export function retireJourney(runtime: JourneyRuntime) {
   runtime.verifyController.current?.abort();
   runtime.cleanupController.current?.abort();
   runtime.ownership.current += 1;
-  runtime.token.current = undefined;
-  runtime.completion.current = undefined;
+  // Retain the exact token and uncertain command for effect reconnection.
+  // A different link gets a keyed owner; unmount releases this owner entirely.
 }
 
 /**
@@ -108,7 +90,6 @@ async function bootstrapJourney(
   signal: AbortSignal,
   ownership: number,
 ) {
-  // Bootstrap outlives StrictMode's effect replay, so only ownership counts.
   const owned = () =>
     !signal.aborted && runtime.ownership.current === ownership;
   runtime.setPending(true);
@@ -155,7 +136,7 @@ export async function verifyJourneySession(
 ) {
   if (journey === undefined || journey.state === 'unavailable') return;
   const controller = replaceController(runtime.verifyController);
-  const owned = snapshot(runtime);
+  const owned = runtime.ownership.current;
   runtime.setPending(true);
   runtime.setError(undefined);
   try {
@@ -190,7 +171,7 @@ function reconciledFailure(
 
 /** Reads the authoritative journey after an uncertain or lost answer. */
 export async function reconcileJourney(runtime: JourneyRuntime) {
-  const owned = snapshot(runtime);
+  const owned = runtime.ownership.current;
   runtime.verifyController.current?.abort();
   const controller = replaceController(runtime.bootstrapController);
   runtime.setPending(true);
@@ -228,7 +209,7 @@ export async function acceptJourney(
     idempotencyKey: crypto.randomUUID(),
   };
   runtime.completion.current = attempt;
-  const owned = snapshot(runtime);
+  const owned = runtime.ownership.current;
   runtime.setPending(true);
   runtime.setError(undefined);
   try {
@@ -263,7 +244,7 @@ export async function leaveJourney(
   onLeft: () => void,
 ) {
   const controller = replaceController(runtime.cleanupController);
-  const owned = snapshot(runtime);
+  const owned = runtime.ownership.current;
   runtime.setPending(true);
   runtime.setError(undefined);
   try {
