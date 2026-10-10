@@ -1,11 +1,11 @@
 import {
+  type PgTableExtraConfigValue,
   check,
   foreignKey,
   index,
   integer,
   jsonb,
   primaryKey,
-  type PgTableExtraConfigValue,
   timestamp,
   unique,
   uuid,
@@ -40,15 +40,15 @@ export const failureNotificationDestinations = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'failure_notification_destinations_kind_valid',
-      sql`(kind)::text = ANY (ARRAY[('slack'::character varying)::text, ('email'::character varying)::text])`,
+      sql`((kind)::text = ANY (ARRAY[('slack'::character varying)::text, ('email'::character varying)::text]))`,
     ),
     check(
       'failure_notification_destinations_status_valid',
-      sql`(status)::text = ANY (ARRAY[('enabled'::character varying)::text, ('disabled'::character varying)::text])`,
+      sql`((status)::text = ANY (ARRAY[('enabled'::character varying)::text, ('disabled'::character varying)::text]))`,
     ),
     check(
       'failure_notification_destinations_version_positive',
-      sql`current_config_version > 0`,
+      sql`(current_config_version > 0)`,
     ),
     unique(
       'failure_notification_destinations_workspace_identity_kind_uniqu',
@@ -57,18 +57,12 @@ export const failureNotificationDestinations = appSchema.table(
       table.workspaceId,
       table.id,
     ),
-    index('failure_notification_destinations_workspace_status_idx').on(
-      table.workspaceId,
-      table.status,
-      table.createdAt,
-      table.id,
-    ),
     foreignKey({
       name: 'failure_notification_destinations_creator_fk',
       columns: [table.createdBy],
       foreignColumns: [users.id],
     }).onDelete('restrict'),
-    // DEFERRABLE INITIALLY DEFERRED in SQL; drizzle-orm cannot declare it.
+    // The baseline sets this foreign key DEFERRABLE INITIALLY DEFERRED.
     foreignKey({
       name: 'failure_notification_destinations_current_version_fk',
       columns: [table.workspaceId, table.id, table.currentConfigVersion],
@@ -83,6 +77,12 @@ export const failureNotificationDestinations = appSchema.table(
       columns: [table.workspaceId],
       foreignColumns: [workspaces.id],
     }).onDelete('restrict'),
+    index('failure_notification_destinations_workspace_status_idx').on(
+      table.workspaceId,
+      table.status,
+      table.createdAt,
+      table.id,
+    ),
   ],
 );
 
@@ -100,22 +100,22 @@ export const failureNotificationDestinationVersions = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'failure_notification_destination_versions_config_strict',
-      sql`((jsonb_typeof(config) = 'object'::text) AND ((((kind)::text = 'slack'::text) AND (jsonb_typeof((config -> 'connectionId'::text)) = 'string'::text) AND (jsonb_typeof((config -> 'channelId'::text)) = 'string'::text) AND (((config - 'connectionId'::text) - 'channelId'::text) = '{}'::jsonb) AND ((config ->> 'connectionId'::text) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) AND ((config ->> 'channelId'::text) ~ '^[CDGU][A-Z0-9]{1,79}$'::text)) OR (((kind)::text = 'email'::text) AND (jsonb_typeof((config -> 'connectionId'::text)) = 'string'::text) AND (jsonb_typeof((config -> 'toEmail'::text)) = 'string'::text) AND (((config - 'connectionId'::text) - 'toEmail'::text) = '{}'::jsonb) AND ((config ->> 'connectionId'::text) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) AND ((length((config ->> 'toEmail'::text)) >= 3) AND (length((config ->> 'toEmail'::text)) <= 254)) AND ((config ->> 'toEmail'::text) ~ '^[!-~]+@[A-Za-z0-9.-]+$'::text)))) IS TRUE`,
+      sql`(((jsonb_typeof(config) = 'object'::text) AND ((((kind)::text = 'slack'::text) AND (jsonb_typeof((config -> 'connectionId'::text)) = 'string'::text) AND (jsonb_typeof((config -> 'channelId'::text)) = 'string'::text) AND (((config - 'connectionId'::text) - 'channelId'::text) = '{}'::jsonb) AND ((config ->> 'connectionId'::text) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) AND ((config ->> 'channelId'::text) ~ '^[CDGU][A-Z0-9]{1,79}$'::text)) OR (((kind)::text = 'email'::text) AND (jsonb_typeof((config -> 'connectionId'::text)) = 'string'::text) AND (jsonb_typeof((config -> 'toEmail'::text)) = 'string'::text) AND (((config - 'connectionId'::text) - 'toEmail'::text) = '{}'::jsonb) AND ((config ->> 'connectionId'::text) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) AND ((length((config ->> 'toEmail'::text)) >= 3) AND (length((config ->> 'toEmail'::text)) <= 254)) AND ((config ->> 'toEmail'::text) ~ '^[!-~]+@[A-Za-z0-9.-]+$'::text)))) IS TRUE)`,
     ),
     check(
       'failure_notification_destination_versions_kind_valid',
-      sql`(kind)::text = ANY (ARRAY[('slack'::character varying)::text, ('email'::character varying)::text])`,
+      sql`((kind)::text = ANY (ARRAY[('slack'::character varying)::text, ('email'::character varying)::text]))`,
     ),
     check(
       'failure_notification_destination_versions_side_effect_valid',
-      sql`(((kind)::text = 'slack'::text) AND ((side_effect_class)::text = 'unsafe'::text)) OR (((kind)::text = 'email'::text) AND ((side_effect_class)::text = 'idempotent_with_key'::text))`,
+      sql`((((kind)::text = 'slack'::text) AND ((side_effect_class)::text = 'unsafe'::text)) OR (((kind)::text = 'email'::text) AND ((side_effect_class)::text = 'idempotent_with_key'::text)))`,
     ),
     check(
       'failure_notification_destination_versions_version_positive',
-      sql`version > 0`,
+      sql`(version > 0)`,
     ),
     primaryKey({
       name: 'failure_notification_destination_versions_pkey',
@@ -132,11 +132,6 @@ export const failureNotificationDestinationVersions = appSchema.table(
     unique(
       'failure_notification_destination_versions_workspace_identity_un',
     ).on(table.workspaceId, table.destinationId, table.version),
-    index('failure_notification_destination_versions_workspace_idx').on(
-      table.workspaceId,
-      table.destinationId,
-      table.version.desc().nullsFirst(),
-    ),
     foreignKey({
       name: 'failure_notification_destination_versions_creator_fk',
       columns: [table.createdBy],
@@ -151,6 +146,11 @@ export const failureNotificationDestinationVersions = appSchema.table(
         failureNotificationDestinations.kind,
       ],
     }).onDelete('restrict'),
+    index('failure_notification_destination_versions_workspace_idx').on(
+      table.workspaceId,
+      table.destinationId,
+      table.version.desc().nullsFirst(),
+    ),
   ],
 );
 
@@ -165,15 +165,10 @@ export const workflowFailureNotificationPolicies = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     unique(
       'workflow_failure_notification_policies_workspace_workflow_uniqu',
     ).on(table.workspaceId, table.workflowId),
-    index('workflow_failure_notification_policies_destination_idx').on(
-      table.workspaceId,
-      table.destinationId,
-      table.workflowId,
-    ),
     foreignKey({
       name: 'workflow_failure_notification_policies_destination_fk',
       columns: [table.workspaceId, table.destinationId],
@@ -192,5 +187,10 @@ export const workflowFailureNotificationPolicies = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('cascade'),
+    index('workflow_failure_notification_policies_destination_idx').on(
+      table.workspaceId,
+      table.destinationId,
+      table.workflowId,
+    ),
   ],
 );

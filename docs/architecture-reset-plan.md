@@ -69,7 +69,9 @@ now, as one ordered program — not "whenever we touch it".
 - [x] **5. Database foundation** — tables defined once, one baseline migration,
       three database roles, repository layout.
   - [x] One baseline: `0000_baseline.sql` (generated from a database migrated
-        through 0137, roles templated) replaces 135 migrations. The runner
+        through 0137, roles templated) initially replaces 135 migrations;
+        step 9 replaces that dump and subsequent reset migrations with the
+        final Drizzle-generated baseline. The runner
         drops the execution plan, data-migration jobs and published checksums,
         and refuses a database built from the old history. Migration structure
         and upgrade-path tests are removed.
@@ -320,8 +322,9 @@ now, as one ordered program — not "whenever we touch it".
           JSON registry get Drizzle definitions (columns, keys, checks,
           indexes, foreign keys), checked by generating DDL from them and
           diffing `pg_dump` against the migrated schema. drizzle-orm cannot
-          declare two `DEFERRABLE` foreign keys (marked in source) or column
-          collations (`textC`). The registry is deleted;
+          declare five `DEFERRABLE` foreign keys or two covering indexes
+          with `INCLUDE`; the baseline finishes those declarations. Column
+          collations use the raw SQL `textC` type. The registry is deleted;
           `database:schema:check` requires every migration table to be typed,
           and the schema-shape test checks owner, primary key, forced row
           security on workspace tables and private grants for every table.
@@ -540,6 +543,21 @@ now, as one ordered program — not "whenever we touch it".
           promise rejection settlements go; unknown boundary validation stays.
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
+  - [x] Final baseline generated from Drizzle: all 80 tables, 800 columns,
+        330 checks, 122 foreign keys, 51 unique constraints, 80 primary keys,
+        261 indexes and two sequences. `pnpm db:generate` produces no drift.
+        The live pre-squash catalog was compared with a fresh baseline for
+        columns, indexes, policies, functions, triggers, sequences and grants.
+        Five deferred foreign keys and two covering indexes are completed in
+        SQL; grants, forced row security and retained functions/triggers stay.
+        Six old `NOT VALID` constraints are validated on the empty baseline.
+        The artifact workspace identity becomes a unique constraint so its
+        foreign-key targets exist before generated indexes. An equivalent
+        `chr(59)` regex avoids drizzle-kit's semicolon check serialization bug;
+        two array-cast expressions are deparsed equivalently by PostgreSQL.
+        The required outbox dispatch cursor seed stays. All 26 reset migration
+        files become `0000_baseline.sql`, with tracked generation metadata;
+        the runner refuses old history and requires database recreation.
   - [x] SQL fences and leftovers removed before the re-squash (migration
         0025): the manual-start authority function and writer trigger, preview
         artifact retention trigger, lifecycle receipt-time trigger and unused
@@ -672,7 +690,7 @@ payload, provider response). Inner layers trust typed values.
 
 ## Database design
 
-- **Tables defined once** in Drizzle (all 84 tables are typed; the raw-SQL
+- **Tables defined once** in Drizzle (all 80 tables are typed; the raw-SQL
   JSON registry is gone). Queries use Drizzle's typed builder or
   `sql` templates with typed results — no hand-written column lists, row
   mappers or row validation.

@@ -1,4 +1,5 @@
 import {
+  type PgTableExtraConfigValue,
   boolean,
   char,
   check,
@@ -35,37 +36,37 @@ export const operatorCommands = appSchema.table(
     }).default(sql`clock_timestamp()`),
     result: jsonb().notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'operator_commands_completion_order',
-      sql`((((status)::text = 'pending'::text) AND (completed_at IS NULL)) OR (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text])) AND (completed_at IS NOT NULL) AND (completed_at >= created_at))) IS TRUE`,
+      sql`(((((status)::text = 'pending'::text) AND (completed_at IS NULL)) OR (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text])) AND (completed_at IS NOT NULL) AND (completed_at >= created_at))) IS TRUE)`,
     ),
     check(
       'operator_commands_fingerprint_valid',
-      sql`request_fingerprint ~ '^[0-9a-f]{64}$'::text`,
+      sql`(request_fingerprint ~ '^[0-9a-f]{64}$'::text)`,
     ),
     check(
       'operator_commands_outcome_valid',
-      sql`(outcome)::text ~ '^[a-z][a-z0-9_]{0,31}$'::text`,
+      sql`((outcome)::text ~ '^[a-z][a-z0-9_]{0,31}$'::text)`,
     ),
     check(
       'operator_commands_result_valid',
-      sql`(jsonb_typeof(result) = 'object'::text) AND (octet_length((result)::text) <= 16384)`,
+      sql`((jsonb_typeof(result) = 'object'::text) AND (octet_length((result)::text) <= 16384))`,
     ),
     check(
       'operator_commands_status_valid',
-      sql`(status)::text = ANY (ARRAY[('pending'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text])`,
+      sql`((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text]))`,
     ),
     check(
       'operator_commands_type_valid',
-      sql`command_type IN ('outbox.redispatch', 'attempt.reconcile', 'due-work.resume', 'unknown-outcome.record-evidence', 'run.cancel', 'run.replay', 'trigger.reconcile')`,
+      sql`((command_type)::text = ANY ((ARRAY['outbox.redispatch'::character varying, 'attempt.reconcile'::character varying, 'due-work.resume'::character varying, 'unknown-outcome.record-evidence'::character varying, 'run.cancel'::character varying, 'run.replay'::character varying, 'trigger.reconcile'::character varying])::text[]))`,
     ),
-    index('operator_commands_workspace_idx').on(table.workspaceId),
     foreignKey({
       name: 'operator_commands_workspace_fk',
       columns: [table.workspaceId],
       foreignColumns: [workspaces.id],
     }),
+    index('operator_commands_workspace_idx').on(table.workspaceId),
   ],
 );
 
@@ -90,24 +91,24 @@ export const operatorRunReplayRequests = appSchema.table(
       mode: 'string',
     }),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'operator_run_replay_completion_valid',
-      sql`(((status)::text = 'pending'::text) AND (result_run_id IS NULL) AND (safe_error_code IS NULL) AND (completed_at IS NULL)) OR (((status)::text = 'completed'::text) AND (result_run_id IS NOT NULL) AND (safe_error_code IS NULL) AND (completed_at IS NOT NULL)) OR (((status)::text = 'failed'::text) AND (result_run_id IS NULL) AND (safe_error_code IS NOT NULL) AND (completed_at IS NOT NULL))`,
+      sql`((((status)::text = 'pending'::text) AND (result_run_id IS NULL) AND (safe_error_code IS NULL) AND (completed_at IS NULL)) OR (((status)::text = 'completed'::text) AND (result_run_id IS NOT NULL) AND (safe_error_code IS NULL) AND (completed_at IS NOT NULL)) OR (((status)::text = 'failed'::text) AND (result_run_id IS NULL) AND (safe_error_code IS NOT NULL) AND (completed_at IS NOT NULL)))`,
     ),
     check(
       'operator_run_replay_fingerprint_valid',
-      sql`request_fingerprint ~ '^[0-9a-f]{64}$'::text`,
+      sql`(request_fingerprint ~ '^[0-9a-f]{64}$'::text)`,
     ),
     check(
       'operator_run_replay_input_bounded',
-      sql`octet_length((run_input)::text) <= 65536`,
+      sql`(octet_length((run_input)::text) <= 65536)`,
     ),
     check(
       'operator_run_replay_status_valid',
-      sql`(status)::text = ANY (ARRAY[('pending'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text])`,
+      sql`((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text]))`,
     ),
-    // DEFERRABLE INITIALLY DEFERRED in SQL; drizzle-orm cannot declare it.
+    // The baseline sets this foreign key DEFERRABLE INITIALLY DEFERRED.
     foreignKey({
       name: 'operator_run_replay_requests_command_id_fkey',
       columns: [table.commandId],
@@ -143,14 +144,14 @@ export const operatorUnknownOutcomeEvidence = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     check(
       'operator_unknown_evidence_kind_valid',
-      sql`(evidence_kind)::text ~ '^[a-z][a-z0-9_.-]{0,63}$'::text`,
+      sql`((evidence_kind)::text ~ '^[a-z][a-z0-9_.-]{0,63}$'::text)`,
     ),
     check(
       'operator_unknown_evidence_ref_valid',
-      sql`(jsonb_typeof(evidence_ref) = 'object'::text) AND (octet_length((evidence_ref)::text) <= 4096)`,
+      sql`((jsonb_typeof(evidence_ref) = 'object'::text) AND (octet_length((evidence_ref)::text) <= 4096))`,
     ),
     foreignKey({
       name: 'operator_unknown_evidence_attempt_fk',

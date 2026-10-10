@@ -1,7 +1,9 @@
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
+  type PgTableExtraConfigValue,
   bigint,
+  boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -32,18 +34,29 @@ export const workflowTriggerPausePeriods = appSchema.table(
       mode: 'string',
     }).notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
+    check(
+      'workflow_trigger_pause_periods_check',
+      sql`(resumed_at >= paused_at)`,
+    ),
+    check(
+      'workflow_trigger_pause_periods_pause_revision_check',
+      sql`(pause_revision > 0)`,
+    ),
     primaryKey({
+      name: 'workflow_trigger_pause_periods_pkey',
       columns: [table.workspaceId, table.workflowId, table.pauseRevision],
     }),
     foreignKey({
+      name: 'workflow_trigger_pause_periods_workspace_id_workflow_id_fkey',
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('cascade'),
+    // The baseline adds INCLUDE coverage; drizzle-orm cannot declare it.
     index('workflow_trigger_pause_periods_due_idx').on(
       table.workspaceId,
       table.workflowId,
-      table.pausedAt.desc(),
+      table.pausedAt.desc().nullsFirst(),
     ),
   ],
 );
@@ -65,7 +78,7 @@ export const workflowTriggerOutcomes = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
     foreignKey({
       name: 'workflow_trigger_outcomes_run_fk',
       columns: [table.workspaceId, table.runId],
@@ -76,13 +89,13 @@ export const workflowTriggerOutcomes = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('cascade'),
-    uniqueIndex('workflow_trigger_outcomes_run_unique').on(
-      table.workspaceId,
-      table.runId,
-    ),
     index('workflow_trigger_outcomes_pending_idx').on(
       table.createdAt,
       table.id,
+    ),
+    uniqueIndex('workflow_trigger_outcomes_run_unique').on(
+      table.workspaceId,
+      table.runId,
     ),
     index('workflow_trigger_outcomes_workflow_idx').on(
       table.workspaceId,
@@ -111,7 +124,15 @@ export const workflowFailureStreaks = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
+    check(
+      'workflow_failure_streaks_consecutive_failures_check',
+      sql`(consecutive_failures >= 0)`,
+    ),
+    check(
+      'workflow_failure_streaks_last_run_valid',
+      sql`((last_run_id IS NULL) = (last_ended_at IS NULL))`,
+    ),
     primaryKey({
       name: 'workflow_failure_streaks_pkey',
       columns: [table.workspaceId, table.workflowId],

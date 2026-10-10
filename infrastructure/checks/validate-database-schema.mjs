@@ -75,9 +75,10 @@ export function validateDatabaseSchemaSources({ migrationSql, schemaSource }) {
 /** Tables the migrations leave in place, applying creates and drops in order. */
 function liveTables(migrationSql) {
   const tables = new Set();
-  for (const [, command, name] of migrationSql.matchAll(
-    /(CREATE|DROP)\s+TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?app\.([a-z0-9_]+)/giu,
+  for (const [, command, quotedName, bareName] of migrationSql.matchAll(
+    /(CREATE|DROP)\s+TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:"app"|app)\s*\.\s*(?:"([a-z0-9_]+)"|([a-z0-9_]+))/giu,
   )) {
+    const name = quotedName ?? bareName;
     if (command.toUpperCase() === 'CREATE') tables.add(name);
     else tables.delete(name);
   }
