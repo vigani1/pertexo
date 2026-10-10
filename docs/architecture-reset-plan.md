@@ -566,6 +566,10 @@ now, as one ordered program — not "whenever we touch it".
           inheriting Vitest test mode; the unchanged real organization role
           journeys pass within the existing identity limits. StrictMode and
           effect reconnection retain their focused unit coverage.
+          A later live input-case list refresh failed once in CI; the same
+          journey passed six consecutive local runs. Its rename checks now
+          assert the list HTTP response before the unchanged visible-name
+          assertion, preserving limits and making a recurrence diagnosable.
           F08 runtime implementation is unchanged.
 - [x] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.

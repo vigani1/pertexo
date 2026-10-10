@@ -156,7 +156,14 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
   for (const name of ['Edited proof', 'Final original proof']) {
     await manager.getByRole('button', { name: /^Edit /u }).click();
     await manager.getByLabel('Case name', { exact: true }).fill(name);
+    const refreshed = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `${path}/input-cases` &&
+        response.request().method() === 'GET',
+    );
     await manager.getByRole('button', { name: 'Save input case' }).click();
+    // Distinguish a rejected list refresh from a stale rendered form.
+    expect((await refreshed).status()).toBe(200);
     await expect(
       manager.getByRole('button', { name: `Load ${name}`, exact: true }),
     ).toBeVisible();
