@@ -1,4 +1,4 @@
-import type { JsonValue } from '@pertexo/workflow-model';
+import type { JsonValue, WorkflowCallPin } from '@pertexo/workflow-model';
 
 export const RUN_STATUSES = [
   'queued',
@@ -27,14 +27,15 @@ export const NODE_STATUSES = [
 export type NodeStatus = (typeof NODE_STATUSES)[number];
 
 export type SideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
-export type WaitKind = 'node_wait' | 'retry_backoff';
+export type WaitKind = 'node_wait' | 'retry_backoff' | 'workflow_call';
 export type AdmissionKind = 'execute' | 'retry' | 'wait_resume';
 export type BranchDisposition =
   'pending' | 'arrived' | 'skipped' | 'missing' | 'failed' | 'canceled';
 
 export type OutputReference =
   | Readonly<{ readonly kind: 'inline'; readonly attemptId: string }>
-  | Readonly<{ readonly kind: 'artifact'; readonly artifactId: string }>;
+  | Readonly<{ readonly kind: 'artifact'; readonly artifactId: string }>
+  | Readonly<{ readonly kind: 'call'; readonly callId: string }>;
 
 export interface BranchScopePart {
   readonly nodeId: string;
@@ -72,6 +73,11 @@ export type JoinPolicy =
 /** Source facts consumed by the deterministic workflow transition engine. */
 export type WorkflowObservation =
   | { readonly kind: 'cursor_only' }
+  | {
+      readonly kind: 'call_started';
+      readonly invocationKey: string;
+      readonly coordinatorDerived: true;
+    }
   | {
       readonly kind: 'ready';
       readonly invocationKey: string;
@@ -275,7 +281,31 @@ export interface NodeRunAdmissionPlan {
   readonly iterationPath?: readonly IterationScopePart[];
 }
 
+export interface WorkflowCallIntent {
+  readonly invocationKey: string;
+  readonly target: WorkflowCallPin;
+  /** Physical declaration output; the Call result has a separate immutable owner. */
+  readonly input: Exclude<OutputReference, { kind: 'call' }>;
+}
+
+export interface WorkflowCallOutcome {
+  readonly nodeId: string;
+  readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
+  readonly callId: string;
+  readonly invocationKey: string;
+  readonly status:
+    | 'succeeded'
+    | 'failed'
+    | 'canceled'
+    | 'timed_out'
+    | 'outcome_unknown'
+    | 'refused';
+  readonly reasonCode?: string;
+}
+
 export interface WorkflowTransitionPlan {
+  readonly callIntents?: readonly WorkflowCallIntent[];
   /** A validated callable result for ordinary run storage, never checkpoint data. */
   readonly runResult?: JsonValue;
   readonly expectedRevision: number;

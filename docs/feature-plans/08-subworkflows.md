@@ -502,11 +502,29 @@ transfers, closed root/nested unwind, target concurrency refusal, duplicate
 return, ordinary-release fencing, failed/published hint recovery and terminal
 return recovery. A one-row recovery batch progresses past active or unpublished
 borrowers. Opposing-writer tests prove the return does not lock the existing
-child and a parent writer does not block child settlement. The full live database suite passes 706 tests (46 optional tests skipped),
+child and a parent writer does not block child settlement. The full live
+database suite passes 706 tests (46 optional tests skipped),
 and all 526 database unit tests pass. The existing concurrency and
 Call-retirement suites pass all 41 cases. These are storage and
 capacity proofs; atomic runtime spawn, ordinary-work exclusion and the complete
 Call editor/worker path remain required before slice 3 is complete.
+
+### Slice 3 engine qualification
+
+The pure engine separates prepared Call input from the child result. Physical
+SDK success produces one immutable intent and a durable Call wait without a
+timer; a relational child outcome settles that invocation with a Call result
+reference. Parent cancellation, deadline and unknown-outcome rules remain the
+ordinary engine rules. An explicit execution-slot input prevents admissions and
+continuation polling while the parent lends its slot.
+
+All 396 engine tests and 209 model tests pass. Call cases cover JSON checkpoint
+restart, duplicate/conflicting outcomes, malformed and fabricated scopes, late
+child completion after parent termination, child failure/unknown, Call sinks in
+finished-loop pruning and ready ordinary work without an execution slot. These
+are pure transition proofs; durable intent persistence, atomic child acceptance,
+result loading, worker recovery and the editor remain unfinished. Call is not
+yet registered in the serving node catalog, and slice 3 remains incomplete.
 
 | Slice                  | Behavior at its end                                                                                                                           | Required evidence                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

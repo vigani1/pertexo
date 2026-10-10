@@ -21,6 +21,7 @@ export interface AdvanceWorkflowFromSchedulerStateInput {
   readonly observations?: readonly WorkflowObservation[];
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
+  readonly hasExecutionSlot?: boolean;
   /** Production source facts are already durable events and must not be emitted again. */
   readonly persistedObservationCursor?: Readonly<{
     expectedNextEventSequence: number;
@@ -129,6 +130,7 @@ export function advanceWorkflowFromSchedulerState(
     consumedObservationCount,
     consumedThroughEventSequence,
     maximumAdmissions: input.maximumAdmissions,
+    hasExecutionSlot: input.hasExecutionSlot ?? true,
     occurredAt: input.occurredAt,
   });
 }

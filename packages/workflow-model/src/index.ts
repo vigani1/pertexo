@@ -1,5 +1,12 @@
 // Safe anywhere, including the browser. Node-only parts are in ./server.ts.
 export { assertNever } from './assert-never.js';
+export {
+  workflowCallPinSchema,
+  workflowCallConfigSchema,
+  isWorkflowCallDefinition,
+  type WorkflowCallConfig,
+} from './callable/invocation.js';
+export type { WorkflowCallPin } from './callable/dependencies.js';
 export { CallableInputInvalidError } from './callable/errors.js';
 export {
   callableTypeStructuralSchema,

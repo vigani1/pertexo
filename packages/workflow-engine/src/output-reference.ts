@@ -9,5 +9,7 @@ export function sameOutputReference(
     return left.attemptId === right.attemptId;
   if (left.kind === 'artifact' && right.kind === 'artifact')
     return left.artifactId === right.artifactId;
+  if (left.kind === 'call' && right.kind === 'call')
+    return left.callId === right.callId;
   return false;
 }
