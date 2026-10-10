@@ -17,7 +17,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
-} from './run-store.fixtures.js';
+} from './fixtures.js';
 
 function recordBenchmarkOperation(name: string, startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;

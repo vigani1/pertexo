@@ -19,7 +19,7 @@ import type {
   WorkflowAuthoringDatabase,
 } from '../contracts.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
-import { mapWorkflow, workflowRowSelection } from '../rows.js';
+import { mapWorkflow, workflowRowSelection } from '../representation/rows.js';
 import { reconcileWorkflowTriggersPayload } from '../../publication/trigger-reconciliation.js';
 
 const uuidSchema = z.uuid();

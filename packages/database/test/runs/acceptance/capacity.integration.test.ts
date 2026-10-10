@@ -23,7 +23,7 @@ import {
   workerDatabase,
   workspaceA,
   workspaceB,
-} from './acceptance.fixtures.js';
+} from './fixtures.js';
 
 installExecutionAcceptanceFixture();
 

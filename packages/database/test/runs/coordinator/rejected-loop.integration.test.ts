@@ -20,7 +20,7 @@ for (const name of [
   if (!process.env[name])
     throw new Error(`${name} must be explicitly supplied`);
 }
-const fixture = await import('../run-store/run-store.fixtures.js');
+const fixture = await import('../run-store/fixtures.js');
 const signal = () => new AbortController().signal;
 const items = ['one', 'two', 'three', 'four'];
 

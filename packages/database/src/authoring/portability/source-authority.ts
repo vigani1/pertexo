@@ -12,7 +12,7 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../workflows/errors.js';
-import { mapDraft } from '../workflows/rows.js';
+import { mapDraft } from '../workflows/representation/rows.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 /** Lock workflow before its selected source; select catalog only after source. */

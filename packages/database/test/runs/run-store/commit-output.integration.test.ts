@@ -11,7 +11,7 @@ import {
   workerBaseUrl,
   workspaceA,
   workspaceB,
-} from './run-store.fixtures.js';
+} from './fixtures.js';
 import { generatePersistedId } from '../../../src/platform/persisted-id.js';
 
 describe('Coordinator output commit invariants', () => {

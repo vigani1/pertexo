@@ -10,7 +10,7 @@ import {
   completeCommand,
   type CommandIdentity,
 } from '../../platform/idempotency.js';
-import type { WorkflowRecord } from './records.js';
+import type { WorkflowRecord } from './representation/records.js';
 
 const uuidSchema = z.uuid();
 const revisionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);

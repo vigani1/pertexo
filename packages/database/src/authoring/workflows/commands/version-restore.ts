@@ -10,7 +10,7 @@ import type {
   RestoreWorkflowVersionInput,
   WorkflowAuthoringDatabase,
 } from '../contracts.js';
-import type { WorkflowDraftRecord } from '../records.js';
+import type { WorkflowDraftRecord } from '../representation/records.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
 import {
   mapDraft,
@@ -18,7 +18,7 @@ import {
   mapWorkflow,
   workflowRowSelection,
   workflowVersionRowSelection,
-} from '../rows.js';
+} from '../representation/rows.js';
 
 type VersionRestoreStore = Pick<
   WorkflowAuthoringDatabase,

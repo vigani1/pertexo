@@ -47,7 +47,7 @@ import { createIdentityWorkspaceRoleCommandStore } from './members/roles.js';
 import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.js';
 import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.js';
 import { createIdentityWorkspaceProfileStore } from './users/profile.js';
-import { createIdentityWorkspaceRenameStore } from './workspace-rename.js';
+import { createIdentityWorkspaceRenameStore } from './workspaces/rename.js';
 import { createIdentityWorkspaceInvitationStore } from './invitations/store.js';
 import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance.js';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapWorkflow } from '../../../src/authoring/workflows/rows.js';
+import { mapWorkflow } from '../../../src/authoring/workflows/representation/rows.js';
 
 function storedWorkflow(activationStatus: unknown) {
   return {

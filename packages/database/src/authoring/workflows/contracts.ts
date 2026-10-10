@@ -9,7 +9,7 @@ import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './records.js';
+} from './representation/records.js';
 import type {
   GraphValidationResult,
   PortableConnectionBinding,

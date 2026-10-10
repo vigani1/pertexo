@@ -25,7 +25,7 @@ import {
   workerBaseUrl,
   workflowA,
   workspaceA,
-} from '../../runs/run-store/run-store.fixtures.js';
+} from '../../runs/run-store/fixtures.js';
 
 export {
   actorId,

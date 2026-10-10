@@ -29,7 +29,7 @@ import {
   workflowB,
   workspaceA,
   workspaceB,
-} from './run-store.fixtures.js';
+} from './fixtures.js';
 import { createDatabaseRuntime } from '../../../src/platform/pool/runtime.js';
 
 const predecessorPrimaryFailureSchema = z

@@ -11,7 +11,7 @@ import {
   actorId,
   apiBaseUrl,
   migrationBaseUrl,
-} from '../../runs/run-store/run-store.fixtures.js';
+} from '../../runs/run-store/fixtures.js';
 import {
   applyHealthCommand,
   asOwner,

@@ -34,7 +34,7 @@ import {
   workerBaseUrl,
   workspaceA,
   workflowA,
-} from './run-store.fixtures.js';
+} from './fixtures.js';
 
 /** The input recorded on a node run, as stored. */
 async function storedNodeRunInput(nodeRunId: string): Promise<unknown> {

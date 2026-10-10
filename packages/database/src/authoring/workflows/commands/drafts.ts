@@ -15,14 +15,18 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../errors.js';
-import { createdWorkflowRowSchema, mapDraft, mapWorkflow } from '../rows.js';
+import {
+  createdWorkflowRowSchema,
+  mapDraft,
+  mapWorkflow,
+} from '../representation/rows.js';
 import type {
   CreateWorkflowInput,
   CreateWorkflowResult,
   SaveWorkflowDraftInput,
   WorkflowAuthoringDatabase,
 } from '../contracts.js';
-import type { WorkflowDraftRecord } from '../records.js';
+import type { WorkflowDraftRecord } from '../representation/records.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
 
 type DraftStore = Pick<

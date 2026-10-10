@@ -30,12 +30,12 @@ import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
 } from '../workflows/contracts.js';
-import type { WorkflowVersionRecord } from '../workflows/records.js';
+import type { WorkflowVersionRecord } from '../workflows/representation/records.js';
 import {
   mapDraft,
   mapVersion,
   workflowVersionRowSelection,
-} from '../workflows/rows.js';
+} from '../workflows/representation/rows.js';
 import {
   reconcileWorkflowTriggersPayload,
   persistPublishedWorkflowTriggers,
