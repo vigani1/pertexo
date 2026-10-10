@@ -1,5 +1,5 @@
 import { WorkflowEngineError } from '../errors.js';
-import { completeLoopIteration, createLoopState } from './scheduling.js';
+import { completeLoopIteration, createLoopState } from './scheduling/loops.js';
 import { sameOutputReference } from '../output-reference.js';
 import { assertNodeTransition } from './status-transitions.js';
 import type {

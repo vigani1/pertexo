@@ -3,7 +3,7 @@ import { parseCheckpoint } from '../../src/checkpoint/create-and-parse.js';
 import {
   configuredParallelOutputPorts,
   deriveReadyNodes,
-} from '../../src/transition/scheduler.js';
+} from '../../src/transition/scheduling/readiness.js';
 import { parseSchedulerGraph, type SchedulerGraph } from './scheduler-graph.js';
 import type {
   WorkflowObservation,
@@ -56,18 +56,18 @@ export function advanceWorkflow(
 
 export { configuredParallelOutputPorts, deriveReadyNodes, parseSchedulerGraph };
 export type { SchedulerGraph, WorkflowObservation };
-export type { ReadyNodeDecision } from '../../src/transition/scheduler.js';
+export type { ReadyNodeDecision } from '../../src/transition/scheduling/readiness.js';
 export {
   admitLoopIterations,
   completeLoopIteration,
   createLoopState,
   recordBranchDisposition,
   settleJoin,
-} from '../../src/transition/scheduling.js';
+} from '../../src/transition/scheduling/loops.js';
 export type {
   JoinDecision,
   LoopAdmission,
-} from '../../src/transition/scheduling.js';
+} from '../../src/transition/scheduling/loops.js';
 export {
   decideRetry,
   ENGINE_RETRY_POLICY,

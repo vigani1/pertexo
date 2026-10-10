@@ -10,12 +10,12 @@ import { completedOutputReference } from './coordinator-output.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
-} from '../transition/scheduler.js';
+} from '../transition/scheduling/readiness.js';
 import { isCoreMergeDefinition } from '../core-definition-identities.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
 import { uuidPattern } from './persisted.js';
-import { invocationKey as createInvocationKey } from '../transition/scheduling.js';
+import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
 import type { JoinPolicy, WorkflowObservation } from '../types.js';
 
 type CheckpointInvocation = ReturnType<

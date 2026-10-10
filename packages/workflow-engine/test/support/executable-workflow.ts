@@ -1,4 +1,4 @@
-import { invocationKey } from '../../src/transition/scheduling.js';
+import { invocationKey } from '../../src/transition/scheduling/loops.js';
 import {
   createNodeCatalog,
   type NodeManifest,

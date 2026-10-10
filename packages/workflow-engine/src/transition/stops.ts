@@ -1,7 +1,7 @@
 import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '../ordering.js';
 import { sameIterationPath } from '../scope.js';
-import { completeLoopIteration } from './scheduling.js';
+import { completeLoopIteration } from './scheduling/loops.js';
 import { assertNodeTransition } from './status-transitions.js';
 import type { InvocationState } from '../types.js';
 import {

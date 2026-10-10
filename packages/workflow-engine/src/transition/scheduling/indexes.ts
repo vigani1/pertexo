@@ -1,8 +1,8 @@
 import {
   isCoreMergeDefinition,
   isCoreParallelDefinition,
-} from '../core-definition-identities.js';
-import type { SchedulerState } from './scheduler.js';
+} from '../../core-definition-identities.js';
+import type { SchedulerState } from './readiness.js';
 
 type SchedulerNode = SchedulerState['nodes'][number];
 

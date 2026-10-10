@@ -10,7 +10,7 @@ import {
   type IterationScopePart,
 } from '../types.js';
 import { types as nodeTypes } from 'node:util';
-import { invocationKey } from '../transition/scheduling.js';
+import { invocationKey } from '../transition/scheduling/loops.js';
 import { compareOrdinal } from '../ordering.js';
 import { assertCanonicalTimestamp } from './identity.js';
 

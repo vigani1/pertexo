@@ -8,11 +8,11 @@ import type {
 import {
   configuredParallelOutputPorts,
   configuredScopedOutputPorts,
-} from '../transition/scheduler.js';
+} from '../transition/scheduling/readiness.js';
 import { operationError } from '../operation-values.js';
 import { compareOrdinal } from '../ordering.js';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
-import { invocationKey as createInvocationKey } from '../transition/scheduling.js';
+import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
 
 type ParsedCheckpoint = ReturnType<typeof parseCheckpoint>;
 type CheckpointJoin = ParsedCheckpoint['joins'][number];

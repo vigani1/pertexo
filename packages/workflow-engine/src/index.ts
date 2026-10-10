@@ -41,5 +41,5 @@ export type {
   WorkflowExecutableNode,
   WorkflowExecutable,
 } from './compilation/foundation.js';
-export { invocationKey } from './transition/scheduling.js';
+export { invocationKey } from './transition/scheduling/loops.js';
 export type * from './types.js';
