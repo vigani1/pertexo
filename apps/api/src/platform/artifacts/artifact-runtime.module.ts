@@ -13,7 +13,7 @@ import {
   type ArtifactUploadDatabase,
   type ArtifactStore,
 } from '../../artifacts/index.js';
-import type { ApiConfig } from '../config/api-config.js';
+import type { ApiConfig } from '../config/api.js';
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
 
 export const DEFAULT_ARTIFACT_MAX_OBJECT_BYTES = 10 * 1024 * 1024;

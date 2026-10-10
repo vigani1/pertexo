@@ -27,7 +27,7 @@ import {
   type IdentityWorkspaceDependencies,
 } from '../../workspaces/index.js';
 import type { IdentityClock } from '../../identity/index.js';
-import type { ApiIdentityConfig } from '../config/identity-config.js';
+import type { ApiIdentityConfig } from '../config/identity.js';
 import { composeBetterAuthRuntime } from './better-auth-composition.js';
 
 export type ApiIdentityRuntime = Readonly<{

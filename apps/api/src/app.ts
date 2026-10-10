@@ -12,7 +12,7 @@ import {
   type ApiApplicationDependencies,
 } from './api-runtimes.js';
 import { AppModule } from './app.module.js';
-import type { ApiConfig } from './platform/config/api-config.js';
+import type { ApiConfig } from './platform/config/api.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { ApiShutdownCoordinator } from './platform/health/drain-state.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';

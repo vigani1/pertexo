@@ -10,7 +10,7 @@ import type {
   IdentitySessionAuthority,
   IdentityWorkspaceDependencies,
 } from '../../src/workspaces/index.js';
-import type { ApiConfig } from '../../src/platform/config/api-config.js';
+import type { ApiConfig } from '../../src/platform/config/api.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import type { ApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
 import type { WorkflowAuthoringDependencies } from '../../src/workflow-authoring/index.js';

@@ -37,7 +37,7 @@ import {
   SESSION_AUTHORITY,
   type IdentitySessionAuthority,
 } from '../../src/workspaces/index.js';
-import type { ApiConfig } from '../../src/platform/config/api-config.js';
+import type { ApiConfig } from '../../src/platform/config/api.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { createActorContext } from '../../src/authorization/index.js';
 import { StreamRunEventsUseCase } from '../../src/workflow-runs/index.js';

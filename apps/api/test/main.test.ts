@@ -3,7 +3,7 @@ import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import { describe, expect, it, vi } from 'vitest';
 
 import { bootstrapApi, type ApiBootstrapModules } from '../src/main.js';
-import { parseApiConfig } from '../src/platform/config/api-config.js';
+import { parseApiConfig } from '../src/platform/config/api.js';
 
 const config = parseApiConfig({
   DATABASE_URL: 'postgresql://api:secret@localhost:5432/pertexo',

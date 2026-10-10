@@ -5,7 +5,7 @@ import {
   createApiApplication,
   type ApiApplicationDependencies,
 } from '../../../src/app.js';
-import type { ApiConfig } from '../../../src/platform/config/api-config.js';
+import type { ApiConfig } from '../../../src/platform/config/api.js';
 import { createApiScheduleRuntime } from '../../../src/platform/schedules/schedule-runtime.module.js';
 import type { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
 

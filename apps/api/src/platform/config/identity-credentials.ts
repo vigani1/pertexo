@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-import type {
-  ApiIdentityConfig,
-  IdentityEnvironment,
-} from './identity-config.js';
+import type { ApiIdentityConfig, IdentityEnvironment } from './identity.js';
 
 /*
  * Parsers for the credential- and key-bearing identity sections. Their errors
