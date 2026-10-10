@@ -19,28 +19,18 @@ workflow Settings and timestamped queued-run blocker explanations. It preserves
 workspace limits and explains grandfathered active/reserved runs. Skip overflow,
 per-trigger defaults and independent workflow queue limits remain deferred.
 
-ADR 061's first input-case slice uses the existing workflow hub and Run with
-input dialog. Named synthetic JSON cases stay bound to their original published
-version; loading makes a detached copy and never executes anything. Case edits
-require `workflow:update`, loading requires `workflow:read`, and starting still
-requires `run:start`. Starts explicitly confirm real effects. When enabled, they
-send the checked published-version precondition; the existing case-list endpoint
-reports that gate. When it reports rollout unavailable, ordinary Run actions
-remain deliberately confirmable without a version precondition, using the
-publication current at acceptance. Loaded cases and previously submitted checked
-commands never downgrade. Unconfirmed starts keep the original input, deadline,
-version and key; exact recovery ends after 24 hours, and does not silently
-permit a replacement run. Case controls require the backend's default-off
-compatible-writer gate; unavailable installations show that limit without
-claiming prior case commands were not accepted.
+Named synthetic JSON input cases live in the workflow hub and Run with input
+dialog. They retain their published-version context; loading makes a detached
+copy. Edits require `workflow:update`, loading requires `workflow:read`, and
+starting requires `run:start` plus confirmation of real effects. Checked starts
+carry the expected publication; conflicts require explicit review. Uncertain
+commands retain their exact input, deadline, version and key for the original
+24-hour recovery window. Input cases are always available.
 
-For the proposed implementation direction, read
-[Frontend architecture and implementation plan](ARCHITECTURE.md). It covers
-folder ownership, API/shared types, Router/Query/Zustand communication, forms,
-errors, saving conflicts, auth, SSE, legacy design reuse and delivery gates. It
-is a plan, not a list of delivered features. It also specifies function/helper
-placement, component composition, skill usage, and the proposed screen/user-flow
-map with backend prerequisites and deferred surfaces.
+Read [Frontend architecture](ARCHITECTURE.md) for folder ownership, shared
+contracts, state, forms, saving conflicts, auth, SSE, Weft and verification.
+[The repository architecture map](../../docs/architecture.md) describes backend
+ownership. Upcoming product work is in `docs/feature-plans/`.
 
 ## Run and verify
 
@@ -75,16 +65,11 @@ same local and CI command; it does not depend on another CI job's build output.
 Use the script rather than a direct Playwright invocation when those package
 artifacts have not been built.
 
-CI's e2e job also runs `test/browser/usage.integration.test.ts` explicitly with
-`USAGE_BROWSER_INTEGRATION=true`, after building the API dependency closure and
-starting its owned PostgreSQL/Redis services. This real Usage journey owns its
-disposable database, API and browser processes; its JSON report must contain one
-passing test and no skips. The ordinary API integration job and mirrored
-local-quality cohort exclude that browser-only file. To run it locally, install
-Chromium, build with `pnpm --filter @pertexo/api... build`, provide isolated
-`DATABASE_ADMIN_URL`, `DATABASE_MIGRATION_URL`, `DATABASE_URL` and `REDIS_URL`,
-then run
-`USAGE_BROWSER_INTEGRATION=true pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts test/browser/usage.integration.test.ts`.
+CI runs mocked browser journeys and the existing owned browser/application
+fixtures. Live fixtures are declared in `apps/api/test/owned/` and run by the
+API owned-fixture command with isolated PostgreSQL/Redis/service configuration.
+Use the fixture's ownership requirements; mocked journeys do not qualify live
+provider credentials or production deployment.
 
 Root build/typecheck/lint/test commands include this workspace. CI runs both its
 unit tests and the authenticated Chromium journeys. The production output is
@@ -188,39 +173,22 @@ endpoint-specific problem decoders. Feature endpoint modules for auth,
 workspaces, workflows, catalog, connections, publishing, runs, settings and
 artifacts are the current production callers.
 
-## Next implementation
+## Current scope and upcoming work
 
-The existing Connections detail lens also presents ADR 059 health evidence:
-Unknown, Healthy, Needs reauthorization and Revoked, with separate
-explicit-test, run-observation and transition timestamps. Automatic run coverage
-is limited to Slack Send message when enabled. Its Used by section pages
-retained published versions (including historical and archived references), not
-drafts, through the authorized usage endpoint. Workflow alert-destination
-settings link to this same lens. Scope-denied reads cancel earlier requests and
-forget cached metadata; credential commands fence old reads before applying
-their returned snapshot. Connection regressions include held-response access
-fences, explicit recovery, rotation and permission-aware usage. The mocked
-browser journey is distinct from `e2e-live/connection-health.spec.ts`, which
-requires the owned API/worker fixture and controls only external Slack
-transport.
+The connection lens presents Unknown, Healthy, Needs reauthorization and
+Revoked, with explicit-test, run-observation and transition timestamps.
+Automatic run health applies to supported provider observations without a
+rollout switch. The Used by section pages through retained published versions,
+including archived references, using the authorized usage endpoint. Reads and
+credential commands retain their scope and late-response fences.
 
-The staged frontend baseline, connection-management increments, explicit run
-replay, workspace run history, notification-destination management, authorized
-member list and workspace lifecycle settings slices in the architecture plan are
-complete. Existing-member role changes are implemented; invitations are
-implemented with remaining provider/full-stack and cross-browser verification
-gates recorded in the plan. Workspace creation UI, display-name editing, the
-bounded Overview and visual input mappings are implemented. The selected N1–N3
-and M1 slices now require their planned integrated review. Artifact input upload
-remains gated on a supported artifact-valued node/input contract and its browser
-proof; templates and additional non-billing usage insights remain optional
-decision-gated slices beyond the read-only ADR 057 capacity/activity page.
-Payments and billing are outside current scope. Add future surfaces only from
-concrete product demand and existing contracts, following the
-[definition of done](ARCHITECTURE.md#14-definition-of-done-for-each-feature) and
-[coding patterns](ARCHITECTURE.md#2-folders-and-dependency-direction). Do not
-invent discovery contracts or enable artifact uploads without the required
-real-browser signing/CORS/checksum/finalize proof.
+The editor, workflow operations, versions, run history, replay, members,
+invitations, workspace lifecycle, inbox, read-only capacity/activity and curated
+templates use current API contracts. Subworkflows remain a plan awaiting review.
+Artifact upload UI needs its supported input contract and real signing/CORS/
+checksum/finalize proof. Payments and billing remain future product work. Follow
+the [definition of done](ARCHITECTURE.md#14-definition-of-done-for-each-feature)
+and feature plans when adding a surface.
 
 ## Weft design system
 
@@ -241,19 +209,9 @@ unauthenticated redirects, sign-in errors, workspace empty/error/deep-link
 states, confirmed logout cleanup, late-response cancellation, keyboard focus,
 narrow layout and reduced motion. Mocked-boundary Chromium journeys inspect the
 desktop shell and the 390-pixel editor fallback, including keyboard panel
-switching, useful canvas dimensions and retained inspector scratch state. After
-the Weft uniformity pass, React Doctor's scan of the changes that pass made
-reports no diagnostics. Its scan of the whole Weft branch against `main` keeps
-19 reviewed advisories that are not defects: loading flags already reset in
-`finally` behind a request-ownership check, a validation message whose name
-reads like a token, the inspector's deliberate `flushSync` before focusing a
-tab's control, an append-only step story keyed by position, the invitation
-journey's token-handover and StrictMode-safe retirement effects, the Loom's
-pointer shortcut (each run is also a link in the list beside it), and two
-mutations whose cache update the caller supplies or which change nothing cached
-yet. The score remains a triage aid rather than a delivery gate. Firefox and
-WebKit run the critical smoke journeys; browser journeys against the real stack
-run from the API integration suite.
+switching, useful canvas dimensions and retained inspector scratch state.
+Firefox and WebKit run the critical smoke journeys; browser journeys against the
+real stack run from the API integration suite.
 
 React Compiler was evaluated with the documented Babel/Vite integration and was
 not adopted: the controlled trial increased build work and emitted bundle size

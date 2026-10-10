@@ -14,7 +14,7 @@ Immutable versions and restore/diff exist. They are not separate environments, c
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [apps/web/src/features/workflow-settings/workflow-versions-page.tsx](../../apps/web/src/features/workflow-settings/workflow-versions-page.tsx)
+- [apps/web/src/features/workflow-settings/pages/workflow-versions.tsx](../../apps/web/src/features/workflow-settings/pages/workflow-versions.tsx)
 - [docs/adr/002-postgresql-jsonb-drafts-immutable-versions-checksum-identity.md](../../docs/adr/002-postgresql-jsonb-drafts-immutable-versions-checksum-identity.md)
 
 “Not established” means no complete product was found in this targeted inventory,

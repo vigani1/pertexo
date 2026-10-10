@@ -155,7 +155,7 @@ Evidence log:
   and a real API/worker/browser cap-setting, queued-blocker, runtime-restart, and removal
   proof. Ordered starts do not promise completion or external-effect ordering.
   Receipt reaping is executed; tenant-purge inventory is verified without
-  claiming actual purge execution. [The enforcement note](../operations/workflow-concurrency-enforcement.md)
+  claiming actual purge execution. The historical enforcement note (retained in Git)
   records lock order, readiness/role boundaries, old-writer rejection, quiesced
   rollout and rollback. Manager implementation review, full release gates,
   scoped merge, and natural postmerge checks remain open. See the

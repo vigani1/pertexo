@@ -9,9 +9,9 @@
 
 ## Context
 
-[F03](../feature-plans/03-workspace-notifications.md) and the
-[detailed inbox plan](../workspace-notifications-plan.md) propose a personal
-workspace inbox. Existing run events, external failure-alert destinations and
+The original F03 outline proposed a personal workspace inbox.
+[The current F03 plan](../feature-plans/03-workspace-notifications.md) records
+the later per-workflow design under ADR 055. Existing run events, external failure-alert destinations and
 transport inbox receipts are not that product. Architectural/product decisions
 are accepted for bounded implementation. This does not authorize production
 activation or establish measured operating capacity.
@@ -385,22 +385,22 @@ evidence:
   Neither proves the proposed capture budget or aggregate worker admission.
 - [Tenant transactions](../../packages/database/src/tenant-access/transactions.ts),
   `WorkspaceTransactionOptions`/`verifyTenantContext`, enforce scoped context and
-  optional statement limits. [Operator transactions](../../packages/database/src/operator/operator-transaction.ts),
+  optional statement limits. Operator transactions (`packages/database/src/operator/operator-transaction.ts`, historical source retained in Git),
   `runOperatorTransaction`, own abortable checkout, cancellation disposal and
   uncertain COMMIT handling. These establish seams to reuse, not an existing
   capture-wide deadline/admission implementation.
-- [Operator command inputs](../../apps/operator-command/src/config.ts) and
-  [execution](../../apps/operator-command/src/run.ts),
+- Operator command inputs (`apps/operator-command/src/config.ts`, historical source retained in Git) and
+  execution (`apps/operator-command/src/run.ts`, historical source retained in Git),
   `executeConfiguredCommand`, already support bounded actor/reason, command IDs,
-  dry-run and status lookup. [Redispatch migration 0061](../../packages/database/migrations/0061_operator_outbox_redispatch.sql),
+  dry-run and status lookup. Redispatch migration 0061 (`packages/database/migrations/0061_operator_outbox_redispatch.sql`, historical source retained in Git),
   `app.redispatch_failed_outbox_event`, demonstrates fingerprinted receipts,
   safe audited outcomes and narrow SQL authority. The proposed inbox command
   requires additive code/migration; it is not supported today.
 - [ADR 013](013-retention-workspace-deletion-legal-hold.md) specifies 30-day detail,
   90-day summary, operation-specific receipts and no in-progress reaping.
-  [Retention schedule 0055](../../packages/database/migrations/0055_standard_retention_classes.sql),
+  Retention schedule 0055 (`packages/database/migrations/0055_standard_retention_classes.sql`, historical source retained in Git),
   `app.schedule_due_retention_batches`, and
-  [retention bounds](../../packages/database/src/lifecycle/retention-support.ts),
+  retention bounds (`packages/database/src/lifecycle/retention-support.ts`, historical source retained in Git),
   `retentionOptionsSchema`, demonstrate explicit classes and durable bounded pages
   (default 100). They do not already include inbox sources or a generic outbox
   expiry. New feature cleanup must integrate the current purge implementation,
@@ -560,7 +560,7 @@ HTTP/frontend, read-all/SSE, declared-load and activation gates remain required.
 
 ### Inactive P2 fan-out persistence — locally qualified, uncommitted (2026-09-29)
 
-Forward [migration 0122](../../packages/database/migrations/0122_workspace_inbox_projection.sql)
+Forward migration 0122 (`packages/database/migrations/0122_workspace_inbox_projection.sql`, historical source retained in Git)
 and the feature-owned
 projection store (`packages/database/src/execution/workspace-inbox/projection-store.ts`, removed with ADR 055)
 add one owned `projectNextPage` operation. Ordinary callers do not receive

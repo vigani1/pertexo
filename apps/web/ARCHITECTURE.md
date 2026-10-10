@@ -43,19 +43,19 @@ React Flow draws the graph; Zustand owns unsaved edits; neither executes nodes.
 
 ### Fixed choices
 
-| Concern                    | Choice                                                     | Scope                                                                     |
-| -------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
-| App/build                  | Existing React 19, TypeScript, Vite, pnpm workspace        | Keep pinned foundation versions; no stack migration                       |
-| Navigation                 | TanStack Router, code-based routes                         | URL parameters, validated search, loaders, pending/error states           |
-| Server state               | TanStack Query                                             | Cached API snapshots, loading, mutations and invalidation                 |
-| Client state               | React locally; provider-scoped Zustand for editor          | No global business-data store                                             |
-| Canvas                     | React Flow (`@xyflow/react`)                               | Controlled rendering and gestures behind an adapter                       |
-| HTTP                       | Native `fetch`, one small shared transport                 | JSON/errors/cookies/cancellation; no Axios or generated SDK initially     |
-| Static forms               | Existing controlled React forms + shared Zod schemas       | Keep one owner per form; adopt RHF only through a deliberate replacement  |
-| Dynamic node configuration | Catalog-driven, bounded field renderer                     | Advisory client checks; backend semantic validation remains authoritative |
-| UI                         | Existing shadcn **Base UI** setup, CVA, Tailwind 4         | Owned primitives and semantic tokens, not mixed Radix/Base recipes        |
-| Motion                     | CSS first                                                  | Add a motion library only for a demonstrated interaction requirement      |
-| Tests                      | Vitest/Testing Library, MSW at first API slice, Playwright | Model, component/network, and real-browser integration seams              |
+| Concern                    | Choice                                               | Scope                                                                     |
+| -------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| App/build                  | Existing React 19, TypeScript, Vite, pnpm workspace  | Keep pinned foundation versions; no stack migration                       |
+| Navigation                 | TanStack Router, code-based routes                   | URL parameters, validated search, loaders, pending/error states           |
+| Server state               | TanStack Query                                       | Cached API snapshots, loading, mutations and invalidation                 |
+| Client state               | React locally; provider-scoped Zustand for editor    | No global business-data store                                             |
+| Canvas                     | React Flow (`@xyflow/react`)                         | Controlled rendering and gestures behind an adapter                       |
+| HTTP                       | Native `fetch`, one small shared transport           | JSON/errors/cookies/cancellation; no Axios or generated SDK initially     |
+| Static forms               | Existing controlled React forms + shared Zod schemas | Keep one owner per form; adopt RHF only through a deliberate replacement  |
+| Dynamic node configuration | Catalog-driven, bounded field renderer               | Advisory client checks; backend semantic validation remains authoritative |
+| UI                         | Existing shadcn **Base UI** setup, CVA, Tailwind 4   | Owned primitives and semantic tokens, not mixed Radix/Base recipes        |
+| Motion                     | CSS first                                            | Add a motion library only for a demonstrated interaction requirement      |
+| Tests                      | Vitest/Testing Library, MSW, Playwright              | Model, component/network, and real-browser integration seams              |
 
 React Hook Form is not installed in the delivered frontend. Existing forms keep
 their feature-owned controlled state and shared Zod parsing, with submit-time
@@ -67,9 +67,8 @@ verify compatible versions when that slice is implemented.
 
 ## 2. Folders and dependency direction
 
-The following is a target map, not a request to create empty directories. Add
-files when their behavior exists. Keep a small feature flat until subfolders
-make it easier to navigate.
+The map follows current ownership. Add files when their behavior exists; group a
+feature by role and sub-area as it grows.
 
 ```text
 apps/web/
@@ -79,8 +78,6 @@ apps/web/
     app/
       router.ts                 # inject query client and API dependency
       query-client.ts           # conservative shared cache defaults
-      app-providers.tsx          # dependency/context composition, when needed
-      session-lifecycle.ts      # scoped cleanup on login/logout/identity change
     routes/
       root/                     # route tree, root layout, pending/not-found pages
       auth/                     # login, sign-up, password, invitation routes
@@ -100,21 +97,20 @@ apps/web/
       catalog/                  # API catalog queries + selection UI
       connections/              # credential forms, safe metadata and picker
       workflow-editor/
-        workflow-editor.tsx     # feature entry/composition
+        pages/workflow-editor.tsx # feature entry/composition
         model/
-          editor.store.ts       # factory, selectors, commands; no networking
-          editor-provider.tsx   # one store per editor identity
-          editor-history.ts     # bounded coherent edit transactions
-          graph-adapter.ts      # domain graph ↔ canvas representation
-          save-coordinator.ts   # serialized conditional saves and conflicts
+          state/store.ts        # factory, selectors, commands; no networking
+          state/provider.tsx    # one store per editor identity
+          persistence/editor-history.ts # bounded edit transactions
+          graph/adapter.ts      # domain graph ↔ canvas representation
+          persistence/save-coordinator.ts # serialized saves and conflicts
         components/             # separate feature-owned visual modules
           canvas/               # node card, handles, edge, controls, selection
-          palette/              # palette, category list, node item
-          inspector/            # panel layout and sections
+          add-step/             # palette and step selection
+          inspector/            # panel layout, field renderer and sections
           chrome/               # command bar and workflow name field
-        forms/                  # catalog field renderer and input scratch state
         public.ts
-      runs/                     # run queries, commands, stream lifecycle/view
+      workflow-runs/            # run queries, commands, streams and views
       artifacts/                # signed transfer workflow, when needed
     components/
       ui/                       # shadcn/Base UI primitives
@@ -122,12 +118,11 @@ apps/web/
     lib/
       api/
         client.ts               # transport factory, no feature imports
-        api-error.ts            # normalized transport failure representation
+        error.ts                # normalized transport failure representation
         csrf.ts                 # readable CSRF cookie adapter
         sse.ts                  # bounded SSE decoding, only when runs need it
       utils.ts                  # existing cn helper
-    styles/
-      globals.css               # semantic tokens, base styles, small utilities
+    styles/                     # semantic tokens, base styles, small utilities
   test/
     lib/                        # HTTP/problem/stream protocol tests
     features/                   # model + component/network behavior
@@ -315,15 +310,15 @@ unload warning is not durable recovery.
 
 ## 4. Shared packages, API contracts and types
 
-| Kind                                                    | Source of truth                                                                           | Browser usage                                             |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| HTTP request/response schemas and inferred types        | `@pertexo/contracts` (`packages/contracts/src/schemas/<area>/`)                           | Import from the package root                              |
-| Problem codes and shapes                                | `@pertexo/contracts` (`packages/contracts/src/errors/`) plus endpoint-specific extensions | Parse once at the transport/endpoint boundary             |
-| Graph, node, edge, mapping value shapes                 | `@pertexo/workflow-model`                                                                 | Shared portable validation/types, not copied interfaces   |
-| Definition identities/config schemas/ports/availability | Authenticated catalog API                                                                 | Query live release; do not bundle an independent registry |
-| UI node appearance, field state, edit commands          | Owning frontend feature                                                                   | Local types, referring to shared domain types             |
-| ORM records, persistence envelopes, use-case types      | Backend/database packages                                                                 | Never imported by the web app                             |
-| Executable node implementations, compile/evaluate logic | Backend runtime packages                                                                  | Never shipped to the browser                              |
+| Kind                                                    | Source of truth                                                                           | Browser usage                                                |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| HTTP request/response schemas and inferred types        | `@pertexo/contracts` (`packages/contracts/src/schemas/<area>/`)                           | Import from the package root                                 |
+| Problem codes and shapes                                | `@pertexo/contracts` (`packages/contracts/src/errors/`) plus endpoint-specific extensions | Parse once at the transport/endpoint boundary                |
+| Graph, node, edge, mapping value shapes                 | `@pertexo/workflow-model`                                                                 | Shared portable validation/types, not copied interfaces      |
+| Definition identities/config schemas/ports/availability | Authenticated catalog API                                                                 | Query current catalog; do not bundle an independent registry |
+| UI node appearance, field state, edit commands          | Owning frontend feature                                                                   | Local types, referring to shared domain types                |
+| ORM records, persistence envelopes, use-case types      | Backend/database packages                                                                 | Never imported by the web app                                |
+| Executable node implementations, compile/evaluate logic | Backend runtime packages                                                                  | Never shipped to the browser                                 |
 
 `@pertexo/contracts` is browser-safe: request, response and problem schemas
 only. `@pertexo/contracts/server` holds the OpenAPI documents and client
@@ -533,7 +528,7 @@ Three different checks must stay distinct:
 2. **Wire/graph structure:** shared public schemas before a request and at the
    response boundary. A structurally valid draft can still be unpublishable.
 3. **Semantic authority:** backend graph validation, workspace permissions,
-   catalog compatibility, connection access and publish/run admission. Frontend
+   catalog semantics, connection access and publish/run admission. Frontend
    checks improve feedback but never replace these rules.
 
 Static forms own their values in the feature and share one timing engine,
@@ -677,7 +672,7 @@ The catalog does not yet provide a complete rich UI-metadata contract. Placement
 must not pretend every config has valid defaults: use exposed schema defaults
 where meaningful, otherwise prompt for required values and show incomplete
 configuration. Unsupported definitions remain visible/preserved, with editing or
-publish actions restricted as appropriate to backend compatibility.
+publish actions restricted as appropriate to current backend contracts.
 
 ### Save coordinator invariant
 
@@ -699,7 +694,7 @@ drift from graph/history/form state.
   update a clean baseline only through the coordinator; never during a
   conflicting or uncertain save. Dirty editors get remote-change information,
   not replacement.
-- ETags are opaque and can change with compatibility even when revision does
+- ETags are opaque and can change with representation even when revision does
   not. Never construct one from the numeric revision or silently replace a stale
   tag and resubmit the same local graph.
 - On 412, stop autosave, retain local edits, fetch the remote representation and
@@ -762,20 +757,18 @@ Run starts the workflow's currently published active version, resolved and
 pinned atomically by the backend. ADR 061 adds optional
 `expectedPublishedVersionId` as a checked-publication precondition, not an
 arbitrary version selector. The editor's Run actions open explicit real-effect
-confirmation and capture that version with input/deadline/key. A typed case-list
-rollout-unavailable response instead allows deliberately confirmed ordinary
-unchecked starts; pending or other failed reads cannot imply that availability.
-Loaded cases and previously submitted checked commands cannot downgrade, and
-frozen recovery always uses its original intent. A typed
-`workflow.published_version_conflict` means no new run started; read and review
-the current publication deliberately before confirming a new command. Never
-automatically rewrite a case's version or a retained command. Exact uncertain
-retries keep all original values, block replacement starts and stop at the
-original 24-hour recovery window. A previously accepted command can replay its
-accepted run even after another publication; retain its ID if fresh opening
-identity cannot be confirmed, then open it explicitly without another POST. Show
-the actual workflowVersionId from the accepted response. Legacy omission still
-means current-at-admission; explicit replay has its own contract.
+confirmation and capture that version with input/deadline/key. Loaded cases and
+previously submitted checked commands cannot downgrade, and frozen recovery
+always uses its original intent. A typed `workflow.published_version_conflict`
+means no new run started; read and review the current publication deliberately
+before confirming a new command. Never automatically rewrite a case's version or
+a retained command. Exact uncertain retries keep all original values, block
+replacement starts and stop at the original 24-hour recovery window. A
+previously accepted command can replay its accepted run even after another
+publication; retain its ID if fresh opening identity cannot be confirmed, then
+open it explicitly without another POST. Show the actual workflowVersionId from
+the accepted response. Legacy omission still means current-at-admission;
+explicit replay has its own contract.
 
 Named input cases remain owned by `workflows`, with one shared browser/editor in
 the workflow hub and run-input dialog, not a test executor or new route.
@@ -787,19 +780,16 @@ results and evicts scoped metadata. CRUD requires fresh identity and
 `workflow:update`; case loading uses `workflow:read` independently from
 `run:start`. Editing/deleting a saved case never rewrites the already loaded run
 intent. Conflict preserves typed edits until an explicit current-case read;
-uncertain changes retain original body/tag/key and block replacement. The
-default-off compatible-writer gate returns a truthful unavailable state; command
-unavailability retains recovery identity because it cannot prove a previous
-command was not accepted. Synthetic input warnings do not imply automatic
-redaction. Only an explicitly confirmed real start executes a workflow. Never
-represent “Save”, “Publish”, “Run”, “Test execute” or “Cancel run” as
-interchangeable actions. After a step test finishes, the bar under the canvas
-(`chrome/test-result-bar.tsx`) sums it up from the preview and the graph only:
-its status, the path into the step (`model/test-path.ts`), its duration and, for
-a failure, its reason, with View output opening the step's Test tab at the
-remembered result. The next edit to the draft puts it away. Side-effecting
-preview must be clearly labeled/confirmed; closing its panel is not execution
-cancellation.
+uncertain changes retain original body/tag/key and block replacement. Synthetic
+input warnings do not imply automatic redaction. Only an explicitly confirmed
+real start executes a workflow. Never represent “Save”, “Publish”, “Run”, “Test
+execute” or “Cancel run” as interchangeable actions. After a step test finishes,
+the bar under the canvas (`chrome/test-result-bar.tsx`) sums it up from the
+preview and the graph only: its status, the path into the step
+(`model/test-path.ts`), its duration and, for a failure, its reason, with View
+output opening the step's Test tab at the remembered result. The next edit to
+the draft puts it away. Side-effecting preview must be clearly
+labeled/confirmed; closing its panel is not execution cancellation.
 
 ## 9. Errors and recovery belong at the right level
 
@@ -1214,9 +1204,9 @@ in the same slice that introduces them:
   Shared primitives have focused tests in `test/components/` and `test/lib/`.
 - ESLint rejects `mutate(x, options)` in `src` (callbacks are dropped when the
   caller unmounts); act after an awaited `mutateAsync()` instead.
-- Add MSW when network integration begins so real transport/decoders participate
-  in component tests. Fixtures satisfy public schemas; malformed fixtures are
-  explicit negative cases. Mocking HTTP does not prove production auth/CORS/SSE.
+- MSW lets the real transport and decoders participate in component tests.
+  Fixtures satisfy public schemas; malformed fixtures are explicit negative
+  cases. Mocking HTTP does not prove production auth/CORS/SSE.
   [MSW's network-level approach](https://mswjs.io/docs/).
 - Keep both Playwright lanes in CI: journeys against the mocked API drive the
   production browser, transport and decoders, and browser journeys against the

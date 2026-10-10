@@ -11,8 +11,9 @@ including authentication, workspace administration, workflow authoring and
 execution surfaces. Start the mocked frontend with `pnpm dev:web`; integrated
 authentication and data flows also require the API and its local dependencies.
 
-For where things live and how the code is changing, start with the
-[architecture reset plan](./docs/architecture-reset-plan.md).
+For code ownership, start with [the architecture map](./docs/architecture.md).
+The [reset plan](./docs/architecture-reset-plan.md) records the completed reset
+and its remaining plan-only F08 handoff.
 
 ## What Is Implemented
 
@@ -23,13 +24,11 @@ For where things live and how the code is changing, start with the
 - Transactional outbox and idempotent BullMQ consumers over Redis.
 - Bounded artifact storage and lifecycle handling for larger payloads.
 - Structured logs, OpenTelemetry traces and metrics, readiness, and draining.
-- Contract drift checks plus unit, integration, recovery, outage, and rollout
-  verification.
+- Contract drift checks, unit tests, service/database integrations and browser
+  journeys with owned fixtures.
 
-The backend has implemented vertical slices, but unresolved API scope decisions
-and Phase 7 production evidence still prevent a production-ready claim. See the
-concise `current implementation status` for current blockers and
-`implementation progress` for detailed evidence and history.
+Pertexo is pre-launch. Current features and upcoming work are recorded in the
+[product roadmap](./docs/product-roadmap.md) and feature plans.
 
 ## Architecture
 
@@ -48,11 +47,13 @@ apps/
 
 packages/
   database/         PostgreSQL persistence, roles, and migrations
-  workflow-model/   versioned authoring model and expression policy
-  workflow-engine/  framework-independent execution state machine
+  workflow-model/   graph, JSON, portability and expression policy
+  workflow-engine/  pure execution state machine
+  execution/        run orchestration and attempt input projection
   node-sdk/          node definition and executor contracts
   nodes-core/        built-in deterministic nodes
   node-catalog/      registry of every node definition and executor
+  templates/        curated workflow content
   integrations/     provider and credential boundaries
   queue/             BullMQ transport and Redis event hints
   artifact-store/    bounded object storage
@@ -61,9 +62,9 @@ packages/
   observability/     logging, tracing, and metrics
 ```
 
-The architecture is recorded in [`docs/adr/`](./docs/adr/). The authoritative
-backend plan and product vocabulary live in
-`docs/workflow-platform-backend-plan.md`.
+[The architecture map](./docs/architecture.md) describes the current seams.
+[ADR 069](./docs/adr/069-architecture-reset.md) takes precedence over superseded
+ADRs; [CONTEXT.md](./CONTEXT.md) is the glossary.
 
 ## Stack
 
@@ -88,11 +89,10 @@ pnpm dev
 
 `pnpm dev` creates `.env` from `.env.example` when it is missing, starts
 Postgres, Redis and the local object store, builds the workspace, migrates the
-database, and runs the API, worker and web app with prefixed logs. It also makes
-sure the development account `dev@pertexo.local` (password
-`pertexo-development`) exists and is verified. Open `http://127.0.0.1:5173` and
-sign in. Stop everything with Ctrl+C; the services keep their data until
-`docker compose down -v`.
+database, and runs the API, worker and web app with prefixed logs. It seeds a
+verified development account. Open `http://127.0.0.1:5173` and sign in with the
+development credentials printed by `pnpm dev` after setup. Stop everything with
+Ctrl+C; services keep their data until `docker compose down -v`.
 
 The example environment is for local development only; do not commit credentials
 or production configuration. Local authentication mail is never sent: the API
@@ -118,6 +118,8 @@ pnpm check
 pnpm test
 pnpm test:integration
 pnpm test:e2e
+pnpm db:migrate
+pnpm db:generate
 ```
 
 `pnpm check` runs formatting, build, lint, typecheck, unused-code detection,
@@ -125,6 +127,11 @@ generated-contract drift, the schema check and package-boundary checks.
 `pnpm test` runs the unit tests. `pnpm test:integration` needs the local
 PostgreSQL, Redis and S3-compatible services above. `pnpm test:e2e` runs the
 browser tests against the mocked API.
+
+`pnpm db:generate` generates incremental SQL from the Drizzle schema and its
+tracked snapshot. Retained SQL exceptions are documented in the architecture
+map. `pnpm db:migrate` applies the migration history. Databases from before the
+final reset baseline must be recreated; the runner refuses the old history.
 
 `pnpm install` configures the pre-push hook. Every push runs `pnpm prepush`:
 formatting, typecheck, and lint and unit tests for the packages changed since

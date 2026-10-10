@@ -19,7 +19,7 @@ Node previews, test bar, recorded step inputs/outputs and run replay exist. No c
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
 - [apps/api/src/node-testing/use-case.ts](../../apps/api/src/node-testing/use-case.ts)
-- [apps/web/src/features/workflow-runs/workflow-runs.api.ts](../../apps/web/src/features/workflow-runs/workflow-runs.api.ts)
+- [apps/web/src/features/workflow-runs/data/workflow-runs.api.ts](../../apps/web/src/features/workflow-runs/data/workflow-runs.api.ts)
 - [apps/web/test/features/workflow-editor/test-bar.test.tsx](../../apps/web/test/features/workflow-editor/test-bar.test.tsx)
 
 “Not established” means no complete product was found in this targeted inventory,
@@ -102,7 +102,7 @@ unauthorized.
   conditionally bind expected version into the existing canonical hash.
 - Freeze that field with JSON/deadline/key through `RunIntent`, normalization,
   `startWorkflowRun`, and
-  [useWorkflowRunSubmission](../../apps/web/src/features/workflow-publish/mutations/use-workflow-run-submission.ts).
+  [useWorkflowRunSubmission](../../apps/web/src/features/workflow-publish/data/mutations/use-workflow-run-submission.ts).
   Case management stays in workflows; no direct import into preview workers.
 
 ### Authority, admission and recovery

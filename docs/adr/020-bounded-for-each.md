@@ -146,3 +146,11 @@ at 141 KB, two nested loops at 191 KB and a 200-node chain at 87 KB
 iteration budget is the same 200. Raising these limits means removing finished
 iterations from the checkpoint, not raising the checkpoint cap: the checkpoint
 is rewritten on every transition, so its size multiplies write volume.
+
+## Reset amendment (2026-10-10)
+
+[ADR 069](069-architecture-reset.md) replaces the historical numbered checkpoint
+formats and compatibility-release rollout in the original decision above.
+There is one checkpoint shape and one serving catalog. The 2026-10-09 limits and
+all loop identity, budget and recovery behavior remain current. F08 must plan
+checkpoint pruning before raising those limits.

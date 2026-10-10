@@ -14,7 +14,7 @@ Upload/finalize/download metadata and object-storage infrastructure exist; web a
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [apps/web/src/features/artifacts/artifacts.api.ts](../../apps/web/src/features/artifacts/artifacts.api.ts)
+- [apps/web/src/features/artifacts/data/artifacts.api.ts](../../apps/web/src/features/artifacts/data/artifacts.api.ts)
 - [apps/api/src/artifacts/service.ts](../../apps/api/src/artifacts/service.ts)
 - [packages/integrations/src/http-request/validation.ts](../../packages/integrations/src/http-request/validation.ts)
 - [packages/integrations/src/http-request/definition.ts](../../packages/integrations/src/http-request/definition.ts)

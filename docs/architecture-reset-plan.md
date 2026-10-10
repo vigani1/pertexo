@@ -541,8 +541,15 @@ now, as one ordered program — not "whenever we touch it".
           shared. Distinct digest, stored-value and PostgreSQL payload encodings
           stay distinct. Owned config guards, obsolete catalog names and manual
           promise rejection settlements go; unknown boundary validation stays.
-- [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
+- [x] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
+  - [x] Current architecture map, root/web setup and ownership docs, script
+        references and feature-plan anchors updated. Superseded ADR status lines
+        remain historical; ADR 020 clarifies the single checkpoint/catalog.
+        Obsolete auth/inbox implementation logs and connection/concurrency
+        rollout runbooks are deleted. Applicable operations runbooks remain.
+        Cleanup follows after this slice merges; source branches, unrelated
+        worktrees and the excluded handoff evidence are preserved.
   - [x] Final baseline generated from Drizzle: all 80 tables, 800 columns,
         330 checks, 122 foreign keys, 51 unique constraints, 80 primary keys,
         261 indexes and two sequences. `pnpm db:generate` produces no drift.
@@ -624,14 +631,14 @@ apps/
               for actions and database for reads
   worker/     job loop: runs node attempts, advances runs, triggers, maintenance
               (retention purge, schedule scans)
-  web/        React app (unchanged structure)
+  web/        React app, grouped by feature and role
   ops/        one operator CLI with subcommands (replaces lifecycle-command,
               operator-command, recovery, retention)
 packages/
   workflow-model/   graph, expressions, validation, JSON helpers — browser-safe
   workflow-engine/  pure "what happens next" rules — the only copy
-  execution/        NEW: actions — start/cancel/replay/advance run, claim and
-                    complete attempts, previews, notification decisions
+  execution/        run advancement, initial checkpoints, projection verification
+                    and attempt input projection
   database/         tables (defined once), migrations, repositories, queries,
                     transactions, workspace isolation, queue claiming, outbox
   contracts/        API request/response shapes (browser-safe) + OpenAPI (server)
@@ -639,7 +646,7 @@ packages/
   nodes-core/       built-in nodes
   integrations/     provider nodes (HTTP, email, Slack) + safe outbound HTTP
   node-catalog/     the registry that combines built-in and provider nodes
-  templates/        NEW: curated template content (out of model and catalog)
+  templates/        curated template content (out of model and catalog)
   queue/            generic job queue and pub/sub primitives only
   artifact-store/   single-region object storage behind one interface
   observability/    logs, metrics, tracing
@@ -656,7 +663,10 @@ workflow-engine ← database (plan and checkpoint types only)
 contracts ← api, web        web imports only browser-safe entry points
 ```
 
-`database` no longer depends on `nodes-core`.
+`database` retains `nodes-core` only for the built-in schedule config schema
+in recurrence and reconciliation; executor implementation stays outside it.
+The implemented run seam is `execution.advanceRun` with a transactional database
+store. Start/cancel/replay persistence remains in `database/runs/commands`.
 
 ## Conventions
 
@@ -827,8 +837,10 @@ ordinary workflows, cap loop concurrency to a measured value that fits.
   sensitivity, complexity and duplication baselines (ESLint `complexity`
   instead), CI-file policy validator, upstream IANA comparison on every run,
   docs validator, generated `docs/remaining-work` inventories.
-- Root scripts: from 66 to the handful people use (`dev`, `build`, `check`,
-  `test`, `test:integration`, `test:e2e`, `db:migrate`, `db:generate`).
+- Root scripts expose the common development commands (`dev`, `build`, `check`,
+  `test`, `test:integration`, `test:e2e`, `db:migrate`, `db:generate`). Keep the
+  named checks and fixture/ops/observability commands used by hooks, CI and
+  applicable runbooks; deleting those would hide required verification.
 - Pre-push hook: format, lint, typecheck and unit tests for changed packages.
   It is never skipped.
 
