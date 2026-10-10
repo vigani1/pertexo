@@ -2,7 +2,7 @@ import type { JsonValue } from '@pertexo/workflow-model';
 
 import { normalizeBoundedEngineJson } from '../compilation/validation.js';
 import { isJsonRecord, operationError } from '../operation-values.js';
-import { uuidPattern } from './persisted.js';
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import type { OutputReference } from '../types.js';
 
 export function completedOutputReference(
@@ -16,7 +16,7 @@ export function completedOutputReference(
   if (
     output.kind === 'artifact' &&
     typeof output.artifactId === 'string' &&
-    uuidPattern.test(output.artifactId)
+    UUID_PATTERN.test(output.artifactId)
   )
     return { kind: 'artifact', artifactId: output.artifactId };
   return undefined;

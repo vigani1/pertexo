@@ -1,3 +1,4 @@
+import { compareOrdinal } from '../ordering.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
@@ -46,10 +47,6 @@ export interface WorkflowCompatibilityReport {
   readonly compatible: boolean;
   readonly fingerprint: string;
   readonly issues: readonly WorkflowCompatibilityIssue[];
-}
-
-function compareOrdinal(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 /** Identifies which definitions a catalog offers; it changes when one is added or removed. */

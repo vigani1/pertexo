@@ -93,3 +93,6 @@ export {
 } from './portability/projection.js';
 
 export { compareOrdinal } from './ordering.js';
+
+export { isRecord } from './json/object.js';
+export { UUID_PATTERN } from './identifiers.js';

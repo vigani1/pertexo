@@ -1,3 +1,4 @@
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import {
   isSafeExecutorErrorCode,
   type JsonValue,
@@ -23,9 +24,6 @@ type OutcomeOutput = Extract<
   { readonly kind: 'outcome' }
 >['output'];
 
-export const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-
 function isCanonicalTimestamp(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 35) return false;
   const milliseconds = Date.parse(value);
@@ -45,7 +43,7 @@ function validAttempt(
 ): attemptId is string {
   return (
     typeof attemptId === 'string' &&
-    uuidPattern.test(attemptId) &&
+    UUID_PATTERN.test(attemptId) &&
     typeof attemptNumber === 'number' &&
     Number.isSafeInteger(attemptNumber) &&
     attemptNumber > 0
@@ -247,7 +245,7 @@ function parseOutcomeOutput(
     exactKeys(candidate, ['kind', 'attemptId']);
     if (
       typeof candidate.attemptId !== 'string' ||
-      !uuidPattern.test(candidate.attemptId) ||
+      !UUID_PATTERN.test(candidate.attemptId) ||
       candidate.attemptId !== attemptId
     ) {
       operationError(
@@ -261,7 +259,7 @@ function parseOutcomeOutput(
     exactKeys(candidate, ['kind', 'artifactId']);
     if (
       typeof candidate.artifactId !== 'string' ||
-      !uuidPattern.test(candidate.artifactId)
+      !UUID_PATTERN.test(candidate.artifactId)
     ) {
       operationError('observation_invalid', 'artifact output is invalid');
     }

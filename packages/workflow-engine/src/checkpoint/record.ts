@@ -1,3 +1,4 @@
+import { isRecord } from '@pertexo/workflow-model';
 import type {
   BranchSelection,
   InvocationState,
@@ -9,7 +10,6 @@ import {
   assertCheckpoint,
   assertExactKeys,
   isInteger,
-  isRecord,
   isRunStatus,
   parseInvocations,
   sortedUnique,

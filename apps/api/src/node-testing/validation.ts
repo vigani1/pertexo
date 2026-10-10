@@ -1,3 +1,4 @@
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
 import {
   canonicalizeJson,
@@ -146,12 +147,7 @@ export async function prepareNodeValidation(
   const requiredSlots = new Set(definition.manifest.connectionRequirements);
   for (const slot of [...requiredSlots].sort()) {
     const reference = node.connectionRefs[slot];
-    if (
-      reference === undefined ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
-        reference,
-      )
-    )
+    if (reference === undefined || !UUID_PATTERN.test(reference))
       issue(issues, {
         path: `$.connectionRefs.${slot}`,
         code: 'node.connection_required',

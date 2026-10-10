@@ -94,8 +94,6 @@ export type ParsedPersistedObservations = Readonly<{
   }>;
 }>;
 
-export { uuidPattern } from './persisted-parser.js';
-
 const utf8Encoder = new TextEncoder();
 
 function admitObservationArray(value: unknown): readonly unknown[] {

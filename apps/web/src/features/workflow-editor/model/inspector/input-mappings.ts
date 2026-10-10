@@ -1,3 +1,4 @@
+import { isRecord } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { parseJsonPath } from '@pertexo/workflow-model';
 import { stepTitle } from '../graph/adapter';
@@ -401,8 +402,4 @@ function isJsonValue(value: unknown): value is JsonValue {
   if (Array.isArray(value)) return value.every(isJsonValue);
   if (!isRecord(value)) return false;
   return Object.values(value).every(isJsonValue);
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

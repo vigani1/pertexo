@@ -1,12 +1,9 @@
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { SAFE_EXECUTOR_ERROR_CODE_PATTERN } from '@pertexo/workflow-model';
 import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
-const identitySchema = z
-  .string()
-  .regex(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
-  );
+const identitySchema = z.string().regex(UUID_PATTERN);
 const checksumSchema = sha256HexSchema;
 const workerIdSchema = z
   .string()

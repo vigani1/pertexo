@@ -14,7 +14,7 @@ import {
 import { isCoreMergeDefinition } from '../core-definition-identities.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
-import { uuidPattern } from './persisted.js';
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
 import type { JoinPolicy, WorkflowObservation } from '../types.js';
 
@@ -38,7 +38,7 @@ export function branchSelectionObservations(
       !Number.isSafeInteger(material.sequence) ||
       material.sequence < 1 ||
       typeof material.attemptId !== 'string' ||
-      !uuidPattern.test(material.attemptId) ||
+      !UUID_PATTERN.test(material.attemptId) ||
       typeof material.invocationKey !== 'string'
     )
       operationError(

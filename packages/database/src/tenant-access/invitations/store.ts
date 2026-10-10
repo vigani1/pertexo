@@ -1,3 +1,4 @@
+import { canonicalJson } from '../../platform/canonical-json.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
@@ -83,17 +84,6 @@ type InvitationRow = Readonly<{
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
-}
-
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value))
-    return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
-  if (value !== null && typeof value === 'object')
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
-      .join(',')}}`;
-  return JSON.stringify(value);
 }
 
 function normalizeEmail(value: string): string {

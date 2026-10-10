@@ -1,3 +1,4 @@
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
 
@@ -13,8 +14,6 @@ import {
   type PersistedCoordinatorEventRow,
 } from './attempts.js';
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const maximumCanonicalEventPayloadBytes =
   WORKFLOW_OBSERVATION_WINDOW_LIMITS.canonicalFactBytes;
 export const maximumPersistedFacts = WORKFLOW_OBSERVATION_WINDOW_LIMITS.facts;
@@ -143,9 +142,9 @@ function eventIdentity(payload: Readonly<Record<string, unknown>>): Readonly<{
 }> {
   if (
     typeof payload.attemptId !== 'string' ||
-    !uuidPattern.test(payload.attemptId) ||
+    !UUID_PATTERN.test(payload.attemptId) ||
     typeof payload.nodeRunId !== 'string' ||
-    !uuidPattern.test(payload.nodeRunId)
+    !UUID_PATTERN.test(payload.nodeRunId)
   )
     throw new CoordinatorRunStateCorruptError();
   return { attemptId: payload.attemptId, nodeRunId: payload.nodeRunId };

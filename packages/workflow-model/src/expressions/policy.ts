@@ -1,3 +1,4 @@
+import { isRecord } from '../json/object.js';
 import { availableParallelism } from 'node:os';
 import type { Worker, WorkerOptions } from 'node:worker_threads';
 import jsonata from 'jsonata';
@@ -147,10 +148,6 @@ const FORBIDDEN_ROOT_NAMES = new Set([
 ]);
 
 type JsonataAst = Readonly<Record<string, unknown>>;
-
-function isRecord(value: unknown): value is JsonataAst {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isJsonObject(
   value: JsonValue,

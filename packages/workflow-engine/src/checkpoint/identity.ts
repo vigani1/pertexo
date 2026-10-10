@@ -1,8 +1,7 @@
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
 
 const engineVersionPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
-const canonicalUuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const canonicalTimestampPattern =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 
@@ -17,7 +16,7 @@ export function assertPersistedEngineVersion(value: unknown): string {
 }
 
 export function assertPersistedWorkflowVersionId(value: unknown): string {
-  if (typeof value !== 'string' || !canonicalUuidPattern.test(value))
+  if (typeof value !== 'string' || !UUID_PATTERN.test(value))
     invalid('workflowVersionId is invalid');
   return value;
 }
