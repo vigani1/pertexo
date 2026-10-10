@@ -1,3 +1,4 @@
+import { captureLocalAuthenticationMail } from '../support/better-auth/mail-capture.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { createAuthenticationMailEnqueueStore } from '@pertexo/database/tenant-access';
@@ -18,7 +19,6 @@ import {
 import type { LinkProviderGateway } from '../../src/authentication/account-security/linking.js';
 import {
   DurableAuthenticationMail,
-  LocalAuthenticationMailSink,
   authenticationMailAssociatedData,
 } from '../../src/authentication/mail/delivery.js';
 import { registerBetterAuthHandler } from '../../src/authentication/better-auth/fastify.js';
@@ -50,7 +50,7 @@ function required<T>(value: T | null | undefined): T {
 
 const migrationUrl = databaseUrl(migrationBaseUrl);
 const apiUrl = databaseUrl(apiBaseUrl);
-const mail = new LocalAuthenticationMailSink();
+const { mail, mailedMessages } = captureLocalAuthenticationMail();
 let runtime: BetterAuthRuntime;
 
 beforeAll(async () => {
@@ -118,9 +118,9 @@ describe('Better Auth on PostgreSQL', () => {
       password,
     });
     expect(signup.status).toBe(200);
-    const verification = mail
-      .readForTesting(email)
-      .find((item) => item.purpose === 'verification');
+    const verification = mailedMessages(email).find(
+      (item) => item.purpose === 'verification',
+    );
     expect(verification).toBeDefined();
     expect(
       (
@@ -602,9 +602,9 @@ describe('Better Auth on PostgreSQL', () => {
       } finally {
         await proofInspector.end();
       }
-      const verification = mail
-        .readForTesting(email)
-        .find((message) => message.purpose === 'verification');
+      const verification = mailedMessages(email).find(
+        (message) => message.purpose === 'verification',
+      );
       expect(verification).toBeDefined();
       const link = new URL(verification?.url ?? 'http://invalid');
       const verified = await application.inject({
@@ -952,9 +952,9 @@ describe('Better Auth on PostgreSQL', () => {
         })
       ).status,
     ).toBe(200);
-    const link = mail
-      .readForTesting(concurrentEmail)
-      .find((message) => message.purpose === 'verification')?.url;
+    const link = mailedMessages(concurrentEmail).find(
+      (message) => message.purpose === 'verification',
+    )?.url;
     expect(link).toBeDefined();
     const results = await Promise.all([
       followMailLink(link ?? 'http://invalid', ''),
@@ -985,9 +985,9 @@ describe('Better Auth on PostgreSQL', () => {
           })
         ).status,
       ).toBe(200);
-      const expiredLink = mail
-        .readForTesting(expiredEmail)
-        .find((message) => message.purpose === 'verification')?.url;
+      const expiredLink = mailedMessages(expiredEmail).find(
+        (message) => message.purpose === 'verification',
+      )?.url;
       expect(expiredLink).toBeDefined();
       await owner.query(
         `update app.auth_email_proofs
@@ -1024,9 +1024,9 @@ describe('Better Auth on PostgreSQL', () => {
         })
       ).status,
     ).toBe(200);
-    const link = mail
-      .readForTesting(email)
-      .find((message) => message.purpose === 'verification')?.url;
+    const link = mailedMessages(email).find(
+      (message) => message.purpose === 'verification',
+    )?.url;
     expect(link).toBeDefined();
     const owner = new Pool({ connectionString: databaseUrl(adminUrl), max: 1 });
     try {
@@ -1078,9 +1078,9 @@ describe('Better Auth on PostgreSQL', () => {
     expect(signUp.status).toBe(200);
     expect(signUp.headers.getSetCookie()).toHaveLength(0);
 
-    const verification = mail
-      .readForTesting('ada@example.test')
-      .find((message) => message.purpose === 'verification');
+    const verification = mailedMessages('ada@example.test').find(
+      (message) => message.purpose === 'verification',
+    );
     expect(verification).toBeDefined();
     const verificationUrl = new URL(verification?.url ?? 'http://invalid');
     const verify = await runtime.auth.handler(
@@ -1300,9 +1300,9 @@ describe('Better Auth on PostgreSQL', () => {
       },
     );
     expect(changeEmail.status).toBe(200);
-    const oldAddressConfirmation = mail
-      .readForTesting('ada@example.test')
-      .find((message) => message.purpose === 'email_change_confirmation');
+    const oldAddressConfirmation = mailedMessages('ada@example.test').find(
+      (message) => message.purpose === 'email_change_confirmation',
+    );
     expect(oldAddressConfirmation).toBeDefined();
     const confirmOld = await followMailLink(
       oldAddressConfirmation?.url ?? 'http://invalid',
@@ -1312,9 +1312,9 @@ describe('Better Auth on PostgreSQL', () => {
     expect(confirmOld.headers.get('location')).toContain(
       'emailChangePending=true',
     );
-    const newAddressVerification = mail
-      .readForTesting('ada.new@example.test')
-      .find((message) => message.purpose === 'verification');
+    const newAddressVerification = mailedMessages('ada.new@example.test').find(
+      (message) => message.purpose === 'verification',
+    );
     expect(newAddressVerification).toBeDefined();
     const replayOld = await followMailLink(
       oldAddressConfirmation?.url ?? 'http://invalid',
@@ -1324,9 +1324,9 @@ describe('Better Auth on PostgreSQL', () => {
       'error=verification_invalid',
     );
     expect(
-      mail
-        .readForTesting('ada.new@example.test')
-        .filter((message) => message.purpose === 'verification'),
+      mailedMessages('ada.new@example.test').filter(
+        (message) => message.purpose === 'verification',
+      ),
     ).toHaveLength(1);
     const verifyNew = await followMailLink(
       newAddressVerification?.url ?? 'http://invalid',
@@ -1401,9 +1401,9 @@ describe('Better Auth on PostgreSQL', () => {
       callbackURL: '/login',
     });
     expect(signUp.status).toBe(200);
-    const verification = mail
-      .readForTesting(email)
-      .find((message) => message.purpose === 'verification');
+    const verification = mailedMessages(email).find(
+      (message) => message.purpose === 'verification',
+    );
     expect(verification).toBeDefined();
     await runtime.auth.handler(
       new Request(verification?.url ?? 'http://invalid', {
@@ -1555,9 +1555,9 @@ describe('Better Auth on PostgreSQL', () => {
         })
       ).status,
     ).toBe(200);
-    const verification = mail
-      .readForTesting(email)
-      .find((message) => message.purpose === 'verification');
+    const verification = mailedMessages(email).find(
+      (message) => message.purpose === 'verification',
+    );
     await runtime.auth.handler(
       new Request(verification?.url ?? 'http://invalid', {
         headers: { origin: 'http://pertexo.test' },
@@ -1579,9 +1579,9 @@ describe('Better Auth on PostgreSQL', () => {
         })
       ).status,
     ).toBe(200);
-    const resetMail = mail
-      .readForTesting(email)
-      .find((message) => message.purpose === 'password_reset');
+    const resetMail = mailedMessages(email).find(
+      (message) => message.purpose === 'password_reset',
+    );
     expect(resetMail).toBeDefined();
     const token =
       new URL(resetMail?.url ?? 'http://invalid').pathname.split('/').at(-1) ??
@@ -1679,9 +1679,9 @@ describe('Better Auth on PostgreSQL', () => {
       });
       expect(response.status).toBe(200);
       expect(
-        mail
-          .readForTesting(email)
-          .filter((message) => message.purpose === 'password_reset'),
+        mailedMessages(email).filter(
+          (message) => message.purpose === 'password_reset',
+        ),
       ).toHaveLength(0);
       const methods = await owner.query<{ provider_id: string }>(
         'select provider_id from app.auth_accounts where user_id=$1',
@@ -1981,9 +1981,9 @@ async function signInVerifiedUser(email: string, name: string) {
     callbackURL: '/login',
   });
   expect(signUp.status).toBe(200);
-  const verification = mail
-    .readForTesting(email)
-    .find((message) => message.purpose === 'verification');
+  const verification = mailedMessages(email).find(
+    (message) => message.purpose === 'verification',
+  );
   expect(verification).toBeDefined();
   await followMailLink(verification?.url ?? 'http://invalid', '');
   const signIn = await authRequest('/v1/auth/sign-in/email', {

@@ -62,8 +62,6 @@ export type LocalAuthenticationMailMessage = Readonly<{
  * in local development an observer may show each message to the developer.
  */
 export class LocalAuthenticationMailSink implements AuthenticationMail {
-  private readonly messages: LocalAuthenticationMailMessage[] = [];
-
   public constructor(
     private readonly observe?: (
       message: LocalAuthenticationMailMessage,
@@ -75,7 +73,7 @@ export class LocalAuthenticationMailSink implements AuthenticationMail {
     displayName: string;
     url: string;
   }): Promise<void> {
-    this.keep({ purpose: 'verification', ...input });
+    this.emit({ purpose: 'verification', ...input });
     return Promise.resolve();
   }
 
@@ -84,7 +82,7 @@ export class LocalAuthenticationMailSink implements AuthenticationMail {
     displayName: string;
     url: string;
   }): Promise<void> {
-    this.keep({ purpose: 'password_reset', ...input });
+    this.emit({ purpose: 'password_reset', ...input });
     return Promise.resolve();
   }
 
@@ -94,23 +92,12 @@ export class LocalAuthenticationMailSink implements AuthenticationMail {
     newEmail: string;
     url: string;
   }): Promise<void> {
-    this.keep({ purpose: 'email_change_confirmation', ...input });
+    this.emit({ purpose: 'email_change_confirmation', ...input });
     return Promise.resolve();
   }
 
-  public readForTesting(
-    recipient?: string,
-  ): readonly LocalAuthenticationMailMessage[] {
-    return Object.freeze(
-      this.messages.filter(
-        (message) => recipient === undefined || message.recipient === recipient,
-      ),
-    );
-  }
-
-  private keep(input: Omit<LocalAuthenticationMailMessage, 'createdAt'>): void {
+  private emit(input: Omit<LocalAuthenticationMailMessage, 'createdAt'>): void {
     const message = Object.freeze({ ...input, createdAt: new Date() });
-    this.messages.push(message);
     this.observe?.(message);
   }
 }

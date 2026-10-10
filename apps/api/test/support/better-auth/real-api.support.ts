@@ -1,3 +1,4 @@
+import { captureLocalAuthenticationMail } from './mail-capture.js';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -15,7 +16,6 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
 import type { createApiApplication } from '../../../src/app.js';
-import { LocalAuthenticationMailSink } from '../../../src/authentication/index.js';
 import type { ApiConfig } from '../../../src/platform/config/api-config.js';
 import { createApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
 import { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
@@ -155,7 +155,7 @@ export function useBetterAuthRealApi(
     max: 4,
     ownerRole: 'pertexo_owner',
   });
-  const mail = new LocalAuthenticationMailSink();
+  const { mail, mailedMessages } = captureLocalAuthenticationMail();
   let application: Application;
   let workspaceDatabase: WorkspaceDatabase | undefined;
   let identityRuntime:
@@ -322,8 +322,7 @@ export function useBetterAuthRealApi(
 
   /** The newest link of one purpose mailed to an address. */
   function mailedLink(email: string, purpose: string): URL {
-    const message = mail
-      .readForTesting(email)
+    const message = mailedMessages(email)
       .filter((item) => item.purpose === purpose)
       .at(-1);
     if (message === undefined) throw new Error(`No ${purpose} mail`);
