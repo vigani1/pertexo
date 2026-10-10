@@ -7,7 +7,7 @@ import { JOB_NAME, parseQueueJob } from '../../src/index.js';
 describe('queue contract compatibility', () => {
   it('accepts every canonical V1 wire fixture', async () => {
     const serialized = await readFile(
-      new URL('../fixtures/queue-jobs-v1.json', import.meta.url),
+      new URL('../fixtures/queue-jobs.json', import.meta.url),
       'utf8',
     );
     const fixtures: unknown = JSON.parse(serialized);
