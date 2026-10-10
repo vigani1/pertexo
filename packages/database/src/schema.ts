@@ -9,6 +9,8 @@ import {
   identitySecurityAuditFacts,
 } from './schema/authentication.js';
 import { workflowTemplateOrigins } from './schema/authoring/template-origin.js';
+import { workflowVersionDependencies } from './schema/authoring/dependencies.js';
+import { workflowCalls } from './schema/runs/calls.js';
 import { workflowManualStartRejections } from './schema/runs/manual-start.js';
 import {
   workflowInputCases,
@@ -163,6 +165,8 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  workflowVersionDependencies,
+  workflowCalls,
   workflowFolders,
   workflowTags,
   workflowOrganizationState,

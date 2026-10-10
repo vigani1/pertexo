@@ -1,4 +1,8 @@
 import { reapInvitationReplacementClaims } from './invitation-claims.js';
+import {
+  CALL_CHILD_REFERENCES_RETENTION_RULE,
+  CALL_DETAILS_RETENTION_RULE,
+} from './calls/retention.js';
 
 /**
  * What retention removes and when. Each rule clears or deletes at most one page
@@ -15,8 +19,16 @@ export const RETENTION_RULES = Object.freeze([
     name: 'run_inputs',
     statement: `
       with page as (
-        select id from app.workflow_runs
+        select id from app.workflow_runs run
         where input_ref is not null and input_ref_expires_at <= clock_timestamp()
+          and not (status in ('queued','running','waiting') and (
+            exists (select 1 from app.workflow_version_dependencies dependency
+              where dependency.workspace_id = run.workspace_id
+                and dependency.parent_version_id = run.workflow_version_id)
+            or exists (select 1 from app.workflow_calls call
+              where call.workspace_id = run.workspace_id
+                and (call.parent_run_id = run.id or call.live_child_run_id = run.id))
+          ))
         order by input_ref_expires_at, id limit $1 for update skip locked
       )
       update app.workflow_runs run
@@ -69,6 +81,7 @@ export const RETENTION_RULES = Object.freeze([
       delete from app.run_checkpoints checkpoint using page
       where checkpoint.workflow_run_id = page.workflow_run_id`,
   },
+  CALL_DETAILS_RETENTION_RULE,
   {
     // The run summary stays; its output, error and cancel reason go with the
     // details.
@@ -132,6 +145,7 @@ export const RETENTION_RULES = Object.freeze([
       delete from app.trigger_schedule_occurrences occurrence using page
       where occurrence.id = page.id`,
   },
+  CALL_CHILD_REFERENCES_RETENTION_RULE,
   {
     // A run summary goes 90 days after completion, once nothing refers to it.
     name: 'run_summaries',
@@ -140,6 +154,12 @@ export const RETENTION_RULES = Object.freeze([
         select run.id from app.workflow_runs run
         where run.completed_at <= clock_timestamp() - interval '90 days'
           and run.details_purged_at is not null
+          and not exists (select 1 from app.workflow_calls call
+            where call.workspace_id = run.workspace_id
+              and (call.live_child_run_id = run.id
+                or (call.parent_run_id = run.id and (
+                  call.slot_lent or call.status in ('pending','accepted')
+                  or (call.cancel_requested_at is not null and call.cancel_applied_at is null)))))
           and not exists (select 1 from app.workflow_runs child
             where child.workspace_id = run.workspace_id
               and child.replay_source_run_id = run.id)

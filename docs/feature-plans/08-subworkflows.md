@@ -460,6 +460,30 @@ the generated contract artifacts add 4,440 and remove 84 lines. This excludes
 slice 1 pruning. The remaining Call/control work still needs its own evidence
 and size comparison against the 4,000–8,000 authored-line forecast.
 
+### Slice 3 storage qualification
+
+The first Call schema checkpoint adds parent-owned scoped call identities,
+workspace-qualified publication pins and a nullable live child reference beside
+the stable child outcome ID. It extends existing admission storage with the
+direct call return target. The incremental migration preserves the recorded
+baseline and uses the existing owner, application and maintenance roles with
+forced row security. These tables do not yet expose supported Call execution.
+
+Real PostgreSQL lifecycle tests prove child detail retirement at 30 days,
+child-summary detachment at 90 days while a live parent retains its result,
+parent-owned payload and identity retirement, live-input exceptions before and
+after intent creation, outstanding slot-return protection, completion-lock
+coordination, receipt expiry, cross-workspace rejection and dependency-ordered
+workspace purge. Parent/child execution and capacity conservation remain
+required before slice 3 is complete.
+
+The full live database suite passes 690 tests, with 46 optional cases skipped;
+all 526 database unit tests pass. The nine-case Call lifecycle suite also proves
+purge ordering with an actual borrowed admission row and empty application
+reads without workspace context. Existing repository build, lint, type checks,
+dependency, contract, schema-ownership and architecture checks qualify this
+storage checkpoint. No Call runtime or editor support is claimed by it.
+
 | Slice                  | Behavior at its end                                                                                                                           | Required evidence                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0. Review              | Accepted callable/pin/authority/capacity/retention decisions and bounded contract                                                             | Owner accepted on 2026-10-10 with slot handoff and archive warning; reconcile exact source/interfaces before each runtime slice                                                                                                                   |

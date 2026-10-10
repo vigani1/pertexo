@@ -185,6 +185,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'run_failure_notification_audit_facts',
     'run_failure_notification_intents',
     'workflow_run_active_admissions',
+    'workflow_calls',
     'connection_health_observations',
     'node_attempt_connection_dispatches',
     'operator_unknown_outcome_evidence',
@@ -255,6 +256,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
       update app.workflows row set published_version_id = null
       from page where row.ctid = page.ctid`,
   },
+  deleteRows('workflow_version_dependencies'),
   deleteRows('workflow_versions'),
   deleteRows('workflow_template_origins'),
   deleteRows('workflows'),

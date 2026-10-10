@@ -16,6 +16,7 @@ import { appSchema } from '../namespace.js';
 import { workflowRuns } from './execution.js';
 import { workspaces } from '../foundation.js';
 import { outboxEvents } from '../transport.js';
+import { workflowCalls } from './calls.js';
 
 export const workspaceExecutionAdmissionCounters = appSchema.table(
   'workspace_execution_admission_counters',
@@ -49,6 +50,7 @@ export const workflowRunActiveAdmissions = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowRunId: uuid('workflow_run_id').primaryKey().notNull(),
     outboxEventId: uuid('outbox_event_id').notNull(),
+    borrowedCallId: uuid('borrowed_call_id'),
     recoverAfter: timestamp('recover_after', {
       withTimezone: true,
       mode: 'string',
@@ -70,6 +72,14 @@ export const workflowRunActiveAdmissions = appSchema.table(
     ),
     unique('workflow_run_active_admissions_outbox_event_id_key').on(
       table.outboxEventId,
+    ),
+    foreignKey({
+      name: 'workflow_run_active_admissions_call_fk',
+      columns: [table.workspaceId, table.borrowedCallId],
+      foreignColumns: [workflowCalls.workspaceId, workflowCalls.id],
+    }).onDelete('restrict'),
+    unique('workflow_run_active_admissions_call_unique').on(
+      table.borrowedCallId,
     ),
     foreignKey({
       name: 'workflow_run_active_admissions_outbox_fk',
