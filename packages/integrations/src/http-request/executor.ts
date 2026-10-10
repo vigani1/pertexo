@@ -16,8 +16,8 @@ import {
 import {
   SECURE_HTTP_ERROR_CODE,
   type SecureHttpClient,
-} from '../http/secure-http.js';
-import { inspectSecureHttpError } from '../http/secure-http-error.js';
+} from '../http/secure.js';
+import { inspectSecureHttpError } from '../http/secure-error.js';
 import { errorNameIs, safeInstanceOf } from '../http/unknown-error.js';
 import {
   HTTP_REQUEST_CONNECTION_SLOT,

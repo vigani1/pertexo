@@ -11,7 +11,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
   secureHttpPreDispatchError,
-} from './http/secure-http.js';
+} from './http/secure.js';
 import {
   errorCodeIs,
   errorNameIs,

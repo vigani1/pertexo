@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
-import type {
-  SecureHttpClient,
-  SecureHttpRequest,
-} from '../http/secure-http.js';
+import type { SecureHttpClient, SecureHttpRequest } from '../http/secure.js';
 import {
   SLACK_SEND_MESSAGE_LIMITS,
   slackChannelIdSchema,

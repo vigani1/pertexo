@@ -1,4 +1,4 @@
-import { SECURE_HTTP_ERROR_CODE, type SecureHttpError } from './secure-http.js';
+import { SECURE_HTTP_ERROR_CODE, type SecureHttpError } from './secure.js';
 
 export const HTTP_SIDE_EFFECT_CLASS = Object.freeze({
   idempotentWithKey: 'idempotent_with_key',

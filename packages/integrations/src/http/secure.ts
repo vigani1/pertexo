@@ -9,12 +9,12 @@ import {
   abortFailure,
   inspectSecureHttpError,
   isTimeoutError,
-} from './secure-http-error.js';
+} from './secure-error.js';
 export {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
   type SecureHttpErrorCode,
-} from './secure-http-error.js';
+} from './secure-error.js';
 import {
   assertPublicAddress,
   normalizeUrlHostname,
@@ -23,7 +23,7 @@ import {
 import {
   parseRequest,
   type ParsedSecureHttpRequest,
-} from './secure-http-request.js';
+} from './secure-request.js';
 import { normalizeUnknownError } from './unknown-error.js';
 
 const MAX_URL_BYTES = 2_048;

@@ -1196,7 +1196,7 @@ describe('secure HTTP client', () => {
         'tsx',
         resolve(
           packageDirectory,
-          'test/http/secure-http-hostile-rejection.fixture.ts',
+          'test/http/secure-hostile-rejection.fixture.ts',
         ),
       ]),
     ).resolves.toMatchObject({ stderr: '' });

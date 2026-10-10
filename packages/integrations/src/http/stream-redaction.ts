@@ -7,7 +7,7 @@ import {
   abortFailure,
   inspectSecureHttpError,
   isTimeoutError,
-} from './secure-http-error.js';
+} from './secure-error.js';
 
 function concatenateBytes(left: Uint8Array, right: Uint8Array): Uint8Array {
   if (left.byteLength === 0) return new Uint8Array(right);

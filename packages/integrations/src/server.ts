@@ -35,7 +35,7 @@ export {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
   SecureHttpError,
-} from './http/secure-http.js';
+} from './http/secure.js';
 export type {
   SecureHttpErrorCode,
   SecureHttpFailureObservation,
@@ -49,7 +49,7 @@ export type {
   SecureHttpTransport,
   SecureHttpTransportRequest,
   SecureHttpTransportResponse,
-} from './http/secure-http.js';
+} from './http/secure.js';
 export {
   createNodeSecureHttpClient,
   NodeDnsResolver,
