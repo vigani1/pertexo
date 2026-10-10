@@ -4,8 +4,8 @@ import {
   SECURE_HTTP_ERROR_CODE,
   failure,
   inspectSecureHttpError,
-} from './secure-http-error.js';
-import type { SecureHttpRequest } from './secure-http.js';
+} from './secure-error.js';
+import type { SecureHttpRequest } from './secure.js';
 import { safeInstanceOf } from './unknown-error.js';
 
 const MAX_REQUEST_BODY_BYTES = 1_048_576;

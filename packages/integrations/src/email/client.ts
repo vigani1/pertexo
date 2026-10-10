@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
-import type {
-  SecureHttpClient,
-  SecureHttpRequest,
-} from '../http/secure-http.js';
+import type { SecureHttpClient, SecureHttpRequest } from '../http/secure.js';
 import { EMAIL_SEND_NOTIFICATION_LIMITS } from './validation.js';
 
 export const RESEND_API_ENDPOINT = 'https://api.resend.com/emails' as const;

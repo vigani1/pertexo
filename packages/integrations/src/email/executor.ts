@@ -7,8 +7,8 @@ import {
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 
-import { SECURE_HTTP_ERROR_CODE } from '../http/secure-http.js';
-import { inspectSecureHttpError } from '../http/secure-http-error.js';
+import { SECURE_HTTP_ERROR_CODE } from '../http/secure.js';
+import { inspectSecureHttpError } from '../http/secure-error.js';
 import {
   errorNameIs,
   safeInstanceOf,
