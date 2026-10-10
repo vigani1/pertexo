@@ -62,8 +62,6 @@ export function useImportDraft(
     apiClient,
     userId,
     workspace.id,
-    workspace.status === 'active' &&
-      workspace.capabilities.includes('workflow:create'),
     clear,
   );
   const command = useWorkflowImportCommand(
@@ -125,8 +123,8 @@ export function useImportDraft(
     setResetting(true);
     const request = lifetime.begin();
     try {
-      if (!(await lifetime.verify(request.signal, true)) || !request.current())
-        return;
+      await lifetime.verify(request.signal, true);
+      if (!request.current()) return;
       clear();
       validation.reset();
     } catch (failure) {
@@ -195,8 +193,8 @@ export function useImportDraft(
     setError(undefined);
     setPreviewing(true);
     try {
-      if (!(await lifetime.verify(request.signal, true)) || !request.current())
-        return;
+      await lifetime.verify(request.signal, true);
+      if (!request.current()) return;
       const result = await previewWorkflowImport(
         apiClient,
         workspace.id,

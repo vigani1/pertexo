@@ -22,7 +22,7 @@ import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.
 import type { ApiClient } from '@/lib/api/client';
 import { PortableGraphReview } from './portable-graph-review';
 
-export function WorkflowImportConnections({
+function WorkflowImportConnections({
   apiClient,
   userId,
   workspace,
@@ -143,7 +143,7 @@ export function WorkflowImportConnections({
   );
 }
 
-export function WorkflowImportCompatibility({
+function WorkflowImportCompatibility({
   preview,
 }: Readonly<{ preview: WorkflowImportPreviewResponse }>) {
   const issues = new Map(

@@ -552,6 +552,17 @@ now, as one ordered program — not "whenever we touch it".
           and 90 browser tests; all unit suites pass. Remaining descriptor and
           reflection sites serve unknown JSON/graph/schema boundaries or
           dynamic-key reads; boundary validation remains.
+    - [x] Owner frontend quality follow-up: input-case dialogs share one
+          command owner; import and organization controls compose explicit
+          responsibilities, versions select one overlay, and eligible recorded
+          reads and local clocks avoid unused subscriptions. Invitation effects
+          restart with synchronous cleanup; portability owners retire on access
+          loss; mutations await scoped reconciliation and navigation. Native
+          timeline links and portaled previews support keyboard interaction.
+          Full React Doctor 0.9.17: 77 to 82, 32 to eight reviewed warnings,
+          zero errors and no suppressions. Local verification: 1,050 unit tests,
+          93 browser cases, lint, typecheck/build and architecture checks.
+          F08 runtime implementation is unchanged.
 - [x] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
   - [x] Current architecture map, root/web setup and ownership docs, script

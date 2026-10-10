@@ -16,16 +16,9 @@ import {
 } from './import-actions';
 import { WorkflowImportSourceFields } from './source-fields';
 import { useImportDraft } from './use-import-draft';
+import { PortabilityAccessDeniedDialog } from './access-denied-dialog';
 
-export function WorkflowImportDialog({
-  apiClient,
-  userId,
-  workspace,
-  onClose,
-  onCreated,
-  open = true,
-  onReopen,
-}: Readonly<{
+type WorkflowImportDialogProps = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
@@ -33,7 +26,37 @@ export function WorkflowImportDialog({
   onCreated: (workflowId: string) => void;
   open?: boolean;
   onReopen?: () => void;
-}>) {
+}>;
+
+export function WorkflowImportDialog(props: WorkflowImportDialogProps) {
+  if (
+    props.workspace.status !== 'active' ||
+    !props.workspace.capabilities.includes('workflow:create')
+  )
+    return (
+      <PortabilityAccessDeniedDialog
+        operation="import"
+        open={props.open ?? true}
+        onClose={props.onClose}
+      />
+    );
+  return (
+    <WorkflowImportSession
+      key={`${props.userId}:${props.workspace.id}`}
+      {...props}
+    />
+  );
+}
+
+function WorkflowImportSession({
+  apiClient,
+  userId,
+  workspace,
+  onClose,
+  onCreated,
+  open = true,
+  onReopen,
+}: WorkflowImportDialogProps) {
   const draft = useImportDraft(apiClient, userId, workspace);
   return (
     <>

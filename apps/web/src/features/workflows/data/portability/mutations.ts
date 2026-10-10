@@ -44,8 +44,8 @@ export function useWorkflowImportCommand(
     let phase: 'authority' | 'mutation' | 'accepted' =
       command.workflowId === undefined ? 'authority' : 'accepted';
     try {
-      if (!(await lifetime.verify(request.signal, true)) || !request.current())
-        return;
+      await lifetime.verify(request.signal, true);
+      if (!request.current()) return;
       if (command.workflowId === undefined) {
         phase = 'mutation';
         const result = await importWorkflow(
@@ -58,18 +58,18 @@ export function useWorkflowImportCommand(
         command.workflowId = result.workflowId;
       }
       phase = 'accepted';
-      if (
-        !request.current() ||
-        !(await lifetime.verify(request.signal, true)) ||
-        !request.current()
-      )
-        return;
-      void queryClient.invalidateQueries({
-        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: workflowKeys.scope(userId, workspaceId),
-      });
+      if (!request.current()) return;
+      await lifetime.verify(request.signal, true);
+      if (!request.current()) return;
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workflowKeys.scope(userId, workspaceId),
+        }),
+      ]);
+      if (!request.current()) return;
       setState({ kind: 'confirmed', workflowId: command.workflowId });
     } catch (error) {
       if (!request.current() || lifetime.accessFailure(error)) return;

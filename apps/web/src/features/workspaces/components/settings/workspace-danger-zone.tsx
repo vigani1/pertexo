@@ -58,19 +58,22 @@ const COMPLETED: Readonly<Record<LifecycleChange, string>> = {
 export function WorkspaceLifecycleControls({
   apiClient,
   workspace,
+  userId,
   onCompleted,
 }: Readonly<{
   apiClient: ApiClient;
   workspace: AccessibleWorkspace;
-  onCompleted: () => void;
+  userId: string;
+  onCompleted: () => void | Promise<void>;
 }>) {
   const [completed, setCompleted] = useState<LifecycleChange>();
   const command = useWorkspaceLifecycleCommand({
     apiClient,
     workspaceId: workspace.id,
+    userId,
     onCompleted: (change) => {
       setCompleted(change);
-      onCompleted();
+      return onCompleted();
     },
   });
   const pendingDeletion = workspace.status === 'pending_deletion';

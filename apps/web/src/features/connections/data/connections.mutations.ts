@@ -92,41 +92,41 @@ async function storeConnection(
 }
 
 function useConnectionResultScope(scope: ConnectionMutationScope) {
-  const owners = useRef(new Set<object>());
-  const generation = useMemo(
-    () => ({ userId: scope.userId, workspaceId: scope.workspaceId }),
-    [scope.userId, scope.workspaceId],
-  );
-  useEffect(() => {
-    const active = owners.current;
-    active.add(generation);
-    return () => {
-      active.delete(generation);
-    };
-  }, [generation]);
-  const isCurrent = () => owners.current.has(generation);
+  const owner = useRef<symbol | undefined>(undefined);
   const queryClient = useQueryClient();
-  return {
-    invalidate: () =>
-      isCurrent()
-        ? queryClient.invalidateQueries({
-            queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
-          })
-        : Promise.resolve(),
-    store: (connection: ConnectionResponse) =>
-      isCurrent()
-        ? storeConnection(queryClient, scope, connection, isCurrent)
-        : Promise.resolve(),
-    denied: (error: unknown) => {
-      if (!isCurrent() || !connectionCommandAccessLost(error))
-        return Promise.resolve();
-      return forgetDeniedConnections(
-        queryClient,
-        connectionKeys.scope(scope.userId, scope.workspaceId),
-        ['connection-command'],
-        error,
-      );
-    },
+  useEffect(() => {
+    const currentOwner = Symbol('connection-result');
+    owner.current = currentOwner;
+    return () => {
+      if (owner.current === currentOwner) owner.current = undefined;
+    };
+  }, [scope.apiClient, scope.userId, scope.workspaceId]);
+  return () => {
+    const submissionOwner = owner.current;
+    const isCurrent = () =>
+      submissionOwner !== undefined && owner.current === submissionOwner;
+    return {
+      invalidate: () =>
+        isCurrent()
+          ? queryClient.invalidateQueries({
+              queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
+            })
+          : Promise.resolve(),
+      store: (connection: ConnectionResponse) =>
+        isCurrent()
+          ? storeConnection(queryClient, scope, connection, isCurrent)
+          : Promise.resolve(),
+      denied: (error: unknown) => {
+        if (!isCurrent() || !connectionCommandAccessLost(error))
+          return Promise.resolve();
+        return forgetDeniedConnections(
+          queryClient,
+          connectionKeys.scope(scope.userId, scope.workspaceId),
+          ['connection-command'],
+          error,
+        );
+      },
+    };
   };
 }
 
@@ -134,12 +134,11 @@ function useConnectionResultScope(scope: ConnectionMutationScope) {
  * Credential commands carry secrets in their variables, so their mutation
  * entries are removed from the cache as soon as the owning form lets go.
  */
-function useSecretConnectionMutation<Command, Result>(
+function useSecretConnectionMutation<Command>(
   scope: ConnectionMutationScope,
   operation: 'create' | 'rotate',
-  execute: (command: Command) => Promise<Result>,
-  onSettledResult: (result: Result) => Promise<void>,
-  onError: (error: unknown) => Promise<void>,
+  execute: (command: Command) => Promise<ConnectionResponse>,
+  captureResultScope: ReturnType<typeof useConnectionResultScope>,
 ) {
   const queryClient = useQueryClient();
   const ownerId = useId();
@@ -148,14 +147,12 @@ function useSecretConnectionMutation<Command, Result>(
       secretMutationKey(scope.userId, scope.workspaceId, operation, ownerId),
     [operation, ownerId, scope.userId, scope.workspaceId],
   );
-  // Each command passes its cache update (storing the returned connection)
-  // as `onSettledResult`.
   const mutation = useMutation({
     mutationKey,
     mutationFn: execute,
-    onMutate: () => ({ onSettledResult, onError }),
-    onSuccess: (result, _command, owner) => owner.onSettledResult(result),
-    onError: (error, _command, owner) => owner?.onError(error),
+    onMutate: captureResultScope,
+    onSuccess: (result, _command, owner) => owner.store(result),
+    onError: (error, _command, owner) => owner?.denied(error),
   });
   const reset = mutation.reset;
   const clearSensitiveState = useCallback(() => {
@@ -178,8 +175,7 @@ export function useCreateConnectionMutation(scope: ConnectionMutationScope) {
     'create',
     (command: CreateConnectionCommand) =>
       createConnection(scope.apiClient, scope.workspaceId, command),
-    resultScope.store,
-    resultScope.denied,
+    resultScope,
   );
 }
 
@@ -190,8 +186,7 @@ export function useRotateConnectionMutation(scope: ConnectionMutationScope) {
     'rotate',
     (command: RotateConnectionCommand) =>
       rotateConnectionSecret(scope.apiClient, scope.workspaceId, command),
-    resultScope.store,
-    resultScope.denied,
+    resultScope,
   );
 }
 
@@ -200,7 +195,7 @@ export function useTestConnectionMutation(scope: ConnectionMutationScope) {
   return useMutation({
     mutationFn: (command: TestConnectionCommand) =>
       testConnection(scope.apiClient, scope.workspaceId, command),
-    onMutate: () => resultScope,
+    onMutate: resultScope,
     onSuccess: (result, _command, owner) => owner.store(result.connection),
     onError: (error, _command, owner) => owner?.denied(error),
   });
@@ -211,7 +206,7 @@ export function useRevokeConnectionMutation(scope: ConnectionMutationScope) {
   return useMutation({
     mutationFn: (connectionId: string) =>
       revokeConnection(scope.apiClient, scope.workspaceId, connectionId),
-    onMutate: () => resultScope,
+    onMutate: resultScope,
     onSuccess: (result, _command, owner) => owner.store(result),
     onError: async (error, _command, owner) => {
       await owner?.denied(error);

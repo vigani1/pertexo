@@ -18,8 +18,8 @@ import {
 
 /**
  * The acceptance journey for one invitation link. The link token is read
- * once, the fragment is cleared, and every late answer is ignored once
- * StrictMode or unmounting has taken over. A newer link is a new journey:
+ * into memory, the fragment is cleared, and cleanup cancels outstanding
+ * reads and invalidates late command answers. A newer link is a new journey:
  * the page keys this one by its link, so it retires as it unmounts.
  */
 export function useInvitationJourney({
@@ -49,8 +49,6 @@ export function useInvitationJourney({
     initialToken !== undefined,
   );
   const token = useRef<string | undefined>(initialToken);
-  const started = useRef(false);
-  const lifecycle = useRef(0);
   const ownership = useRef(1);
   const bootstrapController = useRef<AbortController | undefined>(undefined);
   const verifyController = useRef<AbortController | undefined>(undefined);
@@ -60,7 +58,6 @@ export function useInvitationJourney({
     () => ({
       apiClient,
       token,
-      lifecycle,
       ownership,
       bootstrapController,
       verifyController,
@@ -82,18 +79,10 @@ export function useInvitationJourney({
   );
 
   useEffect(() => {
-    const generation = ++lifecycle.current;
-    if (!started.current) {
-      started.current = true;
-      if (initialToken !== undefined) clearFragment();
-      bootstrap();
-    }
+    if (initialToken !== undefined) clearFragment();
+    bootstrap();
     return () => {
-      // A StrictMode replay runs the effect again before this microtask, so
-      // only a real unmount retires the journey.
-      queueMicrotask(() => {
-        if (runtime.lifecycle.current === generation) retireJourney(runtime);
-      });
+      retireJourney(runtime);
     };
   }, [bootstrap, clearFragment, initialToken, runtime]);
 

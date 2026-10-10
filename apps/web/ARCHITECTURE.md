@@ -1016,6 +1016,13 @@ their own:
 | Status colour  | `components/ui/status.tsx`, `components/ui/status-tone.ts`                | `Status`/`StatusGlyph` and `statusToneText`, the one colour per tone                                                                                                                                                                                                                                                              |
 | Pagination     | `lib/api/pagination.ts`                                                   | `cursorPages`/`collectPages` walk cursors once (repeat or overrun is a protocol failure); `searchParams` builds page queries                                                                                                                                                                                                      |
 
+The Loom uses Canvas for drawing and native SVG links over the plotted runs for
+pointer and keyboard navigation. Both share the run geometry. Focus has a
+visible outline and exposes the same run preview through the shared Tooltip
+primitive, which owns positioning, dismissal, and hover state. The preview
+escapes the clipped drawing surface through its portal; the text list remains
+available alongside the visualization.
+
 Other primitives (`components/ui`): button (`primary` is the one filled action
 per screen; `default` tinted; `outline`, `ghost`, `destructive`, `link`), badge,
 input/textarea, select, dropdown-menu, tabs, tooltip, popover, switch, checkbox,

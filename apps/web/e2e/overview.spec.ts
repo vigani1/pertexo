@@ -9,6 +9,7 @@ const versionId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const timestamp = '2026-09-21T10:00:00.000Z';
 
 async function installRoutes(page: Page) {
+  await page.clock.setFixedTime(new Date(timestamp));
   const workflowQueries: string[] = [];
   const runQueries: URLSearchParams[] = [];
   const statisticsQueries: URLSearchParams[] = [];
@@ -100,6 +101,55 @@ async function installRoutes(page: Page) {
       },
     });
   });
+  for (const [id, status] of [
+    [runId, 'succeeded'],
+    [failedRunId, 'failed'],
+  ] as const) {
+    await page.route(`**/v1/workspaces/${workspaceId}/runs/${id}`, (route) =>
+      route.fulfill({ json: { run: run(id, status), nodes: [] } }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/${id}/events`,
+      (route) => route.fulfill({ contentType: 'text/event-stream', body: '' }),
+    );
+  }
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+    (route) =>
+      route.fulfill({
+        json: {
+          workflow: {
+            id: workflowId,
+            workspaceId,
+            name: 'Daily intake',
+            nameRevision: 1,
+            lifecycleStatus: 'active',
+            lifecycleRevision: 1,
+            activationStatus: 'inactive',
+            publishedVersionId: versionId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        },
+      }),
+  );
+  // The navigation fixture retains run summaries, but no source graphs.
+  for (const resource of ['draft', 'versions?**', `versions/${versionId}`])
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/${resource}`,
+      (route) =>
+        route.fulfill({
+          status: 404,
+          contentType: 'application/problem+json',
+          json: {
+            type: 'urn:pertexo:problem:resource.not_found',
+            title: 'Source not retained',
+            status: 404,
+            code: 'resource.not_found',
+            requestId: 'overview-source-not-retained',
+          },
+        }),
+    );
   return { workflowQueries, runQueries, statisticsQueries };
 }
 
@@ -205,4 +255,56 @@ test('shows the loom, what needs attention and recent changes on mobile', async 
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test('opens a plotted run from a native timeline link with the keyboard', async ({
+  page,
+}) => {
+  await installRoutes(page);
+  await page.goto(`/w/${workspaceId}`);
+  const timeline = page.getByRole('group', { name: 'Runs on this timeline' });
+  const link = timeline.getByRole('link', { name: /Daily intake: Succeeded/u });
+  await expect(link).toHaveAttribute('href', `/w/${workspaceId}/runs/${runId}`);
+  await link.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(link).toBeFocused();
+  await expect(link.locator('rect')).toHaveCSS(
+    'stroke',
+    /^(?!rgba\(0, 0, 0, 0\)$).+/u,
+  );
+  const preview = page.locator('[data-slot="tooltip-content"]');
+  await expect(preview).toContainText('Daily intake');
+  const bounds = await preview.boundingBox();
+  const viewport = page.viewportSize();
+  if (bounds === null || viewport === null)
+    throw new Error('The timeline preview must be rendered in a viewport.');
+  expect(bounds.y).toBeGreaterThanOrEqual(0);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+  await page.screenshot({
+    path: '/tmp/pertexo-clean-lifecycles.j9etnz/loom-keyboard.png',
+  });
+  await page.keyboard.press('Escape');
+  await expect(preview).toBeHidden();
+  await expect(link).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(
+    new RegExp(`/w/${workspaceId}/runs/${runId}$`, 'u'),
+  );
+});
+
+test('opens a plotted run through its native link on a narrow timeline', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installRoutes(page);
+  await page.goto(`/w/${workspaceId}`);
+  const link = page
+    .getByRole('group', { name: 'Runs on this timeline' })
+    .getByRole('link', { name: /Daily intake: Succeeded/u });
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page).toHaveURL(
+    new RegExp(`/w/${workspaceId}/runs/${runId}$`, 'u'),
+  );
 });

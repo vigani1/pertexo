@@ -7,12 +7,17 @@ import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import type { ApiClient } from '@/lib/api/client';
 import { isDuplicateAccessLoss } from '../../model/duplicate/access-loss';
 
+class PortabilityAccessChangedError extends Error {
+  constructor() {
+    super('The workspace no longer permits this action.');
+  }
+}
+
 /** Private dialog payloads live only for one identity/workspace lifetime. */
 export function usePortabilityLifetime(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
-  allowed: boolean,
   clear: () => void,
 ) {
   const queryClient = useQueryClient();
@@ -31,7 +36,6 @@ export function usePortabilityLifetime(
   }, [clear, queryClient, userId, workspaceId]);
   useEffect(() => {
     const ownedControllers = controllers.current;
-    if (!allowed) queueMicrotask(retire);
     const unsubscribe = subscribeSessionChanges(retire);
     // An unrelated feature's denial or not-found is not workspace authority
     // loss; an ended session still retires the whole scoped lifetime.
@@ -50,7 +54,7 @@ export function usePortabilityLifetime(
       for (const controller of ownedControllers) controller.abort();
       ownedControllers.clear();
     };
-  }, [allowed, queryClient, userId, workspaceId, retire]);
+  }, [queryClient, userId, workspaceId, retire]);
   const begin = useCallback(() => {
     const controller = new AbortController();
     const epoch = generation.current;
@@ -59,6 +63,10 @@ export function usePortabilityLifetime(
       signal: controller.signal,
       current: () => !controller.signal.aborted && generation.current === epoch,
       done: () => controllers.current.delete(controller),
+      cancel: () => {
+        controller.abort();
+        controllers.current.delete(controller);
+      },
     };
   }, []);
   const verify = useCallback(
@@ -73,16 +81,18 @@ export function usePortabilityLifetime(
           creating ? 'workflow:create' : 'workflow:read',
         )
       ) {
-        retire();
-        return false;
+        throw new PortabilityAccessChangedError();
       }
-      return true;
     },
-    [apiClient, userId, workspaceId, retire],
+    [apiClient, userId, workspaceId],
   );
   const accessFailure = useCallback(
     (error: unknown) => {
-      if (!isDuplicateAccessLoss(error)) return false;
+      if (
+        !(error instanceof PortabilityAccessChangedError) &&
+        !isDuplicateAccessLoss(error)
+      )
+        return false;
       retire();
       return true;
     },

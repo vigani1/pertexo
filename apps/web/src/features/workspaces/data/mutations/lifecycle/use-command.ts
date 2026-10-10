@@ -1,5 +1,5 @@
 import type { WorkspaceLifecycleChangeResponse } from '@pertexo/contracts';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
@@ -8,6 +8,7 @@ import {
   requestWorkspaceDeletion,
   restoreWorkspaceDeletion,
 } from '../../workspaces.api';
+import { accessibleWorkspacesQueryOptions } from '../../workspaces.queries';
 
 type LifecycleIntent =
   | Readonly<{ command: 'request-deletion'; reason: string }>
@@ -25,24 +26,33 @@ type LifecycleAttempt = Readonly<{
 export function useWorkspaceLifecycleCommand({
   apiClient,
   workspaceId,
+  userId,
   onCompleted,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
-  onCompleted: (change: WorkspaceLifecycleChangeResponse['change']) => void;
+  userId: string;
+  onCompleted: (
+    change: WorkspaceLifecycleChangeResponse['change'],
+  ) => void | Promise<void>;
 }>) {
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
   const [retryAvailable, setRetryAvailable] = useState(false);
   const attempt = useRef<LifecycleAttempt | undefined>(undefined);
   const owner = useRef<symbol | undefined>(undefined);
+  const activeSubmission = useRef<symbol | undefined>(undefined);
 
   useEffect(() => {
     const currentOwner = Symbol('workspace-lifecycle-command');
     owner.current = currentOwner;
     return () => {
-      if (owner.current === currentOwner) owner.current = undefined;
+      if (owner.current === currentOwner) {
+        owner.current = undefined;
+        activeSubmission.current = undefined;
+      }
     };
-  }, [apiClient, workspaceId]);
+  }, [apiClient, userId, workspaceId]);
 
   const mutation = useMutation({
     mutationFn: (current: LifecycleAttempt) =>
@@ -56,20 +66,30 @@ export function useWorkspaceLifecycleCommand({
             workspaceId,
             current.idempotencyKey,
           ),
+    onMutate: () => owner.current,
+    onSuccess: async (completed, _attempt, submissionOwner) => {
+      if (owner.current !== submissionOwner) return;
+      attempt.current = undefined;
+      await queryClient.invalidateQueries({
+        queryKey: accessibleWorkspacesQueryOptions(apiClient, userId).queryKey,
+      });
+      if (owner.current === submissionOwner)
+        await onCompleted(completed.change);
+    },
   });
 
   async function submit(current: LifecycleAttempt) {
     const submissionOwner = owner.current;
-    if (submissionOwner === undefined || mutation.isPending) return false;
+    if (submissionOwner === undefined || activeSubmission.current !== undefined)
+      return false;
+    const submission = Symbol('workspace-lifecycle-submission');
+    activeSubmission.current = submission;
     setError(undefined);
     setRetryAvailable(false);
     attempt.current = current;
     try {
-      const completed = await mutation.mutateAsync(current);
-      if (owner.current !== submissionOwner) return false;
-      attempt.current = undefined;
-      onCompleted(completed.change);
-      return true;
+      await mutation.mutateAsync(current);
+      return owner.current === submissionOwner;
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;
       const uncertain = isUncertainOutcome(cause);
@@ -77,6 +97,9 @@ export function useWorkspaceLifecycleCommand({
       setRetryAvailable(uncertain);
       setError(lifecycleCommandError(cause, current.intent.command));
       return false;
+    } finally {
+      if (activeSubmission.current === submission)
+        activeSubmission.current = undefined;
     }
   }
 
