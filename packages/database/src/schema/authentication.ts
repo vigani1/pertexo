@@ -153,7 +153,9 @@ export const authMethodLinkAttempts = appSchema.table(
     sessionId: uuid('session_id').notNull(),
     browserDigest: bytea('browser_digest').notNull(),
     sourceProvider: varchar('source_provider', { length: 32 }).notNull(),
-    targetProvider: varchar('target_provider', { length: 32 }).notNull(),
+    targetProvider: varchar('target_provider', { length: 32 })
+      .$type<'google' | 'github' | 'microsoft' | 'apple'>()
+      .notNull(),
     phase: varchar({ length: 16 }).notNull(),
     stateDigest: bytea('state_digest'),
     expiresAt: timestamp('expires_at', {

@@ -168,12 +168,12 @@ export class AccountLinking {
     if (session === undefined) return this.landing('sign-in');
     const attempt = await this.commands.find(journeyDigest(state));
     if (
-      attempt?.user_id !== session.userId ||
-      attempt.session_id !== session.sessionId ||
-      !journeyDigest(binding).equals(attempt.browser_digest) ||
+      attempt?.userId !== session.userId ||
+      attempt.sessionId !== session.sessionId ||
+      !journeyDigest(binding).equals(attempt.browserDigest) ||
       (attempt.phase === 'source'
-        ? attempt.source_provider
-        : attempt.target_provider) !== provider
+        ? attempt.sourceProvider
+        : attempt.targetProvider) !== provider
     )
       return this.landing('failed');
     const identity = await this.input.providers
@@ -193,7 +193,7 @@ export class AccountLinking {
       const nextUrl = await this.authorizationUrl(
         attempt.id,
         'target',
-        attempt.target_provider,
+        attempt.targetProvider,
         nextState,
       ).catch(() => undefined);
       if (nextUrl === undefined) return this.landing('failed');
