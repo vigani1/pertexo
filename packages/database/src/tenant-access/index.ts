@@ -63,12 +63,7 @@ export type {
 export {
   createAuthenticationMailDeliveryStore,
   createAuthenticationMailEnqueueStore,
-  insertAuthenticationMail,
 } from '../identity/authentication-mail.js';
-export {
-  type IdentitySecurityEvent,
-  recordIdentitySecurityFact,
-} from '../identity/security-facts.js';
 export type {
   AuthenticationMailDeliveryClaim,
   AuthenticationMailDeliveryStore,

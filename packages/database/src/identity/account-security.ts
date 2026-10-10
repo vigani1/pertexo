@@ -12,6 +12,7 @@ import {
 } from '../schema/authentication.js';
 import { users } from '../schema/foundation.js';
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
+import { rethrowIdentityQueryFailure } from './query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 
 /** Credential changes and revocation share one database commit. */
@@ -58,7 +59,7 @@ export async function changePasswordAndRevokeSessions(
     await db.delete(authSessions).where(eq(authSessions.userId, input.userId));
     await recordIdentitySecurityFact(client, input.userId, 'password.changed');
     return 'changed';
-  });
+  }).catch(rethrowIdentityQueryFailure);
 }
 
 export async function setupPasswordAndRevokeSessions(
@@ -85,15 +86,13 @@ export async function setupPasswordAndRevokeSessions(
       )
       .for('update');
     if (existing.length !== 0) return 'already';
-    await db
-      .insert(authAccounts)
-      .values({
-        id: randomUUID(),
-        accountId: input.userId,
-        providerId: 'credential',
-        userId: input.userId,
-        password: input.passwordHash,
-      });
+    await db.insert(authAccounts).values({
+      id: randomUUID(),
+      accountId: input.userId,
+      providerId: 'credential',
+      userId: input.userId,
+      password: input.passwordHash,
+    });
     await db.delete(authSessions).where(eq(authSessions.userId, input.userId));
     await recordIdentitySecurityFact(
       client,
@@ -101,7 +100,7 @@ export async function setupPasswordAndRevokeSessions(
       'password.configured',
     );
     return 'configured';
-  });
+  }).catch(rethrowIdentityQueryFailure);
 }
 
 /** A reset token cannot create a credential method or survive a committed reset. */
@@ -147,7 +146,7 @@ export async function resetPasswordAndRevokeSessions(
       .where(eq(authVerifications.id, proof.id));
     await recordIdentitySecurityFact(client, proof.value, 'password.reset');
     return 'reset';
-  });
+  }).catch(rethrowIdentityQueryFailure);
 }
 
 /** The last sign-in method cannot be removed; removal revokes every session. */
@@ -182,5 +181,5 @@ export async function unlinkMethodAndRevokeSessions(
     await db.delete(authSessions).where(eq(authSessions.userId, input.userId));
     await recordIdentitySecurityFact(client, input.userId, 'method.unlinked');
     return 'unlinked';
-  });
+  }).catch(rethrowIdentityQueryFailure);
 }

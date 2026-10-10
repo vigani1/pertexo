@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import type { PoolClient } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool, PoolClient } from 'pg';
+import { authenticationMailDeliveries } from '../schema/authentication.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
@@ -68,25 +70,21 @@ export type AuthenticationMailInput = Readonly<{
 
 /** Queues one sealed authentication mail in the caller's transaction. */
 export async function insertAuthenticationMail(
-  client: Pick<PoolClient, 'query'>,
+  client: Pool | PoolClient,
   input: AuthenticationMailInput,
 ): Promise<void> {
   const sealed = sealedPayload.parse(input.sealedPayload);
-  await client.query(
-    `insert into app.authentication_mail_deliveries
-       (id, purpose, expires_at, payload_ciphertext, payload_nonce,
-        payload_tag, payload_key_version)
-     values ($1, $2, $3, $4, $5, $6, $7)`,
-    [
-      z.uuid().parse(input.id),
-      purpose.parse(input.purpose),
-      z.date().parse(input.expiresAt),
-      sealed.ciphertext,
-      sealed.nonce,
-      sealed.tag,
-      sealed.keyVersion,
-    ],
-  );
+  await drizzle(client)
+    .insert(authenticationMailDeliveries)
+    .values({
+      id: z.uuid().parse(input.id),
+      purpose: purpose.parse(input.purpose),
+      expiresAt: z.date().parse(input.expiresAt).toISOString(),
+      payloadCiphertext: sealed.ciphertext,
+      payloadNonce: sealed.nonce,
+      payloadTag: sealed.tag,
+      payloadKeyVersion: sealed.keyVersion,
+    });
 }
 
 export function createAuthenticationMailEnqueueStore(
