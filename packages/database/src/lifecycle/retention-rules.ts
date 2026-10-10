@@ -1,3 +1,5 @@
+import { reapInvitationReplacementClaims } from './invitation-claims.js';
+
 /**
  * What retention removes and when. Each rule clears or deletes at most one page
  * of rows per call, and one worker at a time runs a given rule. Later rules
@@ -354,28 +356,8 @@ export const RETENTION_RULES = Object.freeze([
       where intent.workspace_id = page.workspace_id and intent.id = page.id`,
   },
   {
-    // A replacement claim stays while any acceptance further down its chain
-    // is live. Checking the claim's own successor first keeps the chain walk
-    // to claims that are likely due.
     name: 'invitation_replacement_claims',
-    statement: `
-      with page as (
-        select claim.prior_workspace_id, claim.prior_intent_id,
-               claim.prior_binding_digest
-        from app.workspace_invitation_binding_replacement_claims claim
-        where not exists (select 1 from app.workspace_invitation_acceptance_intents intent
-            where intent.workspace_id = claim.successor_workspace_id
-              and intent.id = claim.successor_intent_id
-              and intent.binding_digest = claim.successor_binding_digest
-              and intent.status not in ('abandoned', 'superseded')
-              and intent.expires_at > clock_timestamp())
-          and app.workspace_invitation_replacement_claim_is_reapable(
-            claim.prior_workspace_id, claim.prior_intent_id, claim.prior_binding_digest)
-        limit $1
-      )
-      delete from app.workspace_invitation_binding_replacement_claims claim using page
-      where (claim.prior_workspace_id, claim.prior_intent_id, claim.prior_binding_digest)
-        = (page.prior_workspace_id, page.prior_intent_id, page.prior_binding_digest)`,
+    run: reapInvitationReplacementClaims,
   },
   {
     // A finished invitation keeps its recipient's address for 90 days.

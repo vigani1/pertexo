@@ -1,4 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { workflowRunActiveAdmissions } from '../../schema/runs/admission.js';
+import { count as countRows, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -72,12 +73,18 @@ export async function readWorkspaceUsageCapacity(
     pool,
     parsed.workspaceId,
     async (transaction) => {
+      const reserved = transaction.db
+        .select({ value: countRows() })
+        .from(workflowRunActiveAdmissions)
+        .where(
+          eq(workflowRunActiveAdmissions.workspaceId, transaction.workspaceId),
+        );
       const result = await transaction.db.execute(sql`
       select
         to_char(transaction_timestamp() at time zone 'UTC',
           'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as as_of,
         current_runs.active_runs, current_runs.queued_runs,
-        app.workspace_reserved_active_slot_count(${transaction.workspaceId}::uuid) as reserved_active_slots,
+        (${reserved})::integer as reserved_active_slots,
         case when version.version is null or counter.workspace_id is null then 'unavailable'
           when version.status <> 'active' then 'suspended'
           when version.effective_at > transaction_timestamp() then 'not_yet_effective'

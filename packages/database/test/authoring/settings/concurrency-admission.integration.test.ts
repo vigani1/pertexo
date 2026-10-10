@@ -1,3 +1,4 @@
+import { readWorkflowRunReadRecord } from '../../../src/runs/commands/records.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
@@ -393,16 +394,11 @@ describe('current workflow concurrency and ordered production admission', () => 
     const second = await acceptRun();
     await publishClaims(await claimRuns());
     const projection = () =>
-      withOwner(
-        async (client) =>
-          (
-            await client.query<{
-              value: { asOf: string; reasons: string[] } | null;
-            }>('select app.workflow_run_admission_blockers($1,$2) value', [
-              workspaceA,
-              second.runId,
-            ])
-          ).rows[0]?.value,
+      apiDatabase.withWorkspace(
+        workspaceA,
+        async (transaction) =>
+          (await readWorkflowRunReadRecord(transaction, second.runId, false))
+            ?.admissionBlockers ?? null,
       );
     expect(await projection()).toMatchObject({
       reasons: ['workflow_capacity', 'workflow_order'],
@@ -414,12 +410,10 @@ describe('current workflow concurrency and ordered production admission', () => 
     await setLimit(null);
     expect(await projection()).toMatchObject({ reasons: [] });
     await expect(
-      apiDatabase.withWorkspace(workspaceA, ({ db }) =>
-        db.execute(sql`
-      select app.workflow_run_admission_blockers(${workspaceB},${second.runId})
-    `),
+      apiDatabase.withWorkspace(workspaceB, (transaction) =>
+        readWorkflowRunReadRecord(transaction, second.runId, false),
       ),
-    ).rejects.toSatisfy(hasPostgresCode('42501'));
+    ).resolves.toBeUndefined();
   });
 
   it('skips a workspace lifecycle lock before grants while settings wait without holding the counter', async () => {

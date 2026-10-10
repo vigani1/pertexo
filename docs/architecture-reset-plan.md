@@ -193,9 +193,9 @@ now, as one ordered program — not "whenever we touch it".
         an "input cases not enabled" state.
   - [x] Workspaces and access: memberships, invitations (the replacement-claim
         scan and its unused purge mode went with transient retention),
-        ownership, identity. The replacement-claim reapability check stays
-        in SQL: retention and purge share its recursive lineage walk and the
-        advisory locks it takes per binding.
+        ownership, identity. Retention and purge now share a typed replacement-claim
+        lineage check in TypeScript, with sorted advisory locks per binding,
+        a re-read after locking, and the same cycle/depth and live-intent rules.
     - [x] Rename, invitation, acceptance, role, removal, departure,
           suspension and ownership commands key through the shared
           idempotency helper; their seven receipt tables go. Profile
@@ -662,7 +662,13 @@ payload, provider response). Inner layers trust typed values.
   - *Run admission and capacity* (`reserve`/`arm`/`rebind`/`release` of active
     admissions, the eligibility and capacity checks, the workspace admission
     locks and counter triggers): the counters must change atomically with the
-    rows they count, whichever writer touches them.
+    rows they count, whichever writer touches them. Specifically,
+    `workflow_run_active_admission_eligible` is used by the reservation/claim
+    path, `workflow_run_active_capacity_available` locks the counter and checks
+    capacity under that lock, and `workflow_concurrency_admissible` orders the
+    same claims. These checks remain in the atomic SQL path. Blocker explanations
+    and reserved-slot counts are typed workspace reads; blocker reasons are
+    computed in TypeScript from one statement's run, count and ordering facts.
   - *Artifact capacity and references* (the capacity triggers,
     `lock_execution_artifact_references`): every writer that references or
     removes an artifact keeps the per-workspace byte count and the reference
@@ -672,9 +678,12 @@ payload, provider response). Inner layers trust typed values.
     counter.
   - *Guards over writers outside one code path*: the active-integration
     triggers (eight writers in five areas, racing workspace deletion), the
-    session-revocation triggers (Better Auth writes users and sessions too),
-    the invitation replacement-claim lineage walk (shared by retention and
-    purge) and the inbox recipient check the row policies call.
+    session-revocation triggers (Better Auth writes users and sessions too)
+    and the inbox recipient check the row policies call. Invitation replacement
+    claims are maintained by TypeScript: retention and purge share the bounded
+    lineage read, sorted binding locks, post-lock re-read and live-successor
+    check. Frontiers are read for the page together, and unsafe candidates are
+    skipped before filling the deletion page.
   - *Row locks on rows the app may not update* (`lock_workflow_run_replay_*`):
     a `FOR SHARE` lock needs update rights the runtime role does not have.
 - **Removed:** database-stored feature switches (`*_rollout` tables), function

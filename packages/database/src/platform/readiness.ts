@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0022_unversioned_formats.sql';
+export const EXPECTED_MIGRATION_HEAD = '0023_typescript_database_reads.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

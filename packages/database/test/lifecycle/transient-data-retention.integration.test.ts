@@ -1,3 +1,5 @@
+import { createRetentionDatabase } from '../../src/lifecycle/retention.js';
+import { parseDatabaseConfig } from '../../src/config.js';
 import { createHash } from 'node:crypto';
 
 import type { QueryResultRow } from 'pg';
@@ -5,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   owner,
+  maintenanceUrl,
   randomUUID,
   retention,
   userId,
@@ -381,4 +384,92 @@ describe('transient data retention', () => {
       ),
     ).resolves.toMatchObject({ rows: [{ count: 0 }] });
   });
+  it('keeps cyclic claims while seeking past them to fill a cleanup page', async () => {
+    const cycle = [
+      '00000000-0000-4000-8000-000000000001',
+      '00000000-0000-4000-8000-000000000002',
+    ];
+    const ended = [
+      'ffffffff-ffff-4fff-8fff-fffffffffff1',
+      'ffffffff-ffff-4fff-8fff-fffffffffff2',
+    ];
+    const ids = [...cycle, ...ended];
+    try {
+      for (const [index, id] of ids.entries()) {
+        const next = index < 2 ? cycle[1 - index] : randomUUID();
+        await insertReplacement(id, next ?? randomUUID());
+      }
+      const pass = await retention.enforce();
+      expect(pass.removed.invitation_replacement_claims).toBe(2);
+      expect(
+        (
+          await asOwner<{ prior_intent_id: string }>(
+            `select prior_intent_id from app.workspace_invitation_binding_replacement_claims where prior_intent_id=any($1::uuid[]) order by prior_intent_id`,
+            [ids],
+          )
+        ).rows.map((row) => row.prior_intent_id),
+      ).toEqual(cycle);
+    } finally {
+      await asOwner(
+        'delete from app.workspace_invitation_binding_replacement_claims where prior_intent_id=any($1::uuid[])',
+        [ids],
+      );
+    }
+  });
+
+  it.each([32, 33])(
+    'observes the lineage boundary for a %i-claim chain',
+    async (length) => {
+      const ids = Array.from(
+        { length: length + 1 },
+        (_, index) =>
+          `00000000-0000-4000-8000-${(4096 + index).toString(16).padStart(12, '0')}`,
+      );
+      const one = createRetentionDatabase(
+        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
+        { pageSize: 1 },
+      );
+      try {
+        for (let index = 0; index < length; index++) {
+          const id = ids[index];
+          const next = ids[index + 1];
+          if (id === undefined || next === undefined)
+            throw new Error('Missing lineage fixture');
+          await insertReplacement(id, next);
+        }
+        const pass = await one.enforce();
+        expect(pass.removed.invitation_replacement_claims).toBe(1);
+        const roots = await asOwner<{ count: number }>(
+          'select count(*)::integer count from app.workspace_invitation_binding_replacement_claims where prior_intent_id=$1',
+          [ids[0]],
+        );
+        expect(roots.rows).toEqual([{ count: length === 32 ? 0 : 1 }]);
+      } finally {
+        await one.close();
+        await asOwner(
+          'delete from app.workspace_invitation_binding_replacement_claims where prior_intent_id=any($1::uuid[])',
+          [ids],
+        );
+      }
+    },
+  );
 });
+
+async function insertReplacement(id: string, next: string): Promise<void> {
+  await asOwner(
+    `insert into app.workspace_invitation_binding_replacement_claims
+    (prior_workspace_id,prior_intent_id,prior_binding_digest,
+     successor_workspace_id,successor_intent_id,successor_invitation_id,
+     successor_invitation_revision,successor_binding_digest,successor_csrf_digest)
+    values($1,$2,$3,$1,$4,$5,1,$6,$7)`,
+    [
+      workspaceId,
+      id,
+      digest(`binding:${id}`),
+      next,
+      randomUUID(),
+      digest(`binding:${next}`),
+      digest(`csrf:${next}`),
+    ],
+  );
+}

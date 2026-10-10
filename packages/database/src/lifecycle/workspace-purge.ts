@@ -1,3 +1,4 @@
+import { reapInvitationReplacementClaims } from './invitation-claims.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -34,7 +35,16 @@ export interface WorkspacePurgeCoordinator {
 }
 
 /** One bounded change to a purging workspace's rows: `$1` workspace, `$2` limit. */
-type PurgeStep = Readonly<{ name: string; statement: string }>;
+type PurgeStep =
+  | Readonly<{ name: string; statement: string }>
+  | Readonly<{
+      name: string;
+      run(
+        client: PoolClient,
+        workspaceId: string,
+        pageSize: number,
+      ): Promise<number>;
+    }>;
 
 const deleteRows = (table: string): PurgeStep => ({
   name: table,
@@ -165,22 +175,9 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
       using page where row.ctid = page.ctid`,
   },
   {
-    // Invitation replacement claims name both workspaces of a replacement.
     name: 'workspace_invitation_binding_replacement_claims',
-    statement: `
-      with page as (
-        select prior_workspace_id, prior_intent_id, prior_binding_digest
-        from app.workspace_invitation_binding_replacement_claims
-        where (prior_workspace_id = $1::uuid or successor_workspace_id = $1::uuid)
-          and app.workspace_invitation_replacement_claim_is_reapable(
-            prior_workspace_id, prior_intent_id, prior_binding_digest)
-        limit $2
-      )
-      delete from app.workspace_invitation_binding_replacement_claims claim
-      using page
-      where claim.prior_workspace_id = page.prior_workspace_id
-        and claim.prior_intent_id = page.prior_intent_id
-        and claim.prior_binding_digest = page.prior_binding_digest`,
+    run: (client, workspaceId, pageSize) =>
+      reapInvitationReplacementClaims(client, pageSize, workspaceId),
   },
   ...[
     'webhook_trigger_replay_records',
@@ -417,11 +414,16 @@ export function createWorkspacePurgeCoordinator(
         workspace.id,
       ]);
       for (const step of PURGE_STEPS) {
-        const changed = await client.query(step.statement, [
-          workspace.id,
-          options.pageSize,
-        ]);
-        if ((changed.rowCount ?? 0) > 0)
+        const changed =
+          'run' in step
+            ? await step.run(client, workspace.id, options.pageSize)
+            : ((
+                await client.query(step.statement, [
+                  workspace.id,
+                  options.pageSize,
+                ])
+              ).rowCount ?? 0);
+        if (changed > 0)
           return {
             status: 'progressed' as const,
             workspaceId: workspace.id,
