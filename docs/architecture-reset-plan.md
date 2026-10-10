@@ -637,6 +637,9 @@ now, as one ordered program — not "whenever we touch it".
         listing pinned published parents, and all other recommendations.
         Runtime, integrated recovery/history and retention evidence remain open
         in the feature plan; reset follow-up precedes slice 1 pruning.
+  - [x] Plan-PR CI repair: sign-in return-path tests await router settlement
+        before unmount/fixture teardown, preventing a pending UI timer from
+        updating React after JSDOM is disposed. Product behavior is unchanged.
 
 ## Target structure: where everything lives
 
