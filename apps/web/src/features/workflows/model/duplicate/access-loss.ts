@@ -6,6 +6,7 @@ import {
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
+import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 
 export function isDuplicateAccessLoss(error: unknown) {
   return (
@@ -40,24 +41,15 @@ export function observeDuplicateAccessLoss(
   isCurrent: () => boolean,
   retire: () => void,
 ) {
-  return queryClient.getQueryCache().subscribe((event) => {
-    if (!isCurrent() || event.type !== 'updated') return;
-    const key = event.query.queryKey as readonly unknown[];
-    const error: unknown = event.query.state.error;
-    const inWorkspace =
-      key[0] === 'identity' &&
-      key[1] === userId &&
-      key[2] === 'workspace' &&
-      key[3] === workspaceId;
-    const sourceRead =
-      inWorkspace &&
-      (key[4] === 'workflows' ||
-        (key[4] === 'workflow' && key[5] === workflowId));
-    if (
-      isApiError(error) &&
-      ((inWorkspace && error.status === 401) ||
-        (sourceRead && [403, 404].includes(error.status ?? 0)))
-    )
-      retire();
-  });
+  return watchWorkspaceReadDenial(
+    queryClient,
+    userId,
+    workspaceId,
+    ({ key, error }) =>
+      isCurrent() &&
+      (error.status === 401 ||
+        key[0] === 'workflows' ||
+        (key[0] === 'workflow' && key[1] === workflowId)),
+    retire,
+  );
 }

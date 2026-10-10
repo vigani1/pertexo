@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { subscribeSessionChanges } from '@/features/auth/session-sync.public';
-import { isApiError } from '@/lib/api/api-error';
+import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import { workflowTemplateOriginKey } from '../../data/workflow-origin.queries';
 import { workflowKeys } from '../../data/workflows.queries';
 
@@ -34,31 +34,21 @@ export function useTemplateOriginLifetime(
       clear();
     };
     const unsubscribeSession = subscribeSessionChanges(retire);
-    const unsubscribeCache = queryClient.getQueryCache().subscribe((event) => {
-      if (event.type !== 'updated') return;
-      const key = event.query.queryKey as readonly unknown[];
-      const error: unknown = event.query.state.error;
-      if (
-        key[0] !== 'identity' ||
-        key[1] !== userId ||
-        key[2] !== 'workspace' ||
-        key[3] !== workspaceId ||
-        !isApiError(error) ||
-        ![401, 403, 404].includes(error.status ?? 0)
-      )
-        return;
-      const exact = (candidate: readonly unknown[]) =>
-        key.length === candidate.length &&
-        candidate.every((part, index) => part === key[index]);
-      if (
+    const exact = (key: readonly unknown[], candidate: readonly unknown[]) =>
+      key.length === candidate.length - 4 &&
+      candidate.slice(4).every((part, index) => part === key[index]);
+    const unsubscribeCache = watchWorkspaceReadDenial(
+      queryClient,
+      userId,
+      workspaceId,
+      ({ key, error }) =>
         error.status === 401 ||
-        key.length === 4 ||
-        exact(scopeKey) ||
-        exact(detailKey) ||
-        exact(originKey)
-      )
-        retire();
-    });
+        key.length === 0 ||
+        exact(key, scopeKey) ||
+        exact(key, detailKey) ||
+        exact(key, originKey),
+      retire,
+    );
     if (!allowed) queueMicrotask(retire);
     return () => {
       unsubscribeSession();
