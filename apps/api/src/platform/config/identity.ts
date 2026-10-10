@@ -4,7 +4,7 @@ import {
   parseAuthenticationProviders,
   parseDurableAuthenticationMail,
   parsePreviousKeys,
-} from './identity-credentials-config.js';
+} from './identity-credentials.js';
 
 /** Environment variables owned by browser identity and authentication. */
 export const identityEnvironmentShape = {

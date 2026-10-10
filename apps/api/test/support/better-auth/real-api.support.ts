@@ -16,7 +16,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
 import type { createApiApplication } from '../../../src/app.js';
-import type { ApiConfig } from '../../../src/platform/config/api-config.js';
+import type { ApiConfig } from '../../../src/platform/config/api.js';
 import { createApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
 import { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
 import { dropDisconnectedDatabase } from '../disposable-database.js';

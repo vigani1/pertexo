@@ -8,7 +8,7 @@ import type {
   TelemetryLifecycle,
 } from '@pertexo/observability';
 
-import type { ApiConfig } from './platform/config/api-config.js';
+import type { ApiConfig } from './platform/config/api.js';
 import {
   createApiConnectionRuntime,
   type ApiConnectionRuntime,

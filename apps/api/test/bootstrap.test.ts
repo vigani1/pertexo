@@ -28,7 +28,7 @@ import type { ApiScheduleRuntime } from '../src/platform/schedules/schedule-runt
 import type { ApiNotificationRuntime } from '../src/platform/notifications/notification-runtime.module.js';
 import { WorkspaceInboxService } from '../src/notifications/service.js';
 import type { ApiArtifactRuntime } from '../src/platform/artifacts/artifact-runtime.module.js';
-import type { ApiIdentityConfig } from '../src/platform/config/identity-config.js';
+import type { ApiIdentityConfig } from '../src/platform/config/identity.js';
 import type { BetterAuthRuntime } from '../src/authentication/index.js';
 import { ScheduleManagementService } from '../src/schedules/service.js';
 import { createApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';

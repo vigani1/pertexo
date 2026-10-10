@@ -8,10 +8,7 @@ import type { StructuredLogger } from '@pertexo/observability';
 import type * as LoggingModule from '@pertexo/observability';
 
 import type * as ApiApplicationModule from './app.js';
-import {
-  parseApiConfig,
-  type ApiConfig,
-} from './platform/config/api-config.js';
+import { parseApiConfig, type ApiConfig } from './platform/config/api.js';
 
 interface CloseableApplication {
   close(): Promise<void>;

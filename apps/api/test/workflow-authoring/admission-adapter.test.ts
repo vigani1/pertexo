@@ -11,7 +11,7 @@ import {
 import {
   createCoreAuthoringOptions,
   createCoreWorkflowCompatibility,
-} from '../../src/platform/workflow/workflow-compatibility.js';
+} from '../../src/platform/workflow/compatibility.js';
 import { serializeWorkflowValidation } from '../../src/workflow-authoring/http/serializers.js';
 import { mapWorkflowAuthoringError } from '../../src/workflow-authoring/errors.js';
 import { createDraftRepresentationTag } from '../../src/workflow-authoring/http/etag.js';

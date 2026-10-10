@@ -172,12 +172,12 @@ jobs:
           pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             --exclude 'test/browser/*.integration.test.ts' \
-            --exclude test/workflow-authoring/organization/organization.integration.test.ts \
+            --exclude test/workflow-authoring/organization/commands.integration.test.ts \
             --exclude test/workflow-authoring/organization/favorite-persistence.integration.test.ts \
             --exclude test/workflow-authoring/organization/folders-bulk.integration.test.ts
           EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/workflow-authoring/organization/organization.integration.test.ts \
+            test/workflow-authoring/organization/commands.integration.test.ts \
             test/workflow-authoring/organization/favorite-persistence.integration.test.ts \
             test/workflow-authoring/organization/folders-bulk.integration.test.ts
           # Last: these stop and restart Redis.

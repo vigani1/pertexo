@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
 
-import { parseApiConfig } from '../src/platform/config/api-config.js';
+import { parseApiConfig } from '../src/platform/config/api.js';
 
 function validDeployedEnvironment(): Record<string, string> {
   return {

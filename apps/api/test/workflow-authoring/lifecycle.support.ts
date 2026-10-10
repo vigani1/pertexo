@@ -13,7 +13,7 @@ import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
-import type { ApiConfig } from '../../src/platform/config/api-config.js';
+import type { ApiConfig } from '../../src/platform/config/api.js';
 import { createApiApplication } from '../../src/app.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { Pool, type PoolClient } from 'pg';

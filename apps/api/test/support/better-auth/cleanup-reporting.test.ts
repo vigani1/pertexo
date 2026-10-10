@@ -46,7 +46,7 @@ vi.mock('../../../src/authentication/index.js', () => ({
 vi.mock('../../../src/platform/identity/identity-runtime.module.js', () => ({
   createApiIdentityRuntime: () => ({ close: () => close('identity runtime') }),
 }));
-vi.mock('../../../src/platform/workflow/workflow-compatibility.js', () => ({
+vi.mock('../../../src/platform/workflow/compatibility.js', () => ({
   createCoreWorkflowCompatibility: () => ({
     readinessSupport: { descriptions: [] },
   }),

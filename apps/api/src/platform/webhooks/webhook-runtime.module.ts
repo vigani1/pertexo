@@ -7,7 +7,7 @@ import { createAwsWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
-import type { ApiConfig } from '../config/api-config.js';
+import type { ApiConfig } from '../config/api.js';
 import { initialCheckpointFactory } from '@pertexo/execution';
 import { WebhookManagementService } from '../../webhooks/service.js';
 import type { WebhookIngressDependencies } from '../../webhooks/ingress.js';

@@ -92,7 +92,7 @@ adapter integration and final compatibility evidence require subsequent review.
 | Current owner / seam | Proposed responsibility | Compatibility requirement |
 | --- | --- | --- |
 | `node-catalog` selected registry release definitions | Canonical exact definition `policyReferences` | No independent policy allowlist or browser exposure |
-| API `platform/workflow/workflow-compatibility.ts`, `projectDefinitionCatalogs` / `createCoreAuthoringOptions` | Derive a narrow immutable policy projection from the **same** `nodeRelease` as each variant; close its admission callback over that projection | Do not change the executable release fingerprint/catalog identity |
+| API `platform/workflow/compatibility.ts`, `projectDefinitionCatalogs` / `createCoreAuthoringOptions` | Derive a narrow immutable policy projection from the **same** `nodeRelease` as each variant; close its admission callback over that projection | Do not change the executable release fingerprint/catalog identity |
 | Database `workflow-authoring-compatibility.ts`, `selectLocked` | Select existing durable release and matching admission callback | Latest API-memory release alone is insufficient during rollout |
 | Database `workflow-authoring-reads.ts` / API `ValidateWorkflowDraftUseCase` | Focused `validateDraft` read operation obtains snapshot, selected variant and result together; use case retains authorization/serialization | Existing ordinary reads/save/restore remain lossless; no validation writes |
 | Database `workflow-publication.ts`, `lockAndCompilePublication` | Same selected variant admission after original ETag check, before compilation/persistence | Completed `claimPublication` replay still returns before current-draft validation |

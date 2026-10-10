@@ -12,7 +12,7 @@ import {
   identityEnvironmentShape,
   parseIdentityConfig,
   type ApiIdentityConfig,
-} from './identity-config.js';
+} from './identity.js';
 
 const API_NODE_ENVIRONMENTS = [
   'development',

@@ -22,7 +22,7 @@ import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js'
 import {
   createApiWorkflowMetadataRuntime,
   type ApiWorkflowMetadataRuntime,
-} from './workflow-metadata-runtime.js';
+} from './metadata-runtime.js';
 import {
   createPostgresRunEventReader,
   RedisRunEventPublisher,
@@ -52,9 +52,9 @@ import {
 import {
   createCoreAuthoringOptions,
   createCoreWorkflowCompatibility,
-} from './workflow-compatibility.js';
+} from './compatibility.js';
 
-export { createCoreWorkflowAuthoringDatabase } from './workflow-compatibility.js';
+export { createCoreWorkflowAuthoringDatabase } from './compatibility.js';
 
 export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
