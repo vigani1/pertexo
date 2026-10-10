@@ -3,7 +3,7 @@
 - **Status:** accepted
 - **Date:** 2026-08-24
 - **Amended:** 2026-10-09 (limits sized to the checkpoint; see the amendment
-  below)
+  below); 2026-10-10 (finished-iteration pruning)
 
 ## Context
 
@@ -154,3 +154,27 @@ formats and compatibility-release rollout in the original decision above.
 There is one checkpoint shape and one serving catalog. The 2026-10-09 limits and
 all loop identity, budget and recovery behavior remain current. F08 must plan
 checkpoint pruning before raising those limits.
+
+## Pruning amendment (2026-10-10)
+
+F08 slice 1 removes a finished iteration's invocations, joins, branch
+selections, output references, admission keys and nested declarations once every
+owner in its subtree is terminal. Durable node/attempt outputs and events remain
+inspectable until ordinary retention. A waiting or running owner prevents
+pruning. Each loop keeps its collection, cursor, active ordinals, compact
+completed prefix and bounded out-of-order terminal ordinals. Removed nested
+declarations contribute to an aggregate retired budget; reservation is never
+refunded.
+
+The compact frontier prevents re-admission and makes verified coordinator
+completion redelivery inert. Existing immutable physical completion checks and
+delivery receipts own changed-output conflicts independently of the checkpoint.
+Transient final records allow the current transaction to finish history and
+failure decisions without storing finished keys again.
+
+Maximum-ID serial For Each checkpoints now peak at 2,540 bytes, serial nested
+loops at 4,387 bytes and fully parallel loops at 124,331 bytes in the measured
+fixtures. The [F08 plan](../feature-plans/08-subworkflows.md) records checkpoint
+rewrite/WAL measurements, their scope and recovery/retention evidence. All
+2026-10-09 limits remain unchanged; future increases still require separate
+evidence, including Call waits once that runtime exists.

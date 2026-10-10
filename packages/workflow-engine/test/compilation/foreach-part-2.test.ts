@@ -242,7 +242,8 @@ describe('For Each production operations', () => {
         expect.objectContaining({
           loopId: 'body-first',
           activeOrdinals: [],
-          terminalOrdinals: [0],
+          completedPrefix: 1,
+          terminalOrdinals: [],
         }),
       ]),
     );
@@ -283,20 +284,20 @@ describe('For Each production operations', () => {
         },
       ],
     });
-    expect(completed.checkpoint.loops).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          loopId: 'loop',
-          activeOrdinals: [],
-          terminalOrdinals: [0],
-        }),
-        expect.objectContaining({
-          loopId: 'body-first',
-          activeOrdinals: [],
-          terminalOrdinals: [0],
-        }),
-      ]),
-    );
+    expect(completed.checkpoint.loops).toEqual([
+      expect.objectContaining({
+        loopId: 'loop',
+        activeOrdinals: [],
+        completedPrefix: 1,
+        terminalOrdinals: [],
+      }),
+    ]);
+    expect(completed.checkpoint.retiredIterationBudget).toBe(1);
+    expect(
+      completed.checkpoint.invocations.every(
+        ({ iterationPath }) => (iterationPath?.length ?? 0) === 0,
+      ),
+    ).toBe(true);
     expect(
       completed.checkpoint.invocations.find(
         ({ invocationKey }) => invocationKey === outerControl.invocationKey,

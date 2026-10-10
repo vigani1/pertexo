@@ -1,8 +1,9 @@
 # F08 — Reusable subworkflows after the architecture reset
 
-Status: accepted by the owner on 2026-10-10; implementation starts with
-finished-loop pruning after the reset follow-up PR. This document replaces the former F08 outline; it does not restore
-the reverted implementation. [ADR 070](../adr/070-workflow-call-boundaries.md)
+Status: accepted by the owner on 2026-10-10; slice 1 implements finished-loop
+pruning at the current limits. Callable contracts and Call execution remain
+pending. This document replaces the former F08 outline; it does not restore the
+reverted implementation. [ADR 070](../adr/070-workflow-call-boundaries.md)
 records the accepted decisions. [Architecture](../architecture.md) and
 [ADR 069](../adr/069-architecture-reset.md) describe the current foundation.
 
@@ -295,9 +296,10 @@ resurrect a child after detail retirement or parent deletion.
 ## Finished-iteration pruning before raising limits
 
 [ADR 020](../adr/020-bounded-for-each.md) records why limits are currently 200:
-finished invocations stay in the checkpoint; maximum-ID For Each peaks at 141
-KB, nested loops at 191 KB and a chain at 87 KB. The checkpoint is capped at 256
-KiB and rewritten on every transition. Raising its cap multiplies write volume.
+before pruning, finished invocations stayed in the checkpoint; maximum-ID For
+Each peaked at 141 KB, nested loops at 191 KB and a chain at 87 KB. The
+checkpoint is capped at 256 KiB and rewritten on every transition. Raising its
+cap multiplies write volume.
 
 After an iteration is terminal and no live invocation needs its data, remove its
 invocations, joins, branch selections, nested loop states, completed-output
@@ -307,21 +309,88 @@ next-ordinal cursor, remaining budget, active scopes and a compact completed
 prefix with bounded out-of-order terminal ordinals. A per-finished-invocation
 checkpoint tombstone is not pruning.
 
-`transition/loops.ts:applyLoopCompletion` currently looks up the iteration
-before checking `terminalOrdinals`. Reorder recovery around the compact terminal
-frontier so a valid redelivery of a pruned completion is inert. Immutable
-attempt/call facts and receipts remain the boundary for conflicting changed
-completions; do not silently accept a rebound output or re-admit a finished key.
-Update fact loading and checkpoint reconstruction together. Keep data needed by
-live downstream mappings, joins or nested scopes until their ownership ends.
+`transition/loops.ts:applyLoopCompletion` used to look up the iteration before
+checking `terminalOrdinals`. Recover around the compact terminal frontier so a
+valid redelivery of a pruned completion is inert. Immutable attempt/call facts
+and receipts remain the boundary for conflicting changed completions; do not
+silently accept a rebound output or re-admit a finished key. Update fact loading
+and checkpoint reconstruction together. Keep data needed by live downstream
+mappings, joins or nested scopes until their ownership ends.
 
-The pruning slice must cover out-of-order/nested completion, restart, duplicate
-and conflicting delivery, canceled/failed/unknown loops, Call waits within
-loops, retention, and late facts after pruning. Measure checkpoint bytes and
-actual PostgreSQL rewrite volume with maximum IDs and values. Keep all current
-limits until those tests prove a bounded active frontier; then propose
-loop/expanded limit changes separately from static node, ID and concurrency
-bounds. No automatic restoration of the old 1,000 limits.
+The pruning slice covers out-of-order/nested completion, restart, duplicate and
+conflicting delivery, canceled/failed/unknown loops, existing durable waits,
+retention, and late facts after pruning. Call waits within loops are qualified
+in slice 3, when Call execution exists. Measure checkpoint bytes and actual
+PostgreSQL rewrite volume with maximum IDs and values. Keep all current limits
+until those tests prove a bounded active frontier; then propose loop/expanded
+limit changes separately from static node, ID and concurrency bounds. No
+automatic restoration of the old 1,000 limits.
+
+### Slice 1 implementation and evidence (2026-10-10)
+
+The engine prunes a terminal iteration only when every invocation in its full
+branch/iteration subtree is terminal. Waiting or still running owners keep the
+scope's references. Joins, branch selections, admission keys and nested loop
+declarations leave with that subtree. Ordinary node runs, attempts, outputs and
+events remain the history/inspection owners; pruning does not delete history.
+
+Each retained loop records `completedPrefix`: every ordinal below it has settled
+and released its data. Out-of-order completed ordinals retain only their ordinal
+until the gap closes, bounded by the current iteration limit. Admission still
+uses active iteration count; a slow first item does not serialize later items.
+Removed nested declarations contribute to one positive `retiredIterationBudget`
+total, omitted when nothing has retired. It preserves full-budget reservation
+without a refund or per-invocation tombstones. The parser verifies
+frontier/cursor coverage and budget conservation.
+
+`prunedInvocations` is a transient transition-plan field, used only to finish
+the current transaction's node admissions and pending failure decisions. It is
+never stored in the checkpoint. The existing fact loader reads from
+`nextEventSequence`; receipt recovery precedes replay. Immutable attempt
+completion still rejects changed outputs after checkpoint records disappear. The
+private coordinator accepts a derived completion behind the compact frontier as
+inert; public unverifiable outcomes for removed keys remain invalid.
+
+Evidence lives in the existing suites:
+
+- Engine pruning tests cover out-of-order completion, JSON restart, inert
+  redelivery, no repeated admission, waiting ownership, joins/branches, nested
+  budget retirement and malformed frontiers. Compiled-loop tests cover
+  retry/failure, cancellation, deadlines and unknown outcomes, and reject both
+  stale and fresh public outcomes for pruned keys.
+- Capacity tests retain maximum-length identifiers and add serial, nested and
+  out-of-order loops with collection values within about 500 bytes of the 256
+  KiB stored-value bound. Their checkpoints peak below 8 KiB and retain no
+  finished iteration invocations. Full parallel loops retain their live
+  frontier.
+- PostgreSQL tests prove terminal pending failure decisions persist when their
+  invocation is pruned, and identical/conflicting physical completions remain
+  respectively inert/rejected after removal of checkpoint invocation records.
+- The real PostgreSQL/Redis worker fixture completes serial, Condition, Switch
+  and nested loops, erases transport state and restarts a fresh process after
+  each pruned iteration, then redelivers an old attempt. History counts do not
+  increase. Cancellation between/running batches and running deadlines keep
+  their prior behavior. Live history survives retention; after 31-day detail
+  retirement, late delivery cannot recreate history or the checkpoint.
+
+One-off before/after measurements use maximum-length identifiers and about 255
+KB of collection JSON in each declaration, at the unchanged limits:
+
+| Scenario                     | Checkpoint updates | Peak bytes before → after | Serialized rewrite bytes before → after | PostgreSQL WAL bytes before → after |
+| ---------------------------- | -----------------: | ------------------------: | --------------------------------------: | ----------------------------------: |
+| Serial For Each, 197 items   |                201 |           140,773 → 2,540 |                    14,462,533 → 507,217 |                 1,697,169 → 263,802 |
+| Parallel For Each, 197 items |                  8 |         140,773 → 124,331 |                       951,524 → 267,318 |                     88,885 → 30,070 |
+| Serial nested loops, 14 × 12 |                214 |           190,946 → 4,387 |                    20,990,568 → 885,119 |                 1,984,753 → 326,307 |
+
+Serialized rewrite bytes sum every checkpoint JSON submitted by the engine. WAL
+bytes come from `EXPLAIN (ANALYZE, WAL, BUFFERS, FORMAT JSON)` for each
+committed update in a disposable PostgreSQL 18 database. The logged table uses
+the production checkpoint columns, checks, primary key and resume index; it
+isolates checkpoint writes and excludes the run transaction's history, receipts,
+foreign keys and artifact trigger. These are measured checkpoint WAL costs, not
+total run WAL. Serial/nested checkpoint WAL falls by about 84%; a fully parallel
+live frontier remains much larger than a serial one. No bound is raised, and
+Call-in-loop evidence remains required before any later increase.
 
 ## Delivery slices and evidence
 
@@ -387,10 +456,14 @@ references inform the accepted behavior, not acceptance evidence.
       investigation and 42 redundant filenames implemented and verified.
       Full reset gate and the three live role cases pass; slice 1 starts after
       the follow-up's green CI and merge.
-- [ ] Slice 1: finished-loop pruning implemented and verified at current limits.
+- [x] Slice 1: finished-loop pruning implemented and verified at current limits;
+      engine/database/worker restart, delivery, history and retention evidence
+      and checkpoint/WAL measurements recorded above.
 - [ ] Callable contract implemented and verified.
 - [ ] Parent/child acceptance, completion and controls implemented and verified.
 - [ ] Real integrated editor/history/recovery evidence recorded.
+- [ ] Call waits inside pruned loops qualified with the slice 3 runtime.
 - [ ] Retention, rollout/rollback and any measured limit change verified.
 
-This PR contains planning only. No F08 runtime behavior or pruning is built.
+Existing For Each pruning is implemented. No callable contract, Call node or
+parent/child runtime is exposed yet.

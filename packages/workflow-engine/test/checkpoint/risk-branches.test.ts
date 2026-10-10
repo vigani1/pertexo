@@ -72,6 +72,7 @@ const emptyLoop = {
   maxIterations: 1,
   nextOrdinal: 0,
   activeOrdinals: [],
+  completedPrefix: 0,
   terminalOrdinals: [],
 };
 

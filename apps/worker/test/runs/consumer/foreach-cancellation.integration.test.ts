@@ -6,6 +6,7 @@ import {
   createNodeAttemptRunStore,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
+import { createRetentionDatabase } from '@pertexo/database/lifecycle';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
@@ -22,6 +23,7 @@ import {
 
 const {
   databaseUrl,
+  dispatcherUrl,
   enabled,
   ownerQuery,
   redisConnection,
@@ -460,13 +462,16 @@ describeIntegration('For Each cancellation recovery', () => {
 
         if (mode === 'serial_complete' || structuredKind !== undefined) {
           let revision = 3;
+          let lastFinishedAttempt:
+            Awaited<ReturnType<typeof execute>> | undefined;
           for (const ordinal of [0, 1, 2]) {
             await execute('body-map', ordinal);
             await continueAfter(++revision);
-            await execute(
+            const finishedAttempt = await execute(
               structuredKind === 'nested' ? 'nested-body' : 'body-sink',
               ordinal,
             );
+            lastFinishedAttempt = finishedAttempt;
             await continueAfter(++revision);
             if (structuredKind === 'nested') {
               const pendingContinuations = await workerQuery<{ id: string }>(
@@ -479,6 +484,63 @@ describeIntegration('For Each cancellation recovery', () => {
               if (pendingContinuations.length > 0)
                 await continueAfter(++revision);
             }
+            const pruned = await workerQuery<{ scheduler_state: unknown }>(
+              `select scheduler_state from app.run_checkpoints
+                where workspace_id=$1 and workflow_run_id=$2`,
+              [workspaceId, accepted.runId],
+            );
+            const recovered = parseCheckpoint(pruned[0]?.scheduler_state);
+            expect(recovered.loops).toHaveLength(1);
+            expect(recovered.loops[0]).toMatchObject({
+              completedPrefix: ordinal + 1,
+              terminalOrdinals: [],
+            });
+            expect(
+              recovered.invocations.every(
+                ({ iterationPath }) => iterationPath?.[0]?.ordinal !== ordinal,
+              ),
+            ).toBe(true);
+            if (structuredKind === 'nested')
+              expect(recovered.retiredIterationBudget).toBe(ordinal + 1);
+            const readHistory = () =>
+              workerQuery<{
+                attempts: string;
+                events: string;
+                outputs: string;
+              }>(
+                `select
+                 (select count(*)::text from app.node_attempts attempt
+                   join app.node_runs node on node.id=attempt.node_run_id
+                   where node.workspace_id=$1 and node.workflow_run_id=$2) attempts,
+                 (select count(*)::text from app.run_events
+                   where workspace_id=$1 and workflow_run_id=$2) events,
+                 (select count(*)::text from app.node_runs
+                   where workspace_id=$1 and workflow_run_id=$2
+                     and output_ref is not null) outputs`,
+                [workspaceId, accepted.runId],
+              );
+            const history = await readHistory();
+            expect(Number(history[0]?.outputs)).toBeGreaterThan(ordinal + 2);
+            if (mode === 'serial_complete' && ordinal === 0) {
+              const retention = createRetentionDatabase(
+                parseDatabaseConfig({
+                  connectionString: databaseUrl(dispatcherUrl),
+                  max: 1,
+                }),
+              );
+              try {
+                const pass = await retention.enforce();
+                expect(pass.removed.node_runs).toBe(0);
+                expect(pass.removed.run_events).toBe(0);
+                expect(pass.removed.run_checkpoints).toBe(0);
+                await expect(readHistory()).resolves.toEqual(history);
+              } finally {
+                await retention.close();
+              }
+            }
+            await eraseRedisAndRestart();
+            await executeDuplicateAttempt(finishedAttempt);
+            await expect(readHistory()).resolves.toEqual(history);
           }
           if (structuredKind !== undefined) {
             const scopedChildren = await workerQuery<{
@@ -584,6 +646,63 @@ describeIntegration('For Each cancellation recovery', () => {
             ),
           ).resolves.toEqual([{ status: 'succeeded' }]);
           await expect(readContinuations()).resolves.toEqual([]);
+          if (mode === 'serial_complete') {
+            await ownerQuery(
+              `update app.workflow_runs set completed_at=clock_timestamp()-interval '31 days'
+                where workspace_id=$1 and id=$2`,
+              [workspaceId, accepted.runId],
+            );
+            const retention = createRetentionDatabase(
+              parseDatabaseConfig({
+                connectionString: databaseUrl(dispatcherUrl),
+                max: 1,
+              }),
+            );
+            try {
+              await retention.enforce();
+            } finally {
+              await retention.close();
+            }
+            await expect(
+              workerQuery<{
+                nodes: string;
+                checkpoints: string;
+                events: string;
+                status: string;
+              }>(
+                `select run.status,
+                 (select count(*)::text from app.node_runs where workflow_run_id=run.id) nodes,
+                 (select count(*)::text from app.run_events where workflow_run_id=run.id) events,
+                 (select count(*)::text from app.run_checkpoints where workflow_run_id=run.id) checkpoints
+                 from app.workflow_runs run where workspace_id=$1 and id=$2`,
+                [workspaceId, accepted.runId],
+              ),
+            ).resolves.toEqual([
+              {
+                status: 'succeeded',
+                nodes: '0',
+                events: '0',
+                checkpoints: '0',
+              },
+            ]);
+            if (lastFinishedAttempt === undefined)
+              throw new Error('finished iteration attempt missing');
+            await eraseRedisAndRestart();
+            await executeDuplicateAttempt(lastFinishedAttempt);
+            await expect(
+              workerQuery<{
+                nodes: string;
+                checkpoints: string;
+                events: string;
+              }>(
+                `select
+                 (select count(*)::text from app.node_runs where workspace_id=$1 and workflow_run_id=$2) nodes,
+                 (select count(*)::text from app.run_checkpoints where workspace_id=$1 and workflow_run_id=$2) checkpoints,
+                 (select count(*)::text from app.run_events where workspace_id=$1 and workflow_run_id=$2) events`,
+                [workspaceId, accepted.runId],
+              ),
+            ).resolves.toEqual([{ nodes: '0', checkpoints: '0', events: '0' }]);
+          }
           return;
         }
 
@@ -815,7 +934,8 @@ describeIntegration('For Each cancellation recovery', () => {
                   {
                     activeOrdinals: [],
                     nextOrdinal: 2,
-                    terminalOrdinals: [0, 1],
+                    completedPrefix: 2,
+                    terminalOrdinals: [],
                   },
                 ],
               },
@@ -855,7 +975,8 @@ describeIntegration('For Each cancellation recovery', () => {
             {
               activeOrdinals: [2],
               nextOrdinal: 3,
-              terminalOrdinals: [0, 1],
+              completedPrefix: 2,
+              terminalOrdinals: [],
             },
           ],
         });
@@ -891,7 +1012,8 @@ describeIntegration('For Each cancellation recovery', () => {
             {
               activeOrdinals: [],
               nextOrdinal: 3,
-              terminalOrdinals: [0, 1, 2],
+              completedPrefix: 3,
+              terminalOrdinals: [],
             },
           ],
         });

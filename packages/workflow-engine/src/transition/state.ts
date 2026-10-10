@@ -4,15 +4,18 @@ import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameOutputReference } from '../output-reference.js';
 import {
   branchPathHasPrefix,
+  iterationPathHasPrefix,
   sameBranchPath,
   sameIterationPath,
 } from '../scope.js';
 import type {
   AttemptAdmissionPlan,
+  BranchScopePart,
   BranchSelection,
   EngineEventName,
   EngineEventPlan,
   InvocationState,
+  IterationScopePart,
   JoinState,
   LoopState,
   NodeStatus,
@@ -100,6 +103,27 @@ export function isTerminalNodeStatus(
     status === 'timed_out' ||
     status === 'outcome_unknown'
   );
+}
+
+export function isFinishedIterationScope(
+  loops: Iterable<LoopState>,
+  scope: Readonly<{
+    branchPath?: readonly BranchScopePart[];
+    iterationPath?: readonly IterationScopePart[];
+  }>,
+): boolean {
+  for (const loop of loops) {
+    const part = scope.iterationPath?.[loop.iterationPath.length];
+    if (
+      part?.loopNodeId === loop.loopId &&
+      iterationPathHasPrefix(scope.iterationPath, loop.iterationPath) &&
+      branchPathHasPrefix(scope.branchPath, loop.branchPath) &&
+      (part.ordinal < loop.completedPrefix ||
+        loop.terminalOrdinals.includes(part.ordinal))
+    )
+      return true;
+  }
+  return false;
 }
 
 export function observationOrder(
@@ -285,6 +309,14 @@ export function assertLoopInvocations(
       ...loop.iterationPath,
       { loopNodeId: loop.loopId, ordinal },
     ];
+    if (
+      ![...invocations.values()].some(
+        (candidate) =>
+          sameIterationPath(candidate.iterationPath, iterationPath) &&
+          branchPathHasPrefix(candidate.branchPath, loop.branchPath),
+      )
+    )
+      continue;
     const invocation =
       loop.terminalStatus === undefined
         ? scopedLoopSinkInvocation(loop, ordinal, invocations.values())

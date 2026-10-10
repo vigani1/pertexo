@@ -25,10 +25,9 @@ async function persistPendingFailureDecisions(
   runId: string,
 ): Promise<void> {
   const invocations = new Map(
-    plan.checkpoint.invocations.map((invocation) => [
-      invocation.invocationKey,
-      invocation,
-    ]),
+    [...plan.checkpoint.invocations, ...(plan.prunedInvocations ?? [])].map(
+      (invocation) => [invocation.invocationKey, invocation],
+    ),
   );
   const decisionEvents = new Map(
     plan.events.flatMap((event) =>
@@ -99,10 +98,9 @@ async function persistNodeAdmissions(
   runId: string,
 ): Promise<ExecutionIdentityMap> {
   const invocations = new Map(
-    plan.checkpoint.invocations.map((invocation) => [
-      invocation.invocationKey,
-      invocation,
-    ]),
+    [...plan.checkpoint.invocations, ...(plan.prunedInvocations ?? [])].map(
+      (invocation) => [invocation.invocationKey, invocation],
+    ),
   );
   const attempts = new Map(
     plan.attempts.map((attempt) => [attempt.invocationKey, attempt]),

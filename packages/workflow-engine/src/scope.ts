@@ -23,6 +23,21 @@ export function sameBranchPath(
   return branchPathHasPrefix(left, right) && branchPathHasPrefix(right, left);
 }
 
+export function iterationPathHasPrefix(
+  path: readonly IterationScopePart[] | undefined,
+  prefix: readonly IterationScopePart[],
+): boolean {
+  const candidate = path ?? [];
+  return (
+    candidate.length >= prefix.length &&
+    prefix.every(
+      (part, index) =>
+        part.loopNodeId === candidate[index]?.loopNodeId &&
+        part.ordinal === candidate[index].ordinal,
+    )
+  );
+}
+
 export function branchPathHasPrefix(
   path: readonly BranchScopePart[] | undefined,
   prefix: readonly BranchScopePart[] | undefined,

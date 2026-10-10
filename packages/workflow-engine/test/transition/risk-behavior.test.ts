@@ -66,6 +66,7 @@ describe('workflow transition public risk behavior', () => {
       maxIterations: 1,
       nextOrdinal: 1,
       activeOrdinals: [0],
+      completedPrefix: 0,
       terminalOrdinals: [],
     };
     const sink: InvocationState = {
@@ -441,6 +442,7 @@ describe('workflow transition public risk behavior', () => {
           maxIterations: 1,
           nextOrdinal: 1,
           activeOrdinals: [],
+          completedPrefix: 0,
           terminalOrdinals: [0],
         },
       ],
@@ -458,7 +460,7 @@ describe('workflow transition public risk behavior', () => {
           output: inline(ATTEMPT_ID),
         },
       ]).checkpoint.invocations,
-    ).toContainEqual(expect.objectContaining(iteration));
+    ).not.toContainEqual(expect.objectContaining(iteration));
 
     expect(
       advance(persisted, [
@@ -471,7 +473,7 @@ describe('workflow transition public risk behavior', () => {
           output: inline(ATTEMPT_ID),
         },
       ]).checkpoint.invocations,
-    ).toContainEqual(expect.objectContaining(iteration));
+    ).not.toContainEqual(expect.objectContaining(iteration));
 
     expect(() =>
       advance(persisted, [

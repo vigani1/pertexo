@@ -188,6 +188,8 @@ export interface LoopState {
   readonly maxConcurrency: number;
   readonly maxIterations: number;
   readonly nextOrdinal: number;
+  /** All ordinals below this frontier have settled and released their data. */
+  readonly completedPrefix: number;
   readonly activeOrdinals: readonly number[];
   readonly terminalOrdinals: readonly number[];
   readonly terminalStatus?: Extract<
@@ -217,6 +219,8 @@ export interface WorkflowCheckpoint {
   readonly deadlineExpired: boolean;
   readonly branchSelections: readonly BranchSelection[];
   readonly initialIterationBudget?: number;
+  /** Budget reserved by nested declarations whose scopes were pruned. */
+  readonly retiredIterationBudget?: number;
 }
 
 export type EngineEventName =
@@ -277,6 +281,8 @@ export interface WorkflowTransitionPlan {
   readonly events: readonly EngineEventPlan[];
   readonly nodeRunAdmissions: readonly NodeRunAdmissionPlan[];
   readonly attempts: readonly AttemptAdmissionPlan[];
+  /** Final records needed by this commit's writers, never stored in the checkpoint. */
+  readonly prunedInvocations?: readonly InvocationState[];
   /** A durable wakeup is needed for scheduler work with no admitted attempt. */
   readonly immediateContinuation?: true;
 }

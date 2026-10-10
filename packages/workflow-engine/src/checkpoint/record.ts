@@ -118,7 +118,7 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
       'cancelRequested',
       'branchSelections',
     ],
-    ['deadlineExpired', 'initialIterationBudget'],
+    ['deadlineExpired', 'initialIterationBudget', 'retiredIterationBudget'],
   );
   const workflowVersionId = assertPersistedWorkflowVersionId(
     value.workflowVersionId,
@@ -262,18 +262,26 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
   );
 
   const initialIterationBudget = value.initialIterationBudget;
+  const retiredIterationBudget = value.retiredIterationBudget;
+  assertCheckpoint(
+    retiredIterationBudget === undefined ||
+      (isInteger(retiredIterationBudget) && retiredIterationBudget > 0),
+    'retiredIterationBudget is invalid',
+  );
   assertCheckpoint(
     initialIterationBudget === undefined ||
       (isInteger(initialIterationBudget) && initialIterationBudget >= 0),
     'initialIterationBudget is invalid',
   );
   assertCheckpoint(
-    loops.length === 0 || initialIterationBudget !== undefined,
+    (loops.length === 0 && retiredIterationBudget === undefined) ||
+      initialIterationBudget !== undefined,
     'loop checkpoint requires initialIterationBudget',
   );
   if (initialIterationBudget !== undefined)
     assertCheckpoint(
       value.remainingIterationBudget +
+        (retiredIterationBudget ?? 0) +
         loops.reduce((total, loop) => total + loop.collectionSize, 0) ===
         initialIterationBudget,
       'iteration budget accounting is inconsistent',
@@ -300,5 +308,6 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
       invocations,
     ),
     ...(initialIterationBudget === undefined ? {} : { initialIterationBudget }),
+    ...(retiredIterationBudget === undefined ? {} : { retiredIterationBudget }),
   };
 }

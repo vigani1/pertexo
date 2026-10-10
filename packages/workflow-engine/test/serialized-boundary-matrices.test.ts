@@ -144,6 +144,7 @@ describe('serialized workflow boundary matrices', () => {
             maxIterations: 1,
             nextOrdinal: 0,
             activeOrdinals: [],
+            completedPrefix: 0,
             terminalOrdinals: [],
           },
         ];
@@ -269,6 +270,7 @@ describe('serialized workflow boundary matrices', () => {
           maxIterations: 1,
           nextOrdinal: 0,
           activeOrdinals: [],
+          completedPrefix: 0,
           terminalOrdinals: [],
           bodyRootNodeIds: ['body-first'],
           bodySinkNodeId: 'body-sink',

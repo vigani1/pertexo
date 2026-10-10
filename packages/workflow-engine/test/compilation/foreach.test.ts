@@ -264,7 +264,8 @@ describe('For Each production operations', () => {
     expect(nextOrdinal.checkpoint.loops[0]).toMatchObject({
       activeOrdinals: [1],
       nextOrdinal: 2,
-      terminalOrdinals: [0],
+      completedPrefix: 1,
+      terminalOrdinals: [],
     });
     expect(nextOrdinal.attempts).toEqual([
       expect.objectContaining({
@@ -272,6 +273,32 @@ describe('For Each production operations', () => {
         iterationPath: [{ loopNodeId: 'loop', ordinal: 1 }],
       }),
     ]);
+    for (const sequence of [
+      afterRoot.checkpoint.nextEventSequence,
+      nextOrdinal.checkpoint.nextEventSequence,
+    ]) {
+      await expect(
+        advanceWorkflow({
+          ...base,
+          checkpoint: nextOrdinal.checkpoint,
+          observations: [
+            {
+              kind: 'outcome',
+              sequence,
+              occurredAt: base.occurredAt,
+              invocationKey: firstSink.invocationKey,
+              attemptId: '00000000-0000-4000-8000-000000000105',
+              attemptNumber: 1,
+              status: 'succeeded',
+              output: {
+                kind: 'inline',
+                attemptId: '00000000-0000-4000-8000-000000000105',
+              },
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: 'observation_invalid' });
+    }
   });
 
   it('retries and terminalizes failed body work', async () => {
@@ -654,7 +681,8 @@ describe('For Each production operations', () => {
     });
     expect(skippedSettled.checkpoint.loops[0]).toMatchObject({
       activeOrdinals: [1],
-      terminalOrdinals: [0],
+      completedPrefix: 1,
+      terminalOrdinals: [],
     });
   });
 
@@ -726,7 +754,8 @@ describe('For Each production operations', () => {
     expect(reconciledCancellation.attempts).toEqual([]);
     expect(reconciledCancellation.checkpoint.loops[0]).toMatchObject({
       activeOrdinals: [],
-      terminalOrdinals: [0],
+      completedPrefix: 1,
+      terminalOrdinals: [],
       terminalStatus: 'canceled',
     });
     expect(reconciledCancellation.checkpoint.runStatus).toBe('canceled');
@@ -750,7 +779,8 @@ describe('For Each production operations', () => {
     expect(uncertainCancellation.attempts).toEqual([]);
     expect(uncertainCancellation.checkpoint.loops[0]).toMatchObject({
       activeOrdinals: [],
-      terminalOrdinals: [0],
+      completedPrefix: 1,
+      terminalOrdinals: [],
       terminalStatus: 'outcome_unknown',
     });
     expect(uncertainCancellation.checkpoint.runStatus).toBe('outcome_unknown');
@@ -820,7 +850,8 @@ describe('For Each production operations', () => {
     });
     expect(reconciledDeadline.checkpoint.loops[0]).toMatchObject({
       activeOrdinals: [],
-      terminalOrdinals: [0],
+      completedPrefix: 1,
+      terminalOrdinals: [],
       terminalStatus: 'timed_out',
     });
     expect(reconciledDeadline.checkpoint.runStatus).toBe('timed_out');
@@ -956,7 +987,8 @@ describe('For Each production operations', () => {
     });
     expect(secondConcurrentFailure.checkpoint.loops[0]).toMatchObject({
       activeOrdinals: [],
-      terminalOrdinals: [0, 1],
+      completedPrefix: 2,
+      terminalOrdinals: [],
       terminalStatus: 'failed',
     });
     expect(
@@ -1041,7 +1073,8 @@ describe('For Each production operations', () => {
     );
     expect(reverseCompletion.checkpoint.loops[0]).toMatchObject({
       activeOrdinals: [],
-      terminalOrdinals: [0, 1],
+      completedPrefix: 2,
+      terminalOrdinals: [],
     });
   });
 });

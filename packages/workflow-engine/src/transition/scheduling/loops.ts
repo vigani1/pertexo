@@ -179,6 +179,7 @@ export function createLoopState(input: {
     maxConcurrency: input.maxConcurrency,
     maxIterations: input.maxIterations,
     nextOrdinal: 0,
+    completedPrefix: 0,
     activeOrdinals: [],
     terminalOrdinals: [],
   };
@@ -193,7 +194,10 @@ export function admitLoopIterations(
   const all = [...active, ...terminal];
   if (
     new Set(all).size !== all.length ||
-    all.some((ordinal) => ordinal < 0 || ordinal >= loop.collectionSize)
+    all.some(
+      (ordinal) =>
+        ordinal < loop.completedPrefix || ordinal >= loop.collectionSize,
+    )
   ) {
     throw new WorkflowEngineError(
       'loop_state_invalid',
