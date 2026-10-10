@@ -626,16 +626,17 @@ now, as one ordered program — not "whenever we touch it".
 
 - [x] **10. Re-plan F08** on the completed reset structure: the
       [proposal](feature-plans/08-subworkflows.md) and
-      [proposed ADR 070](adr/070-workflow-call-boundaries.md) are produced for
-      owner review. This is planning completion, not implementation approval.
+      [accepted ADR 070](adr/070-workflow-call-boundaries.md) record the completed plan and owner
+      decisions. Implementation proceeds through the feature plan's slices.
   - [x] Current/reverted sources and Temporal, Hatchet and n8n prior art reviewed;
         ownership, recommended decisions, tested delivery slices and size
         comparison recorded.
   - [x] Finished-loop checkpoint pruning is planned before any measured limit
         increase. The current 200-invocation and checkpoint byte limits stay.
-  - [ ] Owner reviews the proposal/ADR before F08 or pruning implementation.
+  - [x] Owner accepted the plan/ADR: workspace slot handoff, archive warning
+        listing pinned published parents, and all other recommendations.
         Runtime, integrated recovery/history and retention evidence remain open
-        in the feature plan. No subworkflow implementation is included.
+        in the feature plan; reset follow-up precedes slice 1 pruning.
 
 ## Target structure: where everything lives
 
