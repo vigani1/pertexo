@@ -14,7 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-import { appSchema } from '../app-schema.js';
+import { appSchema } from '../namespace.js';
 import { previewRuns } from './execution.js';
 import { artifacts } from '../transport.js';
 

@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-import { appSchema, textC } from '../app-schema.js';
+import { appSchema, textC } from '../namespace.js';
 import { workflows } from './workflows.js';
 import { workspaces } from '../foundation.js';
 

@@ -33,7 +33,7 @@ import {
   createHealthDispatcher,
   readAcceptedHealthExecution,
   withHealthWriteFailure,
-} from './run-health.fixture.js';
+} from './run.fixture.js';
 
 describe('durable revision-fenced Slack run health (ADR059)', () => {
   it('rejects a legacy primary slot instead of the published Slack bot-token contract', async () => {

@@ -8,7 +8,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import type { WorkflowTemplateOrigin } from '@pertexo/templates';
-import { appSchema } from '../app-schema.js';
+import { appSchema } from '../namespace.js';
 import { workflows } from './workflows.js';
 
 export const workflowTemplateOrigins = appSchema.table(

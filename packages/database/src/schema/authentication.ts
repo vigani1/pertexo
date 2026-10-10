@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-import { appSchema, bytea } from './app-schema.js';
+import { appSchema, bytea } from './namespace.js';
 import { users } from './foundation.js';
 
 export const authAccounts = appSchema.table(
