@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import { requestIdempotencyKey } from '../../platform/http/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import {
   authenticatedSession,
@@ -32,10 +33,7 @@ import {
 } from '../use-cases.js';
 import { RenameWorkspaceUseCase } from '../commands/rename.js';
 import { RemoveWorkspaceMemberUseCase } from '../members/removal.js';
-import {
-  memberCommand,
-  requestIdempotencyKey,
-} from '../request/member-commands.js';
+import { memberCommand } from '../request/member-commands.js';
 import { UpdateUserProfileUseCase } from '../commands/user-profile.js';
 import {
   accessibleWorkspacesQuerySchema,
@@ -82,7 +80,7 @@ export class UserController {
     return this.profile.execute({
       actorUserId: authenticatedSession(request).userId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
     });
   }
 }
@@ -191,7 +189,7 @@ export class WorkspaceController {
     const session = authenticatedSession(request);
     return this.createWorkspace.execute({
       actorId: session.userId,
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       request: body,
       requestId: requestIdentifier(request),
       ...traceFields(traceIdentifier(request)),
@@ -217,7 +215,7 @@ export class WorkspaceController {
       actor,
       routeWorkspaceId: workspaceId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       requestId: actor.requestId,
       ...traceFields(actor.traceId),
     });
@@ -244,7 +242,7 @@ export class WorkspaceController {
     return this.lifecycle.requestDeletion({
       actor,
       ...guardAuthorization(request),
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       routeWorkspaceId: workspaceId,
       reason: deletion.reason,
       requestId,
@@ -270,7 +268,7 @@ export class WorkspaceController {
     return this.lifecycle.restore({
       actor,
       ...guardAuthorization(request),
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       routeWorkspaceId: workspaceId,
       requestId,
       ...traceFields(traceId),

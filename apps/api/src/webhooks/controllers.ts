@@ -22,10 +22,7 @@ import {
 } from '../workspaces/index.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import {
-  InvalidIdempotencyKeyError,
-  applicationError,
-  parseIdempotencyKey,
-  throwApplicationError,
+  requestIdempotencyKey,
   withRequestOperationSignal,
 } from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
@@ -130,19 +127,7 @@ export class WebhookManagementController {
   ) {
     const route = commandRouteSchema.parse(params);
     return withRequestOperationSignal(request, (signal) => {
-      let idempotencyKey: string;
-      try {
-        idempotencyKey = parseIdempotencyKey(
-          request.headers?.['idempotency-key'],
-        );
-      } catch (error: unknown) {
-        if (!(error instanceof InvalidIdempotencyKeyError)) throw error;
-        return throwApplicationError(
-          applicationError('request.invalid', {
-            safeDetail: 'Idempotency-Key must contain exactly one valid value.',
-          }),
-        );
-      }
+      const idempotencyKey = requestIdempotencyKey(request.headers);
       const input = {
         workspaceId: route.workspaceId,
         workflowId: route.workflowId,

@@ -69,18 +69,18 @@ describe('workflow authoring error mapping', () => {
   it.each([
     [
       'missing If-Match',
-      new WorkflowHeaderError('precondition_required', 'If-Match'),
+      new WorkflowHeaderError('precondition_required'),
       {
         code: 'request.precondition_required',
         safeDetail: 'If-Match is required for this operation.',
       },
     ],
     [
-      'malformed idempotency key',
-      new WorkflowHeaderError('invalid', 'Idempotency-Key'),
+      'malformed If-Match',
+      new WorkflowHeaderError('invalid'),
       {
         code: 'request.invalid',
-        safeDetail: 'Idempotency-Key must contain exactly one valid value',
+        safeDetail: 'If-Match must contain exactly one valid value',
       },
     ],
     [

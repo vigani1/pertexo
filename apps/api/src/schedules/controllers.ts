@@ -27,11 +27,7 @@ import {
 } from '../workspaces/index.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import {
-  applicationError,
-  throwApplicationError,
-  parseIdempotencyKey,
-} from '../platform/http/index.js';
+import { requestIdempotencyKey } from '../platform/http/index.js';
 import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
 import { ScheduleManagementService } from './service.js';
 
@@ -157,32 +153,11 @@ export class ScheduleManagementController {
       {
         ...route,
         actorId: authenticatedSession(request).userId,
-        idempotencyKey: scheduleIdempotencyKey(
-          request.headers?.['idempotency-key'],
-        ),
+        idempotencyKey: requestIdempotencyKey(request.headers),
         requestId: requestIdentifier(request),
         ...(traceId === undefined ? {} : { traceId }),
       },
       enabled,
-    );
-  }
-}
-
-function scheduleIdempotencyKey(value: unknown): string {
-  if (value === undefined)
-    return throwApplicationError(
-      applicationError('request.precondition_required', {
-        safeDetail: 'Idempotency-Key is required.',
-      }),
-    );
-  try {
-    return parseIdempotencyKey(value);
-  } catch (cause: unknown) {
-    return throwApplicationError(
-      applicationError('request.invalid', {
-        safeDetail: 'Idempotency-Key must contain exactly one valid value.',
-        cause,
-      }),
     );
   }
 }

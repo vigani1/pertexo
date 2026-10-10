@@ -12,7 +12,6 @@ import {
 import {
   artifactParamsSchema,
   artifactWorkspaceParamsSchema,
-  idempotencyKeySchema,
 } from '@pertexo/contracts';
 
 import {
@@ -24,8 +23,10 @@ import {
   projectAuthenticatedWorkspaceContext,
 } from '../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { withRequestOperationSignal } from '../platform/http/index.js';
-import { singleRequestHeader } from '../platform/http/request-headers.js';
+import {
+  requestIdempotencyKey,
+  withRequestOperationSignal,
+} from '../platform/http/index.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
 import { ArtifactService } from './service.js';
@@ -67,7 +68,7 @@ export class ArtifactsController {
       this.artifacts.beginUpload({
         actor: actorFrom(request, route.workspaceId),
         ...authorizedInput(request),
-        idempotencyKey: idempotencyKey(request),
+        idempotencyKey: requestIdempotencyKey(request.headers),
         request: body,
         routeWorkspaceId: route.workspaceId,
         signal,
@@ -142,12 +143,6 @@ export class ArtifactsController {
 
 function actorFrom(request: ArtifactRequest, workspaceId: string) {
   return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
-}
-
-function idempotencyKey(request: ArtifactRequest): string {
-  return idempotencyKeySchema.parse(
-    singleRequestHeader(request.headers, 'idempotency-key'),
-  );
 }
 
 function authorizedInput(request: ArtifactRequest): Readonly<{

@@ -19,10 +19,9 @@ import {
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import {
-  parseIdempotencyKey,
+  requestIdempotencyKey,
   withRequestOperationSignal,
 } from '../../platform/http/index.js';
-import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import {
   ConnectionManageGuard,
   ConnectionReadGuard,
@@ -112,7 +111,7 @@ export class ConnectionsController {
         ...context,
         routeWorkspaceId: workspaceId,
         request: body,
-        idempotencyKey: idempotencyKey(request),
+        idempotencyKey: requestIdempotencyKey(request.headers),
         signal,
       }),
     );
@@ -141,7 +140,7 @@ export class ConnectionsController {
         routeWorkspaceId: route.workspaceId,
         connectionId: route.connectionId,
         request: body,
-        idempotencyKey: idempotencyKey(request),
+        idempotencyKey: requestIdempotencyKey(request.headers),
         signal,
       }),
     );
@@ -219,7 +218,7 @@ export class ConnectionsController {
         routeWorkspaceId: route.workspaceId,
         connectionId: route.connectionId,
         request: body,
-        idempotencyKey: idempotencyKey(request),
+        idempotencyKey: requestIdempotencyKey(request.headers),
         signal,
       }),
     );
@@ -228,10 +227,4 @@ export class ConnectionsController {
 
 function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
   return connectionWorkspaceParamSchema.parse(value);
-}
-
-function idempotencyKey(request: ConnectionRequest): string {
-  return parseIdempotencyKey(
-    requestHeaderValue(request.headers, 'idempotency-key'),
-  );
 }

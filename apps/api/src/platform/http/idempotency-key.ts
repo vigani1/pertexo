@@ -1,27 +1,23 @@
 import { idempotencyKeySchema } from '@pertexo/contracts';
 
-export class InvalidIdempotencyKeyError extends Error {
-  public override readonly name = 'InvalidIdempotencyKeyError';
-  public constructor() {
-    super('Idempotency-Key must contain exactly one valid value');
-  }
-}
+import {
+  applicationError,
+  throwApplicationError,
+} from './application-error.js';
+import { singleRequestHeader, type RequestHeaders } from './request-headers.js';
 
-/** Parse the single printable idempotency key accepted by command endpoints. */
-export function parseIdempotencyKey(value: unknown): string {
-  const candidate = oneHeaderValue(value);
-  const parsed = idempotencyKeySchema.safeParse(candidate);
-  if (!parsed.success) throw new InvalidIdempotencyKeyError();
-  return parsed.data;
-}
-
-function oneHeaderValue(value: unknown): string | undefined {
-  if (value === undefined) return undefined;
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value) && value.length === 0) return undefined;
-  if (Array.isArray(value) && value.length === 1) {
-    const first: unknown = value[0];
-    return typeof first === 'string' ? first : undefined;
-  }
-  throw new InvalidIdempotencyKeyError();
+/**
+ * The Idempotency-Key a command requires: exactly one valid value. A missing,
+ * repeated or malformed key answers 400.
+ */
+export function requestIdempotencyKey(headers: RequestHeaders): string {
+  const parsed = idempotencyKeySchema.safeParse(
+    singleRequestHeader(headers, 'idempotency-key'),
+  );
+  if (parsed.success) return parsed.data;
+  return throwApplicationError(
+    applicationError('request.invalid', {
+      safeDetail: 'Idempotency-Key must contain exactly one valid value.',
+    }),
+  );
 }

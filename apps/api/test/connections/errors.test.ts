@@ -16,7 +16,7 @@ import { z } from 'zod';
 
 import { mapConnectionError } from '../../src/connections/errors.js';
 import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context-error.js';
-import { InvalidIdempotencyKeyError } from '../../src/platform/http/index.js';
+import { applicationError } from '../../src/platform/http/index.js';
 import { AuthorizationError } from '../../src/authorization/index.js';
 
 describe('connection error mapping', () => {
@@ -89,9 +89,11 @@ describe('connection error mapping', () => {
     ],
     [
       'invalid idempotency key',
-      new InvalidIdempotencyKeyError(),
+      applicationError('request.invalid', {
+        safeDetail: 'Idempotency-Key must contain exactly one valid value.',
+      }),
       'request.invalid',
-      'Idempotency-Key must contain exactly one valid value',
+      'Idempotency-Key must contain exactly one valid value.',
     ],
     [
       'invalid request schema',

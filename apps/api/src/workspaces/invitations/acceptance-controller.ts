@@ -15,6 +15,7 @@ import { DoubleSubmitCsrfPolicy } from '../../identity/index.js';
 import {
   throwApplicationError,
   applicationError,
+  requestIdempotencyKey,
 } from '../../platform/http/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import {
@@ -127,7 +128,7 @@ export class InvitationAcceptanceController {
       csrfToken: firstRequestHeader(request.headers, INVITATION_CSRF_HEADER),
       authenticatedUserId: authenticatedSession(request).userId,
       request: body,
-      idempotencyKey: requiredHeader(request, 'idempotency-key'),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       ...(userAgent === undefined ? {} : { userAgent }),
       requestId: requestIdentifier(request),
       ...(traceId === undefined ? {} : { traceId }),
@@ -206,16 +207,6 @@ function requireResolveBoundary(
       .startsWith('application/json')
   )
     throwApplicationError(applicationError('auth.forbidden'));
-}
-
-function requiredHeader(
-  request: IdentityWorkspaceRequest,
-  name: string,
-): string {
-  const value = firstRequestHeader(request.headers, name);
-  if (value === undefined)
-    return throwApplicationError(applicationError('request.invalid'));
-  return value;
 }
 
 function serializeBindingCookie(

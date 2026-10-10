@@ -15,7 +15,6 @@ export {
   accountSecuritySessionRevokeResponseSchema,
   accountSecuritySessionsResponseSchema,
   authenticationCapabilitiesResponseSchema,
-  idempotencyKeySchema,
   invitationAcceptanceCompleteRequestSchema,
   invitationAcceptanceJourneySchema,
   invitationAcceptanceReceiptSchema,

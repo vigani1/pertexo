@@ -15,14 +15,15 @@ import {
   SessionAuthenticationGuard,
 } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { withRequestOperationSignal } from '../../platform/http/index.js';
+import {
+  requestIdempotencyKey,
+  withRequestOperationSignal,
+} from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WorkflowConcurrencyUseCase } from './concurrency.js';
 import { throwWorkflowApplicationError } from '../errors.js';
 import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
-import { parseIdempotencyKey } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/concurrency')
@@ -65,9 +66,7 @@ export class WorkflowConcurrencyController {
   ) {
     try {
       const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      const idempotencyKey = parseIdempotencyKey(
-        requestHeaderValue(request.headers, 'idempotency-key'),
-      );
+      const idempotencyKey = requestIdempotencyKey(request.headers);
       return await withRequestOperationSignal(request, (signal) =>
         this.controls.update({
           ...context(request, workspaceId),

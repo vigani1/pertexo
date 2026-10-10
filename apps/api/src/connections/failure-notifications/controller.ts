@@ -23,7 +23,7 @@ import {
   SessionAuthenticationGuard,
 } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { parseIdempotencyKey } from '../../platform/http/index.js';
+import { requestIdempotencyKey } from '../../platform/http/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import {
   ConnectionManageGuard,
@@ -62,13 +62,6 @@ function requestCommand(
   };
 }
 
-function requestIdempotencyKey(request: ConnectionRequest): string {
-  const header = Object.entries(request.headers ?? {}).find(
-    ([name]) => name.toLowerCase() === 'idempotency-key',
-  )?.[1];
-  return parseIdempotencyKey(header);
-}
-
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('ordinary_mutation')
 export class FailureNotificationDestinationsController {
@@ -91,7 +84,7 @@ export class FailureNotificationDestinationsController {
     const route = workspaceParamsSchema.parse(params);
     return this.useCases.create({
       ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       body: failureNotificationDestinationCreateRequestSchema.parse(body),
     });
   }
@@ -138,7 +131,7 @@ export class FailureNotificationDestinationsController {
     const route = destinationParamsSchema.parse(params);
     return this.useCases.append({
       ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       destinationId: route.destinationId,
       body: failureNotificationDestinationAppendVersionRequestSchema.parse(
         body,
@@ -160,7 +153,7 @@ export class FailureNotificationDestinationsController {
     const route = destinationParamsSchema.parse(params);
     return this.useCases.status({
       ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       destinationId: route.destinationId,
       body: failureNotificationDestinationStatusRequestSchema.parse(body),
     });
@@ -195,7 +188,7 @@ export class FailureNotificationDestinationsController {
     const route = workflowPolicyParamsSchema.parse(params);
     await this.useCases.setPolicy({
       ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       workflowId: route.workflowId,
       body: workflowFailureNotificationPolicyRequestSchema.parse(body),
     });
@@ -215,7 +208,7 @@ export class FailureNotificationDestinationsController {
     const route = workflowPolicyParamsSchema.parse(params);
     await this.useCases.clearPolicy({
       ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       workflowId: route.workflowId,
     });
   }

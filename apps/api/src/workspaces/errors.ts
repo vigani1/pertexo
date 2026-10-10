@@ -16,6 +16,7 @@ import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { IdempotencyRequestConflictError } from '@pertexo/database/runs';
 import {
   applicationError,
+  isApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
 import { z } from 'zod';
@@ -152,6 +153,7 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
       safeDetail: 'The actor is no longer authorized for this workspace.',
     });
   }
+  if (isApplicationError(error)) return error;
   return applicationError('internal.unexpected', { cause: error });
 }
 

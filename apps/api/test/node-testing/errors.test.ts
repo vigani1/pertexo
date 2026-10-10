@@ -21,7 +21,6 @@ import {
 } from '../../src/node-testing/errors.js';
 import {
   applicationError,
-  InvalidIdempotencyKeyError,
   ProblemDetailsFilter,
   RequestContextStore,
 } from '../../src/platform/http/index.js';
@@ -32,7 +31,7 @@ describe('node testing error mapping', () => {
     [
       'missing idempotency',
       new NodeTestRequestError('idempotency_required'),
-      'request.precondition_required',
+      'request.invalid',
       'Idempotency-Key is required for test_execute.',
     ],
     [
@@ -43,9 +42,11 @@ describe('node testing error mapping', () => {
     ],
     [
       'invalid idempotency syntax',
-      new InvalidIdempotencyKeyError(),
+      applicationError('request.invalid', {
+        safeDetail: 'Idempotency-Key must contain exactly one valid value.',
+      }),
       'request.invalid',
-      'Idempotency-Key must contain exactly one valid value',
+      'Idempotency-Key must contain exactly one valid value.',
     ],
     [
       'invalid authenticated context',

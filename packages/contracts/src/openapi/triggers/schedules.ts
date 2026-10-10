@@ -67,7 +67,6 @@ const responses = Object.freeze({
   Forbidden: problemResponse('Forbidden'),
   NotFound: problemResponse('Resource not found'),
   Conflict: problemResponse('Request conflict'),
-  PreconditionRequired: problemResponse('Idempotency key required'),
   RateLimited: problemResponse('Rate limited'),
   Unexpected: problemResponse('Unexpected server error'),
 });
@@ -120,7 +119,6 @@ const command = {
       '403': responseReference('Forbidden'),
       '404': responseReference('NotFound'),
       '409': responseReference('Conflict'),
-      '428': responseReference('PreconditionRequired'),
       '500': responseReference('Unexpected'),
     },
   },

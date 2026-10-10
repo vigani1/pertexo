@@ -15,7 +15,7 @@ import { z } from 'zod';
 
 import {
   applicationError,
-  InvalidIdempotencyKeyError,
+  isApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
 import { AuthorizationError } from '../authorization/index.js';
@@ -24,8 +24,6 @@ import { InvalidConnectionCursorError } from './cursor.js';
 
 export function mapConnectionError(error: unknown): ApplicationError {
   if (error instanceof InvalidAuthenticatedWorkspaceContextError)
-    return applicationError('request.invalid', { safeDetail: error.message });
-  if (error instanceof InvalidIdempotencyKeyError)
     return applicationError('request.invalid', { safeDetail: error.message });
   if (error instanceof InvalidConnectionCursorError)
     return applicationError('request.invalid', {
@@ -81,5 +79,6 @@ export function mapConnectionError(error: unknown): ApplicationError {
       safeDetail: 'The connection test could not be dispatched safely.',
       cause: error,
     });
+  if (isApplicationError(error)) return error;
   return applicationError('internal.unexpected', { cause: error });
 }

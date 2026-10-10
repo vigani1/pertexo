@@ -202,7 +202,7 @@ describe('failure notification destination API seams', () => {
           { workspaceId },
           record.config,
         ),
-      ).rejects.toThrow(/Idempotency-Key/u);
+      ).rejects.toMatchObject({ code: 'request.invalid' });
     },
   );
 
@@ -235,7 +235,7 @@ describe('failure notification destination API seams', () => {
 
     await expect(
       controller.create(request(), { workspaceId }, record.config),
-    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+    ).rejects.toMatchObject({ code: 'request.invalid' });
   });
 
   it('keeps GET idempotency-free and measures destination-specific commands', async () => {

@@ -23,16 +23,16 @@ import {
   SessionAuthenticationGuard,
 } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { withRequestOperationSignal } from '../../platform/http/index.js';
+import {
+  requestIdempotencyKey,
+  withRequestOperationSignal,
+} from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { throwWorkflowInputCaseApplicationError as throwWorkflowApplicationError } from '../errors.js';
 import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
-import {
-  parseIdempotencyKey,
-  WorkflowHeaderError,
-} from '../http/preconditions.js';
+import { WorkflowHeaderError } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowInputCasesUseCase } from './use-case.js';
 
@@ -105,9 +105,7 @@ export class WorkflowInputCasesController {
   ) {
     try {
       const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-      const idempotencyKey = parseIdempotencyKey(
-        requestHeaderValue(request.headers, 'idempotency-key'),
-      );
+      const idempotencyKey = requestIdempotencyKey(request.headers);
       return await withRequestOperationSignal(request, (signal) =>
         this.cases.create({
           ...context(request, workspaceId),
@@ -141,9 +139,7 @@ export class WorkflowInputCasesController {
       const representationTag = parseCaseIfMatch(
         requestHeaderValue(request.headers, 'if-match'),
       );
-      const idempotencyKey = parseIdempotencyKey(
-        requestHeaderValue(request.headers, 'idempotency-key'),
-      );
+      const idempotencyKey = requestIdempotencyKey(request.headers);
       return await withRequestOperationSignal(request, (signal) =>
         this.cases.update({
           ...context(request, workspaceId),
@@ -175,9 +171,7 @@ export class WorkflowInputCasesController {
       const representationTag = parseCaseIfMatch(
         requestHeaderValue(request.headers, 'if-match'),
       );
-      const idempotencyKey = parseIdempotencyKey(
-        requestHeaderValue(request.headers, 'idempotency-key'),
-      );
+      const idempotencyKey = requestIdempotencyKey(request.headers);
       return await withRequestOperationSignal(request, (signal) =>
         this.cases.delete({
           ...context(request, workspaceId),
@@ -201,13 +195,13 @@ function context(request: WorkflowAuthoringRequest, workspaceId: string) {
 }
 export function parseCaseIfMatch(value: unknown): string {
   if (value === undefined || (Array.isArray(value) && value.length === 0))
-    throw new WorkflowHeaderError('precondition_required', 'If-Match');
+    throw new WorkflowHeaderError('precondition_required');
   const candidate: unknown =
     Array.isArray(value) && value.length === 1 ? value[0] : value;
   if (
     typeof candidate !== 'string' ||
     parseWorkflowInputCaseTag(candidate) === undefined
   )
-    throw new WorkflowHeaderError('invalid', 'If-Match');
+    throw new WorkflowHeaderError('invalid');
   return candidate;
 }

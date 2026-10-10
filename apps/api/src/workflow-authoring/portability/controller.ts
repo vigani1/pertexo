@@ -1,3 +1,4 @@
+import { requestIdempotencyKey } from '../../platform/http/index.js';
 import {
   Body,
   Controller,
@@ -17,7 +18,6 @@ import { withRequestOperationSignal } from '../../platform/http/request-operatio
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WorkflowCreateGuard, WorkflowReadGuard } from '../http/guards.js';
-import { parseIdempotencyKey } from '../http/preconditions.js';
 import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,
@@ -125,9 +125,7 @@ export class WorkflowPortabilityController {
         ...projectAuthenticatedWorkspaceContext(request, workspaceId),
         routeWorkspaceId: workspaceId,
         request: body,
-        idempotencyKey: parseIdempotencyKey(
-          requestHeaderValue(request.headers, 'idempotency-key'),
-        ),
+        idempotencyKey: requestIdempotencyKey(request.headers),
         signal,
       }),
     );

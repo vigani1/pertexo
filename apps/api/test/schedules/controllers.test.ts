@@ -182,11 +182,11 @@ describe('schedule management controller public seam', () => {
   });
 
   it.each([
-    [undefined, 'request.precondition_required'],
+    [undefined, 'request.invalid'],
     [['first', 'second'], 'request.invalid'],
     ['first,second', 'request.invalid'],
   ])(
-    'rejects required or malformed idempotency %j before mutation',
+    'rejects a missing or malformed idempotency key %j before mutation',
     async (value, code) => {
       const { controller, service } = fixture();
       let failure: unknown;

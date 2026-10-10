@@ -346,7 +346,6 @@ describe('node-testing public contracts', () => {
       '404',
       '409',
       '422',
-      '428',
       '500',
     ]);
   });

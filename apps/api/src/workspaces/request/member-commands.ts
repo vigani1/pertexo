@@ -1,7 +1,7 @@
 import type { WorkspaceMemberCommandInput } from '../members/role.js';
 import { projectAuthenticatedWorkspaceContext } from './authenticated-context.js';
+import { requestIdempotencyKey } from '../../platform/http/index.js';
 import {
-  idempotencyKeySchema,
   workspaceIdParamSchema,
   workspaceMemberRoleParamsSchema,
   type IdentityWorkspaceRequest,
@@ -42,17 +42,8 @@ function memberCommandFor(
     routeWorkspaceId: workspaceId,
     targetUserId: targetUserId ?? actor.actorId,
     request: body,
-    idempotencyKey: requestIdempotencyKey(request),
+    idempotencyKey: requestIdempotencyKey(request.headers),
     requestId: actor.requestId,
     ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
   };
-}
-
-export function requestIdempotencyKey(
-  request: IdentityWorkspaceRequest,
-): string {
-  const entry = Object.entries(request.headers ?? {}).find(
-    ([name]) => name.toLowerCase() === 'idempotency-key',
-  );
-  return idempotencyKeySchema.parse(entry?.[1]);
 }

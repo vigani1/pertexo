@@ -110,7 +110,6 @@ export const workflowRunsClientContract = Object.freeze({
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
-  PreconditionRequired: problemResponse('Required request precondition'),
   Unauthenticated: problemResponse('Authentication required'),
   Forbidden: problemResponse('Forbidden'),
   NotFound: problemResponse('Resource not found'),
@@ -245,7 +244,6 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           '404': responseReference('NotFound'),
           '409': responseReference('Conflict'),
           '422': responseReference('UnprocessableEntity'),
-          '428': responseReference('PreconditionRequired'),
           '500': responseReference('Unexpected'),
         },
       },
@@ -427,7 +425,6 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           '404': responseReference('NotFound'),
           '409': responseReference('Conflict'),
           '422': responseReference('UnprocessableEntity'),
-          '428': responseReference('PreconditionRequired'),
           '500': responseReference('Unexpected'),
         },
       },
