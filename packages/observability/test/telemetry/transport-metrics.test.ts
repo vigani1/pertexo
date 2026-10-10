@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createTransportMetrics,
   TRANSPORT_METRIC_NAME,
-} from '../src/transport-metrics.js';
+} from '../../src/telemetry/transport-metrics.js';
 
 interface Measurement {
   readonly attributes: Attributes | undefined;

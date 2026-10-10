@@ -15,11 +15,11 @@ const emitterPaths = [
   '../../../apps/worker/src/retention/metrics.ts',
   '../../../apps/worker/src/runs/telemetry.ts',
   '../../../apps/worker/src/triggers/telemetry.ts',
-  '../../artifact-store/src/object-store-telemetry.ts',
+  '../../artifact-store/src/s3/telemetry.ts',
   '../../database/src/platform/pool/telemetry.ts',
   '../../queue/src/redis/telemetry.ts',
-  '../src/telemetry.ts',
-  '../src/transport-metrics.ts',
+  '../src/telemetry/index.ts',
+  '../src/telemetry/transport-metrics.ts',
 ] as const;
 
 const allowedReferencedSeries = [

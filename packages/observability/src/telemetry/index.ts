@@ -17,14 +17,14 @@ import {
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
-import type { ObservabilityConfig } from './config.js';
+import type { ObservabilityConfig } from '../config.js';
 import {
   installErrorSanitizer,
   sanitizeHttpSpan,
   sanitizeIncomingHttpRequest,
   sanitizeOutgoingHttpRequest,
   sanitizeUndiciRequest,
-} from './telemetry-sanitization.js';
+} from './sanitization.js';
 
 export const METRIC_EXPORT_INTERVAL_MILLISECONDS = 60_000;
 export const METRIC_EXPORT_TIMEOUT_MILLISECONDS = 30_000;

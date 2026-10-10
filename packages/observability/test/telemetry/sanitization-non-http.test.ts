@@ -4,7 +4,7 @@ import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
 import { node } from '@opentelemetry/sdk-node';
 import { describe, expect, it } from 'vitest';
 
-import { createNodeInstrumentations } from '../src/telemetry.js';
+import { createNodeInstrumentations } from '../../src/telemetry/index.js';
 
 type FinishedSpan = ReturnType<
   node.InMemorySpanExporter['getFinishedSpans']
