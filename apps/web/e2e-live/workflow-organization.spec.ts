@@ -469,6 +469,10 @@ async function qualifyExtended(input: {
       }),
       '/bulk',
     );
+    // The HTTP receipt precedes the command's final authority check.
+    await expect(
+      dialog.getByRole('button', { name: 'Close', exact: true }),
+    ).toBeEnabled({ timeout: 15_000 });
     const outcomes = dialog
       .getByRole('region', {
         name: 'Organization command outcomes',
