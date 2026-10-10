@@ -24,7 +24,7 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../errors.js';
-import { mapDraft } from '../rows.js';
+import { mapDraft } from '../representation/rows.js';
 
 const uuid = z.uuid();
 const inputSchema = z

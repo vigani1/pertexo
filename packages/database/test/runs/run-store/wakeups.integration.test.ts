@@ -13,7 +13,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
-} from './run-store.fixtures.js';
+} from './fixtures.js';
 
 describe('Coordinator durable wakeup invariants', () => {
   it('wakes each due workflow deadline exactly once independently of node timing', async () => {

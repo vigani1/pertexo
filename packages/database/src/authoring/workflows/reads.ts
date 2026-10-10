@@ -8,7 +8,7 @@ import {
   mapVersion,
   mapWorkflow,
   workflowVersionRowSelection,
-} from './rows.js';
+} from './representation/rows.js';
 import type {
   ListWorkflowsInput,
   ListWorkflowVersionsInput,
@@ -16,7 +16,10 @@ import type {
   WorkflowPage,
   WorkflowVersionPage,
 } from './contracts.js';
-import type { WorkflowDraftRecord, WorkflowVersionRecord } from './records.js';
+import type {
+  WorkflowDraftRecord,
+  WorkflowVersionRecord,
+} from './representation/records.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { admitWorkflowAuthoring } from './admission.js';
 import type { AuthoringCatalogs } from './catalogs.js';

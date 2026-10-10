@@ -9,8 +9,11 @@ import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { ROLES } from '../../tenant-access/policy.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import { mapWorkflow, workflowRowSelection } from '../workflows/rows.js';
-import type { WorkflowRecord } from '../workflows/records.js';
+import {
+  mapWorkflow,
+  workflowRowSelection,
+} from '../workflows/representation/rows.js';
+import type { WorkflowRecord } from '../workflows/representation/records.js';
 
 type Scope = Readonly<{
   workspaceId: string;

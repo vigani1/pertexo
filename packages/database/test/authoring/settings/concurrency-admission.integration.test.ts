@@ -12,7 +12,7 @@ import {
   waitForDatabaseLock,
   workflowId,
   workflowVersionId,
-} from '../../runs/acceptance/acceptance.fixtures.js';
+} from '../../runs/acceptance/fixtures.js';
 import {
   acceptRun,
   claimRuns,

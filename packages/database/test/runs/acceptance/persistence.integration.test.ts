@@ -30,7 +30,7 @@ import {
   requestHash,
   workspaceA,
   workspaceCreatorId,
-} from './acceptance.fixtures.js';
+} from './fixtures.js';
 
 installExecutionAcceptanceFixture();
 

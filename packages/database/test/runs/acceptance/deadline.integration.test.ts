@@ -15,7 +15,7 @@ import {
   workspaceA,
   workspaceCreatorId,
   lockManualFixtureStart,
-} from './acceptance.fixtures.js';
+} from './fixtures.js';
 
 installExecutionAcceptanceFixture();
 

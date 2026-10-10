@@ -11,10 +11,7 @@ import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptConnectionFenceError,
 } from '../../../src/testing.js';
-import {
-  asAdmin,
-  parseDatabaseConfig,
-} from '../../runs/run-store/run-store.fixtures.js';
+import { asAdmin, parseDatabaseConfig } from '../../runs/run-store/fixtures.js';
 import {
   applyHealthCommand,
   claimHealthAttempt,

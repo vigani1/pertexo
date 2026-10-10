@@ -2,7 +2,7 @@ import type { WorkflowAuthoringDatabase } from '../workflows/contracts.js';
 import type { WorkflowAuthoringReadContext } from '../workflows/reads.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
 import { workflowTemplateOriginSchema } from '@pertexo/templates';
-import { mapWorkflow } from '../workflows/rows.js';
+import { mapWorkflow } from '../workflows/representation/rows.js';
 import { z } from 'zod';
 
 /** One scoped statement keeps summary and immutable origin in the same snapshot. */

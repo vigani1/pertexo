@@ -28,7 +28,7 @@ export type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './records.js';
+} from './representation/records.js';
 import {
   acceptPreviewRun,
   readPreviewRun,

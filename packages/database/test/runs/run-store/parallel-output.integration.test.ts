@@ -10,7 +10,7 @@ import {
   ownedDeliveryStore,
   workerBaseUrl,
   workspaceA,
-} from './run-store.fixtures.js';
+} from './fixtures.js';
 
 describe('persisted Parallel output material', () => {
   it.each([

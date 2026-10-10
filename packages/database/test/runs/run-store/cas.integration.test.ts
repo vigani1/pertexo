@@ -16,7 +16,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
-} from './run-store.fixtures.js';
+} from './fixtures.js';
 import { createDatabaseRuntime } from '../../../src/platform/pool/runtime.js';
 
 describe('Coordinator CAS and transition invariants', () => {

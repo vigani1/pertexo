@@ -11,7 +11,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
-} from './run-store.fixtures.js';
+} from './fixtures.js';
 
 describe('Coordinator pending failure evidence invariants', () => {
   it('loads and atomically resolves pending executor failure evidence', async () => {

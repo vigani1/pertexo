@@ -18,8 +18,8 @@ import type {
   WorkflowAuthoringDatabase,
 } from '../contracts.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
-import type { WorkflowRecord } from '../records.js';
-import { mapWorkflow, workflowRowSelection } from '../rows.js';
+import type { WorkflowRecord } from '../representation/records.js';
+import { mapWorkflow, workflowRowSelection } from '../representation/rows.js';
 
 const uuidSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(128);

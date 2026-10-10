@@ -21,7 +21,7 @@ import {
   workspaceA,
   workspaceB,
   workspaceCreatorId,
-} from '../../runs/acceptance/acceptance.fixtures.js';
+} from '../../runs/acceptance/fixtures.js';
 import {
   acceptRun,
   claimRuns,
