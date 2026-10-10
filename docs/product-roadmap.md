@@ -34,8 +34,8 @@ competitor has ever offered. Later items are decision-gated options.
 - Planning inventory began at e650ae31; the structural implementation chat
   concurrently advanced to 20778fea and later commits. Paths are evidence anchors,
   not a frozen future layout. Reconcile against the merged cleanup before coding.
-- Structural cleanup lives in backend structure audit.
-  This roadmap does not reopen that audit or add its work to feature plans.
+- Structural ownership follows [ADR 069](adr/069-architecture-reset.md) and
+  the [architecture map](architecture.md). Feature plans do not reopen the reset.
 - Cleanup is merged through PR99/100. F00/F01's historical starting source was
   `fcb0c44ca5d9f1a921165207fb33f2802d1688f7`. Their reviewed integration delivery
   and safe cleanup diagnostics are now merged through PR113/114 at
@@ -43,10 +43,8 @@ competitor has ever offered. Later items are decision-gated options.
   CodeQL 36481275347 passed on that exact source. See F00/F01 for accepted local
   evidence and preserved external limitations. Do not repeat those journeys
   merely to update status or implement every roadmap row at once.
-- Preserve existing dirty CONTEXT.md. The
-  [notifications plan](workspace-notifications-plan.md) is the detailed F03
-  plan under accepted [ADR055](adr/055-workspace-inbox-failure-threads.md).
-  CONTEXT.md remains outside the scoped delivery changes.
+- The [notifications feature plan](feature-plans/03-workspace-notifications.md)
+  records F03 under accepted [ADR055](adr/055-workspace-inbox-failure-threads.md).
 - The initial roadmap planning inventory did not execute runtime qualification.
   Later feature-specific proofs are recorded in their plans. Current-code
   presence, historical verification and new acceptance requirements are distinct.
@@ -282,16 +280,16 @@ For each selected slice record:
 2. Changed modules/contracts/migrations, dependency ordering and privacy model.
 3. Focused regression evidence; real database/race/restart checks where relevant.
 4. Real browser + backend behavior for visible features; mocked evidence separate.
-5. Additive rollout, rollback, retained-reader compatibility and operational
-   metrics with bounded labels.
+5. Forward fixes and rollback preserve accepted durable facts; one current
+   format follows ADR 069 until launch. Operational metrics have bounded labels.
 6. Independent review, exact source SHA/PR and relevant CI. After merge inspect
    the natural run once; failures get exact artifacts and causal follow-up, not
    blind reruns until green.
 7. Remaining external gates: provider/OIDC/mail/object-store access, production
    load/recovery and security qualification where applicable.
 
-Do not update original implementation-progress phase status just for these
-proposals. Update it only if an approved implementation changes its claims.
+Use the feature plans to record delivery status. The reset tracker records
+architecture reset work.
 
 ## First selected planning session
 
@@ -304,6 +302,6 @@ acceptance run is recorded with the producer on. Separately make
 the F04 consumer decision and F08 input/output/pinning design; those are planning
 tasks, not permission to start three large implementations at once.
 
-No roadmap commits or pushes had occurred at the 2026-09-29 foundation
-verification checkpoint. Keep these planning documents
-out of the concurrent structural cleanup commits unless separately approved.
+The initial roadmap inventory was recorded at the 2026-09-29 foundation
+verification checkpoint. Current ownership follows the completed reset;
+feature implementation still requires its scoped plan.

@@ -14,9 +14,9 @@ HTTP contracts/OpenAPI exist. API-key entities were deferred; cookie-session rou
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- docs/implementation-progress.md
+- [Reset tracker](../architecture-reset-plan.md)
 - [packages/contracts/src/openapi/generated-artifacts.ts](../../packages/contracts/src/openapi/generated-artifacts.ts)
-- [apps/api/src/identity-workspace](../../apps/api/src/identity-workspace)
+- [apps/api/src/workspaces](../../apps/api/src/workspaces)
 
 “Not established” means no complete product was found in this targeted inventory,
 not proof of absence from every file. Recheck these anchors before implementation.

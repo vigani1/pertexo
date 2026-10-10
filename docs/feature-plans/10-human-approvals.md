@@ -14,7 +14,7 @@ Timed waits exist. Human approvals/external resume forms remain deferred; inbox 
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- docs/workflow-platform-backend-plan.md
+- [Current architecture](../architecture.md)
 - [docs/adr/021-durable-wait.md](../../docs/adr/021-durable-wait.md)
 
 “Not established” means no complete product was found in this targeted inventory,
