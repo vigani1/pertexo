@@ -4,10 +4,12 @@ import {
   verifyCuratedFixtureOwnership,
   recheckCuratedFixtureOwnership,
 } from '../../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
-import { parseDatabaseConfig } from '../../../src/config.js';
+import {
+  parseDatabaseConfig,
+  type MigrationConfig,
+} from '../../../src/config.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/database.js';
-import { createArtifactMigrationConfig } from './migration-config.fixture.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 import { createWorkflowTagDatabase } from '../../../src/authoring/organization/tags.repository.js';
@@ -105,7 +107,12 @@ export async function createOrganizationOwnedFixture() {
     const migrationUrl = disposable.databaseUrl(
       attestation.urls.DATABASE_MIGRATION_URL,
     );
-    const migrationConfig = createArtifactMigrationConfig(migrationUrl);
+    const migrationConfig: MigrationConfig = {
+      appRole: 'pertexo_app',
+      connectionString: migrationUrl,
+      maintenanceRole: 'pertexo_maintenance',
+      ownerRole: 'pertexo_owner',
+    };
     await migrateDatabase(migrationConfig);
     async function upgrade() {
       await recheck();
