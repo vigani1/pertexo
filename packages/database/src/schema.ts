@@ -8,12 +8,12 @@ import {
   authenticationMailDeliveries,
   identitySecurityAuditFacts,
 } from './schema/authentication.js';
-import { workflowTemplateOrigins } from './schema/curated-template-origin.js';
-import { workflowManualStartRejections } from './schema/manual-start.js';
+import { workflowTemplateOrigins } from './schema/authoring/template-origin.js';
+import { workflowManualStartRejections } from './schema/runs/manual-start.js';
 import {
   workflowInputCases,
   workflowInputCasePayloads,
-} from './schema/workflow-input-cases.js';
+} from './schema/authoring/input-cases.js';
 import {
   users,
   workspaces,
@@ -27,7 +27,7 @@ import {
   workspaceLifecycleOperations,
 } from './schema/foundation.js';
 import { rlsProbeRecords } from './schema/rls-probe.js';
-import { workflowConcurrencyPolicies } from './schema/workflow-concurrency.js';
+import { workflowConcurrencyPolicies } from './schema/authoring/concurrency.js';
 import {
   connections,
   connectionSecretVersions,
@@ -51,19 +51,19 @@ import {
   nodeAttempts,
   previewRuns,
   previewAttempts,
-} from './schema/execution.js';
+} from './schema/runs/execution.js';
 import {
   artifactLinks,
   idempotencyRecords,
   workspaceCreationIdempotencyRecords,
-} from './schema/execution-support.js';
+} from './schema/runs/support.js';
 import {
   workflows,
   workflowDrafts,
   workflowVersions,
   workflowIntegrationUsage,
   workflowTriggers,
-} from './schema/authoring.js';
+} from './schema/authoring/workflows.js';
 import {
   workspaceInboxEvents,
   workspaceInboxReads,
@@ -90,7 +90,7 @@ import {
   workflowOrganizationState,
   workflowTagAssignments,
   workflowFavorites,
-} from './schema/workflow-organization.js';
+} from './schema/authoring/organization.js';
 import {
   failureNotificationDestinations,
   failureNotificationDestinationVersions,
@@ -102,13 +102,13 @@ import {
   operatorCommands,
   operatorRunReplayRequests,
   operatorUnknownOutcomeEvidence,
-} from './schema/operator.js';
+} from './schema/runs/operator.js';
 import {
   workspaceExecutionEntitlements,
   workspaceExecutionEntitlementVersions,
   workspaceExecutionAdmissionCounters,
   workflowRunActiveAdmissions,
-} from './schema/execution-admission.js';
+} from './schema/runs/admission.js';
 export {
   authAccounts,
   authSessions,
@@ -136,19 +136,19 @@ export {
   nodeAttempts,
   previewRuns,
   previewAttempts,
-} from './schema/execution.js';
+} from './schema/runs/execution.js';
 export {
   artifactLinks,
   idempotencyRecords,
   workspaceCreationIdempotencyRecords,
-} from './schema/execution-support.js';
+} from './schema/runs/support.js';
 export {
   workflows,
   workflowDrafts,
   workflowVersions,
   workflowIntegrationUsage,
   workflowTriggers,
-} from './schema/authoring.js';
+} from './schema/authoring/workflows.js';
 export {
   webhookTriggerSecretVersions,
   webhookTriggerEndpoints,

@@ -3,7 +3,7 @@ import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { claimNodeAttemptDelivery } from './claim.js';
-import { completeNodeAttempt } from './completion.js';
+import { completeNodeAttempt } from './completion/complete.js';
 import { markNodeAttemptDispatched } from './dispatch.js';
 import { heartbeatNodeAttempt } from './heartbeat.js';
 import { recordNodeAttemptInput } from './input-record.js';

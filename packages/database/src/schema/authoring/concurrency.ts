@@ -1,6 +1,6 @@
-import { appSchema } from './app-schema.js';
+import { appSchema } from '../app-schema.js';
 import { foreignKey, integer, primaryKey, uuid } from 'drizzle-orm/pg-core';
-import { workflows } from './authoring.js';
+import { workflows } from './workflows.js';
 
 export const workflowConcurrencyPolicies = appSchema.table(
   'workflow_concurrency_policies',

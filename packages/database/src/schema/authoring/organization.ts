@@ -9,9 +9,9 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-import { appSchema, textC } from './app-schema.js';
-import { workflows } from './authoring.js';
-import { workspaces } from './foundation.js';
+import { appSchema, textC } from '../app-schema.js';
+import { workflows } from './workflows.js';
+import { workspaces } from '../foundation.js';
 
 export const workflowFolders = appSchema.table(
   'workflow_folders',

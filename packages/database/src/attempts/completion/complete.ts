@@ -8,19 +8,19 @@ import {
   NodeAttemptStateCorruptError,
   type CompleteNodeAttemptResult,
   type NodeAttemptRunStore,
-} from './contract.js';
+} from '../contract.js';
 import {
   auditMismatch,
   nodeAttemptConsumerName as consumerName,
   validateDelivery,
-} from './receipts.js';
+} from '../receipts.js';
 import {
   applyNodeAttemptCompletion,
   type CompletionReceiptRow,
   type LockedAttemptRow,
 } from './outcomes.js';
-import { assertNotAborted, withWorkspaceWriteClient } from './transactions.js';
-import { serializeStoredExecutionValueV1 } from '../platform/stored-execution-value.js';
+import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
+import { serializeStoredExecutionValueV1 } from '../../platform/stored-execution-value.js';
 
 export async function completeNodeAttempt(
   pool: Pool,

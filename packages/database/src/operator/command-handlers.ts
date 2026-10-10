@@ -11,7 +11,7 @@ import { appendLockedRunEvent, RUN_EVENT_TYPE } from '../runs/events.js';
 import {
   operatorRunReplayRequests,
   operatorUnknownOutcomeEvidence,
-} from '../schema/operator.js';
+} from '../schema/runs/operator.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 
 /**

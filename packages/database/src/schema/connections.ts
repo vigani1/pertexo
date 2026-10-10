@@ -16,7 +16,7 @@ import {
 import { sql } from 'drizzle-orm';
 
 import { appSchema } from './app-schema.js';
-import { nodeAttempts } from './execution.js';
+import { nodeAttempts } from './runs/execution.js';
 
 export const connections = appSchema.table(
   'connections',

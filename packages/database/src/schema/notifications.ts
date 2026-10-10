@@ -17,8 +17,8 @@ import {
 import { sql } from 'drizzle-orm';
 
 import { appSchema } from './app-schema.js';
-import { workflows } from './authoring.js';
-import { workflowRuns } from './execution.js';
+import { workflows } from './authoring/workflows.js';
+import { workflowRuns } from './runs/execution.js';
 import { users, workspaces } from './foundation.js';
 
 export const failureNotificationDestinations = appSchema.table(

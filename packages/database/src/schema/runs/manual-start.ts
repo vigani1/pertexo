@@ -8,9 +8,9 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { appSchema } from './app-schema.js';
-import { workflows } from './authoring.js';
-import { workspaces } from './foundation.js';
+import { appSchema } from '../app-schema.js';
+import { workflows } from '../authoring/workflows.js';
+import { workspaces } from '../foundation.js';
 
 export const workflowManualStartRejections = appSchema.table(
   'workflow_manual_start_rejections',

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { generatePersistedId } from '../../platform/persisted-id.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { v5 as uuidv5 } from 'uuid';
@@ -9,10 +9,10 @@ import {
   FailureNotificationContextSchema,
 } from '@pertexo/workflow-model';
 
-import { CoordinatorRunStateCorruptError } from './contract.js';
-import type { RunTransitionPlan } from './plan.js';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
-import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
+import { CoordinatorRunStateCorruptError } from '../contract.js';
+import type { RunTransitionPlan } from '../plan.js';
+import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
+import { serializeStoredExecutionJsonValue } from '../../../platform/stored-execution-value.js';
 
 const failureNotificationNamespace = '9fe280d8-40ca-4a20-930e-1bf77e48c817';
 

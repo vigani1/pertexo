@@ -2,8 +2,8 @@ import type { PoolClient } from 'pg';
 
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 
-import { CoordinatorRunStateCorruptError } from './contract.js';
-import type { RunTransitionPlan } from './plan.js';
+import { CoordinatorRunStateCorruptError } from '../contract.js';
+import type { RunTransitionPlan } from '../plan.js';
 
 /**
  * A For Each whose collection exceeded its limit fails the node that produced
