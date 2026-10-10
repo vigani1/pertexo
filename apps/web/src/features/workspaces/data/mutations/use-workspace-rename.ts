@@ -14,12 +14,9 @@ import {
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
   isUnauthenticated,
-} from '@/features/auth/session-identity.public';
-import { isApiError } from '@/lib/api/api-error';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+} from '@/features/auth/session/session-identity.public';
+import { isApiError } from '@/lib/api/error';
+import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   accessibleWorkspacesQueryOptions,

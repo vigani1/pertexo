@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   parseConfigJson,
   type NodeConfig,
-} from '../../../model/inspector/inspector-draft';
+} from '../../../model/inspector/draft';
 import { useInspectorDraftField } from '../use-draft-field';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 

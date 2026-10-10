@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { WorkflowExportDialog } from '@/features/workflows/portability.public';
+import { WorkflowExportDialog } from '@/features/workflows/creation/portability.public';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -10,7 +10,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import {
   WorkflowDuplicateDialog,
   canDuplicateWorkflow,
-} from '@/features/workflows/duplicate.public';
+} from '@/features/workflows/creation/duplicate.public';
 import { GitCompareArrowsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -26,9 +26,9 @@ import { visibleSettingsData } from '../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { SettingsQueryState } from '../components/settings-query-state';
 import { RestoreVersionDialog } from '../components/versions/restore-version-dialog';
-import { VersionCompareSheet } from '../components/versions/version-compare-sheet';
-import { VersionPreviewSheet } from '../components/versions/version-preview-sheet';
-import { VersionTimeline } from '../components/versions/version-timeline';
+import { VersionCompareSheet } from '../components/versions/compare-sheet';
+import { VersionPreviewSheet } from '../components/versions/preview-sheet';
+import { VersionTimeline } from '../components/versions/timeline';
 import { workflowVersionsQueryOptions } from '../data/workflow-settings.queries';
 
 type Version = WorkflowVersionResponse;

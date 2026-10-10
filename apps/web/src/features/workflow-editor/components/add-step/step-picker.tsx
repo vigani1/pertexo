@@ -3,8 +3,8 @@ import { SearchIcon } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { cn } from '@/lib/utils';
 import { groupStepChoices, type StepChoice } from '../../model/step-catalog';
-import { AddStepBundle } from './add-step-bundle';
-import { AddStepItem } from './add-step-item';
+import { AddStepBundle } from './bundle';
+import { AddStepItem } from './item';
 
 /**
  * The step search field shared by the add-step lens and quick add. Enter

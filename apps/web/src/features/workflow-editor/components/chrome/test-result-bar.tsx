@@ -3,8 +3,8 @@ import { Status } from '@/components/ui/status';
 import { describePreviewStatus } from '@/features/workflow-publish/public';
 import { shortStepError } from '@/features/workflow-runs/failure.public';
 import { formatDurationMs } from '@/lib/format/time';
-import { useEditorStore } from '../../model/editor-store-context';
-import { levelOf } from '../../model/graph/graph-scopes';
+import { useEditorStore } from '../../model/state/context';
+import { levelOf } from '../../model/graph/scopes';
 import { describeTestPath } from '../../model/test-path';
 import type { RecordedTest } from '../../hooks/use-last-test';
 

@@ -23,8 +23,8 @@ import {
 } from '@/components/ui/empty';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { readFailureReason } from '@/lib/api/api-error-copy';
-import { AddConnectionSheet } from '../components/add-connection/add-connection-sheet';
+import { readFailureReason } from '@/lib/api/error-copy';
+import { AddConnectionSheet } from '../components/add-connection/sheet';
 import { ConnectionCollection } from '../components/connection-collection';
 import { ConnectionDetailSheet } from '../components/detail/connection-detail-sheet';
 import { ProviderSockets } from '../components/provider-sockets';

@@ -1,4 +1,4 @@
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 
 /** The part of a query result a section needs to render its states. */
 export type SettingsQuery<Value> = Readonly<{

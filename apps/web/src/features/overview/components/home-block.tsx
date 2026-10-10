@@ -3,7 +3,7 @@ import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { describeReadError } from '@/lib/api/error-copy';
 import type { HomeBlockState } from '../model/home-block-state';
 
 /**

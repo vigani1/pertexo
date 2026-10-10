@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
-import { describeReadError, isNotFound } from '@/lib/api/api-error-copy';
+import { describeReadError, isNotFound } from '@/lib/api/error-copy';
 import { cn } from '@/lib/utils';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { connectionAccessLost } from '../../model/connection-access';
@@ -29,7 +29,7 @@ import {
   PROVIDERS,
 } from '../../model/connection-providers';
 import { useConnectionTest } from '../connection-test/use-connection-test';
-import { ConnectionTestPanel } from '../connection-test/connection-test-panel';
+import { ConnectionTestPanel } from '../connection-test/panel';
 import { ProviderTile } from '../provider-tile';
 import { ConnectionFacts } from './connection-facts';
 import { ReplaceCredentialForm } from './replace-credential-form';

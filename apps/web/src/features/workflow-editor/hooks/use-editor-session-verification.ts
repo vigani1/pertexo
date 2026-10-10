@@ -10,10 +10,10 @@ import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
-} from '@/features/auth/session-identity.public';
-import { currentUserQueryOptions } from '@/features/auth/queries.public';
-import { subscribeSessionChanges } from '@/features/auth/session-sync.public';
-import { isApiError } from '@/lib/api/api-error';
+} from '@/features/auth/session/session-identity.public';
+import { currentUserQueryOptions } from '@/features/auth/session/queries.public';
+import { subscribeSessionChanges } from '@/features/auth/session/session-sync.public';
+import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 
 type PauseReason = 'changed' | 'unverified';

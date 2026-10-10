@@ -2,7 +2,7 @@ import type { WorkflowRunEvent } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import { decodeSseMessages } from '@/lib/api/sse';
 import { openWorkflowRunEvents } from '../data/workflow-runs.api';
 import { workflowRunQueryOptions } from '../data/workflow-runs.queries';

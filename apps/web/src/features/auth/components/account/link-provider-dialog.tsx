@@ -13,14 +13,14 @@ import {
 } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValues } from '@/components/ui/use-field-validation';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { startAccountLink } from '../../data/account-security.api';
 import { currentPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { SocialProviderGrid } from '../social/social-provider-grid';
+import { SocialProviderGrid } from '../social/provider-grid';
 import { providerName, type SocialProvider } from '../../model/social-provider';
 import { Notice } from '@/components/ui/notice';
 

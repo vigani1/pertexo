@@ -1,11 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import { normalizeRunIntent, type RunIntent } from '../../model/run-intent';
 import { replayWorkflowRun } from '../workflow-runs.api';
 import { workflowRunKeys } from '../workflow-runs.queries';

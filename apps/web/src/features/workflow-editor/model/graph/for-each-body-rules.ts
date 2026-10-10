@@ -1,5 +1,5 @@
-import { stepTitle } from './graph-adapter';
-import { levelSinks } from './graph-order';
+import { stepTitle } from './adapter';
+import { levelSinks } from './order';
 import {
   indexGraph,
   isForEach,
@@ -8,7 +8,7 @@ import {
   walkLevels,
   type GraphLevel,
   type ScopePath,
-} from './graph-scopes';
+} from './scopes';
 
 // ADR 020's rules for a For each body, checked in the browser so people see
 // them while building: the body has steps, stays apart from the steps

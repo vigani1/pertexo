@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { HttpResponse, http } from 'msw';
 import { BODY_ORIGIN } from '@/features/workflow-editor/model/graph/for-each-body-layout';
-import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/graph-adapter';
+import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import {

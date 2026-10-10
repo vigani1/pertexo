@@ -1,11 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import {
   getWorkflowDraft,
   saveWorkflowDraft,
 } from '../data/workflow-editor.api';
-import type { EditorStore } from '../model/editor.store';
+import type { EditorStore } from '../model/state/store';
 import type { SaveCoordinatorTransport } from '../model/persistence/save-coordinator';
 import { useSaveCoordinator } from './use-save-coordinator';
 

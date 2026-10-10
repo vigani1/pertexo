@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  InboxLens,
-  RESEND_COOLDOWN_SECONDS,
-} from '../components/inbox/inbox-lens';
-import { SignUpLens } from '../components/sign-up/sign-up-lens';
+import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
+import { SignUpLens } from '../components/sign-up/lens';
 import { AuthLensFooter } from '../components/stage/auth-lens';
 import { PasswordCapabilityGate } from '../components/stage/lens-states';
 import { resendVerificationEmail } from '../data/native-auth.api';

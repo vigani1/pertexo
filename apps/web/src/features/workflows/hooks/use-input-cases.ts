@@ -9,23 +9,20 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
-} from '@/features/auth/session-identity.public';
+} from '@/features/auth/session/session-identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import {
   getInputCase,
   sendInputCaseCommand,
   type InputCaseCommand,
-} from '../data/input-cases.api';
+} from '../data/input-cases/api';
 import {
   inputCasesKey,
   inputCasesQueryOptions,
-} from '../data/input-cases.queries';
+} from '../data/input-cases/queries';
 
 function denied(cause: unknown) {
   return (

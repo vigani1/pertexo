@@ -15,8 +15,8 @@ import { StaleLine } from '@/components/patterns/states/stale-line';
 import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowRowActions } from '../list/workflow-row-actions';
 import { WorkflowRows, WorkflowListFooter } from '../list/workflow-rows';
-import { WorkflowOrganizationDialog } from './workflow-organization-dialog';
-import { WorkflowFavoriteButton } from './workflow-favorite-button';
+import { WorkflowOrganizationDialog } from './dialog';
+import { WorkflowFavoriteButton } from './favorites/button';
 
 /** Selection is explicit, ordered and bounded to loaded rows in one URL scope. */
 export function WorkflowOrganizedResults({

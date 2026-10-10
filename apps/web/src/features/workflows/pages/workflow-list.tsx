@@ -14,9 +14,9 @@ import { WorkflowLifecycleDialog } from '../components/workflow-lifecycle-dialog
 import {
   NewWorkflowButton,
   WorkflowListHeader,
-} from '../components/list/workflow-list-header';
-import { WorkflowListEmpty } from '../components/list/workflow-list-empty';
-import { WorkflowListError } from '../components/list/workflow-list-states';
+} from '../components/list/header';
+import { WorkflowListEmpty } from '../components/list/empty';
+import { WorkflowListError } from '../components/list/states';
 import { WorkflowRenameDialog } from '../components/workflow-rename-dialog';
 import { WorkflowDuplicateDialog } from '../components/workflow-duplicate-dialog';
 import { WorkflowExportDialog } from '../components/portability/workflow-export-dialog';
@@ -36,7 +36,7 @@ import { useListShortcuts } from '../hooks/use-list-shortcuts';
 import { useRunWorkflow } from '../hooks/use-run-workflow';
 import type { StarterDraftWriter } from '../data/workflows.mutations';
 import { useOrganizationList } from '../hooks/use-organization-list';
-import { WorkflowOrganizationFilters } from '../components/organization/workflow-organization-filters';
+import { WorkflowOrganizationFilters } from '../components/organization/filters';
 import { WorkflowOrganizedResults } from '../components/organization/workflow-organized-results';
 
 type LifecycleTarget = Readonly<{

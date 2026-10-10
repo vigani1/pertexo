@@ -20,7 +20,7 @@ import type { WorkflowConcurrencySettings } from '@pertexo/contracts';
 import { createApiClient } from '@/lib/api/client';
 import { concurrencyQueryOptions } from '@/features/workflow-settings/data/concurrency.queries';
 import { useConcurrencyCommand } from '@/features/workflow-settings/data/mutations/use-concurrency-command';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import { ConcurrencySection } from '@/features/workflow-settings/components/settings/concurrency-section';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { mockServer } from '../../support/mock-server';

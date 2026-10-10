@@ -2,7 +2,7 @@ import { RotateCcwIcon } from 'lucide-react';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { describeReadError } from '@/lib/api/error-copy';
 
 /**
  * The one feedback owner for a failed read. With nothing on screen it is a

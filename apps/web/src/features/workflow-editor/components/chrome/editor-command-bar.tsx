@@ -3,7 +3,7 @@ import { useRef, type ReactNode } from 'react';
 import { WorkflowHubBar } from '@/features/workflows/hub.public';
 import { PatternGlyph } from '@/features/workflows/shape.public';
 import type { ApiClient } from '@/lib/api/client';
-import { useEditorStore } from '../../model/editor-store-context';
+import { useEditorStore } from '../../model/state/context';
 import { CompactHistoryMenu, HistoryControls } from './history-controls';
 import { LiveVersion } from './live-version';
 import { SaveState } from './save-state';

@@ -1,4 +1,4 @@
-import type { FieldParseResult, NodeConfig } from './inspector-draft';
+import type { FieldParseResult, NodeConfig } from './draft';
 
 // The Schedule step's builder: what the catalog's setup schema allows, the
 // builder's editable draft, and the exact config it writes. The config keeps

@@ -6,11 +6,8 @@ import type {
   InlineRenameError,
 } from '@/components/patterns/inline-rename';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import {
   createWorkflow,
   renameWorkflow,
@@ -21,7 +18,7 @@ import {
 } from './workflows.api';
 import type { LifecycleAction } from '../model/lifecycle';
 import { workflowKeys } from './workflows.queries';
-import { workflowOrganizationKeys } from './organization.queries';
+import { workflowOrganizationKeys } from './organization/queries';
 
 /**
  * Saves a starter graph into a new workflow's draft with the ETag returned by

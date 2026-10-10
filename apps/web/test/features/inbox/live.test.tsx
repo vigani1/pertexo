@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useInboxLive } from '@/features/inbox/live.public';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

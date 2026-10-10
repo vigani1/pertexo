@@ -13,18 +13,18 @@ import {
   workflowSummarySchema,
 } from '@pertexo/contracts';
 import { useOrganizationList } from '@/features/workflows/hooks/use-organization-list';
-import { WorkflowOrganizationFilters } from '@/features/workflows/components/organization/workflow-organization-filters';
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization.queries';
+import { WorkflowOrganizationFilters } from '@/features/workflows/components/organization/filters';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
 import {
   getWorkflowOrganizationPage,
   getWorkflowFolders,
   getWorkflowTagsPage,
   sendWorkflowOrganizationCommand,
-} from '@/features/workflows/data/organization.api';
+} from '@/features/workflows/data/organization/api';
 import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/use-workflow-organization-command';
-import { assertSessionIdentity } from '@/features/auth/session-identity.public';
+import { assertSessionIdentity } from '@/features/auth/session/session-identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import { createApiClient } from '@/lib/api/client';
 import {
   userId,
@@ -36,17 +36,20 @@ import {
 } from '../list/fixtures';
 import type { WorkflowListSearch } from '@/features/workflows/model/list-view';
 
-vi.mock('@/features/workflows/data/organization.api', async (original) => ({
+vi.mock('@/features/workflows/data/organization/api', async (original) => ({
   ...(await original<object>()),
   getWorkflowOrganizationPage: vi.fn(),
   getWorkflowFolders: vi.fn(),
   getWorkflowTagsPage: vi.fn(),
   sendWorkflowOrganizationCommand: vi.fn(),
 }));
-vi.mock('@/features/auth/session-identity.public', async (original) => ({
-  ...(await original<object>()),
-  assertSessionIdentity: vi.fn(),
-}));
+vi.mock(
+  '@/features/auth/session/session-identity.public',
+  async (original) => ({
+    ...(await original<object>()),
+    assertSessionIdentity: vi.fn(),
+  }),
+);
 vi.mock('@/features/workspaces/queries.public', async (original) => ({
   ...(await original<object>()),
   getAllAccessibleWorkspaces: vi.fn(),

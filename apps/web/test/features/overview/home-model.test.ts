@@ -17,7 +17,7 @@ import {
   loomLayout,
   loomX,
   shapeLoom,
-} from '@/features/workflow-runs/model/loom/loom-model';
+} from '@/features/workflow-runs/model/loom/model';
 import {
   groupRunsByDay,
   threadBarScale,

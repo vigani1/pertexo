@@ -8,19 +8,16 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  useEditorStore,
-  useEditorStoreApi,
-} from '../../model/editor-store-context';
+import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
-import { updateWorkflowNode } from '../../model/graph/graph-commands';
+import { updateWorkflowNode } from '../../model/graph/commands';
 import {
   findStep,
   isForEach,
   type GraphLevel,
   type WorkflowNode,
-} from '../../model/graph/graph-scopes';
+} from '../../model/graph/scopes';
 import { isSlackStep } from '../../model/inspector/slack-channel';
 import { createScratchTracker } from './use-draft-field';
 import { AboutTab } from './tabs/about';

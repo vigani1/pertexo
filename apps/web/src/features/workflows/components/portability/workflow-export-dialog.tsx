@@ -12,14 +12,14 @@ import {
 } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { describeCommandError } from '@/lib/api/api-error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   exportWorkflow,
   readWorkflowExportSource,
-} from '../../data/workflow-portability.api';
+} from '../../data/portability/api';
 import { downloadPortableWorkflow } from '../../model/portability';
-import { usePortabilityLifetime } from './use-portability-lifetime';
+import { usePortabilityLifetime } from './use-lifetime';
 import { PortableGraphReview } from './portable-graph-review';
 
 type ReviewedSource = Awaited<ReturnType<typeof readWorkflowExportSource>> & {

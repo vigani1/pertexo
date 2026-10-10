@@ -18,10 +18,7 @@ import type {
   WorkflowValidationTarget,
 } from '@/features/workflow-publish/public';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  useEditorStore,
-  useEditorStoreApi,
-} from '../model/editor-store-context';
+import { useEditorStore, useEditorStoreApi } from '../model/state/context';
 import type { useCanvasEffects } from '../hooks/use-canvas-effects';
 import type { useEditorActions } from '../hooks/use-editor-actions';
 import { useEditorShortcuts } from '../hooks/use-editor-shortcuts';
@@ -29,13 +26,13 @@ import type { MobilePanel } from '../hooks/use-inspector-navigation';
 import { useLastTest } from '../hooks/use-last-test';
 import { useQuickAdd } from './add-step/use-quick-add';
 import { useStepPlacement } from './add-step/use-step-placement';
-import { AddStepLens } from './add-step/add-step-lens';
+import { AddStepLens } from './add-step/lens';
 import { QuickAddLens } from './add-step/quick-add-lens';
 import { SelectionToolbar } from './canvas/selection-toolbar';
 import { StartPicker } from './canvas/start-picker';
 import { TestResultBar } from './chrome/test-result-bar';
 import { ValidationSweep } from './canvas/validation-sweep';
-import { WorkflowCanvas } from './canvas/workflow-canvas';
+import { WorkflowCanvas } from './canvas/index';
 import { EditorLayout } from './editor-layout';
 import { EditorInspector } from './inspector/editor-inspector';
 import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';

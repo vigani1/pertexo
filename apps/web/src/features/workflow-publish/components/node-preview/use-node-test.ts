@@ -3,9 +3,9 @@ import type {
   PreviewRunSummary,
 } from '@pertexo/contracts';
 import { useEffect, useRef, useState } from 'react';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 import {
   commandErrorMessage,
   parseCommandJson,

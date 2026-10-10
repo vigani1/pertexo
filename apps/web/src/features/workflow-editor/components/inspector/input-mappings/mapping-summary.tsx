@@ -1,6 +1,6 @@
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import type { GraphLevel } from '../../../model/graph/graph-scopes';
+import type { GraphLevel } from '../../../model/graph/scopes';
 import type {
   InputMappingDraftRow,
   SchemaValueType,

@@ -18,7 +18,7 @@ import {
   workflowSettingsRoute,
   workflowTriggersRoute,
   workflowVersionsRoute,
-} from '../workflow/hub-routes';
+} from '../workflow/hub/routes';
 import {
   alertsRoute,
   connectionsRoute,

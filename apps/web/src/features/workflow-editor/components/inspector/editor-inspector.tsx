@@ -17,13 +17,10 @@ import {
   AddConnectionContext,
   type AddConnectionScope,
 } from '../../model/add-connection-context';
-import {
-  useEditorStore,
-  useEditorStoreApi,
-} from '../../model/editor-store-context';
-import { stepTitle } from '../../model/graph/graph-adapter';
-import { connectWorkflowNodes } from '../../model/graph/graph-commands';
-import { findStep, levelOf } from '../../model/graph/graph-scopes';
+import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
+import { stepTitle } from '../../model/graph/adapter';
+import { connectWorkflowNodes } from '../../model/graph/commands';
+import { findStep, levelOf } from '../../model/graph/scopes';
 import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../hooks/use-editor-actions';
 import { InspectorPanel } from './panel';

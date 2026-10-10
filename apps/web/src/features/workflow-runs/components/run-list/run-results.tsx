@@ -6,8 +6,8 @@ import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { SkeletonThread } from '@/components/ui/skeleton';
-import { isApiError } from '@/lib/api/api-error';
-import { readFailureReason } from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { readFailureReason } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { filterRunsByTrigger } from '../../model/list/run-list';
 import {
@@ -24,7 +24,7 @@ import {
   RunListSkeleton,
   RunsLoadError,
   RunsUnavailable,
-} from './run-list-states';
+} from './states';
 import type { RunListVariant } from './run-row-layout';
 
 const HOUR_MS = 3_600_000;

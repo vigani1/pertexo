@@ -1,6 +1,6 @@
 import { WorkflowSettingsPage } from '@/features/workflow-settings/public';
-import { WorkflowHubTabFrame } from './hub-frame';
-import { useWorkflowHubScope } from './hub-scope';
+import { WorkflowHubTabFrame } from './hub/frame';
+import { useWorkflowHubScope } from './hub/scope';
 
 export function WorkflowSettingsRoute() {
   const { apiClient, user, workspace, workflowId } = useWorkflowHubScope();

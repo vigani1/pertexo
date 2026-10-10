@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { publishWorkflow } from '../workflow-publish.api';
 import { workflowPublishKeys } from '../workflow-publish.queries';
-import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { commandErrorMessage } from './command-utils';
 import {
   useWorkflowDraftValidation,

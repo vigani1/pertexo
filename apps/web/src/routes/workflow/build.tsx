@@ -4,8 +4,8 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { WorkflowEditorPage } from '@/features/workflow-editor/public';
 import { workflowSettingsKeys } from '@/features/workflow-settings/queries.public';
 import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
-import { ResourceNotFound } from '../root/system-pages';
-import { useWorkflowHubScope } from './hub-scope';
+import { ResourceNotFound } from '../root/status/pages';
+import { useWorkflowHubScope } from './hub/scope';
 
 /** The Build tab: the editor fills the immersive hub, bar included. */
 export function WorkflowBuildRoute() {

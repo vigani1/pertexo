@@ -3,10 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { EmailRequestLens } from '../components/inbox/email-request-lens';
-import {
-  InboxLens,
-  RESEND_COOLDOWN_SECONDS,
-} from '../components/inbox/inbox-lens';
+import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
 import { AuthLensFooter } from '../components/stage/auth-lens';
 import { PasswordCapabilityGate } from '../components/stage/lens-states';
 import { recoveryFailure } from '../model/auth-failure';

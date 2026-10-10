@@ -3,7 +3,7 @@ import { fieldLabel } from '@/features/workflow-editor/model/field-units';
 import {
   parseNumberField,
   schemaFields,
-} from '@/features/workflow-editor/model/inspector/inspector-draft';
+} from '@/features/workflow-editor/model/inspector/draft';
 
 describe('step setup fields', () => {
   it('reads catalog settings in people’s words and units', () => {

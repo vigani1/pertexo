@@ -1,4 +1,4 @@
-import { ApiError } from './api-error';
+import { ApiError } from './error';
 
 type CursorPage = Readonly<{ nextCursor: string | null }>;
 

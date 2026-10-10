@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useRouteContext, useSearch } from '@tanstack/react-router';
 import { LoginPage, loginNoticeFrom } from '@/features/auth/login.public';
 import { allowlistedReturnPath } from '@/features/auth/return-path.public';
-import { publishSessionChange } from '@/features/auth/session-sync.public';
+import { publishSessionChange } from '@/features/auth/session/session-sync.public';
 
 export function LoginRoute() {
   const { apiClient } = useRouteContext({ from: '/_stage/login' });

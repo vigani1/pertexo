@@ -1,7 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { useEffect, useState } from 'react';
-import { edgeWeaveOrder, upstreamEdgeIds } from '../model/graph/graph-order';
-import { levelOf } from '../model/graph/graph-scopes';
+import { edgeWeaveOrder, upstreamEdgeIds } from '../model/graph/order';
+import { levelOf } from '../model/graph/scopes';
 
 /** How long a passed test's path keeps flowing along the canvas. */
 const TEST_FLOW_MS = 10_000;

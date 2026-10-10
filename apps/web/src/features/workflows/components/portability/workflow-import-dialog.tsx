@@ -19,13 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import { describeCommandError } from '@/lib/api/api-error-copy';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../../model/rename';
 import { readPortableWorkflowFile } from '../../model/portability';
-import { previewWorkflowImport } from '../../data/workflow-portability.api';
-import { usePortabilityLifetime } from './use-portability-lifetime';
-import { useWorkflowImportCommand } from '../../data/workflow-portability.mutations';
+import { previewWorkflowImport } from '../../data/portability/api';
+import { usePortabilityLifetime } from './use-lifetime';
+import { useWorkflowImportCommand } from '../../data/portability/mutations';
 import { WorkflowImportLeaveGuard } from './workflow-import-leave-guard';
 import {
   WorkflowImportConnections,

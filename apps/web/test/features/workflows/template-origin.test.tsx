@@ -4,11 +4,11 @@ import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { createQueryClient } from '@/app/query-client';
-import { WorkflowTemplateOrigin } from '@/features/workflows/components/templates/workflow-template-origin';
-import { workflowTemplateOriginKey } from '@/features/workflows/data/workflow-origin.queries';
+import { WorkflowTemplateOrigin } from '@/features/workflows/components/templates/origin';
+import { workflowTemplateOriginKey } from '@/features/workflows/data/origin/queries';
 import { workflowKeys } from '@/features/workflows/data/workflows.queries';
 import { createApiClient } from '@/lib/api/client';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';
 import {

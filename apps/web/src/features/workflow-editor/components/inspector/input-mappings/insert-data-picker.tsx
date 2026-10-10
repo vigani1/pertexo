@@ -10,8 +10,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
-import { findDefinition, stepTitle } from '../../../model/graph/graph-adapter';
-import type { GraphLevel } from '../../../model/graph/graph-scopes';
+import { findDefinition, stepTitle } from '../../../model/graph/adapter';
+import type { GraphLevel } from '../../../model/graph/scopes';
 import {
   outputFieldsOf,
   propertyPath,

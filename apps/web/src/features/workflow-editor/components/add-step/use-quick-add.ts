@@ -6,17 +6,17 @@ import {
   STEP_CARD,
   toBodyPosition,
 } from '../../model/graph/for-each-body-layout';
-import type { EditorStore } from '../../model/editor.store';
-import { findDefinition } from '../../model/graph/graph-adapter';
-import { positionAfter, type PortRef } from '../../model/graph/graph-commands';
-import { levelSinks } from '../../model/graph/graph-order';
+import type { EditorStore } from '../../model/state/store';
+import { findDefinition } from '../../model/graph/adapter';
+import { positionAfter, type PortRef } from '../../model/graph/commands';
+import { levelSinks } from '../../model/graph/order';
 import {
   findStep,
   isForEach,
   loopOf,
   scopeOf,
   type GraphLevel,
-} from '../../model/graph/graph-scopes';
+} from '../../model/graph/scopes';
 import { openOutputPort } from '../../model/quick-add';
 
 type Point = Readonly<{ x: number; y: number }>;

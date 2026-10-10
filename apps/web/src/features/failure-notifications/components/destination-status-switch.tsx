@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { destinationCommandError } from '../model/failure-notification-errors';
 import {
   useSetFailureNotificationDestinationStatusMutation,

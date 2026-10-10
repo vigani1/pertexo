@@ -11,7 +11,7 @@ import {
   bodyIssuesOf,
   forEachBodyIssues,
 } from '@/features/workflow-editor/model/graph/for-each-body-rules';
-import { createEditorStore } from '@/features/workflow-editor/model/editor.store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/store';
 import {
   addBodyStep,
   addDefinitionNode,
@@ -21,15 +21,15 @@ import {
   removeWorkflowElements,
   restoreWorkflowElements,
   updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/graph-commands';
-import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/graph-copies';
+} from '@/features/workflow-editor/model/graph/commands';
+import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 import {
   canConnectSteps,
   levelAt,
   locateStep,
   mapLevel,
   scopeOf,
-} from '@/features/workflow-editor/model/graph/graph-scopes';
+} from '@/features/workflow-editor/model/graph/scopes';
 import {
   bodyStepDefinition,
   forEachDefinition,

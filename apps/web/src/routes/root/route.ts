@@ -1,8 +1,8 @@
 import { createRootRouteWithContext } from '@tanstack/react-router';
 import { RootLayout } from './layout';
 import type { RouterContext } from './route-context';
-import { RootNotFound } from './not-found';
-import { BootPage, RouteError } from './system-pages';
+import { RootNotFound } from './status/not-found';
+import { BootPage, RouteError } from './status/pages';
 
 export const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: RootLayout,

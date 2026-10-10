@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   publishSessionChange,
   subscribeSessionChanges,
-} from '@/features/auth/session-sync.public';
+} from '@/features/auth/session/session-sync.public';
 
 const storageKey = 'pertexo:auth-session-change';
 

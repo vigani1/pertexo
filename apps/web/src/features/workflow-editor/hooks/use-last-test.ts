@@ -1,6 +1,6 @@
 import type { PreviewRunSummary } from '@pertexo/contracts';
 import { useState } from 'react';
-import { useEditorStoreApi } from '../model/editor-store-context';
+import { useEditorStoreApi } from '../model/state/context';
 
 export type FinishedTest = Readonly<{
   nodeId: string;

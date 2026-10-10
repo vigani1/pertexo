@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   OrganizationCommandFeedback,
   type OrganizationCommand,
-} from '@/features/workflows/components/organization/organization-command-feedback';
+} from '@/features/workflows/components/organization/command-feedback';
 import { workflowId, secondWorkflowId } from '../list/fixtures';
 
 function command(denied = false): OrganizationCommand {

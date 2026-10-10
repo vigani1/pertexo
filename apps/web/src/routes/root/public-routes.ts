@@ -17,7 +17,7 @@ import {
 import { rootRoute } from './route';
 import { AuthLensPending } from '../auth/lens-pending';
 import { AuthStageRoute } from '../auth/stage';
-import { BootPage, OpeningPage } from './system-pages';
+import { BootPage, OpeningPage } from './status/pages';
 
 function flag(value: unknown): boolean {
   return value === true || value === 'true';

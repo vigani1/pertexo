@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { isApiError, type ApiError } from './api-error';
+import { isApiError, type ApiError } from './error';
 
 /** A failed read in one user's workspace scope: the key after that scope. */
 export type WorkspaceReadDenial = Readonly<{

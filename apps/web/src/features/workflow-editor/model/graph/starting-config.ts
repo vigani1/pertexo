@@ -1,4 +1,4 @@
-import type { WorkflowNode } from './graph-scopes';
+import type { WorkflowNode } from './scopes';
 
 type NodeConfig = WorkflowNode['config'];
 

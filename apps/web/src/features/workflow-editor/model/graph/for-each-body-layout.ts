@@ -1,4 +1,4 @@
-import { stepDepths } from './graph-order';
+import { stepDepths } from './order';
 import {
   isForEach,
   levelAt,
@@ -6,7 +6,7 @@ import {
   type GraphLevel,
   type ScopePath,
   type WorkflowNode,
-} from './graph-scopes';
+} from './scopes';
 
 // Where a For each body's steps are drawn inside its container card, and
 // how big that card is. Body positions are stored relative to the body's

@@ -1,5 +1,5 @@
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 
 export function connectionAccessLost(error: unknown): boolean {
   return isApiError(error) && [401, 403, 404, 409].includes(error.status ?? 0);

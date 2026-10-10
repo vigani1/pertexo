@@ -3,7 +3,7 @@ import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import { Notice } from '@/components/ui/notice';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { describeReadError } from '@/lib/api/error-copy';
 import {
   settingsQueryIsUnavailable,
   type SettingsQuery,

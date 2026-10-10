@@ -5,7 +5,7 @@ import {
   inset,
   revealedViewport,
   uncoveredArea,
-} from '@/features/workflow-editor/model/canvas-framing';
+} from '@/features/workflow-editor/model/canvas/framing';
 
 const canvas = { left: 0, top: 0, right: 1440, bottom: 900 };
 const commandBar = { left: 12, top: 12, right: 1428, bottom: 74 };

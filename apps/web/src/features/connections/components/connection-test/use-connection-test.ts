@@ -5,7 +5,7 @@ import type {
   ConnectionTestResponse,
 } from '@pertexo/contracts';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { connectionCommandError } from '../../model/connection-errors';
 import {
   useTestConnectionMutation,

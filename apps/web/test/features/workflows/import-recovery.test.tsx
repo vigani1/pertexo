@@ -18,7 +18,7 @@ import {
 } from '@pertexo/contracts';
 import { WorkflowListPage } from '@/features/workflows/pages/workflow-list';
 import { createApiClient } from '@/lib/api/client';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import { workflowKeys } from '@/features/workflows/queries.public';
 import { createQueryClient } from '@/app/query-client';
 import { NotificationsProvider } from '@/components/ui/toast';

@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { ResetPasswordLens } from '../components/reset/reset-password-lens';
+import { ResetPasswordLens } from '../components/reset/password-lens';
 import {
   AuthLens,
   AuthLensDescription,

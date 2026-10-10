@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { NodeTestPanel } from '@/features/workflow-publish/public';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

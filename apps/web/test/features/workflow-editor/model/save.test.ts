@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   addDefinitionNode,
   updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/graph-commands';
-import { createEditorStore } from '@/features/workflow-editor/model/editor.store';
+} from '@/features/workflow-editor/model/graph/commands';
+import { createEditorStore } from '@/features/workflow-editor/model/state/store';
 import { createSaveCoordinator } from '@/features/workflow-editor/model/persistence/save-coordinator';
 
 import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/data/workflow-editor.api';

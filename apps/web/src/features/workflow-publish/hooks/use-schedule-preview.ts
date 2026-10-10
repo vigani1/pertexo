@@ -1,7 +1,7 @@
 import type { ScheduleStepConfig } from '@pertexo/contracts';
 import { use, useEffect, useEffectEvent, useState } from 'react';
-import { isApiError } from '@/lib/api/api-error';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { isApiError } from '@/lib/api/error';
+import { describeReadError } from '@/lib/api/error-copy';
 import { canonicalizeJson } from '@/lib/canonical-json';
 import { previewScheduleRuns } from '../data/schedule-preview.api';
 import { SchedulePreviewScope } from '../model/schedule-preview-scope';

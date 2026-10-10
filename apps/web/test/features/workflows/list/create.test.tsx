@@ -10,7 +10,7 @@ import { NewWorkflowSheet } from '@/features/workflows/components/creation/new-w
 import type { StartChoice } from '@/features/workflows/components/creation/starter-choice';
 import { availableStarters } from '@/features/workflows/model/templates/starters';
 import type { StarterDraftWriter } from '@/features/workflows/list.public';
-import { ApiError } from '@/lib/api/api-error';
+import { ApiError } from '@/lib/api/error';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../../support/mock-server';
 import { renderApp, testFetch } from '../../../support/render-app';

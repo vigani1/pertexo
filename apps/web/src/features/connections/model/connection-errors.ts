@@ -1,9 +1,9 @@
-import { isApiError } from '@/lib/api/api-error';
+import { isApiError } from '@/lib/api/error';
 import {
   describeCommandError,
   isForbidden,
   isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+} from '@/lib/api/error-copy';
 
 type ConnectionCommand = 'create' | 'rotate' | 'revoke' | 'test';
 

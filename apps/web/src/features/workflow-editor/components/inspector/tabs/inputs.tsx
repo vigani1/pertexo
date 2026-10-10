@@ -4,19 +4,16 @@ import { PlusIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { useEditorStoreApi } from '../../../model/editor-store-context';
+import { useEditorStoreApi } from '../../../model/state/context';
 import type { EditorFocusTarget } from '../../../hooks/use-editor-actions';
-import type {
-  GraphLevel,
-  WorkflowNode,
-} from '../../../model/graph/graph-scopes';
+import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import {
   directPredecessorOptions,
   inputKeySuggestions,
   nodeUsesRunInputDirectly,
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings';
-import { useInputMappingDraft } from '../input-mappings/use-input-mapping-draft';
+import { useInputMappingDraft } from '../input-mappings/use-draft';
 import { IncomingConnections } from '../incoming-connections';
 import {
   InsertDataPicker,

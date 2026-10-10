@@ -1,5 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import { isNotFound } from '@/lib/api/api-error-copy';
+import { isNotFound } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { forgetDeniedConnections } from '../model/connection-access';
 import {

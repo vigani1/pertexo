@@ -6,8 +6,8 @@ import {
 } from '@/features/workflow-runs/commands.public';
 import type { ApiClient } from '@/lib/api/client';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-import { ApiError, isApiError } from '@/lib/api/api-error';
-import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import { ApiError, isApiError } from '@/lib/api/error';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 import { commandErrorMessage } from './command-utils';
 
 type RunAttempt = Readonly<{
