@@ -1,7 +1,4 @@
-import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
-
-import { recordIdentitySecurityFact } from '@pertexo/database/tenant-access';
-import type { Pool, PoolClient } from 'pg';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 
 /*
  * Primitives of the browser-bound account-linking journey. A journey binds
@@ -50,62 +47,6 @@ export function journeyBindingCookie(
   return `${input.name}=${input.value}; Path=${input.path}; HttpOnly; SameSite=Lax; Max-Age=300${input.secure ? '; Secure' : ''}`;
 }
 
-export async function inTransaction<T>(
-  pool: Pool,
-  work: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const result = await work(client);
-    await client.query('commit');
-    return result;
-  } catch (error) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-/** Attaches a provider account proven in this journey and audits it. */
-export async function attachProviderMethod(
-  client: PoolClient,
-  input: Readonly<{
-    userId: string;
-    providerId: string;
-    accountId: string;
-  }>,
-): Promise<void> {
-  await client.query(
-    `insert into app.auth_accounts(id,account_id,provider_id,user_id)
-     values($1,$2,$3,$4)`,
-    [randomUUID(), input.accountId, input.providerId, input.userId],
-  );
-  await recordIdentitySecurityFact(client, input.userId, 'method.linked');
-}
-
-/**
- * Revokes every Better Auth session of the user and mints the single
- * replacement session token that the journey delivers to its browser.
- */
-export async function replaceBrowserSessions(
-  client: PoolClient,
-  userId: string,
-  sessionTtlSeconds: number,
-): Promise<string> {
-  await client.query('delete from app.auth_sessions where user_id=$1', [
-    userId,
-  ]);
-  const token = newJourneyToken();
-  await client.query(
-    `insert into app.auth_sessions(id,expires_at,token,user_id)
-     values($1,clock_timestamp()+($2::integer*interval '1 second'),$3,$4)`,
-    [randomUUID(), sessionTtlSeconds, token, userId],
-  );
-  return token;
-}
-
 /**
  * The method change is already committed, so a failed cookie delivery sends
  * the browser to ordinary sign-in: a callback retry cannot repeat the journey.
@@ -124,13 +65,4 @@ export async function landWithReplacementSession(
   } catch {
     return recovery();
   }
-}
-
-export function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
 }
