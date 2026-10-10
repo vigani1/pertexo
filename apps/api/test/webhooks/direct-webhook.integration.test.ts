@@ -32,12 +32,12 @@ import {
 } from '../../src/platform/identity/identity-runtime.module.js';
 import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow/workflow-runtime.module.js';
 import { WebhookManagementService } from '../../src/webhooks/service.js';
-import { issueBrowserSession } from '../support/browser-session.fixture.js';
+import { issueBrowserSession } from './browser-session.fixture.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
 import {
   FixtureResourceOwner,
   rethrowFixtureSetupFailure,
-} from '../support/fixture-resource-owner.js';
+} from '../browser/harness/resource-owner.js';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 import {
   sendBoundedWebhook,

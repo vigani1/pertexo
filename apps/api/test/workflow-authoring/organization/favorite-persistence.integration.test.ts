@@ -12,7 +12,7 @@ import {
   parseDatabaseConfig,
   WorkflowNotFoundError,
 } from '@pertexo/database/testing';
-import { createWorkflowOrganizationOwnedDatabase } from '../../support/workflow-organization-owned-database.js';
+import { createWorkflowOrganizationOwnedDatabase } from './owned-database.js';
 
 const fixture = createWorkflowOrganizationOwnedDatabase();
 const resources: { close(): Promise<void> }[] = [];

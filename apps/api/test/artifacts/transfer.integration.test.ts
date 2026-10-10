@@ -18,7 +18,7 @@ import {
   mutationHeaders,
   type ArtifactTransferApiFixture,
   type SessionCookies,
-} from '../support/artifact-transfer.integration.support.js';
+} from './transfer.support.js';
 
 if (artifactTransferIntegrationRequested) {
   assertIntegrationGateConfigured({

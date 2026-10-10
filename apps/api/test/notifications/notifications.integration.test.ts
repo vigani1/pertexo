@@ -7,7 +7,7 @@ import {
   betterAuthIntegrationEnabled,
   useBetterAuthRealApi,
   type Browser,
-} from '../support/better-auth-real-api.integration.support.js';
+} from '../support/better-auth/real-api.support.js';
 
 // Authentication is rate limited per origin; a suite-owned origin keeps this
 // suite's sign-ups out of the buckets that parallel identity suites share.

@@ -44,7 +44,7 @@ import { StreamRunEventsUseCase } from '../../src/workflow-runs/index.js';
 import {
   FixtureResourceOwner,
   rethrowFixtureSetupFailure,
-} from '../support/fixture-resource-owner.js';
+} from '../browser/harness/resource-owner.js';
 
 const apiUrl = process.env.DATABASE_URL;
 const redisUrl =

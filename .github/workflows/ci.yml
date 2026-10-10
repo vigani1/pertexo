@@ -171,11 +171,7 @@ jobs:
           pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            --exclude test/editor-browser.integration.test.ts \
-            --exclude test/usage-browser.integration.test.ts \
-            --exclude test/workflow-concurrency-browser.integration.test.ts \
-            --exclude test/connection-health-browser.integration.test.ts \
-            --exclude test/workflow-organization-browser.integration.test.ts \
+            --exclude 'test/browser/*.integration.test.ts' \
             --exclude test/workflow-authoring/organization/organization.integration.test.ts \
             --exclude test/workflow-authoring/organization/favorite-persistence.integration.test.ts \
             --exclude test/workflow-authoring/organization/folders-bulk.integration.test.ts
@@ -232,15 +228,15 @@ jobs:
             --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
             --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
             '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
-          USAGE_BROWSER_INTEGRATION=true live test/usage-browser.integration.test.ts
-          WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/workflow-concurrency-browser.integration.test.ts
-          CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/connection-health-browser.integration.test.ts
+          USAGE_BROWSER_INTEGRATION=true live test/browser/usage.integration.test.ts
+          WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/browser/workflow-concurrency.integration.test.ts
+          CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/browser/connection-health.integration.test.ts
           for browser_case in duplication portability input-cases curated-templates; do
             EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE="$browser_case" EDITOR_BROWSER_OWNED_FIXTURE=true \
-              live test/editor-browser.integration.test.ts
+              live test/browser/editor.integration.test.ts
           done
           EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F07_ORGANIZATION_BROWSER_INTEGRATION=true \
-            live test/workflow-organization-browser.integration.test.ts
+            live test/browser/workflow-organization.integration.test.ts
       - name: Stop services
         if: always()
         run: docker compose down -v --remove-orphans

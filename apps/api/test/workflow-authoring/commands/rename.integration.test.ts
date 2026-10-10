@@ -11,7 +11,7 @@ import {
   mutationHeaders,
   type WorkflowLifecycleApiFixture,
   workflowLifecycleIntegrationEnabled,
-} from '../../support/workflow-lifecycle.integration.support.js';
+} from '../lifecycle.support.js';
 
 const describeIntegration = workflowLifecycleIntegrationEnabled
   ? describe

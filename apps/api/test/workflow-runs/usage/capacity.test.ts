@@ -8,7 +8,7 @@ import {
 } from '../../../src/authorization/index.js';
 import type { WorkflowRunPersistence } from '../../../src/workflow-runs/ports.js';
 import { GetUsageCapacityUseCase } from '../../../src/workflow-runs/usage/capacity.js';
-import { usageCapacitySnapshot } from '../../support/usage-capacity.fixture.js';
+import { usageCapacitySnapshot } from './capacity.fixture.js';
 
 const actorId = '11111111-1111-4111-8111-111111111111';
 const workspaceId = '22222222-2222-4222-8222-222222222222';

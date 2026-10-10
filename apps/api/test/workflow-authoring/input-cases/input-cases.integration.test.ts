@@ -11,7 +11,7 @@ import {
   betterAuthIntegrationEnabled,
   expectProblem,
   useBetterAuthRealApi,
-} from '../../support/better-auth-real-api.integration.support.js';
+} from '../../support/better-auth/real-api.support.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'authenticated bounded manual run-input case HTTP commands',
