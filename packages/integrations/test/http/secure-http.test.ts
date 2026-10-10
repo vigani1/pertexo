@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { assertPublicAddress } from '../src/http/address-policy.js';
+import { assertPublicAddress } from '../../src/http/address-policy.js';
 import {
   NodeHttpTransport,
   SECURE_HTTP_ERROR_CODE,
@@ -18,12 +18,15 @@ import {
   type SecureHttpTransport,
   type SecureHttpTransportRequest,
   type SecureHttpTransportResponse,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const execFileAsync = promisify(execFile);
-const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const packageDirectory = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../..',
+);
 
 class FakeResolver implements SecureHttpResolver {
   public readonly calls: string[] = [];
@@ -1193,7 +1196,7 @@ describe('secure HTTP client', () => {
         'tsx',
         resolve(
           packageDirectory,
-          'test/secure-http-hostile-rejection.fixture.ts',
+          'test/http/secure-http-hostile-rejection.fixture.ts',
         ),
       ]),
     ).resolves.toMatchObject({ stderr: '' });

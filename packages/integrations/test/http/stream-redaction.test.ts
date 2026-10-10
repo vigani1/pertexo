@@ -6,7 +6,7 @@ import {
   type SecureHttpResolver,
   type SecureHttpTransport,
   type SecureHttpTransportResponse,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 const encoder = new TextEncoder();
 

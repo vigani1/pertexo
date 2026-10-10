@@ -16,7 +16,7 @@ vi.mock('node:https', () => ({
   default: { request: fixtures.httpsRequest },
 }));
 
-import { NodeDnsResolver, NodeHttpTransport } from '../src/server.js';
+import { NodeDnsResolver, NodeHttpTransport } from '../../src/server.js';
 
 type RequestOptions = Readonly<{
   lookup: (

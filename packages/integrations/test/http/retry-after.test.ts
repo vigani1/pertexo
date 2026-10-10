@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseBoundedRetryAfterMillis } from '../src/http/retry-after.js';
+import { parseBoundedRetryAfterMillis } from '../../src/http/retry-after.js';
 
 describe('bounded provider Retry-After policy', () => {
   it.each([

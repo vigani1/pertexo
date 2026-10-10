@@ -25,7 +25,7 @@ vi.mock('@aws-sdk/client-kms', () => ({
   },
 }));
 
-import { createBoundedKmsClient } from '../src/credentials/kms-client.js';
+import { createBoundedKmsClient } from '../../src/credentials/kms-client.js';
 
 describe('bounded KMS client', () => {
   it.each([

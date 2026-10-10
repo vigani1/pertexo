@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classifySlackConnectionHealth,
   createSlackClient,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 describe('Slack connection health evidence (ADR059)', () => {
   it.each([
