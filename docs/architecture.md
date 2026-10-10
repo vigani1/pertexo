@@ -58,6 +58,12 @@ projection and calls the pure engine through the run store's decision callback.
 `database/src/runs/advance/` locks and loads state, checks deliveries, persists
 transitions and completes receipts in a transaction.
 
+Finished For Each iteration scopes leave the checkpoint once every owner is
+terminal. Compact loop frontiers and conserved iteration budgets support
+restart; ordinary node/attempt outputs and events retain inspection history. The
+[F08 plan](feature-plans/08-subworkflows.md) records the pruning evidence and
+unchanged limits.
+
 Manual acceptance, cancellation and replay persist through
 `database/src/runs/commands/`. HTTP owns actor authorization. Accepted commands
 share workspace idempotency records; manual starts serialize a key with one

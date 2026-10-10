@@ -143,7 +143,7 @@ describe('structured control continuation', () => {
       'body-first': { selectedPort: 'true' },
     });
     expect(plans.at(-1)?.checkpoint.runStatus).toBe('succeeded');
-    expect(plans.at(-1)?.checkpoint.loops[0]?.terminalOrdinals).toEqual([0, 1]);
+    expect(plans.at(-1)?.checkpoint.loops[0]?.completedPrefix).toBe(2);
     expect(
       plans
         .flatMap((plan) => plan.attempts)
@@ -184,8 +184,8 @@ describe('structured control continuation', () => {
     ).toEqual([0]);
     expect(
       plans.at(-1)?.checkpoint.loops.find((loop) => loop.loopId === 'loop')
-        ?.terminalOrdinals,
-    ).toEqual([0]);
+        ?.completedPrefix,
+    ).toBe(1);
   });
 
   it.each([
@@ -219,7 +219,7 @@ describe('structured control continuation', () => {
           .flatMap((plan) => plan.attempts)
           .filter((attempt) => attempt.nodeId === 'body-sink'),
       ).toHaveLength(expectedSinkAttempts);
-      expect(plans.at(-1)?.checkpoint.loops[0]?.terminalOrdinals).toEqual([0]);
+      expect(plans.at(-1)?.checkpoint.loops[0]?.completedPrefix).toBe(1);
     },
   );
 
@@ -337,8 +337,8 @@ describe('structured control continuation', () => {
     ).toBe(false);
     expect(
       plans.at(-1)?.checkpoint.loops.find((item) => item.loopId === 'loop')
-        ?.terminalOrdinals,
-    ).toEqual([0]);
+        ?.completedPrefix,
+    ).toBe(1);
   });
 
   it('cancels an active nested sole-sink loop without a continuation wakeup', async () => {
@@ -444,7 +444,7 @@ describe('structured control continuation', () => {
       parallel: { branchIds: ['branch-02', 'branch-01'] },
     });
     expect(plans.at(-1)?.checkpoint.runStatus).toBe('succeeded');
-    expect(plans.at(-1)?.checkpoint.loops[0]?.terminalOrdinals).toEqual([0]);
+    expect(plans.at(-1)?.checkpoint.loops[0]?.completedPrefix).toBe(1);
     expect(
       plans
         .flatMap((plan) => plan.attempts)
@@ -484,7 +484,7 @@ describe('structured control continuation', () => {
         )
         .map((event) => event.nodeId),
     ).toEqual(['body-first', 'body-sink']);
-    expect(plans.at(-1)?.checkpoint.loops[0]?.terminalOrdinals).toEqual([0]);
+    expect(plans.at(-1)?.checkpoint.loops[0]?.completedPrefix).toBe(1);
   });
 
   it('skips a disabled inner control and settles its outer sole-sink iteration', async () => {
@@ -522,7 +522,7 @@ describe('structured control continuation', () => {
     ).toHaveLength(1);
     expect(
       plans.at(-1)?.checkpoint.loops.find((item) => item.loopId === 'loop')
-        ?.terminalOrdinals,
-    ).toEqual([0]);
+        ?.completedPrefix,
+    ).toBe(1);
   });
 });

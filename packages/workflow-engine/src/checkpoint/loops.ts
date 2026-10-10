@@ -27,6 +27,7 @@ export function parseLoop(value: unknown): LoopState {
       'maxConcurrency',
       'maxIterations',
       'nextOrdinal',
+      'completedPrefix',
       'activeOrdinals',
       'terminalOrdinals',
     ],
@@ -81,6 +82,7 @@ export function parseLoop(value: unknown): LoopState {
     'maxConcurrency',
     'maxIterations',
     'nextOrdinal',
+    'completedPrefix',
   ] as const) {
     assertCheckpoint(
       isInteger(value[field]) && value[field] >= 0,
@@ -99,10 +101,16 @@ export function parseLoop(value: unknown): LoopState {
   const maxConcurrency = value.maxConcurrency;
   const maxIterations = value.maxIterations;
   const nextOrdinal = value.nextOrdinal;
+  const completedPrefix = value.completedPrefix;
   assertCheckpoint(isInteger(collectionSize), 'collectionSize is invalid');
   assertCheckpoint(isInteger(maxConcurrency), 'maxConcurrency is invalid');
   assertCheckpoint(isInteger(maxIterations), 'maxIterations is invalid');
   assertCheckpoint(isInteger(nextOrdinal), 'nextOrdinal is invalid');
+  assertCheckpoint(isInteger(completedPrefix), 'completedPrefix is invalid');
+  assertCheckpoint(
+    completedPrefix <= nextOrdinal,
+    'loop frontier exceeds cursor',
+  );
   assertCheckpoint(maxConcurrency > 0, 'maxConcurrency must be positive');
   assertCheckpoint(maxIterations > 0, 'maxIterations must be positive');
   assertCheckpoint(
@@ -135,7 +143,9 @@ export function parseLoop(value: unknown): LoopState {
   assertCheckpoint(
     ordinals.every(
       (ordinal) =>
-        isInteger(ordinal) && ordinal >= 0 && ordinal < collectionSize,
+        isInteger(ordinal) &&
+        ordinal >= completedPrefix &&
+        ordinal < collectionSize,
     ),
     'loop ordinal is outside the collection',
   );
@@ -149,8 +159,8 @@ export function parseLoop(value: unknown): LoopState {
   );
   const admitted = [...ordinals].sort((left, right) => left - right);
   assertCheckpoint(
-    admitted.length === nextOrdinal &&
-      admitted.every((ordinal, index) => ordinal === index),
+    admitted.length === nextOrdinal - completedPrefix &&
+      admitted.every((ordinal, index) => ordinal === completedPrefix + index),
     'loop cursor has an unrecorded ordinal',
   );
   return {
@@ -167,6 +177,7 @@ export function parseLoop(value: unknown): LoopState {
     maxConcurrency,
     maxIterations,
     nextOrdinal,
+    completedPrefix,
     activeOrdinals,
     terminalOrdinals,
   };

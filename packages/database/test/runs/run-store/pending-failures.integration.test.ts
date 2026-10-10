@@ -144,7 +144,7 @@ describe('Coordinator pending failure evidence invariants', () => {
     });
   });
 
-  it('commits a terminal pending-failure decision through the store', async () => {
+  it.each([false, true])('persists failure, pruned=%s', async (pruned) => {
     const invocationKey = 'coordinator/retry/terminal';
     const attemptId = randomUUID();
     const nodeRunId = randomUUID();
@@ -197,16 +197,30 @@ describe('Coordinator pending failure evidence invariants', () => {
             revision: 1,
             runStatus: 'failed',
             nextEventSequence: 4,
-            invocations: [
-              {
-                invocationKey,
-                nodeId: 'terminal-node',
-                status: 'failed',
-                attemptNumber: 1,
-              },
-            ],
-            admittedInvocationKeys: [invocationKey],
+            invocations: pruned
+              ? []
+              : [
+                  {
+                    invocationKey,
+                    nodeId: 'terminal-node',
+                    status: 'failed',
+                    attemptNumber: 1,
+                  },
+                ],
+            admittedInvocationKeys: pruned ? [] : [invocationKey],
           }),
+          ...(pruned
+            ? {
+                prunedInvocations: [
+                  {
+                    invocationKey,
+                    nodeId: 'terminal-node',
+                    status: 'failed' as const,
+                    attemptNumber: 1,
+                  },
+                ],
+              }
+            : {}),
           events: [
             {
               sequence: 2,
@@ -240,6 +254,22 @@ describe('Coordinator pending failure evidence invariants', () => {
       ),
     ).resolves.toMatchObject({
       rows: [{ status: 'failed', retry_decision: 'failed' }],
+    });
+    const recovered = await ownedDeliveryStore.loadAdvanceState({
+      workspaceId: workspaceA,
+      runId,
+      signal: new AbortController().signal,
+    });
+    expect(recovered).toMatchObject({
+      kind: 'ready',
+      state: {
+        observations: [],
+        checkpoint: {
+          invocations: pruned
+            ? []
+            : [expect.objectContaining({ status: 'failed' })],
+        },
+      },
     });
   });
 

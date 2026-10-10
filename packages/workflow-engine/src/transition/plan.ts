@@ -3,6 +3,7 @@ import {
   reconstructReadySet,
 } from '../checkpoint/create-and-parse.js';
 import { WorkflowEngineError } from '../errors.js';
+import { pruneFinishedIterations } from './prune.js';
 import { deriveReadyNodes } from './scheduling/readiness.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import {
@@ -89,13 +90,10 @@ export function buildWorkflowTransitionPlan(
     current,
     graph,
     invocations,
-    branchSelections,
     eventDrafts,
     nodeRunAdmissionKeys,
     cancelRequested,
     deadlineExpired,
-    joins,
-    loops,
   } = state;
   const ordered = [...invocations.values()].sort((left, right) =>
     compareOrdinal(left.invocationKey, right.invocationKey),
@@ -198,6 +196,7 @@ export function buildWorkflowTransitionPlan(
     ...draft,
     sequence: firstDerivedEventSequence + offset,
   }));
+  const pruned = pruneFinishedIterations(state);
   const checkpoint = parseCheckpoint({
     ...current,
     revision: current.revision + 1,
@@ -205,18 +204,23 @@ export function buildWorkflowTransitionPlan(
     nextEventSequence: firstDerivedEventSequence + events.length,
     cancelRequested,
     deadlineExpired,
-    joins: [...joins.values()],
-    loops: [...loops.values()],
+    joins: pruned.joins,
+    loops: pruned.loops,
+    ...(pruned.retiredIterationBudget === 0
+      ? {}
+      : { retiredIterationBudget: pruned.retiredIterationBudget }),
     remainingIterationBudget: state.remainingIterationBudget,
     admittedInvocationKeys: [
       ...new Set([...current.admittedInvocationKeys, ...admittedKeys]),
-    ].sort(),
-    invocations: finalInvocations,
+    ]
+      .filter((key) => !pruned.prunedKeys.has(key))
+      .sort(),
+    invocations: pruned.invocations,
     readySet: reconstructReadySet({
       ...current,
-      invocations: finalInvocations,
+      invocations: pruned.invocations,
     }),
-    branchSelections,
+    branchSelections: pruned.branchSelections,
   });
   const nodeRunAdmissions: NodeRunAdmissionPlan[] = [...nodeRunAdmissionKeys]
     .sort(compareOrdinal)
@@ -250,6 +254,9 @@ export function buildWorkflowTransitionPlan(
     events,
     nodeRunAdmissions,
     attempts,
+    ...(pruned.prunedInvocations.length === 0
+      ? {}
+      : { prunedInvocations: pruned.prunedInvocations }),
     ...(attempts.length === 0 &&
     ['running', 'waiting'].includes(state.runStatus) &&
     hasUnsettledSchedulerWork(state)

@@ -93,6 +93,7 @@ function loopCheckpoint() {
         maxIterations: 10,
         nextOrdinal: 2,
         activeOrdinals: [1],
+        completedPrefix: 0,
         terminalOrdinals: [0],
       },
     ],

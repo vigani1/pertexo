@@ -11,6 +11,7 @@ import { applyLoopCompletion, applyLoopStart } from './loops.js';
 import {
   declaredJoin,
   isTerminalNodeStatus,
+  isFinishedIterationScope,
   nodeEventName,
   sameJoinDeclaration,
   transitionEvent as event,
@@ -21,7 +22,11 @@ function applyJoinDeclaration(
   state: MutableWorkflowTransition,
   observation: Extract<WorkflowObservation, { kind: 'join_declared' }>,
 ): void {
-  if (state.cancelRequested) return;
+  if (
+    state.cancelRequested ||
+    isFinishedIterationScope(state.loops.values(), observation)
+  )
+    return;
   const joinInvocationKey = observation.joinInvocationKey;
   const declared = declaredJoin(observation);
   const existingJoin = state.joins.get(joinInvocationKey);
@@ -117,7 +122,12 @@ function applyInvocationObservation(
 ): void {
   const existing = state.invocations.get(observation.invocationKey);
   if (observation.kind === 'ready') {
-    if (state.cancelRequested || existing !== undefined) return;
+    if (
+      state.cancelRequested ||
+      existing !== undefined ||
+      isFinishedIterationScope(state.loops.values(), observation)
+    )
+      return;
     const ready: InvocationState = {
       invocationKey: observation.invocationKey,
       nodeId: observation.nodeId,

@@ -1258,6 +1258,15 @@ describe('Coordinator node-attempt persistence invariants', () => {
       continuation_outbox: 1,
       completed_receipts: 1,
     });
+    // Checkpoint pruning must not weaken immutable physical completion checks.
+    await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        `update app.run_checkpoints set scheduler_state=scheduler_state ||
+         '{"invocations":[],"readySet":[],"admittedInvocationKeys":[]}'::jsonb
+         where workspace_id=$1 and workflow_run_id=$2`,
+        [workspaceA, runId],
+      ),
+    );
     await expect(
       nodeAttemptStore.complete({
         lease: claimed.lease,

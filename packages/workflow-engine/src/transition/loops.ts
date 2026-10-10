@@ -9,6 +9,7 @@ import type {
 } from '../types.js';
 import {
   isTerminalNodeStatus,
+  isFinishedIterationScope,
   nodeEventName,
   sameLoopDeclaration,
   transitionEvent as event,
@@ -20,7 +21,11 @@ export function applyLoopStart(
   observation: Extract<WorkflowObservation, { kind: 'loop_started' }>,
   occurredAt: string,
 ): void {
-  if (state.cancelRequested) return;
+  if (
+    state.cancelRequested ||
+    isFinishedIterationScope(state.loops.values(), observation)
+  )
+    return;
   const controlInvocationKey = observation.controlInvocationKey;
   const existingLoop = state.loops.get(controlInvocationKey);
   if (existingLoop !== undefined) {
@@ -100,13 +105,23 @@ export function applyLoopCompletion(
   occurredAt: string,
 ): void {
   const loop = state.loops.get(observation.controlInvocationKey);
-  if (loop === undefined)
+  if (loop?.loopId !== observation.loopId)
     throw new WorkflowEngineError(
       'loop_state_invalid',
       `loop ${observation.loopId} is not declared`,
     );
   const iterationKey = observation.invocationKey;
   const iteration = state.invocations.get(iterationKey);
+  // Only coordinator decisions reach this seam; physical outcome conflicts are
+  // checked before deriving them. A compact frontier owns replay after pruning.
+  if (
+    observation.ordinal >= 0 &&
+    observation.coordinatorDerived === true &&
+    (observation.ordinal < loop.completedPrefix ||
+      (loop.terminalOrdinals.includes(observation.ordinal) &&
+        iteration === undefined))
+  )
+    return;
   if (iteration === undefined)
     throw new WorkflowEngineError(
       'loop_state_invalid',

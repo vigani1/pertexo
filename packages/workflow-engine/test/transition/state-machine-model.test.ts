@@ -137,7 +137,9 @@ function expectLoopBudgetConserved(
   if (loop === undefined) throw new Error('structured loop state is missing');
   const accountedOrdinals = [...loop.activeOrdinals, ...loop.terminalOrdinals];
   expect(new Set(accountedOrdinals).size).toBe(accountedOrdinals.length);
-  expect(accountedOrdinals).toHaveLength(loop.nextOrdinal);
+  expect(accountedOrdinals.length + loop.completedPrefix).toBe(
+    loop.nextOrdinal,
+  );
   expect(loop.nextOrdinal).toBeLessThanOrEqual(collectionSize);
 }
 
@@ -515,9 +517,10 @@ describe('bounded workflow state-machine model', () => {
           }
 
           expect(checkpoint.runStatus).toBe('succeeded');
-          expect(checkpoint.loops[0]?.terminalOrdinals).toEqual(
-            Array.from({ length: collectionSize }, (_, ordinal) => ordinal),
-          );
+          expect(checkpoint.loops[0]).toMatchObject({
+            completedPrefix: collectionSize,
+            terminalOrdinals: [],
+          });
         },
       ),
       { seed: MODEL_SEED + 5, numRuns: modelRuns(256) },
@@ -572,9 +575,11 @@ describe('bounded workflow state-machine model', () => {
           expect(canceled.checkpoint.cancelRequested).toBe(true);
           expect(canceled.attempts).toEqual([]);
           expect(
-            canceled.checkpoint.invocations.find(
-              ({ invocationKey: key }) => key === retrying.invocationKey,
-            )?.status,
+            [
+              ...canceled.checkpoint.invocations,
+              ...(canceled.prunedInvocations ?? []),
+            ].find(({ invocationKey: key }) => key === retrying.invocationKey)
+              ?.status,
           ).toBe('canceled');
           const runningBody = canceled.checkpoint.invocations.filter(
             ({ iterationPath, status }) =>
