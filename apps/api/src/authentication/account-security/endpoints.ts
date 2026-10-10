@@ -15,7 +15,7 @@ import {
   resetPasswordAndRevokeSessions,
   setupPasswordAndRevokeSessions,
   unlinkMethodAndRevokeSessions,
-} from './transaction.js';
+} from '@pertexo/database/tenant-access';
 import { requireDoubleSubmitCsrf } from '../better-auth/csrf.js';
 
 type EndpointContext = Parameters<typeof setSessionCookie>[0];
