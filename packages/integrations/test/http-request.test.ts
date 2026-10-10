@@ -343,7 +343,7 @@ describe('http.request@1 server executor', () => {
       if (input?.connectionFence === undefined) return Promise.resolve();
       if (
         input.providerDispatchBinding !==
-        'http:v1:sha256:23d10e242277ade1ff3b50b0a5bed60a0b4366a6af4ffd42dff3a17ba0c2e847'
+        'http:sha256:23d10e242277ade1ff3b50b0a5bed60a0b4366a6af4ffd42dff3a17ba0c2e847'
       )
         throw new NodeDispatchEvidenceError(
           'provider_dispatch_binding_mismatch',
@@ -379,7 +379,7 @@ describe('http.request@1 server executor', () => {
         secretVersionId,
       },
       providerDispatchBinding:
-        'http:v1:sha256:23d10e242277ade1ff3b50b0a5bed60a0b4366a6af4ffd42dff3a17ba0c2e847',
+        'http:sha256:23d10e242277ade1ff3b50b0a5bed60a0b4366a6af4ffd42dff3a17ba0c2e847',
     });
   });
 

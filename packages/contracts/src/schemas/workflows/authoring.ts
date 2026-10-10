@@ -27,7 +27,7 @@ import {
 /** Opaque, quoted strong HTTP entity tag. Its internal value is not a client contract. */
 export const strongEtagSchema = z
   .string()
-  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+  .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u);
 export const workflowIdentifierSchema = z.uuid();
 export const workflowLifecycleRevisionSchema = z
   .number()
@@ -96,7 +96,7 @@ const workflowCompatibilityIssueSchema = z
 export const workflowCompatibilityReportSchema = z
   .object({
     compatible: z.boolean(),
-    fingerprint: z.string().regex(/^wf-compat:v1:sha256:[0-9a-f]{64}$/u),
+    fingerprint: z.string().regex(/^wf-compat:sha256:[0-9a-f]{64}$/u),
     issues: z.array(workflowCompatibilityIssueSchema).max(1_000),
   })
   .strict();
@@ -187,7 +187,7 @@ export const workflowVersionResponseSchema = z
     versionNumber: z.number().int().positive(),
     schemaVersion: z.literal(1),
     graph: workflowGraphSchema,
-    checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
+    checksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
     publishedAt: z.iso.datetime(),
   })
   .strict();

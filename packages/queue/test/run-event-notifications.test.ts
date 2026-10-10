@@ -12,7 +12,7 @@ const runId = '22222222-2222-4222-8222-222222222222';
 describe('run event notification contract', () => {
   it('derives an opaque stable tenant/run channel', () => {
     const channel = runEventChannel(workspaceId, runId);
-    expect(channel).toMatch(/^run-events:v1:[A-Za-z0-9_-]{43}$/u);
+    expect(channel).toMatch(/^run-events:[A-Za-z0-9_-]{43}$/u);
     expect(channel).toBe(runEventChannel(workspaceId, runId));
     expect(channel).not.toContain(workspaceId);
     expect(channel).not.toContain(runId);

@@ -109,7 +109,7 @@ describe('authorized published connection usage', () => {
               workspaceA,
               workflowId,
               index + 1,
-              `wf:v2:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
+              `wf:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
               ownerA,
             ],
           );

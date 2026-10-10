@@ -61,7 +61,7 @@ describe('workflow integration usage pagination', () => {
             versionId,
             workspaceA,
             workflowId,
-            `wf:v2:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
+            `wf:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
             ownerA,
           ],
         );

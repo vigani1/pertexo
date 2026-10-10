@@ -71,7 +71,7 @@ export function workflowDefinitionCatalogFingerprint(
       }),
     )
     .digest('hex');
-  return `wf-compat:v1:sha256:${digest}`;
+  return `wf-compat:sha256:${digest}`;
 }
 
 /**
@@ -202,7 +202,7 @@ export function parseWorkflowGraphForPublish(
   return graph;
 }
 
-export type WorkflowDraftRepresentationTag = `"draft-v1.${string}"`;
+export type WorkflowDraftRepresentationTag = `"draft.${string}"`;
 
 export function workflowDraftRepresentationTag(input: {
   readonly workflowId: string;
@@ -222,7 +222,6 @@ export function workflowDraftRepresentationTag(input: {
     .update(
       canonicalJson({
         domain: 'pertexo.workflow.draft-representation',
-        tagVersion: 1,
         workflowId,
         revision,
         schemaVersion: graph.schemaVersion,
@@ -231,5 +230,5 @@ export function workflowDraftRepresentationTag(input: {
       }),
     )
     .digest('base64url');
-  return `"draft-v1.${digest}"`;
+  return `"draft.${digest}"`;
 }

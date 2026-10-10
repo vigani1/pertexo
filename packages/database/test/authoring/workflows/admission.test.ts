@@ -346,7 +346,7 @@ describe('snapshot validation and publication ordering', () => {
               version_number: 1,
               schema_version: 1,
               graph_json: graph,
-              checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+              checksum: `wf:sha256:${'a'.repeat(64)}`,
               published_by: actorId,
               published_at: row.updated_at,
             },
@@ -371,7 +371,7 @@ describe('snapshot validation and publication ordering', () => {
         versionNumber: 1,
         schemaVersion: 1,
         graphJson: graph,
-        checksum: `wf:v2:sha256:${'a'.repeat(64)}` as const,
+        checksum: `wf:sha256:${'a'.repeat(64)}` as const,
         publishedBy: actorId,
         publishedAt: row.updated_at,
       },
@@ -436,7 +436,7 @@ describe('snapshot validation and publication ordering', () => {
     await expect(
       fixture.publish({
         ...command,
-        representationTag: `"draft-v1.${'a'.repeat(43)}"`,
+        representationTag: `"draft.${'a'.repeat(43)}"`,
       }),
     ).rejects.toBeInstanceOf(WorkflowRevisionConflictError);
     expect(fixture.validator).not.toHaveBeenCalled();

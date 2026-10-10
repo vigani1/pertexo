@@ -89,7 +89,7 @@ export type VerifiedWorkflowExecutable = WorkflowExecutable & {
 
 export interface CompiledWorkflowExecutable {
   readonly envelope: VerifiedWorkflowExecutable;
-  readonly checksum: `wf:v2:sha256:${string}`;
+  readonly checksum: `wf:sha256:${string}`;
 }
 const authenticExecutableIdentities = new WeakSet<object>();
 

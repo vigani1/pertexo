@@ -44,7 +44,7 @@ export async function markPreviewDispatched(
       providerDispatchBinding: z
         .string()
         .max(128)
-        .regex(/^[a-z][a-z0-9._-]{0,31}:v[1-9][0-9]{0,2}:sha256:[0-9a-f]{64}$/u)
+        .regex(/^[a-z][a-z0-9._-]{0,31}:sha256:[0-9a-f]{64}$/u)
         .optional(),
       workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
       workspaceId: z.uuid(),

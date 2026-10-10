@@ -32,7 +32,7 @@ const draft = {
   graphJson: graph,
   compatibility: {
     compatible: true,
-    fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+    fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
     issues: [],
   },
   updatedBy: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',

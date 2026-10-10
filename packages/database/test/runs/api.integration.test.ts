@@ -302,11 +302,11 @@ async function resetFixture(): Promise<void> {
       workspaceId,
       workflowId,
       JSON.stringify({ edges: [], nodes: [], schemaVersion: 1, settings: {} }),
-      `wf:v2:sha256:${'a'.repeat(64)}`,
+      `wf:sha256:${'a'.repeat(64)}`,
       JSON.stringify({ schemaVersion: 2, marker: 'run-api' }),
       actorId,
       retainedWorkflowVersionId,
-      `wf:v2:sha256:${'b'.repeat(64)}`,
+      `wf:sha256:${'b'.repeat(64)}`,
       JSON.stringify({
         schemaVersion: 2,
         marker: 'run-api-retained',
@@ -324,7 +324,7 @@ async function resetFixture(): Promise<void> {
       otherWorkspaceId,
       otherWorkflowId,
       JSON.stringify({ edges: [], nodes: [], schemaVersion: 1, settings: {} }),
-      `wf:v2:sha256:${'c'.repeat(64)}`,
+      `wf:sha256:${'c'.repeat(64)}`,
       JSON.stringify({ schemaVersion: 2, marker: 'run-api-other' }),
       actorId,
     ],
@@ -586,7 +586,7 @@ describe('workflow run API persistence', () => {
           graph_json, checksum, executable_json, published_by)
        select gen_random_uuid(), $1, workflow.id, 1, 1,
               '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
-              'wf:v2:sha256:' || repeat('d', 64),
+              'wf:sha256:' || repeat('d', 64),
               '{"schemaVersion":2}'::jsonb, $2
        from app.workflows workflow
        where workflow.workspace_id = $1
@@ -1670,7 +1670,7 @@ describe('workflow run API persistence', () => {
             },
           ],
         }),
-        `wf:v2:sha256:${'d'.repeat(64)}`,
+        `wf:sha256:${'d'.repeat(64)}`,
         JSON.stringify({ schemaVersion: 2, marker: 'run-api-loop' }),
         actorId,
       ],

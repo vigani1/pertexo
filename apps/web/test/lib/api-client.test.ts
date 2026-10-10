@@ -202,7 +202,7 @@ describe('browser API transport', () => {
   });
 
   it('uses an endpoint decoder before the strict common problem decoder', async () => {
-    const currentEtag = `"draft-v1.${'a'.repeat(43)}"`;
+    const currentEtag = `"draft.${'a'.repeat(43)}"`;
     const conflict = commonProblem({
       type: 'urn:pertexo:problem:workflow.revision_conflict',
       title: 'Workflow revision conflict',

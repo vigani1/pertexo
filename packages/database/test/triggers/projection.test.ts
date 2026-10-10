@@ -46,14 +46,14 @@ describe('workflow trigger projection', () => {
           misfirePolicy: 'catch_up_once',
         },
         configFingerprint:
-          'trigger:v1:sha256:e50092841959403af8b803ab3e204eac6e29abbc6b7ed3767cc8d19664c91dec',
+          'trigger:sha256:e50092841959403af8b803ab3e204eac6e29abbc6b7ed3767cc8d19664c91dec',
       },
       {
         nodeId: 'webhook',
         kind: 'webhook',
         config: {},
         configFingerprint:
-          'trigger:v1:sha256:66cb4e52e056167906bf8f6e7d44e56247048bfd9af9644f9ad73bb288af138c',
+          'trigger:sha256:66cb4e52e056167906bf8f6e7d44e56247048bfd9af9644f9ad73bb288af138c',
       },
     ]);
   });

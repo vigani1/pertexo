@@ -20,7 +20,7 @@ describe('workflow import command digest', () => {
       },
       bindings: [],
       name: 'Example',
-      expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'b'.repeat(64)}`,
+      expectedCompatibilityFingerprint: `wf-compat:sha256:${'b'.repeat(64)}`,
     };
     const scope = {
       workspaceId: randomUUID(),

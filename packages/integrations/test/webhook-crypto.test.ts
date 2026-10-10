@@ -50,7 +50,7 @@ describe('webhook trigger crypto', () => {
     expect(
       new TextDecoder().decode(webhookTriggerSecretAssociatedData(context)),
     ).toBe(
-      `pertexo:webhook-trigger-secret:v1\0${context.workspaceId}\0${context.triggerId}\0${context.secretVersionId}`,
+      `pertexo:webhook-trigger-secret\0${context.workspaceId}\0${context.triggerId}\0${context.secretVersionId}`,
     );
   });
 

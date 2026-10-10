@@ -105,7 +105,7 @@ async function configure(
     "update app.trigger_schedules set status='disabled',lease_owner=null,lease_token=null,lease_acquired_at=null,lease_expires_at=null where workspace_id=$1",
     [workspaceId],
   );
-  const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(id).digest('hex')}`;
+  const fingerprint = `trigger:sha256:${createHash('sha256').update(id).digest('hex')}`;
   await ownerQuery(
     `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
     node_id,kind,status,desired_config,config_fingerprint,health_status)

@@ -281,7 +281,7 @@ beforeAll(async () => {
   authoring = createWorkflowAuthoringDatabase(apiConfig, {
     definitionCatalog: triggerCatalog,
     executableCompiler: (graph) => ({
-      checksum: `wf:v2:sha256:${createHash('sha256')
+      checksum: `wf:sha256:${createHash('sha256')
         .update(JSON.stringify(graph))
         .digest('hex')}`,
       executableJson: {
@@ -323,7 +323,7 @@ beforeAll(async () => {
       workspaceId,
       workflowId,
       JSON.stringify({ schemaVersion: 1, settings: {}, nodes: [], edges: [] }),
-      `wf:v2:sha256:${'a'.repeat(64)}`,
+      `wf:sha256:${'a'.repeat(64)}`,
       actorId,
     ],
   );
@@ -377,7 +377,7 @@ beforeAll(async () => {
       workspaceId,
       workflowId,
       versionId,
-      `trigger:v1:sha256:${'b'.repeat(64)}`,
+      `trigger:sha256:${'b'.repeat(64)}`,
     ],
   );
   await ownerQuery(
@@ -460,7 +460,7 @@ describe('generic webhook database seam', () => {
       await expect(failure).rejects.toHaveProperty('message', message);
       const receipts = await ownerQuery<{ count: number }>(
         `select count(*)::int count from app.inbox_receipts
-         where consumer_name='trigger-runtime.reconciliation.v1'
+         where consumer_name='trigger-runtime.reconciliation'
            and message_id=$1 and workspace_id=$2`,
         [eventId, workspaceId],
       );
@@ -562,7 +562,7 @@ describe('generic webhook database seam', () => {
       await expect(
         ownerQuery<{ count: number }>(
           `select count(*)::int count from app.inbox_receipts
-            where consumer_name='trigger-runtime.reconciliation.v1'
+            where consumer_name='trigger-runtime.reconciliation'
               and message_id=$1`,
           [eventId],
         ),

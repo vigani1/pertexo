@@ -229,7 +229,7 @@ export function workflowSummary(
 function compatibility() {
   return {
     compatible: true,
-    fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+    fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
     issues: [],
   };
 }
@@ -308,7 +308,7 @@ export async function addCsrfCookie(context: BrowserContext) {
 /** A distinct opaque tag per revision, so stale tabs always conflict. */
 export function currentEtag(remote: RemoteDraft): string {
   const suffix = String(remote.revision);
-  return `"draft-v1.${'r'.repeat(43 - suffix.length)}${suffix}"`;
+  return `"draft.${'r'.repeat(43 - suffix.length)}${suffix}"`;
 }
 
 export function runSummary(

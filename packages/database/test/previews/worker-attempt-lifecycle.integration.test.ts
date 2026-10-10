@@ -485,7 +485,7 @@ describe('preview worker attempt lifecycle', () => {
       markPreviewDispatched(workerPool, {
         lease: second.lease,
         connectionFence,
-        providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'c'.repeat(64),
         workerId: second.workerId,
       }),
     ).rejects.toMatchObject({ code: 'connection_fence_failed' });
@@ -514,7 +514,7 @@ describe('preview worker attempt lifecycle', () => {
       markPreviewDispatched(workerPool, {
         lease: second.lease,
         connectionFence,
-        providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'c'.repeat(64),
         workerId: second.workerId,
       }),
     ).resolves.toBe('committed');
@@ -522,14 +522,14 @@ describe('preview worker attempt lifecycle', () => {
       markPreviewDispatched(workerPool, {
         lease: second.lease,
         connectionFence,
-        providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'c'.repeat(64),
         workerId: second.workerId,
       }),
     ).resolves.toBe('committed');
     await expect(
       markPreviewDispatched(workerPool, {
         lease: second.lease,
-        providerDispatchBinding: 'email:v1:sha256:' + 'd'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'd'.repeat(64),
         workerId: second.workerId,
       }),
     ).rejects.toMatchObject({ code: 'dispatch_binding_mismatch' });
@@ -561,7 +561,7 @@ describe('preview worker attempt lifecycle', () => {
       markPreviewDispatched(workerPool, {
         lease: second.lease,
         connectionFence,
-        providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'c'.repeat(64),
         workerId: second.workerId,
       }),
     ).rejects.toMatchObject({ code: 'connection_fence_failed' });

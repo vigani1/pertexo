@@ -5,7 +5,7 @@ import {
   WorkflowHeaderError,
 } from '../../../src/workflow-authoring/http/preconditions.js';
 
-const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
+const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 
 describe('workflow authoring HTTP preconditions', () => {
   it.each([
@@ -27,8 +27,8 @@ describe('workflow authoring HTTP preconditions', () => {
     { name: 'weak', value: `W/${tag}` },
     { name: 'wildcard', value: '*' },
     { name: 'comma-combined', value: `${tag}, ${tag}` },
-    { name: 'unquoted', value: 'draft-v1.missing-quotes' },
-    { name: 'wrong-length', value: '"draft-v1.short"' },
+    { name: 'unquoted', value: 'draft.missing-quotes' },
+    { name: 'wrong-length', value: '"draft.short"' },
   ])('classifies $name If-Match as malformed', ({ value }) => {
     expectHeaderFailure(
       () => parseStrongIfMatch(value),

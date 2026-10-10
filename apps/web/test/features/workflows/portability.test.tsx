@@ -39,7 +39,7 @@ import {
   problem,
 } from './list/fixtures';
 
-const fingerprint = `wf-compat:v1:sha256:${'a'.repeat(64)}`;
+const fingerprint = `wf-compat:sha256:${'a'.repeat(64)}`;
 const manifest = {
   format: 'pertexo.workflow',
   formatVersion: 1,

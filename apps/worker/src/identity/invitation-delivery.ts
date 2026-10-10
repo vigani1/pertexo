@@ -75,7 +75,7 @@ export function createWorkspaceInvitationDeliveryHandler(
           expiresAt: claim.expiresAt,
           invitationUrl: invitationUrl.toString(),
         }),
-        idempotencyKey: `workspace-invitation:v1:${identity.deliveryAttemptId}`,
+        idempotencyKey: `workspace-invitation:${identity.deliveryAttemptId}`,
         timeoutMillis: dependencies.timeoutMillis,
         signal: context.signal,
         beforeDispatch: async () => {

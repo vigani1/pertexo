@@ -1606,7 +1606,7 @@
         },
         "versionChecksum": {
           "type": "string",
-          "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
+          "pattern": "^wf:sha256:[0-9a-f]{64}$"
         },
         "name": {
           "type": "string",
@@ -1676,7 +1676,7 @@
             },
             "versionChecksum": {
               "type": "string",
-              "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf:sha256:[0-9a-f]{64}$"
             },
             "name": {
               "type": "string",
@@ -1796,7 +1796,7 @@
               },
               "versionChecksum": {
                 "type": "string",
-                "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
+                "pattern": "^wf:sha256:[0-9a-f]{64}$"
               },
               "name": {
                 "type": "string",
@@ -4102,7 +4102,7 @@
         },
         "currentEtag": {
           "type": "string",
-          "pattern": "^\"draft-v1\\.[A-Za-z0-9_-]{43}\"$"
+          "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
         }
       },
       "required": [
@@ -4744,7 +4744,7 @@
                 },
                 "fingerprint": {
                   "type": "string",
-                  "pattern": "^wf-compat:v1:sha256:[0-9a-f]{64}$"
+                  "pattern": "^wf-compat:sha256:[0-9a-f]{64}$"
                 },
                 "issues": {
                   "maxItems": 1000,
@@ -6276,7 +6276,7 @@
             },
             "fingerprint": {
               "type": "string",
-              "pattern": "^wf-compat:v1:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf-compat:sha256:[0-9a-f]{64}$"
             },
             "issues": {
               "maxItems": 1000,
@@ -6340,7 +6340,7 @@
         },
         "fingerprint": {
           "type": "string",
-          "pattern": "^wf-compat:v1:sha256:[0-9a-f]{64}$"
+          "pattern": "^wf-compat:sha256:[0-9a-f]{64}$"
         },
         "issues": {
           "maxItems": 1000,
@@ -6424,7 +6424,7 @@
             },
             "fingerprint": {
               "type": "string",
-              "pattern": "^wf-compat:v1:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf-compat:sha256:[0-9a-f]{64}$"
             },
             "issues": {
               "maxItems": 1000,
@@ -7000,7 +7000,7 @@
             },
             "checksum": {
               "type": "string",
-              "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf:sha256:[0-9a-f]{64}$"
             },
             "publishedAt": {
               "type": "string",
@@ -7555,7 +7555,7 @@
         },
         "checksum": {
           "type": "string",
-          "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
+          "pattern": "^wf:sha256:[0-9a-f]{64}$"
         },
         "publishedAt": {
           "type": "string",
@@ -8106,7 +8106,7 @@
               },
               "checksum": {
                 "type": "string",
-                "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
+                "pattern": "^wf:sha256:[0-9a-f]{64}$"
               },
               "publishedAt": {
                 "type": "string",

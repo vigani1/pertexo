@@ -20,7 +20,7 @@ function representation(
     revision: 1,
     graph,
     compatibilityFingerprint:
-      'wf-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      'wf-compat:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     ...overrides,
   };
 }
@@ -34,9 +34,7 @@ describe('workflow authoring strong draft ETag', () => {
       }),
     );
     expect(first).toBe(second);
-    expect(first).toBe(
-      '"draft-v1.xzaPxyaUKr6H4jU2nHgNO0qYBq8iqqmHnSPCfbYc7Qk"',
-    );
+    expect(first).toBe('"draft.Z7MH4rsYnl9Ki-Rc1bSoVhtHnkmps60bHqTNgGtP8gE"');
   });
 
   it('changes for workflow, revision, graph, or compatibility identity', () => {
@@ -65,7 +63,7 @@ describe('workflow authoring strong draft ETag', () => {
       createDraftRepresentationTag(
         representation({
           compatibilityFingerprint:
-            'wf-compat:v1:sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+            'wf-compat:sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
         }),
       ),
     ).not.toBe(baseline);

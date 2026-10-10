@@ -1362,7 +1362,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     });
     expect(created.statusCode, created.payload).toBe(201);
     expect(String(created.headers.etag)).toMatch(
-      /^"draft-v1\.[A-Za-z0-9_-]{43}"$/u,
+      /^"draft\.[A-Za-z0-9_-]{43}"$/u,
     );
     const createdBody = created.json<
       Readonly<{
@@ -1390,7 +1390,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     });
     expect(firstDraft.statusCode).toBe(200);
     const firstTag = String(firstDraft.headers.etag);
-    expect(firstTag).toMatch(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+    expect(firstTag).toMatch(/^"draft\.[A-Za-z0-9_-]{43}"$/u);
 
     const missingPrecondition = await application.inject({
       method: 'PUT',

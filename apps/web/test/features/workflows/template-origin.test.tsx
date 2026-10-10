@@ -126,7 +126,7 @@ describe('Scoped historical template origin projection', () => {
         if (scope === 'session') {
           window.dispatchEvent(
             new StorageEvent('storage', {
-              key: 'pertexo:auth-session-change:v1',
+              key: 'pertexo:auth-session-change',
               newValue: JSON.stringify({
                 event: 'changed',
                 generation: crypto.randomUUID(),
@@ -347,7 +347,7 @@ describe('Scoped historical template origin projection', () => {
         if (scope === 'session') {
           window.dispatchEvent(
             new StorageEvent('storage', {
-              key: 'pertexo:auth-session-change:v1',
+              key: 'pertexo:auth-session-change',
               newValue: JSON.stringify({
                 event: 'changed',
                 generation: crypto.randomUUID(),

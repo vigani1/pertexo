@@ -13,8 +13,8 @@ const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const runId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
-const etagA = `"draft-v1.${'a'.repeat(43)}"`;
-const etagB = `"draft-v1.${'b'.repeat(43)}"`;
+const etagA = `"draft.${'a'.repeat(43)}"`;
+const etagB = `"draft.${'b'.repeat(43)}"`;
 
 describe('workflow publication recovery', () => {
   it('recovers an uncertain publish with its original precondition and key', async () => {
@@ -46,7 +46,7 @@ describe('workflow publication recovery', () => {
           versionNumber: 1,
           schemaVersion: 1,
           graph: emptyGraph,
-          checksum: `wf:v2:sha256:${'c'.repeat(64)}`,
+          checksum: `wf:sha256:${'c'.repeat(64)}`,
           publishedAt: '2026-09-15T10:00:00.000Z',
         },
         reused: true,
@@ -483,7 +483,7 @@ function savedState(etag: string, revision: number, generation: number) {
 function compatibility() {
   return {
     compatible: true,
-    fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+    fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
     issues: [],
   };
 }

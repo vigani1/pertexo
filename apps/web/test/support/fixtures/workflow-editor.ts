@@ -13,13 +13,13 @@ export const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 export const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 export const editorPath = `/w/${workspaceId}/workflows/${workflowId}`;
-export const etagA = `"draft-v1.${'a'.repeat(43)}"`;
-export const etagB = `"draft-v1.${'b'.repeat(43)}"`;
+export const etagA = `"draft.${'a'.repeat(43)}"`;
+export const etagB = `"draft.${'b'.repeat(43)}"`;
 export const api = 'http://pertexo.test/v1';
 export const workflowApi = `${api}/workspaces/${workspaceId}/workflows/${workflowId}`;
 export const compatibility = {
   compatible: true,
-  fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+  fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
   issues: [],
 };
 export const user = {
@@ -212,7 +212,7 @@ export function versionBody(
     versionNumber,
     schemaVersion: 1,
     graph,
-    checksum: `wf:v2:sha256:${'b'.repeat(64)}`,
+    checksum: `wf:sha256:${'b'.repeat(64)}`,
     publishedAt: '2026-09-14T10:02:00.000Z',
   };
 }

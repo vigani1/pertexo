@@ -115,7 +115,7 @@ export const workflowVersions = appSchema.table(
     versionNumber: integer('version_number').notNull(),
     schemaVersion: integer('schema_version').notNull(),
     graphJson: jsonb('graph_json').notNull(),
-    checksum: varchar('checksum', { length: 77 }).notNull(),
+    checksum: varchar('checksum', { length: 74 }).notNull(),
     executableJson: jsonb('executable_json').notNull(),
     publishedBy: uuid('published_by').notNull(),
     publishedAt: timestamp('published_at', {
@@ -207,7 +207,7 @@ export const workflowTriggers = appSchema.table(
     kind: varchar('kind', { length: 16 }).notNull(),
     status: varchar('status', { length: 32 }).notNull(),
     desiredConfig: jsonb('desired_config').notNull(),
-    configFingerprint: varchar('config_fingerprint', { length: 82 }).notNull(),
+    configFingerprint: varchar('config_fingerprint', { length: 79 }).notNull(),
     healthStatus: varchar('health_status', { length: 32 }).notNull(),
     lastErrorCode: varchar('last_error_code', { length: 128 }),
     reconciledAt: timestamp('reconciled_at', {

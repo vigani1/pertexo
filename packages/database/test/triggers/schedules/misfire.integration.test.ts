@@ -34,7 +34,7 @@ async function insertSchedule(
   anchorSecondsAgo: number,
 ): Promise<string> {
   const id = randomUUID();
-  const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(id).digest('hex')}`;
+  const fingerprint = `trigger:sha256:${createHash('sha256').update(id).digest('hex')}`;
   const config =
     recurrence.kind === 'interval'
       ? { kind: 'interval', intervalMinutes: recurrence.minutes }

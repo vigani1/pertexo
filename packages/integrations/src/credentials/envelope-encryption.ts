@@ -65,7 +65,7 @@ export function connectionSecretAssociatedData(
   const parsed = contextSchema.parse(context);
   return new TextEncoder().encode(
     [
-      'pertexo:connection-secret:v1',
+      'pertexo:connection-secret',
       parsed.workspaceId,
       parsed.connectionId,
       parsed.secretVersionId,

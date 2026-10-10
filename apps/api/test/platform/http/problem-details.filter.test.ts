@@ -876,8 +876,7 @@ describe('RFC 9457 problem details filter', () => {
           safeDetail: 'The draft changed.',
           details: {
             currentRevision: 2,
-            currentEtag:
-              '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+            currentEtag: '"draft.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
           },
         }),
         hostFor({ url: '/v1/workflows/workflow-1' }, response),
@@ -887,13 +886,13 @@ describe('RFC 9457 problem details filter', () => {
     expect(response.status).toHaveBeenCalledWith(412);
     expect(response.header).toHaveBeenCalledWith(
       'etag',
-      '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+      '"draft.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
     );
     expect(response.body).toMatchObject({
       code: 'workflow.revision_conflict',
       status: 412,
       currentRevision: 2,
-      currentEtag: '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+      currentEtag: '"draft.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
     });
     expect(logger.log).toHaveBeenCalledWith({
       code: 'workflow.revision_conflict',
@@ -911,7 +910,7 @@ describe('RFC 9457 problem details filter', () => {
       'invalid revision',
       {
         currentRevision: 0,
-        currentEtag: '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+        currentEtag: '"draft.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
       },
     ],
     ['invalid ETag', { currentRevision: 2, currentEtag: 'weak' }],

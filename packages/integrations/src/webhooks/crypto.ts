@@ -82,7 +82,7 @@ export function webhookTriggerSecretAssociatedData(
   const parsed = contextSchema.parse(context);
   return new TextEncoder().encode(
     [
-      'pertexo:webhook-trigger-secret:v1',
+      'pertexo:webhook-trigger-secret',
       parsed.workspaceId,
       parsed.triggerId,
       parsed.secretVersionId,

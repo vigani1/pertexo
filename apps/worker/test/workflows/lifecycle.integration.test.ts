@@ -259,7 +259,7 @@ async function waitForReceipt(
   await poll('workflow lifecycle inbox receipt', async () => {
     const result = await environment.workerQuery<{ completed_at: Date | null }>(
       `select completed_at from app.inbox_receipts
-         where consumer_name='trigger-runtime.reconciliation.v1' and message_id=$1`,
+         where consumer_name='trigger-runtime.reconciliation' and message_id=$1`,
       [eventId],
     );
     expect(result.rows).toHaveLength(1);
@@ -289,7 +289,7 @@ async function receiptCount(
 ): Promise<number> {
   const result = await environment.workerQuery<{ count: string }>(
     `select count(*)::text count from app.inbox_receipts
-       where consumer_name='trigger-runtime.reconciliation.v1' and message_id=$1`,
+       where consumer_name='trigger-runtime.reconciliation' and message_id=$1`,
     [eventId],
   );
   return Number(result.rows[0]?.count ?? '0');

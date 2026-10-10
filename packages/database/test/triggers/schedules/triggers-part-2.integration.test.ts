@@ -62,7 +62,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     const dedupeWorkflowId = randomUUID();
     const dedupeVersionId = randomUUID();
     const dedupeTriggerId = randomUUID();
-    const dedupeFingerprint = `trigger:v1:sha256:${createHash('sha256').update(dedupeTriggerId).digest('hex')}`;
+    const dedupeFingerprint = `trigger:sha256:${createHash('sha256').update(dedupeTriggerId).digest('hex')}`;
     await ownerQuery(
       `update app.trigger_schedules set status='disabled'
         where workspace_id=$1`,
@@ -83,7 +83,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         dedupeVersionId,
         workspaceId,
         dedupeWorkflowId,
-        `wf:v2:sha256:${'e'.repeat(64)}`,
+        `wf:sha256:${'e'.repeat(64)}`,
         actorId,
       ],
     );
@@ -158,7 +158,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       runs: '1',
     });
 
-    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(quotaTriggerId).digest('hex')}`;
+    const fingerprint = `trigger:sha256:${createHash('sha256').update(quotaTriggerId).digest('hex')}`;
     await ownerQuery(
       `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,node_id,
          kind,status,desired_config,config_fingerprint,health_status)
@@ -258,7 +258,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     const healthWorkflowId = randomUUID();
     const healthVersionId = randomUUID();
     const healthTriggerId = randomUUID();
-    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(healthTriggerId).digest('hex')}`;
+    const fingerprint = `trigger:sha256:${createHash('sha256').update(healthTriggerId).digest('hex')}`;
     await ownerQuery(
       `insert into app.workflows(id,workspace_id,name,lifecycle_status,activation_status,
          published_version_id,created_by)
@@ -274,7 +274,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         healthVersionId,
         workspaceId,
         healthWorkflowId,
-        `wf:v2:sha256:${'d'.repeat(64)}`,
+        `wf:sha256:${'d'.repeat(64)}`,
         actorId,
       ],
     );
@@ -431,7 +431,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     const nextVersionId = randomUUID();
     const nextTriggerId = randomUUID();
     const outboxEventId = randomUUID();
-    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(nextTriggerId).digest('hex')}`;
+    const fingerprint = `trigger:sha256:${createHash('sha256').update(nextTriggerId).digest('hex')}`;
     await ownerQuery(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,
          graph_json,checksum,executable_json,published_by)
@@ -441,7 +441,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         nextVersionId,
         workspaceId,
         workflowId,
-        `wf:v2:sha256:${'b'.repeat(64)}`,
+        `wf:sha256:${'b'.repeat(64)}`,
         actorId,
       ],
     );
@@ -634,7 +634,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     });
     const evidence = await ownerQuery<{ facts: string }>(
       `select count(*) facts from app.transport_security_audit_facts
-        where consumer_name='trigger-runtime.reconciliation.v1'
+        where consumer_name='trigger-runtime.reconciliation'
           and message_id=$1`,
       [outboxEventId],
     );
@@ -672,7 +672,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         await client.query(
           `insert into app.inbox_receipts (
              consumer_name,message_id,workspace_id,payload_checksum,completed_at
-           ) values ('trigger-runtime.reconciliation.v1',$1,$2,$3,clock_timestamp())`,
+           ) values ('trigger-runtime.reconciliation',$1,$2,$3,clock_timestamp())`,
           [conflictingId, workspaceId, '1'.repeat(64)],
         );
         await client.query('commit');
@@ -699,7 +699,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     });
     const second = await ownerQuery<{ facts: string }>(
       `select count(*) facts from app.transport_security_audit_facts
-        where consumer_name='trigger-runtime.reconciliation.v1' and message_id=$1`,
+        where consumer_name='trigger-runtime.reconciliation' and message_id=$1`,
       [conflictingId],
     );
     expect(second.rows[0]?.facts).toBe('1');

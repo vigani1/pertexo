@@ -386,7 +386,7 @@ describe('NodeAttemptHandler', () => {
       ...lease(),
       sideEffectClass: 'idempotent_with_key' as const,
       providerIdempotencyKey: 'provider-attempt-key',
-      providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
+      providerDispatchBinding: 'email:sha256:' + 'b'.repeat(64),
       providerDispatchUnresolved: true as const,
     };
     const order: string[] = [];
@@ -455,7 +455,7 @@ describe('NodeAttemptHandler', () => {
           attemptNumber: 1,
           sideEffectClass: 'idempotent_with_key',
           providerIdempotencyKey: 'provider-attempt-key',
-          providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
+          providerDispatchBinding: 'email:sha256:' + 'b'.repeat(64),
           providerDispatchUnresolved: true,
           connections,
           artifacts,
@@ -467,7 +467,7 @@ describe('NodeAttemptHandler', () => {
             expectedAuthType: 'resend_api_key',
             secretVersionId: '22222222-2222-4222-8222-222222222222',
           },
-          providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64),
+          providerDispatchBinding: 'email:sha256:' + 'a'.repeat(64),
         });
         await expect(request.runtime?.beforeDispatch()).rejects.toMatchObject({
           code: 'duplicate_dispatch',
@@ -508,7 +508,7 @@ describe('NodeAttemptHandler', () => {
           expectedAuthType: 'resend_api_key',
           secretVersionId: '22222222-2222-4222-8222-222222222222',
         },
-        providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'a'.repeat(64),
       }),
     );
     expect(complete).toHaveBeenCalledWith(

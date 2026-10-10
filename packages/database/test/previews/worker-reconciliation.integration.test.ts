@@ -126,7 +126,7 @@ describe('preview worker lease reconciliation', () => {
       5,
     );
     const keyedDelivery = await reconciliationFixture(idempotentAfterDispatch);
-    const providerDispatchBinding = 'email:v1:sha256:' + 'e'.repeat(64);
+    const providerDispatchBinding = 'email:sha256:' + 'e'.repeat(64);
     expect(
       idempotentAfterDispatch.lease.providerDispatchUnresolved,
     ).toBeUndefined();

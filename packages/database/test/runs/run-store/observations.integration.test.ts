@@ -242,7 +242,7 @@ describe('Coordinator observation integrity invariants', () => {
     'rejects persisted invalid executable control metadata %j',
     async (executableJson) => {
       const workflowVersionId = generatePersistedId();
-      const checksum = `wf:v2:sha256:${randomUUID().replaceAll('-', '').repeat(2)}`;
+      const checksum = `wf:sha256:${randomUUID().replaceAll('-', '').repeat(2)}`;
       await asOwner(workspaceA, (client) =>
         client.query(
           `insert into app.workflow_versions (

@@ -139,7 +139,7 @@ async function mockIdentity(
         status: 201,
         headers: {
           'content-type': 'application/json',
-          etag: `"draft-v1.${'a'.repeat(43)}"`,
+          etag: `"draft.${'a'.repeat(43)}"`,
         },
         body: JSON.stringify({
           workflow,
@@ -150,7 +150,7 @@ async function mockIdentity(
             graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
             compatibility: {
               compatible: true,
-              fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+              fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
               issues: [],
             },
             updatedAt: workflow.updatedAt,
@@ -566,7 +566,7 @@ test('creates a workflow from the empty index with the shared transport', async 
         await route.fulfill({
           headers: {
             'content-type': 'application/json',
-            etag: `"draft-v1.${'a'.repeat(43)}"`,
+            etag: `"draft.${'a'.repeat(43)}"`,
           },
           body: JSON.stringify({
             workflowId: createdWorkflowId,
@@ -575,7 +575,7 @@ test('creates a workflow from the empty index with the shared transport', async 
             graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
             compatibility: {
               compatible: true,
-              fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+              fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
               issues: [],
             },
             updatedAt: workflow.updatedAt,

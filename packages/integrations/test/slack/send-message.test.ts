@@ -222,7 +222,7 @@ describe('slack.send_message@1', () => {
       if (input?.connectionFence === undefined) return Promise.resolve();
       if (
         input.providerDispatchBinding !==
-        'slack:v1:sha256:5a5537627ed92f258340d3ef1cf1f4ad8af19a67f1bc5a7bc91ab6c4154f4abb'
+        'slack:sha256:5a5537627ed92f258340d3ef1cf1f4ad8af19a67f1bc5a7bc91ab6c4154f4abb'
       )
         throw new NodeDispatchEvidenceError(
           'provider_dispatch_binding_mismatch',
@@ -260,7 +260,7 @@ describe('slack.send_message@1', () => {
         secretVersionId,
       },
       providerDispatchBinding:
-        'slack:v1:sha256:5a5537627ed92f258340d3ef1cf1f4ad8af19a67f1bc5a7bc91ab6c4154f4abb',
+        'slack:sha256:5a5537627ed92f258340d3ef1cf1f4ad8af19a67f1bc5a7bc91ab6c4154f4abb',
     });
   });
 

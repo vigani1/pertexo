@@ -69,8 +69,8 @@ describe('database preview attempt store adapter', () => {
     ],
     [
       'provider binding alone',
-      { providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64) },
-      { providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64) },
+      { providerDispatchBinding: 'email:sha256:' + 'a'.repeat(64) },
+      { providerDispatchBinding: 'email:sha256:' + 'a'.repeat(64) },
     ],
     [
       'both authority fields',
@@ -81,7 +81,7 @@ describe('database preview attempt store adapter', () => {
           expectedAuthType: 'resend_api_key',
           secretVersionId: '22222222-2222-4222-8222-222222222222',
         },
-        providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'b'.repeat(64),
       },
       {
         connectionFence: {
@@ -90,7 +90,7 @@ describe('database preview attempt store adapter', () => {
           expectedAuthType: 'resend_api_key',
           secretVersionId: '22222222-2222-4222-8222-222222222222',
         },
-        providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'b'.repeat(64),
       },
     ],
   ] as const)('forwards %s exactly', async (_label, authority, expected) => {

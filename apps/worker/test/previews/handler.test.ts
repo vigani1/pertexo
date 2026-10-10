@@ -422,7 +422,7 @@ describe('preview attempt handler', () => {
 
   it('passes an executor-controlled provider binding to durable preview dispatch', async () => {
     const { calls, store } = fakeStore();
-    const binding = 'email:v1:sha256:' + 'b'.repeat(64);
+    const binding = 'email:sha256:' + 'b'.repeat(64);
     const invoker: PreviewNodeInvoker = {
       invoke: async ({ runtime }) => {
         await runtime?.beforeDispatch({

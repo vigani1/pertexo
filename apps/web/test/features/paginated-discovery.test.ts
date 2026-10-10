@@ -46,7 +46,7 @@ describe('bounded paginated discovery', () => {
       versionNumber: 1,
       schemaVersion: 1,
       graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
-      checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+      checksum: `wf:sha256:${'a'.repeat(64)}`,
       publishedAt: '2026-09-15T10:00:00.000Z',
     };
     mockServer.use(

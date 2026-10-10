@@ -98,7 +98,7 @@ it('delivers an API-sealed command through the real worker role and clears ciphe
           subject: 'Reset your password',
           text: 'Immutable local test message',
         }),
-        `pertexo/authentication-mail/v1/password_reset/${id}/${expiresAt.toISOString()}`,
+        `pertexo/authentication-mail/password_reset/${id}/${expiresAt.toISOString()}`,
       ),
     });
     const before = await owner.query<{ payload_ciphertext: string | null }>(
@@ -123,7 +123,7 @@ it('delivers an API-sealed command through the real worker role and clears ciphe
       expect.objectContaining({
         toEmail: 'recipient@example.test',
         text: 'Immutable local test message',
-        idempotencyKey: `authentication-mail:v1:${id}`,
+        idempotencyKey: `authentication-mail:${id}`,
       }),
     );
     const after = await owner.query<{

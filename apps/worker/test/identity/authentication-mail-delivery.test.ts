@@ -73,7 +73,7 @@ describe('authentication mail delivery', () => {
         subject: 'Reset password',
         text: 'Exact immutable body',
         idempotencyKey:
-          'authentication-mail:v1:11111111-1111-4111-8111-111111111111',
+          'authentication-mail:11111111-1111-4111-8111-111111111111',
       }),
     );
     expect(fixture.deliveryStore.settle).toHaveBeenCalledWith({
@@ -195,7 +195,7 @@ describe('authentication mail delivery', () => {
             subject: 'Immutable subject',
             text: 'Immutable reset link',
           }),
-          `pertexo/authentication-mail/v1/${claim.purpose}/${claim.id}/${claim.expiresAt.toISOString()}`,
+          `pertexo/authentication-mail/${claim.purpose}/${claim.id}/${claim.expiresAt.toISOString()}`,
         ),
       },
     ]);

@@ -245,7 +245,7 @@ describe('portable workflow persistence under the API role', () => {
     for (const changed of [
       { name: 'Changed' },
       {
-        expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'0'.repeat(64)}`,
+        expectedCompatibilityFingerprint: `wf-compat:sha256:${'0'.repeat(64)}`,
       },
       {
         manifest: {
@@ -313,7 +313,7 @@ describe('portable workflow persistence under the API role', () => {
     await expect(
       db.importWorkflow(
         command({
-          expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'0'.repeat(64)}`,
+          expectedCompatibilityFingerprint: `wf-compat:sha256:${'0'.repeat(64)}`,
         }),
       ),
     ).rejects.toBeInstanceOf(WorkflowPortabilityCompatibilityConflictError);

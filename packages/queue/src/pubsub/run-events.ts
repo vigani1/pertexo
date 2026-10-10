@@ -45,7 +45,7 @@ export function runEventChannel(workspaceId: string, runId: string): string {
   const digest = createHash('sha256')
     .update(`v1\0${identity.workspaceId}\0${identity.runId}`)
     .digest('base64url');
-  return `run-events:v1:${digest}`;
+  return `run-events:${digest}`;
 }
 
 export function encodeRunEventReference(reference: RunEventReference): string {

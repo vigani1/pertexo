@@ -345,7 +345,7 @@ async function publishExecutableVersion(): Promise<void> {
         workflowVersionId,
         workspaceA,
         workflowId,
-        `wf:v2:sha256:${'c'.repeat(64)}`,
+        `wf:sha256:${'c'.repeat(64)}`,
         JSON.stringify({ schemaVersion: 2, graph: { nodes: [], edges: [] } }),
         workspaceCreatorId,
       ],

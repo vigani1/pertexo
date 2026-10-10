@@ -24,7 +24,7 @@ const metadata = {
   workspaceId: caseId,
   workflowId: caseId,
   workflowVersionId: caseId,
-  versionChecksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+  versionChecksum: `wf:sha256:${'a'.repeat(64)}`,
   name: 'Example',
   revision: 1,
   representationTag: createWorkflowInputCaseTag(caseId, 1),

@@ -247,7 +247,7 @@ describe('platform preview node invoker', () => {
         expectedProviderKey: 'email',
         secretVersionId,
       },
-      providerDispatchBinding: `email:v1:sha256:${createHash('sha256')
+      providerDispatchBinding: `email:sha256:${createHash('sha256')
         .update(`email\0${connectionId}\0${secretVersionId}`)
         .digest('hex')}`,
     });

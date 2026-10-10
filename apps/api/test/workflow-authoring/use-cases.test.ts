@@ -37,7 +37,7 @@ const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const fingerprint =
-  'wf-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  'wf-compat:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const graph = {
   schemaVersion: 1,
   nodes: [],
@@ -93,7 +93,7 @@ function version(): WorkflowVersionRecord {
     schemaVersion: 1,
     graphJson: graph,
     checksum:
-      'wf:v2:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      'wf:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     publishedBy: actorId,
     publishedAt: new Date('2026-08-20T12:00:00.000Z'),
   };
@@ -668,7 +668,7 @@ describe('workflow authoring application seams', () => {
       new SaveWorkflowDraftUseCase(store, access).execute({
         ...common,
         representationTag:
-          '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
+          '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
         graph,
       }),
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
@@ -800,7 +800,7 @@ describe('workflow authoring application seams', () => {
         routeWorkspaceId: workspaceId,
         workflowId,
         representationTag:
-          '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
+          '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
         graph,
       })
       .catch((error: unknown) => error);
@@ -808,7 +808,7 @@ describe('workflow authoring application seams', () => {
     if (!(failure instanceof WorkflowRevisionConflictError))
       throw new Error('expected workflow revision conflict');
     expect(failure.currentRevision).toBe(1);
-    expect(failure.currentEtag).toMatch(/^"draft-v1\./u);
+    expect(failure.currentEtag).toMatch(/^"draft\./u);
     expect(store.saveDraft).not.toHaveBeenCalled();
   });
 
@@ -825,7 +825,7 @@ describe('workflow authoring application seams', () => {
       },
     });
     const useCase = new PublishWorkflowUseCase(store, authorization());
-    const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
+    const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 
     await useCase.execute({
       actor,
@@ -840,7 +840,7 @@ describe('workflow authoring application seams', () => {
   });
 
   it('forwards the operation signal without changing canonical publish identity or diagnostic exclusions', async () => {
-    const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
+    const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
     const publishWorkflow = vi
       .fn<WorkflowAuthoringPersistence['publishWorkflow']>()
       .mockResolvedValue({
@@ -862,7 +862,7 @@ describe('workflow authoring application seams', () => {
 
     const withoutSignal = await useCase.execute(base);
     const expected =
-      '5fc86496b8eb735fb38c90193e9736c63ea84bb96812b35651069abbaf47b03e';
+      '1f51b7829335641dcb2df4a2ab588ca2c3e912dca1cf061a38e3b3fa94723db0';
     expect(publishWorkflow).toHaveBeenLastCalledWith(
       expect.objectContaining({ requestHash: expected }),
     );
@@ -886,11 +886,11 @@ describe('workflow authoring application seams', () => {
   });
 
   it('changes the canonical publish hash for actor, workspace, workflow, and original tag identity', async () => {
-    const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
+    const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
     const actorTwoId = '11111111-1111-4111-8111-111111111111';
     const workspaceTwoId = '22222222-2222-4222-8222-222222222222';
     const workflowTwoId = '33333333-3333-4333-8333-333333333333';
-    const tagTwo = '"draft-v1.1234567890abcdefghijklmnopqrstuvwxyz_-ABCDE"';
+    const tagTwo = '"draft.1234567890abcdefghijklmnopqrstuvwxyz_-ABCDE"';
     const hashes: string[] = [];
     const execute = async (
       inputActor: typeof actor,
@@ -970,8 +970,7 @@ describe('workflow authoring application seams', () => {
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
-      representationTag:
-        '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
+      representationTag: '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
       idempotencyKey: 'publish-replay-42',
     });
 
@@ -1427,7 +1426,7 @@ describe('workflow authoring application seams', () => {
       workflow: { id: workflowId, name: 'Operations' },
       draft: { workflowId, revision: 1 },
     });
-    expect(result.representationTag).toMatch(/^"draft-v1\./u);
+    expect(result.representationTag).toMatch(/^"draft\./u);
     expect(store.createWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         emptyGraph: graph,

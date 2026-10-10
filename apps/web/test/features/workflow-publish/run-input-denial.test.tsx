@@ -31,7 +31,7 @@ const metadata = {
   workspaceId,
   workflowId,
   workflowVersionId: versionId,
-  versionChecksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+  versionChecksum: `wf:sha256:${'a'.repeat(64)}`,
   name: 'Denial fixture',
   revision: 1,
   representationTag: `"wic1.${caseId.replaceAll('-', '')}.1"`,

@@ -48,8 +48,7 @@ function readyClaim() {
     context,
     destinationId: '77777777-7777-4777-8777-777777777777',
     destinationConfigVersion: 2,
-    idempotencyKey:
-      'failure-notification:v1:55555555-5555-4555-8555-555555555555',
+    idempotencyKey: 'failure-notification:55555555-5555-4555-8555-555555555555',
     sideEffectClass: 'idempotent_with_key' as const,
     connectionSecretVersionId: '88888888-8888-4888-8888-888888888888',
     deliveryUnresolved: false,

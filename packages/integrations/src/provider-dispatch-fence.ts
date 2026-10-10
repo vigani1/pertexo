@@ -74,7 +74,7 @@ export function createProviderBeforeDispatch(input: {
           expectedAuthType: input.expectedAuthType,
           secretVersionId: input.secretVersionId,
         },
-        providerDispatchBinding: `${input.expectedProviderKey}:v1:sha256:${createHash(
+        providerDispatchBinding: `${input.expectedProviderKey}:sha256:${createHash(
           'sha256',
         )
           .update(

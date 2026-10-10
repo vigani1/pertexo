@@ -211,7 +211,7 @@ function dispatchBinding(
   connectionId: string,
   secretVersionId: string,
 ) {
-  return `${providerKey}:v1:sha256:${createHash('sha256')
+  return `${providerKey}:sha256:${createHash('sha256')
     .update(`${providerKey}\0${connectionId}\0${secretVersionId}`)
     .digest('hex')}`;
 }
@@ -228,7 +228,7 @@ async function seedSlackDispatchPublication(connectionId: string) {
         versionId,
         workspaceA,
         workflowA,
-        `wf:v2:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
+        `wf:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
         JSON.stringify({
           schemaVersion: 2,
           graph: {
@@ -1048,7 +1048,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
       expectedAuthType: 'resend_api_key',
       secretVersionId,
     } as const;
-    const providerDispatchBinding = 'email:v1:sha256:' + 'a'.repeat(64);
+    const providerDispatchBinding = 'email:sha256:' + 'a'.repeat(64);
     await asAdmin((client) =>
       client.query(`update app.workspaces set status='suspended' where id=$1`, [
         workspaceA,
@@ -1107,7 +1107,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
     await expect(
       nodeAttemptStore.markDispatched({
         lease: claimed.lease,
-        providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
+        providerDispatchBinding: 'email:sha256:' + 'b'.repeat(64),
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(NodeAttemptDispatchBindingMismatchError);
@@ -1179,7 +1179,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
       id: lease.delivery.outboxEventId,
       payload_checksum: lease.delivery.payloadChecksum,
     };
-    const providerDispatchBinding = 'email:v1:sha256:' + 'a'.repeat(64);
+    const providerDispatchBinding = 'email:sha256:' + 'a'.repeat(64);
     await nodeAttemptStore.markDispatched({
       lease,
       providerDispatchBinding,

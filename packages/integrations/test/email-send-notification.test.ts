@@ -30,7 +30,7 @@ const connectionId = '22222222-2222-4222-8222-222222222222';
 const secretVersionId = '33333333-3333-4333-8333-333333333333';
 const providerIdempotencyKey = 'pertexo:v1:resend:stable-key';
 const originalBinding =
-  'email:v1:sha256:0ce354bd20817f5bc1af31a6e1e49d96414a9b82ae484aec1486ae37761738ff';
+  'email:sha256:0ce354bd20817f5bc1af31a6e1e49d96414a9b82ae484aec1486ae37761738ff';
 
 function runtime(
   clientResult: unknown,
@@ -172,7 +172,7 @@ describe('email.send_notification@1', () => {
         secretVersionId,
       },
       providerDispatchBinding:
-        'email:v1:sha256:0ce354bd20817f5bc1af31a6e1e49d96414a9b82ae484aec1486ae37761738ff',
+        'email:sha256:0ce354bd20817f5bc1af31a6e1e49d96414a9b82ae484aec1486ae37761738ff',
     });
     expect(state.sendNotification).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -517,7 +517,7 @@ describe('email.send_notification@1', () => {
     expect(
       state.beforeDispatch.mock.calls[0]?.[0]?.providerDispatchBinding,
     ).toBe(
-      `email:v1:sha256:${createHash('sha256')
+      `email:sha256:${createHash('sha256')
         .update(`email\0${connectionId}\0${rotatedSecretVersionId}`)
         .digest('hex')}`,
     );

@@ -216,7 +216,7 @@ export function createScheduleTriggerTestEnvironment(
         versionId,
         workspaceId,
         workflowId,
-        `wf:v2:sha256:${'a'.repeat(64)}`,
+        `wf:sha256:${'a'.repeat(64)}`,
         actorId,
       ],
     );
@@ -268,7 +268,7 @@ export function createScheduleTriggerTestEnvironment(
       [triggerId, 'schedule-main', 'catch_up_once', 1, '10 minutes'],
       [skipTriggerId, 'schedule-skip', 'skip', 60, '67 minutes'],
     ] as const) {
-      const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(id).digest('hex')}`;
+      const fingerprint = `trigger:sha256:${createHash('sha256').update(id).digest('hex')}`;
       await ownerQuery(
         `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
            node_id,kind,status,desired_config,config_fingerprint,health_status)

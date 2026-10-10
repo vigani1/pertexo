@@ -147,7 +147,7 @@ async function installRoutes(page: Page) {
       route.fulfill({
         headers: {
           'content-type': 'application/json',
-          etag: `"draft-v1.${'a'.repeat(43)}"`,
+          etag: `"draft.${'a'.repeat(43)}"`,
         },
         body: JSON.stringify({
           workflowId,
@@ -171,7 +171,7 @@ async function installRoutes(page: Page) {
           },
           compatibility: {
             compatible: true,
-            fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+            fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
             issues: [],
           },
           updatedAt: timestamp,

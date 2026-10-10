@@ -241,7 +241,7 @@ export function createFailureNotificationStore(
           destinationId: row.destination_id,
           destinationConfigVersion: row.destination_config_version,
           sideEffectClass: row.side_effect_class,
-          idempotencyKey: `failure-notification:v1:${intentId}`,
+          idempotencyKey: `failure-notification:${intentId}`,
           connectionSecretVersionId,
           deliveryUnresolved: row.possibly_dispatched === true,
           ...(row.delivery_binding === null
@@ -249,7 +249,7 @@ export function createFailureNotificationStore(
             : {
                 deliveryBinding: z
                   .string()
-                  .regex(/^email:v1:sha256:[0-9a-f]{64}$/u)
+                  .regex(/^email:sha256:[0-9a-f]{64}$/u)
                   .parse(row.delivery_binding),
               }),
         });

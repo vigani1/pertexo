@@ -16,7 +16,7 @@ const readInputSchema = z
 
 const publishedRowSchema = z
   .object({
-    checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
+    checksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
     executable_json: z.custom<Record<string, unknown>>(
       (value) =>
         value !== null && typeof value === 'object' && !Array.isArray(value),

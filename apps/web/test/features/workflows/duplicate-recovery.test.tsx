@@ -58,7 +58,7 @@ const workspaceUrl = 'http://pertexo.test/v1/workspaces';
 const created = () =>
   HttpResponse.json({ workflowId: versionId }, { status: 201 });
 const transient = (status: number) => problem(status, 'platform.unavailable');
-const nextTag = `"draft-v1.${'b'.repeat(43)}"`;
+const nextTag = `"draft.${'b'.repeat(43)}"`;
 const staleResponse = () =>
   HttpResponse.json(
     {

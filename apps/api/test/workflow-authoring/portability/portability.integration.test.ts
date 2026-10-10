@@ -201,7 +201,7 @@ describeIntegration(
           payload: {
             ...payload,
             name: 'Stale preview',
-            expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'0'.repeat(64)}`,
+            expectedCompatibilityFingerprint: `wf-compat:sha256:${'0'.repeat(64)}`,
           },
         }),
         409,

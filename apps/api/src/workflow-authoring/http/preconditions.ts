@@ -1,4 +1,4 @@
-const strongDraftTagPattern = /^"draft-v1\.[A-Za-z0-9_-]{43}"$/u;
+const strongDraftTagPattern = /^"draft\.[A-Za-z0-9_-]{43}"$/u;
 
 export class WorkflowHeaderError extends Error {
   public override readonly name = 'WorkflowHeaderError';

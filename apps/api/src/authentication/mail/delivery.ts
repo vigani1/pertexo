@@ -261,7 +261,7 @@ export function authenticationMailAssociatedData(
   id: string,
   expiresAt: Date,
 ): string {
-  return `pertexo/authentication-mail/v1/${purpose}/${id}/${expiresAt.toISOString()}`;
+  return `pertexo/authentication-mail/${purpose}/${id}/${expiresAt.toISOString()}`;
 }
 
 function renderAuthenticationMail(

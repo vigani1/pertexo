@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 
 // A per-browser convenience: open the workspace someone used last. Storage can
 // be missing or blocked, so every access is guarded and failure is harmless.
-const STORAGE_KEY = 'pertexo:last-workspace:v1';
+const STORAGE_KEY = 'pertexo:last-workspace';
 
 export function rememberLastWorkspace(
   userId: string,

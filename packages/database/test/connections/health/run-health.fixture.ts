@@ -106,7 +106,7 @@ export async function createHealthConnection(
         versionId,
         workspaceA,
         workflowA,
-        `wf:v2:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
+        `wf:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
         JSON.stringify({
           schemaVersion: 2,
           graph: {
@@ -232,7 +232,7 @@ export function markHealthDispatched(
       expectedAuthType: 'slack_bot_token',
       secretVersionId: connection.secretVersionId,
     },
-    providerDispatchBinding: `slack:v1:sha256:${'a'.repeat(64)}`,
+    providerDispatchBinding: `slack:sha256:${'a'.repeat(64)}`,
   });
 }
 

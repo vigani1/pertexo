@@ -19,7 +19,7 @@ import {
   forEachGraph,
 } from '../support/executable-workflow.js';
 
-describe('workflow executable V2 identity', () => {
+describe('workflow executable identity', () => {
   it('rejects a Condition edge through an undeclared output port', () => {
     const catalog = composeExecutableCatalog(nodeCatalog({ condition: true }));
 
@@ -141,7 +141,7 @@ describe('workflow executable V2 identity', () => {
       ),
     ).toEqual(['safe', 'safe', 'safe']);
     expect(compiled.checksum).toBe(
-      'wf:v2:sha256:844f922fbfa8d364b0870207bedb1bc14313c5c7e3d1f12178c9399ffc88ca92',
+      'wf:sha256:0180454ed5720eda0c72dfd125e9b5f5834b495387684271d1fe813502555817',
     );
     expect(
       verifyWorkflowExecutable({

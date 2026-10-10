@@ -2142,7 +2142,7 @@
         },
         "expectedCompatibilityFingerprint": {
           "type": "string",
-          "pattern": "^wf-compat:v1:sha256:[a-f0-9]{64}$"
+          "pattern": "^wf-compat:sha256:[a-f0-9]{64}$"
         }
       },
       "required": [
@@ -2163,7 +2163,7 @@
         },
         "compatibilityFingerprint": {
           "type": "string",
-          "pattern": "^wf-compat:v1:sha256:[a-f0-9]{64}$"
+          "pattern": "^wf-compat:sha256:[a-f0-9]{64}$"
         },
         "compatible": {
           "type": "boolean"

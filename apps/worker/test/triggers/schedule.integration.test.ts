@@ -331,7 +331,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
         expect(await duplicateJob?.getState()).toBe('completed');
         const receipt = await workerQuery<{ count: string }>(
           `select count(*) count from app.inbox_receipts
-            where consumer_name='trigger-runtime.reconciliation.v1'
+            where consumer_name='trigger-runtime.reconciliation'
               and message_id=$1 and completed_at is not null`,
           [event.id],
         );

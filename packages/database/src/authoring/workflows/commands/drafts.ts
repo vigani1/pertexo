@@ -35,7 +35,7 @@ const createdResultSchema = z.object({ workflowId: uuidSchema }).strict();
 const nameSchema = z.string().trim().min(1).max(128);
 const workflowDraftTagSchema = z
   .string()
-  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+  .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u);
 
 async function createWorkflow(
   context: WorkflowAuthoringWriteContext,

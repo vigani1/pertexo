@@ -139,7 +139,7 @@ export function createFailureNotificationDestinationStore(
               ? null
               : z
                   .string()
-                  .regex(/^email:v1:sha256:[0-9a-f]{64}$/u)
+                  .regex(/^email:sha256:[0-9a-f]{64}$/u)
                   .parse(raw.deliveryBinding);
           // The workspace must be active and the claimed intent's destination
           // enabled; both stay locked until the dispatch is marked.

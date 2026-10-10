@@ -101,12 +101,12 @@ function homeReads() {
           graph,
           compatibility: {
             compatible: true,
-            fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+            fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
             issues: [],
           },
           updatedAt: minutesAgo(40),
         },
-        { headers: { etag: `"draft-v1.${'a'.repeat(43)}"` } },
+        { headers: { etag: `"draft.${'a'.repeat(43)}"` } },
       ),
     ),
   ];

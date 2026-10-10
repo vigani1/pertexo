@@ -192,13 +192,13 @@ describe('workflow graph V1 public contract', () => {
     expect(workflowCompatibilityReport(EMPTY_WORKFLOW_GRAPH)).toEqual({
       compatible: true,
       fingerprint:
-        'wf-compat:v1:sha256:1b272141677a1d308d454d2f22a9d00cfe040d48b54ef926e9c02132b206239e',
+        'wf-compat:sha256:1b272141677a1d308d454d2f22a9d00cfe040d48b54ef926e9c02132b206239e',
       issues: [],
     });
     expect(workflowCompatibilityReport(fixture())).toEqual({
       compatible: false,
       fingerprint:
-        'wf-compat:v1:sha256:1b272141677a1d308d454d2f22a9d00cfe040d48b54ef926e9c02132b206239e',
+        'wf-compat:sha256:1b272141677a1d308d454d2f22a9d00cfe040d48b54ef926e9c02132b206239e',
       issues: [
         { code: 'unknown_definition', definitionKey: 'core.set', version: 1 },
       ],
@@ -492,7 +492,7 @@ describe('workflow graph V1 public contract', () => {
   });
 });
 
-describe('workflow draft representation tag V1', () => {
+describe('workflow draft representation tag', () => {
   it('has a stable opaque golden value and includes compatibility identity', () => {
     const graph = fixture();
     const fingerprint = workflowCompatibilityReport(
@@ -506,7 +506,7 @@ describe('workflow draft representation tag V1', () => {
       compatibilityFingerprint: fingerprint,
     } as const;
     expect(workflowDraftRepresentationTag(input)).toBe(
-      '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+      '"draft.QqrJbZejFAbUNwXK_kmy-dfSWGsZmWGq7hl1KEvtzDU"',
     );
     expect(
       workflowDraftRepresentationTag({
