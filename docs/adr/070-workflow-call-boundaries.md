@@ -1,6 +1,6 @@
 # ADR 070: Workflow call boundaries
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-10
 - **Plan:** [F08 re-plan](../feature-plans/08-subworkflows.md)
 - **Foundation:** [ADR 069](069-architecture-reset.md)
@@ -11,10 +11,10 @@ Reusable workflows need durable calls with understandable authorization,
 capacity, lifecycle and recovery behavior. The reverted first implementation
 coupled those requirements to parallel formats, release proofs and family
 machinery. The reset provides one pure engine, transactional run stores and
-ordinary run admission. This draft records the hard-to-reverse choices for owner
-review; it authorizes no implementation.
+ordinary run admission. The owner accepted these choices on 2026-10-10, with slot handoff and the
+pinned-parent archive warning. The plan defines the authorized delivery order.
 
-## Proposed decision
+## Decision
 
 1. A Call Workflow invocation waits for one independently accepted child run in
    the same workspace. Publication pins an exact immutable child version and
@@ -28,19 +28,25 @@ review; it authorizes no implementation.
    execution. Access revocation prevents new starts/publications without making
    accepted runs depend on a retained user session. Archive prevents fresh child
    acceptance; already accepted children continue. Pins preserve immutable data,
-   not an exemption from lifecycle rules.
-3. Waiting releases the worker job, while the parent retains ordinary active-run
-   occupancy. Each child obtains its own ordinary reservation. Capacity or FIFO
-   refusal is a durable Call failure with no unreserved queued child. Capacity
-   one cannot execute this parent/child combination. Sharing a family
-   reservation is a separate product and admission design.
+   not an exemption from lifecycle rules. Before archive, the editor warns and
+   lists the published parents that pin the target workflow.
+3. Waiting releases the worker job and hands the parent's workspace active-run
+   slot to its child. The parent dispatches no ordinary work while lending it;
+   terminal child settlement returns the same slot to a live parent before it
+   resumes. Nested calls transfer it down their direct chain; parallel Call
+   intents use it serially in stable order. Capacity one and the default five
+   therefore support calls without extra workspace capacity or capacity
+   failures. Child workflow concurrency/FIFO still applies and may refuse the
+   Call without creating an unreserved queued child. Preserve parent
+   continuation rights, count each workspace slot once, and release it exactly
+   once after canceled/terminal borrowers settle. No family quota or new role.
 4. Workspace, parent run and scoped invocation key identify one immutable spawn
    intent and one accepted child or refusal. Recovery resolves that identity
    before fresh admission checks. A replayed parent has a new run identity. The
    normal request-receipt expiry cannot permit a duplicate spawn.
 5. The pure engine declares the wait/intent. Execution owns child run actions;
    database TypeScript owns intent, acceptance, reservation, call binding and
-   outbox transactions. Existing maintenance authority performs reservation;
+   outbox transactions. Existing maintenance authority performs admission and slot transfer;
    there is no new role, public child-start endpoint, SQL writer fence or queue
    protocol. Intent and spawn are separate durable transactions. Child terminal
    facts and parent wakeups commit together; parent consumption uses its CAS.
@@ -64,12 +70,17 @@ review; it authorizes no implementation.
 ## Consequences
 
 The child uses ordinary run execution and history, and duplicates recover one
-recorded outcome. Calls can fail when the parent occupies available capacity or
-when a pinned child is archived; the editor must make those consequences clear.
+recorded outcome. Calls retain their parent's workspace slot across wait, child
+execution and return, including under saturation and lowered limits. Admission
+SQL/counters and dispatcher recovery must distinguish lenders from the current
+execution owner; this is not achieved by removing a reservation alone. An
+archived target can still fail fresh acceptance; the editor warns before archive
+and lists affected published parents.
 Inline-only contracts exclude artifact-valued calls initially. Short-lived
 transactions avoid parent/child lock coupling, but require explicit crash and
 opposing-writer tests. Retention must preserve spawn identity without retaining
 entire run families indefinitely.
 
-The plan defines delivery slices and evidence. This ADR remains proposed until
-the owner reviews it; no F08 runtime code or checkpoint pruning accompanies it.
+The plan defines delivery slices and evidence. The owner accepted the plan and
+this ADR; the reset follow-up precedes slice 1 pruning. No F08 runtime code or
+checkpoint pruning accompanies this decision commit.

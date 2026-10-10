@@ -1,9 +1,9 @@
 # F08 — Reusable subworkflows after the architecture reset
 
-Status: proposed; owner review is required before implementation. Updated
-2026-10-10. This document replaces the former F08 outline; it does not restore
+Status: accepted by the owner on 2026-10-10; implementation starts with
+finished-loop pruning after the reset follow-up PR. This document replaces the former F08 outline; it does not restore
 the reverted implementation. [ADR 070](../adr/070-workflow-call-boundaries.md)
-is a draft, not an accepted decision. [Architecture](../architecture.md) and
+records the accepted decisions. [Architecture](../architecture.md) and
 [ADR 069](../adr/069-architecture-reset.md) describe the current foundation.
 
 ## Outcome and scope
@@ -23,11 +23,11 @@ in this delivery. Extend the existing graph, executable and checkpoint shapes
 without numbered replacements, legacy readers, release cohorts or feature-switch
 protocols.
 
-Proposed terms: a **callable workflow** declares an input/result contract; a
+Accepted terms: a **callable workflow** declares an input/result contract; a
 **workflow call** is one scoped Call Workflow invocation; its **child run** is
 one separate accepted execution. A run can be both a child and a parent. A
-nested For Each body remains part of one run. Keep these terms in this proposal
-until review; the live glossary is not an implementation specification.
+nested For Each body remains part of one run. Add these terms to the live glossary with their implementation slice; the
+glossary is not an implementation specification.
 
 ## What changed since the reverted attempt
 
@@ -79,7 +79,7 @@ nodes-core consumes the model contract; the model does not import the SDK,
 catalog, database or worker. Keep the public execution door and database area
 doors. Create only the files needed by each slice.
 
-## Recommended decisions for review
+## Accepted decisions
 
 | Question                      | Recommendation and consequence                                                                                                                                                                                                                                                                                                                                                                          |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -87,15 +87,14 @@ doors. Create only the files needed by each slice.
 | Authorization                 | Publication requires current authoring/read authority for both the parent and same-workspace target. Starting the parent requires current `run:start`. Subsequent calls are actions of that accepted execution, not an impersonated new user request or session-dependent continuation. New starts/publications after access revocation are denied; accepted runs retain normal continuation semantics. |
 | Deadline                      | Inherit the parent's absolute deadline when present, preserving current absence/default semantics. A configured shorter child deadline may narrow it and is recorded once with the intent. Never extend or reset it on retry. Ordinary deadline controls remain dispatchable without a new active slot.                                                                                                 |
 | Usage                         | Attribute normal child run/attempt/provider activity to the same workspace and count the parent's own work separately. No family billing framework or double counting of child work in the parent.                                                                                                                                                                                                      |
-| Archive/deletion while pinned | Preserve the immutable version needed by retained publications/runs. Archive blocks fresh child acceptance; already accepted children continue. A retained pin preserves data and identity, not a lifecycle exemption. Workspace deletion uses its existing cancellation/purge path.                                                                                                                    |
+| Archive/deletion while pinned | Preserve the immutable version needed by retained publications/runs. Archive blocks fresh child acceptance; already accepted children continue. Before archiving, the editor warns and lists the published parents that pin this workflow. A retained pin preserves data and identity, not a lifecycle exemption. Workspace deletion uses its existing cancellation/purge path.                                                                                                                    |
 | Unknown outcome               | A child `outcome_unknown` makes the required Call and a still-live parent unknown through existing transition rules. Stop other live direct children through ordinary control intents. Late child completion is history, never permission to rewrite a terminal parent.                                                                                                                                 |
 | Recursion / workspace         | Reject any ancestor workflow identity repeated on a call path, including another version. Shared sibling dependencies remain legal. All targets stay in the parent's workspace.                                                                                                                                                                                                                         |
-| Worker / run capacity         | Waiting releases the worker job, while ordinary `running`/`waiting` run occupancy remains. A child needs its own reservation; definite capacity refusal creates no queued child.                                                                                                                                                                                                                        |
+| Worker / run capacity         | Waiting releases the worker job and hands the parent's workspace active-run slot to its child. Completion returns that same slot to the live parent; workspace capacity alone never fails the Call, including at limit one.                                                                                                                                                                                                                        |
 
 Archive behavior deliberately follows the current glossary's distinction between
 new admission and an already accepted run. It avoids the former sealed-family
-lifecycle/authority protocol. Review this product trade-off before
-implementation.
+lifecycle/authority protocol. The owner accepted this behavior, with the archive warning, on 2026-10-10.
 
 ## Callable contract and bounded execution
 
@@ -140,7 +139,7 @@ closure (including repeated call sites and For Each products), initially 200.
 Memoize validated version summaries during that bounded walk and stop on
 overflow. This derives a bound without a new family quota table or arbitrary
 depth limit. A later limit increase follows the pruning measurements below; this
-proposal changes no existing limit by itself.
+plan changes no existing limit by itself.
 
 ## Durable call identity and actions
 
@@ -171,15 +170,17 @@ It then allocates the new child's rows; all prerequisite/FK locks precede the
 admission counter. Reuse existing lock helpers where row-lock privileges require
 them, rather than granting UPDATE on immutable version tables. It checks the
 still live recorded Call wait and immutable intent; it does not recompute
-mappings. Insert child run/checkpoint/event/outbox with ordinary acceptance,
-obtain the existing active reservation, and bind the call record in that same
-transaction. Require the matching reservation row, not only the function's
-boolean: its control-only/expired-run path can return true without granting a
-slot. Refuse an expired pending call without child effects. Use a savepoint for
-the candidate: capacity/FIFO/lifecycle refusal rolls back all candidate rows,
-reservation and execution outbox, then commits one definite refusal and parent
-wakeup. Unknown commit retries recover that same recorded child/refusal. Do not
-persist an unreserved queued child behind its parent.
+mappings. Insert child run/checkpoint/event/outbox through shared acceptance and bind the
+call record with the parent's slot handoff in that same transaction. Record the
+exact slot owner/return target using the call relation and existing admission
+storage; do not infer ownership from run status or a reservation function's
+boolean (its control-only path may return true without granting a slot). An
+outstanding slot loan leaves later parallel intents pending with no candidate
+child or execution outbox. Target workflow capacity/FIFO, lifecycle/contract
+refusal or expiry rolls back all
+candidate effects and commits one definite failure and parent wakeup. Unknown
+commit retries recover the same recorded child, pending intent or refusal.
+Never persist an unreserved queued child behind its parent.
 
 The parent-intent and spawn transactions are separate durable steps, not a
 cross-pool transaction. A crash between them leaves replayable intent, with no
@@ -191,20 +192,59 @@ of a committed action before receipt completion must be an explicit tested case.
 
 ## Capacity, locks and cancellation
 
-The current reservation function is executable only by maintenance; it locks
-workspace and candidate run before the admission counter. It uses existing
-workspace/child-workflow capacity and FIFO checks. The proposed action reuses
-that path; a read-only capacity query is not a reservation. Keep the new child's
-rows and outbox locked before the counter. Resolve prior call identity before
-fresh admission checks. Reservation recovery/arm/rebind/release retain their
-current dispatcher semantics, including later limit reductions.
+The owner chose **slot handoff**: a durably waiting parent lends its workspace
+active-run slot to the child; it does not consume a second workspace slot. The
+same slot returns to the live parent when the child finishes. A chain can run at
+workspace limit one; five waiting parents and five executing children consume
+five slots at the default limit, not ten. This is a transfer of existing
+admission capacity, not a family quota, a new role or an unbounded exemption.
 
-Workspace cap one therefore fails a call explicitly. A full workspace, child
-workflow cap, earlier eligible FIFO ticket or queued cap may also refuse it.
-Show that consequence in the Call inspector and safe failure presentation. Do
-not automatically retry a refusal into a new child; normal child attempts still
-use their own retry rules. Sharing parent capacity would require a family
-admission design and is not this proposal's recommended first delivery.
+A workspace slot has exactly one execution owner at a time. The parent must
+finish or suspend its already dispatched ordinary work before lending it and
+cannot dispatch new node work while the loan is outstanding. Nested calls pass
+the same slot along their direct-call chain and return it one level at a time.
+If several Call intents become ready in parallel, lend the slot to one in stable
+invocation order and keep the others as durable pending intents; after return,
+advance the parent and lend it again. First delivery serializes these children
+rather than requiring extra workspace slots. Do not turn saturation into a Call
+failure or introduce a second parallel-child admission mode.
+
+Child workflow concurrency/FIFO rules still apply: their definite refusal
+fails the Call without creating an unreserved queued child, as otherwise
+recommended and accepted. Preserve the waiting parent's existing per-workflow claim so
+unrelated runs cannot steal its continuation; the child must respect its target
+workflow's own limit. At most one loan can consume a workspace slot, even when
+several workflows retain logical concurrency claims. No recursion means a chain
+cannot wait on its own workflow claim; target refusal also prevents opposing
+chains from waiting indefinitely on one another's workflow claims.
+
+Extend the existing admission tables/functions, counters and all capacity reads
+for this invariant: exclude lending parents from workspace executing occupancy,
+count the current borrower once, and preserve return rights. Current functions
+count every `running`/`waiting` row, so merely releasing a reservation is
+insufficient. Keep admission arithmetic and atomic transfer in the plan's
+allowed SQL capacity category; intent/pin/authority rules remain TypeScript.
+Initial start/FIFO limits remain unchanged. A later limit reduction cannot
+revoke an already accepted slot or force the returning parent to re-enter FIFO.
+
+Spawn, slot ownership and call binding commit atomically under workspace-first
+locks, the parent/call relation and existing admission counter last. Completion
+records a durable return obligation with its terminal fact; execution's parent
+advance performs the idempotent return before ordinary parent work. That return
+moves existing capacity, never competes for fresh capacity or drops the slot
+between transactions. A terminal/canceled parent cannot take it back or resume;
+keep the borrower fenced until its ordinary control settlement, then release
+exactly once. Nested parent close unwinds direct loan obligations without
+simultaneously locking existing ancestor/descendant runs. Outbox arm/rebind,
+recovery and retention must preserve current owner/return target and cannot
+release a borrowed slot as an ordinary expired reservation.
+
+Evidence must cover cap one, all five default slots lent at once, sequential
+parallel intents, nested calls, target FIFO/capacity refusal, lowered limits, crash on
+either side of handoff/return, duplicate wakeups, parent close and workspace
+purge. Prove counter/ownership conservation and that no parent/child node work
+runs concurrently on the same slot. Existing maintenance authority owns these
+transactions; no new role, queue protocol or family ledger.
 
 Child terminal persistence records the result/fact and parent wakeup atomically
 in the child's transaction, without locking the parent run/checkpoint. Parent
@@ -287,10 +327,10 @@ bounds. No automatic restoration of the old 1,000 limits.
 
 | Slice                  | Behavior at its end                                                                                                                           | Required evidence                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0. Review              | Accepted callable/pin/authority/capacity/retention decisions and bounded contract                                                             | Owner reviews this plan/ADR; reconcile exact source and interfaces; no runtime code before approval                                                                                                                   |
+| 0. Review              | Accepted callable/pin/authority/capacity/retention decisions and bounded contract                                                             | Owner accepted on 2026-10-10 with slot handoff and archive warning; reconcile exact source/interfaces before each runtime slice                                                                                                                   |
 | 1. Pruning             | Existing For Each recovers with finished iterations removed; current limits unchanged                                                         | Engine behavior/capacity tests, real CAS/restart/redelivery, mapping/inspection retention, measured rewrite bytes                                                                                                     |
 | 2. Contract            | Callable declarations round-trip and enforce typed input/results on ordinary standalone runs; Call pin contracts remain private until slice 3 | Model/contract units, real HTTP draft/publish/standalone run, invalid input/result, private pin/cycle/closure fixtures and responsive keyboard contract-editor tests                                                  |
-| 3. Call                | Register the supported Call node and exact-version picker; one real parent → child → typed result releases its worker job                     | Real PostgreSQL/Redis/worker/browser fixture in existing CI owners; crash before/after spawn commit, duplicate delivery, fresh-worker child wait/recovery, two callers, newer child publication, capacity-one refusal |
+| 3. Call                | Register the supported Call node and exact-version picker; one real parent → child → typed result releases its worker job                     | Real PostgreSQL/Redis/worker/browser fixture in existing CI owners; crash before/after spawn commit, duplicate delivery, fresh-worker child wait/recovery, two callers, newer child publication, capacity-one and default-five handoff/return, nested loans and serialized parallel calls |
 | 4. Controls/history    | Cancel/deadline/unknown, result errors, notification/usage/lineage and retention behave truthfully                                            | Opposing-writer PostgreSQL tests, late completion, access revocation, workspace deletion, expired detail, input/result bounds and no parent terminal rewrite; real visible browser history                            |
 | 5. Limits if justified | A measured larger loop bound with the same checkpoint cap                                                                                     | Maximum-size nested/parallel/Call scenarios, byte/write-volume evidence and unchanged ordinary capacity/fairness; separate reviewed limit choice                                                                      |
 
@@ -331,9 +371,9 @@ children independently; its
 can free the worker slot. Pertexo uses its existing checkpoint/outbox instead of
 importing Hatchet's event-log architecture.
 [n8n Execute Sub-workflow](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow)
-exposes mapped inputs and an option to await completion. Pertexo proposes exact
+exposes mapped inputs and an option to await completion. Pertexo uses exact
 immutable pins, strict validation and wait-for-result only first. These
-references inform the proposed behavior, not acceptance evidence.
+references inform the accepted behavior, not acceptance evidence.
 
 ## Delivery tracker
 
@@ -341,8 +381,12 @@ references inform the proposed behavior, not acceptance evidence.
 - [x] Recommended product choices, ownership, delivery slices and size
       comparison written.
 - [x] Finished-iteration pruning and limit-increase evidence planned.
-- [ ] Owner approves this plan and necessary ADR before implementation.
-- [ ] Callable contract and pruning behavior implemented and verified.
+- [x] Owner approved the plan and ADR 070 on 2026-10-10, with slot handoff and
+      the pinned-parent archive warning; all other recommendations accepted.
+- [ ] Reset follow-up PR: deterministic canonical JSON, live organization test
+      investigation and remaining redundant file names.
+- [ ] Slice 1: finished-loop pruning implemented and verified at current limits.
+- [ ] Callable contract implemented and verified.
 - [ ] Parent/child acceptance, completion and controls implemented and verified.
 - [ ] Real integrated editor/history/recovery evidence recorded.
 - [ ] Retention, rollout/rollback and any measured limit change verified.
