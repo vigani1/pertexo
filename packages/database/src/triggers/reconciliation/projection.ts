@@ -1,3 +1,4 @@
+import { canonicalJson } from '../../platform/canonical-json.js';
 import { createHash } from 'node:crypto';
 
 import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
@@ -37,15 +38,6 @@ export type WorkflowTriggerProjection = Readonly<{
   config: Readonly<Record<string, unknown>>;
   configFingerprint: string;
 }>;
-
-function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  return `{${Object.entries(value as Record<string, unknown>)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
-    .join(',')}}`;
-}
 
 export function workflowTriggerProjection(
   graphInput: unknown,

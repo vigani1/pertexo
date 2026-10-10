@@ -1,9 +1,9 @@
+import { isRecord } from '@pertexo/workflow-model';
 import type { LoopState } from '../types.js';
 import {
   assertCheckpoint,
   assertExactKeys,
   isInteger,
-  isRecord,
   parseOutputReference,
   parseBranchPath,
   parseIterationPath,

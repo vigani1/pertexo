@@ -1,3 +1,4 @@
+import { isRecord } from '@pertexo/workflow-model';
 import type { FieldParseResult, NodeConfig } from './draft';
 
 // The Schedule step's builder: what the catalog's setup schema allows, the
@@ -312,10 +313,6 @@ function supportedTimezones(): readonly string[] {
   } catch {
     return [];
   }
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function recordOf(value: unknown) {

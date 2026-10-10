@@ -17,7 +17,7 @@ import {
 } from '../operation-values.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
-import { uuidPattern } from './persisted.js';
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import {
   isTerminalNodeStatus,
   scopedLoopSinkInvocation,
@@ -111,7 +111,7 @@ export function forEachCoordinatorObservations(
       typeof material.sequence !== 'number' ||
       !Number.isSafeInteger(material.sequence) ||
       typeof material.attemptId !== 'string' ||
-      !uuidPattern.test(material.attemptId) ||
+      !UUID_PATTERN.test(material.attemptId) ||
       typeof material.invocationKey !== 'string'
     )
       operationError(

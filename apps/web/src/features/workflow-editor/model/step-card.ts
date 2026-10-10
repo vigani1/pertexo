@@ -1,3 +1,4 @@
+import { isRecord } from '@pertexo/workflow-model';
 import type {
   NodeDefinitionCatalogItem,
   PreviewRunSummary,
@@ -179,10 +180,6 @@ function recordAt(
   if (!isRecord(value)) return undefined;
   const found: unknown = value[key];
   return isRecord(found) ? found : undefined;
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function plural(count: number, word: string): string {

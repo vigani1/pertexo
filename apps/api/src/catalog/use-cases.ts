@@ -1,3 +1,4 @@
+import { compareOrdinal } from '@pertexo/workflow-model';
 import {
   integrationListResponseSchema,
   nodeDefinitionListResponseSchema,
@@ -90,12 +91,6 @@ function compareDefinition(
   return byKey === 0
     ? left.definition.version - right.definition.version
     : byKey;
-}
-
-function compareOrdinal(left: string, right: string): number {
-  if (left < right) return -1;
-  if (left > right) return 1;
-  return 0;
 }
 
 /** Construct the immutable browser catalog once during module registration. */

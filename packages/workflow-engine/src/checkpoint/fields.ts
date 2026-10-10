@@ -1,3 +1,5 @@
+import { UUID_PATTERN } from '@pertexo/workflow-model';
+import { isRecord } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
 import {
   type InvocationState,
@@ -13,9 +15,6 @@ import { types as nodeTypes } from 'node:util';
 import { invocationKey } from '../transition/scheduling/loops.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { assertCanonicalTimestamp } from './identity.js';
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const isInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value);
@@ -269,12 +268,10 @@ export function parseOutputReference(
   label: string,
 ): OutputReference {
   assertCheckpoint(isRecord(value), `${label} must be an object`);
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
   if (value.kind === 'inline') {
     assertExactKeys(value, ['kind', 'attemptId']);
     assertCheckpoint(
-      typeof value.attemptId === 'string' && uuidPattern.test(value.attemptId),
+      typeof value.attemptId === 'string' && UUID_PATTERN.test(value.attemptId),
       `${label} attemptId must be a canonical UUID`,
     );
     return { kind: value.kind, attemptId: value.attemptId };
@@ -283,7 +280,7 @@ export function parseOutputReference(
     assertExactKeys(value, ['kind', 'artifactId']);
     assertCheckpoint(
       typeof value.artifactId === 'string' &&
-        uuidPattern.test(value.artifactId),
+        UUID_PATTERN.test(value.artifactId),
       `${label} artifactId must be a canonical UUID`,
     );
     return { kind: value.kind, artifactId: value.artifactId };

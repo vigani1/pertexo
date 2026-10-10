@@ -1,3 +1,4 @@
+import { isRecord } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import {
   describeAmount,
@@ -170,8 +171,4 @@ function isJsonValue(value: unknown): boolean {
   if (typeof value === 'number') return Number.isFinite(value);
   if (Array.isArray(value)) return value.every(isJsonValue);
   return isJsonObject(value);
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

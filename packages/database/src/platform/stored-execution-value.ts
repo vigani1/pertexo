@@ -1,3 +1,4 @@
+import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { types as nodeTypes } from 'node:util';
 
 export const STORED_EXECUTION_VALUE_LIMITS_V1 = Object.freeze({
@@ -37,9 +38,6 @@ export class StoredExecutionValueInvalidError extends TypeError {
     super('Stored execution value violates the V1 persistence contract');
   }
 }
-
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
 function invalid(): never {
   throw new StoredExecutionValueInvalidError();
@@ -328,7 +326,7 @@ export function parseStoredExecutionValueV1(
   if (kind === 'artifact') {
     if (fields.size !== 3) invalid();
     const artifactId = fields.get('artifactId');
-    if (typeof artifactId !== 'string' || !uuidPattern.test(artifactId))
+    if (typeof artifactId !== 'string' || !UUID_PATTERN.test(artifactId))
       invalid();
     return Object.freeze({ schemaVersion: 1, kind, artifactId });
   }

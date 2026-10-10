@@ -1,3 +1,4 @@
+import { isRecord } from '@pertexo/workflow-model';
 import { parseJsonPath } from '@pertexo/workflow-model';
 import type { FieldParseResult, NodeConfig } from './draft';
 
@@ -7,10 +8,6 @@ import type { FieldParseResult, NodeConfig } from './draft';
 // step stays on "Edit as JSON" rather than losing anything.
 
 type ConfigValue = NodeConfig[string];
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function numbered(prefix: string, count: number): readonly string[] {
   return Array.from(
