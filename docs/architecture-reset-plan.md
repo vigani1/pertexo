@@ -230,7 +230,7 @@ now, as one ordered program — not "whenever we touch it".
         per area folder (`@pertexo/database/runs`, `/authoring`,
         `/connections`, `/triggers`, `/tenant-access`, `/platform`, …), each
         an `index.ts` in that folder, plus `/testing`.
-- [ ] **8. Package-by-package pass** — read every file of every package and app,
+- [x] **8. Package-by-package pass** — read every file of every package and app,
       bottom of the dependency graph first, and redo, remove or improve using
       the checklist below. One PR per package (several for the large ones):
   - [x] workflow-model — two doors (`@pertexo/workflow-model` browser-safe,
@@ -425,7 +425,7 @@ now, as one ordered program — not "whenever we touch it".
           against its own calls throwing. Guards that stay are deliberate:
           values from node executors (a plugin boundary) and diagnostics
           that must never change durable outcomes.
-  - [ ] api
+  - [x] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration
           journey, the cutover preflight and gate, and the web migration
@@ -454,11 +454,17 @@ now, as one ordered program — not "whenever we touch it".
           workspace, active membership, allowed lifecycle, capability);
           run start and replay trust the contract's deadline.
     - [x] One way per thing: every list cursor goes through one opaque
-          cursor helper (canonical base64url, bounded length), one header
-          reader, and the platform Idempotency-Key parser (connections no
-          longer take the first of repeated keys). Authentication mail is
-          `local` or `durable`; the refusing `disabled` mode goes.
-  - [ ] web
+          cursor helper (canonical base64url, bounded length) and one header
+          reader. Authentication mail is `local` or `durable`; the refusing
+          `disabled` mode goes.
+    - [x] One Idempotency-Key parser: every command reads the key through
+          `requestIdempotencyKey`, and a missing, repeated or malformed key
+          answers `400 request.invalid` everywhere, as the IETF
+          Idempotency-Key draft specifies. Run start, replay, schedule
+          commands and node tests answered `428` for a missing key, and the
+          parser had two copies and five ad-hoc variants. `428` stays for a
+          missing `If-Match` (ADR 011).
+  - [x] web
     - [x] Every web feature is on, as step 3 intended: workflow
           organization (folders, tags, favorites), the curated template
           chooser and template origin no longer sit behind build-time gates
@@ -490,6 +496,12 @@ now, as one ordered program — not "whenever we touch it".
           module-cycle, complexity and duplication gates removed in step 2
           are no longer claimed, and the grouping rules join section 2. The
           README and AGENTS lose their OIDC references.
+    - [x] Read access ends one way: five features' query-cache watchers
+          share `watchWorkspaceReadDenial`. The command hooks were read for
+          a shared primitive and keep their own state: each holds a
+          different recovery rule (draft ETag reconciliation, member
+          revisions and targets, run intents), so a shared hook would only
+          hold a ref. The alias `isUncertainCommandError` goes.
   - [x] ops — one operator command runner for one-off tasks: it reads the
         command from the environment, checks database readiness, runs it
         under the maintenance role with a timeout and bounded cleanup, and
