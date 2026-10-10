@@ -175,11 +175,8 @@ export function mergeCoordinatorObservations(
   return [...nodes.values()]
     .filter(({ definition }) => isCoreMergeDefinition(definition))
     .flatMap((merge): WorkflowObservation[] => {
-      const parallelNodeId = Reflect.get(
-        merge.config,
-        'parallelNodeId',
-      ) as unknown;
-      const policy = Reflect.get(merge.config, 'policy') as unknown;
+      const parallelNodeId = merge.config.parallelNodeId;
+      const policy = merge.config.policy;
       if (
         typeof parallelNodeId !== 'string' ||
         typeof policy !== 'object' ||

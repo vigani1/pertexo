@@ -87,13 +87,13 @@ function configuredBranchPorts(
     return ['false', 'true'];
   if (node.definition.key !== 'core.switch' || node.definition.version !== 1)
     return [];
-  const cases = Reflect.get(node.config, 'cases') as unknown;
+  const cases = node.config.cases;
   if (!Array.isArray(cases)) return ['default'];
   return [
     ...cases.flatMap((item) => {
       if (typeof item !== 'object' || item === null || Array.isArray(item))
         return [];
-      const id = Reflect.get(item, 'id') as unknown;
+      const id = (item as Readonly<Record<string, unknown>>).id;
       return typeof id === 'string' ? [id] : [];
     }),
     'default',
@@ -104,12 +104,12 @@ function configuredParallelPorts(
   node: WorkflowGraph['nodes'][number],
 ): readonly string[] {
   if (!isCoreParallelDefinition(node.definition)) return [];
-  const branches = Reflect.get(node.config, 'branches') as unknown;
+  const branches = node.config.branches;
   if (!Array.isArray(branches)) return [];
   return branches.flatMap((item) => {
     if (typeof item !== 'object' || item === null || Array.isArray(item))
       return [];
-    const id = Reflect.get(item, 'id') as unknown;
+    const id = (item as Readonly<Record<string, unknown>>).id;
     return typeof id === 'string' ? [id] : [];
   });
 }
@@ -143,10 +143,7 @@ export function assertBranchesDoNotReconverge(
   for (const merge of graph.nodes.filter(({ definition }) =>
     isCoreMergeDefinition(definition),
   )) {
-    const parallelNodeId = Reflect.get(
-      merge.config,
-      'parallelNodeId',
-    ) as unknown;
+    const parallelNodeId = merge.config.parallelNodeId;
     const parallel =
       typeof parallelNodeId === 'string'
         ? index.nodesById.get(parallelNodeId)
@@ -190,13 +187,15 @@ export function assertBranchesDoNotReconverge(
         fail(
           'paired Merge inputs must match every Parallel branch exactly once',
         );
-      const policy = Reflect.get(pairedMerge.config, 'policy') as unknown;
+      const policy = pairedMerge.config.policy;
       if (
         typeof policy === 'object' &&
         policy !== null &&
-        Reflect.get(policy, 'kind') === 'count' &&
-        (typeof Reflect.get(policy, 'count') !== 'number' ||
-          (Reflect.get(policy, 'count') as number) > ports.length)
+        (policy as Readonly<Record<string, unknown>>).kind === 'count' &&
+        (typeof (policy as Readonly<Record<string, unknown>>).count !==
+          'number' ||
+          ((policy as Readonly<Record<string, unknown>>).count as number) >
+            ports.length)
       )
         fail('Merge count policy exceeds paired Parallel branches');
     }

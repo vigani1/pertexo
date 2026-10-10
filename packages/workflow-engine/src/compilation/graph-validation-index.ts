@@ -55,7 +55,7 @@ export function graphValidationIndex(
   }
   for (const node of graph.nodes) {
     if (!isCoreMergeDefinition(node.definition)) continue;
-    const parallelNodeId = Reflect.get(node.config, 'parallelNodeId');
+    const parallelNodeId = node.config.parallelNodeId;
     if (typeof parallelNodeId === 'string')
       appendIndexValue(mergesByParallelNode, parallelNodeId, node);
   }

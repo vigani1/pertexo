@@ -30,7 +30,7 @@ function assertCheckpointJoinIdentity(
       'workflow_identity_invalid',
       'checkpoint join does not belong to a Merge node',
     );
-  const parallelNodeId = Reflect.get(merge.config, 'parallelNodeId') as unknown;
+  const parallelNodeId = merge.config.parallelNodeId;
   const parallel =
     typeof parallelNodeId === 'string'
       ? nodesById.get(parallelNodeId)

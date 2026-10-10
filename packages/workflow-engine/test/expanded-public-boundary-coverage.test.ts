@@ -244,7 +244,7 @@ describe('expanded public workflow-engine boundaries', () => {
   });
 
   it('leaves malformed Merge pair metadata unpaired at the public testing seam', () => {
-    const decisions = (config: unknown) =>
+    const decisions = (config: Readonly<Record<string, unknown>> | undefined) =>
       deriveReadyNodes({
         graph: {
           deriveReadiness: true,
@@ -252,7 +252,7 @@ describe('expanded public workflow-engine boundaries', () => {
             {
               id: 'merge',
               definition: { key: 'core.merge', version: 1 },
-              config,
+              ...(config === undefined ? {} : { config }),
               sideEffectClass: 'safe',
             },
           ],
