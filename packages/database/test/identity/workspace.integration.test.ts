@@ -1386,6 +1386,54 @@ describe('identity/workspace persistence', () => {
     }
   });
 
+  it('uses shared canonical bytes for nested workspace metadata and reordered retries', async () => {
+    const idempotencyKey = `canonical-${randomUUID()}`;
+    const command = {
+      name: 'Canonical metadata',
+      slug: 'canonical-metadata',
+      ownerUserId,
+      idempotencyKey,
+      metadata: {
+        '10': 'ten',
+        '2': 'two',
+        Z: 'upper',
+        a: 'lower',
+        nested: { é: 'accent', A: 'first' },
+      },
+    } as const;
+    const created = await identityDatabase.createWorkspaceWithOwner(command);
+    expect(
+      await identityDatabase.createWorkspaceWithOwner({
+        ...command,
+        metadata: {
+          nested: { A: 'first', é: 'accent' },
+          a: 'lower',
+          Z: 'upper',
+          '2': 'two',
+          '10': 'ten',
+        },
+      }),
+    ).toEqual(created);
+    const inspection = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      const receipt = await inspection.query<{ request_hash: string }>(
+        `select request_hash from app.workspace_creation_idempotency_records
+          where actor_user_id=$1 and key_hash=$2`,
+        [
+          ownerUserId,
+          createHash('sha256').update(idempotencyKey).digest('hex'),
+        ],
+      );
+      const bytes = `{"actorId":"${ownerUserId}","metadata":{"2":"two","10":"ten","Z":"upper","a":"lower","nested":{"A":"first","é":"accent"}},"name":"Canonical metadata","requestedWorkspaceId":null,"slug":"canonical-metadata"}`;
+      const golden =
+        'f0e4a1c182264ccc19108cacff7090a2dd3e745f6ddc4a0a6b816eae9668a20c';
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(golden);
+      expect(receipt.rows).toEqual([{ request_hash: golden }]);
+    } finally {
+      await inspection.end();
+    }
+  });
+
   it('keeps one user per email', async () => {
     const email = `${randomUUID()}@example.test`;
     await identityDatabase.createUser({ email, displayName: 'Profile A' });

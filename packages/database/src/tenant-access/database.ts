@@ -1,3 +1,4 @@
+import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash, randomUUID } from 'node:crypto';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
@@ -174,20 +175,6 @@ function parseDurableWorkspaceResult(value: unknown): WorkspaceCreationResult {
       updatedAt: new Date(workspace.updatedAt),
     }),
   });
-}
-
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
-  }
-  if (value !== null && typeof value === 'object') {
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
-      .join(',')}}`;
-  }
-  if (value === undefined) return 'null';
-  return JSON.stringify(value);
 }
 
 function sha256(value: string): string {
