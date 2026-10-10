@@ -11,7 +11,7 @@ import { describeNodeStatus } from '@/features/workflow-runs/model/run-status';
 import type {
   RunTimelineRow,
   RunTimelineStepStatus,
-} from '@/features/workflow-runs/model/timeline/run-timeline-model';
+} from '@/features/workflow-runs/model/timeline/runs';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';

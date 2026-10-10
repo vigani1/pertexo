@@ -11,7 +11,7 @@ import {
   formatDurationMs,
   formatElapsedTime,
 } from '@/lib/format/time';
-import { shortRunId, workflowLabel } from '../../model/list/run-list';
+import { shortRunId, workflowLabel } from '../../model/list/runs';
 import { describeListedFailure } from '../../model/run-failure';
 import { describeRunStatus } from '../../model/run-status';
 import { CopyButton } from '@/components/ui/copy-button';

@@ -34,7 +34,7 @@ import { TestResultBar } from './chrome/test-result-bar';
 import { ValidationSweep } from './canvas/validation-sweep';
 import { WorkflowCanvas } from './canvas/index';
 import { EditorLayout } from './editor-layout';
-import { EditorInspector } from './inspector/editor-inspector';
+import { EditorInspector } from './inspector/editor';
 import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';
 
 export type EditorChrome = Readonly<{

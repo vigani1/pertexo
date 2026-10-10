@@ -9,7 +9,7 @@ import { findDefinition } from '../../model/graph/adapter';
 import { locateStep } from '../../model/graph/scopes';
 import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
-import { NodeInspector, type NodeInspectorActions } from './node-inspector';
+import { NodeInspector, type NodeInspectorActions } from './node';
 import type { ChannelLookupScope } from './fields/slack-channel-field';
 
 function stepName(

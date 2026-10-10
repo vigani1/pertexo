@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { RunFilters } from '../components/run-filters/run-filters';
+import { RunFilters } from '../components/run-filters/filters';
 import {
   NoWorkflowRunsYet,
   RunsForbidden,

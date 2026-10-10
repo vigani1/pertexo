@@ -21,7 +21,7 @@ import {
 import {
   groupRunsByDay,
   threadBarScale,
-} from '@/features/workflow-runs/model/list/run-list';
+} from '@/features/workflow-runs/model/list/runs';
 
 const now = Date.parse('2026-09-24T14:00:00.000Z');
 const minute = 60_000;

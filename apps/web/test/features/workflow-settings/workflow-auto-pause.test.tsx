@@ -11,7 +11,7 @@ import {
   workflowApi,
   workspaceId,
   workflowId,
-} from './workflow-settings.fixtures';
+} from './fixtures';
 
 const path = `/w/${workspaceId}/workflows/${workflowId}/settings`;
 const paused: WorkflowAutoPauseSettings = {

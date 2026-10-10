@@ -7,7 +7,7 @@ import { useEditorStore } from '../../model/state/context';
 import { loopSummary } from '../../model/graph/adapter';
 import type { WorkflowNode } from '../../model/graph/scopes';
 import type { NodeFormApi } from '../../model/inspector/node-form';
-import { LoopBoundsFields } from './fields/loop-bounds-fields';
+import { LoopBoundsFields } from './fields/loop-bounds';
 
 /**
  * A For each step's body (ADR 020): it runs once per item within its item

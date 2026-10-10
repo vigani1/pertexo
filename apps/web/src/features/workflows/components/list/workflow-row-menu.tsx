@@ -26,7 +26,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
 import { cn } from '@/lib/utils';
 import { canRenameWorkflow } from '../../model/rename';
-import { canDuplicateWorkflow } from '../../model/duplicate/can-duplicate';
+import { canDuplicateWorkflow } from '../../model/duplicate/allowed';
 import {
   ROW_REVEAL_CLASS,
   type WorkflowRowActions,

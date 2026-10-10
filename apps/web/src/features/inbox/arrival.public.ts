@@ -2,4 +2,4 @@
 export {
   InboxArrivals,
   type InboxArrivalAnchor,
-} from './components/arrivals/inbox-arrivals';
+} from './components/arrivals/listener';

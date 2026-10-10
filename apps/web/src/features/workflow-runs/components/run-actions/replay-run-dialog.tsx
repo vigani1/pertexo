@@ -6,7 +6,7 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { useRunReplay } from '../../data/mutations/use-run-replay';
 import { useRunInput } from '../../hooks/use-run-input';
-import { workflowRunInputQueryOptions } from '../../data/workflow-run-data.queries';
+import { workflowRunInputQueryOptions } from '../../data/stored-values.queries';
 import { RunInputFields } from '../run-input-fields';
 
 /** The original input as the text the field shows, while it's still kept. */

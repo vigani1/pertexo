@@ -4,13 +4,13 @@ import type {
 } from '@pertexo/contracts';
 import { lazy, Suspense, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { RunTimelineModel } from '../../model/timeline/run-timeline-model';
+import type { RunTimelineModel } from '../../model/timeline/runs';
 import { RunEventsView } from './events-view';
 import { RunLoadingWave } from './timeline/loading-wave';
 import type { RunDataScope } from './data';
 import { RunOutputsView } from './outputs-view';
 import { RunStepList } from './step-list';
-import { RunTimeline } from './timeline/timeline';
+import { RunTimeline } from './timeline/view';
 
 type RunTab = 'thread' | 'graph' | 'events' | 'io';
 

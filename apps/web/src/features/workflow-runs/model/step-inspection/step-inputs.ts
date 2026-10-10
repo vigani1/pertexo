@@ -1,5 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import type { RunTimelineRow } from '../timeline/run-timeline-model';
+import type { RunTimelineRow } from '../timeline/runs';
 
 type GraphLevel = Readonly<Pick<WorkflowGraphContract, 'nodes' | 'edges'>>;
 

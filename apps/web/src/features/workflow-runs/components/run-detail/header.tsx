@@ -26,7 +26,7 @@ import {
   runDurationMs,
   shortRunId,
   workflowLabel,
-} from '../../model/list/run-list';
+} from '../../model/list/runs';
 import {
   describeTrigger,
   isActiveRunStatus,

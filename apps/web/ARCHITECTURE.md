@@ -1040,8 +1040,8 @@ failure sentences, uncertain outcome, forbidden, rate-limit and support
 reference helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
 The inbox's new-failure notice is the one anchored toast. It uses its own Base
-UI toast manager (`features/inbox/components/arrivals/inbox-arrivals.tsx`), not
-a second toast system: a thread leaves the Inbox destination and stops at the
+UI toast manager (`features/inbox/components/arrivals/listener.tsx`), not a
+second toast system: a thread leaves the Inbox destination and stops at the
 failure glyph where the notice opens. It never shows on the inbox page, failures
 arriving together share one notice, and the first summary a tab loads announces
 nothing. Base UI turns swiping off for anchored toasts, so the notice brings its

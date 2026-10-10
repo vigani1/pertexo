@@ -1,11 +1,8 @@
 import type { WorkflowRunSummary } from '@pertexo/contracts';
 import { formatDurationMs, formatShortTime } from '@/lib/format/time';
-import { runDurationMs } from './list/run-list';
+import { runDurationMs } from './list/runs';
 import { isActiveRunStatus } from './run-status';
-import type {
-  RunTimelineRow,
-  RunTimelineStepStatus,
-} from './timeline/run-timeline-model';
+import type { RunTimelineRow, RunTimelineStepStatus } from './timeline/runs';
 
 type StepFacts = Pick<
   RunTimelineRow,
