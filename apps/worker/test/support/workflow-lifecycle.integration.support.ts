@@ -394,7 +394,7 @@ async function seedApiOwnedRows(
   );
   await lockManualFixtureClient(
     client,
-    actorId,
+    workspaceId,
     ids.workflow,
     createHash('sha256').update(ids.runs.queued).digest('hex'),
   );
@@ -446,20 +446,20 @@ async function seedApiOwnedRows(
   await client.query(
     `insert into app.run_checkpoints
        (workflow_run_id,workspace_id,revision,scheduler_state,
-        resume_at,workflow_version_id,last_transition_fingerprint)
+        resume_at,workflow_version_id)
      values
        ($1,$2,1,
         '{"runStatus":"queued","nextEventSequence":2,"proof":"lifecycle"}'::jsonb,
-        NULL,$6,$7),
+        NULL,$6),
        ($3,$2,2,
         '{"runStatus":"running","nextEventSequence":3,"proof":"lifecycle"}'::jsonb,
-        NULL,$6,$8),
+        NULL,$6),
        ($4,$2,3,
         '{"runStatus":"waiting","nextEventSequence":4,"proof":"lifecycle"}'::jsonb,
-        clock_timestamp()+interval '1 hour',$6,$9),
+        clock_timestamp()+interval '1 hour',$6),
        ($5,$2,4,
         '{"runStatus":"succeeded","nextEventSequence":4,"proof":"lifecycle"}'::jsonb,
-        NULL,$6,$10)`,
+        NULL,$6)`,
     [
       ids.runs.queued,
       workspaceId,
@@ -467,10 +467,6 @@ async function seedApiOwnedRows(
       ids.runs.waiting,
       ids.runs.succeeded,
       ids.version,
-      'a'.repeat(64),
-      'b'.repeat(64),
-      'c'.repeat(64),
-      'd'.repeat(64),
     ],
   );
 }

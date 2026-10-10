@@ -534,7 +534,7 @@ export async function resetProviderScenarioIsolation(
 
 export async function acceptRun() {
   return apiDatabase.withWorkspace(workspaceId, (transaction) =>
-    acceptManualFixtureRun(transaction, actorId, {
+    acceptManualFixtureRun(transaction, {
       initialCheckpoint: createCheckpoint({
         workflowVersionId,
         iterationBudget: 0,
@@ -589,7 +589,7 @@ export async function acceptProviderScenarioRun(provider: ProviderScenario) {
     );
   });
   const accepted = await apiDatabase.withWorkspace(workspaceId, (transaction) =>
-    acceptManualFixtureRun(transaction, actorId, {
+    acceptManualFixtureRun(transaction, {
       initialCheckpoint: createCheckpoint({
         workflowVersionId: scenarioWorkflowVersionId,
         iterationBudget: 0,

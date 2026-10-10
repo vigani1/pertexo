@@ -790,7 +790,7 @@ describe('workflow run API persistence', () => {
     ).toEqual([{ count: 0 }]);
   });
 
-  it('serializes concurrent new checked starts to one acceptance and rechecks current run capability', async () => {
+  it('serializes concurrent new checked starts to one acceptance', async () => {
     const input = {
       ...startInput(),
       expectedPublishedVersionId: workflowVersionId,
@@ -800,31 +800,9 @@ describe('workflow run API persistence', () => {
     );
     expect(new Set(results.map((result) => result.run.id)).size).toBe(1);
     expect(results.filter((result) => !result.replayed)).toHaveLength(1);
-    await ownerQuery(
-      "update app.workspace_memberships set role='viewer' where workspace_id=$1 and user_id=$2",
-      [workspaceId, actorId],
-    );
-    await expect(database.start(input)).rejects.toBeInstanceOf(
-      WorkflowRunNotFoundError,
-    );
-    await ownerQuery(
-      "update app.workspace_memberships set role='operator' where workspace_id=$1 and user_id=$2",
-      [workspaceId, actorId],
-    );
-    await expect(database.start(input)).resolves.toMatchObject({
-      run: { id: results[0]?.run.id },
-      replayed: true,
-    });
   });
 
-  it('fences a legacy manual writer and releases a rejected key only after bounded expiry cleanup', async () => {
-    await expect(
-      apiQuery(
-        `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
-      values($1,$2,$3,$4,'manual','queued')`,
-        [randomUUID(), workspaceId, workflowId, workflowVersionId],
-      ),
-    ).rejects.toMatchObject({ code: 'PTM01' });
+  it('releases a rejected key only after bounded expiry cleanup', async () => {
     const input = {
       ...startInput(),
       expectedPublishedVersionId: retainedWorkflowVersionId,

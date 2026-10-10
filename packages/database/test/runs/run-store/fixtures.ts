@@ -6,6 +6,8 @@ import path from 'node:path';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { parseWorkspaceId } from '../../../src/tenant-access/transactions.js';
 
 import {
   canonicalOutboxPayloadChecksum,
@@ -20,6 +22,8 @@ import {
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptStateCorruptError,
   parseDatabaseConfig,
+  databaseSchema,
+  lockManualStartCommand,
 } from '../../../src/testing.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import {
@@ -528,17 +532,15 @@ async function insertRun(input: {
   const workflowVersionId = input.workflowVersionId ?? versionA;
   await asRuntime(apiBaseUrl, workspaceId, async (client) => {
     if ((input.triggerType ?? 'manual') === 'manual') {
-      await client.query("select set_config('app.actor_id',$1,true)", [
-        actorId,
-      ]);
-      await client.query(
-        'select app.lock_manual_workflow_run_start($1,$2,$3,$4)',
-        [
-          actorId,
-          input.workflowId ?? workflowA,
-          `workflow:${input.workflowId ?? workflowA}:manual`,
-          createHash('sha256').update(runId).digest('hex'),
-        ],
+      await lockManualStartCommand(
+        {
+          db: drizzle(client, { schema: databaseSchema }),
+          workspaceId: parseWorkspaceId(workspaceId),
+        },
+        {
+          scope: `workflow:${input.workflowId ?? workflowA}:manual`,
+          idempotencyKeyHash: createHash('sha256').update(runId).digest('hex'),
+        },
       );
     }
     await client.query(

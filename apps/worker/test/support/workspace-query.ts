@@ -7,7 +7,6 @@ export async function queryAsWorkspaceRole<Row extends Record<string, unknown>>(
   statement: string,
   parameters: readonly unknown[] = [],
   manualStart?: Readonly<{
-    actorId: string;
     workflowId: string;
     keyHash: string;
   }>,
@@ -21,7 +20,7 @@ export async function queryAsWorkspaceRole<Row extends Record<string, unknown>>(
     if (manualStart !== undefined)
       await lockManualFixtureClient(
         client,
-        manualStart.actorId,
+        workspaceId,
         manualStart.workflowId,
         manualStart.keyHash,
       );

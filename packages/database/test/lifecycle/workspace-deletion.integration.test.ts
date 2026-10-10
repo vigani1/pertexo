@@ -308,6 +308,14 @@ describe('workspace deletion and restore', () => {
       workspaceId,
       commandType: 'deletion_requested',
     });
+    const receipt = await asOwner(
+      `select occurred_at, occurred_at = date_trunc('milliseconds', occurred_at) canonical
+       from app.workspace_lifecycle_operations where id=$1`,
+      [operation.id],
+    );
+    expect(receipt.rows).toEqual([
+      { occurred_at: operation.submittedAt, canonical: true },
+    ]);
 
     const state = await asOwner(
       `select status, deletion_requested_by, deletion_reason,

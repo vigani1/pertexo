@@ -480,7 +480,6 @@ export async function acceptWorkflowDelivery(
           db: drizzle(client, { schema: databaseSchema }),
           workspaceId: parseWorkspaceId(workspaceId),
         },
-        actorUserId,
         acceptance,
       ),
   );
