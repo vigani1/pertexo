@@ -11,6 +11,7 @@ import {
 } from '../schema/authentication.js';
 import { users } from '../schema/foundation.js';
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
+import { identityQueryFailure } from './query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 
 type ProviderName = 'google' | 'github' | 'microsoft' | 'apple';
@@ -154,14 +155,12 @@ export class AccountLinkingCommands {
           await completeAttempt(client, attempt.id);
           return { kind: 'already' };
         }
-        await db
-          .insert(authAccounts)
-          .values({
-            id: randomUUID(),
-            accountId: identity.accountId,
-            providerId: attempt.targetProvider,
-            userId: attempt.userId,
-          });
+        await db.insert(authAccounts).values({
+          id: randomUUID(),
+          accountId: identity.accountId,
+          providerId: attempt.targetProvider,
+          userId: attempt.userId,
+        });
         await recordIdentitySecurityFact(
           client,
           attempt.userId,
@@ -171,24 +170,19 @@ export class AccountLinkingCommands {
           .delete(authSessions)
           .where(eq(authSessions.userId, attempt.userId));
         const token = randomBytes(32).toString('base64url');
-        await db
-          .insert(authSessions)
-          .values({
-            id: randomUUID(),
-            expiresAt: sql`clock_timestamp()+(${this.input.sessionTtlSeconds}::integer*interval '1 second')`,
-            token,
-            userId: attempt.userId,
-          });
+        await db.insert(authSessions).values({
+          id: randomUUID(),
+          expiresAt: sql`clock_timestamp()+(${this.input.sessionTtlSeconds}::integer*interval '1 second')`,
+          token,
+          userId: attempt.userId,
+        });
         await completeAttempt(client, attempt.id);
         return { kind: 'linked', token };
       },
     ).catch((error: unknown) => {
       // Drizzle wraps PostgreSQL failures; the constraint remains the arbiter
       // when two users finish a proof for the same provider account.
-      const cause =
-        error instanceof Error && error.cause !== undefined
-          ? error.cause
-          : error;
+      const cause = identityQueryFailure(error);
       if (
         typeof cause === 'object' &&
         cause !== null &&

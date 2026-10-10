@@ -185,14 +185,14 @@ export class OwnedEmailProofs {
     let nextMail: PreparedAuthenticationProofMail | undefined;
     let nextUrl: string | undefined;
     if (proof.purpose === 'change_old') {
-      if (proof.new_email === null) return 'invalid';
+      if (proof.newEmail === null) return 'invalid';
       nextToken = randomBytes(32).toString('base64url');
       nextExpiresAt = new Date(Date.now() + 55 * 60_000);
       nextUrl = this.url(nextToken);
       nextMail = this.mail.prepareProof?.({
         purpose: 'verification',
-        recipient: proof.new_email,
-        displayName: proof.display_name,
+        recipient: proof.newEmail,
+        displayName: proof.displayName,
         url: nextUrl,
         expiresAt: nextExpiresAt,
       });
@@ -205,12 +205,12 @@ export class OwnedEmailProofs {
     if (
       outcome === 'change_old' &&
       nextMail === undefined &&
-      proof.new_email !== null &&
+      proof.newEmail !== null &&
       nextUrl !== undefined
     ) {
       await this.mail.sendVerification({
-        recipient: proof.new_email,
-        displayName: proof.display_name,
+        recipient: proof.newEmail,
+        displayName: proof.displayName,
         url: nextUrl,
       });
     }

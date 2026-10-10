@@ -1,14 +1,26 @@
 import { randomUUID } from 'node:crypto';
+
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
+
+import { authEmailProofs, authSessions } from '../schema/authentication.js';
+import { users } from '../schema/foundation.js';
+import { withPlatformTransaction } from '../tenant-access/transactions.js';
 import {
   insertAuthenticationMail,
   type AuthenticationMailInput,
 } from './authentication-mail.js';
+import { rethrowIdentityQueryFailure } from './query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
+
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
 type ProofUser = Readonly<{ id: string; email: string; name: string }>;
+
+/** Locks the user before issuing or consuming a single-use email proof. */
 export class EmailProofCommands {
   public constructor(private readonly pool: Pool) {}
+
   public async issue(
     user: ProofUser,
     purpose: 'initial_verification' | 'change_old',
@@ -17,172 +29,143 @@ export class EmailProofCommands {
     expiresAt: Date,
     prepared: AuthenticationMailInput | undefined,
   ): Promise<boolean> {
-    return this.transaction(async (client) => {
-      const current = await client.query<{
-        status: string;
-        email: string;
-        email_verified: boolean;
-      }>(
-        'select status, email, email_verified from app.users where id=$1 for update',
-        [user.id],
-      );
-      const row = current.rows[0];
+    return withPlatformTransaction(this.pool, async (client) => {
+      const db = drizzle(client);
+      const [current] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, user.id))
+        .for('update');
       if (
-        row?.status !== 'active' ||
-        row.email.toLowerCase() !== user.email.toLowerCase() ||
-        row.email_verified !== (purpose === 'change_old')
+        current?.status !== 'active' ||
+        current.email.toLowerCase() !== user.email.toLowerCase() ||
+        current.emailVerified !== (purpose === 'change_old')
       )
         return false;
-      await client.query(
-        `insert into app.auth_email_proofs
-           (id, token_digest, user_id, purpose, email, new_email, expires_at)
-         values ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          randomUUID(),
-          tokenDigest,
-          user.id,
-          purpose,
-          user.email,
-          newEmail ?? null,
-          expiresAt,
-        ],
-      );
+      await db.insert(authEmailProofs).values({
+        id: randomUUID(),
+        tokenDigest,
+        userId: user.id,
+        purpose,
+        email: user.email,
+        newEmail: newEmail ?? null,
+        expiresAt: expiresAt.toISOString(),
+      });
       if (prepared !== undefined)
         await insertAuthenticationMail(client, prepared);
       return true;
-    });
+    }).catch(rethrowIdentityQueryFailure);
   }
+
   public async inspect(tokenDigest: Buffer) {
-    const inspected = await this.pool.query<{
-      purpose: ProofPurpose;
-      new_email: string | null;
-      display_name: string;
-    }>(
-      `select proof.purpose, proof.new_email, users.display_name
-       from app.auth_email_proofs proof
-       join app.users users on users.id = proof.user_id
-       where proof.token_digest = $1 and proof.consumed_at is null
-         and proof.expires_at > clock_timestamp() and users.status = 'active'
-         and lower(users.email) = lower(proof.email)`,
-      [tokenDigest],
-    );
-    return inspected.rows[0];
+    const [proof] = await drizzle(this.pool)
+      .select({
+        purpose: authEmailProofs.purpose,
+        newEmail: authEmailProofs.newEmail,
+        displayName: users.displayName,
+      })
+      .from(authEmailProofs)
+      .innerJoin(users, eq(users.id, authEmailProofs.userId))
+      .where(
+        and(
+          eq(authEmailProofs.tokenDigest, tokenDigest),
+          isNull(authEmailProofs.consumedAt),
+          gt(authEmailProofs.expiresAt, sql`clock_timestamp()`),
+          eq(users.status, 'active'),
+          sql`lower(${users.email}) = lower(${authEmailProofs.email})`,
+        ),
+      );
+    return proof;
   }
+
   public async consume(
     tokenDigest: Buffer,
     next: Readonly<{ digest: Buffer; expiresAt: Date }> | undefined,
     nextMail: AuthenticationMailInput | undefined,
   ): Promise<ProofPurpose | 'invalid'> {
-    return this.transaction((client) =>
+    return withPlatformTransaction(this.pool, (client) =>
       consumeProof(client, tokenDigest, next, nextMail),
-    );
-  }
-  private async transaction<T>(
-    work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('begin');
-      const result = await work(client);
-      await client.query('commit');
-      return result;
-    } catch (error) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+    ).catch(rethrowIdentityQueryFailure);
   }
 }
-/**
- * Consumes a live proof for the user's current address, with the user locked:
- * a first verification verifies the address and signs the user out, the old
- * address's confirmation issues the new address's proof, and the new
- * address's proof changes the address.
- */
+
+/** Consumes a proof only while it still refers to the user's current address. */
 async function consumeProof(
   client: PoolClient,
   tokenDigest: Buffer,
   next: Readonly<{ digest: Buffer; expiresAt: Date }> | undefined,
   nextMail: AuthenticationMailInput | undefined,
 ): Promise<ProofPurpose | 'invalid'> {
-  const owner = await client.query<{ user_id: string }>(
-    'select user_id from app.auth_email_proofs where token_digest=$1',
-    [tokenDigest],
-  );
-  const userId = owner.rows[0]?.user_id;
-  if (userId === undefined) return 'invalid';
-  const users = await client.query<{
-    status: string;
-    email: string;
-    email_verified: boolean;
-  }>(
-    'select status, email, email_verified from app.users where id=$1 for update',
-    [userId],
-  );
-  const user = users.rows[0];
+  const db = drizzle(client);
+  const [owner] = await db
+    .select({ userId: authEmailProofs.userId })
+    .from(authEmailProofs)
+    .where(eq(authEmailProofs.tokenDigest, tokenDigest));
+  if (owner === undefined) return 'invalid';
+  const userId = owner.userId;
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .for('update');
   if (user?.status !== 'active') return 'invalid';
-  const proofs = await client.query<{
-    id: string;
-    purpose: string;
-    email: string;
-    new_email: string | null;
-    user_id: string;
-    usable: boolean;
-  }>(
-    `select id, purpose, email, new_email, user_id,
-            consumed_at is null and expires_at > clock_timestamp() usable
-     from app.auth_email_proofs where token_digest=$1 for update`,
-    [tokenDigest],
-  );
-  const proof = proofs.rows[0];
+  const [row] = await db
+    .select({
+      proof: authEmailProofs,
+      usable: sql<boolean>`${authEmailProofs.consumedAt} is null and ${authEmailProofs.expiresAt} > clock_timestamp()`,
+    })
+    .from(authEmailProofs)
+    .where(eq(authEmailProofs.tokenDigest, tokenDigest))
+    .for('update');
   if (
-    proof?.usable !== true ||
-    proof.user_id !== userId ||
-    proof.email.toLowerCase() !== user.email.toLowerCase()
+    row?.usable !== true ||
+    row.proof.userId !== userId ||
+    row.proof.email.toLowerCase() !== user.email.toLowerCase()
   )
     return 'invalid';
+  const proof = row.proof;
+  let outcome: ProofPurpose;
   if (proof.purpose === 'initial_verification') {
-    if (user.email_verified) return 'invalid';
-    await client.query(
-      'update app.users set email_verified=true, updated_at=clock_timestamp() where id=$1',
-      [userId],
-    );
-    await client.query('delete from app.auth_sessions where user_id=$1', [
-      userId,
-    ]);
+    if (user.emailVerified) return 'invalid';
+    await db
+      .update(users)
+      .set({ emailVerified: true, updatedAt: sql`clock_timestamp()` })
+      .where(eq(users.id, userId));
+    await db.delete(authSessions).where(eq(authSessions.userId, userId));
     await recordIdentitySecurityFact(client, userId, 'email.initial_verified');
+    outcome = proof.purpose;
   } else if (proof.purpose === 'change_old') {
-    if (!user.email_verified || next === undefined || proof.new_email === null)
+    if (!user.emailVerified || next === undefined || proof.newEmail === null)
       return 'invalid';
-    await client.query(
-      `insert into app.auth_email_proofs
-         (id, token_digest, user_id, purpose, email, new_email, expires_at)
-       values ($1, $2, $3, 'change_new', $4, $5, $6)`,
-      [
-        randomUUID(),
-        next.digest,
-        userId,
-        proof.email,
-        proof.new_email,
-        next.expiresAt,
-      ],
-    );
+    await db.insert(authEmailProofs).values({
+      id: randomUUID(),
+      tokenDigest: next.digest,
+      userId,
+      purpose: 'change_new',
+      email: proof.email,
+      newEmail: proof.newEmail,
+      expiresAt: next.expiresAt.toISOString(),
+    });
     if (nextMail !== undefined)
       await insertAuthenticationMail(client, nextMail);
     await recordIdentitySecurityFact(client, userId, 'email.old_confirmed');
+    outcome = proof.purpose;
   } else if (proof.purpose === 'change_new') {
-    if (proof.new_email === null || !user.email_verified) return 'invalid';
-    await client.query(
-      `update app.users set email=$2, email_verified=true,
-         updated_at=clock_timestamp() where id=$1`,
-      [userId, proof.new_email],
-    );
+    if (proof.newEmail === null || !user.emailVerified) return 'invalid';
+    await db
+      .update(users)
+      .set({
+        email: proof.newEmail,
+        emailVerified: true,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(eq(users.id, userId));
     await recordIdentitySecurityFact(client, userId, 'email.change_verified');
+    outcome = proof.purpose;
   } else return 'invalid';
-  await client.query(
-    'update app.auth_email_proofs set consumed_at=clock_timestamp() where id=$1',
-    [proof.id],
-  );
-  return proof.purpose;
+  await db
+    .update(authEmailProofs)
+    .set({ consumedAt: sql`clock_timestamp()` })
+    .where(eq(authEmailProofs.id, proof.id));
+  return outcome;
 }
