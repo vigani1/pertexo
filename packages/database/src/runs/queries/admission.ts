@@ -15,10 +15,8 @@ import { alias } from 'drizzle-orm/pg-core';
 import { workflows } from '../../schema/authoring/workflows.js';
 import { workflowConcurrencyPolicies } from '../../schema/authoring/concurrency.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
-import {
-  workflowRunActiveAdmissions,
-  workspaceExecutionEntitlementVersions,
-} from '../../schema/runs/admission.js';
+import { workflowRunActiveAdmissions } from '../../schema/runs/admission.js';
+import { workspaceExecutionEntitlementVersions } from '../../schema/runs/entitlements.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 /** Reads the run and its admission facts in one statement and snapshot. */
