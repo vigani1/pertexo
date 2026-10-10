@@ -121,7 +121,7 @@ provisioning or external calls are authorized by this plan.
 
 ### Database layer evidence (2026-09-29, PR A)
 
-Real PostgreSQL: `workspace-inbox-threads.integration.test.ts` passes 14 cases
+Real PostgreSQL: `inbox/threads.integration.test.ts` passes 14 cases
 covering producer dedupe and cancellation, worker-only tenant-scoped inserts,
 fold counts and latest failure, concurrent folds (90 failures, four parallel
 folders, exact counts), 30-day restart, purging-workspace consumption,

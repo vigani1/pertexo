@@ -157,20 +157,10 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
-            --exclude test/workflow-organization.integration.test.ts \
-            --exclude test/workflow-organization-read.integration.test.ts \
-            --exclude test/workflow-organization-maintenance-plans.integration.test.ts \
-            --exclude test/workflow-folders-batch.integration.test.ts \
-            --exclude test/workflow-organization-adapters.integration.test.ts \
-            --exclude test/workflow-tags.integration.test.ts
+            --exclude 'test/authoring/organization/**'
           EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
-            test/workflow-organization.integration.test.ts \
-            test/workflow-organization-read.integration.test.ts \
-            test/workflow-organization-maintenance-plans.integration.test.ts \
-            test/workflow-folders-batch.integration.test.ts \
-            test/workflow-organization-adapters.integration.test.ts \
-            test/workflow-tags.integration.test.ts
+            test/authoring/organization/
       - name: Service integration tests
         if: matrix.group == 'services'
         env:
