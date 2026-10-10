@@ -566,10 +566,13 @@ now, as one ordered program — not "whenever we touch it".
           inheriting Vitest test mode; the unchanged real organization role
           journeys pass within the existing identity limits. StrictMode and
           effect reconnection retain their focused unit coverage.
-          A later live input-case list refresh failed once in CI; the same
-          journey passed six consecutive local runs. Its rename checks now
-          assert the list HTTP response before the unchanged visible-name
-          assertion, preserving limits and making a recurrence diagnosable.
+          The live input-case refresh failure recurred after merge. A controlled
+          component test reproduces its render order: a closed case browser
+          replaces the shared query function with `skipToken`, so invalidation
+          fails before sending a GET. Case readers now share one query function
+          and use the observer's `enabled` flag. The regression exercises two
+          consecutive edits with a closed-reader render before each refresh;
+          live checks retain their HTTP and visible-name assertions.
           F08 runtime implementation is unchanged.
 - [x] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.

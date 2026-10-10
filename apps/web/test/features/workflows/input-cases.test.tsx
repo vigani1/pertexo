@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { useState } from 'react';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -92,6 +93,102 @@ function open(canWrite = true) {
 }
 
 describe('shared workflow input cases', () => {
+  it('refreshes saved edits while another case browser for the same workflow is closed', async () => {
+    let current = metadata;
+    let listReads = 0;
+    let saving = 0;
+    let release!: () => void;
+    mockServer.use(
+      ...discoveryHandlers(['workflow:update']),
+      http.get(path, () => {
+        listReads += 1;
+        return HttpResponse.json({ items: [current] });
+      }),
+      http.get(`${path}/${caseId}`, () =>
+        HttpResponse.json(
+          { case: { ...current, input: { customer: 'synthetic' } } },
+          { headers: { ETag: current.representationTag } },
+        ),
+      ),
+      http.put(`${path}/${caseId}`, async ({ request }) => {
+        const body = (await request.json()) as { name: string };
+        const held = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        saving += 1;
+        await held;
+        current = {
+          ...current,
+          name: body.name,
+          revision: current.revision + 1,
+        };
+        return HttpResponse.json({
+          caseId,
+          revision: current.revision,
+          replayed: false,
+        });
+      }),
+    );
+    const apiClient = createApiClient({
+      fetch: testFetch,
+      readCsrfToken: () =>
+        'csrf-token-for-component-tests-12345678901234567890',
+    });
+    const workspace = accessibleWorkspaceSchema.parse(
+      workspaceWith(['workflow:update']),
+    );
+    const workflow = workflowSummarySchema.parse(
+      summary(workflowId, 'Case workflow', { publishedVersionId: versionId }),
+    );
+    function ClosedCaseBrowser() {
+      const [revision, setRevision] = useState(0);
+      useInputCases(apiClient, userId, workspaceId, workflowId, true, false);
+      return (
+        <button
+          onClick={() => {
+            setRevision(revision + 1);
+          }}
+        >
+          Refresh closed browser {revision}
+        </button>
+      );
+    }
+    renderInRouter(
+      <>
+        <CaseBrowser
+          apiClient={apiClient}
+          userId={userId}
+          workspace={workspace}
+          workflow={workflow}
+          onLoad={vi.fn()}
+        />
+        <ClosedCaseBrowser />
+      </>,
+    );
+    const event = userEvent.setup();
+    for (const name of ['Edited proof', 'Final original proof']) {
+      await event.click(await screen.findByRole('button', { name: /^Edit /u }));
+      const field = await screen.findByLabelText('Case name');
+      await event.clear(field);
+      await event.type(field, name);
+      await event.click(
+        screen.getByRole('button', { name: 'Save input case' }),
+      );
+      await waitFor(() => {
+        expect(saving).toBe(current.revision);
+      });
+      await event.click(
+        screen.getByRole('button', { name: /Refresh closed browser/u }),
+      );
+      act(() => {
+        release();
+      });
+      await screen.findByRole('button', { name: `Load ${name}` });
+      expect(screen.queryByText(/Couldn’t refresh/u)).not.toBeInTheDocument();
+    }
+    expect(listReads).toBe(3);
+  });
+
   it('reads only while open and shares its pending-read dismissal guard with the panel', async () => {
     let listReads = 0;
     let release!: () => void;
