@@ -5,7 +5,7 @@ import {
   objectStoreEndpointSchema,
   objectStoreForcePathStyleSchema,
   objectStoreRequestTimeoutSchema,
-} from './config-primitives.js';
+} from './primitives.js';
 
 const DEFAULT_MAX_OBJECT_BYTES = 10 * 1024 * 1024;
 const MAX_CONFIGURABLE_OBJECT_BYTES = 5 * 1024 * 1024 * 1024;

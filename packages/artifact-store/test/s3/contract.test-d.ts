@@ -8,8 +8,8 @@ import type {
   HeadObjectCommandOutput,
 } from '@aws-sdk/client-s3';
 
-import { sendS3 } from '../src/s3-client-contract.js';
-import type { ObjectStoreS3Client } from '../src/s3-client-contract.js';
+import { sendS3 } from '../../src/s3/contract.js';
+import type { ObjectStoreS3Client } from '../../src/s3/contract.js';
 
 declare const client: ObjectStoreS3Client;
 
