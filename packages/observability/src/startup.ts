@@ -15,4 +15,4 @@ export {
   type TelemetryLifecycle,
   type TelemetrySdk,
   type TelemetrySdkFactory,
-} from './telemetry.js';
+} from './telemetry/index.js';

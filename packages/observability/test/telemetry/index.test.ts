@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseObservabilityConfig } from '../src/config.js';
+import { parseObservabilityConfig } from '../../src/config.js';
 import {
   createNodeInstrumentations,
   createTelemetryLifecycle,
@@ -9,7 +9,7 @@ import {
   METRIC_EXPORT_TIMEOUT_MILLISECONDS,
   type TelemetrySdk,
   type TelemetrySdkFactory,
-} from '../src/telemetry.js';
+} from '../../src/telemetry/index.js';
 
 function disabledConfig() {
   return parseObservabilityConfig({

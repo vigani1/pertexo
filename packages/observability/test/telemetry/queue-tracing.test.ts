@@ -10,7 +10,7 @@ import {
 import { node } from '@opentelemetry/sdk-node';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createQueueTraceRunner } from '../src/queue-tracing.js';
+import { createQueueTraceRunner } from '../../src/telemetry/queue-tracing.js';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected OTel boundary fakes */
 

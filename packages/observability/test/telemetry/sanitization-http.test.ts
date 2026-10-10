@@ -14,7 +14,7 @@ import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { node } from '@opentelemetry/sdk-node';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { createNodeInstrumentations } from '../src/telemetry.js';
+import { createNodeInstrumentations } from '../../src/telemetry/index.js';
 
 const QUERY_SECRET = 'oauth-code-secret';
 const STATE_SECRET = 'oauth-state-secret';
