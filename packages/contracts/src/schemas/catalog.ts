@@ -6,7 +6,7 @@ const identityKey = z
   .max(256)
   .regex(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u);
 
-export const catalogLimitsV1 = Object.freeze({
+export const catalogLimits = Object.freeze({
   definitions: 256,
   integrations: 128,
   requirements: 64,
@@ -25,7 +25,7 @@ export const catalogQuerySchema = z.object({}).strict();
 const schemaDocumentSchema = z
   .record(z.string().max(256), z.json())
   .superRefine((document, context) => {
-    if (Object.keys(document).length > catalogLimitsV1.schemaProperties)
+    if (Object.keys(document).length > catalogLimits.schemaProperties)
       context.addIssue({
         code: 'custom',
         message: 'schema document exceeds the property limit',
@@ -60,16 +60,16 @@ export const nodeDefinitionCatalogItemSchema = z
     ports: nodePortsSchema,
     credentialRequirements: z
       .array(z.string().min(1).max(128))
-      .max(catalogLimitsV1.requirements),
+      .max(catalogLimits.requirements),
     connectionRequirements: z
       .array(z.string().min(1).max(128))
-      .max(catalogLimitsV1.requirements),
+      .max(catalogLimits.requirements),
     integration: nodeIntegrationSchema.optional(),
     retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
     resourceClass: z.enum(['io', 'cpu']),
     capabilities: z
       .array(z.string().min(1).max(128))
-      .max(catalogLimitsV1.capabilities),
+      .max(catalogLimits.capabilities),
   })
   .strict()
   .readonly();
@@ -79,7 +79,7 @@ export const nodeDefinitionListResponseSchema = z
     schemaVersion: z.literal(1),
     items: z
       .array(nodeDefinitionCatalogItemSchema)
-      .max(catalogLimitsV1.definitions),
+      .max(catalogLimits.definitions),
   })
   .strict()
   .readonly();
@@ -90,7 +90,7 @@ const integrationCatalogItemSchema = z
     operationKey: identityKey,
     nodeDefinitions: z
       .array(catalogDefinitionIdentitySchema)
-      .max(catalogLimitsV1.definitions),
+      .max(catalogLimits.definitions),
   })
   .strict()
   .readonly();
@@ -100,7 +100,7 @@ export const integrationListResponseSchema = z
     schemaVersion: z.literal(1),
     items: z
       .array(integrationCatalogItemSchema)
-      .max(catalogLimitsV1.integrations),
+      .max(catalogLimits.integrations),
   })
   .strict()
   .readonly();

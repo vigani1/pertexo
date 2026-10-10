@@ -99,10 +99,6 @@ export function createFailureNotificationHandler(
           trackPending(claimPromise);
           return;
         }
-        if (claimSettlement.kind === 'rejected') {
-          // Preserve legacy non-Error persistence rejection values.
-          throw claimSettlement.reason;
-        }
         const claim = claimSettlement.value;
         if (claim.kind !== 'ready' || controller.signal.aborted) return;
         const timeout = setTimeout(() => {
@@ -137,7 +133,6 @@ export function createFailureNotificationHandler(
           // Queue cancellation can arrive while provider work is awaiting I/O.
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (queueContext.signal.aborted) return;
-          if (settlement.kind === 'rejected') throw settlement.reason;
           result = settlement.value;
         } catch {
           result = {
@@ -166,10 +161,6 @@ export function createFailureNotificationHandler(
           trackPending(completionPromise);
           return;
         }
-        if (completion.kind === 'rejected') {
-          // Preserve legacy non-Error persistence rejection values.
-          throw completion.reason;
-        }
       } finally {
         queueContext.signal.removeEventListener('abort', onQueueAbort);
       }
@@ -178,39 +169,28 @@ export function createFailureNotificationHandler(
 }
 
 type DeliverySettlement<T> =
-  | Readonly<{ kind: 'fulfilled'; value: T }>
-  | Readonly<{ kind: 'rejected'; reason: unknown }>
-  | Readonly<{ kind: 'aborted' }>;
+  Readonly<{ kind: 'fulfilled'; value: T }> | Readonly<{ kind: 'aborted' }>;
 
 function settleUntilAbort<T>(
   operation: Promise<T>,
   signal: AbortSignal,
 ): Promise<DeliverySettlement<T>> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (result: DeliverySettlement<T>): void => {
-      if (settled) return;
-      settled = true;
+  const aborted = Symbol('aborted');
+  const cancellation = Promise.withResolvers<typeof aborted>();
+  const onAbort = (): void => {
+    // Let abort-cooperating work settle before detaching an operation that
+    // ignores cancellation. Promise.race continues observing late rejection.
+    queueMicrotask(() => {
+      cancellation.resolve(aborted);
+    });
+  };
+  if (signal.aborted) onAbort();
+  else signal.addEventListener('abort', onAbort, { once: true });
+  return Promise.race([operation, cancellation.promise])
+    .then((value): DeliverySettlement<T> =>
+      value === aborted ? { kind: 'aborted' } : { kind: 'fulfilled', value },
+    )
+    .finally(() => {
       signal.removeEventListener('abort', onAbort);
-      resolve(result);
-    };
-    const onAbort = (): void => {
-      // Give an abort-cooperating provider's already-triggered rejection one
-      // microtask to settle. A provider that ignores cancellation remains
-      // detached and observed without blocking its runtime owner.
-      queueMicrotask(() => {
-        finish({ kind: 'aborted' });
-      });
-    };
-    operation.then(
-      (value) => {
-        finish({ kind: 'fulfilled', value });
-      },
-      (reason: unknown) => {
-        finish({ kind: 'rejected', reason });
-      },
-    );
-    if (signal.aborted) onAbort();
-    else signal.addEventListener('abort', onAbort, { once: true });
-  });
+    });
 }

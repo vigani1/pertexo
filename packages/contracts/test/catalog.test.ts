@@ -6,7 +6,7 @@ import {
 } from '../src/server.js';
 import {
   catalogQuerySchema,
-  catalogLimitsV1,
+  catalogLimits,
   nodeDefinitionCatalogItemSchema,
 } from '../src/index.js';
 
@@ -27,7 +27,7 @@ describe('catalog discovery contracts', () => {
       capabilities: [],
     };
     const document = Object.fromEntries(
-      Array.from({ length: catalogLimitsV1.schemaProperties }, (_, index) => [
+      Array.from({ length: catalogLimits.schemaProperties }, (_, index) => [
         `property${String(index)}`,
         true,
       ]),

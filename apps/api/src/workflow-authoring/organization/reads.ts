@@ -35,8 +35,7 @@ import {
 
 type QueryInput = WorkflowOrganizationInput & Readonly<{ query: unknown }>;
 
-/** Owns normalized filter identity and purpose-bound continuations; defaults
- * still belong to the unchanged legacy use cases, not this opt-in reader. */
+/** Owns normalized organization filters and purpose-bound continuations. */
 export class WorkflowOrganizationReadsUseCase {
   public constructor(
     private readonly reader: Pick<
@@ -136,8 +135,7 @@ export class WorkflowOrganizationReadsUseCase {
     };
     if (query.include === 'organization')
       return workflowOrganizationProjectionResponseSchema.parse(body);
-    // Origin remains owned by the existing compatible reader and its rollout gate;
-    // never bypass validation with a raw join or turn unsupported into null.
+    // The origin reader owns visibility and validates the requested projection.
     if (this.origin.getWorkflowWithTemplateOrigin === undefined)
       throw new WorkflowTemplateOriginUnavailableError();
     input.signal?.throwIfAborted();

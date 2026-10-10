@@ -13,22 +13,12 @@ export function boundedBackgroundTask<T>(
   timeoutError: () => Error = () =>
     new BackgroundTaskShutdownTimeoutError(timeoutMillis),
 ): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(timeoutError());
-    }, timeoutMillis);
-    timer.unref();
-    task.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        // Preserve the task's original rejection, including legacy non-Errors.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-        reject(error);
-      },
-    );
+  const deadline = Promise.withResolvers<T>();
+  const timer = setTimeout(() => {
+    deadline.reject(timeoutError());
+  }, timeoutMillis);
+  timer.unref();
+  return Promise.race([task, deadline.promise]).finally(() => {
+    clearTimeout(timer);
   });
 }

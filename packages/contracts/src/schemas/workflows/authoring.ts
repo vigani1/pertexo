@@ -133,7 +133,7 @@ export type WorkflowSummaryResponse = z.output<
   typeof workflowSummaryResponseSchema
 >;
 
-/** ADR063: opt-in only; unsupported readers must never imply authoritative null. */
+/** Requested projections must distinguish unavailable readers from absent origin. */
 export const workflowTemplateOriginProjectionQuerySchema = z
   .object({ include: z.literal('templateOrigin') })
   .strict();
@@ -245,7 +245,6 @@ export const workflowOrganizationProjectionQuerySchema = z
     include: z.enum(['organization', 'templateOrigin,organization']),
   })
   .strict();
-/** Unified transport grammar; legacy projection validators remain unchanged. */
 export const workflowGetQuerySchema = z
   .object({
     include: z

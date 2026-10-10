@@ -99,7 +99,7 @@ const identitySchema = z
     version: z.number().int().positive(),
   })
   .strict();
-const policyReferenceSchema = identitySchema;
+export const policyReferenceSchema = identitySchema;
 
 const identifiersSchema = z
   .array(z.string().min(1))
@@ -127,7 +127,6 @@ const integrationOperationSchema = z
 
 export const definitionIdentitySchema = identitySchema;
 export const executorIdentitySchema = identitySchema;
-export const policyReferenceSchemaV1 = policyReferenceSchema;
 
 export const nodeManifestSchema = z
   .object({
