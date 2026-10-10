@@ -12,10 +12,10 @@ import {
   type ObjectStoreObserver,
   type ObjectStoreRequestObservation,
   type ObjectStoreSafetyObservation,
-} from '../src/object-store-telemetry.js';
-import { createArtifactDownloadPresigner } from '../src/download.js';
-import { createArtifactStore } from '../src/store.js';
-import type { S3ClientLike } from '../src/store.js';
+} from '../../src/s3/telemetry.js';
+import { createArtifactDownloadPresigner } from '../../src/download.js';
+import { createArtifactStore } from '../../src/store.js';
+import type { S3ClientLike } from '../../src/store.js';
 
 const ARTIFACT_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02';
 const WORKSPACE_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01';

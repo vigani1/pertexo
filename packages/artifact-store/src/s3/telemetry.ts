@@ -114,7 +114,7 @@ export function safelyObserveSafetyViolation(
   }
 }
 
-import type { ObjectStoreS3Client } from './s3-client-contract.js';
+import type { ObjectStoreS3Client } from './contract.js';
 
 const OPERATIONS: Readonly<Record<string, ObjectStoreOperation>> =
   Object.freeze({

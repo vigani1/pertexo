@@ -3,7 +3,7 @@ import { getEventListeners } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 
-import { awaitWithSignal } from '../src/request-lifecycle.js';
+import { awaitWithSignal } from '../../src/s3/request-lifecycle.js';
 
 describe('artifact request lifecycle', () => {
   it('preserves an ordinary operation Error unchanged', async () => {

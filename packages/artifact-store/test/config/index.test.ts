@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseArtifactStoreConfig } from '../src/config.js';
+import { parseArtifactStoreConfig } from '../../src/config/index.js';
 
 const REQUIRED_ENVIRONMENT = {
   ARTIFACT_STORE_ACCESS_KEY_ID: 'local-access',

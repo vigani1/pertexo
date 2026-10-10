@@ -1,5 +1,5 @@
-export { parseArtifactStoreConfig } from './config.js';
-export type { ArtifactStoreConfig } from './config.js';
+export { parseArtifactStoreConfig } from './config/index.js';
+export type { ArtifactStoreConfig } from './config/index.js';
 export {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
@@ -11,7 +11,7 @@ export {
   createProductionObjectStoreObserver,
   OBJECT_STORE_METRIC_NAME,
   ObservedS3Client,
-} from './object-store-telemetry.js';
+} from './s3/telemetry.js';
 export type {
   ObjectStoreErrorClass,
   ObjectStoreObserver,
@@ -20,7 +20,7 @@ export type {
   ObjectStoreRequestOutcome,
   ObjectStoreSafetyCheck,
   ObjectStoreSafetyObservation,
-} from './object-store-telemetry.js';
+} from './s3/telemetry.js';
 export type {
   ArtifactDownload,
   ArtifactIdentity,

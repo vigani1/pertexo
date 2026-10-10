@@ -31,17 +31,17 @@ import {
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
 } from './errors.js';
-import type { ArtifactStoreConfig } from './config.js';
+import type { ArtifactStoreConfig } from './config/index.js';
 import {
   createProductionObjectStoreObserver,
   ObservedS3Client,
   observePresign,
   safelyObserveSafetyViolation,
-} from './object-store-telemetry.js';
-import type { ObjectStoreObserver } from './object-store-telemetry.js';
-import { sendS3 } from './s3-client-contract.js';
-import type { ObjectStoreS3Client } from './s3-client-contract.js';
-import { awaitWithSignal, requestSignal } from './request-lifecycle.js';
+} from './s3/telemetry.js';
+import type { ObjectStoreObserver } from './s3/telemetry.js';
+import { sendS3 } from './s3/contract.js';
+import type { ObjectStoreS3Client } from './s3/contract.js';
+import { awaitWithSignal, requestSignal } from './s3/request-lifecycle.js';
 import {
   createArtifactDownloadPresigner,
   signArtifactDownload,

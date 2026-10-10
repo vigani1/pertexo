@@ -1,16 +1,13 @@
 import { GetObjectCommand, type S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { z } from 'zod';
-import type { ArtifactStoreConfig } from './config.js';
+import type { ArtifactStoreConfig } from './config/index.js';
 import {
   artifactIdentitySchema,
   artifactStorageKey,
   type ArtifactIdentity,
 } from './identity.js';
-import {
-  observePresign,
-  type ObjectStoreObserver,
-} from './object-store-telemetry.js';
+import { observePresign, type ObjectStoreObserver } from './s3/telemetry.js';
 
 export function createArtifactDownloadPresigner(
   client: S3Client,
@@ -26,7 +23,7 @@ export function createArtifactDownloadPresigner(
   return (request) =>
     observePresign(observer, () => presign(request), 'presign_get_object');
 }
-import { awaitWithSignal, requestSignal } from './request-lifecycle.js';
+import { awaitWithSignal, requestSignal } from './s3/request-lifecycle.js';
 
 export interface BeginDirectDownloadRequest extends ArtifactIdentity {
   readonly expiresInSeconds: number;
