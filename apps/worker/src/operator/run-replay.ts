@@ -8,7 +8,7 @@ import {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
   type OperatorRunReplayStore,
-} from '@pertexo/database/operator';
+} from '@pertexo/database/runs';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

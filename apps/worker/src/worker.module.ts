@@ -7,8 +7,8 @@ import type {
   DatabaseRuntime,
   WorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { createAuthenticationMailDeliveryStore } from '@pertexo/database/identity';
-import { createWorkspaceInboxFoldStore } from '@pertexo/database/inbox';
+import { createAuthenticationMailDeliveryStore } from '@pertexo/database/tenant-access';
+import { createWorkspaceInboxFoldStore } from '@pertexo/database/notifications';
 import {
   createApplicationSecretEnvelope,
   createNodeSecureHttpClient,

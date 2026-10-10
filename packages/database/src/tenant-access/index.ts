@@ -59,3 +59,21 @@ export type {
   WorkspaceInvitationDeliveryClaim,
   WorkspaceInvitationDeliveryStore,
 } from './invitations/delivery.js';
+
+export {
+  createAuthenticationMailDeliveryStore,
+  createAuthenticationMailEnqueueStore,
+  insertAuthenticationMail,
+} from '../identity/authentication-mail.js';
+export {
+  type IdentitySecurityEvent,
+  recordIdentitySecurityFact,
+} from '../identity/security-facts.js';
+export type {
+  AuthenticationMailDeliveryClaim,
+  AuthenticationMailDeliveryStore,
+  AuthenticationMailEnqueueStore,
+  AuthenticationMailInput,
+  AuthenticationMailPurpose,
+  SealedAuthenticationMailPayload,
+} from '../identity/authentication-mail.js';

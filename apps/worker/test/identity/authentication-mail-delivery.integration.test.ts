@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { createAuthenticationMailEnqueueStore } from '@pertexo/database/identity';
-import { createAuthenticationMailDeliveryStore } from '@pertexo/database/identity';
+import { createAuthenticationMailEnqueueStore } from '@pertexo/database/tenant-access';
+import { createAuthenticationMailDeliveryStore } from '@pertexo/database/tenant-access';
 import { migrateDatabase } from '@pertexo/database/testing';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import { Pool } from 'pg';

@@ -1,4 +1,4 @@
-import type { AuthenticationMailDeliveryStore } from '@pertexo/database/identity';
+import type { AuthenticationMailDeliveryStore } from '@pertexo/database/tenant-access';
 
 import {
   createPollingRuntime,

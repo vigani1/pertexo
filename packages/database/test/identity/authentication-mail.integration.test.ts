@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createAuthenticationMailEnqueueStore } from '../../src/identity/index.js';
+import { createAuthenticationMailEnqueueStore } from '../../src/tenant-access/index.js';
 import type { DatabaseConfig } from '../../src/platform/index.js';
-import { createAuthenticationMailDeliveryStore } from '../../src/identity/index.js';
+import { createAuthenticationMailDeliveryStore } from '../../src/tenant-access/index.js';
 import { createRetentionDatabase } from '../../src/lifecycle/index.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';

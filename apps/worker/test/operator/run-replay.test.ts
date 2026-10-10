@@ -9,7 +9,7 @@ import {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
   type OperatorRunReplayStore,
-} from '@pertexo/database/operator';
+} from '@pertexo/database/runs';
 import { JOB_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 

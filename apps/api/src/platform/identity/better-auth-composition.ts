@@ -1,4 +1,4 @@
-import { createAuthenticationMailEnqueueStore } from '@pertexo/database/identity';
+import { createAuthenticationMailEnqueueStore } from '@pertexo/database/tenant-access';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

@@ -11,3 +11,18 @@ export type {
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
 } from './store.js';
+
+export { createWorkspaceInboxDatabase } from '../inbox/read-store.js';
+export type {
+  WorkspaceInboxCursor,
+  WorkspaceInboxDatabase,
+  WorkspaceInboxFailureKind,
+  WorkspaceInboxSummary,
+  WorkspaceInboxThreadPage,
+  WorkspaceInboxThreadRecord,
+} from '../inbox/read-store.js';
+export { createWorkspaceInboxFoldStore } from '../inbox/fold-store.js';
+export type {
+  WorkspaceInboxChange,
+  WorkspaceInboxFoldStore,
+} from '../inbox/fold-store.js';
