@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import {
   InputCasesPanel,
+  useInputCases,
   type LoadedInputCase,
 } from '@/features/workflows/input-cases.public';
 import type { ApiClient } from '@/lib/api/client';
@@ -12,14 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import type { RunIntent } from '@/features/workflow-runs/commands.public';
 import { useRunInput } from '@/features/workflow-runs/run-input.public';
 import { DeadlineField } from '@/components/ui/deadline-field';
-
-function publicationUnavailable(workflow: WorkflowSummary | undefined) {
-  return (
-    workflow !== undefined &&
-    (workflow.publishedVersionId === null ||
-      workflow.lifecycleStatus !== 'active')
-  );
-}
+import { runInputAvailability } from '../../model/run-input-availability';
+import { expectedRunVersion } from '../../model/run-input-version';
 
 /** A fetched confirmation target must also reach the displayed Query snapshot. */
 function usePublicationReview(
@@ -87,25 +82,7 @@ function RunVersionNotice({
   );
 }
 
-/**
- * Starts the published version with an input and an optional deadline,
- * picked with Weft's deadline control (none, in an hour, in a day, or a
- * date and time on the person's clock). After an uncertain start it offers
- * only the exact same command until its outcome is resolved.
- */
-export function RunInputDialog({
-  open,
-  pending,
-  error,
-  retryAvailable,
-  onOpenChange,
-  onStartNew,
-  onRetry,
-  caseScope,
-  publicationConflict = false,
-  onReviewPublication,
-  recoveryIntent,
-}: Readonly<{
+type RunInputDialogProps = Readonly<{
   open: boolean;
   pending: boolean;
   error: string | undefined;
@@ -122,10 +99,62 @@ export function RunInputDialog({
     workspace: AccessibleWorkspace;
     workflow: WorkflowSummary;
   }>;
-}>) {
+}>;
+
+/**
+ * Starts the published version with an input and an optional deadline,
+ * picked with Weft's deadline control (none, in an hour, in a day, or a
+ * date and time on the person's clock). After an uncertain start it offers
+ * only the exact same command until its outcome is resolved.
+ */
+export function RunInputDialog(props: RunInputDialogProps) {
+  if (props.caseScope === undefined)
+    return <RunInputDialogContent {...props} />;
+  return (
+    <CaseRunInputDialog
+      key={`${props.caseScope.userId}:${props.caseScope.workspace.id}:${props.caseScope.workflow.id}`}
+      {...props}
+      caseScope={props.caseScope}
+    />
+  );
+}
+
+function CaseRunInputDialog(
+  props: RunInputDialogProps &
+    Readonly<{ caseScope: NonNullable<RunInputDialogProps['caseScope']> }>,
+) {
+  const { apiClient, userId, workspace, workflow } = props.caseScope;
+  const cases = useInputCases(
+    apiClient,
+    userId,
+    workspace.id,
+    workflow.id,
+    workspace.status === 'active' &&
+      workflow.lifecycleStatus === 'active' &&
+      workspace.capabilities.includes('workflow:update'),
+    props.open,
+  );
+  return <RunInputDialogContent {...props} cases={cases} />;
+}
+
+function RunInputDialogContent({
+  open,
+  pending,
+  error,
+  retryAvailable,
+  onOpenChange,
+  onStartNew,
+  onRetry,
+  caseScope,
+  publicationConflict = false,
+  onReviewPublication,
+  recoveryIntent,
+  cases,
+}: RunInputDialogProps &
+  Readonly<{ cases?: ReturnType<typeof useInputCases> }>) {
   const runInput = useRunInput();
   const [loaded, setLoaded] = useState<LoadedInputCase>();
-  const [caseLocked, setCaseLocked] = useState(false);
+  const caseLocked = cases !== undefined && (cases.pending || cases.uncertain);
   const [caseEditing, setCaseEditing] = useState(false);
   const [caseAccessLost, setCaseAccessLost] = useState(false);
   const [submittedVersion, setSubmittedVersion] = useState<string>();
@@ -134,37 +163,38 @@ export function RunInputDialog({
     caseScope?.workflow.publishedVersionId,
     retryAvailable,
   );
-  const reviewing = review.pending;
-  const reviewMismatch = review.waiting;
   const hideCaseInput = useCallback(() => {
     setCaseAccessLost(true);
     setLoaded(undefined);
   }, []);
-  // Never infer a new version for a frozen retry, including unchecked retries.
-  const expectedVersion = retryAvailable
-    ? recoveryIntent?.expectedPublishedVersionId
-    : (loaded?.workflowVersionId ??
-      review.target ??
-      submittedVersion ??
-      caseScope?.workflow.publishedVersionId ??
-      undefined);
+  const expectedVersion = expectedRunVersion({
+    retryAvailable,
+    recoveryVersion: recoveryIntent?.expectedPublishedVersionId,
+    loadedCaseVersion: loaded?.workflowVersionId,
+    reviewedVersion: review.target,
+    submittedVersion,
+    publishedVersion: caseScope?.workflow.publishedVersionId,
+  });
   const staleCase =
     loaded !== undefined &&
     loaded.workflowVersionId !== caseScope?.workflow.publishedVersionId;
-  const blocked =
-    pending || retryAvailable || caseLocked || reviewing || reviewMismatch;
+  const availability = runInputAvailability({
+    pending,
+    retryAvailable,
+    publicationConflict,
+    workflow: caseScope?.workflow,
+    cases: {
+      locked: caseLocked,
+      editing: caseEditing,
+      accessLost: caseAccessLost,
+      stale: staleCase,
+    },
+    review,
+  });
 
   async function startNew() {
     const intent = runInput.read();
-    if (
-      staleCase ||
-      caseLocked ||
-      caseEditing ||
-      publicationConflict ||
-      reviewing ||
-      reviewMismatch
-    )
-      return;
+    if (availability.confirmDisabled || pending) return;
     if (intent === undefined) return;
     setSubmittedVersion(expectedVersion);
     if (
@@ -179,7 +209,7 @@ export function RunInputDialog({
   }
 
   async function submit() {
-    if (caseEditing) return;
+    if (availability.confirmDisabled || pending) return;
     if (!retryAvailable) {
       await startNew();
       return;
@@ -202,57 +232,29 @@ export function RunInputDialog({
       }
       pendingLabel="Starting…"
       pending={pending}
-      locked={pending || caseLocked || reviewing}
-      confirmDisabled={
-        caseLocked ||
-        caseEditing ||
-        caseAccessLost ||
-        publicationConflict ||
-        reviewing ||
-        reviewMismatch ||
-        (!retryAvailable &&
-          (staleCase || publicationUnavailable(caseScope?.workflow)))
-      }
+      locked={availability.locked}
+      confirmDisabled={availability.confirmDisabled}
       error={review.error ?? error}
       errorTone={retryAvailable ? 'warning' : 'destructive'}
       onConfirm={submit}
     >
-      <RunVersionNotice
+      <RunPublicationReview
         expectedVersion={expectedVersion}
         loadedName={loaded?.name}
-        stale={staleCase}
-        recovering={retryAvailable}
+        staleCase={staleCase}
+        retryAvailable={retryAvailable}
+        review={review}
+        publicationConflict={publicationConflict}
+        canReview={onReviewPublication !== undefined}
+        locked={availability.locked}
       />
-      {staleCase && review.ready && !retryAvailable ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Reviewed current publication ·{' '}
-          <span className="break-all font-mono">{review.target}</span>. Create
-          and load a new case for this version before confirming a real run. The
-          loaded case stays bound to its original version.
-        </p>
-      ) : null}
-      {reviewMismatch ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Waiting for the reviewed publication to appear. Case changes and new
-          starts stay blocked until the displayed version agrees.
-        </p>
-      ) : null}
-      {(publicationConflict || reviewMismatch) &&
-      onReviewPublication !== undefined ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={pending || caseLocked || reviewing}
-          onClick={() => void review.review()}
-        >
-          Read current publication and review copied input
-        </Button>
-      ) : null}
-      {open && caseScope !== undefined ? (
+      {open && caseScope !== undefined && cases !== undefined ? (
         <InputCasesPanel
-          {...caseScope}
-          disabled={blocked}
-          onLockedChange={setCaseLocked}
+          workspace={caseScope.workspace}
+          workflow={caseScope.workflow}
+          cases={cases}
+          disabled={availability.fieldsBlocked}
+          editing={caseEditing}
           onEditingChange={setCaseEditing}
           onAccessLost={hideCaseInput}
           onLoad={(value) => {
@@ -278,7 +280,7 @@ export function RunInputDialog({
                 autoComplete="off"
                 spellCheck={false}
                 className="min-h-32 font-mono text-[0.8rem]"
-                disabled={blocked}
+                disabled={availability.fieldsBlocked}
                 value={runInput.input}
                 onChange={(event) => {
                   runInput.changeInput(event.currentTarget.value);
@@ -289,12 +291,67 @@ export function RunInputDialog({
           <DeadlineField
             value={runInput.deadline}
             error={runInput.validation.error('deadline')}
-            disabled={blocked}
+            disabled={availability.fieldsBlocked}
             register={runInput.validation.register('deadline')}
             onChange={runInput.changeDeadline}
           />
         </FieldGroup>
       )}
     </ConfirmDialog>
+  );
+}
+
+function RunPublicationReview({
+  expectedVersion,
+  loadedName,
+  staleCase,
+  retryAvailable,
+  review,
+  publicationConflict,
+  canReview,
+  locked,
+}: Readonly<{
+  expectedVersion: string | undefined;
+  loadedName: string | undefined;
+  staleCase: boolean;
+  retryAvailable: boolean;
+  review: ReturnType<typeof usePublicationReview>;
+  publicationConflict: boolean;
+  canReview: boolean;
+  locked: boolean;
+}>) {
+  return (
+    <>
+      <RunVersionNotice
+        expectedVersion={expectedVersion}
+        loadedName={loadedName}
+        stale={staleCase}
+        recovering={retryAvailable}
+      />
+      {staleCase && review.ready && !retryAvailable ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Reviewed current publication ·{' '}
+          <span className="break-all font-mono">{review.target}</span>. Create
+          and load a new case for this version before confirming a real run. The
+          loaded case stays bound to its original version.
+        </p>
+      ) : null}
+      {review.waiting ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Waiting for the reviewed publication to appear. Case changes and new
+          starts stay blocked until the displayed version agrees.
+        </p>
+      ) : null}
+      {(publicationConflict || review.waiting) && canReview ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={locked}
+          onClick={() => void review.review()}
+        >
+          Read current publication and review copied input
+        </Button>
+      ) : null}
+    </>
   );
 }

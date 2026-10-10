@@ -98,20 +98,11 @@ export function WorkflowDuplicateDialog({
             );
           }}
         >
-          <p className="text-sm text-muted-foreground">
-            {state.kind === 'denied' ? null : (
-              <>
-                {source.kind === 'version'
-                  ? `Source: immutable version v${String(versionNumber ?? '?')}.`
-                  : state.draft === undefined
-                    ? 'Reading the saved current draft…'
-                    : `Source: saved draft revision ${String(state.draft.revision)}.`}{' '}
-                Unsaved browser edits are never copied. Connection references
-                stay in this workspace; credentials and operational history are
-                not copied.
-              </>
-            )}
-          </p>
+          <DuplicateSourceReview
+            source={source}
+            versionNumber={versionNumber}
+            state={state}
+          />
           <FieldGroup>
             <LabelledField
               id="duplicate-workflow-name"
@@ -240,5 +231,31 @@ export function WorkflowDuplicateAction({
         />
       ) : null}
     </>
+  );
+}
+
+function DuplicateSourceReview({
+  source,
+  versionNumber,
+  state,
+}: Readonly<{
+  source: WorkflowDuplicateRequest['source'];
+  versionNumber: number | undefined;
+  state: ReturnType<typeof useWorkflowDuplicate>['state'];
+}>) {
+  return (
+    <p className="text-sm text-muted-foreground">
+      {state.kind === 'denied' ? null : (
+        <>
+          {source.kind === 'version'
+            ? `Source: immutable version v${String(versionNumber ?? '?')}.`
+            : state.draft === undefined
+              ? 'Reading the saved current draft…'
+              : `Source: saved draft revision ${String(state.draft.revision)}.`}{' '}
+          Unsaved browser edits are never copied. Connection references stay in
+          this workspace; credentials and operational history are not copied.
+        </>
+      )}
+    </p>
   );
 }

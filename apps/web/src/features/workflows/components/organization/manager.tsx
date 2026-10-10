@@ -56,11 +56,10 @@ export function WorkflowOrganizationManager(props: ManagerProps) {
   );
 }
 
-function OrganizationManagerContent({
+function useOrganizationManager({
   apiClient,
   userId,
   workspace,
-  onClose,
 }: ManagerProps) {
   const folders = useQuery(
     workflowFoldersQueryOptions(apiClient, userId, workspace.id),
@@ -94,6 +93,36 @@ function OrganizationManagerContent({
     }
   };
   const scope = { workspaceId: workspace.id };
+  return {
+    folders,
+    tags,
+    command,
+    validation,
+    setValidation,
+    cleanup,
+    setCleanup,
+    confirmationOpen,
+    setConfirmationOpen,
+    pendingKind,
+    locked,
+    start,
+    scope,
+  };
+}
+
+function OrganizationManagerContent(props: ManagerProps) {
+  const manager = useOrganizationManager(props);
+  const {
+    folders,
+    tags,
+    command,
+    validation,
+    setValidation,
+    cleanup,
+    confirmationOpen,
+    locked,
+  } = manager;
+  const { onClose } = props;
   return (
     <Dialog
       open
@@ -149,64 +178,7 @@ function OrganizationManagerContent({
               current revisions are loaded.
             </Notice>
           ) : null}
-          {command.denied ? (
-            <Notice tone="warning">
-              Organization controls are closed because access changed. Reopen
-              the manager only after checking current access.
-            </Notice>
-          ) : cleanup === undefined ? (
-            <>
-              <FolderManagement
-                folders={folders.data?.items ?? []}
-                ready={folders.isSuccess && !folders.isFetching}
-                locked={locked}
-                scope={scope}
-                start={start}
-                command={command}
-                pendingKind={pendingKind}
-                onConfirmationChange={setConfirmationOpen}
-              />
-              <Separator />
-              <TagManagement
-                tags={tags.data?.pages.flatMap((page) => page.items) ?? []}
-                ready={tags.isSuccess && !tags.isFetching}
-                locked={locked}
-                scope={scope}
-                start={start}
-                command={command}
-                pendingKind={pendingKind}
-                onConfirmationChange={setConfirmationOpen}
-                onCleanup={(tag) => {
-                  command.reset();
-                  setCleanup(tag);
-                }}
-              />
-              <LoadMore
-                subject="tags"
-                hasNextPage={tags.hasNextPage}
-                loading={tags.isFetchingNextPage || locked}
-                failed={tags.isFetchNextPageError}
-                label="Load more tags"
-                onLoadMore={() => {
-                  if (!locked) void tags.fetchNextPage();
-                }}
-              />
-            </>
-          ) : (
-            <WorkflowTagCleanup
-              apiClient={apiClient}
-              userId={userId}
-              workspaceId={workspace.id}
-              tag={cleanup}
-              locked={locked}
-              command={command}
-              start={start}
-              onBack={() => {
-                command.reset();
-                setCleanup(undefined);
-              }}
-            />
-          )}
+          <OrganizationManagerControls manager={manager} {...props} />
           <Button
             type="button"
             variant="outline"
@@ -218,5 +190,88 @@ function OrganizationManagerContent({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OrganizationManagerControls({
+  manager,
+  apiClient,
+  userId,
+  workspace,
+}: ManagerProps &
+  Readonly<{ manager: ReturnType<typeof useOrganizationManager> }>) {
+  const {
+    folders,
+    tags,
+    command,
+    cleanup,
+    setCleanup,
+    locked,
+    scope,
+    start,
+    pendingKind,
+    setConfirmationOpen,
+  } = manager;
+  return (
+    <>
+      {command.denied ? (
+        <Notice tone="warning">
+          Organization controls are closed because access changed. Reopen the
+          manager only after checking current access.
+        </Notice>
+      ) : cleanup === undefined ? (
+        <>
+          <FolderManagement
+            folders={folders.data?.items ?? []}
+            ready={folders.isSuccess && !folders.isFetching}
+            locked={locked}
+            scope={scope}
+            start={start}
+            command={command}
+            pendingKind={pendingKind}
+            onConfirmationChange={setConfirmationOpen}
+          />
+          <Separator />
+          <TagManagement
+            tags={tags.data?.pages.flatMap((page) => page.items) ?? []}
+            ready={tags.isSuccess && !tags.isFetching}
+            locked={locked}
+            scope={scope}
+            start={start}
+            command={command}
+            pendingKind={pendingKind}
+            onConfirmationChange={setConfirmationOpen}
+            onCleanup={(tag) => {
+              command.reset();
+              setCleanup(tag);
+            }}
+          />
+          <LoadMore
+            subject="tags"
+            hasNextPage={tags.hasNextPage}
+            loading={tags.isFetchingNextPage || locked}
+            failed={tags.isFetchNextPageError}
+            label="Load more tags"
+            onLoadMore={() => {
+              if (!locked) void tags.fetchNextPage();
+            }}
+          />
+        </>
+      ) : (
+        <WorkflowTagCleanup
+          apiClient={apiClient}
+          userId={userId}
+          workspaceId={workspace.id}
+          tag={cleanup}
+          locked={locked}
+          command={command}
+          start={start}
+          onBack={() => {
+            command.reset();
+            setCleanup(undefined);
+          }}
+        />
+      )}
+    </>
   );
 }

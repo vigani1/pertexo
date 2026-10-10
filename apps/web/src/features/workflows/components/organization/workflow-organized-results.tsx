@@ -31,7 +31,17 @@ export function WorkflowOrganizedResults({
   userId: string;
   workspace: AccessibleWorkspace;
   items: readonly WorkflowOrganizationProjectionResponse[];
-  workflows: UseInfiniteQueryResult<InfiniteData<WorkflowListResponse>>;
+  workflows: Pick<
+    UseInfiniteQueryResult<InfiniteData<WorkflowListResponse>>,
+    | 'isRefetchError'
+    | 'dataUpdatedAt'
+    | 'isFetching'
+    | 'refetch'
+    | 'hasNextPage'
+    | 'isFetchingNextPage'
+    | 'isFetchNextPageError'
+    | 'fetchNextPage'
+  >;
   actions: WorkflowRowActions;
 }>) {
   const [selected, setSelected] = useState<readonly string[]>([]);

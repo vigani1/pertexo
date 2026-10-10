@@ -11,26 +11,48 @@ import {
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import type { ApiClient } from '@/lib/api/client';
+import { useInputCases } from '../../hooks/use-input-cases';
 import { InputCasesPanel, type LoadedInputCase } from './panel';
 
-export function InputCasesAction({
-  apiClient,
-  userId,
-  workspace,
-  workflow,
-}: Readonly<{
+type InputCasesActionProps = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
-}>) {
+}>;
+
+export function InputCasesAction(props: InputCasesActionProps) {
+  if (!props.workspace.capabilities.includes('workflow:read')) return null;
+  return (
+    <InputCasesDialog
+      key={`${props.userId}:${props.workspace.id}:${props.workflow.id}`}
+      {...props}
+    />
+  );
+}
+
+function InputCasesDialog({
+  apiClient,
+  userId,
+  workspace,
+  workflow,
+}: InputCasesActionProps) {
   const [open, setOpen] = useState(false);
-  const [locked, setLocked] = useState(false);
+  const cases = useInputCases(
+    apiClient,
+    userId,
+    workspace.id,
+    workflow.id,
+    workspace.status === 'active' &&
+      workflow.lifecycleStatus === 'active' &&
+      workspace.capabilities.includes('workflow:update'),
+    open,
+  );
+  const locked = cases.pending || cases.uncertain;
   const [loaded, setLoaded] = useState<LoadedInputCase>();
   const clearLoaded = useCallback(() => {
     setLoaded(undefined);
   }, []);
-  if (!workspace.capabilities.includes('workflow:read')) return null;
   return (
     <Dialog
       open={open}
@@ -55,11 +77,9 @@ export function InputCasesAction({
           <div className="mt-5 flex flex-col gap-5">
             <InputCasesPanel
               key={`${userId}:${workspace.id}:${workflow.id}`}
-              apiClient={apiClient}
-              userId={userId}
+              cases={cases}
               workspace={workspace}
               workflow={workflow}
-              onLockedChange={setLocked}
               onAccessLost={clearLoaded}
               onLoad={setLoaded}
             />
@@ -67,7 +87,11 @@ export function InputCasesAction({
               <FieldGroup>
                 <LabelledField
                   id="loaded-case-copy"
-                  label={`Loaded input: ${loaded.name}`}
+                  label={
+                    <span className="wrap-anywhere">
+                      Loaded input: {loaded.name}
+                    </span>
+                  }
                   description="Detached copy. Later saved-case changes do not rewrite it. To execute, open Run with input and load the case there."
                 >
                   {(control) => (

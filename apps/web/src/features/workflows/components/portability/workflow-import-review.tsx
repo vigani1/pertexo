@@ -6,6 +6,7 @@ import type {
 import type {
   PortableConnectionBinding,
   PortableConnectionSlot,
+  WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import type { ApiClient } from '@/lib/api/client';
+import { PortableGraphReview } from './portable-graph-review';
 
 export function WorkflowImportConnections({
   apiClient,
@@ -174,5 +176,51 @@ export function WorkflowImportCompatibility({
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** The reviewed graph, destination bindings and server compatibility readback. */
+export function WorkflowImportReview({
+  apiClient,
+  userId,
+  workspace,
+  manifest,
+  preview,
+  bindings,
+  disabled,
+  onBindingsChange,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  manifest: WorkflowPortableManifest | undefined;
+  preview: WorkflowImportPreviewResponse | undefined;
+  bindings: readonly PortableConnectionBinding[];
+  disabled: boolean;
+  onBindingsChange: (bindings: PortableConnectionBinding[]) => void;
+}>) {
+  return (
+    <>
+      {manifest === undefined ? null : (
+        <>
+          <PortableGraphReview
+            graph={manifest.graph}
+            label="Complete imported graph"
+          />
+          <WorkflowImportConnections
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            slots={manifest.connectionSlots}
+            bindings={bindings}
+            disabled={disabled}
+            onChange={onBindingsChange}
+          />
+        </>
+      )}
+      {preview === undefined ? null : (
+        <WorkflowImportCompatibility preview={preview} />
+      )}
+    </>
   );
 }

@@ -38,7 +38,6 @@ export function FolderManagement({
   const [selected, setSelected] = useState<string>();
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<WorkflowFolder>();
   const id = useId();
   const fields = useFieldValidation<'name'>();
@@ -49,7 +48,6 @@ export function FolderManagement({
       : 'Enter a folder name of 1–128 UTF-8 bytes without control characters.';
   const changeConfirmation = (open: boolean) => {
     if (open) command.reset();
-    setConfirmDelete(open);
     setDeleteTarget(open ? current : undefined);
     onConfirmationChange(open);
   };
@@ -67,13 +65,14 @@ export function FolderManagement({
               <Button
                 type="button"
                 variant="ghost"
+                className="h-auto min-h-9 max-w-full py-2 whitespace-normal wrap-anywhere pointer-coarse:h-auto pointer-coarse:min-h-10"
                 disabled={locked}
                 onClick={() => {
                   setSelected(folder.id);
                   fields.reset();
                   setName(folder.name);
                   setParentId(folder.parentId);
-                  setConfirmDelete(false);
+                  setDeleteTarget(undefined);
                 }}
               >
                 Edit folder {folder.name}
@@ -116,6 +115,8 @@ export function FolderManagement({
               <Input
                 {...control}
                 ref={fields.register('name')}
+                name="folder-name"
+                autoComplete="off"
                 value={name}
                 disabled={disabled}
                 onChange={(event) => {
@@ -186,7 +187,7 @@ export function FolderManagement({
                     fields.reset();
                     setName('');
                     setParentId(null);
-                    setConfirmDelete(false);
+                    setDeleteTarget(undefined);
                   }}
                 >
                   New folder
@@ -205,58 +206,79 @@ export function FolderManagement({
             setSelected(undefined);
             setName('');
             setParentId(null);
-            setConfirmDelete(false);
+            setDeleteTarget(undefined);
           }}
         >
           New folder
         </Button>
       ) : null}
-      {confirmDelete && deleteTarget !== undefined ? (
-        <ConfirmDialog
-          open
+      {deleteTarget !== undefined ? (
+        <FolderDeleteConfirmation
+          target={deleteTarget}
+          command={command}
+          pendingKind={pendingKind}
+          disabled={disabled}
           onOpenChange={changeConfirmation}
-          tone="destructive"
-          title={`Delete ${deleteTarget.name}?`}
-          description="Deletion requires an empty folder, including archived workflows and immediate child folders. Nothing is automatically unfiled."
-          pending={command.pending && pendingKind === 'delete-folder'}
-          pendingLabel="Deleting…"
-          locked={command.pending || command.retryAvailable}
-          confirmDisabled={
-            command.denied ||
-            (!command.retryAvailable &&
-              (disabled ||
-                command.error !== undefined ||
-                command.result !== undefined))
-          }
-          confirmLabel={
-            command.retryAvailable
-              ? 'Retry exact command'
-              : 'Confirm delete folder'
-          }
-          error={command.error}
-          errorTone={command.retryAvailable ? 'warning' : 'destructive'}
-          onConfirm={
-            command.retryAvailable
-              ? command.retry
-              : () => {
-                  if (current === undefined) return;
-                  start({
-                    ...scope,
-                    kind: 'delete-folder',
-                    folderId: deleteTarget.id,
-                    idempotencyKey: crypto.randomUUID(),
-                    body: { expectedFolderRevision: deleteTarget.revision },
-                  });
-                }
-          }
-        >
-          {command.result === undefined ? null : (
-            <Notice tone="success">
-              Command completed. Current organization is being reloaded.
-            </Notice>
-          )}
-        </ConfirmDialog>
+          onDelete={() => {
+            if (current === undefined) return;
+            start({
+              ...scope,
+              kind: 'delete-folder',
+              folderId: deleteTarget.id,
+              idempotencyKey: crypto.randomUUID(),
+              body: { expectedFolderRevision: deleteTarget.revision },
+            });
+          }}
+        />
       ) : null}
     </section>
+  );
+}
+
+function FolderDeleteConfirmation({
+  target,
+  command,
+  pendingKind,
+  disabled,
+  onOpenChange,
+  onDelete,
+}: Readonly<{
+  target: WorkflowFolder;
+  command: ReturnType<typeof useWorkflowOrganizationCommand>;
+  pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
+  disabled: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+}>) {
+  return (
+    <ConfirmDialog
+      open
+      onOpenChange={onOpenChange}
+      tone="destructive"
+      title={`Delete ${target.name}?`}
+      description="Deletion requires an empty folder, including archived workflows and immediate child folders. Nothing is automatically unfiled."
+      pending={command.pending && pendingKind === 'delete-folder'}
+      pendingLabel="Deleting…"
+      locked={command.pending || command.retryAvailable}
+      confirmDisabled={
+        command.denied ||
+        (!command.retryAvailable &&
+          (disabled ||
+            command.error !== undefined ||
+            command.result !== undefined))
+      }
+      confirmLabel={
+        command.retryAvailable ? 'Retry exact command' : 'Confirm delete folder'
+      }
+      error={command.error}
+      errorTone={command.retryAvailable ? 'warning' : 'destructive'}
+      onConfirm={command.retryAvailable ? command.retry : onDelete}
+    >
+      {command.result === undefined ? null : (
+        <Notice tone="success">
+          Command completed. Current organization is being reloaded.
+        </Notice>
+      )}
+    </ConfirmDialog>
   );
 }

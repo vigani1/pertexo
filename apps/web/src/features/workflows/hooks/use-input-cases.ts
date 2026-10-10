@@ -54,6 +54,8 @@ function useCaseOwner(
   workspaceId: string,
   workflowId: string,
   canWrite: boolean,
+  enabled: boolean,
+  onClose: () => void,
   onRetire: () => void,
 ) {
   const ownerRef = useRef<symbol | undefined>(undefined);
@@ -71,20 +73,37 @@ function useCaseOwner(
     evictCases(cache, inputCasesKey(userId, workspaceId, workflowId));
   }, [cache, userId, workspaceId, workflowId, onRetire]);
   useEffect(() => {
+    if (!enabled) {
+      onClose();
+      previousWrite.current = canWrite;
+      return;
+    }
     const token = Symbol('input-cases');
     ownerRef.current = token;
     const key = inputCasesKey(userId, workspaceId, workflowId);
     function disposeRequest() {
       controllerRef.current?.abort();
+      controllerRef.current = undefined;
       retainedRef.current = undefined;
     }
     if (previousWrite.current && !canWrite) retire();
     previousWrite.current = canWrite;
+    // Missing optional projections and other workflows do not revoke this
+    // case browser. Session/workspace loss and its own authoritative reads do.
     const unsubscribe = watchWorkspaceReadDenial(
       cache,
       userId,
       workspaceId,
-      () => ownerRef.current === token,
+      ({ key: read, error }) =>
+        ownerRef.current === token &&
+        (error.status === 401 ||
+          read.length === 0 ||
+          (read[0] === 'workflows' &&
+            read[1] === 'detail' &&
+            read[2] === workflowId &&
+            (error.status === 403 ||
+              read.length === 3 ||
+              read[3] === 'input-cases'))),
       retire,
     );
     return () => {
@@ -93,7 +112,17 @@ function useCaseOwner(
       disposeRequest();
       evictCases(cache, key);
     };
-  }, [api, userId, workspaceId, workflowId, cache, canWrite, retire]);
+  }, [
+    api,
+    userId,
+    workspaceId,
+    workflowId,
+    cache,
+    canWrite,
+    enabled,
+    onClose,
+    retire,
+  ]);
   return { ownerRef, controllerRef, retainedRef, retire };
 }
 
@@ -104,10 +133,16 @@ export function useInputCases(
   workspaceId: string,
   workflowId: string,
   canWrite: boolean,
+  enabled = true,
 ) {
   const cache = useQueryClient();
   const query = useInfiniteQuery(
-    inputCasesQueryOptions(api, userId, workspaceId, workflowId),
+    inputCasesQueryOptions(
+      enabled ? api : undefined,
+      userId,
+      workspaceId,
+      workflowId,
+    ),
   );
   const [selected, setSelected] = useState<WorkflowInputCase>();
   const [error, setError] = useState<string>();
@@ -115,6 +150,14 @@ export function useInputCases(
   const [uncertain, setUncertain] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [accessLost, setAccessLost] = useState(false);
+  const onClose = useCallback(() => {
+    setSelected(undefined);
+    setError(undefined);
+    setPending(false);
+    setUncertain(false);
+    setConflict(false);
+    setAccessLost(false);
+  }, []);
   const onRetire = useCallback(() => {
     setSelected(undefined);
     setUncertain(false);
@@ -129,11 +172,14 @@ export function useInputCases(
     workspaceId,
     workflowId,
     canWrite,
+    enabled,
+    onClose,
     onRetire,
   );
 
   async function read(caseId: string) {
-    if (pending || uncertain || accessLost) return undefined;
+    if (controllerRef.current !== undefined || uncertain || accessLost)
+      return undefined;
     const token = ownerRef.current;
     if (token === undefined) return undefined;
     const abort = new AbortController();
@@ -160,13 +206,16 @@ export function useInputCases(
       }
       return undefined;
     } finally {
-      if (ownerRef.current === token) setPending(false);
+      if (controllerRef.current === abort) {
+        controllerRef.current = undefined;
+        if (ownerRef.current === token) setPending(false);
+      }
     }
   }
 
   async function send(command: InputCaseCommand, retry = false) {
     if (
-      pending ||
+      controllerRef.current !== undefined ||
       !canWrite ||
       accessLost ||
       (!retry && retainedRef.current !== undefined)
@@ -229,7 +278,10 @@ export function useInputCases(
       setError(caseCommandError(cause));
       return false;
     } finally {
-      if (ownerRef.current === token) setPending(false);
+      if (controllerRef.current === abort) {
+        controllerRef.current = undefined;
+        if (ownerRef.current === token) setPending(false);
+      }
     }
   }
   return {

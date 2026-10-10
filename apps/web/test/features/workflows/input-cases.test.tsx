@@ -1,12 +1,19 @@
 import { http, HttpResponse } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
   accessibleWorkspaceSchema,
   workflowSummarySchema,
 } from '@pertexo/contracts';
-import { InputCasesPanel } from '@/features/workflows/input-cases.public';
+import {
+  InputCasesPanel,
+  useInputCases,
+} from '@/features/workflows/input-cases.public';
+import { InputCasesAction } from '@/features/workflows/components/input-cases/action';
+import { ApiError } from '@/lib/api/error';
+import { workflowKeys } from '@/features/workflows/data/workflows.queries';
+import { workflowTemplateOriginKey } from '@/features/workflows/data/origin/queries';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { renderInRouter } from '../../support/render-in-router';
@@ -38,6 +45,20 @@ const metadata = {
   updatedAt: '2026-10-01T12:00:00.000Z',
 };
 
+function CaseBrowser(
+  props: Omit<React.ComponentProps<typeof InputCasesPanel>, 'cases'> &
+    Readonly<{ apiClient: ReturnType<typeof createApiClient>; userId: string }>,
+) {
+  const cases = useInputCases(
+    props.apiClient,
+    props.userId,
+    props.workspace.id,
+    props.workflow.id,
+    props.workspace.capabilities.includes('workflow:update'),
+  );
+  return <InputCasesPanel {...props} cases={cases} />;
+}
+
 function open(canWrite = true) {
   mockServer.use(
     ...discoveryHandlers(canWrite ? ['workflow:update'] : ['run:start']),
@@ -51,7 +72,7 @@ function open(canWrite = true) {
   );
   const onLoad = vi.fn();
   const result = renderInRouter(
-    <InputCasesPanel
+    <CaseBrowser
       apiClient={createApiClient({
         fetch: testFetch,
         readCsrfToken: () =>
@@ -71,6 +92,194 @@ function open(canWrite = true) {
 }
 
 describe('shared workflow input cases', () => {
+  it('reads only while open and shares its pending-read dismissal guard with the panel', async () => {
+    let listReads = 0;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let readStarted = false;
+    mockServer.use(
+      ...discoveryHandlers(['workflow:update']),
+      http.get(path, () => {
+        listReads += 1;
+        return HttpResponse.json({ items: [metadata] });
+      }),
+      http.get(`${path}/${caseId}`, async () => {
+        readStarted = true;
+        await held;
+        return HttpResponse.json(
+          {
+            case: { ...metadata, input: { customer: 'synthetic' } },
+          },
+          { headers: { ETag: metadata.representationTag } },
+        );
+      }),
+    );
+    renderInRouter(
+      <InputCasesAction
+        apiClient={createApiClient({
+          fetch: testFetch,
+          readCsrfToken: () =>
+            'csrf-token-for-component-tests-12345678901234567890',
+        })}
+        userId={userId}
+        workspace={accessibleWorkspaceSchema.parse(
+          workspaceWith(['workflow:update']),
+        )}
+        workflow={workflowSummarySchema.parse(
+          summary(workflowId, 'Case workflow', {
+            publishedVersionId: versionId,
+          }),
+        )}
+      />,
+    );
+    const event = userEvent.setup();
+    const trigger = await screen.findByRole('button', {
+      name: 'Input cases',
+    });
+    expect(listReads).toBe(0);
+    await event.click(trigger);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Input cases',
+    });
+    await event.click(
+      await within(dialog).findByRole('button', {
+        name: 'Load Synthetic customer',
+      }),
+    );
+    await waitFor(() => {
+      expect(readStarted).toBe(true);
+    });
+    expect(
+      within(dialog).getByRole('button', { name: 'Close input cases' }),
+    ).toBeDisabled();
+    await event.keyboard('{Escape}');
+    expect(dialog).toBeVisible();
+    release();
+    await waitFor(() => {
+      expect(
+        within(dialog).getByLabelText('Loaded input: Synthetic customer'),
+      ).toHaveValue(JSON.stringify({ customer: 'synthetic' }, null, 2));
+    });
+    await event.click(
+      within(dialog).getByRole('button', { name: 'Close input cases' }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(listReads).toBe(1);
+    await event.click(trigger);
+    await waitFor(() => {
+      expect(listReads).toBe(2);
+    });
+    expect(
+      screen.queryByLabelText('Loaded input: Synthetic customer'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('reopens with a fresh case owner after a denied payload read', async () => {
+    let payloadReads = 0;
+    mockServer.use(
+      ...discoveryHandlers(['workflow:update']),
+      http.get(path, () => HttpResponse.json({ items: [metadata] })),
+      http.get(`${path}/${caseId}`, () => {
+        payloadReads += 1;
+        return payloadReads === 1
+          ? problem(403, 'workflow.input_case_access_denied')
+          : HttpResponse.json(
+              {
+                case: { ...metadata, input: { customer: 'authorized again' } },
+              },
+              { headers: { ETag: metadata.representationTag } },
+            );
+      }),
+    );
+    renderInRouter(
+      <InputCasesAction
+        apiClient={createApiClient({
+          fetch: testFetch,
+          readCsrfToken: () =>
+            'csrf-token-for-component-tests-12345678901234567890',
+        })}
+        userId={userId}
+        workspace={accessibleWorkspaceSchema.parse(
+          workspaceWith(['workflow:update']),
+        )}
+        workflow={workflowSummarySchema.parse(
+          summary(workflowId, 'Case workflow', {
+            publishedVersionId: versionId,
+          }),
+        )}
+      />,
+    );
+    const event = userEvent.setup();
+    const trigger = await screen.findByRole('button', { name: 'Input cases' });
+    await event.click(trigger);
+    await event.click(
+      await screen.findByRole('button', { name: 'Load Synthetic customer' }),
+    );
+    expect(
+      await screen.findByText('Access to input cases is no longer available.'),
+    ).toBeVisible();
+    await event.click(
+      screen.getByRole('button', { name: 'Close input cases' }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await event.click(trigger);
+    await event.click(
+      await screen.findByRole('button', { name: 'Load Synthetic customer' }),
+    );
+    expect(
+      await screen.findByLabelText('Loaded input: Synthetic customer'),
+    ).toHaveValue(JSON.stringify({ customer: 'authorized again' }, null, 2));
+    expect(payloadReads).toBe(2);
+  });
+
+  it('ignores optional and unrelated not-found reads but retires on its own workflow denial', async () => {
+    const { queryClient } = open(false);
+    const load = await screen.findByRole('button', {
+      name: 'Load Synthetic customer',
+    });
+    async function rejectRead(queryKey: readonly unknown[], status: number) {
+      await act(async () => {
+        await queryClient
+          .query({
+            queryKey,
+            queryFn: () =>
+              Promise.reject(
+                new ApiError({
+                  kind: 'problem',
+                  status,
+                  message: 'Read unavailable.',
+                }),
+              ),
+            retry: false,
+          })
+          .catch(() => undefined);
+      });
+    }
+    await rejectRead(
+      workflowTemplateOriginKey(userId, workspaceId, workflowId),
+      404,
+    );
+    await rejectRead(
+      workflowKeys.detail(userId, workspaceId, 'other-workflow'),
+      404,
+    );
+    expect(load).toBeEnabled();
+    expect(
+      screen.queryByText('Access to input cases is no longer available.'),
+    ).not.toBeInTheDocument();
+    await rejectRead(workflowKeys.detail(userId, workspaceId, workflowId), 403);
+    expect(
+      await screen.findByText('Access to input cases is no longer available.'),
+    ).toBeVisible();
+    expect(load).not.toBeInTheDocument();
+  });
+
   it('does not load a held payload after its component owner is disposed', async () => {
     const { event, onLoad, unmount } = open(false);
     let release!: () => void;
@@ -133,6 +342,63 @@ describe('shared workflow input cases', () => {
     expect(
       screen.queryByRole('button', { name: 'Edit Synthetic customer' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('admits only one same-tick payload read and unlocks after failure', async () => {
+    const { event, onLoad } = open(false);
+    let reads = 0;
+    mockServer.use(
+      http.get(`${path}/${caseId}`, () => {
+        reads += 1;
+        return reads === 1
+          ? HttpResponse.error()
+          : HttpResponse.json(
+              {
+                case: { ...metadata, input: { nested: { value: 'original' } } },
+              },
+              { headers: { ETag: metadata.representationTag } },
+            );
+      }),
+    );
+    const load = await screen.findByRole('button', {
+      name: 'Load Synthetic customer',
+    });
+    act(() => {
+      load.click();
+      load.click();
+    });
+    await screen.findByRole('alert');
+    expect(reads).toBe(1);
+    await waitFor(() => expect(load).toBeEnabled());
+    await event.click(load);
+    await waitFor(() => {
+      expect(onLoad).toHaveBeenCalledOnce();
+    });
+    expect(reads).toBe(2);
+  });
+
+  it('admits only one same-tick save while preserving the exact recovery command', async () => {
+    const captures: unknown[] = [];
+    mockServer.use(
+      http.put(`${path}/${caseId}`, async ({ request }) => {
+        captures.push(await request.json());
+        return HttpResponse.error();
+      }),
+    );
+    const { event } = open();
+    await event.click(
+      await screen.findByRole('button', { name: 'Edit Synthetic customer' }),
+    );
+    const save = await screen.findByRole('button', { name: 'Save input case' });
+    act(() => {
+      save.click();
+      save.click();
+    });
+    await screen.findByRole('button', { name: 'Retry exact case change' });
+    expect(captures).toEqual([
+      { name: metadata.name, input: { customer: 'synthetic' } },
+    ]);
+    expect(screen.getByLabelText('Case name')).toBeDisabled();
   });
 
   it('keeps case edits on a typed conflict and requires explicit current-read review', async () => {
