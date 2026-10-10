@@ -5,9 +5,9 @@ import type {
 import { useEffect, useRef, useState } from 'react';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
+import { isUncertainOutcome } from '@/lib/api/api-error-copy';
 import {
   commandErrorMessage,
-  isUncertainCommandError,
   parseCommandJson,
 } from '../../data/mutations/command-utils';
 import {
@@ -174,7 +174,7 @@ export function useNodeTest({
           : commandErrorMessage(cause, 'the test'),
       );
       if (!accepted) {
-        if (!isUncertainCommandError(cause)) attempt.current = undefined;
+        if (!isUncertainOutcome(cause)) attempt.current = undefined;
         setRecoveryPending(attempt.current !== undefined);
       }
     } finally {
@@ -222,7 +222,7 @@ export function useNodeTest({
 }
 
 function observationErrorMessage(error: unknown): string {
-  if (isUncertainCommandError(error))
+  if (isUncertainOutcome(error))
     return 'The test was accepted, but its status couldn’t be refreshed. Check its status again.';
   return commandErrorMessage(error, 'checking the test status');
 }

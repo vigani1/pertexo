@@ -4,10 +4,6 @@ import {
 } from '@/lib/api/api-error-copy';
 import { isApiError } from '@/lib/api/api-error';
 
-export function isUncertainCommandError(error: unknown): boolean {
-  return isUncertainOutcome(error);
-}
-
 export function parseCommandJson(value: string, message: string): unknown {
   try {
     return JSON.parse(value) as unknown;

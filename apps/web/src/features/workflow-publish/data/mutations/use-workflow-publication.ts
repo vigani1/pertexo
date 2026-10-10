@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { publishWorkflow } from '../workflow-publish.api';
 import { workflowPublishKeys } from '../workflow-publish.queries';
-import { commandErrorMessage, isUncertainCommandError } from './command-utils';
+import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import { commandErrorMessage } from './command-utils';
 import {
   useWorkflowDraftValidation,
   type SavedDraft,
@@ -164,7 +165,7 @@ export function useWorkflowPublication({
       return { kind: 'published', receipt };
     } catch (error) {
       if (owner.current !== publishOwner) return failed;
-      if (dispatched && !isUncertainCommandError(error))
+      if (dispatched && !isUncertainOutcome(error))
         publishAttempt.current = undefined;
       setPublishRecoveryPending(publishAttempt.current !== undefined);
       recordValidationCooldown(error);
