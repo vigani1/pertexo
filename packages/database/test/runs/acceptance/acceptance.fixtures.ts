@@ -1,0 +1,500 @@
+import { createHash, randomUUID } from 'node:crypto';
+
+import { count, sql } from 'drizzle-orm';
+import { Pool, type PoolClient } from 'pg';
+import { afterAll, beforeAll, beforeEach, expect } from 'vitest';
+
+import { parseDatabaseConfig } from '../../../src/config.js';
+import { createWorkspaceDatabase } from '../../../src/database.js';
+import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/database.js';
+import { migrateDatabase } from '../../../src/migrations.js';
+import { generatePersistedId } from '../../../src/platform/persisted-id.js';
+import {
+  idempotencyRecords,
+  outboxEvents,
+  runCheckpoints,
+  runEvents,
+  workflowRuns,
+} from '../../../src/schema.js';
+import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
+import type { WorkspaceTransaction } from '../../../src/tenant-access/transactions.js';
+
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
+  process.env.DATABASE_MIGRATION_URL ??
+  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const apiBaseUrl =
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const workerBaseUrl =
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const dispatcherBaseUrl =
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+const databaseName = `pertexo_test_accept_${randomUUID().replaceAll('-', '')}`;
+const disposableDatabase = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+export const migrationUrl = disposableDatabase.databaseUrl(migrationBaseUrl);
+export const apiUrl = disposableDatabase.databaseUrl(apiBaseUrl);
+const workerUrl = disposableDatabase.databaseUrl(workerBaseUrl);
+const dispatcherUrl = disposableDatabase.databaseUrl(dispatcherBaseUrl);
+
+export const workspaceA = randomUUID();
+export const workspaceB = randomUUID();
+export const workflowId = randomUUID();
+export const workflowVersionId = randomUUID();
+export const keyHash = createHash('sha256')
+  .update('acceptance-key')
+  .digest('hex');
+export const requestHash = createHash('sha256')
+  .update('request-a')
+  .digest('hex');
+export const otherRequestHash = createHash('sha256')
+  .update('request-b')
+  .digest('hex');
+export const workspaceCreatorId = randomUUID();
+
+export let apiDatabase: ReturnType<typeof createWorkspaceDatabase>;
+export let workerDatabase: ReturnType<typeof createWorkspaceDatabase>;
+export let dispatcherDatabase: ReturnType<
+  typeof createOutboxDispatcherDatabase
+>;
+let resourcesCreated = false;
+
+const migrationConfig = {
+  appRole: 'pertexo_app',
+  connectionString: migrationUrl,
+  maintenanceRole: 'pertexo_maintenance',
+  ownerRole: 'pertexo_owner',
+} as const;
+
+export function hasPostgresCode(
+  expectedCode: string,
+): (error: unknown) => boolean {
+  return (error: unknown): boolean => {
+    let current = error;
+    const visited = new Set<object>();
+    for (let depth = 0; depth < 16; depth += 1) {
+      if (!(current instanceof Error) || visited.has(current)) return false;
+      visited.add(current);
+      try {
+        if (Reflect.get(current, 'code') === expectedCode) return true;
+        current = Reflect.get(current, 'cause');
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  };
+}
+
+export function acceptanceInput(
+  requestHashOverride = requestHash,
+  runInput?: unknown,
+) {
+  return {
+    engineVersion: 'phase0-engine-v1',
+    initialCheckpoint: initialCheckpoint(),
+    keyHash,
+    operation: 'workflow.run.accept',
+    requestHash: requestHashOverride,
+    ...(runInput === undefined ? {} : { runInput }),
+    scope: `workflow:${workflowId}:manual`,
+    // Generic admission tests exercise the API trigger. Explicit manual tests
+    // must use the serialized, current-authority manual command protocol.
+    triggerType: 'api',
+    workflowId,
+    workflowVersionId,
+  } as const;
+}
+
+/** Explicit manual tests use the real serialized authority protocol, not a GUC bypass. */
+export async function lockManualFixtureStart(
+  transaction: WorkspaceTransaction,
+): Promise<void> {
+  await transaction.db.execute(
+    sql`select set_config('app.actor_id',${workspaceCreatorId},true)`,
+  );
+  await transaction.db.execute(
+    sql`select app.lock_manual_workflow_run_start(${workspaceCreatorId}::uuid,${workflowId}::uuid,${`workflow:${workflowId}:manual`},${keyHash})`,
+  );
+}
+
+export function initialCheckpoint() {
+  return {
+    schemaVersion: 2,
+    engineVersion: 'phase0-engine-v1',
+    workflowVersionId,
+    revision: 0,
+    runStatus: 'queued',
+    nextEventSequence: 2,
+    readySet: [],
+    admittedInvocationKeys: [],
+    invocations: [],
+    joins: [],
+    loops: [],
+    remainingIterationBudget: 0,
+    cancelRequested: false,
+    deadlineExpired: false,
+    branchSelections: [],
+  } as const;
+}
+
+export async function expectAcceptanceRecordCounts(
+  expected: number,
+): Promise<void> {
+  await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+    const tables = [
+      idempotencyRecords,
+      workflowRuns,
+      runEvents,
+      runCheckpoints,
+      outboxEvents,
+    ] as const;
+    for (const table of tables) {
+      expect(await db.select({ count: count() }).from(table)).toEqual([
+        { count: expected },
+      ]);
+    }
+  });
+}
+
+export async function waitForDatabaseLock(
+  processId: number,
+  relationship: 'blocker' | 'waiter' = 'blocker',
+): Promise<void> {
+  const observer = new Pool({ connectionString: migrationUrl, max: 1 });
+  const deadline = Date.now() + 2_000;
+  try {
+    while (Date.now() < deadline) {
+      const result = await observer.query<{ blocked: boolean }>(
+        `select exists (
+           select 1 from pg_stat_activity
+            where ($2::text='blocker' and $1::int=any(pg_blocking_pids(pid)))
+               or ($2::text='waiter' and pid=$1::int
+                   and cardinality(pg_blocking_pids(pid)) > 0)
+         ) blocked`,
+        [processId, relationship],
+      );
+      if (result.rows[0]?.blocked === true) return;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error(
+      `Timed out waiting for ${relationship} database process ${String(processId)}`,
+    );
+  } finally {
+    await observer.end();
+  }
+}
+
+async function resetExecutionFixture(): Promise<void> {
+  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+  let client: PoolClient | undefined;
+  try {
+    client = await pool.connect();
+    await client.query('begin');
+    await client.query('set local role pertexo_owner');
+    await client.query(`
+      truncate table
+        app.idempotency_records,
+        app.run_events,
+        app.run_checkpoints,
+        app.workflow_runs,
+        app.outbox_events,
+        app.workflow_failure_notification_policies,
+        app.failure_notification_destination_versions,
+        app.failure_notification_destinations,
+        app.connection_secret_versions,
+        app.connections,
+        app.workflows
+      cascade
+    `);
+    await client.query(
+      `insert into app.users (id, email, display_name, status)
+       values ($1, $2, 'Execution fixture owner', 'active')
+       on conflict (id) do update set status = 'active'`,
+      [workspaceCreatorId, `execution-${workspaceCreatorId}@example.test`],
+    );
+    await client.query(
+      `insert into app.workspaces (id, name, slug, status, created_by)
+       values
+         ($1, 'Execution A', $3, 'active', $5),
+         ($2, 'Execution B', $4, 'active', $5)
+        on conflict (id) do update set
+          name = excluded.name,
+          slug = excluded.slug,
+          status = 'active',
+          created_by = excluded.created_by,
+          deletion_requested_at = null,
+         deletion_requested_by = null,
+         deletion_reason = null,
+         purge_after = null`,
+      [
+        workspaceA,
+        workspaceB,
+        `execution-a-${workspaceA}`,
+        `execution-b-${workspaceB}`,
+        workspaceCreatorId,
+      ],
+    );
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
+    await client.query(
+      `insert into app.workspace_memberships(workspace_id,user_id,role,status)
+      values($1,$2,'owner','active') on conflict(workspace_id,user_id) do update set status='active'`,
+      [workspaceA, workspaceCreatorId],
+    );
+    await client.query(
+      `update app.workspace_execution_entitlements set current_version=1
+        where workspace_id=$1`,
+      [workspaceA],
+    );
+    await client.query('commit');
+  } catch (error: unknown) {
+    await client?.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client?.release();
+    await pool.end();
+  }
+}
+
+export async function createNotificationFixture(
+  input: Readonly<{
+    connectionKind?: 'email' | 'slack';
+    destinationKind?: 'email' | 'slack';
+  }> = {},
+): Promise<
+  Readonly<{
+    connectionId: string;
+    destinationId: string;
+    secretVersionId: string;
+  }>
+> {
+  const connectionKind = input.connectionKind ?? 'email';
+  const destinationKind = input.destinationKind ?? 'email';
+  const connectionId = generatePersistedId();
+  const destinationId = randomUUID();
+  const secretVersionId = randomUUID();
+  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+  let client: PoolClient | undefined;
+  const protectedTables = [
+    'workflows',
+    'connections',
+    'connection_secret_versions',
+    'failure_notification_destinations',
+    'failure_notification_destination_versions',
+  ] as const;
+  try {
+    client = await pool.connect();
+    await client.query('begin');
+    await client.query('set local role pertexo_owner');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
+    for (const table of protectedTables)
+      await client.query(
+        `alter table app.${table} no force row level security`,
+      );
+    await client.query(
+      `insert into app.workflows (id,workspace_id,name,created_by)
+       values ($1,$2,'Notification pin fixture',$3)
+       on conflict (id) do nothing`,
+      [workflowId, workspaceA, workspaceCreatorId],
+    );
+    await client.query(
+      `insert into app.connections (
+         id,workspace_id,provider_key,name,auth_type,status,
+         current_secret_version_id,created_by
+       ) values ($1,$2,$3,$7,$4,'active',$5,$6)`,
+      [
+        connectionId,
+        workspaceA,
+        connectionKind,
+        connectionKind === 'slack' ? 'slack_bot_token' : 'resend_api_key',
+        secretVersionId,
+        workspaceCreatorId,
+        `Notification pin ${connectionId}`,
+      ],
+    );
+    await client.query(
+      `insert into app.connection_secret_versions (
+         id,workspace_id,connection_id,schema_version,kms_key_reference,
+         encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+       ) values ($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+         'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
+      [secretVersionId, workspaceA, connectionId, workspaceCreatorId],
+    );
+    await client.query(
+      `insert into app.failure_notification_destinations
+         (id,workspace_id,kind,status,current_config_version,created_by)
+       values ($1,$2,$3,'enabled',1,$4)`,
+      [destinationId, workspaceA, destinationKind, workspaceCreatorId],
+    );
+    await client.query(
+      `insert into app.failure_notification_destination_versions
+         (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+       values ($1,$2,1,$3,$4,$5::jsonb,$6)`,
+      [
+        workspaceA,
+        destinationId,
+        destinationKind,
+        destinationKind === 'slack' ? 'unsafe' : 'idempotent_with_key',
+        JSON.stringify(
+          destinationKind === 'slack'
+            ? { connectionId, channelId: 'C12345' }
+            : { connectionId, toEmail: 'pin@example.test' },
+        ),
+        workspaceCreatorId,
+      ],
+    );
+    await client.query('set constraints all immediate');
+    for (const table of protectedTables)
+      await client.query(`alter table app.${table} force row level security`);
+    await client.query('commit');
+    return { connectionId, destinationId, secretVersionId };
+  } catch (error: unknown) {
+    await client?.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client?.release();
+    await pool.end();
+  }
+}
+
+export async function insertDirectPinnedRun(
+  pin: Readonly<{
+    destinationId: string;
+    secretVersionId: string;
+    sideEffectClass: 'idempotent_with_key' | 'unsafe';
+  }>,
+): Promise<void> {
+  await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+    db
+      .execute(
+        sql`
+      insert into app.workflow_runs (
+        id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
+        failure_notification_policy_version,
+        failure_notification_destination_id,
+        failure_notification_destination_config_version,
+        failure_notification_side_effect_class,
+        failure_notification_connection_secret_version_id
+      ) values (${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},
+        'api','queued',1,${pin.destinationId},1,${pin.sideEffectClass},
+        ${pin.secretVersionId})
+    `,
+      )
+      .then(() => undefined),
+  );
+}
+
+export async function setFixtureStatus(
+  table: 'connections' | 'failure_notification_destinations' | 'workspaces',
+  id: string,
+  status: string,
+): Promise<void> {
+  const pool = new Pool({
+    connectionString: table === 'workspaces' ? migrationUrl : apiUrl,
+    max: 1,
+  });
+  let client: PoolClient | undefined;
+  try {
+    client = await pool.connect();
+    await client.query('begin');
+    if (table === 'workspaces')
+      await client.query('set local role pertexo_owner');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
+    const updated = await client.query(
+      `update app.${table} set status=$2 where id=$1`,
+      [id, status],
+    );
+    if (updated.rowCount !== 1) throw new Error('Fixture status update failed');
+    await client.query('commit');
+  } catch (error: unknown) {
+    await client?.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client?.release();
+    await pool.end();
+  }
+}
+
+export async function setNotificationPolicy(
+  destinationId: string,
+): Promise<void> {
+  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  let client: PoolClient | undefined;
+  try {
+    client = await pool.connect();
+    await client.query('begin');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
+    await client.query(
+      `insert into app.workflow_failure_notification_policies
+         (workspace_id,workflow_id,destination_id,updated_by)
+       values ($1,$2,$3,$4)`,
+      [workspaceA, workflowId, destinationId, workspaceCreatorId],
+    );
+    await client.query('commit');
+  } catch (error: unknown) {
+    await client?.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client?.release();
+    await pool.end();
+  }
+}
+
+export function installExecutionAcceptanceFixture(): void {
+  beforeAll(async () => {
+    await disposableDatabase.create();
+    try {
+      await migrateDatabase(migrationConfig);
+      apiDatabase = createWorkspaceDatabase(
+        parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+      );
+      workerDatabase = createWorkspaceDatabase(
+        parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
+      );
+      dispatcherDatabase = createOutboxDispatcherDatabase(
+        parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
+      );
+      resourcesCreated = true;
+    } catch (error: unknown) {
+      await disposableDatabase.drop().catch(() => undefined);
+      throw error;
+    }
+  });
+  beforeEach(resetExecutionFixture);
+  afterAll(async () => {
+    const outcomes = resourcesCreated
+      ? await Promise.allSettled([
+          apiDatabase.close(),
+          dispatcherDatabase.close(),
+          workerDatabase.close(),
+        ])
+      : [];
+    const failures = outcomes.flatMap((outcome) =>
+      outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+    );
+    try {
+      await disposableDatabase.drop();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Acceptance fixture cleanup failed');
+  });
+}
