@@ -1,12 +1,12 @@
 import { expect } from '@playwright/test';
-import { test } from './support/browser-fixture';
+import { test } from '../support/browser-fixture';
 import {
   createEditorWorkspace,
   registerEditorUser,
-} from './support/ordinary-editor-session';
-import { authorNestedMappingGraph } from './support/nested-editor-authoring';
-import { verifyEditorConflictAndImmutableRun } from './support/editor-conflict-recovery';
-import { verifyEditorWorkspaceIsolation } from './support/editor-workspace-isolation';
+} from '../support/ordinary-editor-session';
+import { authorNestedMappingGraph } from '../support/authoring/nested';
+import { verifyEditorConflictAndImmutableRun } from '../support/editor-conflict-recovery';
+import { verifyEditorWorkspaceIsolation } from '../support/editor-workspace-isolation';
 import {
   workflowDraftResponseSchema,
   workflowVersionsResponseSchema,

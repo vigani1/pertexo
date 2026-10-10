@@ -3,7 +3,7 @@ import {
   scheduleFireTimesResponseSchema,
   schedulePreviewRequestSchema,
 } from '@pertexo/contracts';
-import { addSingleStep, readEditorDraft } from './single-step-authoring';
+import { addSingleStep, readEditorDraft } from './single-step';
 
 /** Uses ordinary inspector controls; requests only observe the saved graph. */
 export async function authorScheduledNestedGraph(

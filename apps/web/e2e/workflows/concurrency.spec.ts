@@ -6,8 +6,8 @@ import {
   workspaceId,
   workflowId,
   editorUrl,
-} from './workflow-editor-support';
-import { defaultConcurrencySettings } from '../test/support/fixtures/concurrency';
+} from '../workflow-editor/support';
+import { defaultConcurrencySettings } from '../../test/support/fixtures/concurrency';
 
 async function settingsReads(page: Parameters<typeof installEditorRoutes>[0]) {
   await page.route('**/step-health', (route) =>

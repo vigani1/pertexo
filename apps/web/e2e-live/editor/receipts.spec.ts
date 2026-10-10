@@ -6,17 +6,17 @@ import {
   workflowRunStartResponseSchema,
   workflowNodeRunOutputResponseSchema,
 } from '@pertexo/contracts';
-import { test } from './support/browser-fixture';
+import { test } from '../support/browser-fixture';
 import {
   createEditorWorkspace,
   registerEditorUser,
-} from './support/ordinary-editor-session';
+} from '../support/ordinary-editor-session';
 import {
   addSingleStep,
   createEditorWorkflow,
   readEditorDraft,
   waitForRun,
-} from './support/single-step-authoring';
+} from '../support/authoring/single-step';
 
 test('committed publish and run responses recover their exact original commands', async ({
   page,

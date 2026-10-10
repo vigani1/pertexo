@@ -8,7 +8,7 @@ import {
   remoteDraft,
   workspace,
   type RemoteDraft,
-} from './workflow-editor-support';
+} from './support';
 
 const forEachDefinition = {
   ...definition,

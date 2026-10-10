@@ -9,7 +9,7 @@ import {
   mappingGraph,
   remoteDraft,
   user,
-} from './workflow-editor-support';
+} from './support';
 
 test('applies schema controls live and keeps invalid numbers as guarded scratch', async ({
   context,

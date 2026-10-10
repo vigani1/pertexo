@@ -16,8 +16,8 @@ import {
   createEditorWorkspace,
   registerEditorUser,
 } from './support/ordinary-editor-session';
-import { readTaggedExpressionDraft } from './support/expression-editor-authoring';
-import { waitForRun } from './support/single-step-authoring';
+import { readTaggedExpressionDraft } from './support/authoring/expression';
+import { waitForRun } from './support/authoring/single-step';
 
 async function csrf(page: Page) {
   const cookie = (await page.context().cookies()).find(

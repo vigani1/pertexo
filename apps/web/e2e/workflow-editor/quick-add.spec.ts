@@ -7,7 +7,7 @@ import {
   manualDefinition,
   mappingGraph,
   remoteDraft,
-} from './workflow-editor-support';
+} from './support';
 
 test('drops a connection on empty canvas to add a connected step there, undone in one step', async ({
   context,

@@ -17,7 +17,7 @@ import {
 import {
   createEditorWorkflow,
   waitForRun,
-} from './support/single-step-authoring';
+} from './support/authoring/single-step';
 
 test.afterEach(async ({ page }, info) => {
   if (info.status !== info.expectedStatus && !page.isClosed()) {

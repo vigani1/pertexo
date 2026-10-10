@@ -8,7 +8,7 @@ import {
   workflowId,
   workspace,
   workspaceId,
-} from './workflow-editor-support';
+} from '../workflow-editor/support';
 
 test('keeps a workflow copy exact through retry and postflight outages until verified recovery', async ({
   context,

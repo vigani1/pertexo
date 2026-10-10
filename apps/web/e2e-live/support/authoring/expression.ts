@@ -3,7 +3,7 @@ import {
   strongEtagSchema,
   workflowDraftResponseSchema,
 } from '@pertexo/contracts';
-import { addSingleStep, readEditorDraft } from './single-step-authoring';
+import { addSingleStep, readEditorDraft } from './single-step';
 
 export async function readTaggedExpressionDraft(
   page: Page,
