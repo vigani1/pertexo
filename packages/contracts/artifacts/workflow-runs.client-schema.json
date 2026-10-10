@@ -1,5 +1,4 @@
 {
-  "schemaVersion": "1.0.0",
   "schemas": {
     "UsageCapacityResponse": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2097,10 +2096,6 @@
         "payload": {
           "type": "object",
           "properties": {
-            "schemaVersion": {
-              "type": "number",
-              "const": 1
-            },
             "invocationKey": {
               "type": "string",
               "minLength": 1,
@@ -2184,9 +2179,6 @@
               ]
             }
           },
-          "required": [
-            "schemaVersion"
-          ],
           "additionalProperties": false
         }
       },

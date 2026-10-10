@@ -43,7 +43,6 @@ export async function resolveValueSource(
   }
   const request = {
     expression: source.expression,
-    policyVersion: source.policyVersion,
     context,
     ...(signal === undefined ? {} : { signal }),
   };

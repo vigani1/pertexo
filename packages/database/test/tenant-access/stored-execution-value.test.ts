@@ -3,10 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import {
-  EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1,
-  parseStoredExecutionValueV1,
-  serializeStoredExecutionValueV1,
-  STORED_EXECUTION_VALUE_LIMITS_V1,
+  EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES,
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
+  STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
 } from '../../src/platform/stored-execution-value.js';
 
@@ -48,22 +48,32 @@ function seededJsonCases(seed: number, count: number): unknown[] {
   return Array.from({ length: count }, () => create(3));
 }
 
-describe('StoredExecutionValueV1', () => {
+describe('StoredExecutionValue', () => {
+  it('preserves format-like field names in user JSON', () => {
+    const value = {
+      schemaVersion: 17,
+      engineVersion: 'customer-engine',
+      policyVersion: 42,
+      formatVersion: 3,
+    };
+    const stored = { kind: 'inline', value };
+    expect(
+      parseStoredExecutionValue(serializeStoredExecutionValue(stored)),
+    ).toEqual(stored);
+  });
   it('round-trips inline JSON at the exact encoded-value byte limit', () => {
-    const value = 'x'.repeat(STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes - 2);
-    const stored = parseStoredExecutionValueV1({
-      schemaVersion: 1,
+    const value = 'x'.repeat(STORED_EXECUTION_VALUE_LIMITS.inlineBytes - 2);
+    const stored = parseStoredExecutionValue({
       kind: 'inline',
       value,
     });
 
-    expect(stored).toEqual({ schemaVersion: 1, kind: 'inline', value });
+    expect(stored).toEqual({ kind: 'inline', value });
     expect(
-      parseStoredExecutionValueV1(serializeStoredExecutionValueV1(stored)),
+      parseStoredExecutionValue(serializeStoredExecutionValue(stored)),
     ).toEqual(stored);
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: `${value}x`,
       }),
@@ -72,42 +82,34 @@ describe('StoredExecutionValueV1', () => {
 
   it('accepts exactly 64 levels and 10,000 members but rejects the next one', () => {
     let depth64: unknown = null;
-    for (
-      let depth = 0;
-      depth < STORED_EXECUTION_VALUE_LIMITS_V1.depth;
-      depth += 1
-    )
+    for (let depth = 0; depth < STORED_EXECUTION_VALUE_LIMITS.depth; depth += 1)
       depth64 = [depth64];
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: depth64,
       }),
     ).not.toThrow();
 
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: [depth64],
       }),
     ).toThrow(StoredExecutionValueInvalidError);
 
     const exactMembers = Array.from(
-      { length: STORED_EXECUTION_VALUE_LIMITS_V1.members },
+      { length: STORED_EXECUTION_VALUE_LIMITS.members },
       () => null,
     );
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: exactMembers,
       }),
     ).not.toThrow();
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: [...exactMembers, null],
       }),
@@ -121,14 +123,12 @@ describe('StoredExecutionValueV1', () => {
         nested: [{ ok: true }],
       },
     );
-    const stored = parseStoredExecutionValueV1({
-      schemaVersion: 1,
+    const stored = parseStoredExecutionValue({
       kind: 'inline',
       value: source,
     });
 
     expect(stored).toEqual({
-      schemaVersion: 1,
       kind: 'inline',
       value: { nested: [{ ok: true }] },
     });
@@ -158,13 +158,12 @@ describe('StoredExecutionValueV1', () => {
 
   it('counts escaped controls and multibyte keys and values by canonical UTF-8 bytes', () => {
     for (const value of [{ '\n': '\n' }, { é: '界' }, { emoji: '😀' }]) {
-      const serialized = serializeStoredExecutionValueV1({
-        schemaVersion: 1,
+      const serialized = serializeStoredExecutionValue({
         kind: 'inline',
         value,
       });
       const encodedValue = serialized.slice(
-        '{"kind":"inline","schemaVersion":1,"value":'.length,
+        '{"kind":"inline","value":'.length,
         -1,
       );
       expect(Buffer.byteLength(encodedValue, 'utf8')).toBe(
@@ -174,23 +173,19 @@ describe('StoredExecutionValueV1', () => {
   });
 
   it('applies the serialized JSONB backstop before parsing stored text', () => {
-    const oversized = ' '.repeat(
-      EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1 + 1,
-    );
-    expect(() => parseStoredExecutionValueV1(oversized)).toThrow(
+    const oversized = ' '.repeat(EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES + 1);
+    expect(() => parseStoredExecutionValue(oversized)).toThrow(
       StoredExecutionValueInvalidError,
     );
   });
 
   it('preserves numeric exponent semantics while keeping the application encoding distinct', () => {
-    const serialized = serializeStoredExecutionValueV1({
-      schemaVersion: 1,
+    const serialized = serializeStoredExecutionValue({
       kind: 'inline',
       value: 1e-300,
     });
     expect(serialized).toContain('1e-300');
-    expect(parseStoredExecutionValueV1(serialized)).toEqual({
-      schemaVersion: 1,
+    expect(parseStoredExecutionValue(serialized)).toEqual({
       kind: 'inline',
       value: 1e-300,
     });
@@ -201,8 +196,7 @@ describe('StoredExecutionValueV1', () => {
       enumerable: true,
       value: { safe: true },
     });
-    const parsed = parseStoredExecutionValueV1({
-      schemaVersion: 1,
+    const parsed = parseStoredExecutionValue({
       kind: 'inline',
       value,
     });
@@ -219,19 +213,15 @@ describe('StoredExecutionValueV1', () => {
 
   it('serializes objects canonically without changing the exact value bound', () => {
     expect(
-      serializeStoredExecutionValueV1({
-        schemaVersion: 1,
+      serializeStoredExecutionValue({
         kind: 'inline',
         value: { z: 1, a: { y: 2, b: 3 } },
       }),
-    ).toBe(
-      '{"kind":"inline","schemaVersion":1,"value":{"a":{"b":3,"y":2},"z":1}}',
-    );
+    ).toBe('{"kind":"inline","value":{"a":{"b":3,"y":2},"z":1}}');
   });
 
   it('normalizes negative zero to the persisted JSON value', () => {
-    const parsed = parseStoredExecutionValueV1({
-      schemaVersion: 1,
+    const parsed = parseStoredExecutionValue({
       kind: 'inline',
       value: -0,
     });
@@ -239,8 +229,8 @@ describe('StoredExecutionValueV1', () => {
       throw new Error('inline fixture was not retained');
     expect(Object.is(parsed.value, 0)).toBe(true);
     expect(Object.is(parsed.value, -0)).toBe(false);
-    expect(serializeStoredExecutionValueV1(parsed)).toBe(
-      '{"kind":"inline","schemaVersion":1,"value":0}',
+    expect(serializeStoredExecutionValue(parsed)).toBe(
+      '{"kind":"inline","value":0}',
     );
   });
 
@@ -268,12 +258,11 @@ describe('StoredExecutionValueV1', () => {
         value: hook,
       });
       expect(
-        serializeStoredExecutionValueV1({
-          schemaVersion: 1,
+        serializeStoredExecutionValue({
           kind: 'inline',
           value: { nested: [1, 2, 3] },
         }),
-      ).toBe('{"kind":"inline","schemaVersion":1,"value":{"nested":[1,2,3]}}');
+      ).toBe('{"kind":"inline","value":{"nested":[1,2,3]}}');
       expect(hookCalls).toBe(0);
     } finally {
       if (objectDescriptor === undefined)
@@ -287,18 +276,17 @@ describe('StoredExecutionValueV1', () => {
 
   it('rejects oversized dense arrays, objects, and envelopes', () => {
     const dense = Array.from(
-      { length: STORED_EXECUTION_VALUE_LIMITS_V1.members + 1 },
+      { length: STORED_EXECUTION_VALUE_LIMITS.members + 1 },
       () => null,
     );
     const wide: Record<string, null> = {};
     for (
       let index = 0;
-      index <= STORED_EXECUTION_VALUE_LIMITS_V1.members;
+      index <= STORED_EXECUTION_VALUE_LIMITS.members;
       index += 1
     )
       wide[`field-${String(index)}`] = null;
     const wideEnvelope: Record<string, unknown> = {
-      schemaVersion: 1,
       kind: 'inline',
       value: null,
     };
@@ -307,14 +295,13 @@ describe('StoredExecutionValueV1', () => {
 
     for (const candidate of [dense, wide]) {
       expect(() =>
-        parseStoredExecutionValueV1({
-          schemaVersion: 1,
+        parseStoredExecutionValue({
           kind: 'inline',
           value: candidate,
         }),
       ).toThrow(StoredExecutionValueInvalidError);
     }
-    expect(() => parseStoredExecutionValueV1(wideEnvelope)).toThrow(
+    expect(() => parseStoredExecutionValue(wideEnvelope)).toThrow(
       StoredExecutionValueInvalidError,
     );
   });
@@ -327,8 +314,7 @@ describe('StoredExecutionValueV1', () => {
       { [hugeKey]: null },
     ]) {
       expect(() =>
-        parseStoredExecutionValueV1({
-          schemaVersion: 1,
+        parseStoredExecutionValue({
           kind: 'inline',
           value,
         }),
@@ -341,24 +327,22 @@ describe('StoredExecutionValueV1', () => {
     ['lone high surrogate value', '\ud800'],
     ['lone low surrogate value', '\udc00'],
   ])('rejects PostgreSQL-incompatible %s', (_name, value) => {
-    expect(() =>
-      parseStoredExecutionValueV1({ schemaVersion: 1, kind: 'inline', value }),
-    ).toThrow(StoredExecutionValueInvalidError);
+    expect(() => parseStoredExecutionValue({ kind: 'inline', value })).toThrow(
+      StoredExecutionValueInvalidError,
+    );
   });
 
   it('rejects PostgreSQL-incompatible keys and accepts valid Unicode pairs', () => {
     for (const key of ['bad\u0000key', 'bad\ud800key', 'bad\udc00key']) {
       expect(() =>
-        parseStoredExecutionValueV1({
-          schemaVersion: 1,
+        parseStoredExecutionValue({
           kind: 'inline',
           value: { [key]: true },
         }),
       ).toThrow(StoredExecutionValueInvalidError);
     }
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: { 'emoji-😀': '😀' },
       }),
@@ -379,8 +363,7 @@ describe('StoredExecutionValueV1', () => {
     ['non-plain object', () => new Date(0)],
   ])('rejects %s input without invoking user code', (_name, createValue) => {
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: createValue(),
       }),
@@ -391,8 +374,7 @@ describe('StoredExecutionValueV1', () => {
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: cyclic,
       }),
@@ -400,8 +382,7 @@ describe('StoredExecutionValueV1', () => {
 
     const shared = { value: 1 };
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: [shared, shared],
       }),
@@ -416,8 +397,7 @@ describe('StoredExecutionValueV1', () => {
       },
     });
     expect(() =>
-      parseStoredExecutionValueV1({
-        schemaVersion: 1,
+      parseStoredExecutionValue({
         kind: 'inline',
         value: accessor,
       }),
@@ -435,8 +415,7 @@ describe('StoredExecutionValueV1', () => {
     const symbolField = { [Symbol('hidden')]: true };
     for (const value of [revoked.proxy, hidden, symbolField])
       expect(() =>
-        parseStoredExecutionValueV1({
-          schemaVersion: 1,
+        parseStoredExecutionValue({
           kind: 'inline',
           value,
         }),
@@ -446,62 +425,54 @@ describe('StoredExecutionValueV1', () => {
   it('matches an independent bounded canonical JSON oracle for seed 163', () => {
     for (const value of seededJsonCases(163, 200)) {
       expect(
-        serializeStoredExecutionValueV1({
-          schemaVersion: 1,
+        serializeStoredExecutionValue({
           kind: 'inline',
           value,
         }),
-      ).toBe(
-        `{"kind":"inline","schemaVersion":1,"value":${canonicalJsonOracle(value)}}`,
-      );
+      ).toBe(`{"kind":"inline","value":${canonicalJsonOracle(value)}}`);
     }
   });
 
   it('round-trips an artifact reference and rejects malformed envelopes', () => {
     const artifactId = randomUUID();
     expect(
-      parseStoredExecutionValueV1(
-        serializeStoredExecutionValueV1({
-          schemaVersion: 1,
+      parseStoredExecutionValue(
+        serializeStoredExecutionValue({
           kind: 'artifact',
           artifactId,
         }),
       ),
-    ).toEqual({ schemaVersion: 1, kind: 'artifact', artifactId });
+    ).toEqual({ kind: 'artifact', artifactId });
 
     for (const malformed of [
-      { schemaVersion: 2, kind: 'artifact', artifactId },
-      { schemaVersion: 1, kind: 'artifact', artifactId: 'not-a-uuid' },
+      { kind: 'artifact', artifactId: 'not-a-uuid' },
       {
-        schemaVersion: 1,
         kind: 'artifact',
         artifactId: '00000000-0000-0000-8000-000000000000',
       },
       {
-        schemaVersion: 1,
         kind: 'artifact',
         artifactId: '00000000-0000-4000-0000-000000000000',
       },
       {
-        schemaVersion: 1,
         kind: 'artifact',
         artifactId: artifactId.toUpperCase(),
       },
-      { schemaVersion: 1, kind: 'artifact', artifactId, extra: true },
-      { schemaVersion: 1, kind: 'inline' },
+      { kind: 'artifact', artifactId, extra: true },
+      { kind: 'inline' },
       '{not json',
     ]) {
-      expect(() => parseStoredExecutionValueV1(malformed)).toThrow(
+      expect(() => parseStoredExecutionValue(malformed)).toThrow(
         StoredExecutionValueInvalidError,
       );
     }
 
     const hidden = Object.defineProperty(
-      { schemaVersion: 1, kind: 'artifact', artifactId },
+      { kind: 'artifact', artifactId },
       'hidden',
       { enumerable: false, value: true },
     );
-    expect(() => parseStoredExecutionValueV1(hidden)).toThrow(
+    expect(() => parseStoredExecutionValue(hidden)).toThrow(
       StoredExecutionValueInvalidError,
     );
   });

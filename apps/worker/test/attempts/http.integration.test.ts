@@ -200,7 +200,7 @@ async function readSourceRunHistory(runId: string) {
       [workspaceId, runId],
     ),
     workerQuery(
-      `select revision,engine_version,scheduler_state
+      `select revision,scheduler_state
          from app.run_checkpoints
         where workspace_id=$1 and workflow_run_id=$2`,
       [workspaceId, runId],
@@ -250,7 +250,6 @@ function attemptJob(
   return {
     name: JOB_NAME.executeNodeAttempt,
     data: {
-      schemaVersion: 1 as const,
       workspaceId,
       runId,
       nodeRunId: attempt.node_run_id,
@@ -277,7 +276,6 @@ async function admitProviderScenario(
     {
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId,
         runId: accepted.runId,
         outboxEventId: accepted.outboxEventId,
@@ -303,7 +301,6 @@ async function admitProviderScenario(
     {
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId,
         runId: accepted.runId,
         outboxEventId: admissionOutbox,
@@ -332,7 +329,6 @@ async function advanceScenario(
     {
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId,
         runId,
         outboxEventId,
@@ -430,7 +426,6 @@ describeIntegration('active HTTP node attempt', () => {
     const seal = async (secretVersionId: string) => {
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
-          schemaVersion: 1,
           type: 'http_headers',
           headers: { authorization: plaintextSecret },
         }),
@@ -586,7 +581,6 @@ describeIntegration('active HTTP node attempt', () => {
         const initialCoordinatorJob = await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: accepted.outboxEventId,
@@ -611,7 +605,6 @@ describeIntegration('active HTTP node attempt', () => {
         await producer.publish({
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: manual.node_run_id,
@@ -627,7 +620,6 @@ describeIntegration('active HTTP node attempt', () => {
         const httpAdmission = await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: firstContinuation,
@@ -652,7 +644,6 @@ describeIntegration('active HTTP node attempt', () => {
         const delivery = {
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1 as const,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: http.node_run_id,
@@ -859,7 +850,6 @@ describeIntegration('active HTTP node attempt', () => {
         await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: slackContinuation,
@@ -869,7 +859,6 @@ describeIntegration('active HTTP node attempt', () => {
         const slackDelivery = {
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1 as const,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: slack.node_run_id,
@@ -963,7 +952,6 @@ describeIntegration('active HTTP node attempt', () => {
         await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: emailContinuation,
@@ -973,7 +961,6 @@ describeIntegration('active HTTP node attempt', () => {
         const emailDelivery = {
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1 as const,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: email.node_run_id,
@@ -1021,7 +1008,6 @@ describeIntegration('active HTTP node attempt', () => {
         const retryCoordinatorJob = await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: retryContinuation,
@@ -1054,7 +1040,6 @@ describeIntegration('active HTTP node attempt', () => {
         const dueCoordinatorJob = await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: dueContinuation,
@@ -1074,7 +1059,6 @@ describeIntegration('active HTTP node attempt', () => {
         const retriedEmailDelivery = {
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1 as const,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: retriedEmail.node_run_id,
@@ -1171,7 +1155,6 @@ describeIntegration('active HTTP node attempt', () => {
         await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: rotatedAdmission,
@@ -1184,7 +1167,6 @@ describeIntegration('active HTTP node attempt', () => {
         await producer.publish({
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: rotatedFirst.node_run_id,
@@ -1211,7 +1193,6 @@ describeIntegration('active HTTP node attempt', () => {
         const rotatedRetryJob = await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: rotatedRetry,
@@ -1230,7 +1211,6 @@ describeIntegration('active HTTP node attempt', () => {
 
         const rotatedSecret = new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 1,
             type: 'resend_api_key',
             apiKey: rotatedResendApiKey,
             fromEmail: 'sender@example.test',
@@ -1264,7 +1244,6 @@ describeIntegration('active HTTP node attempt', () => {
         await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: rotatedDue,
@@ -1278,7 +1257,6 @@ describeIntegration('active HTTP node attempt', () => {
         await producer.publish({
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             nodeRunId: rotatedSecond.node_run_id,
@@ -1323,7 +1301,6 @@ describeIntegration('active HTTP node attempt', () => {
         await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
-            schemaVersion: 1,
             workspaceId,
             runId: accepted.runId,
             outboxEventId: rotatedTerminalContinuation,
@@ -1452,12 +1429,10 @@ describeIntegration('active HTTP node attempt', () => {
             JSON.stringify(
               target === 'http'
                 ? {
-                    schemaVersion: 1,
                     type: 'http_headers',
                     headers: { authorization: 'Bearer rotated-http' },
                   }
                 : {
-                    schemaVersion: 1,
                     type: 'slack_bot_token',
                     botToken: 'xoxb-rotated-slack',
                   },
@@ -1506,7 +1481,6 @@ describeIntegration('active HTTP node attempt', () => {
           {
             name: JOB_NAME.advanceWorkflowRun,
             data: {
-              schemaVersion: 1,
               workspaceId,
               runId: accepted.runId,
               outboxEventId: accepted.outboxEventId,
@@ -1522,7 +1496,6 @@ describeIntegration('active HTTP node attempt', () => {
           {
             name: JOB_NAME.executeNodeAttempt,
             data: {
-              schemaVersion: 1 as const,
               workspaceId,
               runId: accepted.runId,
               nodeRunId: manual.node_run_id,
@@ -1542,7 +1515,6 @@ describeIntegration('active HTTP node attempt', () => {
           {
             name: JOB_NAME.advanceWorkflowRun,
             data: {
-              schemaVersion: 1,
               workspaceId,
               runId: accepted.runId,
               outboxEventId: firstContinuation,
@@ -1558,7 +1530,6 @@ describeIntegration('active HTTP node attempt', () => {
           {
             name: JOB_NAME.executeNodeAttempt,
             data: {
-              schemaVersion: 1 as const,
               workspaceId,
               runId: accepted.runId,
               nodeRunId: httpAttempt.node_run_id,
@@ -1594,7 +1565,6 @@ describeIntegration('active HTTP node attempt', () => {
             {
               name: JOB_NAME.advanceWorkflowRun,
               data: {
-                schemaVersion: 1,
                 workspaceId,
                 runId: accepted.runId,
                 outboxEventId: slackContinuation,
@@ -1609,7 +1579,6 @@ describeIntegration('active HTTP node attempt', () => {
             {
               name: JOB_NAME.executeNodeAttempt,
               data: {
-                schemaVersion: 1 as const,
                 workspaceId,
                 runId: accepted.runId,
                 nodeRunId: targetAttempt.node_run_id,
@@ -1658,7 +1627,6 @@ describeIntegration('active HTTP node attempt', () => {
           {
             name: JOB_NAME.advanceWorkflowRun,
             data: {
-              schemaVersion: 1,
               workspaceId,
               runId: accepted.runId,
               outboxEventId: terminalContinuation,
@@ -2576,7 +2544,6 @@ describeIntegration('active HTTP node attempt', () => {
         result: {
           fenceToken: 2,
           outcome: 'reclaimed',
-          schemaVersion: 1,
         },
       });
       const reclaimedOutboxEventId = reclaimed.result.outboxEventId;
@@ -2628,7 +2595,6 @@ describeIntegration('active HTTP node attempt', () => {
         const recoveryDelivery = {
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1 as const,
             workspaceId,
             runId: scenario.accepted.runId,
             nodeRunId: scenario.attempt.node_run_id,
@@ -2817,7 +2783,6 @@ describeIntegration('active HTTP node attempt', () => {
             payloadChecksum: canonicalOutboxPayloadChecksum({
               commandId,
               outboxEventId: replayOutboxId,
-              schemaVersion: 1,
               workspaceId,
             }),
           },
@@ -2835,7 +2800,6 @@ describeIntegration('active HTTP node attempt', () => {
           {
             name: JOB_NAME.advanceWorkflowRun,
             data: {
-              schemaVersion: 1,
               workspaceId,
               runId: replayed.runId,
               outboxEventId: replayInitialOutbox,

@@ -187,7 +187,6 @@ describeIntegration(
           jobName: JOB_NAME.reconcileWorkflowTriggers,
           payload,
           payloadChecksum: checksum(payload),
-          schemaVersion: 1,
         }).then(() => undefined),
       );
       const consumerStarted = deferred('ready consumer started');
@@ -439,7 +438,6 @@ describeIntegration(
           data: {
             ...(event.payload as { runId: string }),
             outboxEventId: event.id,
-            schemaVersion: 1,
             workspaceId,
           },
         });

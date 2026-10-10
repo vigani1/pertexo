@@ -6,7 +6,6 @@ import {
 } from '../../../src/workflow-authoring/http/etag.js';
 
 const graph = {
-  schemaVersion: 1,
   nodes: [],
   edges: [],
   settings: {},
@@ -30,11 +29,11 @@ describe('workflow authoring strong draft ETag', () => {
     const first = createDraftRepresentationTag(representation());
     const second = createDraftRepresentationTag(
       representation({
-        graph: { settings: {}, edges: [], nodes: [], schemaVersion: 1 },
+        graph: { settings: {}, edges: [], nodes: [] },
       }),
     );
     expect(first).toBe(second);
-    expect(first).toBe('"draft.Z7MH4rsYnl9Ki-Rc1bSoVhtHnkmps60bHqTNgGtP8gE"');
+    expect(first).toBe('"draft.xgc_YSdkqfFBrjRcOUbYwzd2P_MTeGBItWTRYx3XWB0"');
   });
 
   it('changes for workflow, revision, graph, or compatibility identity', () => {

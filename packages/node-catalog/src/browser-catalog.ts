@@ -30,7 +30,6 @@ export type PlatformNodeDefinitionBrowserProjection = Readonly<{
 }>;
 
 export type PlatformNodeDefinitionBrowserCatalog = Readonly<{
-  readonly schemaVersion: 1;
   readonly definitions: readonly PlatformNodeDefinitionBrowserProjection[];
 }>;
 
@@ -78,7 +77,6 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
       }),
     );
   return Object.freeze({
-    schemaVersion: 1,
     definitions: Object.freeze(definitions),
   });
 }

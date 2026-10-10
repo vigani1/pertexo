@@ -98,7 +98,6 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
       );
       expect(terminal[0]?.attempts).toBe('6');
       expect(parseCheckpoint(terminal[0]?.scheduler_state)).toMatchObject({
-        schemaVersion: 2,
         runStatus: 'succeeded',
         joins: [
           {

@@ -542,18 +542,13 @@ now, as one ordered program — not "whenever we touch it".
         manual-start writer fence and the workflow input case writer fence
         (authority checks the API already makes), the preview artifact
         retention trigger and the lifecycle time trigger.
-  - [ ] Numbered stored formats go with the re-squash: digest prefixes
-        (`wf:v2:sha256:`, `wf-compat:v1:`, `trigger:v1:`, `email:v1:`) lose
-        their versions with the check constraints that pin them, and the
-        failure-notification `policy_version` (always 1) goes. The trigger
-        outcome fold loses its always-true `p_enforce` argument. The
-        `schemaVersion` fields in graphs, executables, checkpoints, run
-        events, queue jobs, outbox rows, portable manifests and
-        failure-notification delivery results, the versioned idempotency
-        keys and sealing contexts (`authentication-mail:v1:`,
-        `workspace-invitation:v1:`, `pertexo/authentication-mail/v1/`), the
-        checkpoint `engineVersion` and the `serializeStoredExecutionValueV1`
-        value format go with them.
+  - [x] Numbered stored formats removed before the re-squash: digest
+        prefixes, hash domains, idempotency namespaces and sealing contexts
+        are unversioned. The graph/catalog/executable/checkpoint, expression,
+        run-event/queue/outbox, portable and notification shapes no longer
+        contain single-format markers. The checkpoint development engine label
+        and redundant stored-value version names are gone. The trigger outcome
+        fold has one enforcing path.
     - [x] Versioned names go (migration 0022): digests are
           `<kind>:sha256:<hex>` (`wf:`, `wf-compat:`, `trigger:`, `email:`
           and provider dispatch bindings), the draft ETag is
@@ -563,6 +558,19 @@ now, as one ordered program — not "whenever we touch it".
           versions stay: they name rotated keys, not formats. Rows written
           before this cannot be verified or decrypted, so local databases
           are recreated.
+
+
+    - [x] Format fields go (migration 0024): graph, catalog, executable,
+          checkpoint, expression, queue, event, secret, notification and
+          portable shapes have no redundant format marker. Eight columns are
+          removed; failure-intent uniqueness and run-pin references retain the
+          destination, config, side-effect and secret identities. The trigger
+          fold always enforces its outcome. Function grants and row locks stay.
+          Checksums and template digests are recomputed from the new shapes.
+          Node/config and key versions stay, as do the SDK's genuinely distinct
+          executor ABI versions 1 and 2 and third-party format numbers. User
+          JSON may still use format-like property names. Migration 0023 was
+          already used by the naming follow-up, so this slice is 0024.
 
 **Package pass checklist** (every package, every file):
 1. Purpose: the package does one clear job; anything else moves to its owner.

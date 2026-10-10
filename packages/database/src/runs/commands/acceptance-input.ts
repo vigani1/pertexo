@@ -9,7 +9,6 @@ import { serializeStoredExecutionJsonValue } from '../../platform/stored-executi
  */
 export function prepareWorkflowRunAcceptanceInput(
   input: Readonly<{
-    engineVersion: string;
     initialCheckpoint: unknown;
     replayCommandId?: string | undefined;
     replaySourceRunId?: string | undefined;
@@ -32,7 +31,6 @@ export function prepareWorkflowRunAcceptanceInput(
   > | null;
   if (
     checkpoint?.workflowVersionId !== input.workflowVersionId ||
-    checkpoint.engineVersion !== input.engineVersion ||
     checkpoint.revision !== 0
   )
     throw new TypeError('Initial checkpoint does not belong to this run');

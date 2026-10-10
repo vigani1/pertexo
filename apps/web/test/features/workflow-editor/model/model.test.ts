@@ -27,7 +27,7 @@ import {
 import { bareSetDefinition as definition } from '../../../support/fixtures/workflow-editor';
 
 function emptyGraph(): WorkflowGraphContract {
-  return { schemaVersion: 1, nodes: [], edges: [], settings: {} };
+  return { nodes: [], edges: [], settings: {} };
 }
 
 describe('workflow editor input mapping rows', () => {
@@ -44,7 +44,6 @@ describe('workflow editor input mapping rows', () => {
         kind: 'expression',
         language: 'jsonata',
         expression: 'runInput.customer',
-        policyVersion: 1,
       },
       structured: {
         kind: 'structured_input',
@@ -67,7 +66,6 @@ describe('workflow editor input mapping rows', () => {
     if (sourceNode === undefined || targetNode === undefined)
       throw new Error('expected mapping test nodes');
     const graph: WorkflowGraphContract = {
-      schemaVersion: 1,
       nodes: [
         sourceNode,
         {

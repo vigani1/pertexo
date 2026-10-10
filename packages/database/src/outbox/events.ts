@@ -12,7 +12,6 @@ const outboxEventInputSchema = z
   .object({
     id: z.uuid(),
     jobName: z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u),
-    schemaVersion: z.number().int().positive().max(32_767),
     aggregateType: z.string().regex(/^[a-z][a-z0-9.-]{0,63}$/u),
     aggregateId: z.uuid(),
     payload: z.unknown(),
@@ -332,7 +331,6 @@ export async function insertOutboxEvent(
       id: parsed.id,
       workspaceId: transaction.workspaceId,
       jobName: parsed.jobName,
-      schemaVersion: parsed.schemaVersion,
       aggregateType: parsed.aggregateType,
       aggregateId: parsed.aggregateId,
       payload: JSON.parse(canonicalPayload) as JsonValue,

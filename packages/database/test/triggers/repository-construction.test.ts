@@ -193,7 +193,6 @@ describe('trigger repository construction ownership', () => {
       payload: {},
       payload_checksum: 'a'.repeat(64),
       publish_attempts: 1,
-      schema_version: 1,
       workspace_id: '44444444-4444-4444-8444-444444444444',
     };
     const queries: string[] = [];

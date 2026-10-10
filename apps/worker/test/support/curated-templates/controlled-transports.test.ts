@@ -258,7 +258,6 @@ describe('shared owned curated envelope context', () => {
     };
     const plaintext = Buffer.from(
       JSON.stringify({
-        schemaVersion: 1,
         type: 'slack_bot_token',
         botToken: CURATED_TEMPLATE_FIXTURE.slackBotToken,
       }),

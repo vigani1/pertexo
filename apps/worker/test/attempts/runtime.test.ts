@@ -32,7 +32,6 @@ import { nodeAttemptRuntimeProvider } from '../../src/transport/providers/node-a
 import type { WorkerConfig } from '../../src/config/worker.js';
 
 const STORED_CHECKPOINT = createCheckpoint({
-  engineVersion: 'phase3-engine-v1',
   workflowVersionId: '33333333-3333-4333-8333-333333333333',
   iterationBudget: 0,
   nextEventSequence: 2,
@@ -76,7 +75,6 @@ function delivery(): Extract<QueueDelivery, { name: 'execute-node-attempt' }> {
   return {
     name: JOB_NAME.executeNodeAttempt,
     data: {
-      schemaVersion: 1,
       workspaceId: WORKSPACE_ID,
       runId: RUN_ID,
       nodeRunId: NODE_RUN_ID,
@@ -93,10 +91,9 @@ function projection(): PublishedWorkflow {
     workspaceId: WORKSPACE_ID,
     workflowId: WORKFLOW_ID,
     versionNumber: 1,
-    schemaVersion: 1,
     checksum:
       'wf:sha256:1111111111111111111111111111111111111111111111111111111111111111',
-    executableJson: { schemaVersion: 2 },
+    executableJson: {},
   };
 }
 
@@ -715,7 +712,6 @@ describe('node-attempt runtime', () => {
         {
           name: JOB_NAME.executeNodeAttempt,
           data: {
-            schemaVersion: 1,
             workspaceId: WORKSPACE_ID,
             runId: RUN_ID,
             nodeRunId: NODE_RUN_ID,

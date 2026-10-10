@@ -15,7 +15,6 @@ const node = (id: string): WorkflowNode => ({
   connectionRefs: {},
 });
 const graph = (...nodes: WorkflowNode[]): WorkflowGraph => ({
-  schemaVersion: 1,
   settings: {},
   nodes,
   edges: [],

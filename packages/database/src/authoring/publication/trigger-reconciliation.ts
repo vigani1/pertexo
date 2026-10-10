@@ -21,7 +21,6 @@ export function reconcileWorkflowTriggersPayload(
   }>,
 ): Record<string, unknown> {
   return Object.freeze({
-    schemaVersion: 1,
     workspaceId: uuidSchema.parse(input.workspaceId),
     outboxEventId: uuidSchema.parse(input.outboxEventId),
     workflowId: uuidSchema.parse(input.workflowId),

@@ -37,7 +37,6 @@ const {
   apiQuery,
   databaseUrl,
   enabled,
-  engineVersion,
   ownerQuery,
   redisConnection,
   redisUrl,
@@ -91,8 +90,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
     const firstAttemptIds = nodeIds.map(() => randomUUID());
     let dueAt = new Date(Date.now() + 60_000).toISOString();
     const waitingCheckpoint = {
-      schemaVersion: 2 as const,
-      engineVersion,
       workflowVersionId,
       revision: 0,
       runStatus: 'waiting' as const,
@@ -135,19 +132,17 @@ describeIntegration('Retry and Wait outage recovery', () => {
     await apiQuery(
       `insert into app.run_events
            (workspace_id,workflow_run_id,sequence,type,payload)
-         values ($1,$2,1,'run.queued','{"schemaVersion":1}'::jsonb)`,
+         values ($1,$2,1,'run.queued','{}'::jsonb)`,
       [workspaceId, runId],
     );
     await apiQuery(
       `insert into app.run_checkpoints (
-           workflow_run_id,workspace_id,workflow_version_id,revision,
-           engine_version,scheduler_state
-         ) values ($1,$2,$3,0,$4,$5::jsonb)`,
+           workflow_run_id,workspace_id,workflow_version_id,revision,scheduler_state
+         ) values ($1,$2,$3,0,$4::jsonb)`,
       [
         runId,
         workspaceId,
         workflowVersionId,
-        engineVersion,
         JSON.stringify(waitingCheckpoint),
       ],
     );
@@ -197,7 +192,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
           );
         } else {
           const output = JSON.stringify({
-            schemaVersion: 1,
             kind: 'inline',
             value: { preserved: true },
           });
@@ -289,7 +283,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
           invocations,
         },
         events: nodeIds.map((nodeId, index) => ({
-          schemaVersion: 1 as const,
           sequence: index + 2,
           name: 'node.ready' as const,
           occurredAt,
@@ -582,7 +575,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
       const published = await producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1,
           workspaceId,
           runId: accepted.runId,
           outboxEventId,
@@ -626,7 +618,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
       const published = await producer.publish({
         name: JOB_NAME.executeNodeAttempt,
         data: {
-          schemaVersion: 1,
           workspaceId,
           runId: accepted.runId,
           nodeRunId: attempt.nodeRunId,

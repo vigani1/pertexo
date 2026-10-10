@@ -16,7 +16,6 @@ export function connectionTestClaim(
   healthRevision?: string,
 ) {
   const base = {
-    schemaVersion: 1 as const,
     dispatchToken: uuidSchema.parse(dispatchToken),
   };
   if (state === 'claimed') return Object.freeze({ ...base, state });
@@ -38,14 +37,12 @@ export function connectionTestClaim(
 export const connectionTestClaimSchema = z.discriminatedUnion('state', [
   z
     .object({
-      schemaVersion: z.literal(1),
       state: z.literal('claimed'),
       dispatchToken: z.uuid(),
     })
     .strict(),
   z
     .object({
-      schemaVersion: z.literal(1),
       state: z.literal('dispatched'),
       dispatchToken: z.uuid(),
       // Optional only for already-persisted version-1 in-flight claims.

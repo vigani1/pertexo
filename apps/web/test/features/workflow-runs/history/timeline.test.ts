@@ -76,7 +76,6 @@ function nodeEvent(
     type,
     createdAt: at(seconds),
     payload: {
-      schemaVersion: 1,
       nodeId: 'send-receipt',
       invocationKey: 'send-receipt:0',
       ...payload,
@@ -85,7 +84,6 @@ function nodeEvent(
 }
 
 const graph = {
-  schemaVersion: 1 as const,
   nodes: [
     {
       id: 'post-erp',
@@ -125,7 +123,6 @@ describe('thread view', () => {
   it('names invoked nested loop steps without listing unrun body steps as pending roots', () => {
     sequence = 0;
     const nestedGraph = {
-      schemaVersion: 1,
       settings: {},
       edges: [],
       nodes: [
@@ -143,7 +140,6 @@ describe('thread view', () => {
             maxIterations: 2,
             maxConcurrency: 1,
             body: {
-              schemaVersion: 1,
               settings: {},
               inputPorts: ['item', 'ordinal'],
               outputPorts: ['result'],
@@ -163,7 +159,6 @@ describe('thread view', () => {
                     maxIterations: 2,
                     maxConcurrency: 1,
                     body: {
-                      schemaVersion: 1,
                       settings: {},
                       inputPorts: ['item', 'ordinal'],
                       outputPorts: ['result'],

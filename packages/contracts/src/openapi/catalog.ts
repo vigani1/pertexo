@@ -45,7 +45,6 @@ const clientSchemas = contractSchemas('client');
 const openApiSchemas = contractSchemas('openapi');
 
 export const catalogClientContract = Object.freeze({
-  schemaVersion: '1.0.0',
   schemas: clientSchemas,
 });
 

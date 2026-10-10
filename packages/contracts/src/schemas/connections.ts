@@ -114,7 +114,6 @@ export const httpHeaderCredentialSchema = z
 
 export const httpHeadersCredentialSchema = z
   .object({
-    schemaVersion: z.literal(1),
     type: z.literal('http_headers'),
     headers: httpHeaderCredentialSchema,
   })
@@ -123,7 +122,6 @@ export const httpHeadersCredentialSchema = z
 
 export const slackBotTokenCredentialSchema = z
   .object({
-    schemaVersion: z.literal(1),
     type: z.literal('slack_bot_token'),
     botToken: z
       .string()
@@ -164,7 +162,6 @@ const emailMailboxSchema = z
 
 export const resendApiKeyCredentialSchema = z
   .object({
-    schemaVersion: z.literal(1),
     type: z.literal('resend_api_key'),
     apiKey: z
       .string()

@@ -260,7 +260,6 @@ describe('quick add in the editor', { timeout: 30_000 }, () => {
 
   it('lets people pick which output a new step follows', async () => {
     const branching: WorkflowGraphContract = {
-      schemaVersion: 1,
       nodes: [
         {
           ...graph.nodes[1],

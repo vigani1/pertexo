@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { parseStoredExecutionValueV1 } from '../platform/stored-execution-value.js';
+import type { parseStoredExecutionValue } from '../platform/stored-execution-value.js';
 
 export const traceparentSchema = z
   .string()
@@ -44,7 +44,6 @@ export const safeErrorCodeSchema = z
 
 export const previewDeliveryPayloadSchema = z
   .object({
-    schemaVersion: z.literal(1),
     workspaceId: z.uuid(),
     outboxEventId: z.uuid(),
     previewRunId: z.uuid(),
@@ -55,7 +54,6 @@ export const previewDeliveryPayloadSchema = z
 
 export const previewReconciliationPayloadSchema = z
   .object({
-    schemaVersion: z.literal(1),
     workspaceId: z.uuid(),
     outboxEventId: z.uuid(),
     previewRunId: z.uuid(),
@@ -72,7 +70,7 @@ export type PreviewDelivery = Readonly<{
 
 export type PreviewTerminalOutcome =
   | Readonly<{
-      output: ReturnType<typeof parseStoredExecutionValueV1>;
+      output: ReturnType<typeof parseStoredExecutionValue>;
       status: typeof PREVIEW_STATUS.succeeded;
     }>
   | Readonly<{
@@ -98,7 +96,7 @@ export type PreviewAttemptLease = Readonly<{
   executorVersion: number;
   executionDeadlineAt: Date;
   retentionExpiresAt: Date;
-  input: ReturnType<typeof parseStoredExecutionValueV1>;
+  input: ReturnType<typeof parseStoredExecutionValue>;
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;
   nodeId: string;

@@ -52,14 +52,12 @@ function recordBenchmarkOperation(startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
   const endedAt = performance.now();
   process.stdout.write(
-    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name: 'event-live-visibility', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'live event publication through SSE visibility observation' })}\n`,
+    `PERTEXO_Q11_OPERATION=${JSON.stringify({ name: 'event-live-visibility', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'live event publication through SSE visibility observation' })}\n`,
   );
 }
 
-function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
+function initialCheckpoint(workflowVersionId: string) {
   return {
-    schemaVersion: 2,
-    engineVersion,
     workflowVersionId,
     revision: 0,
     runStatus: 'queued',
@@ -132,17 +130,12 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
           client.disconnect(false);
         },
       );
-      const engineVersion = 'phase0e-fixture-v1';
       const workflowVersionId = randomUUID();
       const accepted = await apiDatabase.withWorkspace(
         workspaceId,
         async (transaction) =>
           acceptWorkflowRun(transaction, {
-            engineVersion,
-            initialCheckpoint: initialCheckpoint(
-              engineVersion,
-              workflowVersionId,
-            ),
+            initialCheckpoint: initialCheckpoint(workflowVersionId),
             keyHash: digest(`key:${workspaceId}`),
             operation: 'workflow.run.accept',
             requestHash: digest(`request:${workspaceId}`),

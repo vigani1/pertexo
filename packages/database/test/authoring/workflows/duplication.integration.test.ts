@@ -115,7 +115,6 @@ describe('same-workspace workflow duplication through the runtime database role'
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
         definitionCatalog: {
-          schemaVersion: 1,
           definitions: [{ key: 'test.placeholder', version: 1 }],
         },
       },
@@ -123,7 +122,7 @@ describe('same-workspace workflow duplication through the runtime database role'
     const removed = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
-        definitionCatalog: { schemaVersion: 1, definitions: [] },
+        definitionCatalog: { definitions: [] },
       },
     );
     try {
@@ -154,7 +153,6 @@ describe('same-workspace workflow duplication through the runtime database role'
   });
   it('preserves nested graph IDs, typed mappings, merge references and dynamic expressions as exact JSON content', async () => {
     const catalog = {
-      schemaVersion: 1 as const,
       definitions: [
         { key: 'test.placeholder', version: 1 },
         { key: 'core.foreach', version: 1 },
@@ -217,7 +215,6 @@ describe('same-workspace workflow duplication through the runtime database role'
             dynamic: {
               kind: 'expression',
               language: 'jsonata',
-              policyVersion: 1,
               expression: '$lookup(nodeOutputs, runInput.stepId).value',
             },
             typed: { kind: 'node_output', nodeId: 'producer', path: '$.value' },
@@ -257,7 +254,6 @@ describe('same-workspace workflow duplication through the runtime database role'
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
         definitionCatalog: {
-          schemaVersion: 1,
           definitions: [{ key: 'test.placeholder', version: 1 }],
         },
       },
@@ -731,7 +727,6 @@ describe('same-workspace workflow duplication through the runtime database role'
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
         definitionCatalog: {
-          schemaVersion: 1,
           definitions: [
             { key: 'test.placeholder', version: 1 },
             { key: 'core.foreach', version: 1 },
@@ -753,7 +748,6 @@ describe('same-workspace workflow duplication through the runtime database role'
         idempotencyKey: randomUUID(),
         requestHash: createHash('sha256').update(id).digest('hex'),
         sealed: {
-          schemaVersion: 1,
           kmsKeyReference: 'arn:aws:kms:region:account:key/duplication',
           encryptedDataKey: Buffer.alloc(32, 1).toString('base64url'),
           ciphertext: Buffer.from('never-copy-secret').toString('base64url'),
@@ -872,7 +866,6 @@ describe('same-workspace workflow duplication through the runtime database role'
   it('copies a template origin as inherited and shows it only to members of the workspace', async () => {
     const original = await source();
     const origin = {
-      schemaVersion: 1,
       templateId: 'controlled-http-notification',
       templateVersion: 1,
       baseManifestDigest: 'a'.repeat(64),

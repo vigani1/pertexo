@@ -106,7 +106,7 @@ describe('inbox PostgreSQL cancellation', () => {
     const messageId = randomUUID();
     const outboxId = randomUUID();
     const aggregateId = randomUUID();
-    const payload = { aggregateId, outboxEventId: outboxId, schemaVersion: 1 };
+    const payload = { aggregateId, outboxEventId: outboxId };
     const controller = new AbortController();
     const queryStarted = Promise.withResolvers<undefined>();
     const consuming = consumeInboxMessage(
@@ -125,7 +125,6 @@ describe('inbox PostgreSQL cancellation', () => {
           jobName: 'inbox-cancel-proof',
           payload,
           payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-          schemaVersion: 1,
         });
         queryStarted.resolve(undefined);
         await transaction.db.execute(sql`select pg_sleep(30)`);

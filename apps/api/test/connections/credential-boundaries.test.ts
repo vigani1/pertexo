@@ -17,7 +17,6 @@ describe('connection credential boundary compatibility', () => {
       httpHeadersCredentialSchema,
       resolvedHttpHeadersCredentialSchema,
       {
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { 'X-Workspace': 'tenant-42', Authorization: 'Bearer secret' },
       },
@@ -27,7 +26,6 @@ describe('connection credential boundary compatibility', () => {
       slackBotTokenCredentialSchema,
       resolvedSlackBotTokenCredentialSchema,
       {
-        schemaVersion: 1,
         type: 'slack_bot_token',
         botToken: 'xoxb-123456789-secret',
       },
@@ -37,7 +35,6 @@ describe('connection credential boundary compatibility', () => {
       resendApiKeyCredentialSchema,
       resolvedResendApiKeyCredentialSchema,
       {
-        schemaVersion: 1,
         type: 'resend_api_key',
         apiKey: 're_123456789_secret',
         fromEmail: 'Ops@Example.TEST',
@@ -56,7 +53,6 @@ describe('connection credential boundary compatibility', () => {
       slackBotTokenCredentialSchema,
       resolvedSlackBotTokenCredentialSchema,
       {
-        schemaVersion: 1,
         type: 'slack_bot_token',
         botToken: 'xoxp-not-a-bot-token',
       },
@@ -66,7 +62,6 @@ describe('connection credential boundary compatibility', () => {
       resendApiKeyCredentialSchema,
       resolvedResendApiKeyCredentialSchema,
       {
-        schemaVersion: 1,
         type: 'resend_api_key',
         apiKey: 'RE_not-a-resend-key',
         fromEmail: 'ops@example.test',
@@ -77,7 +72,6 @@ describe('connection credential boundary compatibility', () => {
       resendApiKeyCredentialSchema,
       resolvedResendApiKeyCredentialSchema,
       {
-        schemaVersion: 1,
         type: 'resend_api_key',
         apiKey: 're_123456789_secret',
         fromEmail: 'Display Name <ops@example.test>',
@@ -88,7 +82,6 @@ describe('connection credential boundary compatibility', () => {
       httpHeadersCredentialSchema,
       resolvedHttpHeadersCredentialSchema,
       {
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { Host: 'attacker.example.test' },
       },
@@ -103,7 +96,6 @@ describe('connection credential boundary compatibility', () => {
 
   it('accounts for serialized header delimiters at both boundaries', () => {
     const oversized = {
-      schemaVersion: 1,
       type: 'http_headers',
       headers: {
         'x-a': 'a'.repeat(8_187),
@@ -111,7 +103,6 @@ describe('connection credential boundary compatibility', () => {
       },
     };
     const exactBoundary = {
-      schemaVersion: 1,
       type: 'http_headers',
       headers: {
         'x-a': 'a'.repeat(8_186),

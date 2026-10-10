@@ -15,7 +15,7 @@ const etagA = `"draft.${'a'.repeat(43)}"`;
 const etagB = `"draft.${'b'.repeat(43)}"`;
 
 function emptyGraph(): WorkflowGraphContract {
-  return { schemaVersion: 1, nodes: [], edges: [], settings: {} };
+  return { nodes: [], edges: [], settings: {} };
 }
 
 function snapshot(
@@ -28,7 +28,6 @@ function snapshot(
     draft: {
       workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       revision,
-      schemaVersion: 1,
       graph,
       compatibility: {
         compatible: true,

@@ -12,7 +12,7 @@ const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const etagA = `"draft.${'a'.repeat(43)}"`;
 const etagB = `"draft.${'b'.repeat(43)}"`;
-const graph = { schemaVersion: 1 as const, nodes: [], edges: [], settings: {} };
+const graph = { nodes: [], edges: [], settings: {} };
 const report = {
   valid: true,
   issues: [],
@@ -120,7 +120,6 @@ describe('publication checked-snapshot ownership', () => {
             id: userId,
             workflowId,
             versionNumber: 1,
-            schemaVersion: 1,
             graph,
             checksum: `wf:sha256:${'c'.repeat(64)}`,
             publishedAt: '2026-09-15T10:00:00.000Z',
@@ -197,7 +196,6 @@ describe('publication checked-snapshot ownership', () => {
                     id: userId,
                     workflowId,
                     versionNumber: 1,
-                    schemaVersion: 1,
                     graph,
                     checksum: `wf:sha256:${'c'.repeat(64)}`,
                     publishedAt: '2026-09-15T10:00:00.000Z',
@@ -322,7 +320,6 @@ describe('publication checked-snapshot ownership', () => {
                 id: userId,
                 workflowId,
                 versionNumber: 1,
-                schemaVersion: 1,
                 graph,
                 checksum: `wf:sha256:${'c'.repeat(64)}`,
                 publishedAt: '2026-09-15T10:00:00.000Z',
@@ -501,7 +498,6 @@ describe('publication checked-snapshot ownership', () => {
               id: userId,
               workflowId,
               versionNumber: 1,
-              schemaVersion: 1,
               graph,
               checksum: `wf:sha256:${'c'.repeat(64)}`,
               publishedAt: '2026-09-15T10:00:00.000Z',

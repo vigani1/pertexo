@@ -86,7 +86,6 @@ function input(
     draftRevision: 1,
     dryRun: 'not_supported',
     executableNode: {
-      schemaVersion: 1,
       id: 'http',
       config: { url: 'https://provider.example.test/resource' },
       connectionRefs: {},
@@ -202,8 +201,8 @@ async function resetFixture(): Promise<void> {
       );
       await client.query(
         `insert into app.workflow_drafts
-       (workflow_id, workspace_id, revision, schema_version, graph_json, updated_by)
-       values ($1, $2, 1, 1, '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}', $3)`,
+       (workflow_id, workspace_id, revision, graph_json, updated_by)
+       values ($1, $2, 1, '{"nodes":[],"edges":[],"settings":{}}', $3)`,
         [workflowId, workspaceId, actorId],
       );
     }
@@ -286,7 +285,6 @@ describe('durable preview acceptance', () => {
         priorPreviewRunId: null,
       });
       expect(runs[0]?.inputRef).toEqual({
-        schemaVersion: 1,
         kind: 'inline',
         value: { customerId: 'customer-1' },
       });
@@ -310,7 +308,6 @@ describe('durable preview acceptance', () => {
         aggregateType: 'preview-run',
         aggregateId: accepted.previewRunId,
         payload: {
-          schemaVersion: 1,
           workspaceId: workspaceA,
           outboxEventId: accepted.outboxEventId,
           previewRunId: accepted.previewRunId,
@@ -486,7 +483,7 @@ describe('durable preview acceptance', () => {
       `update app.preview_attempts
        set status = 'succeeded', started_at = now(), completed_at = now(),
            output_ref = to_jsonb(
-             '{"schemaVersion":1,"kind":"inline","value":{"token":"persisted"}}'::text
+             '{"kind":"inline","value":{"token":"persisted"}}'::text
            )
        where id = $1`,
       [first.previewAttemptId],
@@ -496,7 +493,7 @@ describe('durable preview acceptance', () => {
       `update app.preview_runs
        set status = 'succeeded', started_at = now(), completed_at = now(),
            output_ref = to_jsonb(
-             '{"schemaVersion":1,"kind":"inline","value":{"token":"persisted"}}'::text
+             '{"kind":"inline","value":{"token":"persisted"}}'::text
            )
        where id = $1`,
       [first.previewRunId],
@@ -519,7 +516,6 @@ describe('durable preview acceptance', () => {
       expect(row).toMatchObject({
         priorPreviewRunId: first.previewRunId,
         inputRef: {
-          schemaVersion: 1,
           kind: 'inline',
           value: { token: 'persisted' },
         },
@@ -610,7 +606,7 @@ describe('durable preview acceptance', () => {
       workspaceA,
       `update app.preview_attempts
           set status = 'succeeded', started_at = now(), completed_at = now(),
-              output_ref = '{"schemaVersion":1,"kind":"inline","value":{"expired":true}}'
+              output_ref = '{"kind":"inline","value":{"expired":true}}'
         where id = $1`,
       [expiring.previewAttemptId],
     );
@@ -618,7 +614,7 @@ describe('durable preview acceptance', () => {
       workspaceA,
       `update app.preview_runs
           set status = 'succeeded', started_at = now(), completed_at = now(),
-              output_ref = '{"schemaVersion":1,"kind":"inline","value":{"expired":true}}'
+              output_ref = '{"kind":"inline","value":{"expired":true}}'
         where id = $1`,
       [expiring.previewRunId],
     );
@@ -670,7 +666,7 @@ describe('durable preview acceptance', () => {
       workspaceA,
       `update app.preview_runs
        set status = 'succeeded', started_at = now(), completed_at = now(),
-           output_ref = '{"schemaVersion":1,"kind":"inline","value":{"ok":true}}'
+           output_ref = '{"kind":"inline","value":{"ok":true}}'
        where id = $1`,
       [accepted.previewRunId],
     );
@@ -690,7 +686,7 @@ describe('durable preview acceptance', () => {
       workspaceA,
       `update app.preview_runs
        set output_ref = to_jsonb(
-         '{"schemaVersion":1,"kind":"inline","value":{"ok":true}}'::text
+         '{"kind":"inline","value":{"ok":true}}'::text
        )
        where id = $1`,
       [accepted.previewRunId],

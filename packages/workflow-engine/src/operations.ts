@@ -366,7 +366,6 @@ export async function resolveSingleNodePreviewInput(
     const parsedNode = parseWorkflowGraphDraft({
       edges: [],
       nodes: [{ ...rawNode, position: { x: 0, y: 0 } }],
-      schemaVersion: 1,
       settings: {},
     }).nodes[0];
     if (parsedNode === undefined)

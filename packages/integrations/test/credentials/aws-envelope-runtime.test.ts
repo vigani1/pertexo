@@ -107,7 +107,6 @@ describe('AWS connection envelope runtime factory', () => {
       KeySpec: 'AES_256',
       EncryptionContext: {
         purpose: 'pertexo-connection-secret',
-        schemaVersion: '1',
         workspaceId: identity.workspaceId,
         connectionId: identity.connectionId,
         secretVersionId: identity.secretVersionId,

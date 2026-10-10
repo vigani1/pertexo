@@ -134,7 +134,6 @@ describe('workflow run capacity admission', () => {
 
     const otherEventId = randomUUID();
     const otherPayload = {
-      schemaVersion: 1,
       workspaceId: workspaceB,
       outboxEventId: otherEventId,
     } as const;
@@ -142,7 +141,6 @@ describe('workflow run capacity admission', () => {
       insertOutboxEvent(transaction, {
         id: otherEventId,
         jobName: 'phase0-duplicate-proof',
-        schemaVersion: 1,
         aggregateType: 'fairness-probe',
         aggregateId: randomUUID(),
         payload: otherPayload,

@@ -51,7 +51,6 @@ const workflowVersionId = randomUUID();
 const payload = Object.freeze({
   commandId,
   outboxEventId,
-  schemaVersion: 1,
   workspaceId,
 });
 const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
@@ -62,7 +61,6 @@ const evidencePayload = Object.freeze({
   attemptId,
   evidenceCommandId,
   outboxEventId: evidenceOutboxEventId,
-  schemaVersion: 1,
   workspaceId,
 });
 const evidencePayloadChecksum = canonicalOutboxPayloadChecksum(evidencePayload);
@@ -80,7 +78,6 @@ function validResults(): {
           job_name: 'replay-workflow-run',
           payload,
           payload_checksum: payloadChecksum,
-          schema_version: 1,
         },
       ],
     },
@@ -122,8 +119,7 @@ function storeWith(results = validResults()) {
     ) => ({ status: 'processed', value: await operation(transaction) }),
   );
   const checkpointFactory = vi.fn(() => ({
-    checkpoint: { schemaVersion: 1 },
-    engineVersion: 'engine-v1',
+    checkpoint: {},
   }));
   return {
     checkpointFactory,
@@ -151,7 +147,6 @@ function reconciliationWith(
     job_name: 'reconcile-unknown-outcome',
     payload: evidencePayload,
     payload_checksum: evidencePayloadChecksum,
-    schema_version: 1,
     ...(outboxOverride ?? {}),
   };
   const execute = vi
@@ -230,7 +225,6 @@ describe('operator run replay validation', () => {
     ['wrong aggregate id', { aggregate_id: randomUUID() }],
     ['wrong aggregate type', { aggregate_type: 'workflow-run' }],
     ['wrong job', { job_name: 'advance-workflow-run' }],
-    ['wrong schema', { schema_version: 2 }],
     ['wrong checksum', { payload_checksum: 'c'.repeat(64) }],
     [
       'wrong payload command',
@@ -365,7 +359,6 @@ describe('unknown-outcome reconciliation validation', () => {
     ['wrong aggregate id', { aggregate_id: randomUUID() }],
     ['wrong aggregate type', { aggregate_type: 'workflow-run' }],
     ['wrong job', { job_name: 'advance-workflow-run' }],
-    ['wrong schema', { schema_version: 2 }],
     ['wrong checksum', { payload_checksum: 'c'.repeat(64) }],
     [
       'wrong payload attempt',
@@ -383,7 +376,7 @@ describe('unknown-outcome reconciliation validation', () => {
       'wrong payload workspace',
       { payload: { ...evidencePayload, workspaceId: randomUUID() } },
     ],
-    ['malformed payload', { payload: { schemaVersion: 1 } }],
+    ['malformed payload', { payload: {} }],
   ])('rejects %s before reading evidence', async (_scenario, override) => {
     const fixture = reconciliationWith(override);
     await expect(

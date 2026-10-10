@@ -115,7 +115,6 @@ export const httpRequestHeadersSchema = z
 
 export const resolvedHttpHeadersCredentialSchema = z
   .object({
-    schemaVersion: z.literal(1),
     type: z.literal('http_headers'),
     headers: z
       .record(headerNameSchema, headerValueSchema)

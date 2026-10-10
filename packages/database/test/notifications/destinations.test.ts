@@ -119,7 +119,7 @@ describe('failure notification destination decoding', () => {
             {
               request_hash: 'a'.repeat(64),
               status: 'completed',
-              result_ref: { schemaVersion: 1, result: replay },
+              result_ref: { result: replay },
             },
           ]),
         );

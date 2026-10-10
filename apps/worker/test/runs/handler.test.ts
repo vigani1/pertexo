@@ -20,7 +20,6 @@ function delivery(
   return {
     name: JOB_NAME.advanceWorkflowRun,
     data: {
-      schemaVersion: 1,
       workspaceId: WORKSPACE_ID,
       runId: RUN_ID,
       outboxEventId: OUTBOX_EVENT_ID,
@@ -127,12 +126,12 @@ describe('coordinator handler', () => {
       vi
         .fn()
         .mockRejectedValue(
-          new WorkflowEngineError('checkpoint_unsupported', 'unsupported'),
+          new WorkflowEngineError('checkpoint_invalid', 'unsupported'),
         ),
     );
 
     await expect(handler.handle(delivery(), context())).rejects.toEqual(
-      new CoordinatorHandlerStateError('unsupported_checkpoint'),
+      new CoordinatorHandlerStateError('invalid_checkpoint'),
     );
   });
 

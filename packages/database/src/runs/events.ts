@@ -96,15 +96,9 @@ export async function appendLockedRunEvent(
   )
     throw new ExecutionStateConflictError('execution.event_payload_invalid');
 
-  const versionedPayload: Record<string, unknown> = Object.create(
-    null,
-  ) as Record<string, unknown>;
-  Object.assign(versionedPayload, normalizedPayload);
-  versionedPayload.schemaVersion = 1;
-
   let serializedPayload: string;
   try {
-    serializedPayload = serializeStoredExecutionJsonValue(versionedPayload);
+    serializedPayload = serializeStoredExecutionJsonValue(normalizedPayload);
   } catch {
     throw new ExecutionStateConflictError('execution.event_payload_invalid');
   }

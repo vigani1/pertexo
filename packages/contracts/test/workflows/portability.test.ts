@@ -17,20 +17,18 @@ import {
 describe('portable workflow public HTTP contract', () => {
   const manifest = {
     format: 'pertexo.workflow',
-    formatVersion: 1,
-    graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+    graph: { nodes: [], edges: [], settings: {} },
     requirements: {
       definitions: [],
     },
     connectionSlots: [],
   };
   const origin = {
-    schemaVersion: 1,
     templateId: 'controlled-http-notification',
     templateVersion: 1,
     baseManifestDigest: 'a'.repeat(64),
   };
-  it('adds origin outside unchanged strict manifest V1 without defaulting old requests', () => {
+  it('adds origin outside unchanged strict manifest without defaulting old requests', () => {
     const old = { manifest, bindings: [] };
     expect(workflowImportPreviewRequestSchema.parse(old)).toEqual(old);
     expect(
@@ -56,7 +54,6 @@ describe('portable workflow public HTTP contract', () => {
   });
   it.each([
     null,
-    { ...origin, schemaVersion: 2 },
     { ...origin, templateVersion: 0 },
     { ...origin, templateVersion: 2_147_483_648 },
     { ...origin, templateId: 'Unreviewed ID' },
@@ -82,7 +79,6 @@ describe('portable workflow public HTTP contract', () => {
       }),
     ).toEqual({ include: 'templateOrigin' });
     for (const query of [
-      {},
       { include: 'other' },
       { include: ['templateOrigin'] },
       { include: 'templateOrigin', extra: true },

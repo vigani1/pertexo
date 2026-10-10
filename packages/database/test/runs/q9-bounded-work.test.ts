@@ -9,14 +9,13 @@ import { NODE_ATTEMPT_INPUT_LIMITS } from '../../src/attempts/contract.js';
 import { loadNodeAttemptInputs } from '../../src/attempts/inputs.js';
 
 const inline = (value: unknown) => ({
-  schemaVersion: 1,
   kind: 'inline',
   value,
 });
 
 function recordMeasurement(input: {
   family: string;
-  contractVersion: string;
+
   population: number;
   declaredUpperPopulation?: number;
   limitingConstraint?: string;
@@ -32,8 +31,7 @@ function recordMeasurement(input: {
   };
 }): void {
   console.info(
-    `Q9_BOUNDED_WORK_V1=${JSON.stringify({
-      schemaVersion: 1,
+    `Q9_BOUNDED_WORK=${JSON.stringify({
       ...input,
       attributableMemory: {
         available: false,
@@ -51,8 +49,6 @@ function populations(upper: number): readonly number[] {
 
 function baseCheckpoint(workflowVersionId: string) {
   return {
-    schemaVersion: 2,
-    engineVersion: '1',
     workflowVersionId,
     revision: 0,
     runStatus: 'running',
@@ -248,7 +244,7 @@ describe('Q9 bounded-work probes', () => {
       });
       recordMeasurement({
         family: 'input-assembly',
-        contractVersion: 'node-attempt-input-v1',
+
         population,
         upperSupportedPopulation: NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs,
         completedOperations: population,

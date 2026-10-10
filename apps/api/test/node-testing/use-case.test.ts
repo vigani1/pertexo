@@ -56,7 +56,6 @@ function graphWithConfig(config: Readonly<Record<string, JsonValue>>) {
 
 function emailGraph() {
   return {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'email',
@@ -151,7 +150,6 @@ describe('node test application use case', () => {
                     kind: 'expression',
                     language: 'jsonata',
                     expression: 'runInput.body',
-                    policyVersion: 1,
                   },
                 },
               },
@@ -252,7 +250,7 @@ describe('node test application use case', () => {
     ).rejects.toMatchObject({
       name: 'WorkflowRevisionConflictError',
       currentRevision: 4,
-      currentEtag: '"draft.er2kl7SSFkyaTw0mPZhMbvS2nfj5oliOsdisfcSBW3E"',
+      currentEtag: '"draft.8TzCes2UynZ5w_QC7b_vUnsZkX8j-vonJu1MhXrf27o"',
     });
   });
 
@@ -688,7 +686,7 @@ describe('node test application use case', () => {
       keyHash:
         'accd77133ae7eebe4e92bf6657b8c2a58554bb2521d24c68997f5b84cfc18928',
       requestHash:
-        '5bfe2da0fcbee2224fcf578f41e1bb3c43ad94bb801da7e2c305bdbae6405547',
+        '856f5e84fd6a4bcc3d4d5045c7eea9d970d33275f1ad1fbbdab85e50e4cfdbf2',
     });
     expect(store.acceptPreview).toHaveBeenCalledWith({
       workspaceId,
@@ -696,7 +694,7 @@ describe('node test application use case', () => {
       actorUserId: actorId,
       draftRevision: 3,
       draftFingerprint:
-        '8428d63fb05e598a2363b934bb3a351e9c5f949aa004291288463f3c7e8a3556',
+        'b8dce9f3299b1828457eecfac123a9960fe6221756835bbc47005e9e08c512f2',
       nodeId: 'http',
       definitionKey: 'http.request',
       definitionVersion: 1,
@@ -721,7 +719,7 @@ describe('node test application use case', () => {
       keyHash:
         'accd77133ae7eebe4e92bf6657b8c2a58554bb2521d24c68997f5b84cfc18928',
       requestHash:
-        '5bfe2da0fcbee2224fcf578f41e1bb3c43ad94bb801da7e2c305bdbae6405547',
+        '856f5e84fd6a4bcc3d4d5045c7eea9d970d33275f1ad1fbbdab85e50e4cfdbf2',
       operation: 'preview.execute',
       operationKey: 'request',
       providerKey: 'http',
@@ -803,13 +801,13 @@ describe('node test application use case', () => {
       expect.objectContaining({
         sideEffectClass: 'idempotent_with_key',
         draftFingerprint:
-          'c01b89e9d3a273c33b19a9a1383c7ef1a7eebdfba50d4a374ab6bd8eb35515b8',
+          'a61a19e1a91f5138ca073a04bce5bcf83f10e0b640dd0d2e66d7f47b532f57de',
         keyHash:
           '54058cf53edec407d0ccfb201e69ae10fd5fde6a2a5c2b152a370f72ccb52726',
         requestHash:
-          '31b07bf06427d11945cf075b5202a51796c34a5b98171341c3dadc90ba525f13',
+          '616ce34a38b2267400e0a67fa66054d2c75e99ab46649d7fd4faffa79584d96e',
         providerIdempotencyKey:
-          'pv1.fba5f01c7234de45b977ef3b12ccfce2f1c03c7dd8a983135856a3f20c0ed41b',
+          'pv1.58d1151e9148eb0a4e76496f61ba188215646c88a155804f5782e0014c8794f9',
       }),
     );
   });
@@ -852,13 +850,12 @@ describe('preview status application use case', () => {
     ['null', null, null],
     [
       'inline',
-      { schemaVersion: 1, kind: 'inline', value: { ok: true } },
+      { kind: 'inline', value: { ok: true } },
       { kind: 'inline', value: { ok: true } },
     ],
     [
       'artifact',
       {
-        schemaVersion: 1,
         kind: 'artifact',
         artifactId: '11111111-1111-4111-8111-111111111111',
       },

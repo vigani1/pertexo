@@ -27,12 +27,11 @@ const IDS = {
 
 const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
 
-describe('versioned queue contracts', () => {
+describe('queue contracts', () => {
   it('requires exact own envelope fields and immutable registry entries', () => {
     const inherited = Object.create({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId: IDS.workspaceId,
         runId: IDS.runId,
         outboxEventId: IDS.outboxEventId,
@@ -52,7 +51,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.applyConnectionHealthObservation,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           observationId: IDS.evidenceCommandId,
           outboxEventId: IDS.outboxEventId,
@@ -61,7 +59,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.deliverWorkspaceInvitation,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           invitationId: IDS.invitationId,
           deliveryAttemptId: IDS.deliveryAttemptId,
@@ -71,7 +68,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.deliverRunFailureNotification,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           notificationIntentId: IDS.notificationIntentId,
           outboxEventId: IDS.outboxEventId,
@@ -80,7 +76,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.advanceWorkflowRun,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           runId: IDS.runId,
           outboxEventId: IDS.outboxEventId,
@@ -90,7 +85,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.executePreviewAttempt,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           previewRunId: IDS.previewRunId,
           previewAttemptId: IDS.previewAttemptId,
@@ -100,7 +94,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.executeNodeAttempt,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           runId: IDS.runId,
           nodeRunId: IDS.nodeRunId,
@@ -111,7 +104,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.reconcilePreviewAttempt,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           previewRunId: IDS.previewRunId,
           previewAttemptId: IDS.previewAttemptId,
@@ -122,7 +114,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.reconcileUnknownOutcome,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           attemptId: IDS.attemptId,
           evidenceCommandId: IDS.evidenceCommandId,
@@ -132,7 +123,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.replayWorkflowRun,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           commandId: IDS.replayCommandId,
           outboxEventId: IDS.outboxEventId,
@@ -141,7 +131,6 @@ describe('versioned queue contracts', () => {
       [
         JOB_NAME.reconcileWorkflowTriggers,
         {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           workflowId: IDS.workflowId,
           publishedVersionId: IDS.publishedVersionId,
@@ -155,7 +144,6 @@ describe('versioned queue contracts', () => {
 
       expect(parsed.name).toBe(name);
       expect(parsed.data).toMatchObject({
-        schemaVersion: 1,
         workspaceId: IDS.workspaceId,
         outboxEventId: IDS.outboxEventId,
       });
@@ -165,13 +153,12 @@ describe('versioned queue contracts', () => {
     );
   });
 
-  it('rejects unknown names and schema versions', () => {
+  it('rejects unknown names and extra fields', () => {
     for (const name of ['unknown-job', '__proto__', 'toString']) {
       expect(() =>
         parseQueueJob({
           name,
           data: {
-            schemaVersion: 1,
             workspaceId: IDS.workspaceId,
             runId: IDS.runId,
             outboxEventId: IDS.outboxEventId,
@@ -183,7 +170,7 @@ describe('versioned queue contracts', () => {
     const result = safeParseQueueJob({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 2,
+        unexpected: true,
         workspaceId: IDS.workspaceId,
         runId: IDS.runId,
         outboxEventId: IDS.outboxEventId,
@@ -197,7 +184,6 @@ describe('versioned queue contracts', () => {
     const result = safeParseQueueJob({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId: IDS.workspaceId,
         runId: IDS.runId,
         outboxEventId: IDS.outboxEventId,
@@ -211,7 +197,6 @@ describe('versioned queue contracts', () => {
       parseQueueJob({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1,
           workspaceId: IDS.workspaceId,
           runId: IDS.runId,
           outboxEventId: IDS.outboxEventId,
@@ -225,7 +210,6 @@ describe('versioned queue contracts', () => {
     const malformedId = safeParseQueueJob({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId: 'not-a-uuid',
         runId: IDS.runId,
         outboxEventId: IDS.outboxEventId,
@@ -234,7 +218,6 @@ describe('versioned queue contracts', () => {
     const malformedTraceparent = safeParseQueueJob({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId: IDS.workspaceId,
         runId: IDS.runId,
         outboxEventId: IDS.outboxEventId,
@@ -244,7 +227,6 @@ describe('versioned queue contracts', () => {
     const zeroTraceparent = safeParseQueueJob({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
-        schemaVersion: 1,
         workspaceId: IDS.workspaceId,
         runId: IDS.runId,
         outboxEventId: IDS.outboxEventId,
@@ -261,7 +243,6 @@ describe('versioned queue contracts', () => {
     const result = safeParseQueueJob({
       name: JOB_NAME.reconcilePreviewAttempt,
       data: {
-        schemaVersion: 1,
         workspaceId: IDS.workspaceId,
         previewRunId: IDS.previewRunId,
         previewAttemptId: IDS.previewAttemptId,

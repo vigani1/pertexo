@@ -7532,10 +7532,6 @@
               {
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "templateId": {
                     "type": "string",
                     "minLength": 1,
@@ -7564,7 +7560,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "templateId",
                   "templateVersion",
                   "baseManifestDigest",
@@ -8691,17 +8686,9 @@
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
-              "schemaVersion": {
-                "type": "number",
-                "const": 1
-              },
               "graph": {
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "nodes": {
                     "maxItems": 200,
                     "type": "array",
@@ -8782,7 +8769,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "nodes",
                   "edges",
                   "settings"
@@ -8924,18 +8910,12 @@
                                 },
                                 "expression": {
                                   "type": "string"
-                                },
-                                "policyVersion": {
-                                  "type": "integer",
-                                  "exclusiveMinimum": 0,
-                                  "maximum": 9007199254740991
                                 }
                               },
                               "required": [
                                 "kind",
                                 "language",
-                                "expression",
-                                "policyVersion"
+                                "expression"
                               ],
                               "additionalProperties": false
                             },
@@ -9002,10 +8982,6 @@
                           "body": {
                             "type": "object",
                             "properties": {
-                              "schemaVersion": {
-                                "type": "number",
-                                "const": 1
-                              },
                               "nodes": {
                                 "type": "array",
                                 "items": {
@@ -9100,7 +9076,6 @@
                               }
                             },
                             "required": [
-                              "schemaVersion",
                               "nodes",
                               "edges",
                               "settings",
@@ -9252,7 +9227,6 @@
             "required": [
               "workflowId",
               "revision",
-              "schemaVersion",
               "graph",
               "compatibility",
               "updatedAt"
@@ -9535,10 +9509,6 @@
               {
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "templateId": {
                     "type": "string",
                     "minLength": 1,
@@ -9567,7 +9537,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "templateId",
                   "templateVersion",
                   "baseManifestDigest",
@@ -9705,10 +9674,6 @@
           "graph": {
             "type": "object",
             "properties": {
-              "schemaVersion": {
-                "type": "number",
-                "const": 1
-              },
               "nodes": {
                 "maxItems": 200,
                 "type": "array",
@@ -9789,7 +9754,6 @@
               }
             },
             "required": [
-              "schemaVersion",
               "nodes",
               "edges",
               "settings"
@@ -9931,18 +9895,12 @@
                             },
                             "expression": {
                               "type": "string"
-                            },
-                            "policyVersion": {
-                              "type": "integer",
-                              "exclusiveMinimum": 0,
-                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
                             "kind",
                             "language",
-                            "expression",
-                            "policyVersion"
+                            "expression"
                           ],
                           "additionalProperties": false
                         },
@@ -10009,10 +9967,6 @@
                       "body": {
                         "type": "object",
                         "properties": {
-                          "schemaVersion": {
-                            "type": "number",
-                            "const": 1
-                          },
                           "nodes": {
                             "type": "array",
                             "items": {
@@ -10107,7 +10061,6 @@
                           }
                         },
                         "required": [
-                          "schemaVersion",
                           "nodes",
                           "edges",
                           "settings",
@@ -10223,17 +10176,9 @@
             "exclusiveMinimum": 0,
             "maximum": 9007199254740991
           },
-          "schemaVersion": {
-            "type": "number",
-            "const": 1
-          },
           "graph": {
             "type": "object",
             "properties": {
-              "schemaVersion": {
-                "type": "number",
-                "const": 1
-              },
               "nodes": {
                 "maxItems": 200,
                 "type": "array",
@@ -10314,7 +10259,6 @@
               }
             },
             "required": [
-              "schemaVersion",
               "nodes",
               "edges",
               "settings"
@@ -10456,18 +10400,12 @@
                             },
                             "expression": {
                               "type": "string"
-                            },
-                            "policyVersion": {
-                              "type": "integer",
-                              "exclusiveMinimum": 0,
-                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
                             "kind",
                             "language",
-                            "expression",
-                            "policyVersion"
+                            "expression"
                           ],
                           "additionalProperties": false
                         },
@@ -10534,10 +10472,6 @@
                       "body": {
                         "type": "object",
                         "properties": {
-                          "schemaVersion": {
-                            "type": "number",
-                            "const": 1
-                          },
                           "nodes": {
                             "type": "array",
                             "items": {
@@ -10632,7 +10566,6 @@
                           }
                         },
                         "required": [
-                          "schemaVersion",
                           "nodes",
                           "edges",
                           "settings",
@@ -10784,7 +10717,6 @@
         "required": [
           "workflowId",
           "revision",
-          "schemaVersion",
           "graph",
           "compatibility",
           "updatedAt"
@@ -10953,17 +10885,9 @@
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
-              "schemaVersion": {
-                "type": "number",
-                "const": 1
-              },
               "graph": {
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "nodes": {
                     "maxItems": 200,
                     "type": "array",
@@ -11044,7 +10968,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "nodes",
                   "edges",
                   "settings"
@@ -11186,18 +11109,12 @@
                                 },
                                 "expression": {
                                   "type": "string"
-                                },
-                                "policyVersion": {
-                                  "type": "integer",
-                                  "exclusiveMinimum": 0,
-                                  "maximum": 9007199254740991
                                 }
                               },
                               "required": [
                                 "kind",
                                 "language",
-                                "expression",
-                                "policyVersion"
+                                "expression"
                               ],
                               "additionalProperties": false
                             },
@@ -11264,10 +11181,6 @@
                           "body": {
                             "type": "object",
                             "properties": {
-                              "schemaVersion": {
-                                "type": "number",
-                                "const": 1
-                              },
                               "nodes": {
                                 "type": "array",
                                 "items": {
@@ -11362,7 +11275,6 @@
                               }
                             },
                             "required": [
-                              "schemaVersion",
                               "nodes",
                               "edges",
                               "settings",
@@ -11472,7 +11384,6 @@
               "id",
               "workflowId",
               "versionNumber",
-              "schemaVersion",
               "graph",
               "checksum",
               "publishedAt"
@@ -11508,17 +11419,9 @@
             "exclusiveMinimum": 0,
             "maximum": 9007199254740991
           },
-          "schemaVersion": {
-            "type": "number",
-            "const": 1
-          },
           "graph": {
             "type": "object",
             "properties": {
-              "schemaVersion": {
-                "type": "number",
-                "const": 1
-              },
               "nodes": {
                 "maxItems": 200,
                 "type": "array",
@@ -11599,7 +11502,6 @@
               }
             },
             "required": [
-              "schemaVersion",
               "nodes",
               "edges",
               "settings"
@@ -11741,18 +11643,12 @@
                             },
                             "expression": {
                               "type": "string"
-                            },
-                            "policyVersion": {
-                              "type": "integer",
-                              "exclusiveMinimum": 0,
-                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
                             "kind",
                             "language",
-                            "expression",
-                            "policyVersion"
+                            "expression"
                           ],
                           "additionalProperties": false
                         },
@@ -11819,10 +11715,6 @@
                       "body": {
                         "type": "object",
                         "properties": {
-                          "schemaVersion": {
-                            "type": "number",
-                            "const": 1
-                          },
                           "nodes": {
                             "type": "array",
                             "items": {
@@ -11917,7 +11809,6 @@
                           }
                         },
                         "required": [
-                          "schemaVersion",
                           "nodes",
                           "edges",
                           "settings",
@@ -12027,7 +11918,6 @@
           "id",
           "workflowId",
           "versionNumber",
-          "schemaVersion",
           "graph",
           "checksum",
           "publishedAt"
@@ -12059,17 +11949,9 @@
                   "exclusiveMinimum": 0,
                   "maximum": 9007199254740991
                 },
-                "schemaVersion": {
-                  "type": "number",
-                  "const": 1
-                },
                 "graph": {
                   "type": "object",
                   "properties": {
-                    "schemaVersion": {
-                      "type": "number",
-                      "const": 1
-                    },
                     "nodes": {
                       "maxItems": 200,
                       "type": "array",
@@ -12150,7 +12032,6 @@
                     }
                   },
                   "required": [
-                    "schemaVersion",
                     "nodes",
                     "edges",
                     "settings"
@@ -12292,18 +12173,12 @@
                                   },
                                   "expression": {
                                     "type": "string"
-                                  },
-                                  "policyVersion": {
-                                    "type": "integer",
-                                    "exclusiveMinimum": 0,
-                                    "maximum": 9007199254740991
                                   }
                                 },
                                 "required": [
                                   "kind",
                                   "language",
-                                  "expression",
-                                  "policyVersion"
+                                  "expression"
                                 ],
                                 "additionalProperties": false
                               },
@@ -12370,10 +12245,6 @@
                             "body": {
                               "type": "object",
                               "properties": {
-                                "schemaVersion": {
-                                  "type": "number",
-                                  "const": 1
-                                },
                                 "nodes": {
                                   "type": "array",
                                   "items": {
@@ -12468,7 +12339,6 @@
                                 }
                               },
                               "required": [
-                                "schemaVersion",
                                 "nodes",
                                 "edges",
                                 "settings",
@@ -12578,7 +12448,6 @@
                 "id",
                 "workflowId",
                 "versionNumber",
-                "schemaVersion",
                 "graph",
                 "checksum",
                 "publishedAt"

@@ -55,7 +55,6 @@ describe('connection public contracts', () => {
       providerKey: 'http',
       name: 'Operations API',
       credential: {
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { Authorization: 'Bearer opaque', 'X-API-Key': 'key' },
       },
@@ -73,7 +72,6 @@ describe('connection public contracts', () => {
     for (const name of ['host', 'accept-encoding', 'idempotency-key'])
       expect(
         httpHeadersCredentialSchema.safeParse({
-          schemaVersion: 1,
           type: 'http_headers',
           headers: { [name]: 'not-a-credential' },
         }).success,
@@ -143,7 +141,6 @@ describe('connection public contracts', () => {
     for (const codePoint of forbidden)
       expect(
         httpHeadersCredentialSchema.safeParse({
-          schemaVersion: 1,
           type: 'http_headers',
           headers: {
             authorization: `left${String.fromCharCode(codePoint)}right`,
@@ -152,7 +149,6 @@ describe('connection public contracts', () => {
       ).toBe(false);
     expect(
       httpHeadersCredentialSchema.parse({
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { 'x-latin1': 'é', authorization: 'left\tright' },
       }).headers,
@@ -161,7 +157,6 @@ describe('connection public contracts', () => {
 
   it('normalizes valid mailboxes and rejects one mailbox invariant at a time', () => {
     const credential = {
-      schemaVersion: 1 as const,
       type: 'resend_api_key' as const,
       apiKey: 're_example_key',
     };

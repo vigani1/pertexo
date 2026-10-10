@@ -80,9 +80,9 @@ describeIntegration('Failure notification transport resilience', () => {
               'resend_api_key','active',$5,$6)
           ), secret_row as (
             insert into app.connection_secret_versions (
-              id,workspace_id,connection_id,schema_version,kms_key_reference,
+              id,workspace_id,connection_id,kms_key_reference,
               encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-            ) values ($5,$1,$4,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+            ) values ($5,$1,$4,'kms','key','cipher','AAAAAAAAAAAAAAAA',
               'AAAAAAAAAAAAAAAAAAAAAA',$6)
           ), slack_connection_row as (
             insert into app.connections (
@@ -92,9 +92,9 @@ describeIntegration('Failure notification transport resilience', () => {
               'slack_bot_token','active',$9,$6)
           ), slack_secret_row as (
             insert into app.connection_secret_versions (
-              id,workspace_id,connection_id,schema_version,kms_key_reference,
+              id,workspace_id,connection_id,kms_key_reference,
               encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-            ) values ($9,$1,$8,1,'kms','slack-key','slack-cipher',
+            ) values ($9,$1,$8,'kms','slack-key','slack-cipher',
               'BBBBBBBBBBBBBBBB','BBBBBBBBBBBBBBBBBBBBBB',$6)
           ), destination_row as (
             insert into app.failure_notification_destinations
@@ -151,7 +151,6 @@ describeIntegration('Failure notification transport resilience', () => {
     const intentId = emailIdentity.intentId;
     const initialOutboxEventId = emailIdentity.outboxEventId;
     const initialPayload = {
-      schemaVersion: 1 as const,
       workspaceId,
       notificationIntentId: intentId,
       outboxEventId: initialOutboxEventId,
@@ -159,7 +158,6 @@ describeIntegration('Failure notification transport resilience', () => {
     const slackIntentId = slackIdentity.intentId;
     const slackOutboxEventId = slackIdentity.outboxEventId;
     const slackPayload = {
-      schemaVersion: 1 as const,
       workspaceId,
       notificationIntentId: slackIntentId,
       outboxEventId: slackOutboxEventId,
@@ -419,12 +417,10 @@ describeIntegration('Failure notification transport resilience', () => {
                 JSON.stringify(
                   encryptionContext.connectionId === slackConnectionId
                     ? {
-                        schemaVersion: 1,
                         type: 'slack_bot_token',
                         botToken: 'xoxb-integration-only',
                       }
                     : {
-                        schemaVersion: 1,
                         type: 'resend_api_key',
                         apiKey: 're_integration_only',
                         fromEmail: 'sender@example.test',
@@ -573,12 +569,10 @@ describeIntegration('Failure notification transport resilience', () => {
                 JSON.stringify(
                   encryptionContext.connectionId === slackConnectionId
                     ? {
-                        schemaVersion: 1,
                         type: 'slack_bot_token',
                         botToken: 'xoxb-integration-only',
                       }
                     : {
-                        schemaVersion: 1,
                         type: 'resend_api_key',
                         apiKey: 're_integration_only',
                         fromEmail: 'sender@example.test',

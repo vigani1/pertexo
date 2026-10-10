@@ -140,7 +140,7 @@ beforeAll(async () => {
           workspaceId,
           randomUUID(),
           randomUUID(),
-          JSON.stringify({ kind: 'inline', schemaVersion: 1, value: index }),
+          JSON.stringify({ kind: 'inline', value: index }),
           expiresAt,
         ],
       );

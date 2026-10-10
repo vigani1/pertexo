@@ -99,14 +99,13 @@ describe('restricted JSONata policy v1', () => {
       procedure: { type: 'variable', value: 'uppercase' },
       arguments: [{ type: 'path' }],
     });
-    expect(validateExpression('runInput.name', 1)).toEqual({ kind: 'valid' });
+    expect(validateExpression('runInput.name')).toEqual({ kind: 'valid' });
   });
 
   it('accepts navigation/construction/pure built-ins and rejects capabilities before execution', () => {
     expect(
       validateExpression(
         '{"name": $uppercase(runInput.name), "n": $sum([1,2,3])}',
-        1,
       ),
     ).toEqual({ kind: 'valid' });
     for (const source of [
@@ -123,14 +122,14 @@ describe('restricted JSONata policy v1', () => {
       'constructor',
       'globalThis.fetch',
     ]) {
-      expect(validateExpression(source, 1)).toEqual(
+      expect(validateExpression(source)).toEqual(
         expect.objectContaining({
           kind: 'error',
           code: 'disallowed_construct',
         }),
       );
     }
-    expect(validateExpression('runInput.constructor', 1)).toEqual({
+    expect(validateExpression('runInput.constructor')).toEqual({
       kind: 'valid',
     });
     for (const source of [
@@ -138,48 +137,39 @@ describe('restricted JSONata policy v1', () => {
       'runInput#$index',
       'runInput{key: value}',
     ]) {
-      expect(validateExpression(source, 1)).toEqual(
+      expect(validateExpression(source)).toEqual(
         expect.objectContaining({
           kind: 'error',
           code: 'disallowed_construct',
         }),
       );
     }
-    expect(validateExpression('x', 999)).toEqual(
-      expect.objectContaining({ kind: 'error', code: 'invalid_expression' }),
-    );
   });
   it('accepts exact expression AST limits and rejects one unit over', () => {
     expect(
       validateExpression(
         `1${' '.repeat(EXPRESSION_POLICY.expressionBytes - 1)}`,
-        1,
       ),
     ).toEqual({ kind: 'valid' });
     expect(
-      validateExpression(
-        `1${' '.repeat(EXPRESSION_POLICY.expressionBytes)}`,
-        1,
-      ),
+      validateExpression(`1${' '.repeat(EXPRESSION_POLICY.expressionBytes)}`),
     ).toEqual(
       expect.objectContaining({ kind: 'error', limit: 'expression_bytes' }),
     );
     expect(
-      validateExpression(Array.from({ length: 64 }, () => '1').join('+'), 1),
+      validateExpression(Array.from({ length: 64 }, () => '1').join('+')),
     ).toEqual({ kind: 'valid' });
     expect(
-      validateExpression(Array.from({ length: 65 }, () => '1').join('+'), 1),
+      validateExpression(Array.from({ length: 65 }, () => '1').join('+')),
     ).toEqual(expect.objectContaining({ kind: 'error', limit: 'ast_depth' }));
     expect(
       validateExpression(
         `[${Array.from({ length: 2047 }, () => '1').join(',')}]`,
-        1,
       ),
     ).toEqual({ kind: 'valid' });
     expect(
       validateExpression(
         `[${Array.from({ length: 2048 }, () => '1').join(',')}]`,
-        1,
       ),
     ).toEqual(expect.objectContaining({ kind: 'error', limit: 'ast_nodes' }));
   });
@@ -192,28 +182,24 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: 'runInput.amount > 5000',
-        policyVersion: 1,
         context: { runInput: { amount: 6000 }, nodeOutputs: {} },
       }),
     ).toEqual({ kind: 'value', value: true, canonicalBytes: 4 });
     expect(
       await evaluator.evaluate({
         expression: '$uppercase(runInput.name)',
-        policyVersion: 1,
         context,
       }),
     ).toEqual(expected);
     expect(
       await evaluator.evaluate({
         expression: 'runInput.absent',
-        policyVersion: 1,
         context,
       }),
     ).toEqual({ kind: 'missing' });
-    expect(
-      (await evaluator.evaluate({ expression: '(', policyVersion: 1, context }))
-        .kind,
-    ).toBe('error');
+    expect((await evaluator.evaluate({ expression: '(', context })).kind).toBe(
+      'error',
+    );
   });
   it('projects evaluator context to the two declared fields before isolation', async () => {
     const evaluator = new JsonataEvaluator();
@@ -226,7 +212,6 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: '$keys($)',
-        policyVersion: 1,
         context,
       }),
     ).toEqual(
@@ -285,7 +270,6 @@ describe('restricted JSONata policy v1', () => {
       await expect(
         evaluator.evaluate({
           expression: '1',
-          policyVersion: 1,
           context: context as never,
         }),
       ).resolves.toMatchObject({
@@ -307,7 +291,6 @@ describe('restricted JSONata policy v1', () => {
     await expect(
       evaluator.evaluate({
         expression: 'runInput.value',
-        policyVersion: 1,
         context: context as never,
       }),
     ).resolves.toEqual({ kind: 'value', value: 2, canonicalBytes: 1 });
@@ -321,9 +304,7 @@ describe('restricted JSONata policy v1', () => {
     };
     const expression =
       '{"selected": runInput.items[n > 1].n, "math": 2 * 3, "text": "a" & "b", "choice": true ? "yes" : "no"}';
-    expect(
-      await evaluator.evaluate({ expression, policyVersion: 1, context }),
-    ).toEqual(
+    expect(await evaluator.evaluate({ expression, context })).toEqual(
       expect.objectContaining({
         kind: 'value',
         value: { choice: 'yes', math: 6, selected: 3, text: 'ab' },
@@ -365,7 +346,7 @@ describe('restricted JSONata policy v1', () => {
     ];
     const results = await Promise.all(
       cases.map(async ([expression]) =>
-        evaluator.evaluate({ expression, policyVersion: 1, context }),
+        evaluator.evaluate({ expression, context }),
       ),
     );
     results.forEach((result, index) => {
@@ -381,15 +362,14 @@ describe('restricted JSONata policy v1', () => {
       runInput: { text: 'x'.repeat(EXPRESSION_POLICY.inputBytes) },
       nodeOutputs: {},
     };
-    expect(
-      await evaluator.evaluate({ expression: '1', policyVersion: 1, context }),
-    ).toEqual(expect.objectContaining({ kind: 'error', limit: 'input_bytes' }));
+    expect(await evaluator.evaluate({ expression: '1', context })).toEqual(
+      expect.objectContaining({ kind: 'error', limit: 'input_bytes' }),
+    );
     const controller = new AbortController();
     controller.abort();
     expect(
       await evaluator.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: { runInput: null, nodeOutputs: {} },
         signal: controller.signal,
       }),
@@ -397,7 +377,6 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: '"x"',
-        policyVersion: 1,
         context: { runInput: null, nodeOutputs: {} },
       }),
     ).toEqual({ kind: 'value', value: 'x', canonicalBytes: 3 });
@@ -414,28 +393,24 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: exactContext,
       }),
     ).toEqual({ kind: 'value', value: 1, canonicalBytes: 1 });
     expect(
       await evaluator.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: { ...exactContext, runInput: `${exactContext.runInput}x` },
       }),
     ).toEqual(expect.objectContaining({ kind: 'error', limit: 'input_bytes' }));
     expect(
       await evaluator.evaluate({
         expression: '[1..10000]',
-        policyVersion: 1,
         context: empty,
       }),
     ).toEqual(expect.objectContaining({ kind: 'value' }));
     expect(
       await evaluator.evaluate({
         expression: '[1..10001]',
-        policyVersion: 1,
         context: empty,
       }),
     ).toEqual(
@@ -444,7 +419,6 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: '$pad("",1048574,"x")',
-        policyVersion: 1,
         context: empty,
       }),
     ).toEqual(
@@ -453,7 +427,6 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: '$pad("",1048575,"x")',
-        policyVersion: 1,
         context: empty,
       }),
     ).toEqual(
@@ -472,21 +445,18 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: exactDepth,
       }),
     ).toEqual({ kind: 'value', value: 1, canonicalBytes: 1 });
     expect(
       await evaluator.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: { runInput: nested(64), nodeOutputs: {} },
       }),
     ).toEqual(expect.objectContaining({ kind: 'error', limit: 'input_depth' }));
     expect(
       await evaluator.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: {
           runInput: Array.from({ length: 9_998 }, () => null),
           nodeOutputs: {},
@@ -496,7 +466,6 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: {
           runInput: Array.from({ length: 9_999 }, () => null),
           nodeOutputs: {},
@@ -515,14 +484,12 @@ describe('restricted JSONata policy v1', () => {
     expect(
       await evaluator.evaluate({
         expression: '{"x": runInput}',
-        policyVersion: 1,
         context,
       }),
     ).toEqual(expect.objectContaining({ kind: 'value' }));
     expect(
       await evaluator.evaluate({
         expression: '{"x": {"y": runInput}}',
-        policyVersion: 1,
         context,
       }),
     ).toEqual(
@@ -536,21 +503,20 @@ describe('restricted JSONata policy v1', () => {
     const started = performance.now();
     const expensive = evaluator.evaluate({
       expression: '$distinct([1..50000])',
-      policyVersion: 1,
       context,
     });
-    expect(
-      await evaluator.evaluate({ expression: '1', policyVersion: 1, context }),
-    ).toEqual(
+    expect(await evaluator.evaluate({ expression: '1', context })).toEqual(
       expect.objectContaining({ kind: 'error', limit: 'pool_capacity' }),
     );
     expect(await expensive).toEqual(
       expect.objectContaining({ kind: 'error', code: 'timed_out' }),
     );
     expect(performance.now() - started).toBeLessThan(250);
-    expect(
-      await evaluator.evaluate({ expression: '2', policyVersion: 1, context }),
-    ).toEqual({ kind: 'value', value: 2, canonicalBytes: 1 });
+    expect(await evaluator.evaluate({ expression: '2', context })).toEqual({
+      kind: 'value',
+      value: 2,
+      canonicalBytes: 1,
+    });
   });
   it('cancels queued and active evaluation without exposing a late value', async () => {
     const evaluator = new JsonataEvaluator({ maxActive: 1, maxQueued: 1 });
@@ -559,14 +525,12 @@ describe('restricted JSONata policy v1', () => {
     const activeController = new AbortController();
     const active = evaluator.evaluate({
       expression: '$distinct([1..50000])',
-      policyVersion: 1,
       context,
       signal: activeController.signal,
     });
     const queuedController = new AbortController();
     const queued = evaluator.evaluate({
       expression: '7',
-      policyVersion: 1,
       context,
       signal: queuedController.signal,
     });
@@ -590,7 +554,6 @@ describe('restricted JSONata policy v1', () => {
     evaluators.push(evaluator);
     const active = evaluator.evaluate({
       expression: '$distinct([1..50000])',
-      policyVersion: 1,
       context: { runInput: null, nodeOutputs: {} },
     });
     await evaluator.shutdown();
@@ -608,7 +571,6 @@ describe('restricted JSONata policy v1', () => {
     evaluators.push(evaluator);
     const evaluation = evaluator.evaluate({
       expression: '1',
-      policyVersion: 1,
       context: { runInput: null, nodeOutputs: {} },
     });
     worker.emit('message', { ready: true });
@@ -618,7 +580,6 @@ describe('restricted JSONata policy v1', () => {
     await expect(
       evaluator.evaluate({
         expression: '2',
-        policyVersion: 1,
         context: { runInput: null, nodeOutputs: {} },
       }),
     ).resolves.toMatchObject({
@@ -665,13 +626,11 @@ describe('restricted JSONata policy v1', () => {
     const controller = new AbortController();
     const active = evaluator.evaluate({
       expression: '1',
-      policyVersion: 1,
       context: { runInput: null, nodeOutputs: {} },
       signal: controller.signal,
     });
     const queued = evaluator.evaluate({
       expression: '2',
-      policyVersion: 1,
       context: { runInput: null, nodeOutputs: {} },
     });
     controller.abort();
@@ -701,7 +660,6 @@ describe('restricted JSONata policy v1', () => {
     evaluators.push(evaluator);
     const evaluation = evaluator.evaluate({
       expression: '1',
-      policyVersion: 1,
       context: { runInput: null, nodeOutputs: {} },
     });
     worker.emit('message', { ready: true });
@@ -732,7 +690,6 @@ describe('restricted JSONata policy v1', () => {
     const evaluations = [1, 2].map((value) =>
       evaluator.evaluate({
         expression: String(value),
-        policyVersion: 1,
         context: { runInput: null, nodeOutputs: {} },
       }),
     );
@@ -785,7 +742,6 @@ describe('restricted JSONata policy v1', () => {
       evaluators.push(evaluator);
       const evaluation = evaluator.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: { runInput: null, nodeOutputs: {} },
       });
       for (const message of messages) worker.emit('message', message);
@@ -815,7 +771,6 @@ describe('restricted JSONata policy v1', () => {
     evaluators.push(evaluator);
     const first = evaluator.evaluate({
       expression: '1',
-      policyVersion: 1,
       context: { runInput: null, nodeOutputs: {} },
     });
     required(workers[0]).emit('message', { ready: true });
@@ -826,7 +781,6 @@ describe('restricted JSONata policy v1', () => {
     });
     const second = evaluator.evaluate({
       expression: '2',
-      policyVersion: 1,
       context: { runInput: null, nodeOutputs: {} },
     });
     required(workers[1]).emit('message', { ready: true });
@@ -851,7 +805,6 @@ describe('restricted JSONata policy v1', () => {
       await expect(
         constructionFailure.evaluate({
           expression: '1',
-          policyVersion: 1,
           context: { runInput: null, nodeOutputs: {} },
         }),
       ).resolves.toEqual(
@@ -871,7 +824,6 @@ describe('restricted JSONata policy v1', () => {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const result = await startupFailure.evaluate({
         expression: '1',
-        policyVersion: 1,
         context: { runInput: null, nodeOutputs: {} },
       });
       expect(result).toEqual(
@@ -899,7 +851,6 @@ describe('restricted JSONata policy v1', () => {
 
     const result = await evaluator.evaluate({
       expression: '1',
-      policyVersion: 1,
       context: { runInput: null, nodeOutputs: {} },
     });
     expect(result).toMatchObject({
@@ -915,7 +866,6 @@ describe('restricted JSONata policy v1', () => {
   it('is byte-deterministic across two workers and a pool restart', async () => {
     const request = {
       expression: '{"b": runInput.b, "a": runInput.a}',
-      policyVersion: 1,
       context: { runInput: { b: 2, a: 1 }, nodeOutputs: {} },
     } as const;
     const startedAt = performance.now();
@@ -948,7 +898,6 @@ describe('restricted JSONata policy v1', () => {
         resultChecksumSha256: checksum,
         evaluatorPackage: JSONATA_EVALUATOR_DIAGNOSTICS.library,
         evaluatorPackageVersion: JSONATA_EVALUATOR_DIAGNOSTICS.libraryVersion,
-        policyVersion: JSONATA_EVALUATOR_DIAGNOSTICS.policyVersion,
         evaluations: 101,
         isolation: first.diagnostics().isolation,
         workerCreations: first.diagnostics().workerCreations,

@@ -102,7 +102,6 @@ describe('Coordinator pending failure evidence invariants', () => {
           checkpoint: nextCheckpoint,
           events: [
             {
-              schemaVersion: 1,
               sequence: 2,
               name: 'node.retry_scheduled',
               occurredAt: '2026-08-20T10:01:00.000Z',
@@ -112,7 +111,6 @@ describe('Coordinator pending failure evidence invariants', () => {
               dueAt,
             },
             {
-              schemaVersion: 1,
               sequence: 3,
               name: 'run.waiting',
               occurredAt: '2026-08-20T10:01:00.000Z',
@@ -211,7 +209,6 @@ describe('Coordinator pending failure evidence invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 2,
               name: 'node.failed',
               occurredAt: '2026-09-13T00:00:00.000Z',
@@ -221,7 +218,6 @@ describe('Coordinator pending failure evidence invariants', () => {
               reasonCode: 'provider.unavailable',
             },
             {
-              schemaVersion: 1,
               sequence: 3,
               name: 'run.failed',
               occurredAt: '2026-09-13T00:00:00.000Z',
@@ -312,7 +308,6 @@ describe('Coordinator pending failure evidence invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 2,
               name: 'run.failed',
               occurredAt: '2026-09-13T00:00:00.000Z',

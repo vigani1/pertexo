@@ -306,7 +306,6 @@ describe('node-testing public contracts', () => {
   });
 
   it('documents recursive input shape, runtime depth, and conditional idempotency', () => {
-    expect(nodeTestingClientContract.schemaVersion).toBe('1.0.0');
     expect(Object.keys(nodeTestingOpenApiDocument.paths)).toEqual([
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test',
       '/v1/workspaces/{workspaceId}/previews/{previewRunId}',

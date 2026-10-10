@@ -69,7 +69,6 @@ function graph(nested: boolean): WorkflowGraphContract {
     definition: { key: 'core.terminate', version: 1 },
   };
   return {
-    schemaVersion: 1,
     settings: {},
     nodes: nested
       ? [start, smallLoop(loopStep('loop', 'Loop', group)), end]

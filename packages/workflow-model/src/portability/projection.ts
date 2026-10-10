@@ -178,7 +178,6 @@ export function projectWorkflowPortableManifest(
   const selected = facts(graph, catalog);
   return workflowPortableManifestSchema.parse({
     format: 'pertexo.workflow',
-    formatVersion: 1,
     graph: replaceConnections(graph, new Map()),
     requirements: { definitions: selected.definitions },
     connectionSlots: selected.slots,

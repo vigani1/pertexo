@@ -4,7 +4,6 @@ import { z } from 'zod';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 
 type ResolvedFailureNotificationPolicy = Readonly<{
-  policyVersion: 1;
   destinationId: string;
   destinationConfigVersion: number;
   sideEffectClass: 'idempotent_with_key' | 'unsafe';
@@ -127,7 +126,6 @@ export async function resolveWorkflowFailureNotificationPolicy(
   if (secretResult.rows[0] === undefined) return undefined;
 
   return Object.freeze({
-    policyVersion: 1,
     destinationId: z.uuid().parse(destination.destination_id),
     destinationConfigVersion: z
       .number()

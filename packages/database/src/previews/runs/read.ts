@@ -7,7 +7,7 @@ import {
   type PreviewRunRecord,
   type PreviewStatus,
 } from './acceptance.js';
-import { parseStoredExecutionValueV1 } from '../../platform/stored-execution-value.js';
+import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { previewRuns } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
@@ -67,9 +67,7 @@ export async function readPreviewRun(
     mayCauseExternalSideEffect: row.mayCauseExternalSideEffect,
     dryRun: z.enum(['not_supported', 'provider_supported']).parse(row.dryRun),
     output:
-      row.outputRef === null
-        ? null
-        : parseStoredExecutionValueV1(row.outputRef),
+      row.outputRef === null ? null : parseStoredExecutionValue(row.outputRef),
     safeErrorCode: row.safeErrorCode,
     createdAt: row.createdAt,
     startedAt: row.startedAt,

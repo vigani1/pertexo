@@ -77,7 +77,7 @@ export function createConnectionLookupPersistence(
               'Connection is not available for lookups',
             );
           const secret = await client.query<Record<string, unknown>>(
-            `select schema_version, kms_key_reference, encrypted_data_key,
+            `select kms_key_reference, encrypted_data_key,
                     ciphertext, nonce, auth_tag
                from app.connection_secret_versions
               where workspace_id = $1 and connection_id = $2 and id = $3`,

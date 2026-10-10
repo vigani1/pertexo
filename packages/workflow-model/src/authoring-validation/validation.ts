@@ -9,7 +9,6 @@ import type {
 } from '../graph/validation/contract.js';
 import {
   validateExpression,
-  EXPRESSION_POLICY,
   type ExpressionValidation,
 } from '../expressions/policy.js';
 import {
@@ -21,7 +20,7 @@ import {
 function safeExpressionMessage(result: ExpressionValidation): string {
   if (result.kind === 'valid') return '';
   if (result.code === 'disallowed_construct')
-    return 'This expression uses a construct unavailable in the pinned policy.';
+    return 'This expression uses a construct unavailable in the expression policy.';
   if (result.code === 'limit_exceeded') {
     if (result.limit === 'expression_bytes')
       return 'This expression exceeds the 16 KiB source limit.';
@@ -68,17 +67,17 @@ export function validateAuthoringBatch(
     assertReportBudget(structural);
     return structural;
   }
-  const policyVersions = new Map(
-    policies.definitions.map(({ definition, policyReferences }) => [
-      `${definition.key}\u0000${String(definition.version)}`,
-      new Set(
-        policyReferences
-          .filter(({ key }) => key === 'jsonata.restricted')
-          .map(({ version }) => version),
+  const expressionDefinitions = new Set(
+    policies.definitions
+      .filter(({ policyReferences }) =>
+        policyReferences.some(({ key }) => key === 'jsonata.restricted'),
+      )
+      .map(
+        ({ definition }) =>
+          `${definition.key}\u0000${String(definition.version)}`,
       ),
-    ]),
   );
-  const cache = new Map<number, Map<string, ExpressionValidation>>();
+  const sources = new Map<string, ExpressionValidation>();
   const issues: GraphValidationIssue[] = [];
   const pending: { graph: WorkflowGraph; path: string }[] = [
     { graph, path: '$' },
@@ -93,30 +92,19 @@ export function validateAuthoringBatch(
           graph: node.structured.body,
           path: `${nodePath}.structured.body`,
         });
-      const pins = policyVersions.get(
+      const supportsExpressions = expressionDefinitions.has(
         `${node.definition.key}\u0000${String(node.definition.version)}`,
       );
       for (const [key, source] of Object.entries(node.inputMappings)) {
         if (source.kind !== 'expression') continue;
         let message: string;
-        if (
-          pins?.has(source.policyVersion) !== true ||
-          source.policyVersion !== EXPRESSION_POLICY.policyVersion
-        ) {
+        if (!supportsExpressions) {
           message =
             'The expression policy is not available for this step definition.';
         } else {
-          let sources = cache.get(source.policyVersion);
-          if (sources === undefined) {
-            sources = new Map();
-            cache.set(source.policyVersion, sources);
-          }
           let validation = sources.get(source.expression);
           if (validation === undefined) {
-            validation = validateExpression(
-              source.expression,
-              source.policyVersion,
-            );
+            validation = validateExpression(source.expression);
             // Retain only safe policy facts; parser messages can echo private source.
             validation =
               validation.kind === 'valid'

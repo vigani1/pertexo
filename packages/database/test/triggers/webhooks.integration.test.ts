@@ -72,7 +72,6 @@ const hash = (value: string): string =>
 const endpointHash = hash('endpoint-one');
 const secret = (id = randomUUID()) => ({
   id,
-  schemaVersion: 1 as const,
   kmsKeyReference: 'kms://test/webhook',
   encryptedDataKey: `encrypted-key-${id}`,
   ciphertext: `ciphertext-${id}`,
@@ -105,7 +104,6 @@ let readinessPool: Pool;
 let workerReadinessPool: Pool;
 let workerPool: Pool;
 const triggerCatalog = Object.freeze({
-  schemaVersion: 1 as const,
   definitions: Object.freeze([
     Object.freeze({ key: 'core.webhook', version: 1 }),
     Object.freeze({ key: 'core.schedule', version: 1 }),
@@ -235,10 +233,7 @@ async function apiQuery<Row extends QueryResultRow = QueryResultRow>(
 }
 
 const checkpointFactory = (projection?: { id: string }) => ({
-  engineVersion: 'webhook-test-engine',
   checkpoint: {
-    schemaVersion: 2,
-    engineVersion: 'webhook-test-engine',
     workflowVersionId: projection?.id ?? versionId,
     revision: 0,
     runStatus: 'queued',
@@ -285,7 +280,6 @@ beforeAll(async () => {
         .update(JSON.stringify(graph))
         .digest('hex')}`,
       executableJson: {
-        schemaVersion: 2,
         graph,
       },
     }),
@@ -303,7 +297,6 @@ beforeAll(async () => {
     idempotencyKey: `webhook-${actorId}`,
   });
   const payload = {
-    schemaVersion: 1,
     workspaceId,
     outboxEventId,
     workflowId,
@@ -315,14 +308,13 @@ beforeAll(async () => {
     [workflowId, workspaceId, actorId],
   );
   await ownerQuery(
-    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-       schema_version,graph_json,checksum,executable_json,published_by)
-     values($1,$2,$3,1,1,$4::jsonb,$5,'{}'::jsonb,$6)`,
+    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+     values($1,$2,$3,1,$4::jsonb,$5,'{}'::jsonb,$6)`,
     [
       versionId,
       workspaceId,
       workflowId,
-      JSON.stringify({ schemaVersion: 1, settings: {}, nodes: [], edges: [] }),
+      JSON.stringify({ settings: {}, nodes: [], edges: [] }),
       `wf:sha256:${'a'.repeat(64)}`,
       actorId,
     ],
@@ -335,10 +327,9 @@ beforeAll(async () => {
     `with inserted_connection as (insert into app.connections(id,workspace_id,provider_key,name,auth_type,status,
        current_secret_version_id,created_by)
      values($1,$2,'email','Webhook notifications','resend_api_key','active',$3,$4) returning id)
-     insert into app.connection_secret_versions(id,workspace_id,connection_id,schema_version,
-       kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-     select $3,$2,id,1,'kms','key','cipher','AAAAAAAAAAAAAAAA','AAAAAAAAAAAAAAAAAAAAAA',$4
-       from inserted_connection`,
+     insert into app.connection_secret_versions(id,workspace_id,connection_id,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
+     select $3,$2,id,'kms','key','cipher','AAAAAAAAAAAAAAAA','AAAAAAAAAAAAAAAAAAAAAA',$4
+        from inserted_connection`,
     [
       notificationConnectionId,
       workspaceId,
@@ -381,9 +372,9 @@ beforeAll(async () => {
     ],
   );
   await ownerQuery(
-    `insert into app.outbox_events(id,workspace_id,job_name,schema_version,
+    `insert into app.outbox_events(id,workspace_id,job_name,
        aggregate_type,aggregate_id,payload,payload_checksum)
-     values($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,$4::jsonb,$5)`,
+     values($1,$2,'reconcile-workflow-triggers','workflow',$3,$4::jsonb,$5)`,
     [
       outboxEventId,
       workspaceId,
@@ -441,9 +432,9 @@ describe('generic webhook database seam', () => {
       const payloadChecksum = canonicalOutboxPayloadChecksum({});
       if (eventExists) {
         await ownerQuery(
-          `insert into app.outbox_events(id,workspace_id,job_name,schema_version,
+          `insert into app.outbox_events(id,workspace_id,job_name,
            aggregate_type,aggregate_id,payload,payload_checksum)
-         values($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,'{}'::jsonb,$4)`,
+         values($1,$2,'reconcile-workflow-triggers','workflow',$3,'{}'::jsonb,$4)`,
           [eventId, workspaceId, workflowId, payloadChecksum],
         );
       }
@@ -470,7 +461,6 @@ describe('generic webhook database seam', () => {
 
   it('rejects each durable event and delivery identity mutation without receipt or trigger effects', async () => {
     const baselinePayload = (eventId: string) => ({
-      schemaVersion: 1 as const,
       workspaceId,
       outboxEventId: eventId,
       workflowId,
@@ -482,7 +472,6 @@ describe('generic webhook database seam', () => {
         aggregateId?: string;
         aggregateType?: string;
         jobName?: string;
-        schemaVersion?: number;
       }>;
       payload?: Readonly<{
         outboxEventId?: string;
@@ -497,7 +486,6 @@ describe('generic webhook database seam', () => {
       { name: 'aggregate id', event: { aggregateId: randomUUID() } },
       { name: 'aggregate type', event: { aggregateType: 'workflow.run' } },
       { name: 'job name', event: { jobName: 'dispatch-workflow-run' } },
-      { name: 'schema version', event: { schemaVersion: 2 } },
       { name: 'payload workspace', payload: { workspaceId: randomUUID() } },
       { name: 'payload workflow', payload: { workflowId: randomUUID() } },
       {
@@ -515,14 +503,13 @@ describe('generic webhook database seam', () => {
       const payload = { ...baselinePayload(eventId), ...mutation.payload };
       const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
       await ownerQuery(
-        `insert into app.outbox_events(id,workspace_id,job_name,schema_version,
+        `insert into app.outbox_events(id,workspace_id,job_name,
            aggregate_type,aggregate_id,payload,payload_checksum)
-         values($1,$2,$3,$4,$5,$6,$7::jsonb,$8)`,
+         values($1,$2,$3,$4,$5,$6::jsonb,$7)`,
         [
           eventId,
           workspaceId,
           mutation.event?.jobName ?? 'reconcile-workflow-triggers',
-          mutation.event?.schemaVersion ?? 1,
           mutation.event?.aggregateType ?? 'workflow',
           mutation.event?.aggregateId ?? workflowId,
           JSON.stringify(payload),
@@ -572,7 +559,6 @@ describe('generic webhook database seam', () => {
 
   function triggerGraph(intervalMinutes = 15, graphDisabled = false) {
     return {
-      schemaVersion: 1,
       settings: {},
       nodes: [
         {
@@ -633,7 +619,6 @@ describe('generic webhook database seam', () => {
   ) {
     const eventId = randomUUID();
     const payload = {
-      schemaVersion: 1,
       workspaceId,
       outboxEventId: eventId,
       workflowId: workflowIdInput,
@@ -641,9 +626,9 @@ describe('generic webhook database seam', () => {
     };
     const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
     await ownerQuery(
-      `insert into app.outbox_events(id,workspace_id,job_name,schema_version,
+      `insert into app.outbox_events(id,workspace_id,job_name,
          aggregate_type,aggregate_id,payload,payload_checksum)
-       values($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,$4::jsonb,$5)`,
+       values($1,$2,'reconcile-workflow-triggers','workflow',$3,$4::jsonb,$5)`,
       [
         eventId,
         workspaceId,
@@ -734,7 +719,7 @@ describe('generic webhook database seam', () => {
       actorId,
       workspaceId,
       name: 'Published trigger projection',
-      emptyGraph: { schemaVersion: 1, settings: {}, nodes: [], edges: [] },
+      emptyGraph: { settings: {}, nodes: [], edges: [] },
       idempotencyKey: randomUUID(),
     });
     const graph = triggerGraph(15, graphDisabled);
@@ -1653,8 +1638,7 @@ describe('generic webhook database seam', () => {
       true,
     ]);
     const pins = await ownerQuery(
-      `select failure_notification_policy_version,
-              failure_notification_destination_id,
+      `select failure_notification_destination_id,
               failure_notification_destination_config_version,
               failure_notification_side_effect_class,
               failure_notification_connection_secret_version_id
@@ -1663,7 +1647,6 @@ describe('generic webhook database seam', () => {
     );
     expect(pins.rows).toEqual([
       {
-        failure_notification_policy_version: 1,
         failure_notification_destination_id: notificationDestinationId,
         failure_notification_destination_config_version: 1,
         failure_notification_side_effect_class: 'idempotent_with_key',

@@ -15,7 +15,6 @@ export function startRequestHash(input: StartWorkflowRunInput): string {
   return sha256(
     canonicalJson({
       domain: 'pertexo.workflow-run.start-request',
-      version: 1,
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       workflowId: input.workflowId,
@@ -34,7 +33,6 @@ export function replayRequestHash(input: ReplayWorkflowRunInput): string {
   return sha256(
     canonicalJson({
       domain: 'pertexo.workflow-run.replay-request',
-      version: 1,
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       sourceRunId: input.runId,

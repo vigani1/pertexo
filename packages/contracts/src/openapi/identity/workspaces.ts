@@ -109,7 +109,6 @@ const schemas = Object.freeze({
 });
 
 export const identityWorkspaceClientContract = Object.freeze({
-  schemaVersion: '1.0.0',
   schemas,
 });
 

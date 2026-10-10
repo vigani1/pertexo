@@ -40,7 +40,6 @@ it('admits the reviewed schedule successor after an empty For Each declaration',
     signal: new AbortController().signal,
   } as const;
   const checkpoint = createCheckpoint({
-    engineVersion: 'engine-v1',
     workflowVersionId: version,
     iterationBudget: 3,
   });

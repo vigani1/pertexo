@@ -175,7 +175,6 @@ describe.skipIf(!enabled)(
         headers: { 'if-match': String(draft.headers.etag) },
         payload: {
           graph: {
-            schemaVersion: 1,
             nodes: [
               {
                 id: nodeId,

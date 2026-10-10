@@ -10,7 +10,7 @@ interface BoundedJsonObject {
   readonly [key: string]: BoundedJsonValue;
 }
 
-export const NODE_JSON_LIMITS_V1 = Object.freeze({
+export const NODE_JSON_LIMITS = Object.freeze({
   bytes: 1_048_576,
   depth: 64,
   members: 10_000,
@@ -231,7 +231,7 @@ function inspectBoundedJsonUnsafe(
  */
 export function inspectBoundedJson(
   value: unknown,
-  limits: BoundedJsonLimits = NODE_JSON_LIMITS_V1,
+  limits: BoundedJsonLimits = NODE_JSON_LIMITS,
 ): BoundedJsonInspection {
   try {
     return inspectBoundedJsonUnsafe(value, limits);

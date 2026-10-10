@@ -313,7 +313,7 @@ describe('preview worker lease reconciliation', () => {
         delivery: claimed.fixture.delivery,
         lease: claimed.lease,
         outcome: {
-          output: { schemaVersion: 1, kind: 'inline', value: 'stale' },
+          output: { kind: 'inline', value: 'stale' },
           status: PREVIEW_STATUS.succeeded,
         },
         workerId: claimed.workerId,
@@ -338,7 +338,6 @@ describe('preview worker lease reconciliation', () => {
         claimed.lease.attemptFenceToken + 2,
       );
       const replacementOutput = {
-        schemaVersion: 1,
         kind: 'inline',
         value: 'replacement-confirmed',
       } as const;

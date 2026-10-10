@@ -82,7 +82,6 @@ export async function authorNestedExpressionGraph(
         kind: 'expression',
         language: 'jsonata',
         expression: '(',
-        policyVersion: 1,
       },
     });
   return {

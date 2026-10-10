@@ -62,7 +62,6 @@ describe('connection envelope encryption', () => {
     const identity = context();
     const plaintext = new TextEncoder().encode(
       JSON.stringify({
-        schemaVersion: 1,
         headers: { Authorization: 'secret' },
       }),
     );
@@ -142,7 +141,6 @@ describe('connection envelope encryption', () => {
     const exactCiphertext = Buffer.alloc(65_536).toString('base64url');
     const oversizedCiphertext = Buffer.alloc(65_537).toString('base64url');
     const envelope = {
-      schemaVersion: 1 as const,
       kmsKeyReference: 'test-key',
       encryptedDataKey: Buffer.from([1]).toString('base64url'),
       nonce: Buffer.alloc(12).toString('base64url'),
@@ -327,7 +325,6 @@ describe('AWS KMS envelope-key adapter', () => {
     for (const command of commands) {
       expect(command.input.EncryptionContext).toEqual({
         purpose: 'pertexo-connection-secret',
-        schemaVersion: '1',
         workspaceId: identity.workspaceId,
         connectionId: identity.connectionId,
         secretVersionId: identity.secretVersionId,

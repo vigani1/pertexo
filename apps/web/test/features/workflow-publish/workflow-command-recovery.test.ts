@@ -44,7 +44,6 @@ describe('workflow publication recovery', () => {
           id: versionId,
           workflowId,
           versionNumber: 1,
-          schemaVersion: 1,
           graph: emptyGraph,
           checksum: `wf:sha256:${'c'.repeat(64)}`,
           publishedAt: '2026-09-15T10:00:00.000Z',
@@ -424,7 +423,7 @@ describe('workflow run submission lifecycle', () => {
   });
 });
 
-const emptyGraph = { schemaVersion: 1, nodes: [], edges: [], settings: {} };
+const emptyGraph = { nodes: [], edges: [], settings: {} };
 
 describe('a run started just before the workflow changes', () => {
   it('stops waiting once the earlier workflow’s answer lands', async () => {

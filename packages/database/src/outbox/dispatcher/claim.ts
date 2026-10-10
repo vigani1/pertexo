@@ -154,7 +154,7 @@ export async function claimOutboxBatch(
             and admitted.publish_attempts < $6
           returning event.aggregate_id,event.aggregate_type,event.available_at,event.id,
                     event.job_name,event.lease_expires_at,event.lease_owner,event.lease_token,
-                    event.payload,event.payload_checksum,event.publish_attempts,event.schema_version,event.workspace_id
+                    event.payload,event.payload_checksum,event.publish_attempts,event.workspace_id
         )
         select
           coalesce(

@@ -89,7 +89,6 @@ function flatGraph(nodes: number): WorkflowGraph {
     longId(`node-${String(index)}`),
   );
   return {
-    schemaVersion: 1,
     settings: { maxRunDurationMs: 60_000 },
     nodes: ids.map((id, index) =>
       index === 0
@@ -137,7 +136,6 @@ async function runToCompletion(
   let plan = await advanceWorkflow({
     ...base,
     checkpoint: createCheckpoint({
-      engineVersion: 'phase3-engine-v1',
       workflowVersionId,
       iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
     }),

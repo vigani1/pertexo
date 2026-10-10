@@ -7,7 +7,6 @@ import { createQueueConsumer } from '@pertexo/queue';
 
 const engineCodes = new Set([
   'checkpoint_invalid',
-  'checkpoint_unsupported',
   'graph_invalid',
   'executable_invalid',
   'observation_invalid',

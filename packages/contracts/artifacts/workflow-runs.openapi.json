@@ -3226,10 +3226,6 @@
           "payload": {
             "type": "object",
             "properties": {
-              "schemaVersion": {
-                "type": "number",
-                "const": 1
-              },
               "invocationKey": {
                 "type": "string",
                 "minLength": 1,
@@ -3313,9 +3309,6 @@
                 ]
               }
             },
-            "required": [
-              "schemaVersion"
-            ],
             "additionalProperties": false
           }
         },

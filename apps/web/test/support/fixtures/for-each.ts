@@ -60,7 +60,6 @@ export function loopStep(
       maxIterations: 100,
       maxConcurrency: 5,
       body: {
-        schemaVersion: 1,
         ...body,
         settings: {},
         inputPorts: ['item', 'ordinal'],
@@ -77,7 +76,6 @@ export function loopStep(
  */
 export function orderLoopGraph(): WorkflowGraphContract {
   return {
-    schemaVersion: 1,
     nodes: [
       step('start', 'Start', { x: -240, y: 80 }),
       loopStep('loop', 'Each order', {

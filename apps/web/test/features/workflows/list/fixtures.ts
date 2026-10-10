@@ -60,7 +60,6 @@ type Step = Readonly<{ id: string; key: string; label?: string; x: number }>;
 
 export function graphOf(steps: readonly Step[]) {
   return {
-    schemaVersion: 1,
     nodes: steps.map((step) => ({
       id: step.id,
       definition: { key: step.key, version: 1 },
@@ -81,7 +80,6 @@ export function graphOf(steps: readonly Step[]) {
 }
 
 export const emptyGraph = {
-  schemaVersion: 1,
   nodes: [],
   edges: [],
   settings: {},
@@ -91,7 +89,6 @@ export function draftBody(id: string, graph: unknown = emptyGraph) {
   return {
     workflowId: id,
     revision: 1,
-    schemaVersion: 1,
     graph,
     compatibility: {
       compatible: true,
@@ -122,10 +119,10 @@ export function discoveryHandlers(
       }),
     ),
     http.get('http://pertexo.test/v1/node-definitions', () =>
-      HttpResponse.json({ schemaVersion: 1, items: [] }),
+      HttpResponse.json({ items: [] }),
     ),
     http.get('http://pertexo.test/v1/integrations', () =>
-      HttpResponse.json({ schemaVersion: 1, items: [] }),
+      HttpResponse.json({ items: [] }),
     ),
     http.get(`${api}/connections`, () =>
       HttpResponse.json({ items: [], nextCursor: null }),
@@ -200,5 +197,5 @@ export function catalogDefinition(
 export function catalogOf(
   items: readonly CatalogItem[],
 ): NodeDefinitionListResponse {
-  return { schemaVersion: 1, items: [...items] };
+  return { items: [...items] };
 }

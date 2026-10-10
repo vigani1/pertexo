@@ -159,7 +159,6 @@ export async function seedWorkspaces(): Promise<void> {
 }
 
 export const sealed = (marker: number) => ({
-  schemaVersion: 1 as const,
   kmsKeyReference: 'arn:aws:kms:eu-central-1:123456789012:key/example',
   encryptedDataKey: Buffer.alloc(96, marker).toString('base64url'),
   ciphertext: Buffer.from(`encrypted-${String(marker)}`).toString('base64url'),

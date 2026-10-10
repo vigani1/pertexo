@@ -22,7 +22,6 @@ export type ValueSource =
       readonly kind: 'expression';
       readonly language: 'jsonata';
       readonly expression: string;
-      readonly policyVersion: number;
     }
   | {
       readonly kind: 'structured_input';
@@ -60,7 +59,6 @@ export interface WorkflowNode {
   readonly structured?: ForEachStructure | undefined;
 }
 export interface WorkflowGraph {
-  readonly schemaVersion: number;
   readonly nodes: readonly WorkflowNode[];
   readonly edges: readonly WorkflowEdge[];
   readonly settings: WorkflowSettings;
@@ -108,7 +106,6 @@ const valueSourceSchema = z.discriminatedUnion('kind', [
       kind: z.literal('expression'),
       language: z.literal('jsonata'),
       expression: z.string(),
-      policyVersion: positiveVersionSchema,
     })
     .strict(),
   z
@@ -180,7 +177,6 @@ const workflowNodeSchema: z.ZodType<WorkflowNode> = z.lazy(() =>
 const structuredBodySchema: z.ZodType<StructuredBody> = z.lazy(() =>
   z
     .object({
-      schemaVersion: z.literal(1),
       nodes: z.array(workflowNodeSchema),
       edges: z.array(workflowEdgeSchema),
       settings: workflowSettingsSchema,
@@ -200,7 +196,6 @@ export const workflowGraphStructuralSchema: z.ZodType<WorkflowGraph> = z.lazy(
   () =>
     z
       .object({
-        schemaVersion: z.literal(1),
         nodes: z
           .array(workflowNodeSchema)
           .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
@@ -243,7 +238,6 @@ export const workflowGraphSchema: z.ZodType<WorkflowGraph> =
     .transform(restoreDroppedInputMappingKeys);
 
 export const EMPTY_WORKFLOW_GRAPH: WorkflowGraph = Object.freeze({
-  schemaVersion: 1,
   nodes: Object.freeze([]),
   edges: Object.freeze([]),
   settings: Object.freeze({}),

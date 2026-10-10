@@ -141,7 +141,7 @@ describe('workflow executable identity', () => {
       ),
     ).toEqual(['safe', 'safe', 'safe']);
     expect(compiled.checksum).toBe(
-      'wf:sha256:0180454ed5720eda0c72dfd125e9b5f5834b495387684271d1fe813502555817',
+      'wf:sha256:bc624efc7e092d274f7655954b21da21501b8ac128fafb5095fdd91e7bb1e6d7',
     );
     expect(
       verifyWorkflowExecutable({
@@ -270,7 +270,7 @@ describe('workflow executable identity', () => {
     ).toEqual(['unsafe', 'idempotent_with_key', 'safe']);
   });
 
-  it('fails closed for mutated pins, checksum, malformed envelopes, and V1 input', () => {
+  it('fails closed for mutated pins, checksum and malformed envelopes', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
     const mutated = structuredClone(compiled.envelope);
@@ -298,7 +298,7 @@ describe('workflow executable identity', () => {
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(() =>
       parseWorkflowExecutable({
-        envelope: { schemaVersion: 1 },
+        envelope: {},
         catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
@@ -551,25 +551,7 @@ describe('workflow executable identity', () => {
     );
   });
 
-  it('rejects unpinned expression policy versions', () => {
-    const catalog = composeExecutableCatalog(nodeCatalog());
-    const expression = structuredClone(graph());
-    Object.assign(expression.nodes[1], {
-      inputMappings: {
-        bad: {
-          kind: 'expression',
-          language: 'jsonata',
-          expression: '$.runInput',
-          policyVersion: 2,
-        },
-      },
-    });
-    expect(() =>
-      buildWorkflowExecutable({ graph: expression, catalog }),
-    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
-  });
-
-  it('enforces exact V2 byte accounting before canonical allocation', () => {
+  it('enforces exact executable byte accounting before canonical allocation', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
     const exact = structuredClone(compiled.envelope);
@@ -587,9 +569,8 @@ describe('workflow executable identity', () => {
       WORKFLOW_EXECUTABLE_LIMITS.bytes,
     );
     expect(
-      parseWorkflowExecutable({ envelope: exact, catalog: catalog })
-        .schemaVersion,
-    ).toBe(2);
+      parseWorkflowExecutable({ envelope: exact, catalog: catalog }).graph,
+    ).toEqual(exact.graph);
     const over = structuredClone(exact);
     const overSet = over.graph.nodes.find(({ id }) => id === 'set');
     if (overSet === undefined) throw new Error('fixture set node missing');
@@ -599,7 +580,7 @@ describe('workflow executable identity', () => {
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
-  it('rejects a publish-valid near-limit graph when V2 pins exceed the envelope limit', () => {
+  it('rejects a publish-valid near-limit graph when executable pins exceed the envelope limit', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const nearLimit = structuredClone(graph());
     const set = nearLimit.nodes.find(({ id }) => id === 'set');
@@ -648,7 +629,6 @@ describe('workflow executable identity', () => {
 
     const executable = buildWorkflowExecutable({
       graph: {
-        schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
         nodes,
         edges,

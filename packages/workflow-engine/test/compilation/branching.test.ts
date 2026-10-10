@@ -18,11 +18,10 @@ import {
 } from '../support/executable-workflow.js';
 
 describe('branching production operations', () => {
-  it('advances only through the verified V2 graph and rejects malformed observations', async () => {
+  it('advances only through the verified executable graph and rejects malformed observations', async () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const checkpoint = createCheckpoint({
-      engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 0,
     });
@@ -104,7 +103,7 @@ describe('branching production operations', () => {
     ).rejects.toMatchObject({ code: 'executable_invalid' });
   });
 
-  it('accepts canonical branch-scoped checkpoint V2 identity', async () => {
+  it('accepts canonical branch-scoped checkpoint identity', async () => {
     const workflowVersionId = '00000000-0000-4000-8000-000000000007';
     const catalog = composeExecutableCatalog(nodeCatalog({ condition: true }));
     const executable = buildWorkflowExecutable({
@@ -122,7 +121,6 @@ describe('branching production operations', () => {
     });
     const checkpoint = {
       ...createCheckpoint({
-        engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
       }),
@@ -169,7 +167,7 @@ describe('branching production operations', () => {
         observations: [],
         signal: new AbortController().signal,
       }),
-    ).resolves.toMatchObject({ checkpoint: { schemaVersion: 2 } });
+    ).resolves.toMatchObject({ checkpoint: {} });
 
     for (const branchPath of [
       [{ nodeId: 'missing', outputPort: 'true' }],
@@ -233,7 +231,6 @@ describe('branching production operations', () => {
     const attemptId = '00000000-0000-4000-8000-000000000102';
     const checkpoint = {
       ...createCheckpoint({
-        engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
       }),
@@ -286,7 +283,6 @@ describe('branching production operations', () => {
     });
 
     expect(plan.checkpoint).toMatchObject({
-      schemaVersion: 2,
       branchSelections: [
         {
           invocationKey: conditionKey,
@@ -340,7 +336,6 @@ describe('branching production operations', () => {
     const attemptId = '00000000-0000-4000-8000-000000000103';
     const checkpoint = {
       ...createCheckpoint({
-        engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
       }),
@@ -393,7 +388,6 @@ describe('branching production operations', () => {
     });
 
     expect(plan.checkpoint).toMatchObject({
-      schemaVersion: 2,
       branchSelections: [
         {
           invocationKey: switchKey,
@@ -435,7 +429,6 @@ describe('branching production operations', () => {
     const attemptId = '00000000-0000-4000-8000-000000000106';
     const checkpoint = {
       ...createCheckpoint({
-        engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
       }),
@@ -656,7 +649,6 @@ describe('branching production operations', () => {
     const attemptId = '00000000-0000-4000-8000-000000000109';
     const checkpoint = {
       ...createCheckpoint({
-        engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
       }),

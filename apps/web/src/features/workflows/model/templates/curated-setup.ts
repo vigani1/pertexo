@@ -10,7 +10,6 @@ export type SetupTarget = CuratedTemplate['setupTargets'][number];
 
 export function templateOrigin(template: CuratedTemplate) {
   return {
-    schemaVersion: 1 as const,
     templateId: template.templateId,
     templateVersion: template.templateVersion,
     baseManifestDigest: template.baseManifestDigest,

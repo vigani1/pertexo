@@ -44,7 +44,6 @@ function step(id: string, label: string, key: string) {
 }
 
 const graph = {
-  schemaVersion: 1,
   nodes: [
     step('fetch-order', 'Fetch order', 'core.http_request'),
     step('send-receipt', 'Send receipt', 'email.send_message'),

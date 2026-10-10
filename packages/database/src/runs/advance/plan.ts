@@ -6,7 +6,6 @@ export type RunTransitionPlan = WorkflowTransitionPlan;
 
 export const scheduleRunInputSchema = z
   .object({
-    schemaVersion: z.literal(1),
     triggerId: z.uuid(),
     nodeId: z.string().trim().min(1).max(128),
     scheduledAt: z.iso.datetime({ offset: true }),

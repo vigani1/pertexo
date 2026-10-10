@@ -29,7 +29,6 @@ const payloadSchema = z
   .object({
     commandId: z.uuid(),
     outboxEventId: z.uuid(),
-    schemaVersion: z.literal(1),
     workspaceId: z.uuid(),
   })
   .strict();
@@ -122,9 +121,8 @@ export function createOperatorRunReplayStore(
             job_name: string;
             payload: unknown;
             payload_checksum: string;
-            schema_version: number;
           }>(sql`
-            select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
+            select aggregate_id,aggregate_type,job_name,payload,payload_checksum
             from app.outbox_events
             where workspace_id=${transaction.workspaceId}
               and id=${parsed.delivery.outboxEventId}
@@ -137,7 +135,6 @@ export function createOperatorRunReplayStore(
             row.aggregate_id !== parsed.commandId ||
             row.aggregate_type !== 'operator-command' ||
             row.job_name !== 'replay-workflow-run' ||
-            row.schema_version !== 1 ||
             row.payload_checksum !== parsed.delivery.payloadChecksum ||
             canonicalOutboxPayloadChecksum(payload.data) !==
               row.payload_checksum ||
@@ -160,8 +157,7 @@ export function createOperatorRunReplayStore(
 
           const versions = await transaction.db.execute(
             sql<Record<string, unknown>>`
-              select id,workspace_id,workflow_id,version_number,schema_version,
-                checksum,executable_json
+              select id,workspace_id,workflow_id,version_number,checksum,executable_json
               from app.workflow_versions
               where workspace_id=${transaction.workspaceId}
                 and id=${request.data.workflow_version_id}
@@ -172,7 +168,6 @@ export function createOperatorRunReplayStore(
             throw new OperatorRunReplayNotExecutableError();
           const initial = checkpointFactory(version);
           const accepted = await acceptWorkflowRun(transaction, {
-            engineVersion: initial.engineVersion,
             initialCheckpoint: initial.checkpoint,
             keyHash: request.data.request_fingerprint,
             operation: 'workflow.run.accept',

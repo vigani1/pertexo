@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import { inspectBoundedJson, NODE_JSON_LIMITS_V1 } from '../bounded-json.js';
+import { inspectBoundedJson, NODE_JSON_LIMITS } from '../bounded-json.js';
 import { cloneAndFreeze } from '../freeze.js';
 
-export { NODE_JSON_LIMITS_V1 } from '../bounded-json.js';
+export { NODE_JSON_LIMITS } from '../bounded-json.js';
 
 export type SchemaJson =
   null | boolean | number | string | readonly SchemaJson[] | SchemaObject;
@@ -51,7 +51,7 @@ function boundedSchemaDocument(kind: 'value' | 'record'): SchemaDocument {
   return cloneAndFreeze(
     schemaDocumentSchema.parse({
       ...structural,
-      'x-pertexo-node-json-limits': NODE_JSON_LIMITS_V1,
+      'x-pertexo-node-json-limits': NODE_JSON_LIMITS,
     }),
   );
 }

@@ -145,7 +145,6 @@ function customCatalog(): PlatformNodeDefinitionBrowserCatalog {
     };
   };
   return {
-    schemaVersion: 1,
     definitions: [
       definition('zeta.node', 1, 'email', 'notify'),
       definition('http.node', 1, 'http', 'request'),

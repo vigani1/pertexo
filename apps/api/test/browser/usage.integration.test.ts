@@ -82,10 +82,10 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
       );
       await seed.query(
         `insert into app.workflow_versions
-      (id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,
+      (id,workspace_id,workflow_id,version_number,graph_json,checksum,
        executable_json,published_by)
-      values($1,$2,$3,1,1,'{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}',
-       'wf:sha256:'||repeat('e',64),'{"schemaVersion":2}',$4)`,
+      values($1,$2,$3,1,'{"nodes":[],"edges":[],"settings":{}}',
+       'wf:sha256:'||repeat('e',64),'{}',$4)`,
         [versionId, workspaceId, workflowId, person],
       );
       for (const [status, age] of [

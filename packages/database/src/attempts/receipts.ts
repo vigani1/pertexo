@@ -28,10 +28,9 @@ export async function validateDelivery(
     job_name: string;
     payload: unknown;
     payload_checksum: string;
-    schema_version: number;
   }>(
     `select aggregate_id,aggregate_type,job_name,payload,
-            payload_checksum,schema_version
+            payload_checksum
      from app.outbox_events
      where workspace_id=$1 and id=$2`,
     [input.workspaceId, input.delivery.outboxEventId],
@@ -51,7 +50,6 @@ export async function validateDelivery(
     row?.aggregate_id !== input.attemptId ||
     row.aggregate_type !== 'node-attempt' ||
     row.job_name !== 'execute-node-attempt' ||
-    row.schema_version !== 1 ||
     row.payload_checksum !== input.delivery.payloadChecksum ||
     checksum !== row.payload_checksum ||
     payload.workspaceId !== input.workspaceId ||

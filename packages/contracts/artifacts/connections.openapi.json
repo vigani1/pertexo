@@ -1397,10 +1397,6 @@
                 "readOnly": true,
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "type": {
                     "type": "string",
                     "const": "http_headers"
@@ -1421,7 +1417,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "type",
                   "headers"
                 ],
@@ -1452,10 +1447,6 @@
                 "readOnly": true,
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "type": {
                     "type": "string",
                     "const": "resend_api_key"
@@ -1473,7 +1464,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "type",
                   "apiKey",
                   "fromEmail"
@@ -1505,10 +1495,6 @@
                 "readOnly": true,
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "type": {
                     "type": "string",
                     "const": "slack_bot_token"
@@ -1521,7 +1507,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "type",
                   "botToken"
                 ],
@@ -1986,10 +1971,6 @@
                 "readOnly": true,
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "type": {
                     "type": "string",
                     "const": "http_headers"
@@ -2010,7 +1991,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "type",
                   "headers"
                 ],
@@ -2020,10 +2000,6 @@
                 "readOnly": true,
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "type": {
                     "type": "string",
                     "const": "slack_bot_token"
@@ -2036,7 +2012,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "type",
                   "botToken"
                 ],
@@ -2046,10 +2021,6 @@
                 "readOnly": true,
                 "type": "object",
                 "properties": {
-                  "schemaVersion": {
-                    "type": "number",
-                    "const": 1
-                  },
                   "type": {
                     "type": "string",
                     "const": "resend_api_key"
@@ -2067,7 +2038,6 @@
                   }
                 },
                 "required": [
-                  "schemaVersion",
                   "type",
                   "apiKey",
                   "fromEmail"

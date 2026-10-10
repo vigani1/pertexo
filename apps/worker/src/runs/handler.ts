@@ -20,7 +20,7 @@ export type CoordinatorHandlerResult = Readonly<{
 }>;
 
 export type CoordinatorHandlerStateErrorCode =
-  'capacity_exceeded' | 'not_found' | 'unsupported_checkpoint';
+  'capacity_exceeded' | 'not_found' | 'invalid_checkpoint';
 
 export class CoordinatorHandlerStateError extends Error {
   public override readonly name = 'CoordinatorHandlerStateError';
@@ -53,10 +53,9 @@ async function advanceOrStateError(
   } catch (error: unknown) {
     if (
       error instanceof WorkflowEngineError &&
-      (error.code === 'checkpoint_invalid' ||
-        error.code === 'checkpoint_unsupported')
+      error.code === 'checkpoint_invalid'
     )
-      throw new CoordinatorHandlerStateError('unsupported_checkpoint');
+      throw new CoordinatorHandlerStateError('invalid_checkpoint');
     throw error;
   }
 }

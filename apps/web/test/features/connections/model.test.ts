@@ -258,7 +258,6 @@ describe('credential drafts', () => {
       providerKey: 'http',
       name: 'Billing API',
       credential: {
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { Authorization: 'Bearer a' },
       },

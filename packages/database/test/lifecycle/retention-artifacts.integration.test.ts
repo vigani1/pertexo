@@ -344,7 +344,6 @@ describe('retention artifact reclamation', () => {
           JSON.stringify({
             artifactId: referencedArtifactId,
             kind: 'artifact',
-            schemaVersion: 1,
           }),
         ],
       );
@@ -422,7 +421,6 @@ describe('retention artifact reclamation', () => {
             JSON.stringify({
               artifactId: followingArtifactId,
               kind: 'artifact',
-              schemaVersion: 1,
             }),
           ],
         );

@@ -104,7 +104,6 @@ function runDataSchemas(target: 'client' | 'openapi') {
 }
 
 export const workflowRunsClientContract = Object.freeze({
-  schemaVersion: '1.0.0',
   schemas: Object.freeze({ ...schemas, ...runDataSchemas('client') }),
 });
 

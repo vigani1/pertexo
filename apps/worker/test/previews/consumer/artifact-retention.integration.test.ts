@@ -89,7 +89,6 @@ describeIntegration('preview artifact retention transport', () => {
             signal: new AbortController().signal,
           });
           const executionPayload = {
-            schemaVersion: 1 as const,
             workspaceId,
             outboxEventId: accepted.outboxEventId,
             previewRunId: accepted.previewRunId,

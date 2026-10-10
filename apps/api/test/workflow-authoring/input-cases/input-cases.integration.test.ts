@@ -48,7 +48,6 @@ describe.runIf(betterAuthIntegrationEnabled)(
         .id;
       const versionId = randomUUID();
       const graph = {
-        schemaVersion: 1 as const,
         nodes: [],
         edges: [],
         settings: {},
@@ -57,7 +56,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       await api
         .database()
         .query(
-          'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,executable_json,published_by) values($1,$2,$3,1,1,$4::jsonb,$5,$6::jsonb,$7)',
+          'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by) values($1,$2,$3,1,$4::jsonb,$5,$6::jsonb,$7)',
           [
             versionId,
             workspaceId,

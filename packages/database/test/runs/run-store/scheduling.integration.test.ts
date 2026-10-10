@@ -115,7 +115,6 @@ async function commitPinnedFailureNotificationRun(
     }),
     events: [
       {
-        schemaVersion: 1 as const,
         sequence: 2,
         name: 'node.failed' as const,
         occurredAt: '2026-08-24T10:01:00.000Z',
@@ -125,7 +124,6 @@ async function commitPinnedFailureNotificationRun(
         reasonCode: 'provider.unavailable',
       },
       {
-        schemaVersion: 1 as const,
         sequence: 3,
         name: 'run.failed' as const,
         occurredAt: '2026-08-24T10:01:00.000Z',
@@ -424,7 +422,6 @@ describe('Coordinator scheduling and notification invariants', () => {
       }),
       events: [
         {
-          schemaVersion: 1 as const,
           sequence: 2,
           name: 'run.started' as const,
           occurredAt: '2026-08-25T00:00:00.000Z',
@@ -518,10 +515,8 @@ describe('Coordinator scheduling and notification invariants', () => {
     const runId = await insertRun({
       triggerType: 'schedule',
       inputRef: {
-        schemaVersion: 1,
         kind: 'inline',
         value: {
-          schemaVersion: 1,
           triggerId: randomUUID(),
           nodeId: 'schedule-start-proof',
           scheduledAt,
@@ -539,7 +534,6 @@ describe('Coordinator scheduling and notification invariants', () => {
       }),
       events: [
         {
-          schemaVersion: 1 as const,
           sequence: 2,
           name: 'run.started' as const,
           occurredAt: startedAt,
@@ -674,10 +668,8 @@ describe('Coordinator scheduling and notification invariants', () => {
     const runId = await insertRun({
       triggerType: 'schedule',
       inputRef: {
-        schemaVersion: 1,
         kind: 'inline',
         value: {
-          schemaVersion: 1,
           triggerId: randomUUID(),
           nodeId: 'held-observation',
           scheduledAt,
@@ -696,7 +688,6 @@ describe('Coordinator scheduling and notification invariants', () => {
       }),
       events: [
         {
-          schemaVersion: 1 as const,
           sequence: 2,
           name: 'run.started' as const,
           occurredAt: scheduledAt,
@@ -814,7 +805,6 @@ describe('Coordinator scheduling and notification invariants', () => {
       }),
       events: [
         {
-          schemaVersion: 1 as const,
           sequence: 2,
           name: 'run.timed_out' as const,
           occurredAt: '2026-08-24T10:01:00.000Z',
@@ -1033,7 +1023,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 0,
           result: {
-            schemaVersion: 1,
             kind: 'definite_failure',
             safeErrorCode: 'provider.rejected',
             possiblyDispatched: false,
@@ -1075,7 +1064,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         }),
         events: [
           {
-            schemaVersion: 1 as const,
             sequence: 2,
             name: 'run.outcome_unknown' as const,
             occurredAt: '2026-09-28T10:01:00.000Z',
@@ -1176,9 +1164,8 @@ describe('Coordinator scheduling and notification invariants', () => {
         job_name: string;
         payload: unknown;
         payload_checksum: string;
-        schema_version: number;
       }>(
-        `select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
+        `select aggregate_id,aggregate_type,job_name,payload,payload_checksum
            from app.outbox_events where workspace_id=$1 and id=$2`,
         [workspaceA, first.outbox_id],
       ),
@@ -1205,7 +1192,7 @@ describe('Coordinator scheduling and notification invariants', () => {
         client.query(
           `update app.outbox_events
               set aggregate_id=$3,aggregate_type=$4,job_name=$5,payload=$6::jsonb,
-                  payload_checksum=$7,schema_version=$8
+                  payload_checksum=$7
             where workspace_id=$1 and id=$2`,
           [
             workspaceA,
@@ -1215,7 +1202,6 @@ describe('Coordinator scheduling and notification invariants', () => {
             authoritative.job_name,
             JSON.stringify(authoritative.payload),
             authoritative.payload_checksum,
-            authoritative.schema_version,
           ],
         ),
       );
@@ -1236,12 +1222,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         name: 'job name',
         sql: 'update app.outbox_events set job_name=$3 where workspace_id=$1 and id=$2',
         value: 'advance-workflow-run',
-        checksum: first.payload_checksum,
-      },
-      {
-        name: 'schema version',
-        sql: 'update app.outbox_events set schema_version=$3 where workspace_id=$1 and id=$2',
-        value: 2,
         checksum: first.payload_checksum,
       },
       {
@@ -1369,7 +1349,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 0,
           result: {
-            schemaVersion: 1,
             kind: 'definite_failure',
             safeErrorCode: 'provider.rejected',
             possiblyDispatched: false,
@@ -1444,7 +1423,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 0,
           result: {
-            schemaVersion: 1,
             kind: 'definite_failure',
             safeErrorCode: 'provider.rejected',
             possiblyDispatched: false,
@@ -1465,7 +1443,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 30,
           result: {
-            schemaVersion: 1,
             kind: 'retry',
             safeErrorCode: 'provider.unavailable',
             possiblyDispatched: false,
@@ -1499,7 +1476,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 30,
           result: {
-            schemaVersion: 1,
             kind: 'retry',
             safeErrorCode: 'provider.unavailable',
             possiblyDispatched: false,
@@ -1592,7 +1568,6 @@ describe('Coordinator scheduling and notification invariants', () => {
             maxAttempts: 3,
             retryDelaySeconds: 30,
             result: {
-              schemaVersion: 1,
               kind: 'retry',
               safeErrorCode: 'provider.unavailable',
               possiblyDispatched: false,
@@ -1637,7 +1612,6 @@ describe('Coordinator scheduling and notification invariants', () => {
             maxAttempts: 3,
             retryDelaySeconds: 0,
             result: {
-              schemaVersion: 1,
               kind: 'definite_failure',
               safeErrorCode: 'provider.rejected',
               possiblyDispatched: false,
@@ -1675,7 +1649,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 30,
           result: {
-            schemaVersion: 1,
             kind: 'retry',
             safeErrorCode: 'provider.unavailable',
             possiblyDispatched: false,
@@ -1736,7 +1709,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         maxAttempts: 3,
         retryDelaySeconds: 30,
         result: {
-          schemaVersion: 1,
           kind: 'retry',
           safeErrorCode: 'provider.unavailable',
           possiblyDispatched: false,
@@ -1769,7 +1741,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 0,
           result: {
-            schemaVersion: 1,
             kind: 'definite_failure',
             safeErrorCode: 'provider.rejected',
             possiblyDispatched: false,
@@ -1821,7 +1792,6 @@ describe('Coordinator scheduling and notification invariants', () => {
       maxAttempts: 3,
       retryDelaySeconds: 0,
       result: {
-        schemaVersion: 1 as const,
         kind: 'delivered' as const,
         possiblyDispatched: true as const,
         providerReference: 'provider-reference-committed',
@@ -2110,7 +2080,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 0,
           result: {
-            schemaVersion: 1,
             kind: 'definite_failure',
             safeErrorCode: 'provider.rejected',
             possiblyDispatched: false,
@@ -2134,8 +2103,8 @@ describe('Coordinator scheduling and notification invariants', () => {
         [workspaceA, notificationConnectionId, connectionId, secretVersionId],
       );
       await client.query(
-        `insert into app.connection_secret_versions(id,workspace_id,connection_id,schema_version,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-        select $3,workspace_id,$4,schema_version,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+        `insert into app.connection_secret_versions(id,workspace_id,connection_id,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
+        select $3,workspace_id,$4,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by
         from app.connection_secret_versions where workspace_id=$1 and id=$2`,
         [
           workspaceA,
@@ -2203,7 +2172,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 1,
           retryDelaySeconds: 0,
           result: {
-            schemaVersion: 1,
             kind: 'definite_failure',
             safeErrorCode: 'provider.rejected',
             possiblyDispatched: false,
@@ -2293,9 +2261,9 @@ describe('Coordinator scheduling and notification invariants', () => {
           await asRuntime(apiBaseUrl, workspaceA, async (client) => {
             await client.query(
               `insert into app.connection_secret_versions (
-                   id,workspace_id,connection_id,schema_version,kms_key_reference,
+                   id,workspace_id,connection_id,kms_key_reference,
                    encrypted_data_key,ciphertext,nonce,auth_tag,created_by
-                 ) values ($1,$2,$3,1,'kms','key2','cipher2','BBBBBBBBBBBBBBBB',
+                 ) values ($1,$2,$3,'kms','key2','cipher2','BBBBBBBBBBBBBBBB',
                    'BBBBBBBBBBBBBBBBBBBBBB',$4)`,
               [
                 rotatedSecretVersionId,
@@ -2336,7 +2304,6 @@ describe('Coordinator scheduling and notification invariants', () => {
               maxAttempts: 3,
               retryDelaySeconds: attempt === 2 ? 30 : 0,
               result: {
-                schemaVersion: 1,
                 kind: 'retry',
                 safeErrorCode: 'provider.unavailable',
                 possiblyDispatched: false,
@@ -2412,12 +2379,10 @@ describe('Coordinator scheduling and notification invariants', () => {
       await asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query(
           `insert into app.run_failure_notification_intents (
-               id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
-               destination_id,destination_config_version,side_effect_class,
+               id,workspace_id,workflow_run_id,terminal_event_sequence,destination_id,destination_config_version,side_effect_class,
                connection_secret_version_id,delivery_binding,context,context_checksum,
                status,delivery_attempts,dispatch_marked_at,recovery_at,possibly_dispatched
-             ) select $1,workspace_id,workflow_run_id,terminal_event_sequence+2,policy_version,
-                      destination_id,destination_config_version,'idempotent_with_key',
+             ) select $1,workspace_id,workflow_run_id,terminal_event_sequence+2,destination_id,destination_config_version,'idempotent_with_key',
                       connection_secret_version_id,$3,context,context_checksum,
                       'dispatching',3,clock_timestamp(),clock_timestamp()+interval '1 minute',true
                  from app.run_failure_notification_intents where id=$2`,
@@ -2432,7 +2397,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           maxAttempts: 3,
           retryDelaySeconds: 0,
           result: {
-            schemaVersion: 1,
             kind: 'retry',
             safeErrorCode: 'delivery.provider_ambiguous',
             possiblyDispatched: true,
@@ -2476,7 +2440,7 @@ describe('Coordinator scheduling and notification invariants', () => {
       await client.query(
         `insert into app.run_events (
            workspace_id,workflow_run_id,sequence,type,payload
-         ) values ($1,$2,2,'run.cancel_requested','{"schemaVersion":1}')`,
+         ) values ($1,$2,2,'run.cancel_requested','{}')`,
         [workspaceA, canceledRun],
       );
     });
@@ -2500,7 +2464,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           }),
           events: [
             {
-              schemaVersion: 1,
               sequence: 3,
               name: 'run.canceled',
               occurredAt: '2026-09-13T00:00:00.000Z',

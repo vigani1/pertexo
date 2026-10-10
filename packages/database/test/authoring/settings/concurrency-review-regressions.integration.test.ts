@@ -337,16 +337,16 @@ async function publishExecutableVersion(): Promise<void> {
     );
     await client.query(
       `insert into app.workflow_versions (
-         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         id,workspace_id,workflow_id,version_number,graph_json,
          checksum,executable_json,published_by
-       ) values ($1,$2,$3,1,1,'{}'::jsonb,$4,$5::jsonb,$6)
+       ) values ($1,$2,$3,1,'{}'::jsonb,$4,$5::jsonb,$6)
        on conflict (id) do nothing`,
       [
         workflowVersionId,
         workspaceA,
         workflowId,
         `wf:sha256:${'c'.repeat(64)}`,
-        JSON.stringify({ schemaVersion: 2, graph: { nodes: [], edges: [] } }),
+        JSON.stringify({ graph: { nodes: [], edges: [] } }),
         workspaceCreatorId,
       ],
     );
@@ -383,7 +383,6 @@ function startInput(
       },
       events: [
         {
-          schemaVersion: 1 as const,
           sequence: 2,
           name: 'run.started' as const,
           occurredAt: '2026-10-01T00:00:00.000Z',
@@ -452,7 +451,6 @@ async function withWorker<T>(operation: (client: PoolClient) => Promise<T>) {
 async function pendingDelivery(runId: string, payloadRunId = runId) {
   const id = randomUUID();
   const payload = {
-    schemaVersion: 1,
     workspaceId: workspaceA,
     outboxEventId: id,
     runId: payloadRunId,
@@ -461,7 +459,6 @@ async function pendingDelivery(runId: string, payloadRunId = runId) {
     insertOutboxEvent(transaction, {
       id,
       jobName: 'advance-workflow-run',
-      schemaVersion: 1,
       aggregateType: 'workflow-run',
       aggregateId: runId,
       payload,

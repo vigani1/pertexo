@@ -125,7 +125,6 @@ export type RunSnapshot = Readonly<{
 export type LifecycleOutboxEvent = Readonly<{
   id: string;
   payload: Readonly<{
-    schemaVersion: 1;
     workspaceId: string;
     workflowId: string;
     publishedVersionId: string;
@@ -254,13 +253,11 @@ async function seedWorkflowRows(
   ids: LifecycleIds,
 ): Promise<void> {
   const graph = {
-    schemaVersion: 1,
     settings: { proof: 'workflow-lifecycle' },
     nodes: [],
     edges: [],
   };
   const executable = {
-    schemaVersion: 2,
     nodes: [],
     edges: [],
   };
@@ -289,15 +286,15 @@ async function seedWorkflowRows(
   );
   await client.query(
     `insert into app.workflow_drafts
-       (workflow_id,workspace_id,revision,schema_version,graph_json,updated_by)
-     values ($1,$2,17,1,$3::jsonb,$4)`,
+       (workflow_id,workspace_id,revision,graph_json,updated_by)
+     values ($1,$2,17,$3::jsonb,$4)`,
     [ids.workflow, workspaceId, JSON.stringify(graph), actorId],
   );
   await client.query(
     `insert into app.workflow_versions
-       (id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+       (id,workspace_id,workflow_id,version_number,graph_json,
         checksum,published_by,executable_json)
-     values ($1,$2,$3,3,1,$4::jsonb,$5,$6,$7::jsonb)`,
+     values ($1,$2,$3,3,$4::jsonb,$5,$6,$7::jsonb)`,
     [
       ids.version,
       workspaceId,
@@ -369,9 +366,9 @@ async function seedApiOwnedRows(
   ]) {
     await client.query(
       `insert into app.webhook_trigger_secret_versions
-         (id,workspace_id,trigger_id,schema_version,kms_key_reference,
+         (id,workspace_id,trigger_id,kms_key_reference,
           encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-       values ($1,$2,$3,1,'worker-lifecycle-kms','worker-lifecycle-key',
+       values ($1,$2,$3,'worker-lifecycle-kms','worker-lifecycle-key',
                'worker-lifecycle-cipher','worker-lifecycle-nonce',
                'worker-lifecycle-auth-tag',$4)`,
       [secretId, workspaceId, triggerId, actorId],
@@ -448,19 +445,19 @@ async function seedApiOwnedRows(
   );
   await client.query(
     `insert into app.run_checkpoints
-       (workflow_run_id,workspace_id,revision,engine_version,scheduler_state,
+       (workflow_run_id,workspace_id,revision,scheduler_state,
         resume_at,workflow_version_id,last_transition_fingerprint)
      values
-       ($1,$2,1,'worker-lifecycle-proof',
+       ($1,$2,1,
         '{"runStatus":"queued","nextEventSequence":2,"proof":"lifecycle"}'::jsonb,
         NULL,$6,$7),
-       ($3,$2,2,'worker-lifecycle-proof',
+       ($3,$2,2,
         '{"runStatus":"running","nextEventSequence":3,"proof":"lifecycle"}'::jsonb,
         NULL,$6,$8),
-       ($4,$2,3,'worker-lifecycle-proof',
+       ($4,$2,3,
         '{"runStatus":"waiting","nextEventSequence":4,"proof":"lifecycle"}'::jsonb,
         clock_timestamp()+interval '1 hour',$6,$9),
-       ($5,$2,4,'worker-lifecycle-proof',
+       ($5,$2,4,
         '{"runStatus":"succeeded","nextEventSequence":4,"proof":"lifecycle"}'::jsonb,
         NULL,$6,$10)`,
     [

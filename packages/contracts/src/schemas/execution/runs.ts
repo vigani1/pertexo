@@ -397,7 +397,6 @@ const workflowRunOutputReferenceSchema = z.discriminatedUnion('kind', [
 ]);
 export const workflowRunEventPayloadSchema = z
   .object({
-    schemaVersion: z.literal(1),
     invocationKey: z.string().min(1).max(1_024).optional(),
     nodeId: z.string().min(1).max(256).optional(),
     nodeRunId: z.uuid().optional(),

@@ -40,7 +40,7 @@ describe('persisted control-output selection', () => {
       expected: ['loop', 'body-first'],
     },
   ])(
-    'finds $name nodes in the serialized compiled V2 envelope',
+    'finds $name nodes in the serialized compiled envelope',
     ({ graph, catalog, expected }) => {
       const executable = buildWorkflowExecutable({
         graph,

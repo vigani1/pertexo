@@ -76,7 +76,7 @@ export async function prepareWorkflowPortabilityBrowserFixture(
         [id, workspaceId, name, secretId, actorId],
       );
       await client.query(
-        `insert into app.connection_secret_versions (id,workspace_id,connection_id,schema_version,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by) values ($1,$2,$3,1,'fixture-not-decryptable','AQ','AQ','AAAAAAAAAAAAAAAA','AAAAAAAAAAAAAAAAAAAAAA',$4)`,
+        `insert into app.connection_secret_versions (id,workspace_id,connection_id,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by) values ($1,$2,$3,'fixture-not-decryptable','AQ','AQ','AAAAAAAAAAAAAAAA','AAAAAAAAAAAAAAAAAAAAAA',$4)`,
         [secretId, workspaceId, id, actorId],
       );
     }
@@ -159,7 +159,7 @@ export async function prepareWorkflowPortabilityBrowserFixture(
     const saved = await api.send('PUT', `${base}/${id}/draft`, {
       browser,
       headers: { 'If-Match': tag },
-      payload: { graph: { schemaVersion: 1, nodes, edges: [], settings: {} } },
+      payload: { graph: { nodes, edges: [], settings: {} } },
     });
     expect(saved.statusCode, saved.payload).toBe(200);
     workflowDraftResponseSchema.parse(saved.json());

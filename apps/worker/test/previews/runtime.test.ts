@@ -59,7 +59,6 @@ function leaseFixture(
     retentionExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1_000),
     input: {
       kind: 'inline',
-      schemaVersion: 1,
       value: { count: 4, name: 'Ada' },
     },
     mayCauseExternalSideEffect: false,
@@ -93,7 +92,6 @@ describe('platform preview node invoker', () => {
           ...lease,
           input: {
             kind: 'artifact',
-            schemaVersion: 1,
             artifactId: randomUUID(),
           } as never,
         },
@@ -157,7 +155,6 @@ describe('platform preview node invoker', () => {
     const secretVersionId = randomUUID();
     const secret = new TextEncoder().encode(
       JSON.stringify({
-        schemaVersion: 1,
         type: 'resend_api_key',
         apiKey: 're_123456789_secret',
         fromEmail: 'sender@example.com',
@@ -256,7 +253,6 @@ describe('platform preview node invoker', () => {
     const connectionId = randomUUID();
     const secret = new TextEncoder().encode(
       JSON.stringify({
-        schemaVersion: 1,
         type: 'slack_bot_token',
         botToken: 'xoxb-123456789-secret',
       }),
@@ -385,7 +381,6 @@ describe('platform preview node invoker', () => {
           expression: 'runInput.count * 2',
           kind: 'expression',
           language: 'jsonata',
-          policyVersion: 1,
         },
         name: { kind: 'run_input', path: '$.name' },
       },

@@ -1453,7 +1453,7 @@ describe('identity/workspace persistence', () => {
       expect(row.delivery_attempt_id).toBe(
         '00000000-0000-4000-8000-000000000007',
       );
-      const outboxBytes = `{"deliveryAttemptId":"${row.delivery_attempt_id}","invitationId":"${first.invitation.id}","outboxEventId":"${row.outbox_id}","schemaVersion":1,"workspaceId":"${invitationWorkspace.id}"}`;
+      const outboxBytes = `{"deliveryAttemptId":"${row.delivery_attempt_id}","invitationId":"${first.invitation.id}","outboxEventId":"${row.outbox_id}","workspaceId":"${invitationWorkspace.id}"}`;
       expect(row.payload_checksum).toBe(
         createHash('sha256').update(outboxBytes).digest('hex'),
       );

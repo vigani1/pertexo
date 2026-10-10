@@ -47,7 +47,6 @@ function frame(
   revision: string | null,
 ): string {
   const data = workspaceInboxStreamEventSchema.parse({
-    schemaVersion: 1,
     revision,
   });
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;

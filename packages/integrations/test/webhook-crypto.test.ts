@@ -159,7 +159,6 @@ describe('AWS KMS webhook envelope-key adapter', () => {
     for (const command of commands)
       expect(command.input.EncryptionContext).toEqual({
         purpose: 'pertexo-webhook-trigger-secret',
-        schemaVersion: '1',
         workspaceId: context.workspaceId,
         triggerId: context.triggerId,
         secretVersionId: context.secretVersionId,

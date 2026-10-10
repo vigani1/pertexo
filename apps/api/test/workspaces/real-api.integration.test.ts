@@ -1640,7 +1640,6 @@ function mutationHeaders(
 
 function emptyWorkflowGraph() {
   return {
-    schemaVersion: 1,
     settings: { maxRunDurationMs: 60_000 },
     nodes: [
       {

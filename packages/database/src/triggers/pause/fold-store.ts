@@ -60,7 +60,7 @@ export function createWorkflowTriggerPauseFoldStore(
           // The function's second argument is the former observe-only switch.
           const result = await client.query(
             `select workspace_id,workflow_id,consecutive_failures,paused
-               from app.fold_workflow_trigger_outcomes($1,true)`,
+               from app.fold_workflow_trigger_outcomes($1)`,
             [bounded],
           );
           return Object.freeze(

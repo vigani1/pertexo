@@ -40,7 +40,6 @@ function graphWithDuration(duration: number) {
 }
 
 const blockedDefinitionCatalog = Object.freeze({
-  schemaVersion: 1 as const,
   definitions: Object.freeze([
     Object.freeze({ key: 'test.blocked', version: 1 }),
   ]),

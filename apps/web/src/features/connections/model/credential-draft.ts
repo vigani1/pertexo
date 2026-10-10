@@ -63,7 +63,6 @@ function slackTokenError(botToken: string): string | undefined {
   const token = botToken.trim();
   if (token === '') return 'Paste the bot token from your Slack app.';
   return slackBotTokenCredentialSchema.safeParse({
-    schemaVersion: 1,
     type: 'slack_bot_token',
     botToken: token,
   }).success
@@ -127,7 +126,6 @@ function contractHeaderErrors(
 ): Partial<Record<CredentialField, string>> {
   const rows = filledRows(headers);
   const parsed = httpHeadersCredentialSchema.safeParse({
-    schemaVersion: 1,
     type: 'http_headers',
     headers: Object.fromEntries(
       rows.map((row) => [row.name.trim(), row.value.trim()]),
@@ -204,20 +202,17 @@ export function toConnectionCredential(
   switch (draft.provider) {
     case 'slack':
       return {
-        schemaVersion: 1,
         type: 'slack_bot_token',
         botToken: draft.botToken.trim(),
       };
     case 'email':
       return {
-        schemaVersion: 1,
         type: 'resend_api_key',
         apiKey: draft.apiKey.trim(),
         fromEmail: draft.fromEmail.trim(),
       };
     case 'http':
       return {
-        schemaVersion: 1,
         type: 'http_headers',
         headers: Object.fromEntries(
           filledRows(draft.headers).map((row) => [

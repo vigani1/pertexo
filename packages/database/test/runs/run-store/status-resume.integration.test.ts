@@ -41,7 +41,6 @@ describe('Coordinator resumed run status', () => {
       checkpoint: next,
       events: [
         {
-          schemaVersion: 1,
           sequence: 2,
           name: 'node.ready',
           occurredAt: '2026-09-27T12:00:00.000Z',

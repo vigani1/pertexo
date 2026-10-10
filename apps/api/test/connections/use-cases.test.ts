@@ -170,7 +170,6 @@ describe('connection testing use case', () => {
   it('tests a Slack bot token only through one fixed auth.test client call', async () => {
     const controller = new AbortController();
     const slackCredential = {
-      schemaVersion: 1,
       type: 'slack_bot_token',
       botToken: 'xoxb-123456789-deeply-secret',
     } as const;
@@ -245,7 +244,6 @@ describe('connection testing use case', () => {
     });
     const plaintext = new TextEncoder().encode(
       JSON.stringify({
-        schemaVersion: 1,
         type: 'resend_api_key',
         apiKey: 're_123456789_secret',
         fromEmail: 'Sender@Example.COM',
@@ -544,7 +542,6 @@ describe('connection testing use case', () => {
       const store = connectionTestPersistence();
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
-          schemaVersion: 1,
           type: 'slack_bot_token',
           botToken: 'xoxb-123456789-deeply-secret',
         }),
@@ -583,7 +580,6 @@ describe('connection testing use case', () => {
       const store = connectionTestPersistence();
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
-          schemaVersion: 1,
           type: 'resend_api_key',
           apiKey: 're_123456789_secret',
           fromEmail: 'sender@example.com',
@@ -643,7 +639,6 @@ describe('connection testing use case', () => {
         JSON.stringify(
           provider === 'http'
             ? {
-                schemaVersion: 1,
                 type: 'slack_bot_token',
                 botToken: 'xoxb-123456789-deeply-secret',
               }

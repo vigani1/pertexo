@@ -64,7 +64,7 @@ function hintStream() {
       push = (text) => {
         controller.enqueue(encoder.encode(text));
       };
-      push('event: inbox.ready\ndata: {"schemaVersion":1,"revision":null}\n\n');
+      push('event: inbox.ready\ndata: {"revision":null}\n\n');
     },
   });
   return {
@@ -73,9 +73,7 @@ function hintStream() {
         headers: { 'content-type': 'text/event-stream' },
       }),
     changed: (revision: string) => {
-      push(
-        `event: inbox.changed\ndata: {"schemaVersion":1,"revision":"${revision}"}\n\n`,
-      );
+      push(`event: inbox.changed\ndata: {"revision":"${revision}"}\n\n`);
     },
   };
 }

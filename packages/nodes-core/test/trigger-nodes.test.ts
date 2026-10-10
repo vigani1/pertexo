@@ -55,7 +55,6 @@ describe('core Schedule trigger contract', () => {
       CORE_SCHEDULE_INPUT_SCHEMA.parse({
         nodeId: 'schedule',
         scheduledAt: '2026-09-05T01:00:00.000Z',
-        schemaVersion: 1,
         triggerId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
       }),
     ).toBeDefined();

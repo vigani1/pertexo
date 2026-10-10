@@ -10,7 +10,7 @@ import {
 } from './contract.js';
 import { assertNotAborted, withWorkspaceReadClient } from './transactions.js';
 import {
-  parseStoredExecutionValueV1,
+  parseStoredExecutionValue,
   serializeStoredExecutionJsonValue,
 } from '../platform/stored-execution-value.js';
 
@@ -43,7 +43,7 @@ function reconcileCompletedNodeOutputs(
           serializeStoredExecutionJsonValue(output.attempt_output_ref)
       )
         throw new NodeAttemptStateCorruptError();
-      const stored = parseStoredExecutionValueV1(output.attempt_output_ref);
+      const stored = parseStoredExecutionValue(output.attempt_output_ref);
       if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
       return Object.freeze({
         invocationKey: output.invocation_key,
@@ -123,7 +123,7 @@ export async function loadNodeAttemptInputs(
       if (row === undefined) throw new NodeAttemptStateCorruptError();
       let runInput: unknown = null;
       if (row.input_ref !== null) {
-        const stored = parseStoredExecutionValueV1(row.input_ref);
+        const stored = parseStoredExecutionValue(row.input_ref);
         if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
         runInput = stored.value;
       }
@@ -138,7 +138,7 @@ export async function loadNodeAttemptInputs(
             input.lease.attemptId,
           ],
         );
-        const stored = parseStoredExecutionValueV1(resumed.rows[0]?.output_ref);
+        const stored = parseStoredExecutionValue(resumed.rows[0]?.output_ref);
         if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
         resumeOutput = stored.value;
       }
@@ -230,7 +230,7 @@ export async function readNodeAttemptLoopDeclaration(
         serializeStoredExecutionJsonValue(row.attempt_output_ref)
       )
         throw new NodeAttemptStateCorruptError();
-      const stored = parseStoredExecutionValueV1(row.attempt_output_ref);
+      const stored = parseStoredExecutionValue(row.attempt_output_ref);
       if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
       return Object.freeze({
         nodeId: row.node_id,

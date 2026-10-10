@@ -3,9 +3,7 @@ import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 // Public instructional base; setup and bindings must be explicitly configured.
 export const CONTROLLED_HTTP_NOTIFICATION_MANIFEST: WorkflowPortableManifest = {
   format: 'pertexo.workflow',
-  formatVersion: 1,
   graph: {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'notification-start',
@@ -62,7 +60,6 @@ export const CONTROLLED_HTTP_NOTIFICATION_MANIFEST: WorkflowPortableManifest = {
             kind: 'expression',
             language: 'jsonata',
             expression: 'nodeOutputs."controlled-http".status = 200',
-            policyVersion: 1,
           },
         },
         connectionRefs: {},

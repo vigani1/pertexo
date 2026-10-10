@@ -50,7 +50,6 @@ const uuidSchema = z.uuid();
 const sealedSchema = z
   .object({
     id: z.uuid(),
-    schemaVersion: z.literal(1),
     kmsKeyReference: z.string().min(1).max(2048),
     encryptedDataKey: z.string().min(1),
     ciphertext: z.string().min(1),
@@ -165,7 +164,6 @@ async function completeWebhookCommand(
   operation: string,
 ): Promise<void> {
   await completeCommand(client, webhookCommand(input, operation), {
-    schemaVersion: 1,
     triggerId: input.triggerId,
   });
 }
@@ -178,14 +176,13 @@ async function insertSecret(
   const secret = sealedSchema.parse(secretInput);
   await client.query(
     `insert into app.webhook_trigger_secret_versions
-      (id,workspace_id,trigger_id,purpose,schema_version,kms_key_reference,
+      (id,workspace_id,trigger_id,purpose,kms_key_reference,
        encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-     values($1,$2,$3,'webhook_hmac_sha256',$4,$5,$6,$7,$8,$9,$10)`,
+     values($1,$2,$3,'webhook_hmac_sha256',$4,$5,$6,$7,$8,$9)`,
     [
       secret.id,
       input.workspaceId,
       input.triggerId,
-      secret.schemaVersion,
       secret.kmsKeyReference,
       secret.encryptedDataKey,
       secret.ciphertext,
@@ -221,7 +218,6 @@ function mapSecret(
   if (row[`${prefix}_secret_version_id`] == null) return undefined;
   return Object.freeze({
     id: uuidSchema.parse(row[`${prefix}_secret_version_id`]),
-    schemaVersion: z.literal(1).parse(row[`${prefix}_schema_version`]),
     kmsKeyReference: z.string().parse(row[`${prefix}_kms_key_reference`]),
     encryptedDataKey: z.string().parse(row[`${prefix}_encrypted_data_key`]),
     ciphertext: z.string().parse(row[`${prefix}_ciphertext`]),
@@ -235,7 +231,7 @@ async function executableProjection(
   workflowVersionId: string,
 ): Promise<PublishedWorkflow> {
   const result = await transaction.db.execute(sql<Record<string, unknown>>`
-    select id,workspace_id,workflow_id,version_number,schema_version,checksum,
+    select id,workspace_id,workflow_id,version_number,checksum,
            executable_json
       from app.workflow_versions where workspace_id=${transaction.workspaceId}
        and id=${workflowVersionId}
@@ -531,7 +527,6 @@ export function createWebhookTriggerDatabase(
           );
           const initial = input.checkpointFactory(projection);
           const accepted = await acceptWorkflowRun(transaction, {
-            engineVersion: initial.engineVersion,
             initialCheckpoint: initial.checkpoint,
             keyHash: createHash('sha256').update(deliveryId).digest('hex'),
             operation: 'workflow.run.accept',

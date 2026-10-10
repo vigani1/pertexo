@@ -38,7 +38,6 @@ function setup() {
     executable,
     checkpoint: {
       ...createCheckpoint({
-        engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
       }),

@@ -76,7 +76,6 @@ export const nodeDefinitionCatalogItemSchema = z
 
 export const nodeDefinitionListResponseSchema = z
   .object({
-    schemaVersion: z.literal(1),
     items: z
       .array(nodeDefinitionCatalogItemSchema)
       .max(catalogLimits.definitions),
@@ -97,7 +96,6 @@ const integrationCatalogItemSchema = z
 
 export const integrationListResponseSchema = z
   .object({
-    schemaVersion: z.literal(1),
     items: z
       .array(integrationCatalogItemSchema)
       .max(catalogLimits.integrations),

@@ -48,7 +48,7 @@ function recordBenchmarkOperation(startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
   const endedAt = performance.now();
   process.stdout.write(
-    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name: 'webhook-admit', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'authenticated webhook request through durable admission response' })}\n`,
+    `PERTEXO_Q11_OPERATION=${JSON.stringify({ name: 'webhook-admit', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'authenticated webhook request through durable admission response' })}\n`,
   );
 }
 
@@ -372,11 +372,10 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       actorId,
       workspaceId,
       name: 'Direct webhook gate',
-      emptyGraph: { schemaVersion: 1, settings: {}, nodes: [], edges: [] },
+      emptyGraph: { settings: {}, nodes: [], edges: [] },
       idempotencyKey: `direct-webhook-create-${label}`,
     });
     const graph = {
-      schemaVersion: 1 as const,
       settings: {},
       nodes: [
         {
@@ -722,7 +721,6 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     expect(runRows.rows).toMatchObject([
       {
         input_ref: {
-          schemaVersion: 1,
           kind: 'inline',
           value: {
             'raw-byte-marker': 'payload-value',
@@ -747,7 +745,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         const value = payload as Record<string, unknown>;
         return (
           Object.keys(value).sort().join(',') ===
-          'outboxEventId,runId,schemaVersion,workspaceId'
+          'outboxEventId,runId,workspaceId'
         );
       }),
     ).toBe(true);

@@ -4,7 +4,7 @@ import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews
 import {
   createOutboxDispatcherDatabase,
   parseDatabaseConfig,
-  parseStoredExecutionValueV1,
+  parseStoredExecutionValue,
 } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
 import { Queue } from 'bullmq';
@@ -197,7 +197,7 @@ describeIntegration('preview dispatch crash boundaries', () => {
             );
             if (selected.terminalCommitted) {
               expect(
-                parseStoredExecutionValueV1(atBarrier?.output_ref),
+                parseStoredExecutionValue(atBarrier?.output_ref),
               ).toMatchObject({
                 value: { executed: true, providerEffectKey: effectKey },
               });

@@ -102,7 +102,6 @@ const nestedParallelWorkflowId = randomUUID();
 const nestedParallelWorkflowVersionId = randomUUID();
 const waitWorkflowId = randomUUID();
 const waitWorkflowVersionId = randomUUID();
-const engineVersion = 'phase3-engine-v1';
 let ownerPool!: Pool;
 let workerPool!: Pool;
 let apiDatabase!: ReturnType<typeof createWorkspaceDatabase>;
@@ -416,7 +415,6 @@ export interface CoordinatorIntegrationFixture {
   readonly databaseUrl: typeof databaseUrl;
   readonly dispatcherUrl: string;
   readonly enabled: boolean;
-  readonly engineVersion: string;
   readonly forEachWorkflowId: string;
   readonly forEachWorkflowVersionId: string;
   readonly nestedParallelWorkflowId: string;
@@ -459,7 +457,6 @@ export const coordinatorFixture: CoordinatorIntegrationFixture = Object.freeze({
   databaseUrl,
   dispatcherUrl,
   enabled,
-  engineVersion,
   forEachWorkflowId,
   forEachWorkflowVersionId,
   nestedParallelWorkflowId,

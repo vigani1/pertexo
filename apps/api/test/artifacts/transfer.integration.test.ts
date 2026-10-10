@@ -48,7 +48,7 @@ function recordBenchmarkOperation(
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
   const endedAt = performance.now();
   process.stdout.write(
-    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population, boundary: `composed artifact ${name} request through response or stream completion` })}\n`,
+    `PERTEXO_Q11_OPERATION=${JSON.stringify({ name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population, boundary: `composed artifact ${name} request through response or stream completion` })}\n`,
   );
 }
 

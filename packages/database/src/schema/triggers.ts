@@ -20,7 +20,6 @@ export const webhookTriggerSecretVersions = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     triggerId: uuid('trigger_id').notNull(),
     purpose: varchar('purpose', { length: 32 }).notNull(),
-    schemaVersion: smallint('schema_version').notNull(),
     kmsKeyReference: varchar('kms_key_reference', { length: 2048 }).notNull(),
     encryptedDataKey: text('encrypted_data_key').notNull(),
     ciphertext: text('ciphertext').notNull(),

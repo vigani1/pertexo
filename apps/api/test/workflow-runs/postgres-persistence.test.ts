@@ -9,7 +9,7 @@ import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { WorkflowPublishedVersionConflictError } from '@pertexo/database/runs';
 
-import { createInitialCheckpoint, ENGINE_VERSION } from '@pertexo/execution';
+import { createInitialCheckpoint } from '@pertexo/execution';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
 import { usageCapacitySnapshot } from './usage/capacity.fixture.js';
 import {
@@ -41,7 +41,6 @@ function executable() {
   return buildWorkflowExecutable({
     catalog,
     graph: {
-      schemaVersion: 1,
       settings: { maxRunDurationMs: 60_000 },
       nodes: [
         {
@@ -92,7 +91,6 @@ function forEachExecutable() {
     compiled: buildWorkflowExecutable({
       catalog,
       graph: {
-        schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
         nodes: [
           {
@@ -117,7 +115,6 @@ function forEachExecutable() {
               maxIterations: 2,
               maxConcurrency: 1,
               body: {
-                schemaVersion: 1,
                 settings: {},
                 inputPorts: ['item', 'ordinal'],
                 outputPorts: ['result'],
@@ -192,7 +189,6 @@ function parallelExecutable() {
     compiled: buildWorkflowExecutable({
       catalog,
       graph: {
-        schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
         nodes: [
           {
@@ -287,7 +283,6 @@ function projection(compiled: ReturnType<typeof executable>) {
     workspaceId,
     workflowId,
     versionNumber: 1,
-    schemaVersion: 1 as const,
     checksum: compiled.checksum,
     executableJson: compiled.envelope,
   };
@@ -296,11 +291,8 @@ function projection(compiled: ReturnType<typeof executable>) {
 function expectInitialCheckpoint(
   checkpoint: ReturnType<typeof createInitialCheckpoint>,
 ): void {
-  expect(checkpoint.engineVersion).toBe(ENGINE_VERSION);
   expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
-    schemaVersion: 2,
     workflowVersionId,
-    engineVersion: ENGINE_VERSION,
     revision: 0,
     nextEventSequence: 2,
     remainingIterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
@@ -766,7 +758,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     const compiled = buildWorkflowExecutable({
       catalog,
       graph: {
-        schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
         nodes: [
           {
@@ -825,7 +816,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         workspaceId,
         workflowId,
         versionNumber: 1,
-        schemaVersion: 1,
         checksum: compiled.checksum,
         executableJson: compiled.envelope,
       },
@@ -845,7 +835,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     const compiled = buildWorkflowExecutable({
       catalog,
       graph: {
-        schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
         nodes: [
           {
@@ -896,7 +885,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         workspaceId,
         workflowId,
         versionNumber: 1,
-        schemaVersion: 1,
         checksum: compiled.checksum,
         executableJson: compiled.envelope,
       },
@@ -919,7 +907,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         workspaceId,
         workflowId,
         versionNumber: 1,
-        schemaVersion: 1,
         checksum: compiled.checksum,
         executableJson: compiled.envelope,
       },
@@ -987,11 +974,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     const start = vi.fn<WorkflowRunDatabase['start']>(async (input) => {
       await Promise.resolve();
       const initial = input.checkpointFactory(projection(compiled));
-      expect(initial.engineVersion).toBe(ENGINE_VERSION);
       expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
-        schemaVersion: 2,
         workflowVersionId,
-        engineVersion: ENGINE_VERSION,
         revision: 0,
         nextEventSequence: 2,
         runStatus: 'queued',

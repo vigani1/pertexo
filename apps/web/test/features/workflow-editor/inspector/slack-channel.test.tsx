@@ -49,7 +49,6 @@ function slackGraph(
   },
 ): WorkflowGraphContract {
   return {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'post',

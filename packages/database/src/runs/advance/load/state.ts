@@ -27,7 +27,6 @@ export type CoordinatorCommitRow = Readonly<{
   trigger_type: string;
   started_at: Date | null;
   created_at: Date;
-  failure_notification_policy_version: number | null;
   failure_notification_destination_id: string | null;
   failure_notification_destination_config_version: number | null;
   failure_notification_side_effect_class: string | null;
@@ -65,7 +64,6 @@ type LockedRow = CoordinatorCommitRow &
     version_workspace_id: string | null;
     version_workflow_id: string | null;
     version_number: number | null;
-    schema_version: number | null;
     checksum: string | null;
     executable_json: unknown;
   }>;
@@ -76,7 +74,6 @@ function publishedVersion(row: LockedRow): unknown {
     checksum: row.checksum,
     executable_json: row.executable_json,
     id: row.version_id,
-    schema_version: row.schema_version,
     version_number: row.version_number,
     workflow_id: row.version_workflow_id,
     workspace_id: row.version_workspace_id,
@@ -101,7 +98,6 @@ export async function loadRunForAdvance(
               as checkpoint_deadline_expired,
             run.status, run.cancel_requested_at, run.workflow_id,
             run.trigger_type, run.started_at, run.created_at,
-            run.failure_notification_policy_version,
             run.failure_notification_destination_id,
             run.failure_notification_destination_config_version,
             run.failure_notification_side_effect_class,
@@ -110,7 +106,7 @@ export async function loadRunForAdvance(
               and run.deadline_at <= clock_timestamp() as deadline_expired,
             version.id as version_id, version.workspace_id as version_workspace_id,
             version.workflow_id as version_workflow_id, version.version_number,
-            version.schema_version, version.checksum, version.executable_json
+            version.checksum, version.executable_json
        from app.workflow_runs run
        join app.run_checkpoints checkpoint
          on checkpoint.workspace_id = run.workspace_id

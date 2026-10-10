@@ -74,7 +74,6 @@ async function publish(page: Page, path: string, label: string) {
     headers: { ...(await csrf(page)), 'If-Match': draft.headers().etag ?? '' },
     data: {
       graph: {
-        schemaVersion: 1,
         nodes: [
           {
             id: nodeId,

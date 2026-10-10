@@ -409,7 +409,6 @@ function publicHealthFixture() {
 
 function sealedEnvelope() {
   return {
-    schemaVersion: 1 as const,
     kmsKeyReference: 'key',
     encryptedDataKey: 'encrypted-key',
     ciphertext: 'sealed',
@@ -435,7 +434,6 @@ function verification(secretVersionId: string): WebhookVerificationReference {
     databaseTime: new Date('2026-08-25T12:00:00.000Z'),
     currentSecret: {
       id: secretVersionId,
-      schemaVersion: 1,
       kmsKeyReference: 'key',
       encryptedDataKey: 'encrypted-key',
       ciphertext: 'sealed',

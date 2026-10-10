@@ -115,7 +115,6 @@ async function completeOutcome(
     // artifact capability first and represented here by a bounded reference.
     const stored = {
       kind: 'inline',
-      schemaVersion: 1,
       value: outcome.output,
     } as unknown;
     terminalOutcome = isValidStoredExecutionOutput(stored)

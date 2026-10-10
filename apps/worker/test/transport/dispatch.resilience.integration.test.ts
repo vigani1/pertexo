@@ -367,7 +367,6 @@ async function insertProofEvent(
         jobName: JOB_NAME.deliverRunFailureNotification,
         payload,
         payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-        schemaVersion: 1,
       });
     });
   } finally {
@@ -580,7 +579,6 @@ describeResilience(
                   ? leased.payload
                   : {}),
                 outboxEventId: leased.id,
-                schemaVersion: leased.schemaVersion,
                 workspaceId: leased.workspaceId,
               },
             }),
@@ -786,7 +784,6 @@ describeResilience(
             data: {
               outboxEventId: consumerEventId,
               runId: consumerRunId,
-              schemaVersion: 1,
               workspaceId,
             },
           });

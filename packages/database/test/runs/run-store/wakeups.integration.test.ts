@@ -77,7 +77,6 @@ describe('Coordinator durable wakeup invariants', () => {
       expect(proof.rows[0]?.payload).toEqual({
         outboxEventId: proof.rows[0]?.id,
         runId,
-        schemaVersion: 1,
         workspaceId: workspaceA,
       });
       expect(proof.rows[0]?.payload_checksum).toBe(
@@ -179,7 +178,6 @@ describe('Coordinator durable wakeup invariants', () => {
       expect(first.rows[0]?.payload).toEqual({
         outboxEventId: first.rows[0]?.id,
         runId,
-        schemaVersion: 1,
         workspaceId: workspaceA,
       });
       expect(first.rows[0]?.payload_checksum).toBe(

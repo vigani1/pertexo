@@ -41,7 +41,6 @@ function scheduleAuthoringOptions(
     })),
   };
   const definitionCatalog = Object.freeze({
-    schemaVersion: 1 as const,
     definitions: Object.freeze(
       nodeCatalog.definitions.map(
         ({ definition, integration, connectionRequirements }) =>

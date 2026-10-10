@@ -4,7 +4,6 @@ export { verifyPersistedWorkflowProjection } from './workflows/verify-projection
 export type { PersistedWorkflowProjectionVerificationOptions } from './workflows/verify-projection.js';
 export {
   createInitialCheckpoint,
-  ENGINE_VERSION,
   initialCheckpointFactory,
 } from './runs/initial-checkpoint.js';
 export { loadAttemptInputs } from './attempts/load-inputs.js';

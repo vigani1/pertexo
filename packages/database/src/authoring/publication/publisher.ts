@@ -92,7 +92,6 @@ type CompiledPublication = Readonly<{
   definitionCatalog: WorkflowDefinitionCatalog;
   executable: z.output<typeof executableSchema>;
   graph: WorkflowGraph;
-  schemaVersion: number;
 }>;
 
 /** A retry gets back the version its first attempt published. */
@@ -185,7 +184,6 @@ async function lockAndCompilePublication(
     definitionCatalog: variant.definitionCatalog,
     executable,
     graph,
-    schemaVersion: graph.schemaVersion,
   });
 }
 
@@ -209,17 +207,16 @@ async function persistVersion(
   if (!reused) {
     const inserted = await client.query<Record<string, unknown>>(
       `insert into app.workflow_versions (
-         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         id,workspace_id,workflow_id,version_number,graph_json,
          checksum,executable_json,published_by)
-       select $1,$2,$3,coalesce(max(version_number),0)+1,$4,$5::jsonb,$6,
-         $7::jsonb,$8 from app.workflow_versions
+       select $1,$2,$3,coalesce(max(version_number),0)+1,$4::jsonb,$5,
+         $6::jsonb,$7 from app.workflow_versions
        where workspace_id=$2 and workflow_id=$3
        returning ${workflowVersionRowSelection}`,
       [
         generatePersistedId(),
         input.workspaceId,
         workflowId,
-        publication.schemaVersion,
         JSON.stringify(publication.graph),
         publication.checksum,
         JSON.stringify(publication.executable.executableJson),
@@ -295,9 +292,9 @@ async function finalizePublication(
   });
   await client.query(
     `insert into app.outbox_events
-       (id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+       (id,workspace_id,job_name,aggregate_type,aggregate_id,
         payload,payload_checksum)
-     values($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,$4::jsonb,$5)`,
+     values($1,$2,'reconcile-workflow-triggers','workflow',$3,$4::jsonb,$5)`,
     [
       eventId,
       input.workspaceId,

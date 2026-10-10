@@ -5,7 +5,7 @@ import { describeMappingSource } from '@/features/workflow-editor/model/inspecto
 import { bareSetDefinition as definition } from '../../../support/fixtures/workflow-editor';
 
 function emptyGraph(): WorkflowGraphContract {
-  return { schemaVersion: 1, nodes: [], edges: [], settings: {} };
+  return { nodes: [], edges: [], settings: {} };
 }
 
 describe('input mapping summaries', () => {
@@ -80,7 +80,6 @@ describe('input mapping summaries', () => {
           ...row,
           kind: 'expression',
           expression: 'body.amount > 5000',
-          policyVersion: 1,
         },
         level,
       ),

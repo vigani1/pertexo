@@ -46,7 +46,6 @@ export async function verifyExpressionAdmissionEvidence(
         kind: 'expression',
         language: 'jsonata',
         expression: 'runInput.amount > 5000',
-        policyVersion: 1,
       },
     },
   });

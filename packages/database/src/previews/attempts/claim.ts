@@ -20,7 +20,7 @@ import {
   insertPreviewOutboxDelivery,
   validatePreviewDelivery,
 } from './delivery.js';
-import { parseStoredExecutionValueV1 } from '../../platform/stored-execution-value.js';
+import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 async function loadPreviewLease(
@@ -100,7 +100,7 @@ async function loadPreviewLease(
     executorVersion: run.executor_version,
     executionDeadlineAt: run.execution_deadline_at,
     retentionExpiresAt: run.retention_expires_at,
-    input: parseStoredExecutionValueV1(run.input_ref),
+    input: parseStoredExecutionValue(run.input_ref),
     mayContactProvider: run.may_contact_provider,
     mayCauseExternalSideEffect: run.may_cause_external_side_effect,
     nodeId: run.node_id,

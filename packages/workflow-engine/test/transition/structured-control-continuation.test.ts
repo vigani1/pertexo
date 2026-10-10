@@ -37,7 +37,6 @@ async function drive(
     ),
   });
   let checkpoint: WorkflowCheckpoint = createCheckpoint({
-    engineVersion: 'engine-v1',
     workflowVersionId,
     iterationBudget: 100,
   });

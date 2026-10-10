@@ -233,7 +233,6 @@ async function persistAttemptAdmissions(
     });
     const outboxEventId = generatePersistedId();
     const payload = {
-      schemaVersion: 1,
       workspaceId,
       runId,
       nodeRunId: ids.nodeRunId,
@@ -265,11 +264,11 @@ async function persistAttemptAdmissions(
       throw new CoordinatorRunStateCorruptError();
     const insertedOutbox = await client.query(
       `insert into app.outbox_events (
-         id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+         id,workspace_id,job_name,aggregate_type,aggregate_id,
          payload,payload_checksum)
-       select item.id,$1,'execute-node-attempt',1,'node-attempt',
+       select item.id,$1,'execute-node-attempt','node-attempt',
          item.aggregate_id,item.payload::jsonb,item.payload_checksum
-       from jsonb_to_recordset($2::jsonb) as item(
+        from jsonb_to_recordset($2::jsonb) as item(
          id uuid,aggregate_id uuid,payload text,payload_checksum char(64))`,
       [workspaceId, JSON.stringify(outboxRows)],
     );
@@ -345,7 +344,6 @@ async function persistRunEvents(
         ? undefined
         : physical.get(event.invocationKey);
     const payload = {
-      schemaVersion: event.schemaVersion,
       ...(event.invocationKey === undefined
         ? {}
         : { invocationKey: event.invocationKey }),

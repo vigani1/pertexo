@@ -45,7 +45,6 @@ function forEachGraph() {
           maxIterations: 2,
           maxConcurrency: 1,
           body: {
-            schemaVersion: 1 as const,
             settings: {},
             inputPorts: ['item', 'ordinal'],
             outputPorts: ['result'],
@@ -289,7 +288,6 @@ function compiledProjection(
     workspaceId: WORKSPACE_ID,
     workflowId: WORKFLOW_ID,
     versionNumber: 1,
-    schemaVersion: 1,
     checksum: executable.checksum,
     executableJson: executable.envelope,
   };
@@ -303,7 +301,6 @@ function fixture(nodeId: 'manual' | 'terminate') {
     workspaceId: WORKSPACE_ID,
     workflowId: WORKFLOW_ID,
     versionNumber: 1,
-    schemaVersion: 1,
     checksum: executable.checksum,
     executableJson: executable.envelope,
   };
@@ -582,7 +579,6 @@ describe('node attempt execution engine', () => {
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       versionNumber: 1,
-      schemaVersion: 1,
       checksum: executable.checksum,
       executableJson: executable.envelope,
     };
@@ -611,7 +607,6 @@ describe('node attempt execution engine', () => {
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       versionNumber: 1,
-      schemaVersion: 1,
       checksum: executable.checksum,
       executableJson: executable.envelope,
     };

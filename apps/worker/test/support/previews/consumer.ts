@@ -73,7 +73,6 @@ const workflowId = randomUUID();
 export const workflowVersionId = randomUUID();
 
 const validateWorkflowGraph = {
-  schemaVersion: 1 as const,
   nodes: [
     {
       id: 'manual',
@@ -230,13 +229,13 @@ async function seedIdentity(): Promise<void> {
     );
     await client.query(
       `insert into app.workflow_drafts
-         (workflow_id, workspace_id, revision, schema_version, graph_json,
+         (workflow_id, workspace_id, revision, graph_json,
           updated_by)
-       values ($1, $2, 3, 1, $3::jsonb, $4)`,
+       values ($1, $2, 3, $3::jsonb, $4)`,
       [
         workflowId,
         workspaceId,
-        '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}',
+        '{"nodes":[],"edges":[],"settings":{}}',
         actorUserId,
       ],
     );
@@ -246,10 +245,10 @@ async function seedIdentity(): Promise<void> {
     });
     await client.query(
       `insert into app.workflow_versions (
-         id, workspace_id, workflow_id, version_number, schema_version,
+         id, workspace_id, workflow_id, version_number,
          graph_json, checksum, executable_json,
          published_by
-       ) values ($1, $2, $3, 1, 1, $4::jsonb, $5, $6::jsonb, $7)`,
+       ) values ($1, $2, $3, 1, $4::jsonb, $5, $6::jsonb, $7)`,
       [
         workflowVersionId,
         workspaceId,
@@ -316,7 +315,6 @@ export interface AcceptedDelivery {
       outboxEventId: string;
       previewAttemptId: string;
       previewRunId: string;
-      schemaVersion: 1;
       traceparent: string;
       workspaceId: string;
     };
@@ -337,7 +335,6 @@ export async function acceptDelivery(
         outboxEventId: accepted.outboxEventId,
         previewAttemptId: accepted.previewAttemptId,
         previewRunId: accepted.previewRunId,
-        schemaVersion: 1,
         traceparent,
         workspaceId,
       },
@@ -430,7 +427,6 @@ export interface AcceptedWorkflowDelivery {
     data: {
       outboxEventId: string;
       runId: string;
-      schemaVersion: 1;
       traceparent: string;
       workspaceId: string;
     };
@@ -454,7 +450,6 @@ export async function acceptWorkflowDelivery(
     );
   });
   workflowAcceptanceSequence += 1;
-  const engineVersion = 'validate-worker-v1';
   const keyHash = createHash('sha256')
     .update(`validate-workflow-key-${String(workflowAcceptanceSequence)}`)
     .digest('hex');
@@ -462,9 +457,7 @@ export async function acceptWorkflowDelivery(
     .update(`validate-workflow-request-${String(workflowAcceptanceSequence)}`)
     .digest('hex');
   const acceptance: AcceptWorkflowRunInput = {
-    engineVersion,
     initialCheckpoint: createCheckpoint({
-      engineVersion,
       workflowVersionId,
       iterationBudget: 0,
     }),
@@ -497,7 +490,6 @@ export async function acceptWorkflowDelivery(
       data: {
         outboxEventId: accepted.outboxEventId,
         runId: accepted.runId,
-        schemaVersion: 1,
         traceparent,
         workspaceId,
       },

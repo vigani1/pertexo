@@ -44,7 +44,6 @@ export async function replayWorkflowRunInTransaction(
   const initial = input.checkpointFactory(projection);
   return acceptWorkflowRunWithAudit(transaction, {
     acceptance: {
-      engineVersion: initial.engineVersion,
       initialCheckpoint: initial.checkpoint,
       keyHash: input.idempotencyKeyHash,
       operation: 'workflow.run.accept',
@@ -65,7 +64,7 @@ export async function replayWorkflowRunInTransaction(
     },
     actorId: input.actorId,
     auditAction: 'workflow.run.replayed',
-    auditMetadata: sql`jsonb_build_object('schemaVersion', 1, 'sourceRunId', ${input.sourceRunId}::text, 'workflowId', ${source.workflowId}::text, 'workflowVersionId', ${projection.id}::text)`,
+    auditMetadata: sql`jsonb_build_object('sourceRunId', ${input.sourceRunId}::text, 'workflowId', ${source.workflowId}::text, 'workflowVersionId', ${projection.id}::text)`,
     ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
     ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
   });
@@ -102,7 +101,6 @@ async function lockReplayVersion(
       workspace_id,
       workflow_id,
       version_number,
-      schema_version,
       checksum,
       executable_json
     from app.lock_workflow_run_replay_version(

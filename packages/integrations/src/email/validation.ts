@@ -80,7 +80,6 @@ export const emailSendNotificationOutputSchema = z
 
 export const resolvedResendApiKeyCredentialSchema = z
   .object({
-    schemaVersion: z.literal(1),
     type: z.literal('resend_api_key'),
     apiKey: z
       .string()

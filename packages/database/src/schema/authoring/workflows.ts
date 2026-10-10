@@ -87,7 +87,6 @@ export const workflowDrafts = appSchema.table(
     workflowId: uuid('workflow_id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     revision: integer('revision').default(1).notNull(),
-    schemaVersion: integer('schema_version').notNull(),
     graphJson: jsonb('graph_json').notNull(),
     updatedBy: uuid('updated_by').notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
@@ -113,7 +112,6 @@ export const workflowVersions = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     versionNumber: integer('version_number').notNull(),
-    schemaVersion: integer('schema_version').notNull(),
     graphJson: jsonb('graph_json').notNull(),
     checksum: varchar('checksum', { length: 74 }).notNull(),
     executableJson: jsonb('executable_json').notNull(),

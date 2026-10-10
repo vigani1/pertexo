@@ -65,7 +65,6 @@ describeIntegration('Coordinator transport identity fencing', () => {
       const published = await producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
-          schemaVersion: 1,
           workspaceId,
           runId: target.runId,
           outboxEventId: authoritative.outboxEventId,

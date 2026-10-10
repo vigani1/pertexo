@@ -97,10 +97,7 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       return Promise.resolve(
         expressionError('canceled', 'evaluation canceled'),
       );
-    const validation = validateExpression(
-      request.expression,
-      request.policyVersion,
-    );
+    const validation = validateExpression(request.expression);
     if (validation.kind === 'error') return Promise.resolve(validation);
     let context: ExpressionContext;
     let inspection;

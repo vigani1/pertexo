@@ -116,7 +116,6 @@ describe('transactional inbox duplicate proof', () => {
     const providerPayload = {
       logicalAttemptId,
       providerIntentId: randomUUID(),
-      schemaVersion: 1,
     };
     const providerChecksum = canonicalOutboxPayloadChecksum(providerPayload);
     let callbacks = 0;
@@ -146,7 +145,6 @@ describe('transactional inbox duplicate proof', () => {
           await insertOutboxEvent(transaction, {
             id: providerOutboxId,
             jobName: 'dispatch-provider-request',
-            schemaVersion: 1,
             aggregateType: 'provider-intent',
             aggregateId: providerPayload.providerIntentId,
             payload: providerPayload,

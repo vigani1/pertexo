@@ -42,7 +42,6 @@ import {
 const fingerprint = `wf-compat:sha256:${'a'.repeat(64)}`;
 const manifest = {
   format: 'pertexo.workflow',
-  formatVersion: 1,
   graph: emptyGraph,
   requirements: {
     definitions: [],

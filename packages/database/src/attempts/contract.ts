@@ -28,7 +28,6 @@ export const claimDeliverySchema = z
   .strict();
 export const attemptJobPayloadSchema = z
   .object({
-    schemaVersion: z.literal(1),
     workspaceId: identitySchema,
     runId: identitySchema,
     nodeRunId: identitySchema,

@@ -40,7 +40,6 @@ export function summarizePublish(
   latest: WorkflowVersionResponse | null,
 ): PublishSummary {
   const previous = latest?.graph ?? {
-    schemaVersion: 1,
     nodes: [],
     edges: [],
     settings: {},

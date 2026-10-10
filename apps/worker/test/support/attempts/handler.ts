@@ -28,7 +28,6 @@ export function delivery(
   return {
     name: JOB_NAME.executeNodeAttempt,
     data: {
-      schemaVersion: 1,
       workspaceId: WORKSPACE_ID,
       runId: RUN_ID,
       nodeRunId: NODE_RUN_ID,
@@ -46,10 +45,9 @@ export function projection(): PublishedWorkflow {
     workspaceId: WORKSPACE_ID,
     workflowId: WORKFLOW_ID,
     versionNumber: 1,
-    schemaVersion: 1,
     checksum:
       'wf:sha256:1111111111111111111111111111111111111111111111111111111111111111',
-    executableJson: { schemaVersion: 2 },
+    executableJson: {},
   };
 }
 
@@ -117,7 +115,6 @@ export function executionStore(
     loadInputs: vi.fn().mockResolvedValue({
       abortRequested: false,
       checkpoint: createCheckpoint({
-        engineVersion: 'phase3-engine-v1',
         workflowVersionId: lease().workflowVersionId,
         iterationBudget: 0,
         nextEventSequence: 2,

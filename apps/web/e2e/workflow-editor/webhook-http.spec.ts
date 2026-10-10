@@ -34,7 +34,6 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
     'http.request',
   ];
   const catalog = nodeDefinitionListResponseSchema.parse({
-    schemaVersion: 1,
     items: realCatalog.definitions.filter(
       ({ definition }) =>
         keys.includes(definition.key) && definition.version === 1,
@@ -114,7 +113,6 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
         id: versionId,
         workflowId,
         versionNumber: 1,
-        schemaVersion: 1,
         graph: structuredClone(remote.graph),
         checksum: `wf:sha256:${'b'.repeat(64)}`,
         publishedAt: user.updatedAt,
@@ -134,7 +132,6 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
       workflowDraftResponseSchema.parse({
         workflowId,
         revision: remote.revision,
-        schemaVersion: 1,
         graph: remote.graph,
         compatibility: {
           compatible: true,

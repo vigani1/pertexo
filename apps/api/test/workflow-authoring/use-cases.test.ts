@@ -39,7 +39,6 @@ const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const fingerprint =
   'wf-compat:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const graph = {
-  schemaVersion: 1,
   nodes: [],
   edges: [],
   settings: {},
@@ -59,7 +58,6 @@ function draft(
     workflowId,
     workspaceId,
     revision: 1,
-    schemaVersion: 1,
     graphJson: graph,
     compatibility: { compatible: true, fingerprint, issues: [] },
     updatedBy: actorId,
@@ -90,7 +88,6 @@ function version(): WorkflowVersionRecord {
     workspaceId,
     workflowId,
     versionNumber: 1,
-    schemaVersion: 1,
     graphJson: graph,
     checksum:
       'wf:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -169,7 +166,6 @@ const MUTATION_DENIALS = [
 
 describe('workflow authoring application seams', () => {
   const templateOrigin = {
-    schemaVersion: 1,
     templateId: 'controlled-http-notification',
     templateVersion: 1,
     baseManifestDigest: 'a'.repeat(64),
@@ -862,7 +858,7 @@ describe('workflow authoring application seams', () => {
 
     const withoutSignal = await useCase.execute(base);
     const expected =
-      '1f51b7829335641dcb2df4a2ab588ca2c3e912dca1cf061a38e3b3fa94723db0';
+      '84b9b240331d7c501453089c5a0083f865ba22275af0b6bcc443b7be7a7cd475';
     expect(publishWorkflow).toHaveBeenLastCalledWith(
       expect.objectContaining({ requestHash: expected }),
     );
@@ -1143,7 +1139,6 @@ describe('workflow authoring application seams', () => {
           id: version().id,
           workflowId,
           versionNumber: 1,
-          schemaVersion: 1,
           graph,
           checksum: version().checksum,
           publishedAt: '2026-08-20T12:00:00.000Z',

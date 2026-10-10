@@ -35,7 +35,7 @@ function recordBenchmarkOperation(startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
   const endedAt = performance.now();
   process.stdout.write(
-    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name: 'schedule-to-run-start', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'release verified due schedule to scanner through durable run.started observation (25ms polling)' })}\n`,
+    `PERTEXO_Q11_OPERATION=${JSON.stringify({ name: 'schedule-to-run-start', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'release verified due schedule to scanner through durable run.started observation (25ms polling)' })}\n`,
   );
 }
 
@@ -146,11 +146,10 @@ describeIntegration('direct Schedule worker integration gate', () => {
       actorId,
       workspaceId,
       name: 'Direct Schedule worker proof',
-      emptyGraph: { schemaVersion: 1, settings: {}, nodes: [], edges: [] },
+      emptyGraph: { settings: {}, nodes: [], edges: [] },
       idempotencyKey: 'create-schedule-worker-proof',
     });
     const graph = {
-      schemaVersion: 1,
       settings: {},
       nodes: [
         {
@@ -316,7 +315,6 @@ describeIntegration('direct Schedule worker integration gate', () => {
     await duplicateProducer.publish({
       name: JOB_NAME.reconcileWorkflowTriggers,
       data: {
-        schemaVersion: 1,
         workspaceId,
         workflowId: created.workflowId,
         publishedVersionId: publication.version.id,
@@ -443,9 +441,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
       createScheduleTriggerScanner(workerConfig, workerConfig),
     );
     const duplicateCheckpointFactory = () => ({
-      engineVersion: 'phase3-engine-v1',
       checkpoint: createCheckpoint({
-        engineVersion: 'phase3-engine-v1',
         workflowVersionId: publication.version.id,
         iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
         nextEventSequence: 2,
@@ -516,7 +512,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
         actorId: scopedActorId,
         workspaceId: scopedWorkspaceId,
         name: `Schedule ${suffix}`,
-        emptyGraph: { schemaVersion: 1, settings: {}, nodes: [], edges: [] },
+        emptyGraph: { settings: {}, nodes: [], edges: [] },
         idempotencyKey: `create-${suffix}`,
       });
       const saved = await authoring.saveDraft({

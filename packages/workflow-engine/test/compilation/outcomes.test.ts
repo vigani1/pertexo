@@ -21,7 +21,6 @@ describe('attempt outcome production operations', () => {
         executable,
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint: createCheckpoint({
-          engineVersion: 'engine-v1',
           workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 0,
         }),
@@ -43,7 +42,6 @@ describe('attempt outcome production operations', () => {
     );
     const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const checkpoint = createCheckpoint({
-      engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 0,
     });
@@ -119,7 +117,6 @@ describe('attempt outcome production operations', () => {
     const materialized = await advanceWorkflow({
       ...input,
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -158,7 +155,6 @@ describe('attempt outcome production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -215,7 +211,6 @@ describe('attempt outcome production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -268,7 +263,6 @@ describe('attempt outcome production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -323,7 +317,6 @@ describe('attempt outcome production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -377,7 +370,6 @@ describe('attempt outcome production operations', () => {
         executable,
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint: createCheckpoint({
-          engineVersion: 'engine-v1',
           workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 0,
         }),
@@ -393,7 +385,6 @@ describe('attempt outcome production operations', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const checkpoint = createCheckpoint({
-      engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 0,
     });
@@ -460,7 +451,6 @@ describe('attempt outcome production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -565,7 +555,6 @@ describe('attempt outcome production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),

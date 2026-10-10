@@ -2,10 +2,7 @@ import type { WorkflowCheckpoint } from '../types.js';
 import { WorkflowEngineError } from '../errors.js';
 import { assertBoundedCheckpointJson, assertCheckpoint } from './fields.js';
 import { parseCheckpointRecord } from './record.js';
-import {
-  assertPersistedEngineVersion,
-  assertPersistedWorkflowVersionId,
-} from './identity.js';
+import { assertPersistedWorkflowVersionId } from './identity.js';
 
 export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
   try {
@@ -30,12 +27,10 @@ export function reconstructReadySet(
 }
 
 export function createCheckpoint(input: {
-  readonly engineVersion: string;
   readonly workflowVersionId: string;
   readonly iterationBudget: number;
   readonly nextEventSequence?: number;
 }): WorkflowCheckpoint {
-  const engineVersion = assertPersistedEngineVersion(input.engineVersion);
   const workflowVersionId = assertPersistedWorkflowVersionId(
     input.workflowVersionId,
   );
@@ -50,8 +45,6 @@ export function createCheckpoint(input: {
     'nextEventSequence is invalid',
   );
   return {
-    schemaVersion: 2,
-    engineVersion,
     workflowVersionId,
     revision: 0,
     runStatus: 'queued',

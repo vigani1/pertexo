@@ -193,7 +193,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         await readUntil('event: inbox.ready');
         await publisher.publish({ workspaceId, revision: '77' });
         await readUntil('event: inbox.changed');
-        expect(received).toContain('data: {"schemaVersion":1,"revision":"77"}');
+        expect(received).toContain('data: {"revision":"77"}');
         expect(received).not.toContain('Nightly import');
       } finally {
         controller.abort();

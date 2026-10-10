@@ -139,7 +139,7 @@ function linearGraph(
       },
     ];
   });
-  return { schemaVersion: 1, nodes, edges, settings: {} };
+  return { nodes, edges, settings: {} };
 }
 
 /** The starter as a draft graph built from this catalog's definitions. */

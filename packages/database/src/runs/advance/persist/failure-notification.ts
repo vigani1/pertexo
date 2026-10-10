@@ -26,7 +26,6 @@ export async function persistFailureNotificationIntent(
     triggerType: string;
     startedAt: Date | null;
     createdAt: Date;
-    policyVersion: number | null;
     destinationId: string | null;
     destinationConfigVersion: number | null;
     sideEffectClass: string | null;
@@ -43,7 +42,6 @@ export async function persistFailureNotificationIntent(
   if (
     terminalEvent === undefined ||
     input.cancellationRequested ||
-    input.policyVersion !== 1 ||
     input.destinationId === null ||
     input.destinationConfigVersion === null ||
     input.sideEffectClass === null
@@ -100,7 +98,6 @@ export async function persistFailureNotificationIntent(
     };
   }
   const context = FailureNotificationContextSchema.parse({
-    schemaVersion: 1,
     runId: input.runId,
     workflowId: input.workflowId,
     workflowVersionId: input.workflowVersionId,
@@ -122,12 +119,11 @@ export async function persistFailureNotificationIntent(
     .update(contextJson)
     .digest('hex');
   const intentId = uuidv5(
-    `${input.runId}:${String(terminalEvent.sequence)}:${String(input.policyVersion)}`,
+    `${input.runId}:${String(terminalEvent.sequence)}`,
     failureNotificationNamespace,
   );
   const outboxEventId = uuidv5('delivery:1', intentId);
   const payload = {
-    schemaVersion: 1,
     workspaceId: input.workspaceId,
     notificationIntentId: intentId,
     outboxEventId,
@@ -137,30 +133,26 @@ export async function persistFailureNotificationIntent(
   } as const;
   const inserted = await client.query(
     `insert into app.run_failure_notification_intents (
-       id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
-       destination_id,destination_config_version,side_effect_class,
+       id,workspace_id,workflow_run_id,terminal_event_sequence,destination_id,destination_config_version,side_effect_class,
        connection_secret_version_id,context,context_checksum
       ) select $1,run.workspace_id,run.id,$4,
-               run.failure_notification_policy_version,
                run.failure_notification_destination_id,
                run.failure_notification_destination_config_version,
                run.failure_notification_side_effect_class,
-               run.failure_notification_connection_secret_version_id,$9::jsonb,$10
+               run.failure_notification_connection_secret_version_id,$8::jsonb,$9
         from app.workflow_runs run
        where run.workspace_id=$2 and run.id=$3
-         and run.failure_notification_policy_version=$5
-         and run.failure_notification_destination_id=$6
-         and run.failure_notification_destination_config_version=$7
-         and run.failure_notification_side_effect_class=$8
+         and run.failure_notification_destination_id=$5
+         and run.failure_notification_destination_config_version=$6
+         and run.failure_notification_side_effect_class=$7
          and run.failure_notification_connection_secret_version_id is not null
-     on conflict (workflow_run_id,terminal_event_sequence,policy_version) do nothing
+     on conflict (workflow_run_id,terminal_event_sequence) do nothing
      returning id`,
     [
       intentId,
       input.workspaceId,
       input.runId,
       terminalEvent.sequence,
-      input.policyVersion,
       input.destinationId,
       input.destinationConfigVersion,
       input.sideEffectClass,
@@ -171,8 +163,8 @@ export async function persistFailureNotificationIntent(
   if (inserted.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
   await client.query(
     `insert into app.outbox_events (
-       id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum
-     ) values ($1,$2,'deliver-run-failure-notification',1,'run-failure-notification',$3,$4::jsonb,$5)`,
+       id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum
+     ) values ($1,$2,'deliver-run-failure-notification','run-failure-notification',$3,$4::jsonb,$5)`,
     [
       outboxEventId,
       input.workspaceId,

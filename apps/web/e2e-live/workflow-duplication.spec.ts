@@ -62,7 +62,6 @@ async function sourceGraph(page: Page) {
       value: {
         kind: 'expression' as const,
         language: 'jsonata' as const,
-        policyVersion: 1,
         expression: '$lookup(nodeOutputs, runInput.stepId).value',
       },
     },
@@ -108,7 +107,6 @@ async function sourceGraph(page: Page) {
       maxIterations: 2,
       maxConcurrency: 1,
       body: {
-        schemaVersion: 1 as const,
         nodes: [parallel, left, right, merge],
         edges: [
           edge(parallel.id, left.id, 'branch-01'),
@@ -124,7 +122,6 @@ async function sourceGraph(page: Page) {
   };
   return {
     graph: {
-      schemaVersion: 1 as const,
       nodes: [producer, dynamic, loop],
       edges: [edge(producer.id, dynamic.id), edge(dynamic.id, loop.id)],
       settings: { maxRunDurationMs: 60_000 },

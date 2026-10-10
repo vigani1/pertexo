@@ -54,7 +54,6 @@ import {
 describe('identity/workspace generated contracts', () => {
   it('projects every client schema mechanically from the owning Zod contract', () => {
     expect(identityWorkspaceClientContract).toEqual({
-      schemaVersion: '1.0.0',
       schemas: {
         AccessibleWorkspacesResponse: generated(
           accessibleWorkspacesResponseSchema,

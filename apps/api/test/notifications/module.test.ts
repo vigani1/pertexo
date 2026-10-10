@@ -285,8 +285,8 @@ describe('notifications HTTP surface', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toBe('text/event-stream');
     expect(response.body).toBe(
-      'event: inbox.ready\ndata: {"schemaVersion":1,"revision":null}\n\n' +
-        'event: inbox.changed\ndata: {"schemaVersion":1,"revision":"9"}\n\n',
+      'event: inbox.ready\ndata: {"revision":null}\n\n' +
+        'event: inbox.changed\ndata: {"revision":"9"}\n\n',
     );
     expect(closed).toBe(true);
   });

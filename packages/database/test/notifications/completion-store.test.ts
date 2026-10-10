@@ -264,7 +264,7 @@ describe('failure notification completion policy', () => {
           attemptNumber: row.delivery_attempts,
           maxAttempts,
           retryDelaySeconds: 5,
-          result: { schemaVersion: 1, ...result },
+          result: { ...result },
         }),
       ).resolves.toBe('completed');
 
@@ -355,7 +355,6 @@ describe('failure notification completion policy', () => {
             kind: 'retry',
             possiblyDispatched: false,
             safeErrorCode: 'provider.unavailable',
-            schemaVersion: 1,
           },
           [field]: value,
         }),
@@ -385,7 +384,6 @@ describe('failure notification completion policy', () => {
           kind: 'retry',
           possiblyDispatched: false,
           safeErrorCode: 'provider.exhausted',
-          schemaVersion: 1,
         },
       }),
     ).resolves.toBe('completed');
@@ -407,7 +405,6 @@ describe('failure notification completion policy', () => {
           kind: 'retry',
           possiblyDispatched: false,
           safeErrorCode: 'provider.unavailable',
-          schemaVersion: 1,
         },
       }),
     ).rejects.toThrow('Retry delay must be positive');
@@ -432,7 +429,6 @@ describe('failure notification completion policy', () => {
           kind: 'retry',
           possiblyDispatched: false,
           safeErrorCode: 'provider.unavailable',
-          schemaVersion: 1,
         },
       }),
     ).resolves.toBe('completed');
@@ -455,7 +451,6 @@ describe('failure notification completion policy', () => {
           kind: 'retry',
           possiblyDispatched: false,
           safeErrorCode: 'provider.exhausted',
-          schemaVersion: 1,
         },
       }),
     ).resolves.toBe('completed');
@@ -509,7 +504,6 @@ describe('failure notification completion policy', () => {
             kind: 'retry',
             possiblyDispatched: false,
             safeErrorCode: 'provider.unavailable',
-            schemaVersion: 1,
           },
         }),
       ).resolves.toBe('stale');
@@ -540,7 +534,6 @@ describe('failure notification completion policy', () => {
           kind: 'retry',
           possiblyDispatched: false,
           safeErrorCode: 'provider.unavailable',
-          schemaVersion: 1,
         },
         signal: controller.signal,
       }),
@@ -576,7 +569,7 @@ describe('failure notification completion policy', () => {
           attemptNumber: 1,
           maxAttempts: 3,
           retryDelaySeconds: 5,
-          result: { schemaVersion: 1, ...result },
+          result: { ...result },
         }),
       ).rejects.toThrow('Predispatch completion result is incompatible');
       expect(query).toHaveBeenCalledOnce();
@@ -600,7 +593,6 @@ describe('failure notification completion policy', () => {
         maxAttempts: 3,
         retryDelaySeconds: 5,
         result: {
-          schemaVersion: 1,
           kind: 'delivered',
           possiblyDispatched: false,
         } as never,

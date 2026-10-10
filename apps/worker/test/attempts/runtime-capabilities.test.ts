@@ -227,7 +227,6 @@ describe('worker node runtime capabilities', () => {
         },
         secretVersionId,
         sealed: {
-          schemaVersion: 1 as const,
           kmsKeyReference: 'alias/pertexo',
           encryptedDataKey: 'YQ',
           ciphertext: 'Yg',
@@ -487,7 +486,6 @@ describe('worker node runtime capabilities', () => {
         },
         secretVersionId,
         sealed: {
-          schemaVersion: 1 as const,
           kmsKeyReference: 'alias/pertexo',
           encryptedDataKey: 'YQ',
           ciphertext: 'Yg',

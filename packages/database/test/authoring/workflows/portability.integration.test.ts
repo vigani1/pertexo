@@ -53,7 +53,6 @@ import {
 } from '../../support/workflow-authoring.js';
 
 const catalog = {
-  schemaVersion: 1 as const,
   definitions: [{ key: 'test.placeholder', version: 1 }],
 };
 const portableCatalog: WorkflowPortabilityCatalog = {
@@ -151,7 +150,6 @@ describe('portable workflow persistence under the API role', () => {
       },
     });
     const templateOrigin = {
-      schemaVersion: 1 as const,
       templateId: template.templateId,
       templateVersion: template.templateVersion,
       baseManifestDigest: template.baseManifestDigest,
@@ -453,7 +451,6 @@ describe('portable workflow persistence under the API role', () => {
         idempotencyKey: randomUUID(),
         requestHash: createHash('sha256').update(id).digest('hex'),
         sealed: {
-          schemaVersion: 1,
           kmsKeyReference: 'arn:aws:kms:region:account:key/portability',
           encryptedDataKey: Buffer.alloc(32, 1).toString('base64url'),
           ciphertext: Buffer.from('never-export-secret').toString('base64url'),
@@ -485,7 +482,6 @@ describe('portable workflow persistence under the API role', () => {
                       value: {
                         kind: 'expression',
                         language: 'jsonata',
-                        policyVersion: 1,
                         expression:
                           '$lookup(nodeOutputs, runInput.stepId).value',
                       },
@@ -759,7 +755,6 @@ describe('portable workflow persistence under the API role', () => {
         idempotencyKey: randomUUID(),
         requestHash: createHash('sha256').update(id).digest('hex'),
         sealed: {
-          schemaVersion: 1,
           kmsKeyReference: 'arn:aws:kms:region:account:key/portability-race',
           encryptedDataKey: Buffer.alloc(32, 1).toString('base64url'),
           ciphertext: Buffer.from('connection-race-secret').toString(

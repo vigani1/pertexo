@@ -52,7 +52,6 @@ function graphForMask(
 
 function freshCheckpoint(): WorkflowCheckpoint {
   return createCheckpoint({
-    engineVersion: 'engine-v1',
     workflowVersionId: WORKFLOW_VERSION_ID,
     iterationBudget: 64,
   });
@@ -90,7 +89,6 @@ function startStructuredLoop(input: {
   const initialIterationBudget = input.collectionSize + input.reserveBudget;
   const started = advanceWorkflow({
     checkpoint: createCheckpoint({
-      engineVersion: 'engine-v2',
       workflowVersionId: WORKFLOW_VERSION_ID,
       iterationBudget: initialIterationBudget,
     }),

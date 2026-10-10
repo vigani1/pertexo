@@ -20,7 +20,6 @@ const context: QueueHandlerContext = {
 const delivery = {
   name: JOB_NAME.deliverWorkspaceInvitation,
   data: {
-    schemaVersion: 1 as const,
     workspaceId: WORKSPACE_ID,
     invitationId: INVITATION_ID,
     deliveryAttemptId: ATTEMPT_ID,

@@ -140,7 +140,7 @@ const scanInput = {
   limit: 10,
   leaseSeconds: 30,
   onTimeWindowSeconds: 300,
-  checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+  checkpointFactory: () => ({ checkpoint: {} }),
 } as const;
 
 describe('schedule trigger scanner claim ownership', () => {

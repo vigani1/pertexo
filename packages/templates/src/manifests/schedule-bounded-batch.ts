@@ -3,9 +3,7 @@ import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 // Public instructional base; setup and bindings must be explicitly configured.
 export const SCHEDULE_BOUNDED_BATCH_MANIFEST: WorkflowPortableManifest = {
   format: 'pertexo.workflow',
-  formatVersion: 1,
   graph: {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'schedule-start',
@@ -57,7 +55,6 @@ export const SCHEDULE_BOUNDED_BATCH_MANIFEST: WorkflowPortableManifest = {
           maxIterations: 3,
           maxConcurrency: 1,
           body: {
-            schemaVersion: 1,
             nodes: [
               {
                 id: 'batch-body-result',

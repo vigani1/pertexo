@@ -39,7 +39,6 @@ function mappedExecutable() {
         kind: 'expression',
         language: 'jsonata',
         expression: 'runInput.count + nodeOutputs.manual.base',
-        policyVersion: 1,
       },
     },
   });
@@ -69,7 +68,6 @@ describe('input resolution production operations', () => {
       catalog,
     });
     const envelope = {
-      schemaVersion: 1,
       triggerId: '00000000-0000-4000-8000-000000000010',
       nodeId: 'manual',
       scheduledAt: '2026-08-20T10:00:00.000Z',
@@ -112,7 +110,6 @@ describe('input resolution production operations', () => {
       executable,
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
@@ -526,7 +523,6 @@ describe('input resolution production operations', () => {
           kind: 'expression',
           language: 'jsonata',
           expression: 'runInput.value',
-          policyVersion: 1,
         },
       },
     });
@@ -664,7 +660,6 @@ describe('input resolution production operations', () => {
               expression: 'runInput.count * 2',
               kind: 'expression',
               language: 'jsonata',
-              policyVersion: 1,
             },
             fromRun: { kind: 'run_input', path: '$.name' },
             literal: { kind: 'literal', value: true },

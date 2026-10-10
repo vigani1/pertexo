@@ -87,7 +87,6 @@ describe('schedule trigger PostgreSQL slice', () => {
         payloadChecksum: canonicalOutboxPayloadChecksum({
           commandId,
           outboxEventId,
-          schemaVersion: 1,
           workspaceId,
         }),
       },
@@ -104,7 +103,6 @@ describe('schedule trigger PostgreSQL slice', () => {
           payloadChecksum: canonicalOutboxPayloadChecksum({
             commandId,
             outboxEventId,
-            schemaVersion: 1,
             workspaceId,
           }),
         },
@@ -171,7 +169,6 @@ describe('schedule trigger PostgreSQL slice', () => {
       payloadChecksum: canonicalOutboxPayloadChecksum({
         commandId,
         outboxEventId,
-        schemaVersion: 1,
         workspaceId,
       }),
     };
@@ -280,7 +277,6 @@ describe('schedule trigger PostgreSQL slice', () => {
       payload: {
         outboxEventId,
         publishedVersionId: versionId,
-        schemaVersion: 1,
         workflowId,
         workspaceId,
       },
@@ -310,9 +306,8 @@ describe('schedule trigger PostgreSQL slice', () => {
       otherWorkspaceId,
     );
     await ownerQuery(
-      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-         schema_version,graph_json,checksum,executable_json,published_by)
-       values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+       values($1,$2,$3,1,'{"settings":{},"nodes":[],"edges":[]}'::jsonb,
          $4,'{}'::jsonb,$5)`,
       [
         otherVersionId,
@@ -619,7 +614,6 @@ describe('schedule trigger PostgreSQL slice', () => {
     );
     const facts = await ownerQuery(
       `select occurrence.scheduled_at,run.id run_id,run.trigger_type,
-               run.failure_notification_policy_version,
                run.failure_notification_destination_id,
                run.failure_notification_destination_config_version,
                run.failure_notification_side_effect_class,
@@ -633,7 +627,6 @@ describe('schedule trigger PostgreSQL slice', () => {
     expect(facts.rows).toHaveLength(1);
     expect(facts.rows[0]).toMatchObject({
       trigger_type: 'schedule',
-      failure_notification_policy_version: 1,
       failure_notification_destination_id: notificationDestinationId,
       failure_notification_destination_config_version: 1,
       failure_notification_side_effect_class: 'idempotent_with_key',

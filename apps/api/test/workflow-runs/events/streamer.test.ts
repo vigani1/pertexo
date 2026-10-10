@@ -66,7 +66,6 @@ function persistedEvent(
 describe('public workflow run event streamer', () => {
   it('subscribes first, projects every public field, and strips secret and unknown data', async () => {
     const payload = {
-      schemaVersion: 1,
       invocationKey: 'root/http/1',
       nodeId: 'http_1',
       nodeRunId,
@@ -98,7 +97,6 @@ describe('public workflow run event streamer', () => {
           type: 'node.succeeded',
           createdAt: '2026-08-21T12:00:00.000Z',
           payload: {
-            schemaVersion: 1,
             invocationKey: 'root/http/1',
             nodeId: 'http_1',
             nodeRunId,
@@ -119,16 +117,14 @@ describe('public workflow run event streamer', () => {
   });
 
   it.each([
-    ['schema version', { schemaVersion: 2 }],
-    ['empty invocation key', { schemaVersion: 1, invocationKey: '' }],
-    ['invalid node run id', { schemaVersion: 1, nodeRunId: 'invalid' }],
-    ['negative attempt number', { schemaVersion: 1, attemptNumber: -1 }],
-    ['invalid due time', { schemaVersion: 1, dueAt: 'tomorrow' }],
-    ['empty safe error code', { schemaVersion: 1, safeErrorCode: '' }],
+    ['empty invocation key', { invocationKey: '' }],
+    ['invalid node run id', { nodeRunId: 'invalid' }],
+    ['negative attempt number', { attemptNumber: -1 }],
+    ['invalid due time', { dueAt: 'tomorrow' }],
+    ['empty safe error code', { safeErrorCode: '' }],
     [
       'invalid output reference',
       {
-        schemaVersion: 1,
         outputRef: { kind: 'artifact', artifactId: 'invalid' },
       },
     ],
@@ -146,7 +142,7 @@ describe('public workflow run event streamer', () => {
 
   it('rejects an unknown persisted event type before emitting it and releases the stream', async () => {
     const stream = controlledStream(
-      persistedEvent({ schemaVersion: 1 }, { type: 'run.future_internal' }),
+      persistedEvent({}, { type: 'run.future_internal' }),
     );
 
     await expect(stream.iterator.next()).rejects.toBeDefined();

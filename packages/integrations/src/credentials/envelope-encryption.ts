@@ -52,7 +52,6 @@ function kmsEncryptionContext(
 ): Readonly<Record<string, string>> {
   return Object.freeze({
     purpose: 'pertexo-connection-secret',
-    schemaVersion: '1',
     workspaceId: context.workspaceId,
     connectionId: context.connectionId,
     secretVersionId: context.secretVersionId,
@@ -144,7 +143,6 @@ export class ConnectionEnvelopeEncryption {
         signal,
       );
       return sealedSchema.parse({
-        schemaVersion: 1,
         kmsKeyReference: sealed.keyReference,
         encryptedDataKey: sealed.encryptedDataKey,
         ciphertext: sealed.ciphertext,

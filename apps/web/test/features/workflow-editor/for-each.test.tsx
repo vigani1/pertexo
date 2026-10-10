@@ -165,7 +165,6 @@ describe('building a For each body', { timeout: 30_000 }, () => {
                                 kind: 'expression',
                                 language: 'jsonata',
                                 expression: '(',
-                                policyVersion: 1,
                               },
                             },
                           },
@@ -385,7 +384,6 @@ describe('building a For each body', { timeout: 30_000 }, () => {
 
   it('adds a first step from the container’s own Add step', async () => {
     const graph: WorkflowGraphContract = {
-      schemaVersion: 1,
       nodes: [loopStep('loop', 'Each order', { nodes: [], edges: [] })],
       edges: [],
       settings: {},
@@ -502,7 +500,6 @@ describe('working inside a For each body', { timeout: 30_000 }, () => {
 
   it('shows what a body still needs on the card and in the inspector', async () => {
     const graph: WorkflowGraphContract = {
-      schemaVersion: 1,
       nodes: [
         loopStep('loop', 'Each order', {
           nodes: [

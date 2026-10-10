@@ -223,7 +223,6 @@ test('real nested expression admission, guarded keyboard recovery and immutable 
         kind: 'expression',
         language: 'jsonata',
         expression: 'runInput.amount > 5000',
-        policyVersion: 1,
       });
     const corrected = await readTaggedExpressionDraft(page, workflowPath);
     expect(corrected.draft.revision).toBeGreaterThan(authored.draft.revision);

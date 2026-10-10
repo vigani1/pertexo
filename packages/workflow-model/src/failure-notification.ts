@@ -37,7 +37,6 @@ export type FailureNotificationDestinationConfig = z.output<
 
 export const FailureNotificationContextSchema = z
   .object({
-    schemaVersion: z.literal(1),
     runId: z.uuid(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
@@ -73,7 +72,6 @@ export const FailureNotificationDeliveryResultSchema = z.discriminatedUnion(
   [
     z
       .object({
-        schemaVersion: z.literal(1),
         kind: z.literal('delivered'),
         possiblyDispatched: z.literal(true),
         providerReference: z.string().min(1).max(256).optional(),
@@ -81,7 +79,6 @@ export const FailureNotificationDeliveryResultSchema = z.discriminatedUnion(
       .strict(),
     z
       .object({
-        schemaVersion: z.literal(1),
         kind: z.literal('definite_failure'),
         safeErrorCode: safeCodeSchema,
         possiblyDispatched: z.literal(false),
@@ -89,7 +86,6 @@ export const FailureNotificationDeliveryResultSchema = z.discriminatedUnion(
       .strict(),
     z
       .object({
-        schemaVersion: z.literal(1),
         kind: z.literal('retry'),
         safeErrorCode: safeCodeSchema,
         possiblyDispatched: z.boolean(),
@@ -97,7 +93,6 @@ export const FailureNotificationDeliveryResultSchema = z.discriminatedUnion(
       .strict(),
     z
       .object({
-        schemaVersion: z.literal(1),
         kind: z.literal('outcome_unknown'),
         safeErrorCode: safeCodeSchema,
         possiblyDispatched: z.literal(true),

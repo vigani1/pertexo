@@ -24,7 +24,6 @@ function delivery() {
   return {
     name: JOB_NAME.reconcileWorkflowTriggers,
     data: {
-      schemaVersion: 1 as const,
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       publishedVersionId: VERSION_ID,

@@ -35,7 +35,6 @@ function localFailure(
 ): FailureNotificationDeliveryResult {
   if (error instanceof ConnectionSecretEncryptionError)
     return {
-      schemaVersion: 1,
       kind: 'retry',
       safeErrorCode: 'delivery.credential_unavailable',
       possiblyDispatched: false,
@@ -43,7 +42,6 @@ function localFailure(
   if (error instanceof SecureHttpError) {
     if (error.possiblyDispatched)
       return {
-        schemaVersion: 1,
         kind: provider === 'slack' ? 'outcome_unknown' : 'retry',
         safeErrorCode: 'delivery.provider_ambiguous',
         possiblyDispatched: true,
@@ -58,7 +56,6 @@ function localFailure(
       ] as readonly string[]
     ).includes(error.code);
     return {
-      schemaVersion: 1 as const,
       kind: retryable ? ('retry' as const) : ('definite_failure' as const),
       safeErrorCode: retryable
         ? 'delivery.provider_unavailable'
@@ -74,7 +71,6 @@ function settleUnresolvedDelivery(
 ): FailureNotificationDeliveryResult {
   if (!deliveryUnresolved || result.kind === 'delivered') return result;
   return {
-    schemaVersion: 1,
     kind: 'outcome_unknown',
     safeErrorCode: 'delivery.previous_outcome_unresolved',
     possiblyDispatched: true,
@@ -107,7 +103,6 @@ function slackResult(
   switch (result.kind) {
     case 'succeeded':
       return {
-        schemaVersion: 1 as const,
         kind: 'delivered' as const,
         possiblyDispatched: true,
         providerReference: result.messageTs,
@@ -115,7 +110,6 @@ function slackResult(
     case 'rejected':
       if (result.error === 'service_unavailable')
         return {
-          schemaVersion: 1 as const,
           kind: 'retry' as const,
           safeErrorCode: 'delivery.provider_unavailable',
           possiblyDispatched: false,
@@ -132,20 +126,17 @@ function slackResult(
         ].includes(result.error)
       )
         return {
-          schemaVersion: 1 as const,
           kind: 'outcome_unknown' as const,
           safeErrorCode: 'delivery.provider_ambiguous',
           possiblyDispatched: true,
         };
       return {
-        schemaVersion: 1 as const,
         kind: 'definite_failure' as const,
         safeErrorCode: 'delivery.provider_rejected',
         possiblyDispatched: false,
       };
     case 'rate_limited':
       return {
-        schemaVersion: 1 as const,
         kind: 'retry' as const,
         safeErrorCode: 'delivery.rate_limited',
         possiblyDispatched: false,
@@ -153,20 +144,17 @@ function slackResult(
     case 'http_failure':
       return result.status >= 500
         ? {
-            schemaVersion: 1 as const,
             kind: 'outcome_unknown' as const,
             safeErrorCode: 'delivery.provider_ambiguous',
             possiblyDispatched: true,
           }
         : {
-            schemaVersion: 1 as const,
             kind: 'definite_failure' as const,
             safeErrorCode: 'delivery.provider_rejected',
             possiblyDispatched: false,
           };
     case 'invalid_response':
       return {
-        schemaVersion: 1 as const,
         kind: 'outcome_unknown' as const,
         safeErrorCode: 'delivery.provider_ambiguous',
         possiblyDispatched: true,
@@ -180,14 +168,12 @@ function emailResult(
   switch (result.kind) {
     case 'succeeded':
       return {
-        schemaVersion: 1 as const,
         kind: 'delivered' as const,
         possiblyDispatched: true,
         providerReference: result.emailId,
       };
     case 'rate_limited':
       return {
-        schemaVersion: 1 as const,
         kind: 'retry' as const,
         safeErrorCode: 'delivery.rate_limited',
         possiblyDispatched: false,
@@ -195,13 +181,11 @@ function emailResult(
     case 'rejected':
       return result.error === 'concurrent_idempotent_requests'
         ? {
-            schemaVersion: 1 as const,
             kind: 'retry' as const,
             safeErrorCode: 'delivery.provider_busy',
             possiblyDispatched: false,
           }
         : {
-            schemaVersion: 1 as const,
             kind: 'definite_failure' as const,
             safeErrorCode: 'delivery.provider_rejected',
             possiblyDispatched: false,
@@ -209,20 +193,17 @@ function emailResult(
     case 'http_failure':
       return result.status >= 500
         ? {
-            schemaVersion: 1 as const,
             kind: 'retry' as const,
             safeErrorCode: 'delivery.provider_unavailable',
             possiblyDispatched: true,
           }
         : {
-            schemaVersion: 1 as const,
             kind: 'definite_failure' as const,
             safeErrorCode: 'delivery.provider_rejected',
             possiblyDispatched: false,
           };
     case 'invalid_response':
       return {
-        schemaVersion: 1 as const,
         kind: 'retry' as const,
         safeErrorCode: 'delivery.provider_ambiguous',
         possiblyDispatched: true,
@@ -252,7 +233,6 @@ type EmailDestination = Extract<
 function canceled(input: DeliveryInput): FailureNotificationDeliveryResult {
   return settleUnresolvedDelivery(
     {
-      schemaVersion: 1,
       kind: 'retry',
       safeErrorCode: 'delivery.canceled',
       possiblyDispatched: false,
@@ -293,7 +273,6 @@ async function deliverSlack(
     } catch {
       return settleUnresolvedDelivery(
         {
-          schemaVersion: 1,
           kind: 'definite_failure',
           safeErrorCode: 'delivery.credential_invalid',
           possiblyDispatched: false,
@@ -322,7 +301,6 @@ async function deliverSlack(
     } catch (error: unknown) {
       if (error instanceof FailureNotificationStateError)
         return {
-          schemaVersion: 1,
           kind: 'definite_failure',
           safeErrorCode: 'delivery.dispatch_fence_failed',
           possiblyDispatched: false,
@@ -366,7 +344,6 @@ async function deliverEmail(
     } catch {
       return settleUnresolvedDelivery(
         {
-          schemaVersion: 1,
           kind: 'definite_failure',
           safeErrorCode: 'delivery.credential_invalid',
           possiblyDispatched: false,
@@ -415,13 +392,11 @@ async function deliverEmail(
       if (error instanceof FailureNotificationStateError)
         return input.deliveryUnresolved
           ? {
-              schemaVersion: 1,
               kind: 'outcome_unknown',
               safeErrorCode: 'delivery.identity_changed',
               possiblyDispatched: true,
             }
           : {
-              schemaVersion: 1,
               kind: 'definite_failure',
               safeErrorCode: 'delivery.dispatch_fence_failed',
               possiblyDispatched: false,
@@ -459,20 +434,17 @@ export function createProviderFailureNotificationDelivery(
         if (error instanceof FailureNotificationStateError)
           return input.deliveryUnresolved
             ? {
-                schemaVersion: 1,
                 kind: 'outcome_unknown',
                 safeErrorCode: 'delivery.identity_changed',
                 possiblyDispatched: true,
               }
             : {
-                schemaVersion: 1,
                 kind: 'definite_failure',
                 safeErrorCode: 'delivery.destination_unavailable',
                 possiblyDispatched: false,
               };
         return settleUnresolvedDelivery(
           {
-            schemaVersion: 1,
             kind: 'retry',
             safeErrorCode: 'delivery.destination_unavailable',
             possiblyDispatched: false,
@@ -483,7 +455,6 @@ export function createProviderFailureNotificationDelivery(
       if (destination.secretVersionId !== input.connectionSecretVersionId)
         return settleUnresolvedDelivery(
           {
-            schemaVersion: 1,
             kind: 'definite_failure',
             safeErrorCode: 'delivery.identity_changed',
             possiblyDispatched: false,

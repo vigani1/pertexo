@@ -3,9 +3,7 @@ import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 // Public instructional base; setup and bindings must be explicitly configured.
 export const WEBHOOK_VALIDATION_ROUTING_MANIFEST: WorkflowPortableManifest = {
   format: 'pertexo.workflow',
-  formatVersion: 1,
   graph: {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'webhook-start',

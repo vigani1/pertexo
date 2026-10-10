@@ -27,7 +27,7 @@ describe('actual owned connection and webhook envelope interfaces', () => {
       secretVersionId: randomUUID(),
     };
     const plaintext = Buffer.from(
-      '{"schemaVersion":1,"type":"http_headers","headers":{"authorization":"test-owned-only"}}',
+      '{"type":"http_headers","headers":{"authorization":"test-owned-only"}}',
     );
     const sealed = await write.seal(plaintext, context);
     const opened = await read.open(sealed, context);

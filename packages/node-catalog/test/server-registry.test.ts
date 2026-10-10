@@ -60,7 +60,6 @@ describe('platform server registry composition', () => {
     );
     const secret = new TextEncoder().encode(
       JSON.stringify({
-        schemaVersion: 1,
         type: 'resend_api_key',
         apiKey: 're_123456789_secret',
         fromEmail: 'sender@example.com',
@@ -126,7 +125,6 @@ describe('platform server registry composition', () => {
     );
     const secret = new TextEncoder().encode(
       JSON.stringify({
-        schemaVersion: 1,
         type: 'slack_bot_token',
         botToken: 'xoxb-123456789-secret',
       }),
@@ -181,7 +179,6 @@ describe('platform server registry composition', () => {
     const connectionId = '11111111-1111-4111-8111-111111111111';
     const secret = new TextEncoder().encode(
       JSON.stringify({
-        schemaVersion: 1,
         type: 'http_headers',
         headers: { authorization: 'Bearer telemetry-proof' },
       }),

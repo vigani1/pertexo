@@ -672,7 +672,7 @@ describe('API bootstrap ownership and health', () => {
                       sequence: 1,
                       type: 'run.started',
                       createdAt: new Date().toISOString(),
-                      payload: { schemaVersion: 1 },
+                      payload: {},
                     }),
                   };
                   await new Promise<void>((resolve) => {
@@ -1108,7 +1108,6 @@ describe('API bootstrap ownership and health', () => {
         workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
         workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         revision: 11,
-        schemaVersion: 1,
         graphJson: graph,
         compatibility,
         updatedBy: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -1241,7 +1240,7 @@ describe('API bootstrap ownership and health', () => {
             resolveVerification: vi.fn().mockResolvedValue(null),
           },
           encryption: {},
-          checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+          checkpointFactory: () => ({ checkpoint: {} }),
         },
         close: webhookClose,
       } as unknown as ApiWebhookRuntime;
@@ -1308,7 +1307,6 @@ describe('API bootstrap ownership and health', () => {
             database: { resolveVerification: vi.fn().mockResolvedValue(null) },
             encryption: {},
             checkpointFactory: () => ({
-              engineVersion: 'test',
               checkpoint: {},
             }),
           },

@@ -28,12 +28,6 @@ describe('checkpoint seam', () => {
     expect(checkpoint().deadlineExpired).toBe(false);
   });
 
-  it('fails closed for an unsupported checkpoint version', () => {
-    expect(() => parseCheckpoint({ schemaVersion: 3 })).toThrow(
-      expect.objectContaining({ code: 'checkpoint_unsupported' }),
-    );
-  });
-
   it('rejects malformed present optional scope fields', () => {
     const base = checkpoint();
     const controlKey = invocationKey({
@@ -213,7 +207,6 @@ describe('checkpoint seam', () => {
     });
 
     expect(parsed).toMatchObject({
-      schemaVersion: 2,
       branchSelections: [
         {
           invocationKey: conditionAKey,
@@ -232,11 +225,10 @@ describe('checkpoint seam', () => {
     );
     expect(
       createCheckpoint({
-        engineVersion: 'engine-v2',
         workflowVersionId: '00000000-0000-4000-8000-000000000002',
         iterationBudget: 1_000,
       }),
-    ).toMatchObject({ schemaVersion: 2, branchSelections: [] });
+    ).toMatchObject({ branchSelections: [] });
   });
 
   it('deduplicates identical selections and rejects conflicts or non-success', () => {
@@ -251,7 +243,6 @@ describe('checkpoint seam', () => {
     } as const;
     const base = {
       ...checkpoint(),
-      schemaVersion: 2,
       invocations: [
         {
           invocationKey: conditionKey,
@@ -450,31 +441,14 @@ describe('checkpoint seam', () => {
     expect(() =>
       parseCheckpoint({
         ...checkpoint(),
-        engineVersion: 'x'.repeat(4 * 1_048_576),
+        readySet: ['x'.repeat(4 * 1_048_576)],
       }),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
-  });
-
-  it('enforces the persisted engine identity bound before storage', () => {
-    const base = checkpoint();
-    const exact = { ...base, engineVersion: `e${'x'.repeat(63)}` };
-    expect(parseCheckpoint(exact).engineVersion).toBe(exact.engineVersion);
-    expect(() =>
-      parseCheckpoint({ ...base, engineVersion: `e${'x'.repeat(64)}` }),
     ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
   });
 
   it('admits only checkpoint identities and timestamps accepted by persistence', () => {
     expect(() =>
       createCheckpoint({
-        engineVersion: '',
-        workflowVersionId: '00000000-0000-4000-8000-000000000001',
-        iterationBudget: 0,
-      }),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
-    expect(() =>
-      createCheckpoint({
-        engineVersion: 'engine-v1',
         workflowVersionId: 'version-1',
         iterationBudget: 0,
       }),
@@ -604,9 +578,11 @@ describe('checkpoint seam', () => {
       },
     });
     try {
-      expect(parseCheckpoint(checkpoint()).schemaVersion).toBe(2);
+      expect(parseCheckpoint(checkpoint()).workflowVersionId).toBe(
+        checkpoint().workflowVersionId,
+      );
       expect(() =>
-        parseCheckpoint({ ...checkpoint(), engineVersion: () => 'bad' }),
+        parseCheckpoint({ ...checkpoint(), readySet: () => 'bad' }),
       ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
       expect(getterCalls).toBe(0);
     } finally {
@@ -619,11 +595,11 @@ describe('checkpoint seam', () => {
   it('rejects hidden fields and accessors without invoking them', () => {
     let getterCalls = 0;
     const hiddenRequired = { ...checkpoint() } as Record<string, unknown>;
-    Object.defineProperty(hiddenRequired, 'engineVersion', {
+    Object.defineProperty(hiddenRequired, 'workflowVersionId', {
       enumerable: false,
       get: () => {
         getterCalls += 1;
-        return 'engine-v1';
+        return checkpoint().workflowVersionId;
       },
     });
     expect(() => parseCheckpoint(hiddenRequired)).toThrow(
@@ -687,9 +663,9 @@ describe('checkpoint seam', () => {
     for (let index = 0; index <= WORKFLOW_CHECKPOINT_LIMITS.members; index += 1)
       wide[`field-${String(index)}`] = index;
     const startedAt = performance.now();
-    expect(() =>
-      parseCheckpoint({ ...checkpoint(), engineVersion: wide }),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    expect(() => parseCheckpoint({ ...checkpoint(), readySet: wide })).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
     expect(performance.now() - startedAt).toBeLessThan(1_000);
   });
 });

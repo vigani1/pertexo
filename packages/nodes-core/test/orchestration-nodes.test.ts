@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NODE_JSON_LIMITS_V1 } from '@pertexo/node-sdk';
+import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 
 import {
   CORE_FOR_EACH_CONFIG_SCHEMA,
@@ -201,7 +201,7 @@ describe('core orchestration node contracts', () => {
     const baseBytes = new TextEncoder().encode(
       JSON.stringify({ items: [''] }),
     ).byteLength;
-    const exactItem = 'x'.repeat(NODE_JSON_LIMITS_V1.bytes - baseBytes);
+    const exactItem = 'x'.repeat(NODE_JSON_LIMITS.bytes - baseBytes);
     const exact = { items: [exactItem] };
     expect(CORE_FOR_EACH_INPUT_SCHEMA.safeParse(exact).success).toBe(true);
     expect(

@@ -58,7 +58,6 @@ function contractSchemas(target: 'client' | 'openapi') {
   };
 }
 export const workflowPortabilityClientContract = Object.freeze({
-  schemaVersion: '1.0.0',
   schemas: contractSchemas('client'),
 });
 const workspace = uuidPathParameter('workspaceId', 'Workspace identifier');

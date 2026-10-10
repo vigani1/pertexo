@@ -8,9 +8,6 @@ export type InputMapping = WorkflowNode['inputMappings'][string];
 type JsonValue = Extract<InputMapping, { readonly kind: 'literal' }>['value'];
 export type EditableInputMappingKind = InputMapping['kind'];
 
-/** The restricted JSONata policy the catalog's expression steps accept. */
-const EXPRESSION_POLICY_VERSION = 1;
-
 type RowBase = Readonly<{ id: string; destinationKey: string }>;
 
 export type InputMappingDraftRow =
@@ -21,7 +18,6 @@ export type InputMappingDraftRow =
       Readonly<{
         kind: 'expression';
         expression: string;
-        policyVersion: number;
       }>)
   | (RowBase &
       Readonly<{ kind: 'structured_input'; port: string; path: string }>);
@@ -86,7 +82,6 @@ export function inputMappingRowsFor(
             destinationKey,
             kind: 'expression',
             expression: source.expression,
-            policyVersion: source.policyVersion,
           };
         case 'structured_input':
           return {
@@ -128,7 +123,6 @@ export function changeInputMappingKind(
         ...base,
         kind,
         expression: '',
-        policyVersion: EXPRESSION_POLICY_VERSION,
       };
   }
 }
@@ -215,7 +209,6 @@ function rowSource(
               kind: 'expression',
               language: 'jsonata',
               expression: row.expression,
-              policyVersion: row.policyVersion,
             },
           };
     case 'run_input':

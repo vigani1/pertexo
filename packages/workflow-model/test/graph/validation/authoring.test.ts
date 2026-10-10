@@ -25,7 +25,6 @@ const policies: WorkflowExpressionPolicyProjection = {
   ],
 };
 const graph = (expression = 'runInput.amount > 5000') => ({
-  schemaVersion: 1,
   nodes: [
     {
       id: 'step',
@@ -38,7 +37,6 @@ const graph = (expression = 'runInput.amount > 5000') => ({
         result: {
           kind: 'expression',
           language: 'jsonata',
-          policyVersion: 1,
           expression,
         },
       },
@@ -155,7 +153,7 @@ describe('authoring admission through real compiled workers', () => {
       issues: [
         {
           message:
-            'This expression uses a construct unavailable in the pinned policy.',
+            'This expression uses a construct unavailable in the expression policy.',
         },
       ],
     });
@@ -212,7 +210,7 @@ describe('authoring admission through real compiled workers', () => {
       definitions: [
         {
           definition: { key: 'core.set', version: 1 },
-          policyReferences: [{ key: 'jsonata.restricted', version: 2 }],
+          policyReferences: [{ key: 'other.policy', version: 1 }],
         },
       ],
     };
@@ -227,7 +225,6 @@ describe('authoring admission through real compiled workers', () => {
               inputMappings: {
                 result: {
                   ...futureNode.inputMappings.result,
-                  policyVersion: 2,
                 },
               },
             },
@@ -281,7 +278,6 @@ describe('authoring admission through real compiled workers', () => {
         {
           kind: 'expression',
           language: 'jsonata',
-          policyVersion: 1,
           expression: 'runInput.v + ' + String(i),
         },
       ]),
@@ -813,7 +809,6 @@ describe('report and invocation-local policy cache', () => {
         {
           kind: 'expression',
           language: 'jsonata',
-          policyVersion: 1,
           expression: 'runInput.',
         },
       ]),

@@ -76,7 +76,7 @@ export {
 } from './executor-errors.js';
 export {
   canonicalizeBoundedJson,
-  NODE_EXECUTION_LIMITS_V1,
+  NODE_EXECUTION_LIMITS,
 } from './json-boundary.js';
 import { identityToken, sameIdentity } from './identity.js';
 

@@ -67,9 +67,7 @@ describe('inbox live updates', () => {
         new ApiError({ kind: 'network', message: 'offline' }),
       )
       .mockResolvedValue(
-        openStream(
-          'event: inbox.ready\ndata: {"schemaVersion":1,"revision":null}\n\n',
-        ),
+        openStream('event: inbox.ready\ndata: {"revision":null}\n\n'),
       );
     const queryClient = new QueryClient();
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
@@ -105,9 +103,7 @@ describe('inbox live updates', () => {
           }),
         )
         .mockResolvedValue(
-          openStream(
-            'event: inbox.ready\ndata: {"schemaVersion":1,"revision":null}\n\n',
-          ),
+          openStream('event: inbox.ready\ndata: {"revision":null}\n\n'),
         );
       const apiClient = client(stream);
       const { result } = renderHook(

@@ -146,8 +146,7 @@ async function mockIdentity(
           draft: {
             workflowId: workflow.id,
             revision: 1,
-            schemaVersion: 1,
-            graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+            graph: { nodes: [], edges: [], settings: {} },
             compatibility: {
               compatible: true,
               fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
@@ -160,10 +159,10 @@ async function mockIdentity(
     },
   );
   await page.route('**/v1/node-definitions', async (route) => {
-    await route.fulfill({ json: { schemaVersion: 1, items: [] } });
+    await route.fulfill({ json: { items: [] } });
   });
   await page.route('**/v1/integrations', async (route) => {
-    await route.fulfill({ json: { schemaVersion: 1, items: [] } });
+    await route.fulfill({ json: { items: [] } });
   });
   await page.route(
     `**/v1/workspaces/${workspaceId}/connections?**`,
@@ -571,8 +570,7 @@ test('creates a workflow from the empty index with the shared transport', async 
           body: JSON.stringify({
             workflowId: createdWorkflowId,
             revision: 1,
-            schemaVersion: 1,
-            graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+            graph: { nodes: [], edges: [], settings: {} },
             compatibility: {
               compatible: true,
               fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,

@@ -42,7 +42,6 @@ async function appendStartedEvent(
   const next = sequence.rows[0]?.sequence;
   if (next === undefined) throw new NodeAttemptStateCorruptError();
   const payload = serializeStoredExecutionJsonValue({
-    schemaVersion: 1,
     nodeRunId: input.nodeRunId,
     attemptId: input.attemptId,
     invocationKey: input.invocationKey,

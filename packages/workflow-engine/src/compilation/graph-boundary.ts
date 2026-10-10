@@ -117,7 +117,6 @@ function authoringNode(node: RawExecutableNode): unknown {
 
 export function authoringGraph(tree: RawExecutableGraph): unknown {
   return {
-    schemaVersion: 1,
     settings: tree.raw.settings,
     nodes: tree.nodes.map(authoringNode),
     edges: tree.raw.edges,

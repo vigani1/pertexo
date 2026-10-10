@@ -62,10 +62,8 @@ const databaseConfig = (connectionString: string) =>
 const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
+function initialCheckpoint(workflowVersionId: string) {
   return {
-    schemaVersion: 2,
-    engineVersion,
     workflowVersionId,
     revision: 0,
     runStatus: 'queued',
@@ -202,7 +200,6 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
     } finally {
       await identityDatabase.close();
     }
-    const engineVersion = 'phase0e-sse-resilience-v1';
     const workflowId = randomUUID();
     const workflowVersionId = randomUUID();
     const scope = `workflow:${workflowId}:manual`;
@@ -221,11 +218,7 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
           requestHash,
         });
         return acceptWorkflowRun(transaction, {
-          engineVersion,
-          initialCheckpoint: initialCheckpoint(
-            engineVersion,
-            workflowVersionId,
-          ),
+          initialCheckpoint: initialCheckpoint(workflowVersionId),
           keyHash,
           operation: 'workflow.run.accept',
           requestHash,

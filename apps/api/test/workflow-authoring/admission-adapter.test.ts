@@ -28,7 +28,6 @@ const draft = {
   workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   revision: 9,
-  schemaVersion: 1,
   graphJson: graph,
   compatibility: {
     compatible: true,
@@ -75,7 +74,6 @@ describe('authoring API admission adapter', () => {
             result: {
               kind: 'expression' as const,
               language: 'jsonata' as const,
-              policyVersion: 1,
               expression: '(',
             },
           },

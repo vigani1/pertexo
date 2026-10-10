@@ -80,7 +80,6 @@ export const manualDefinition = {
 };
 
 export type Graph = Readonly<{
-  schemaVersion: number;
   nodes: readonly unknown[];
   edges: readonly unknown[];
   settings: Readonly<Record<string, unknown>>;
@@ -96,7 +95,7 @@ export function remoteDraft(graph: Graph = emptyGraph()): RemoteDraft {
 }
 
 function emptyGraph(): Graph {
-  return { schemaVersion: 1, nodes: [], edges: [], settings: {} };
+  return { nodes: [], edges: [], settings: {} };
 }
 
 export async function installEditorRoutes(
@@ -123,10 +122,10 @@ export async function installEditorRoutes(
     route.fulfill({ json: { items: [accessibleWorkspace], nextCursor: null } }),
   );
   await page.route('**/v1/node-definitions', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, items: definitions } }),
+    route.fulfill({ json: { items: definitions } }),
   );
   await page.route('**/v1/integrations', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, items: [] } }),
+    route.fulfill({ json: { items: [] } }),
   );
   await page.route(`**/v1/workspaces/${workspaceId}/connections?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
@@ -238,7 +237,6 @@ function draftBody(remote: RemoteDraft) {
   return {
     workflowId,
     revision: remote.revision,
-    schemaVersion: 1,
     graph: remote.graph,
     compatibility: compatibility(),
     updatedAt: '2026-09-14T10:00:00.000Z',
@@ -265,7 +263,6 @@ export function editorNode(
 
 export function mappingGraph(): Graph {
   return {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'manual',

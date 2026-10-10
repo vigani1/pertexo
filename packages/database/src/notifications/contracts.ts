@@ -27,7 +27,6 @@ type FailureNotificationResolvedDestinationBase = Readonly<{
   connectionId: string;
   secretVersionId: string;
   sealed: Readonly<{
-    schemaVersion: 1;
     kmsKeyReference: string;
     encryptedDataKey: string;
     ciphertext: string;

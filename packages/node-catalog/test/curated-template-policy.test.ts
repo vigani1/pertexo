@@ -32,7 +32,6 @@ function configuredTemplate(
   const descriptor = required(CURATED_WORKFLOW_TEMPLATES[2]);
   const manifest = structuredClone(descriptor.manifest);
   const origin = {
-    schemaVersion: 1,
     templateId: descriptor.templateId,
     templateVersion: descriptor.templateVersion,
     baseManifestDigest: descriptor.baseManifestDigest,
@@ -291,7 +290,6 @@ describe('browser template setup versus registered server policy', () => {
   it('validates production template setup against the registered definitions', () => {
     const descriptor = required(CURATED_WORKFLOW_TEMPLATES[2]);
     const origin = {
-      schemaVersion: 1,
       templateId: descriptor.templateId,
       templateVersion: descriptor.templateVersion,
       baseManifestDigest: descriptor.baseManifestDigest,

@@ -133,10 +133,7 @@ export function createScheduleTriggerTestEnvironment(
   }
 
   const checkpointFactory = (projection?: { id: string }) => ({
-    engineVersion: 'schedule-test-engine',
     checkpoint: {
-      schemaVersion: 2,
-      engineVersion: 'schedule-test-engine',
       workflowVersionId: projection?.id ?? versionId,
       revision: 0,
       runStatus: 'queued',
@@ -208,9 +205,8 @@ export function createScheduleTriggerTestEnvironment(
       [workflowId, workspaceId, actorId],
     );
     await ownerQuery(
-      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-         schema_version,graph_json,checksum,executable_json,published_by)
-       values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+       values($1,$2,$3,1,'{"settings":{},"nodes":[],"edges":[]}'::jsonb,
          $4,'{}'::jsonb,$5)`,
       [
         versionId,
@@ -228,10 +224,9 @@ export function createScheduleTriggerTestEnvironment(
       `with inserted_connection as (insert into app.connections(id,workspace_id,provider_key,name,auth_type,status,
          current_secret_version_id,created_by)
        values($1,$2,'email','Schedule notifications','resend_api_key','active',$3,$4) returning id)
-       insert into app.connection_secret_versions(id,workspace_id,connection_id,schema_version,
-         kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-       select $3,$2,id,1,'kms','key','cipher','AAAAAAAAAAAAAAAA','AAAAAAAAAAAAAAAAAAAAAA',$4
-         from inserted_connection`,
+       insert into app.connection_secret_versions(id,workspace_id,connection_id,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
+       select $3,$2,id,'kms','key','cipher','AAAAAAAAAAAAAAAA','AAAAAAAAAAAAAAAAAAAAAA',$4
+          from inserted_connection`,
       [
         notificationConnectionId,
         workspaceId,
@@ -300,7 +295,6 @@ export function createScheduleTriggerTestEnvironment(
       workspaceId,
       (transaction) =>
         acceptWorkflowRun(transaction, {
-          engineVersion: checkpointFactory().engineVersion,
           initialCheckpoint: checkpointFactory().checkpoint,
           keyHash: 'b'.repeat(64),
           operation: 'workflow.run.accept',

@@ -21,7 +21,6 @@ import { platformPortableDefinitionPolicy } from '@pertexo/node-catalog/server';
 /** The definitions authoring accepts, with each integration's connection slots. */
 function projectDefinitionCatalog(catalog: typeof PLATFORM_NODE_CATALOG) {
   return Object.freeze({
-    schemaVersion: 1 as const,
     definitions: Object.freeze(
       catalog.definitions.map((manifest) =>
         Object.freeze({

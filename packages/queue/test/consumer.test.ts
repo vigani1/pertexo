@@ -118,7 +118,6 @@ const validJob = {
   id: `outbox-${IDS.outboxEventId}`,
   name: JOB_NAME.advanceWorkflowRun,
   data: {
-    schemaVersion: 1,
     workspaceId: IDS.workspaceId,
     runId: IDS.runId,
     outboxEventId: IDS.outboxEventId,
@@ -174,9 +173,9 @@ describe('BullMQ queue consumer', () => {
     });
     const processor = mocks.workerInstances[0]?.processor;
 
-    await expect(
-      processor?.({ ...validJob, data: { schemaVersion: 99 } }),
-    ).rejects.toBeInstanceOf(InvalidQueueDeliveryError);
+    await expect(processor?.({ ...validJob, data: {} })).rejects.toBeInstanceOf(
+      InvalidQueueDeliveryError,
+    );
     await expect(
       processor?.({ ...validJob, id: 'outbox-wrong' }),
     ).rejects.toBeInstanceOf(InvalidQueueDeliveryError);

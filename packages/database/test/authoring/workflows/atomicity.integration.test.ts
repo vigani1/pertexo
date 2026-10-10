@@ -86,7 +86,6 @@ describe('workflow publication atomicity', () => {
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     const rollbackCatalog = Object.freeze({
-      schemaVersion: 1 as const,
       definitions: Object.freeze([
         Object.freeze({ key: 'core.webhook', version: 1 }),
         Object.freeze({
@@ -132,7 +131,6 @@ describe('workflow publication atomicity', () => {
         name: `Atomicity ${connectionId.slice(0, 8)}`,
         authType: CONNECTION_AUTH_TYPE.httpHeaders,
         sealed: {
-          schemaVersion: 1,
           kmsKeyReference: 'arn:aws:kms:region:account:key/atomicity',
           encryptedDataKey: Buffer.alloc(32, 1).toString('base64url'),
           ciphertext: Buffer.from('atomicity').toString('base64url'),

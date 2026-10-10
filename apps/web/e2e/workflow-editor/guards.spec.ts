@@ -16,7 +16,6 @@ test('applies schema controls live and keeps invalid numbers as guarded scratch'
   page,
 }) => {
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [
       {
         id: 'node-a',
@@ -78,7 +77,6 @@ test('resolves unfinished edits on step switches and keeps history consistent', 
   page,
 }) => {
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [
       editorNode('node-a', 'Node A', 'A', 80),
       editorNode('node-b', 'Node B', 'B', 380),
@@ -141,7 +139,6 @@ test('scopes keyboard deletion to the canvas and offers Undo', async ({
   page,
 }) => {
   const remote = remoteDraft({
-    schemaVersion: 1,
     nodes: [editorNode('node-a', 'Node A', 'A', 80)],
     edges: [],
     settings: {},

@@ -56,7 +56,6 @@ export const workspace = {
   updatedAt: '2026-09-14T10:00:00.000Z',
 };
 export const emptyGraph: WorkflowGraphContract = {
-  schemaVersion: 1,
   nodes: [],
   edges: [],
   settings: {},
@@ -153,11 +152,9 @@ export function editorHandlers(
       HttpResponse.json({ items: [] }),
     ),
     http.get(`${api}/node-definitions`, () =>
-      HttpResponse.json({ schemaVersion: 1, items: definitions }),
+      HttpResponse.json({ items: definitions }),
     ),
-    http.get(`${api}/integrations`, () =>
-      HttpResponse.json({ schemaVersion: 1, items: [] }),
-    ),
+    http.get(`${api}/integrations`, () => HttpResponse.json({ items: [] })),
     http.get(`${api}/workspaces/${workspaceId}/connections`, () =>
       HttpResponse.json({ items: [], nextCursor: null }),
     ),
@@ -181,7 +178,6 @@ export function draftBody(graph: WorkflowGraphContract, revision: number) {
   return {
     workflowId,
     revision,
-    schemaVersion: 1,
     graph,
     compatibility,
     updatedAt: '2026-09-14T10:01:00.000Z',
@@ -210,7 +206,6 @@ export function versionBody(
     id,
     workflowId,
     versionNumber,
-    schemaVersion: 1,
     graph,
     checksum: `wf:sha256:${'b'.repeat(64)}`,
     publishedAt: '2026-09-14T10:02:00.000Z',
@@ -242,7 +237,6 @@ export function graphWithNumericConfig(
   config: WorkflowGraphContract['nodes'][number]['config'],
 ): WorkflowGraphContract {
   return {
-    schemaVersion: 1,
     nodes: [
       {
         id: '11111111-1111-4111-8111-111111111111',
@@ -267,7 +261,6 @@ export function graphWithMappingNodes(
   inputMappings: WorkflowGraphContract['nodes'][number]['inputMappings'] = {},
 ): WorkflowGraphContract {
   return {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'manual',

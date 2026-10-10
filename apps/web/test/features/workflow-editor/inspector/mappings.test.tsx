@@ -219,7 +219,6 @@ describe('workflow editor input rows', { timeout: 30_000 }, () => {
             kind: 'expression',
             language: 'jsonata',
             expression: 'amount > 5000',
-            policyVersion: 1,
           },
         }),
         definitions: [manualDefinition, mappingDefinition],
@@ -282,7 +281,6 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
               kind: 'expression',
               language: 'jsonata',
               expression: 'runInput.amount > 5000',
-              policyVersion: 1,
             },
           }),
           definitions: [manualDefinition, mappingDefinition],
@@ -312,7 +310,6 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
         kind: 'expression',
         language: 'jsonata',
         expression: 'runInput.amount > 6000',
-        policyVersion: 1,
       });
     });
   });

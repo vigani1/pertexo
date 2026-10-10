@@ -100,7 +100,6 @@ test('animates active execution flow and disables the marker for reduced motion'
   page,
 }) => {
   const graph = {
-    schemaVersion: 1,
     nodes: [
       {
         id: 'source-node',
@@ -169,7 +168,6 @@ test('animates active execution flow and disables the marker for reduced motion'
           type: 'node.started',
           createdAt: '2026-09-14T10:02:02.000Z',
           payload: {
-            schemaVersion: 1,
             nodeId: 'target-node',
             invocationKey: 'target-node:1',
           },
@@ -264,7 +262,7 @@ async function installPublishRoutes(page: Page, remote: RemoteDraft) {
           sequence: 1,
           type: 'run.succeeded',
           createdAt: '2026-09-14T10:03:00.000Z',
-          payload: { schemaVersion: 1 },
+          payload: {},
         })}\n\n`,
       }),
   );
@@ -286,7 +284,6 @@ function version(graph: Graph, checksum: string) {
     id: versionId,
     workflowId,
     versionNumber: 1,
-    schemaVersion: 1,
     graph,
     checksum: `wf:sha256:${checksum.repeat(64)}`,
     publishedAt: '2026-09-14T10:02:00.000Z',

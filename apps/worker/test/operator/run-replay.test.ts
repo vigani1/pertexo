@@ -21,7 +21,6 @@ function delivery() {
   const data = {
     commandId: randomUUID(),
     outboxEventId: randomUUID(),
-    schemaVersion: 1 as const,
     workspaceId: randomUUID(),
   };
   return {

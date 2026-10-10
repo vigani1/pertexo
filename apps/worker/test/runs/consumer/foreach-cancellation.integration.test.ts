@@ -289,7 +289,6 @@ describeIntegration('For Each cancellation recovery', () => {
           const published = await ownedProducer.publish({
             name: JOB_NAME.advanceWorkflowRun,
             data: {
-              schemaVersion: 1,
               workspaceId,
               runId: accepted.runId,
               outboxEventId,
@@ -372,7 +371,6 @@ describeIntegration('For Each cancellation recovery', () => {
           const published = await ownedProducer.publish({
             name: JOB_NAME.executeNodeAttempt,
             data: {
-              schemaVersion: 1,
               workspaceId,
               runId: accepted.runId,
               nodeRunId: attempt.node_run_id,
@@ -414,7 +412,6 @@ describeIntegration('For Each cancellation recovery', () => {
           const published = await ownedProducer.publish({
             name: JOB_NAME.executeNodeAttempt,
             data: {
-              schemaVersion: 1,
               workspaceId,
               runId: accepted.runId,
               nodeRunId: attempt.node_run_id,
@@ -916,7 +913,6 @@ describeIntegration('For Each cancellation recovery', () => {
               iterationPath: [{ loopNodeId: 'for-each', ordinal }],
             },
             output_ref: {
-              schemaVersion: 1,
               kind: 'inline',
               value: { item, ordinal },
             },
@@ -932,7 +928,6 @@ describeIntegration('For Each cancellation recovery', () => {
             { id: 'beta', value: 22 },
             { id: 'gamma', value: 33 },
           ].map((item, ordinal) => ({
-            schemaVersion: 1,
             kind: 'inline',
             value: { result: { item, ordinal } },
           })),
@@ -941,7 +936,6 @@ describeIntegration('For Each cancellation recovery', () => {
           facts.find(({ node_id }) => node_id === 'outer-successor')
             ?.output_ref,
         ).toEqual({
-          schemaVersion: 1,
           kind: 'inline',
           value: {
             result: {

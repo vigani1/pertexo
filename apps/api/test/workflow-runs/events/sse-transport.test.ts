@@ -30,7 +30,7 @@ function frame(id: number) {
       sequence: id,
       type: 'run.started',
       createdAt: '2026-08-21T12:00:00.000Z',
-      payload: { schemaVersion: 1 },
+      payload: {},
     }),
     visibilityPath: 'initial_backfill' as const,
   };
@@ -679,7 +679,7 @@ describe('workflow run SSE transport', () => {
                         sequence: 1,
                         type: 'run.started',
                         createdAt: '2026-08-21T12:00:00.000Z',
-                        payload: { schemaVersion: 2 },
+                        payload: { attemptNumber: -1 },
                       },
                     ]),
             },

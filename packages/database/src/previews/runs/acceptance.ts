@@ -24,8 +24,8 @@ import {
   workspaces,
 } from '../../schema.js';
 import {
-  parseStoredExecutionValueV1,
-  serializeStoredExecutionValueV1,
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
 } from '../../platform/stored-execution-value.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
@@ -127,7 +127,7 @@ export type PreviewRunRecord = Readonly<{
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;
   dryRun: 'not_supported' | 'provider_supported';
-  output: ReturnType<typeof parseStoredExecutionValueV1> | null;
+  output: ReturnType<typeof parseStoredExecutionValue> | null;
   safeErrorCode: string | null;
   createdAt: Date;
   startedAt: Date | null;
@@ -282,8 +282,7 @@ async function resolveInput(
   if (input.kind === 'manual') {
     return Object.freeze({
       priorPreviewRunId: null,
-      stored: serializeStoredExecutionValueV1({
-        schemaVersion: 1,
+      stored: serializeStoredExecutionValue({
         kind: 'inline',
         value: input.value,
       }),
@@ -307,9 +306,7 @@ async function resolveInput(
     throw new PriorPreviewInputUnavailableError();
   return Object.freeze({
     priorPreviewRunId: input.previewRunId,
-    stored: serializeStoredExecutionValueV1(
-      parseStoredExecutionValueV1(outputRef),
-    ),
+    stored: serializeStoredExecutionValue(parseStoredExecutionValue(outputRef)),
   });
 }
 
@@ -432,7 +429,6 @@ export async function acceptPreviewRun(
   });
 
   const payload = {
-    schemaVersion: 1,
     workspaceId: transaction.workspaceId,
     outboxEventId,
     previewRunId,
@@ -444,7 +440,6 @@ export async function acceptPreviewRun(
   await insertOutboxEvent(transaction, {
     id: outboxEventId,
     jobName: 'execute-preview-attempt',
-    schemaVersion: 1,
     aggregateType: 'preview-run',
     aggregateId: previewRunId,
     payload,
@@ -460,7 +455,6 @@ export async function acceptPreviewRun(
     requestId: parsed.requestId ?? null,
     traceId: parsed.traceId ?? null,
     metadata: {
-      schemaVersion: 1,
       workflowId: parsed.workflowId,
       nodeId: parsed.nodeId,
       sideEffectClass: parsed.sideEffectClass,

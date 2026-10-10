@@ -9,7 +9,6 @@ describe('immutable executable control-output selection', () => {
   it('selects current control identities across structured bodies, not output-shaped Set nodes', () => {
     expect(
       workflowControlOutputNodeIds({
-        schemaVersion: 2,
         graph: {
           nodes: [
             {
@@ -60,7 +59,6 @@ describe('immutable executable control-output selection', () => {
   it('bounds metadata traversal without inspecting output values', () => {
     expect(() =>
       workflowControlOutputNodeIds({
-        schemaVersion: 2,
         graph: {
           nodes: Array.from({ length: 10_001 }, (_, index) => ({
             id: `node-${String(index)}`,
@@ -73,12 +71,10 @@ describe('immutable executable control-output selection', () => {
 
   it.each([
     null,
-    { schemaVersion: 1, graph: { nodes: [] } },
-    { schemaVersion: 2 },
-    { schemaVersion: 2, graph: {} },
-    { schemaVersion: 2, graph: { nodes: [{ id: 'condition' }] } },
+    {},
+    { graph: {} },
+    { graph: { nodes: [{ id: 'condition' }] } },
     {
-      schemaVersion: 2,
       graph: {
         nodes: [
           {
@@ -89,7 +85,10 @@ describe('immutable executable control-output selection', () => {
         ],
       },
     },
-  ])('fails closed for invalid or incomplete V2 metadata %j', (value) => {
-    expect(() => workflowControlOutputNodeIds(value)).toThrow(TypeError);
-  });
+  ])(
+    'fails closed for invalid or incomplete executable metadata %j',
+    (value) => {
+      expect(() => workflowControlOutputNodeIds(value)).toThrow(TypeError);
+    },
+  );
 });
