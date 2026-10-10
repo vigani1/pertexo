@@ -122,8 +122,8 @@ importers:
         specifier: 7.8.2
         version: 7.8.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@nestjs/testing':
         specifier: 11.2.6
@@ -147,8 +147,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/observability
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
 
   apps/web:
     dependencies:
@@ -304,8 +304,8 @@ importers:
         specifier: 7.8.2
         version: 7.8.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@types/pg':
         specifier: 8.23.1
@@ -335,8 +335,8 @@ importers:
         specifier: 1.9.1
         version: 1.9.1
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/contracts:
     dependencies:
@@ -347,8 +347,8 @@ importers:
         specifier: workspace:*
         version: link:../workflow-model
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@redocly/cli':
         specifier: 2.54.3
@@ -387,8 +387,8 @@ importers:
         specifier: 13.0.2
         version: 13.0.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@types/pg':
         specifier: 8.23.1
@@ -425,8 +425,8 @@ importers:
         specifier: 4.11.2
         version: 4.11.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/node-catalog:
     dependencies:
@@ -449,8 +449,8 @@ importers:
   packages/node-sdk:
     dependencies:
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/nodes-core:
     dependencies:
@@ -464,8 +464,8 @@ importers:
         specifier: 5.10.0
         version: 5.10.0
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/observability:
     dependencies:
@@ -512,8 +512,8 @@ importers:
         specifier: 10.3.1
         version: 10.3.1
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@opentelemetry/context-async-hooks':
         specifier: 2.11.0
@@ -531,8 +531,8 @@ importers:
         specifier: 6.0.0
         version: 6.0.0(supports-color@7.2.0)
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/rate-limit:
     dependencies:
@@ -546,8 +546,8 @@ importers:
         specifier: workspace:*
         version: link:../workflow-model
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/workflow-engine:
     dependencies:
@@ -568,8 +568,8 @@ importers:
         specifier: 2.2.2
         version: 2.2.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.6.5
+        version: 4.6.5
 
 packages:
 
@@ -6441,8 +6441,8 @@ snapshots:
       '@babel/parser': 7.29.8
       eslint: 9.39.5(jiti@2.7.0)(supports-color@7.2.0)
       hermes-parser: 0.25.1
-      zod: 4.4.3
-      zod-validation-error: 4.0.2(zod@4.4.3)
+      zod: 4.6.5
+      zod-validation-error: 4.0.2(zod@4.6.5)
     transitivePeerDependencies:
       - supports-color
 
@@ -7663,9 +7663,9 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod-validation-error@4.0.2(zod@4.4.3):
+  zod-validation-error@4.0.2(zod@4.6.5):
     dependencies:
-      zod: 4.4.3
+      zod: 4.6.5
 
   zod@4.4.3: {}
 
