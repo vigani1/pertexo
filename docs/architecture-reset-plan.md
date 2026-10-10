@@ -494,6 +494,14 @@ now, as one ordered program — not "whenever we touch it".
         command from the environment, checks database readiness, runs it
         under the maintenance role with a timeout and bounded cleanup, and
         prints the result. Read in full; nothing to cut.
+  - [x] Test layout — database, API, workflow-engine and integrations tests
+        and the web's browser specs are grouped by the area they test,
+        mirroring `src`, instead of flat folders (the database had 143 test
+        files in one folder, the API's test support 54). Helpers used by one
+        area sit beside its tests; shared ones stay in `test/support`. Names
+        no longer repeat their folder, and the database schema, run advance
+        and attempt folders split the same way. CI selects the owned-fixture
+        and browser suites by folder.
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
   - [ ] SQL the reset moved out of the passes goes with the re-squash: the
