@@ -86,3 +86,5 @@ export {
 } from '../identity/account-security.js';
 
 export { AccountLinkingCommands } from '../identity/account-linking.js';
+
+export { EmailProofCommands } from '../identity/email-proofs.js';
