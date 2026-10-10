@@ -1,6 +1,6 @@
-import { WorkflowEngineError } from '../errors.js';
-import { compareOrdinal } from '../ordering.js';
-import { sameOutputReference } from '../output-reference.js';
+import { WorkflowEngineError } from '../../errors.js';
+import { compareOrdinal } from '../../ordering.js';
+import { sameOutputReference } from '../../output-reference.js';
 import type {
   BranchScopePart,
   BranchLedgerEntry,
@@ -9,7 +9,7 @@ import type {
   JoinState,
   LoopState,
   OutputReference,
-} from '../types.js';
+} from '../../types.js';
 
 const terminalDispositions = new Set([
   'arrived',

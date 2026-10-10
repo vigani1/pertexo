@@ -33,7 +33,7 @@ import {
 import { normalizeBoundedEngineJson } from './compilation/validation.js';
 import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint/create-and-parse.js';
-import type { SchedulerState } from './transition/scheduler.js';
+import type { SchedulerState } from './transition/scheduling/readiness.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './observation/persisted.js';
 import { providerIdempotencyKey } from './attempt/retries.js';

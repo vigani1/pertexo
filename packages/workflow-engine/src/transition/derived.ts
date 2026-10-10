@@ -1,11 +1,11 @@
 import { WorkflowEngineError } from '../errors.js';
-import { deriveReadyNodes } from './scheduler.js';
+import { deriveReadyNodes } from './scheduling/readiness.js';
 import { compareOrdinal } from '../ordering.js';
 import {
   admitLoopIterations,
   invocationKey as createInvocationKey,
   settleJoin,
-} from './scheduling.js';
+} from './scheduling/loops.js';
 import { assertNodeTransition } from './status-transitions.js';
 import type { InvocationState } from '../types.js';
 import {

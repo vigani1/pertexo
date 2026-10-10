@@ -1,6 +1,6 @@
 import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '../ordering.js';
-import { recordBranchDisposition } from './scheduling.js';
+import { recordBranchDisposition } from './scheduling/loops.js';
 import { sameOutputReference } from '../output-reference.js';
 import {
   assertNodeTransition,

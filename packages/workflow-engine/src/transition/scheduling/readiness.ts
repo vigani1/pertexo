@@ -1,21 +1,18 @@
 import { workflowControlOutputKind } from '@pertexo/workflow-model';
 
-import { invocationKey } from './scheduling.js';
-import { WorkflowEngineError } from '../errors.js';
-import {
-  indexSchedulerGraph,
-  type SchedulerGraphIndexes,
-} from './scheduler-indexes.js';
-import { compareOrdinal } from '../ordering.js';
-import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
+import { invocationKey } from './loops.js';
+import { WorkflowEngineError } from '../../errors.js';
+import { indexSchedulerGraph, type SchedulerGraphIndexes } from './indexes.js';
+import { compareOrdinal } from '../../ordering.js';
+import { branchPathHasPrefix, sameIterationPath } from '../../scope.js';
 import type {
   BranchScopePart,
   BranchSelection,
   InvocationState,
   IterationScopePart,
-} from '../types.js';
-import type { SideEffectClass } from '../types.js';
-import { isCoreParallelDefinition } from '../core-definition-identities.js';
+} from '../../types.js';
+import type { SideEffectClass } from '../../types.js';
+import { isCoreParallelDefinition } from '../../core-definition-identities.js';
 
 /** Private execution projection derived only from a verified executable. */
 export interface SchedulerState {

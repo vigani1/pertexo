@@ -1,4 +1,4 @@
-import { configuredParallelMaxConcurrency } from './scheduler.js';
+import { configuredParallelMaxConcurrency } from './scheduling/readiness.js';
 import type { SchedulerNodeLookup } from './state.js';
 import type { InvocationState, WorkflowCheckpoint } from '../types.js';
 import { WorkflowEngineError } from '../errors.js';

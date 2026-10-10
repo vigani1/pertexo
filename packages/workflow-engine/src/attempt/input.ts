@@ -10,7 +10,7 @@ import type {
 import { normalizeBoundedEngineJson } from '../compilation/validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type { ExecuteNodeAttemptInput } from './contract.js';
-import { invocationKey as createInvocationKey } from '../transition/scheduling.js';
+import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
 
 export type PreparedNodeAttemptInput = Readonly<{
   completedOutputs: Readonly<Record<string, JsonValue>>;

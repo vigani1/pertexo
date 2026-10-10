@@ -1,5 +1,5 @@
 import { WorkflowEngineError } from '../errors.js';
-import type { SchedulerState } from './scheduler.js';
+import type { SchedulerState } from './scheduling/readiness.js';
 import { compareOrdinal } from '../ordering.js';
 import { sameOutputReference } from '../output-reference.js';
 import {

@@ -3,7 +3,7 @@ import {
   reconstructReadySet,
 } from '../checkpoint/create-and-parse.js';
 import { WorkflowEngineError } from '../errors.js';
-import { deriveReadyNodes } from './scheduler.js';
+import { deriveReadyNodes } from './scheduling/readiness.js';
 import { compareOrdinal } from '../ordering.js';
 import {
   assertNodeTransition,
