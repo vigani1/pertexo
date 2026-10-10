@@ -448,6 +448,16 @@ now, as one ordered program — not "whenever we touch it".
           answer `200` with the change applied, and the operation read
           route, its contract and the web's polling and `operationId`
           search state go.
+    - [x] Validated once: authorization trusts the actor built from the
+          verified session, the parsed route and the request-id and
+          traceparent parsers, and keeps only its rules (actor, matching
+          workspace, active membership, allowed lifecycle, capability);
+          run start and replay trust the contract's deadline.
+    - [x] One way per thing: every list cursor goes through one opaque
+          cursor helper (canonical base64url, bounded length), one header
+          reader, and the platform Idempotency-Key parser (connections no
+          longer take the first of repeated keys). Authentication mail is
+          `local` or `durable`; the refusing `disabled` mode goes.
   - [ ] web
     - [x] Every web feature is on, as step 3 intended: workflow
           organization (folders, tags, favorites), the curated template
