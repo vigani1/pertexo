@@ -358,7 +358,7 @@ describe('identity workspace-route controllers', () => {
         name: 'Operations',
         slug: 'operations',
       }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(execute).not.toHaveBeenCalled();
   });
 

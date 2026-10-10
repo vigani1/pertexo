@@ -1,3 +1,4 @@
+import { requestIdempotencyKey } from '../../platform/http/index.js';
 import {
   Body,
   Controller,
@@ -21,9 +22,7 @@ import {
   CsrfProtectionGuard,
 } from '../../workspaces/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
-import { parseIdempotencyKey } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowOrganizationCommandsUseCase } from './commands.js';
 import { WorkflowOrganizationReadsUseCase } from './reads.js';
@@ -180,7 +179,5 @@ export class WorkflowOrganizationController {
   }
 }
 function commandKey(request: WorkflowAuthoringRequest) {
-  return parseIdempotencyKey(
-    requestHeaderValue(request.headers, 'idempotency-key'),
-  );
+  return requestIdempotencyKey(request.headers);
 }

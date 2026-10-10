@@ -21,13 +21,9 @@ import {
 } from '../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import { parseIdempotencyKey } from '../platform/http/index.js';
-import {
-  requestHeaderValue,
-  singleRequestHeader,
-} from '../platform/http/request-headers.js';
+import { requestIdempotencyKey } from '../platform/http/index.js';
+import { singleRequestHeader } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { NodeTestRequestError } from './errors.js';
 import { NodeTestingUpdateGuard } from './guards.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
 
@@ -82,7 +78,7 @@ export class NodeTestingController {
     const command = nodeTestRequestSchema.parse(body);
     const idempotencyKey =
       command.mode === 'test_execute'
-        ? requiredIdempotencyKey(request)
+        ? requestIdempotencyKey(request.headers)
         : undefined;
     const traceparent = singleHeader(request, 'traceparent');
     const context = projectAuthenticatedWorkspaceContext(
@@ -101,13 +97,6 @@ export class NodeTestingController {
     if (command.mode === 'test_execute') response.status(202);
     return result;
   }
-}
-
-function requiredIdempotencyKey(request: IdentityWorkspaceRequest): string {
-  const value = requestHeaderValue(request.headers, 'idempotency-key');
-  if (value === undefined)
-    throw new NodeTestRequestError('idempotency_required');
-  return parseIdempotencyKey(value);
 }
 
 function singleHeader(

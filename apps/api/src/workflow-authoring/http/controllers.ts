@@ -18,7 +18,10 @@ import {
   SessionAuthenticationGuard,
 } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { applicationError } from '../../platform/http/index.js';
+import {
+  applicationError,
+  requestIdempotencyKey,
+} from '../../platform/http/index.js';
 import {
   requestHeaderValue,
   singleRequestHeader,
@@ -43,7 +46,7 @@ import {
   WorkflowReadGuard,
   WorkflowUpdateGuard,
 } from './guards.js';
-import { parseIdempotencyKey, parseStrongIfMatch } from './preconditions.js';
+import { parseStrongIfMatch } from './preconditions.js';
 import {
   CreateWorkflowUseCase,
   GetWorkflowUseCase,
@@ -142,9 +145,7 @@ export class WorkflowAuthoringController {
       ...context,
       routeWorkspaceId: workspaceId,
       request: body,
-      idempotencyKey: parseIdempotencyKey(
-        requestHeaderValue(request.headers, 'idempotency-key'),
-      ),
+      idempotencyKey: requestIdempotencyKey(request.headers),
     });
     response.header('ETag', result.representationTag);
     return result.body;
@@ -278,9 +279,7 @@ export class WorkflowAuthoringController {
         representationTag: parseStrongIfMatch(
           requestHeaderValue(request.headers, 'if-match'),
         ),
-        idempotencyKey: parseIdempotencyKey(
-          requestHeaderValue(request.headers, 'idempotency-key'),
-        ),
+        idempotencyKey: requestIdempotencyKey(request.headers),
         ...traceparent(request),
         signal,
       }),
@@ -368,9 +367,7 @@ export class WorkflowAuthoringController {
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       request: body,
-      idempotencyKey: parseIdempotencyKey(
-        requestHeaderValue(request.headers, 'idempotency-key'),
-      ),
+      idempotencyKey: requestIdempotencyKey(request.headers),
     });
   }
 
@@ -402,9 +399,7 @@ export class WorkflowAuthoringController {
         routeWorkspaceId: route.workspaceId,
         workflowId: route.workflowId,
         request: input,
-        idempotencyKey: parseIdempotencyKey(
-          requestHeaderValue(request.headers, 'idempotency-key'),
-        ),
+        idempotencyKey: requestIdempotencyKey(request.headers),
         ...(representationTag === undefined ? {} : { representationTag }),
         signal,
       }),
@@ -430,9 +425,7 @@ export class WorkflowAuthoringController {
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       request: body,
-      idempotencyKey: parseIdempotencyKey(
-        requestHeaderValue(request.headers, 'idempotency-key'),
-      ),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       ...traceparent(request),
     });
   }

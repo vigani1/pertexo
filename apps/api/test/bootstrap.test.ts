@@ -1723,7 +1723,7 @@ describe('API bootstrap ownership and health', () => {
         },
         payload: {},
       });
-      expect(missingKey.statusCode).toBe(428);
+      expect(missingKey.statusCode).toBe(400);
 
       const disabled = await application.inject({
         method: 'POST',

@@ -434,9 +434,6 @@
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
           },
-          "428": {
-            "$ref": "#/components/responses/PreconditionRequired"
-          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
           }
@@ -1123,9 +1120,6 @@
           },
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
-          },
-          "428": {
-            "$ref": "#/components/responses/PreconditionRequired"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -3910,16 +3904,6 @@
     "responses": {
       "BadRequest": {
         "description": "Invalid request",
-        "content": {
-          "application/problem+json": {
-            "schema": {
-              "$ref": "#/components/schemas/ApiProblem"
-            }
-          }
-        }
-      },
-      "PreconditionRequired": {
-        "description": "Required request precondition",
         "content": {
           "application/problem+json": {
             "schema": {

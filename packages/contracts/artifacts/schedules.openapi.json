@@ -758,16 +758,6 @@
           }
         }
       },
-      "PreconditionRequired": {
-        "description": "Idempotency key required",
-        "content": {
-          "application/problem+json": {
-            "schema": {
-              "$ref": "#/components/schemas/ApiProblem"
-            }
-          }
-        }
-      },
       "RateLimited": {
         "description": "Rate limited",
         "content": {
@@ -1199,9 +1189,6 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
-          "428": {
-            "$ref": "#/components/responses/PreconditionRequired"
-          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
           }
@@ -1302,9 +1289,6 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
-          },
-          "428": {
-            "$ref": "#/components/responses/PreconditionRequired"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"

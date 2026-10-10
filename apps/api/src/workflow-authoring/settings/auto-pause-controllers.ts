@@ -1,3 +1,4 @@
+import { requestIdempotencyKey } from '../../platform/http/index.js';
 import {
   Body,
   Controller,
@@ -15,7 +16,6 @@ import {
   SessionAuthenticationGuard,
 } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WorkflowAutoPauseUseCase } from './auto-pause.js';
 import { throwWorkflowApplicationError } from '../errors.js';
@@ -26,7 +26,6 @@ import {
   WorkflowPauseDefaultGuard,
   WorkspaceAutoPauseReadGuard,
 } from '../http/guards.js';
-import { parseIdempotencyKey } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 
 const workspaceParamsSchema = workflowIdParamSchema
@@ -162,8 +161,6 @@ function command(
   return {
     ...context(request, workspaceId),
     request: body,
-    idempotencyKey: parseIdempotencyKey(
-      requestHeaderValue(request.headers, 'idempotency-key'),
-    ),
+    idempotencyKey: requestIdempotencyKey(request.headers),
   };
 }

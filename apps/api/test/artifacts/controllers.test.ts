@@ -164,7 +164,7 @@ describe('artifacts controller public seam', () => {
 
       await expect(
         fixture.instance.beginUpload(request(headers), { workspaceId }, {}),
-      ).rejects.toMatchObject({ name: 'ZodError' });
+      ).rejects.toMatchObject({ code: 'request.invalid' });
       expect(fixture.beginUpload).not.toHaveBeenCalled();
     },
   );

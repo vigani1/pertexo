@@ -13,7 +13,7 @@ import {
 
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { projectAuthenticatedWorkspaceContext } from '../request/authenticated-context.js';
-import { requestIdempotencyKey } from '../request/member-commands.js';
+import { requestIdempotencyKey } from '../../platform/http/index.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
@@ -73,7 +73,7 @@ export class WorkspaceInvitationsController {
       actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,
       routeWorkspaceId: workspaceId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       requestId: requestIdentifier(request),
       ...optionalTrace(request),
     });
@@ -124,7 +124,7 @@ export class WorkspaceInvitationsController {
       routeWorkspaceId: workspaceId,
       invitationId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       requestId: requestIdentifier(request),
       ...optionalTrace(request),
     };

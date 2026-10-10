@@ -408,7 +408,7 @@ describe('workflow authoring controller public seam', () => {
           { workspaceId, workflowId },
           { expectedLifecycleRevision: 1 },
         ),
-      ).toThrow('Idempotency-Key must contain exactly one valid value');
+      ).toThrow(expect.objectContaining({ code: 'request.invalid' }));
       expect(transitionLifecycle.execute).not.toHaveBeenCalled();
       await controller[command](
         request({ 'idempotency-key': 'key' }),
@@ -431,7 +431,7 @@ describe('workflow authoring controller public seam', () => {
     const renameBody = { name: 'Invoices', expectedNameRevision: 1 };
     expect(() =>
       controller.rename(request(), { workspaceId, workflowId }, renameBody),
-    ).toThrow('Idempotency-Key must contain exactly one valid value');
+    ).toThrow(expect.objectContaining({ code: 'request.invalid' }));
     expect(() =>
       controller.rename(
         request({ 'idempotency-key': 'key' }),

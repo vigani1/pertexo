@@ -12,7 +12,6 @@ import { z } from 'zod';
 import { AuthorizationError } from '../authorization/index.js';
 import {
   applicationError,
-  InvalidIdempotencyKeyError,
   isApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
@@ -46,11 +45,9 @@ export function mapNodeTestingError(error: unknown): ApplicationError {
     error instanceof NodeTestRequestError &&
     error.code === 'idempotency_required'
   )
-    return applicationError('request.precondition_required', {
+    return applicationError('request.invalid', {
       safeDetail: 'Idempotency-Key is required for test_execute.',
     });
-  if (error instanceof InvalidIdempotencyKeyError)
-    return applicationError('request.invalid', { safeDetail: error.message });
   if (error instanceof AuthorizationError)
     return applicationError(error.code, { safeDetail: error.message });
   if (isApplicationError(error)) return error;

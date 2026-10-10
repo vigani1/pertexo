@@ -348,7 +348,7 @@ describe('workflow runs controller public seam', () => {
     const fixture = controller();
     await expect(
       fixture.instance.startRun(request(), { workspaceId, workflowId }, {}),
-    ).rejects.toMatchObject({ code: 'request.precondition_required' });
+    ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(fixture.start.execute).not.toHaveBeenCalled();
   });
 

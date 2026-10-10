@@ -22,14 +22,10 @@ import {
   workflowRunStartParamsSchema,
   workflowRunStartRequestSchema,
   workflowRunStatisticsQuerySchema,
-  idempotencyKeySchema,
 } from '@pertexo/contracts';
 import type { FastifyReply } from 'fastify';
 
-import {
-  requestHeaderValue,
-  singleRequestHeader,
-} from '../../platform/http/request-headers.js';
+import { singleRequestHeader } from '../../platform/http/request-headers.js';
 
 import {
   CsrfProtectionGuard,
@@ -41,7 +37,10 @@ import {
   optionalAuthorizedWorkspace,
 } from '../../workspaces/request/authenticated-context.js';
 import { actorFrom, type WorkflowRunsRequest } from './request-context.js';
-import { applicationError } from '../../platform/http/index.js';
+import {
+  applicationError,
+  requestIdempotencyKey,
+} from '../../platform/http/index.js';
 import { ApiDrainState } from '../../platform/health/drain-state.js';
 import {
   createSseVisibilityMetrics,
@@ -108,7 +107,7 @@ export class WorkflowRunsController {
       routeWorkspaceId: route.workspaceId,
       ...guardAuthorization(request),
       workflowId: route.workflowId,
-      idempotencyKey: requiredIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       ...(input.expectedPublishedVersionId === undefined
         ? {}
         : { expectedPublishedVersionId: input.expectedPublishedVersionId }),
@@ -146,7 +145,7 @@ export class WorkflowRunsController {
       ...(input.deadlineAt === undefined
         ? {}
         : { deadlineAt: input.deadlineAt }),
-      idempotencyKey: requiredIdempotencyKey(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
       ...requestIdentifiers(request),
       ...traceparent(request),
     });
@@ -313,24 +312,6 @@ function sessionReauthorization(
     return throwWorkflowRunError(applicationError('auth.unauthenticated'));
   }
   return request.reauthorizeIdentitySession;
-}
-
-function requiredIdempotencyKey(request: WorkflowRunsRequest): string {
-  const raw = requestHeaderValue(request.headers, 'idempotency-key');
-  if (raw === undefined)
-    return throwWorkflowRunError(
-      applicationError('request.precondition_required', {
-        safeDetail: 'Idempotency-Key is required for this operation.',
-      }),
-    );
-  const parsed = idempotencyKeySchema.safeParse(raw);
-  if (!parsed.success)
-    return throwWorkflowRunError(
-      applicationError('request.invalid', {
-        safeDetail: 'Idempotency-Key must contain exactly one valid value.',
-      }),
-    );
-  return parsed.data;
 }
 
 function lastEventId(request: WorkflowRunsRequest): number {

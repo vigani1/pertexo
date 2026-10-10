@@ -162,8 +162,7 @@ function metadata(item: WorkflowInputCaseMetadata) {
 }
 function expectedCaseRevision(tag: string, caseId: string): number {
   const parsed = parseWorkflowInputCaseTag(tag);
-  if (parsed === undefined)
-    throw new WorkflowHeaderError('invalid', 'If-Match');
+  if (parsed === undefined) throw new WorkflowHeaderError('invalid');
   if (parsed.caseId !== caseId.toLowerCase()) {
     // A validator for another representation is a failed precondition, not authority.
     // eslint-disable-next-line @typescript-eslint/only-throw-error

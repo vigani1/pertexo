@@ -292,14 +292,14 @@ describe('connections controller public seam', () => {
           credential,
         },
       ),
-    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+    ).rejects.toMatchObject({ code: 'request.invalid' });
     await expect(
       instance.rotate(
         request(),
         { workspaceId, connectionId },
         { expectedSecretVersionId: secretVersionId, credential },
       ),
-    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+    ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(create.execute).not.toHaveBeenCalled();
     expect(rotate.execute).not.toHaveBeenCalled();
   });
@@ -315,7 +315,7 @@ describe('connections controller public seam', () => {
         { workspaceId },
         { providerKey: 'http', name: 'Operations API', credential },
       ),
-    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+    ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(create.execute).not.toHaveBeenCalled();
   });
 

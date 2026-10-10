@@ -234,7 +234,7 @@ describe('node testing controller', () => {
     );
   });
 
-  it('maps missing execution idempotency to the stable precondition problem', async () => {
+  it('rejects a missing execution idempotency key', async () => {
     const fixture = controller();
     await expect(
       fixture.controller.test(
@@ -248,10 +248,7 @@ describe('node testing controller', () => {
         },
         { status: vi.fn() },
       ),
-    ).rejects.toMatchObject({
-      code: 'idempotency_required',
-      name: 'NodeTestRequestError',
-    });
+    ).rejects.toMatchObject({ code: 'request.invalid' });
     expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
   });
 
@@ -277,7 +274,7 @@ describe('node testing controller', () => {
           },
           { status: vi.fn() },
         ),
-      ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+      ).rejects.toMatchObject({ code: 'request.invalid' });
       expect(fixture.persistence.resolvePreviewReplay).not.toHaveBeenCalled();
       expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
     },
