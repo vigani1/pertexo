@@ -19,7 +19,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-import { appSchema } from './app-schema.js';
+import { appSchema } from './namespace.js';
 
 export const users = appSchema.table(
   'users',

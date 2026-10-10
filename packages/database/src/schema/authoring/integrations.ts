@@ -8,7 +8,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { appSchema } from '../app-schema.js';
+import { appSchema } from '../namespace.js';
 import { connections } from '../connections.js';
 import { workflowVersions } from './workflows.js';
 

@@ -10,7 +10,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { appSchema } from '../app-schema.js';
+import { appSchema } from '../namespace.js';
 import { workflows } from '../authoring/workflows.js';
 import { workspaces } from '../foundation.js';
 

@@ -12,7 +12,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { appSchema } from '../app-schema.js';
+import { appSchema } from '../namespace.js';
 import { workflows, workflowVersions } from './workflows.js';
 
 export const workflowInputCases = appSchema.table(

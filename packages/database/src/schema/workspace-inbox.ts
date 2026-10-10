@@ -12,7 +12,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-import { appSchema } from './app-schema.js';
+import { appSchema } from './namespace.js';
 import { workflows } from './authoring/workflows.js';
 import { workflowRuns } from './runs/execution.js';
 import { workspaceMemberships } from './foundation.js';

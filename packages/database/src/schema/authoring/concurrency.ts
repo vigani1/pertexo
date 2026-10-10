@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { appSchema } from '../app-schema.js';
+import { appSchema } from '../namespace.js';
 import {
   type PgTableExtraConfigValue,
   check,

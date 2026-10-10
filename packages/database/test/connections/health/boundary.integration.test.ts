@@ -26,7 +26,7 @@ import {
   readHealth,
   workerBaseUrl,
   workspaceA,
-} from './run-health.fixture.js';
+} from './run.fixture.js';
 import { purgeWorkspace } from '../../support/workspace-purge.js';
 
 const dispatcherBase =

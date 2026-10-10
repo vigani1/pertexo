@@ -6,7 +6,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { appSchema } from './app-schema.js';
+import { appSchema } from './namespace.js';
 
 /** A tenant-scoped table that exists only to prove row-level security. */
 export const rlsProbeRecords = appSchema.table(
