@@ -84,3 +84,5 @@ export {
   resetPasswordAndRevokeSessions,
   unlinkMethodAndRevokeSessions,
 } from '../identity/account-security.js';
+
+export { AccountLinkingCommands } from '../identity/account-linking.js';

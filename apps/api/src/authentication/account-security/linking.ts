@@ -1,22 +1,19 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
+import { AccountLinkingCommands } from '@pertexo/database/tenant-access';
 import type { z } from 'zod';
 import { accountSecurityLinkStartRequestSchema } from '@pertexo/contracts';
 import type { authenticationProviderSchema } from '@pertexo/contracts';
 
 import {
-  attachProviderMethod,
   deriveJourneySecret,
-  inTransaction,
   isJourneyToken,
-  isUniqueViolation,
   journeyBindingCookie,
   journeyDigest,
   landWithReplacementSession,
   newJourneyToken,
   readCookie,
-  replaceBrowserSessions,
 } from './linking-journey.js';
 
 type ProviderName = z.infer<typeof authenticationProviderSchema>;
@@ -54,24 +51,12 @@ export type LinkProviderGateway = Readonly<{
   ): Promise<ProviderIdentity | undefined>;
 }>;
 
-type Attempt = Readonly<{
-  id: string;
-  user_id: string;
-  session_id: string;
-  browser_digest: Buffer;
-  source_provider: string;
-  target_provider: ProviderName;
-  phase: 'source' | 'target' | 'completed' | 'abandoned';
-  expires_at: Date;
-}>;
-type LinkCompletion =
-  { kind: 'failed' } | { kind: 'already' } | { kind: 'linked'; token: string };
-
 const LINK_COOKIE = 'pertexo_link';
 const LINK_PATH = '/v1/auth/account-security/methods/link';
 
 /** Owns only the two-sided linking journey; Better Auth still verifies providers. */
 export class AccountLinking {
+  private readonly commands: AccountLinkingCommands;
   public constructor(
     private readonly input: Readonly<{
       pool: Pool;
@@ -84,7 +69,9 @@ export class AccountLinking {
       verifyPassword(userId: string, password: string): Promise<boolean>;
       deliver(token: string): Promise<readonly string[]>;
     }>,
-  ) {}
+  ) {
+    this.commands = new AccountLinkingCommands(input);
+  }
 
   public async handle(request: Request): Promise<Response | undefined> {
     const url = new URL(request.url);
@@ -130,19 +117,11 @@ export class AccountLinking {
       )
         return problem(403);
     } else {
-      const existing = await this.input.pool.query(
-        `select 1 from app.auth_accounts
-          where user_id=$1 and provider_id=$2 limit 1`,
-        [session.userId, sourceProvider],
-      );
-      if (existing.rowCount !== 1) return problem(403);
+      if (!(await this.commands.hasMethod(session.userId, sourceProvider)))
+        return problem(403);
     }
-    const alreadyLinked = await this.input.pool.query(
-      `select 1 from app.auth_accounts
-        where user_id=$1 and provider_id=$2 limit 1`,
-      [session.userId, provider],
-    );
-    if (alreadyLinked.rowCount !== 0) return problem(409);
+    if (await this.commands.hasMethod(session.userId, provider))
+      return problem(409);
 
     const attemptId = randomUUID();
     const binding = newJourneyToken();
@@ -157,22 +136,16 @@ export class AccountLinking {
       state,
     ).catch(() => undefined);
     if (authorizationUrl === undefined) return problem(503);
-    await this.input.pool.query(
-      `insert into app.auth_method_link_attempts
-        (id,user_id,session_id,browser_digest,source_provider,target_provider,
-         phase,state_digest,expires_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,clock_timestamp()+interval '5 minutes')`,
-      [
-        attemptId,
-        session.userId,
-        session.sessionId,
-        journeyDigest(binding),
-        sourceProvider,
-        provider,
-        phase,
-        journeyDigest(state),
-      ],
-    );
+    await this.commands.start({
+      id: attemptId,
+      userId: session.userId,
+      sessionId: session.sessionId,
+      browserDigest: journeyDigest(binding),
+      sourceProvider,
+      targetProvider: provider,
+      phase,
+      stateDigest: journeyDigest(state),
+    });
     const headers = new Headers({ 'content-type': 'application/json' });
     headers.append('set-cookie', this.bindingCookie(binding));
     return new Response(JSON.stringify({ authorizationUrl }), {
@@ -193,14 +166,7 @@ export class AccountLinking {
       return this.landing('failed');
     const session = await this.input.authenticate(request);
     if (session === undefined) return this.landing('sign-in');
-    const found = await this.input.pool.query<Attempt>(
-      `select id,user_id,session_id,browser_digest,source_provider,
-              target_provider,phase,expires_at
-         from app.auth_method_link_attempts
-        where state_digest=$1 and expires_at>clock_timestamp()`,
-      [journeyDigest(state)],
-    );
-    const attempt = found.rows[0];
+    const attempt = await this.commands.find(journeyDigest(state));
     if (
       attempt?.user_id !== session.userId ||
       attempt.session_id !== session.sessionId ||
@@ -231,7 +197,7 @@ export class AccountLinking {
         nextState,
       ).catch(() => undefined);
       if (nextUrl === undefined) return this.landing('failed');
-      const accepted = await this.updateSource(
+      const accepted = await this.commands.updateSource(
         attempt,
         state,
         binding,
@@ -242,7 +208,7 @@ export class AccountLinking {
         ? Response.redirect(nextUrl, 302)
         : this.landing('failed');
     }
-    const outcome = await this.completeTarget(
+    const outcome = await this.commands.completeTarget(
       attempt,
       state,
       binding,
@@ -256,140 +222,6 @@ export class AccountLinking {
       () => this.landing('returned'),
       () => this.landing('sign-in'),
     );
-  }
-
-  private async updateSource(
-    attempt: Attempt,
-    state: string,
-    binding: string,
-    identity: ProviderIdentity,
-    nextState: string,
-  ): Promise<boolean> {
-    return inTransaction(this.input.pool, async (client) => {
-      const user = await client.query(
-        'select id from app.users where id=$1 and status=$2 for update',
-        [attempt.user_id, 'active'],
-      );
-      if (
-        user.rowCount !== 1 ||
-        !(await this.sessionStillActive(client, attempt))
-      )
-        return false;
-      const locked = await this.lockAttempt(client, attempt, state, binding);
-      if (locked?.phase !== 'source') return false;
-      const source = await client.query(
-        `select 1 from app.auth_accounts
-          where user_id=$1 and provider_id=$2 and account_id=$3`,
-        [attempt.user_id, attempt.source_provider, identity.accountId],
-      );
-      if (source.rowCount !== 1) return false;
-      // State is replaced before the next redirect; the old callback is dead.
-      await client.query(
-        `update app.auth_method_link_attempts
-            set phase='target',state_digest=$2
-          where id=$1`,
-        [attempt.id, journeyDigest(nextState)],
-      );
-      return true;
-    });
-  }
-
-  private async completeTarget(
-    attempt: Attempt,
-    state: string,
-    binding: string,
-    identity: ProviderIdentity,
-  ): Promise<LinkCompletion> {
-    if (!identity.emailVerified || identity.email === null)
-      return { kind: 'failed' };
-    return inTransaction<LinkCompletion>(this.input.pool, async (client) => {
-      const user = await client.query<{ status: string }>(
-        'select status from app.users where id=$1 for update',
-        [attempt.user_id],
-      );
-      if (
-        user.rows[0]?.status !== 'active' ||
-        !(await this.sessionStillActive(client, attempt))
-      )
-        return { kind: 'failed' };
-      const locked = await this.lockAttempt(client, attempt, state, binding);
-      if (locked?.phase !== 'target') return { kind: 'failed' };
-      const owner = await client.query<{ user_id: string }>(
-        `select user_id from app.auth_accounts
-          where provider_id=$1 and account_id=$2`,
-        [attempt.target_provider, identity.accountId],
-      );
-      if (owner.rows[0] !== undefined) {
-        if (owner.rows[0].user_id !== attempt.user_id)
-          return { kind: 'failed' };
-        await client.query(
-          `update app.auth_method_link_attempts
-              set phase='completed',completed_at=clock_timestamp(),state_digest=null
-            where id=$1`,
-          [attempt.id],
-        );
-        return { kind: 'already' };
-      }
-      await attachProviderMethod(client, {
-        userId: attempt.user_id,
-        providerId: attempt.target_provider,
-        accountId: identity.accountId,
-      });
-      const token = await replaceBrowserSessions(
-        client,
-        attempt.user_id,
-        this.input.sessionTtlSeconds,
-      );
-      await client.query(
-        `update app.auth_method_link_attempts
-            set phase='completed',completed_at=clock_timestamp(),state_digest=null
-          where id=$1`,
-        [attempt.id],
-      );
-      return { kind: 'linked', token };
-    }).catch((error: unknown) => {
-      if (isUniqueViolation(error)) return { kind: 'failed' };
-      throw error instanceof Error
-        ? error
-        : new Error('Account linking failed');
-    });
-  }
-
-  private async sessionStillActive(
-    client: PoolClient,
-    attempt: Attempt,
-  ): Promise<boolean> {
-    const session = await client.query(
-      `select 1 from app.auth_sessions
-        where id=$1 and user_id=$2 and expires_at>clock_timestamp()
-        for update`,
-      [attempt.session_id, attempt.user_id],
-    );
-    return session.rowCount === 1;
-  }
-
-  private async lockAttempt(
-    client: PoolClient,
-    attempt: Attempt,
-    state: string,
-    binding: string,
-  ): Promise<Attempt | undefined> {
-    const result = await client.query<Attempt>(
-      `select id,user_id,session_id,browser_digest,source_provider,
-              target_provider,phase,expires_at
-         from app.auth_method_link_attempts
-        where id=$1 and state_digest=$2 and expires_at>clock_timestamp()
-        for update`,
-      [attempt.id, journeyDigest(state)],
-    );
-    const locked = result.rows[0];
-    if (
-      locked?.user_id !== attempt.user_id ||
-      locked.session_id !== attempt.session_id ||
-      !locked.browser_digest.equals(journeyDigest(binding))
-    )
-      return undefined;
-    return locked;
   }
 
   private async authorizationUrl(
