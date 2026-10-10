@@ -12,7 +12,7 @@ import {
   nodeCatalog,
   pairedParallelGraph,
   forEachGraph,
-} from './executable-workflow.fixtures.js';
+} from './support/executable-workflow.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000901';
 const occurredAt = '2026-09-12T00:00:00.000Z';

@@ -125,7 +125,7 @@ now, as one ordered program — not "whenever we touch it".
         limits now fit: 200 nodes, invocations and loop items, 64-character
         identifiers, and the same run iteration budget. The engine's executable
         gets its own member limit so 200-node graphs publish. Measured by
-        `workflow-engine/test/checkpoint-capacity.test.ts`; recorded in the
+        `workflow-engine/test/checkpoint/capacity.test.ts`; recorded in the
         ADR 020 amendment. Raising the limits means dropping finished
         iterations from the checkpoint (step 10).
 - [x] **7. Database feature areas** — authoring, workspaces, connections,

@@ -17,12 +17,12 @@ import {
   graph,
   jsonataPolicy,
   nodeCatalog,
-} from './executable-workflow.fixtures.js';
+} from './support/executable-workflow.js';
 import {
   chainGraph,
   checkpoint,
   occurredAt,
-} from './support/advance-workflow.fixture.js';
+} from './support/advance-workflow.js';
 
 function recreateCatalog(
   catalog: NodeCatalog,

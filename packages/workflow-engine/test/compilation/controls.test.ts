@@ -1,0 +1,670 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  advanceWorkflow,
+  buildWorkflowExecutable,
+  composeExecutableCatalog,
+  createCheckpoint,
+} from '../../src/index.js';
+import { graph, nodeCatalog } from '../support/executable-workflow.js';
+
+describe('wait and control production operations', () => {
+  it('reconciles running cancellation and preserves reported unsafe uncertainty', async () => {
+    const executable = buildWorkflowExecutable({
+      graph: graph(),
+      catalog: composeExecutableCatalog(
+        nodeCatalog({ manualRetryClass: 'unsafe' }),
+      ),
+    });
+    const input = {
+      runId: 'cancel-unsafe-run',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      signal: new AbortController().signal,
+    } as const;
+    const started = await advanceWorkflow({
+      ...input,
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: input.workflowVersionId,
+        iterationBudget: 0,
+      }),
+      observations: [],
+    });
+    const attempt = started.attempts[0];
+    if (attempt === undefined) throw new Error('attempt was not admitted');
+    const canceled = await advanceWorkflow({
+      ...input,
+      checkpoint: started.checkpoint,
+      observations: [
+        {
+          kind: 'cancel_requested',
+          sequence: started.checkpoint.nextEventSequence,
+          occurredAt: input.occurredAt,
+        },
+      ],
+    });
+    expect(canceled.attempts).toEqual([]);
+    expect(canceled.checkpoint.runStatus).toBe('running');
+    expect(canceled.checkpoint.invocations[0]).toMatchObject({
+      invocationKey: attempt.invocationKey,
+      status: 'running',
+    });
+    const reconciled = await advanceWorkflow({
+      ...input,
+      checkpoint: canceled.checkpoint,
+      observations: [
+        {
+          kind: 'attempt_failure',
+          occurredAt: input.occurredAt,
+          invocationKey: attempt.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000096',
+          attemptNumber: attempt.attemptNumber,
+          failureKind: 'canceled',
+          errorKind: 'canceled',
+          possiblyDispatched: true,
+          safeErrorCode: 'execution.canceled',
+        },
+      ],
+    });
+    expect(reconciled.checkpoint.runStatus).toBe('outcome_unknown');
+    expect(reconciled.checkpoint.invocations[0]).toMatchObject({
+      status: 'outcome_unknown',
+    });
+    const retained = await advanceWorkflow({
+      ...input,
+      checkpoint: reconciled.checkpoint,
+      observations: [],
+    });
+    expect(retained.checkpoint.runStatus).toBe('outcome_unknown');
+    expect(retained.attempts).toEqual([]);
+  });
+
+  it('consumes persisted waits with attempt fencing and resumes due work as engine-owned readiness', async () => {
+    const catalog = composeExecutableCatalog(
+      nodeCatalog({ manualRetryClass: 'idempotent-with-key' }),
+    );
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
+    const started = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const manual = started.attempts[0];
+    if (manual === undefined) throw new Error('manual was not admitted');
+    const wait = {
+      kind: 'wait',
+      eventName: 'node.retry_scheduled',
+      sequence: started.checkpoint.nextEventSequence,
+      occurredAt: '2026-08-20T10:01:00.000Z',
+      invocationKey: manual.invocationKey,
+      attemptId: '00000000-0000-4000-8000-000000000041',
+      attemptNumber: manual.attemptNumber,
+      resumeAt: '2026-08-20T10:05:00.000Z',
+      waitKind: 'retry_backoff',
+    } as const;
+    const input = {
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: started.checkpoint,
+      occurredAt: '2026-08-20T10:02:00.000Z',
+      maximumAdmissions: 1,
+      signal: new AbortController().signal,
+    } as const;
+    await expect(
+      advanceWorkflow({
+        ...input,
+        observations: [{ ...wait, attemptNumber: manual.attemptNumber + 1 }],
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+
+    await expect(
+      advanceWorkflow({
+        ...input,
+        observations: [{ ...wait, resumeAt: 'not-a-timestamp' }],
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+
+    const waiting = await advanceWorkflow({ ...input, observations: [wait] });
+    expect(waiting.attempts).toEqual([]);
+    expect(waiting.checkpoint.invocations[0]).toMatchObject({
+      status: 'waiting',
+      resumeAt: wait.resumeAt,
+    });
+    expect(waiting.events).not.toContainEqual(
+      expect.objectContaining({ name: 'node.waiting' }),
+    );
+    expect(waiting.immediateContinuation).toBeUndefined();
+    const beforeDue = await advanceWorkflow({
+      ...input,
+      checkpoint: waiting.checkpoint,
+      observations: [],
+    });
+    expect(beforeDue.attempts).toEqual([]);
+    expect(beforeDue.immediateContinuation).toBeUndefined();
+
+    const due = {
+      kind: 'due_at',
+      occurredAt: wait.resumeAt,
+      invocationKey: manual.invocationKey,
+    } as const;
+    await expect(
+      advanceWorkflow({
+        ...input,
+        checkpoint: waiting.checkpoint,
+        observations: [{ ...due, occurredAt: '2026-08-20T10:04:59.999Z' }],
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+    const wholeSecondCheckpoint = {
+      ...waiting.checkpoint,
+      invocations: waiting.checkpoint.invocations.map((invocation) =>
+        invocation.invocationKey === manual.invocationKey
+          ? { ...invocation, resumeAt: '2026-08-20T10:05:00Z' }
+          : invocation,
+      ),
+    };
+    await expect(
+      advanceWorkflow({
+        ...input,
+        checkpoint: wholeSecondCheckpoint,
+        observations: [due],
+      }),
+    ).resolves.toMatchObject({
+      attempts: [
+        expect.objectContaining({ invocationKey: manual.invocationKey }),
+      ],
+    });
+    await expect(
+      advanceWorkflow({
+        ...input,
+        checkpoint: wholeSecondCheckpoint,
+        observations: [{ ...due, occurredAt: '2026-08-20T10:04:59.999Z' }],
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+    const pending = {
+      ...waiting.checkpoint,
+      invocations: waiting.checkpoint.invocations.map((invocation) => {
+        const {
+          resumeAt: _resumeAt,
+          waitKind: _waitKind,
+          ...active
+        } = invocation;
+        return invocation.invocationKey === manual.invocationKey
+          ? { ...active, status: 'pending' as const }
+          : invocation;
+      }),
+    };
+    await expect(
+      advanceWorkflow({ ...input, checkpoint: pending, observations: [due] }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+    const terminal = {
+      ...waiting.checkpoint,
+      invocations: waiting.checkpoint.invocations.map((invocation) => {
+        const {
+          resumeAt: _resumeAt,
+          waitKind: _waitKind,
+          ...active
+        } = invocation;
+        return invocation.invocationKey === manual.invocationKey
+          ? { ...active, status: 'succeeded' as const }
+          : invocation;
+      }),
+    };
+    await expect(
+      advanceWorkflow({ ...input, checkpoint: terminal, observations: [due] }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+    const resumed = await advanceWorkflow({
+      ...input,
+      checkpoint: waiting.checkpoint,
+      observations: [due],
+    });
+    expect(resumed.consumedThroughEventSequence).toBe(
+      waiting.checkpoint.nextEventSequence - 1,
+    );
+    expect(resumed.events).toContainEqual(
+      expect.objectContaining({
+        name: 'node.ready',
+        occurredAt: due.occurredAt,
+      }),
+    );
+    expect(resumed.nodeRunAdmissions).toEqual([]);
+    expect(resumed.attempts).toEqual([
+      expect.objectContaining({
+        invocationKey: manual.invocationKey,
+        attemptNumber: manual.attemptNumber + 1,
+        providerIdempotencyKey: manual.providerIdempotencyKey,
+      }),
+    ]);
+    const duplicate = await advanceWorkflow({
+      ...input,
+      checkpoint: resumed.checkpoint,
+      observations: [due],
+    });
+    expect(duplicate.events).toEqual([]);
+    expect(duplicate.attempts).toEqual([]);
+  });
+
+  it('orders simultaneous due resumptions independently of loader row order', async () => {
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const sourceGraph = graph();
+    const executable = buildWorkflowExecutable({
+      graph: {
+        ...sourceGraph,
+        edges: [],
+        nodes: sourceGraph.nodes.map((node) => ({
+          ...node,
+          inputMappings: {},
+        })),
+      },
+      catalog,
+    });
+    const started = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 2,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const waiting = structuredClone(started.checkpoint);
+    for (const invocation of waiting.invocations.filter(
+      ({ status }) => status === 'running',
+    ))
+      Object.assign(invocation, {
+        status: 'waiting',
+        resumeAt: '2026-08-20T10:05:00.000Z',
+        waitKind: 'retry_backoff',
+      });
+    const dues = waiting.invocations
+      .filter(({ status }) => status === 'waiting')
+      .map(({ invocationKey }) => ({
+        kind: 'due_at' as const,
+        occurredAt: '2026-08-20T10:05:00.000Z',
+        invocationKey,
+      }));
+    expect(dues).toHaveLength(2);
+    const input = {
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: waiting,
+      occurredAt: '2026-08-20T10:05:00.000Z',
+      maximumAdmissions: 2,
+      signal: new AbortController().signal,
+    } as const;
+    const forward = await advanceWorkflow({ ...input, observations: dues });
+    const reverse = await advanceWorkflow({
+      ...input,
+      observations: [...dues].reverse(),
+    });
+    expect(reverse).toEqual(forward);
+    expect(
+      forward.events.filter(({ name }) => name === 'node.ready'),
+    ).toHaveLength(2);
+    expect(forward.nodeRunAdmissions).toEqual([]);
+    expect(forward.attempts).toHaveLength(2);
+  });
+
+  it('applies persisted cancel and deadline controls before materializing work', async () => {
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
+    const initial = createCheckpoint({
+      engineVersion: 'engine-v1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      iterationBudget: 0,
+    });
+    const canceled = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: initial,
+      occurredAt: '2026-08-20T10:01:00.000Z',
+      maximumAdmissions: 10,
+      observations: [
+        {
+          kind: 'cancel_requested',
+          sequence: initial.nextEventSequence,
+          occurredAt: '2026-08-20T10:00:00.000Z',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+    expect(canceled.nodeRunAdmissions).toEqual([]);
+    expect(canceled.attempts).toEqual([]);
+    expect(
+      canceled.events.map(({ name, sequence }) => [name, sequence]),
+    ).toEqual([['run.canceled', initial.nextEventSequence + 1]]);
+
+    const timedOut = await advanceWorkflow({
+      runId: 'run-2',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: initial,
+      occurredAt: '2026-08-20T10:01:00.000Z',
+      maximumAdmissions: 10,
+      observations: [
+        {
+          kind: 'deadline_expired',
+          occurredAt: '2026-08-20T10:00:00.000Z',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+    expect(timedOut.expectedNextEventSequence).toBe(initial.nextEventSequence);
+    expect(timedOut.consumedThroughEventSequence).toBe(
+      initial.nextEventSequence - 1,
+    );
+    expect(timedOut.checkpoint).toMatchObject({
+      cancelRequested: false,
+      deadlineExpired: true,
+      runStatus: 'timed_out',
+    });
+    expect(timedOut.nodeRunAdmissions).toEqual([]);
+    expect(timedOut.attempts).toEqual([]);
+    expect(
+      timedOut.events.map(({ name, sequence }) => [name, sequence]),
+    ).toEqual([['run.timed_out', initial.nextEventSequence]]);
+  });
+
+  it('persists deadline state while active work reconciles before run timeout', async () => {
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
+    const started = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const manual = started.attempts[0];
+    if (manual === undefined) throw new Error('manual was not admitted');
+    const expired = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: started.checkpoint,
+      occurredAt: '2026-08-20T10:02:00.000Z',
+      maximumAdmissions: 10,
+      observations: [
+        {
+          kind: 'deadline_expired',
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+    expect(expired.checkpoint).toMatchObject({
+      deadlineExpired: true,
+      runStatus: 'running',
+    });
+    expect(expired.attempts).toEqual([]);
+    expect(expired.nodeRunAdmissions).toEqual([]);
+
+    const externalSequence = expired.checkpoint.nextEventSequence;
+    const reconciled = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: expired.checkpoint,
+      occurredAt: '2026-08-20T10:03:00.000Z',
+      maximumAdmissions: 10,
+      observations: [
+        {
+          sequence: externalSequence,
+          occurredAt: '2026-08-20T10:03:00.000Z',
+          attemptId: '00000000-0000-4000-8000-000000000023',
+          attemptNumber: manual.attemptNumber,
+          kind: 'outcome',
+          invocationKey: manual.invocationKey,
+          status: 'timed_out',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+    expect(reconciled.checkpoint.runStatus).toBe('timed_out');
+    expect(
+      reconciled.events.map(({ name, sequence }) => [name, sequence]),
+    ).toEqual([['run.timed_out', externalSequence + 1]]);
+  });
+
+  it('settles durable waiting work on deadline or cancellation without reconciliation', async () => {
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
+    const started = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const manual = started.attempts[0];
+    if (manual === undefined) throw new Error('manual was not admitted');
+    const waitingPlan = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: started.checkpoint,
+      occurredAt: '2026-08-20T10:00:30.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'wait',
+          eventName: 'node.waiting',
+          sequence: started.checkpoint.nextEventSequence,
+          occurredAt: '2026-08-20T10:00:30.000Z',
+          invocationKey: manual.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000024',
+          attemptNumber: manual.attemptNumber,
+          output: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000024',
+          },
+          resumeAt: '2026-08-21T10:00:00.000Z',
+          waitKind: 'node_wait',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+    const waiting = waitingPlan.checkpoint;
+
+    const expired = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: waiting,
+      occurredAt: '2026-08-20T10:02:00.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'deadline_expired',
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+    expect(expired.checkpoint.invocations[0]).toMatchObject({
+      status: 'timed_out',
+    });
+    expect(expired.checkpoint.invocations[0]).not.toHaveProperty('resumeAt');
+    expect(expired.checkpoint.runStatus).toBe('timed_out');
+    expect(expired.events.map(({ name }) => name)).toEqual([
+      'node.timed_out',
+      'run.timed_out',
+    ]);
+
+    const canceled = await advanceWorkflow({
+      runId: 'run-2',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: waiting,
+      occurredAt: '2026-08-20T10:02:00.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'cancel_requested',
+          sequence: waiting.nextEventSequence,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+    expect(canceled.checkpoint.invocations[0]).toMatchObject({
+      status: 'canceled',
+    });
+    expect(canceled.checkpoint.invocations[0]).not.toHaveProperty('resumeAt');
+    expect(canceled.checkpoint.runStatus).toBe('canceled');
+    expect(canceled.events.map(({ name }) => name)).toEqual([
+      'node.canceled',
+      'run.canceled',
+    ]);
+
+    for (const observations of [
+      [
+        {
+          kind: 'deadline_expired' as const,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+        {
+          kind: 'cancel_requested' as const,
+          sequence: waiting.nextEventSequence,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+      ],
+      [
+        {
+          kind: 'cancel_requested' as const,
+          sequence: waiting.nextEventSequence,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+        {
+          kind: 'deadline_expired' as const,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+      ],
+    ]) {
+      const simultaneous = await advanceWorkflow({
+        runId: 'run-both',
+        executable,
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        checkpoint: waiting,
+        occurredAt: '2026-08-20T10:02:00.000Z',
+        maximumAdmissions: 1,
+        observations,
+        signal: new AbortController().signal,
+      });
+      expect(simultaneous.checkpoint).toMatchObject({
+        cancelRequested: true,
+        deadlineExpired: true,
+        runStatus: 'canceled',
+      });
+      expect(simultaneous.checkpoint.invocations[0]).toMatchObject({
+        status: 'canceled',
+      });
+      expect(simultaneous.checkpoint.invocations[0]).not.toHaveProperty(
+        'resumeAt',
+      );
+      expect(simultaneous.checkpoint.invocations[0]).not.toHaveProperty(
+        'waitKind',
+      );
+      expect(simultaneous.attempts).toEqual([]);
+      expect(simultaneous.events.map(({ name }) => name)).toEqual([
+        'node.canceled',
+        'run.canceled',
+      ]);
+    }
+  });
+
+  it('plans every materialized node run independently of the attempt cap', async () => {
+    const catalog = composeExecutableCatalog(
+      nodeCatalog({
+        manualRetryClass: 'unsafe',
+        setRetryClass: 'idempotent-with-key',
+      }),
+    );
+    const sourceGraph = graph();
+    const parallel = {
+      ...sourceGraph,
+      edges: [],
+      nodes: sourceGraph.nodes.map((node) => ({
+        ...node,
+        inputMappings: {},
+      })),
+    };
+    const executable = buildWorkflowExecutable({ graph: parallel, catalog });
+    const input = {
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    } as const;
+    const first = await advanceWorkflow(input);
+    expect(first.nodeRunAdmissions).toEqual([
+      expect.objectContaining({ nodeId: 'manual', sideEffectClass: 'unsafe' }),
+      expect.objectContaining({
+        nodeId: 'set',
+        sideEffectClass: 'idempotent_with_key',
+      }),
+      expect.objectContaining({ nodeId: 'terminate', sideEffectClass: 'safe' }),
+    ]);
+    expect(first.attempts).toHaveLength(1);
+    expect(await advanceWorkflow(input)).toEqual(first);
+
+    const disabledGraph = structuredClone(graph());
+    Object.assign(disabledGraph.nodes[0], { disabled: true });
+    const disabledExecutable = buildWorkflowExecutable({
+      graph: disabledGraph,
+      catalog,
+    });
+    const skipped = await advanceWorkflow({
+      ...input,
+      executable: disabledExecutable,
+    });
+    expect(skipped.nodeRunAdmissions).toEqual([
+      expect.objectContaining({ nodeId: 'manual', sideEffectClass: 'unsafe' }),
+    ]);
+    expect(skipped.attempts).toEqual([]);
+    expect(skipped.events).toContainEqual(
+      expect.objectContaining({ name: 'node.skipped', nodeId: 'manual' }),
+    );
+  });
+});
