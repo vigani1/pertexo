@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { assertSessionIdentity } from '@/features/auth/session-identity.public';
 import { subscribeSessionChanges } from '@/features/auth/session-sync.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-import { isApiError } from '@/lib/api/api-error';
+import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import type { ApiClient } from '@/lib/api/client';
 import { isDuplicateAccessLoss } from '../../model/duplicate/access-loss';
 
@@ -33,24 +33,16 @@ export function usePortabilityLifetime(
     const ownedControllers = controllers.current;
     if (!allowed) queueMicrotask(retire);
     const unsubscribe = subscribeSessionChanges(retire);
-    const unsubscribeCache = queryClient.getQueryCache().subscribe((event) => {
-      if (event.type !== 'updated') return;
-      const key = event.query.queryKey as readonly unknown[];
-      if (
-        key[0] === 'identity' &&
-        key[1] === userId &&
-        key[2] === 'workspace' &&
-        key[3] === workspaceId &&
-        isApiError(event.query.state.error) &&
-        [401, 403, 404].includes(event.query.state.error.status ?? 0) &&
-        // An unrelated feature's denial/not-found is not workspace authority
-        // loss. Authentication loss still retires the whole scoped lifetime.
-        (event.query.state.error.status === 401 ||
-          key.length === 4 ||
-          key[4] === 'workflows')
-      )
-        retire();
-    });
+    // An unrelated feature's denial or not-found is not workspace authority
+    // loss; an ended session still retires the whole scoped lifetime.
+    const unsubscribeCache = watchWorkspaceReadDenial(
+      queryClient,
+      userId,
+      workspaceId,
+      ({ key, error }) =>
+        error.status === 401 || key.length === 0 || key[0] === 'workflows',
+      retire,
+    );
     return () => {
       unsubscribe();
       unsubscribeCache();

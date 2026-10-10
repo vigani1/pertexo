@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { isApiError, type ApiError } from '@/lib/api/api-error';
+import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import { workflowOrganizationKeys } from '../data/organization.queries';
 
 export function isOrganizationReadDenied(error: unknown): error is ApiError {
@@ -25,19 +26,13 @@ export function useOrganizationReadLifetime(
       void cache.cancelQueries({ queryKey: key });
       cache.removeQueries({ queryKey: key });
     };
-    const unsubscribe = cache.getQueryCache().subscribe((event) => {
-      if (event.type !== 'updated') return;
-      const queryKey = event.query.queryKey as readonly unknown[];
-      const error: unknown =
-        event.action.type === 'error'
-          ? event.action.error
-          : event.query.state.error;
-      if (
-        key.every((part, index) => queryKey[index] === part) &&
-        isOrganizationReadDenied(error)
-      )
-        retire(error);
-    });
+    const unsubscribe = watchWorkspaceReadDenial(
+      cache,
+      userId,
+      workspaceId,
+      ({ key: read }) => read[0] === 'workflow-organization',
+      retire,
+    );
     for (const query of cache.getQueryCache().findAll({ queryKey: key })) {
       if (isOrganizationReadDenied(query.state.error))
         retire(query.state.error);

@@ -12,6 +12,7 @@ import {
 } from '@/features/auth/session-identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { isApiError } from '@/lib/api/api-error';
+import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import {
   describeCommandError,
   isUncertainOutcome,
@@ -82,18 +83,13 @@ function useCaseOwner(
     }
     if (previousWrite.current && !canWrite) retire();
     previousWrite.current = canWrite;
-    const unsubscribe = cache.getQueryCache().subscribe((event) => {
-      if (ownerRef.current !== token || event.type !== 'updated') return;
-      const scope = event.query.queryKey as readonly unknown[];
-      if (
-        scope[0] === 'identity' &&
-        scope[1] === userId &&
-        scope[2] === 'workspace' &&
-        scope[3] === workspaceId &&
-        denied(event.query.state.error)
-      )
-        retire();
-    });
+    const unsubscribe = watchWorkspaceReadDenial(
+      cache,
+      userId,
+      workspaceId,
+      () => ownerRef.current === token,
+      retire,
+    );
     return () => {
       unsubscribe();
       if (ownerRef.current === token) ownerRef.current = undefined;
