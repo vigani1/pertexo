@@ -58,12 +58,17 @@ describe('sign-in return paths', () => {
       ['https://evil.example/invitations/accept', '/sign-up'],
       ['/account/security', '/sign-up?returnTo=%2Faccount%2Fsecurity'],
     ] as const) {
-      const { unmount } = renderApp(
+      const { router, unmount } = renderApp(
         `/login?returnTo=${encodeURIComponent(target)}`,
       );
       expect(
         await screen.findByRole('link', { name: 'Create an account' }),
       ).toHaveAttribute('href', carried);
+      // A visible page or changed URL can precede router settlement.
+      await waitFor(() => {
+        expect(router.state.status).toBe('idle');
+        expect(router.state.isLoading).toBe(false);
+      });
       unmount();
     }
   });
@@ -82,6 +87,8 @@ describe('sign-in return paths', () => {
     );
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/workspaces');
+      expect(router.state.status).toBe('idle');
+      expect(router.state.isLoading).toBe(false);
     });
   });
 
@@ -102,6 +109,8 @@ describe('sign-in return paths', () => {
     const { router } = renderApp('/login?returnTo=%2Faccount%2Fsecurity');
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/account/security');
+      expect(router.state.status).toBe('idle');
+      expect(router.state.isLoading).toBe(false);
     });
   });
 
@@ -115,7 +124,7 @@ describe('sign-in return paths', () => {
       }),
     );
     const navigated: string[] = [];
-    renderInRouter(
+    const { router } = renderInRouter(
       <LoginPage
         apiClient={createApiClient({
           fetch: testFetch,
@@ -132,6 +141,8 @@ describe('sign-in return paths', () => {
       .click(await screen.findByRole('button', { name: /Google/u }));
     await waitFor(() => {
       expect(navigated).toHaveLength(1);
+      expect(router.state.status).toBe('idle');
+      expect(router.state.isLoading).toBe(false);
     });
     expect(requests).toEqual([
       {

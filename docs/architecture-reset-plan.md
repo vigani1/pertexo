@@ -548,8 +548,12 @@ now, as one ordered program — not "whenever we touch it".
         remain historical; ADR 020 clarifies the single checkpoint/catalog.
         Obsolete auth/inbox implementation logs and connection/concurrency
         rollout runbooks are deleted. Applicable operations runbooks remain.
-        Cleanup follows after this slice merges; source branches, unrelated
-        worktrees and the excluded handoff evidence are preserved.
+        Final cleanup removed 19 completed reset worktrees, 23 remote heads
+        matched exactly to merged PRs, and the three reset scratch databases.
+        The final plan-verification scratch database is also removed.
+        Local source branches, unrelated/protected worktrees and all 758
+        excluded handoff files are preserved in the final review worktree.
+        Main and both protected checkouts match their pre-cleanup fingerprints.
   - [x] Final baseline generated from Drizzle: all 80 tables, 800 columns,
         330 checks, 122 foreign keys, 51 unique constraints, 80 primary keys,
         261 indexes and two sequences. `pnpm db:generate` produces no drift.
@@ -619,9 +623,23 @@ now, as one ordered program — not "whenever we touch it".
 6. Validation happens once, at the boundary.
 7. Tests check behavior; structure-only tests and test hooks are removed.
 8. The PR reports lines before/after and what was removed and why.
-- [ ] **10. Re-plan F08** on the new structure (separate plan, after the reset).
-      Include dropping finished loop iterations from the checkpoint, which is
-      what lets the 200-invocation limit grow.
+
+- [x] **10. Re-plan F08** on the completed reset structure: the
+      [proposal](feature-plans/08-subworkflows.md) and
+      [accepted ADR 070](adr/070-workflow-call-boundaries.md) record the completed plan and owner
+      decisions. Implementation proceeds through the feature plan's slices.
+  - [x] Current/reverted sources and Temporal, Hatchet and n8n prior art reviewed;
+        ownership, recommended decisions, tested delivery slices and size
+        comparison recorded.
+  - [x] Finished-loop checkpoint pruning is planned before any measured limit
+        increase. The current 200-invocation and checkpoint byte limits stay.
+  - [x] Owner accepted the plan/ADR: workspace slot handoff, archive warning
+        listing pinned published parents, and all other recommendations.
+        Runtime, integrated recovery/history and retention evidence remain open
+        in the feature plan; reset follow-up precedes slice 1 pruning.
+  - [x] Plan-PR CI repair: sign-in return-path tests await router settlement
+        before unmount/fixture teardown, preventing a pending UI timer from
+        updating React after JSDOM is disposed. Product behavior is unchanged.
 
 ## Target structure: where everything lives
 
