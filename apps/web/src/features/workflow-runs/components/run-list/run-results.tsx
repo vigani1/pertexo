@@ -9,7 +9,7 @@ import { SkeletonThread } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/error';
 import { readFailureReason } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { filterRunsByTrigger } from '../../model/list/run-list';
+import { filterRunsByTrigger } from '../../model/list/runs';
 import {
   clearedRunSearch,
   hasRunFilters,
@@ -17,8 +17,8 @@ import {
 } from '../../model/list/run-search';
 import type { RunHistoryQuery } from '../../hooks/use-run-history';
 import { useNow } from '@/lib/hooks/use-now';
-import { RunLoom } from '../loom/run-loom';
-import { RunList } from './run-list';
+import { RunLoom } from '../loom/view';
+import { RunList } from './list';
 import {
   NoMatchingRuns,
   RunListSkeleton,

@@ -17,7 +17,7 @@ import {
 } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { LiveRunCounts } from '../components/run-count';
-import { RunFilters } from '../components/run-filters/run-filters';
+import { RunFilters } from '../components/run-filters/filters';
 import { WorkflowPicker } from '../components/run-filters/workflow-picker';
 import { NoRunsYet, RunsForbidden } from '../components/run-list/states';
 import { RunResults } from '../components/run-list/run-results';

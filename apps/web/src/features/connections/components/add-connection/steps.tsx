@@ -11,7 +11,7 @@ import {
   type ProviderKey,
 } from '../../model/connection-providers';
 import type { SavedCredential } from '../../model/credential-draft';
-import type { ConnectionTest } from '../connection-test/use-connection-test';
+import type { ConnectionTest } from '../connection-test/use-test';
 import { ConnectionTestPanel } from '../connection-test/panel';
 
 export type AddStep = 'provider' | 'credential' | 'name' | 'test';

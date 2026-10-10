@@ -9,7 +9,7 @@ import {
   isEmptyDiff,
 } from '@/features/workflow-settings/model/versions/diff';
 import { versionSteps } from '@/features/workflow-settings/model/versions/steps';
-import { emptyGraph, stepNode } from './workflow-settings.fixtures';
+import { emptyGraph, stepNode } from './fixtures';
 
 describe('webhook endpoint keys', () => {
   const key = 'A1b2_C3-d4'.padEnd(43, 'x');

@@ -23,10 +23,7 @@ import {
 import { describeRunSentence } from '../model/run-sentence';
 import { isActiveRunStatus } from '../model/run-status';
 import { upstreamSteps } from '../model/step-inspection/step-inputs';
-import {
-  buildRunTimeline,
-  type RunTimelineRow,
-} from '../model/timeline/run-timeline-model';
+import { buildRunTimeline, type RunTimelineRow } from '../model/timeline/runs';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { useNow } from '@/lib/hooks/use-now';
 import { useRunEvents } from '../hooks/use-run-events';

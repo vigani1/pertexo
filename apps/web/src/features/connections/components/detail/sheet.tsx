@@ -28,7 +28,7 @@ import {
   describeConnectionKind,
   PROVIDERS,
 } from '../../model/connection-providers';
-import { useConnectionTest } from '../connection-test/use-connection-test';
+import { useConnectionTest } from '../connection-test/use-test';
 import { ConnectionTestPanel } from '../connection-test/panel';
 import { ProviderTile } from '../provider-tile';
 import { ConnectionFacts } from './connection-facts';

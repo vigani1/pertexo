@@ -19,7 +19,7 @@ import {
   workflowApi,
   workflowId,
   workspaceId,
-} from './workflow-settings.fixtures';
+} from './fixtures';
 
 const triggersPath = `/w/${workspaceId}/workflows/${workflowId}/triggers`;
 const schedulesKey = [

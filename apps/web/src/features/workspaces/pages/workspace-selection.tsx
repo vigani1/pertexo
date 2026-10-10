@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { WorkspaceCreationSheet } from '../components/creation/workspace-creation-sheet';
+import { WorkspaceCreationSheet } from '../components/creation/sheet';
 import { WorkspaceFirstRun } from '../components/selection/workspace-first-run';
 import { WorkspaceGrid } from '../components/selection/workspace-grid';
 import { WorkspacePickerHeader } from '../components/selection/workspace-picker-header';

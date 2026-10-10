@@ -16,7 +16,7 @@ import {
   workflowApi,
   workflowId,
   workspaceId,
-} from './workflow-settings.fixtures';
+} from './fixtures';
 
 const triggersPath = `/w/${workspaceId}/workflows/${workflowId}/triggers`;
 const runId = '77777777-7777-4777-8777-777777777777';

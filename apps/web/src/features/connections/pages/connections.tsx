@@ -26,7 +26,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { readFailureReason } from '@/lib/api/error-copy';
 import { AddConnectionSheet } from '../components/add-connection/sheet';
 import { ConnectionCollection } from '../components/connection-collection';
-import { ConnectionDetailSheet } from '../components/detail/connection-detail-sheet';
+import { ConnectionDetailSheet } from '../components/detail/sheet';
 import { ProviderSockets } from '../components/provider-sockets';
 import {
   connectionKeys,

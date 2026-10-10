@@ -12,8 +12,8 @@ import {
   storyEntryTitle,
 } from '../../model/step-inspection/step-copy';
 import type { StepStoryEntry } from '../../model/timeline/step-replay';
-import type { RunTimelineRow } from '../../model/timeline/run-timeline-model';
-import { shortRunId } from '../../model/list/run-list';
+import type { RunTimelineRow } from '../../model/timeline/runs';
+import { shortRunId } from '../../model/list/runs';
 import { CopyButton } from '@/components/ui/copy-button';
 import { InfoHint } from '@/components/patterns/guidance/info-hint';
 import { StepInputData, StepOutputData, type RunDataScope } from './data';

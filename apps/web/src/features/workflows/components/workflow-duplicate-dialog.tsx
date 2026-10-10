@@ -21,7 +21,7 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../model/rename';
 import { useWorkflowDuplicate } from '../hooks/use-workflow-duplicate';
-import { canDuplicateWorkflow } from '../model/duplicate/can-duplicate';
+import { canDuplicateWorkflow } from '../model/duplicate/allowed';
 
 export function WorkflowDuplicateDialog({
   apiClient,

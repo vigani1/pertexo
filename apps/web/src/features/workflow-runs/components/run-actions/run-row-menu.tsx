@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowLabel } from '../../model/list/run-list';
+import { workflowLabel } from '../../model/list/runs';
 import { isActiveRunStatus } from '../../model/run-status';
 import { CancelRunDialog } from './cancel-run-dialog';
 import { ReplayRunDialog } from './replay-run-dialog';

@@ -5,7 +5,7 @@ import {
   segmentPlacement,
   type RunTimelineSegment,
   type RunTimelineModel,
-} from '../../../model/timeline/run-timeline-model';
+} from '../../../model/timeline/runs';
 import { statusToneText } from '@/components/ui/status-tone';
 
 function percent(value: number): string {

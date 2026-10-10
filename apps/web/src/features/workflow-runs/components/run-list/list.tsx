@@ -7,7 +7,7 @@ import {
   groupRunsByDay,
   runDurationMs,
   threadBarScale,
-} from '../../model/list/run-list';
+} from '../../model/list/runs';
 import { isActiveRunStatus } from '../../model/run-status';
 import { useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/utils';

@@ -32,7 +32,7 @@ import {
   workspaceId,
   workflowId,
   userId,
-} from './workflow-settings.fixtures';
+} from './fixtures';
 import { workspaceWith } from '../workflows/list/fixtures';
 
 const path = `/w/${workspaceId}/workflows/${workflowId}/settings`;

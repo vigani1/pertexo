@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sheet';
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceCreation } from '../../data/mutations/use-workspace-creation';
-import { WorkspaceCreationForm } from './workspace-creation-form';
+import { WorkspaceCreationForm } from './form';
 
 /** "+ New workspace" from the picker: the same form, in a side lens. */
 export function WorkspaceCreationSheet({

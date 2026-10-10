@@ -41,7 +41,7 @@ import {
 import {
   useConnectionTest,
   type ConnectionTest,
-} from '../connection-test/use-connection-test';
+} from '../connection-test/use-test';
 import { CredentialFields } from '../credential/fields';
 import {
   createHeaderRowId,

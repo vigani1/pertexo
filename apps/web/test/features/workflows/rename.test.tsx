@@ -18,7 +18,7 @@ import {
   workflowApi,
   workflowId,
   workspaceId,
-} from '../workflow-settings/workflow-settings.fixtures';
+} from '../workflow-settings/fixtures';
 
 const versionsPath = `/w/${workspaceId}/workflows/${workflowId}/versions`;
 const settingsPath = `/w/${workspaceId}/workflows/${workflowId}/settings`;

@@ -15,7 +15,7 @@ import {
   type InboxArrivalData,
   type InboxArrivalSide,
 } from '../../model/inbox-arrival';
-import { useInboxArrivals } from './use-inbox-arrivals';
+import { useInboxArrivals } from './use-subscription';
 
 /** Long enough to read a name and a step and decide; hovering pauses it. */
 const ARRIVAL_TIMEOUT_MS = 8_000;
