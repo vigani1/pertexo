@@ -267,10 +267,6 @@ describe('ADR 057 current capacity authority', () => {
     await expect(checkDatabaseReadiness(runtimePool)).resolves.toMatchObject({
       migrationHead: EXPECTED_MIGRATION_HEAD,
     });
-    const grants = await runtimePool.query(`select
-      has_function_privilege('pertexo_app','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as app,
-      has_function_privilege('pertexo_maintenance','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as maintenance`);
-    expect(grants.rows).toEqual([{ app: true, maintenance: false }]);
   });
 
   it('counts active reservations without double counting queued runs or other tenants', async () => {
@@ -278,18 +274,21 @@ describe('ADR 057 current capacity authority', () => {
     await addRuns(busyWorkspace, intake, 'waiting', 1, '2 hours');
     await addRuns(busyWorkspace, intake, 'queued', 2, '2 hours');
     await addRuns(quietWorkspace, elsewhere, 'running', 1, '2 hours');
-    await inWorkspace(
-      'owner',
-      busyWorkspace,
-      `with selected as (
+    await addRuns(quietWorkspace, elsewhere, 'queued', 1, '2 hours');
+    for (const workspace of [busyWorkspace, quietWorkspace]) {
+      await inWorkspace(
+        'owner',
+        workspace,
+        `with selected as (
       select id from app.workflow_runs where workspace_id=$1 and status='queued' limit 1
     ), event as (
       insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum)
       select gen_random_uuid(),$1,'advance-workflow-run',1,'workflow-run',id,'{}'::jsonb,repeat('a',64) from selected returning id,aggregate_id
     ) insert into app.workflow_run_active_admissions(workspace_id,workflow_run_id,outbox_event_id)
       select $1,aggregate_id,id from event`,
-      [busyWorkspace],
-    );
+        [workspace],
+      );
+    }
     const result = await runs.usageCapacity({ workspaceId: busyWorkspace });
     expect(result.execution).toMatchObject({
       activeRuns: 2,
@@ -304,26 +303,31 @@ describe('ADR 057 current capacity authority', () => {
       [busyWorkspace],
     );
     expect(counter.rows[0]?.active_runs).toBe(2);
+    const reservations = await inWorkspace(
+      'api',
+      busyWorkspace,
+      'select workspace_id from app.workflow_run_active_admissions',
+    );
+    expect(reservations.rows).toEqual([{ workspace_id: busyWorkspace }]);
+    const otherWorkspace = await inWorkspace(
+      'api',
+      busyWorkspace,
+      'select * from app.workflow_run_active_admissions where workspace_id=$1',
+      [quietWorkspace],
+    );
+    expect(otherWorkspace.rows).toEqual([]);
+    const withoutContext = await runtimePool.query(
+      'select * from app.workflow_run_active_admissions',
+    );
+    expect(withoutContext.rows).toEqual([]);
     await expect(
       inWorkspace(
         'api',
         busyWorkspace,
-        'select * from app.workflow_run_active_admissions',
+        'delete from app.workflow_run_active_admissions where workspace_id=$1',
+        [busyWorkspace],
       ),
     ).rejects.toThrow(/permission denied/u);
-    await expect(
-      inWorkspace(
-        'api',
-        busyWorkspace,
-        'select app.workspace_reserved_active_slot_count($1)',
-        [quietWorkspace],
-      ),
-    ).rejects.toThrow('workspace context mismatch');
-    await expect(
-      runtimePool.query('select app.workspace_reserved_active_slot_count($1)', [
-        busyWorkspace,
-      ]),
-    ).rejects.toThrow('workspace context mismatch');
   });
 
   it.each([
