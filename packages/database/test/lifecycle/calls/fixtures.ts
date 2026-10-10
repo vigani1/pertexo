@@ -29,9 +29,11 @@ export async function createFamily(
     parentDays?: number;
     consumed?: boolean;
     slotLent?: boolean;
+    childQueued?: boolean;
+    workspaceId?: string;
   }> = {},
 ) {
-  const workspaceId = randomUUID();
+  const workspaceId = input.workspaceId ?? randomUUID();
   const parentWorkflowId = randomUUID();
   const childWorkflowId = randomUUID();
   const parentVersionId = randomUUID();
@@ -42,11 +44,12 @@ export async function createFamily(
   await admin.query("select set_config('app.workspace_id', $1, false)", [
     workspaceId,
   ]);
-  await admin.query(
-    `insert into app.workspaces(id,name,slug,created_by)
+  if (input.workspaceId === undefined)
+    await admin.query(
+      `insert into app.workspaces(id,name,slug,created_by)
      values($1,'Call retention',$2,$3)`,
-    [workspaceId, `calls-${workspaceId}`, userId],
-  );
+      [workspaceId, `calls-${workspaceId}`, userId],
+    );
   for (const [workflowId, versionId] of [
     [parentWorkflowId, parentVersionId],
     [childWorkflowId, childVersionId],
@@ -84,7 +87,11 @@ export async function createFamily(
         workspaceId,
         workflowId,
         versionId,
-        age === undefined ? 'waiting' : 'succeeded',
+        age === undefined
+          ? runId === childRunId && input.childQueued === true
+            ? 'queued'
+            : 'waiting'
+          : 'succeeded',
         inline({ input: runId }),
         new Date(createdAt.getTime() + 30 * 86_400_000),
         age === undefined ? null : inline({ result: runId }),
@@ -156,24 +163,7 @@ export async function runRow(runId: string) {
 export async function insertBorrowedSlot(
   family: Awaited<ReturnType<typeof createFamily>>,
 ) {
-  const outboxEventId = randomUUID();
-  const payload = {
-    workspaceId: family.workspaceId,
-    runId: family.childRunId,
-    outboxEventId,
-  };
-  await admin.query(
-    `insert into app.outbox_events
-     (id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum)
-     values($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5)`,
-    [
-      outboxEventId,
-      family.workspaceId,
-      family.childRunId,
-      JSON.stringify(payload),
-      canonicalOutboxPayloadChecksum(payload),
-    ],
-  );
+  const outboxEventId = await insertHint(family.workspaceId, family.childRunId);
   await admin.query(
     `insert into app.workflow_run_active_admissions
      (workspace_id,workflow_run_id,outbox_event_id,borrowed_call_id)
@@ -184,4 +174,22 @@ export async function insertBorrowedSlot(
     'update app.workflow_calls set slot_lent=true where id=$1',
     [family.callId],
   );
+}
+
+export async function insertHint(workspaceId: string, runId: string) {
+  const outboxEventId = randomUUID();
+  const payload = { workspaceId, runId, outboxEventId };
+  await admin.query(
+    `insert into app.outbox_events
+     (id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum)
+     values($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5)`,
+    [
+      outboxEventId,
+      workspaceId,
+      runId,
+      JSON.stringify(payload),
+      canonicalOutboxPayloadChecksum(payload),
+    ],
+  );
+  return outboxEventId;
 }

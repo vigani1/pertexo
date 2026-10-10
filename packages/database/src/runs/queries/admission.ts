@@ -1,15 +1,4 @@
-import {
-  and,
-  count,
-  eq,
-  exists,
-  inArray,
-  isNull,
-  lt,
-  notExists,
-  or,
-  sql,
-} from 'drizzle-orm';
+import { and, eq, exists, isNull, lt, notExists, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
 import { workflows } from '../../schema/authoring/workflows.js';
@@ -25,56 +14,15 @@ export function workflowRunReadQuery(
   includeWorkflowName: boolean,
 ) {
   const { db, workspaceId } = transaction;
-  const active = alias(workflowRuns, 'admission_active_run');
-  const reserved = alias(
-    workflowRunActiveAdmissions,
-    'admission_reserved_slot',
-  );
-  const reservedRun = alias(workflowRuns, 'admission_reserved_run');
   const earlier = alias(workflowRuns, 'admission_earlier_run');
   const earlierReservation = alias(
     workflowRunActiveAdmissions,
     'admission_earlier_reservation',
   );
-  const workspaceActive = db
-    .select({ value: count() })
-    .from(active)
-    .where(
-      and(
-        eq(active.workspaceId, workspaceId),
-        inArray(active.status, ['running', 'waiting']),
-      ),
-    );
-  const workspaceReserved = db
-    .select({ value: count() })
-    .from(reserved)
-    .where(eq(reserved.workspaceId, workspaceId));
-  const workflowActive = db
-    .select({ value: count() })
-    .from(active)
-    .where(
-      and(
-        eq(active.workspaceId, workspaceId),
-        eq(active.workflowId, workflowRuns.workflowId),
-        inArray(active.status, ['running', 'waiting']),
-      ),
-    );
-  const workflowReserved = db
-    .select({ value: count() })
-    .from(reserved)
-    .innerJoin(
-      reservedRun,
-      and(
-        eq(reservedRun.workspaceId, reserved.workspaceId),
-        eq(reservedRun.id, reserved.workflowRunId),
-      ),
-    )
-    .where(
-      and(
-        eq(reserved.workspaceId, workspaceId),
-        eq(reservedRun.workflowId, workflowRuns.workflowId),
-      ),
-    );
+  const workspaceActive = sql<number>`(select active_runs from app.workflow_run_slot_counts(${workspaceId}::uuid))`;
+  const workspaceReserved = sql<number>`(select reserved_active_slots from app.workflow_run_slot_counts(${workspaceId}::uuid))`;
+  const workflowActive = sql<number>`(select active_runs from app.workflow_run_slot_counts(${workspaceId}::uuid,${workflowRuns.workflowId}))`;
+  const workflowReserved = sql<number>`(select reserved_active_slots from app.workflow_run_slot_counts(${workspaceId}::uuid,${workflowRuns.workflowId}))`;
   const earlierExempt = db
     .select({ id: earlierReservation.workflowRunId })
     .from(earlierReservation)
@@ -129,10 +77,10 @@ export function workflowRunReadQuery(
       orderExempt: workflowRunActiveAdmissions.workflowConcurrencyOrderExempt,
       workspaceLimit: workspaceExecutionEntitlementVersions.activeRunLimit,
       workflowLimit: workflowConcurrencyPolicies.activeRunLimit,
-      workspaceActive: sql<number>`(${workspaceActive})`.mapWith(Number),
-      workspaceReserved: sql<number>`(${workspaceReserved})`.mapWith(Number),
-      workflowActive: sql<number>`(${workflowActive})`.mapWith(Number),
-      workflowReserved: sql<number>`(${workflowReserved})`.mapWith(Number),
+      workspaceActive: workspaceActive.mapWith(Number),
+      workspaceReserved: workspaceReserved.mapWith(Number),
+      workflowActive: workflowActive.mapWith(Number),
+      workflowReserved: workflowReserved.mapWith(Number),
       earlierQueued: exists(earlierQueued),
     })
     .from(workflowRuns)

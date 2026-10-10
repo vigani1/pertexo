@@ -484,6 +484,30 @@ reads without workspace context. Existing repository build, lint, type checks,
 dependency, contract, schema-ownership and architecture checks qualify this
 storage checkpoint. No Call runtime or editor support is claimed by it.
 
+### Slice 3 capacity qualification
+
+The next storage checkpoint makes the existing admission row the current slot
+owner, with a direct Call return target. A transfer moves that row down a nested
+chain and returns it one level at a time. Lending parents keep their workflow
+concurrency claims; workspace occupancy excludes them and counts each borrower
+once. A terminal borrower retains a reserved return right until the parent action
+returns or releases it. Ordinary dispatcher/receipt release, outbox rebinding
+and recovery preserve borrowed ownership. One SQL occupancy rule serves the
+capacity functions, counters and public reads, using active/queued predicates
+and the admission relation rather than scanning retired run history.
+
+Sixteen live PostgreSQL cases prove capacity one, all five default slots,
+current-policy reduction before fresh child acceptance, nested and parallel
+transfers, closed root/nested unwind, target concurrency refusal, duplicate
+return, ordinary-release fencing, failed/published hint recovery and terminal
+return recovery. A one-row recovery batch progresses past active or unpublished
+borrowers. Opposing-writer tests prove the return does not lock the existing
+child and a parent writer does not block child settlement. The full live database suite passes 706 tests (46 optional tests skipped),
+and all 526 database unit tests pass. The existing concurrency and
+Call-retirement suites pass all 41 cases. These are storage and
+capacity proofs; atomic runtime spawn, ordinary-work exclusion and the complete
+Call editor/worker path remain required before slice 3 is complete.
+
 | Slice                  | Behavior at its end                                                                                                                           | Required evidence                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0. Review              | Accepted callable/pin/authority/capacity/retention decisions and bounded contract                                                             | Owner accepted on 2026-10-10 with slot handoff and archive warning; reconcile exact source/interfaces before each runtime slice                                                                                                                   |
