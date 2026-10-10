@@ -13,10 +13,10 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-import { appSchema } from './app-schema.js';
+import { appSchema } from '../app-schema.js';
 import { workflowRuns } from './execution.js';
-import { workspaces } from './foundation.js';
-import { outboxEvents } from './transport.js';
+import { workspaces } from '../foundation.js';
+import { outboxEvents } from '../transport.js';
 
 export const workspaceExecutionEntitlements = appSchema.table(
   'workspace_execution_entitlements',

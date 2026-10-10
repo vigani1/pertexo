@@ -5,14 +5,14 @@ import {
   CoordinatorRunStateCorruptError,
   type CoordinatorAdvanceDelivery,
   type RunAdvanceResult,
-} from './contract.js';
+} from '../contract.js';
 import { persistCoordinatorExecutionTransitions } from './node-admissions.js';
-import type { RunTransitionPlan } from './plan.js';
+import type { RunTransitionPlan } from '../plan.js';
 import {
   claimCoordinatorReceipt,
   completeCoordinatorReceipt,
   deferCoordinatorForActiveCapacity,
-} from './receipts.js';
+} from '../receipts.js';
 import { persistCoordinatorRunTransition } from './run-transition.js';
 import {
   persistDueReadyTransitions,
@@ -22,7 +22,7 @@ import {
 import type {
   CoordinatorCommitRow,
   PendingCoordinatorFailure,
-} from './state.js';
+} from '../load/state.js';
 
 /** Saves the engine's transition for a run locked by `loadRunForAdvance`. */
 export async function saveRunTransition(

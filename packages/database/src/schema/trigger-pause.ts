@@ -12,8 +12,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { appSchema } from './app-schema.js';
-import { workflows } from './authoring.js';
-import { workflowRuns } from './execution.js';
+import { workflows } from './authoring/workflows.js';
+import { workflowRuns } from './runs/execution.js';
 
 // ADR 056. String-mode timestamps preserve PostgreSQL precision.
 /** Closed pauses remain until workflow/tenant deletion, including disabled schedule lag. */

@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-import { appSchema } from './app-schema.js';
+import { appSchema } from '../app-schema.js';
 
 export const workflowRuns = appSchema.table(
   'workflow_runs',

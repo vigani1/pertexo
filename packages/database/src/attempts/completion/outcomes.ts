@@ -1,4 +1,4 @@
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
@@ -6,17 +6,17 @@ import type { z } from 'zod';
 import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-} from './contract.js';
+} from '../contract.js';
 import type {
   completionSchema,
   CompleteNodeAttemptResult,
-} from './contract.js';
-import { completeReceipt } from './receipts.js';
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
+} from '../contract.js';
+import { completeReceipt } from '../receipts.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import {
   serializeStoredExecutionJsonValue,
   serializeStoredExecutionValueV1,
-} from '../platform/stored-execution-value.js';
+} from '../../platform/stored-execution-value.js';
 
 import {
   assertConnectionHealthReplay,

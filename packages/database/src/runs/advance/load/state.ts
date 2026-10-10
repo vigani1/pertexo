@@ -1,11 +1,11 @@
 import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
-import { parsePublishedWorkflowRow } from '../published-workflow.js';
+import { parsePublishedWorkflowRow } from '../../published-workflow.js';
 import {
   CoordinatorRunStateCorruptError,
   type RunAdvanceState,
-} from './contract.js';
+} from '../contract.js';
 import {
   assertAvailableArtifacts,
   completedInlineOutput,

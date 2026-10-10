@@ -14,8 +14,8 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-import { appSchema } from './app-schema.js';
-import { connections } from './connections.js';
+import { appSchema } from '../app-schema.js';
+import { connections } from '../connections.js';
 
 export const workflows = appSchema.table(
   'workflows',

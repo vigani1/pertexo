@@ -1,17 +1,17 @@
 import type { PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
 
-import { CoordinatorRunStateCorruptError } from './contract.js';
+import { CoordinatorRunStateCorruptError } from '../contract.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
-} from '../../platform/stored-execution-value.js';
+} from '../../../platform/stored-execution-value.js';
 import {
   attachPhysicalAttempts,
   readPhysicalAttempts,
   type CoordinatorEventRow,
   type PersistedCoordinatorEventRow,
-} from './fact-attempts.js';
+} from './attempts.js';
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;

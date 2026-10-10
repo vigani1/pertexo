@@ -1,22 +1,22 @@
 import type { PoolClient } from 'pg';
 
-import { CoordinatorRunStateCorruptError } from './contract.js';
-import type { CoordinatorCommitRow } from './state.js';
-import { canonicalTimestamp } from './facts.js';
+import { CoordinatorRunStateCorruptError } from '../contract.js';
+import type { CoordinatorCommitRow } from '../load/state.js';
+import { canonicalTimestamp } from '../load/facts.js';
 import {
   scheduleRunInputSchema,
   terminalRunStatuses,
   type RunTransitionPlan,
-} from './plan.js';
+} from '../plan.js';
 import { persistFailureNotificationIntent } from './failure-notification.js';
-import { persistWorkspaceInboxEvent } from '../../inbox/producer.js';
-import { persistWorkflowTriggerOutcome } from '../../triggers/pause/outcome-producer.js';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { persistWorkspaceInboxEvent } from '../../../inbox/producer.js';
+import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcome-producer.js';
+import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
-} from '../../platform/stored-execution-value.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
+} from '../../../platform/stored-execution-value.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 async function persistDerivedContinuation(
   client: PoolClient,

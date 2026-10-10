@@ -10,8 +10,8 @@ import {
   uniqueIndex,
   index,
 } from 'drizzle-orm/pg-core';
-import { appSchema } from './app-schema.js';
-import { workflows, workflowVersions } from './authoring.js';
+import { appSchema } from '../app-schema.js';
+import { workflows, workflowVersions } from './workflows.js';
 
 export const workflowInputCases = appSchema.table(
   'workflow_input_cases',

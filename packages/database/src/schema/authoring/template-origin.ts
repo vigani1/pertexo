@@ -1,7 +1,7 @@
 import { foreignKey, jsonb, primaryKey, uuid } from 'drizzle-orm/pg-core';
 import type { WorkflowTemplateOrigin } from '@pertexo/templates';
-import { appSchema } from './app-schema.js';
-import { workflows } from './authoring.js';
+import { appSchema } from '../app-schema.js';
+import { workflows } from './workflows.js';
 
 export const workflowTemplateOrigins = appSchema.table(
   'workflow_template_origins',

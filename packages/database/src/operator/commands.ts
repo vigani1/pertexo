@@ -10,7 +10,7 @@ import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { checkDatabaseReadiness } from '../platform/readiness.js';
 import { auditEvents } from '../schema/foundation.js';
-import { operatorCommands } from '../schema/operator.js';
+import { operatorCommands } from '../schema/runs/operator.js';
 import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,

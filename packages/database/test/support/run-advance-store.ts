@@ -5,7 +5,7 @@ import type { DatabaseConfig } from '../../src/config.js';
 import type { DatabaseRuntime } from '../../src/platform/pool/runtime.js';
 import type { CoordinatorAdvanceDelivery } from '../../src/runs/advance/contract.js';
 import type { RunTransitionPlan } from '../../src/runs/advance/plan.js';
-import { loadRunForAdvance } from '../../src/runs/advance/state.js';
+import { loadRunForAdvance } from '../../src/runs/advance/load/state.js';
 import { createRunAdvanceStore } from '../../src/runs/advance/store.js';
 
 type AdvanceInput = Readonly<{

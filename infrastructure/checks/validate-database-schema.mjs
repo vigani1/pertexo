@@ -26,7 +26,7 @@ export async function validateDatabaseSchemaOwnership() {
       ),
     )
   ).join('\n');
-  const schemaNames = (await readdir(schemaDirectory))
+  const schemaNames = (await readdir(schemaDirectory, { recursive: true }))
     .filter((name) => name.endsWith('.ts'))
     .sort();
   const schemaSource = (

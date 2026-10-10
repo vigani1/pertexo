@@ -1,13 +1,13 @@
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
-import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 import {
   type completionSchema,
   NodeAttemptStateCorruptError,
-} from './contract.js';
+} from '../contract.js';
 
 type CompletionInput = z.output<typeof completionSchema>;
 
