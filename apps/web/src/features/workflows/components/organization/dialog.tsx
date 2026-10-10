@@ -50,13 +50,12 @@ type Props = Readonly<{
 const RECOVERY =
   'Exact recovery is available for 24 hours, not an indefinite duplicate-prevention guarantee. Refreshing current state preserves an unresolved request; only a known outcome permits a fresh change. Reloading this page loses its in-memory recovery.';
 
-export function WorkflowOrganizationDialog({
+function useOrganizationEdit({
   apiClient,
   userId,
   workspace,
   workflows,
-  onClose,
-}: Props) {
+}: Omit<Props, 'onClose'>) {
   const [selected] = useState(() => [...workflows]);
   const selectionValid = validOrganizationSelection(selected);
   const queryClient = useQueryClient();
@@ -77,6 +76,7 @@ export function WorkflowOrganizationDialog({
     workspace,
     requiredRole: 'editor',
   });
+  const enabled = selectionValid && !command.denied;
   const reads = useQueries({
     queries: selected.map(({ workflow }) => ({
       ...workflowOrganizationProjectionQueryOptions(
@@ -87,16 +87,16 @@ export function WorkflowOrganizationDialog({
         { include: 'organization' },
       ),
       staleTime: 0,
-      enabled: selectionValid && !command.denied,
+      enabled,
     })),
   });
   const folders = useQuery({
     ...workflowFoldersQueryOptions(apiClient, userId, workspace.id),
-    enabled: selectionValid && !command.denied,
+    enabled,
   });
   const tags = useInfiniteQuery({
     ...workflowTagsInfiniteQueryOptions(apiClient, userId, workspace.id),
-    enabled: selectionValid && !command.denied,
+    enabled,
   });
   const current = reads.flatMap((read) =>
     read.data === undefined ? [] : [read.data],
@@ -200,6 +200,29 @@ export function WorkflowOrganizationDialog({
     }
   }
 
+  return {
+    selected,
+    selectionValid,
+    command,
+    current,
+    folders,
+    tags,
+    reading,
+    failedRead,
+    locked,
+    feedback,
+    preparing,
+    formEpoch,
+    refresh,
+    confirm,
+  };
+}
+
+export function WorkflowOrganizationDialog(props: Props) {
+  const editor = useOrganizationEdit(props);
+  const { selected, selectionValid, command, reading, locked, feedback } =
+    editor;
+  const { workspace, onClose } = props;
   return (
     <Dialog
       open
@@ -246,92 +269,144 @@ export function WorkflowOrganizationDialog({
           {command.denied || !reading ? null : (
             <Notice>Reading current organization…</Notice>
           )}
-          {command.denied ||
-          !selectionValid ||
-          current.length !== selected.length ||
-          folders.data === undefined ||
-          tags.data === undefined ? null : (
-            <OrganizationFields
-              key={formEpoch}
-              workspace={workspace}
-              workflows={current}
-              folders={folders.data.items}
-              tags={tags.data.pages.flatMap((page) => page.items)}
-              pending={preparing || command.pending}
-              locked={
-                locked ||
-                reading ||
-                failedRead ||
-                command.error !== undefined ||
-                command.result !== undefined
-              }
-              onConfirm={confirm}
-            />
-          )}
-          {command.result === undefined ? null : 'items' in command.result ? (
-            <WorkflowOrganizationOutcomes
-              items={command.result.items.filter(
-                (item) => item.status !== 'detached',
-              )}
-              workflows={command.denied ? [] : selected}
-            />
-          ) : (
-            <Notice tone="success">
-              Organization command accepted. Current metadata is refreshed
-              separately.
-            </Notice>
-          )}
+          <OrganizationEditForm editor={editor} workspace={workspace} />
+          <OrganizationEditResult editor={editor} />
           <p className="text-xs leading-relaxed text-muted-foreground">
             {RECOVERY}
           </p>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="ghost" disabled={locked} onClick={onClose}>
-              Close
-            </Button>
-            {tags.hasNextPage && !command.denied ? (
-              <ProgressButton
-                variant="ghost"
-                pending={tags.isFetchingNextPage}
-                pendingLabel="Loading tags…"
-                disabled={locked}
-                onClick={() => {
-                  void tags.fetchNextPage();
-                }}
-              >
-                Load more tags
-              </ProgressButton>
-            ) : null}
-            {command.retryAvailable ? (
-              <ProgressButton
-                pending={command.pending}
-                pendingLabel="Retrying…"
-                disabled={preparing}
-                onClick={() => {
-                  void command.retry();
-                }}
-              >
-                Retry original request
-              </ProgressButton>
-            ) : null}
-            {command.denied ? null : (
-              <ProgressButton
-                variant="outline"
-                pending={preparing}
-                pendingLabel="Refreshing…"
-                disabled={command.pending}
-                onClick={() => {
-                  void refresh();
-                }}
-              >
-                {command.retryAvailable
-                  ? 'Refresh current state'
-                  : 'Refresh for a new change'}
-              </ProgressButton>
-            )}
-          </div>
+          <OrganizationRecoveryActions editor={editor} onClose={onClose} />
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OrganizationEditForm({
+  editor,
+  workspace,
+}: Readonly<{
+  editor: ReturnType<typeof useOrganizationEdit>;
+  workspace: AccessibleWorkspace;
+}>) {
+  const {
+    command,
+    selectionValid,
+    current,
+    selected,
+    folders,
+    tags,
+    formEpoch,
+    preparing,
+    locked,
+    reading,
+    failedRead,
+    confirm,
+  } = editor;
+  return (
+    <>
+      {command.denied ||
+      !selectionValid ||
+      current.length !== selected.length ||
+      folders.data === undefined ||
+      tags.data === undefined ? null : (
+        <OrganizationFields
+          key={formEpoch}
+          workspace={workspace}
+          workflows={current}
+          folders={folders.data.items}
+          tags={tags.data.pages.flatMap((page) => page.items)}
+          pending={preparing || command.pending}
+          locked={
+            locked ||
+            reading ||
+            failedRead ||
+            command.error !== undefined ||
+            command.result !== undefined
+          }
+          onConfirm={confirm}
+        />
+      )}
+    </>
+  );
+}
+
+function OrganizationEditResult({
+  editor,
+}: Readonly<{ editor: ReturnType<typeof useOrganizationEdit> }>) {
+  const { command, selected } = editor;
+  return (
+    <>
+      {command.result === undefined ? null : 'items' in command.result ? (
+        <WorkflowOrganizationOutcomes
+          items={command.result.items.filter(
+            (item) => item.status !== 'detached',
+          )}
+          workflows={command.denied ? [] : selected}
+        />
+      ) : (
+        <Notice tone="success">
+          Organization command accepted. Current metadata is refreshed
+          separately.
+        </Notice>
+      )}
+    </>
+  );
+}
+
+function OrganizationRecoveryActions({
+  editor,
+  onClose,
+}: Readonly<{
+  editor: ReturnType<typeof useOrganizationEdit>;
+  onClose: () => void;
+}>) {
+  const { command, tags, preparing, locked, refresh } = editor;
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      <Button variant="ghost" disabled={locked} onClick={onClose}>
+        Close
+      </Button>
+      {tags.hasNextPage && !command.denied ? (
+        <ProgressButton
+          variant="ghost"
+          pending={tags.isFetchingNextPage}
+          pendingLabel="Loading tags…"
+          disabled={locked}
+          onClick={() => {
+            void tags.fetchNextPage();
+          }}
+        >
+          Load more tags
+        </ProgressButton>
+      ) : null}
+      {command.retryAvailable ? (
+        <ProgressButton
+          pending={command.pending}
+          pendingLabel="Retrying…"
+          disabled={preparing}
+          onClick={() => {
+            void command.retry();
+          }}
+        >
+          Retry original request
+        </ProgressButton>
+      ) : null}
+      {command.denied ? null : (
+        <ProgressButton
+          variant="outline"
+          pending={preparing}
+          pendingLabel="Refreshing…"
+          disabled={command.pending}
+          onClick={() => {
+            void refresh();
+          }}
+        >
+          {command.retryAvailable
+            ? 'Refresh current state'
+            : 'Refresh for a new change'}
+        </ProgressButton>
+      )}
+    </div>
   );
 }
 
@@ -368,6 +443,7 @@ function OrganizationFields({
       ? (workflows[0]?.organization.tags.map((tag) => tag.id) ?? [])
       : [],
   );
+  const selectedTagIds = new Set(tagIds);
   const validation = useFieldValidation<'tags'>();
   const allowed = canEditOrganization(workspace, workflows, operation);
   const visibleTags = [
@@ -441,11 +517,11 @@ function OrganizationFields({
                   className="flex min-w-0 items-center gap-2 text-sm break-words [content-visibility:auto]"
                 >
                   <Checkbox
-                    checked={tagIds.includes(tag.id)}
+                    checked={selectedTagIds.has(tag.id)}
                     disabled={
                       locked ||
                       !allowed ||
-                      (!tagIds.includes(tag.id) && tagIds.length >= 16)
+                      (!selectedTagIds.has(tag.id) && tagIds.length >= 16)
                     }
                     onCheckedChange={(checked) => {
                       setTagIds((current) =>

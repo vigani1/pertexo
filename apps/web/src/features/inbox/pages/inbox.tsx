@@ -2,8 +2,14 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
   WorkspaceInboxFilter,
+  WorkspaceInboxListResponse,
 } from '@pertexo/contracts';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  type UseInfiniteQueryResult,
+  type InfiniteData,
+} from '@tanstack/react-query';
 import { CheckCheckIcon, InboxIcon } from 'lucide-react';
 import { LoadMore } from '@/components/patterns/load-more';
 import {
@@ -32,6 +38,7 @@ import { InboxThreadRow } from '../components/inbox-thread-row';
 import {
   useMarkAllReadMutation,
   useMarkThreadReadMutation,
+  type InboxScope,
 } from '../data/inbox.mutations';
 import {
   inboxSummaryQueryOptions,
@@ -166,9 +173,7 @@ export function InboxPage({
     ...inboxSummaryQueryOptions(apiClient, user.id, workspace.id),
     enabled: canRead,
   });
-  const markRead = useMarkThreadReadMutation(scope);
   const markAll = useMarkAllReadMutation(scope);
-  const nowMs = useNow(60_000);
 
   if (!canRead)
     return (
@@ -194,7 +199,6 @@ export function InboxPage({
       />
     );
 
-  const items = threads.data?.pages.flatMap((page) => page.items) ?? [];
   // Mark-all reads what this list showed; later failures stay unread.
   const cut = threads.data?.pages[0]?.revision;
   const unreadCount = summary.data?.unreadCount;
@@ -216,7 +220,34 @@ export function InboxPage({
         appears once, with how often it failed. Reading it here doesn’t change
         its runs.
       </p>
-      {markRead.isError || markAll.isError ? (
+      <InboxThreadResults
+        scope={scope}
+        threads={threads}
+        filter={filter}
+        markAllFailed={markAll.isError}
+      />
+    </div>
+  );
+}
+
+/** Thread reads and the relative-time clock belong to the result list. */
+function InboxThreadResults({
+  scope,
+  threads,
+  filter,
+  markAllFailed,
+}: Readonly<{
+  scope: InboxScope;
+  threads: UseInfiniteQueryResult<InfiniteData<WorkspaceInboxListResponse>>;
+  filter: WorkspaceInboxFilter;
+  markAllFailed: boolean;
+}>) {
+  const markRead = useMarkThreadReadMutation(scope);
+  const nowMs = useNow(60_000);
+  const items = threads.data?.pages.flatMap((page) => page.items) ?? [];
+  return (
+    <>
+      {markRead.isError || markAllFailed ? (
         <Notice tone="destructive">
           That couldn’t be marked read. Nothing changed; try again.
         </Notice>
@@ -244,7 +275,7 @@ export function InboxPage({
           {items.map((thread) => (
             <InboxThreadRow
               key={thread.workflowId}
-              workspaceId={workspace.id}
+              workspaceId={scope.workspaceId}
               thread={thread}
               nowMs={nowMs}
               marking={
@@ -271,6 +302,6 @@ export function InboxPage({
           void threads.fetchNextPage();
         }}
       />
-    </div>
+    </>
   );
 }

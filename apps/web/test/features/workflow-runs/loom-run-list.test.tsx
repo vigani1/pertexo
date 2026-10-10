@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { LoomRunList } from '@/features/workflow-runs/components/loom/run-list';
@@ -45,6 +46,25 @@ describe('Loom run list', () => {
         'List the run on this timeline (and 1 more workflow not drawn)',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('opens the text alternative from the keyboard and exposes native run links', async () => {
+    const workspaceId = '01a0d5c8-246f-776c-b931-fef581c67863';
+    renderInRouter(
+      <LoomRunList
+        model={model({})}
+        workspaceId={workspaceId}
+        windowLabel="the last hour"
+      />,
+    );
+    const event = userEvent.setup();
+    const disclosure = await screen.findByText('List the run on this timeline');
+    disclosure.focus();
+    await event.keyboard('{Enter}');
+    const link = screen.getByRole('link', { name: /Succeeded/u });
+    expect(link).toHaveAttribute('href', `/w/${workspaceId}/runs/${run.id}`);
+    await event.tab();
+    expect(link).toHaveFocus();
   });
 
   it('counts several runs and hidden workflows', async () => {

@@ -1,5 +1,9 @@
 import { useState, type Ref } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts';
+import type {
+  AccessibleWorkspace,
+  WorkflowFolder,
+  WorkflowTag,
+} from '@pertexo/contracts';
 import { workflowOrganizationNameQuerySchema } from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -34,15 +38,15 @@ import {
 } from '../../hooks/use-organization-read-lifetime';
 
 function OrganizationNameFilter({
-  value,
+  initialQuery,
   filterRef,
   onChange,
 }: Readonly<{
-  value: string;
+  initialQuery: string;
   filterRef: Ref<HTMLInputElement>;
   onChange: (query: string | null) => void;
 }>) {
-  const [query, setQuery] = useState(value);
+  const [query, setQuery] = useState(initialQuery);
   const [error, setError] = useState<string>();
   return (
     <form
@@ -113,22 +117,6 @@ export function WorkflowOrganizationFilters({
     lifetime.error !== undefined ||
     isOrganizationReadDenied(folders.error) ||
     isOrganizationReadDenied(tags.error);
-  const [managing, setManaging] = useState(false);
-  const folderItems = [
-    { value: 'all', label: 'All folders' },
-    { value: 'root', label: 'Unfiled' },
-    ...workflowFolderOptions(denied ? [] : (folders.data?.items ?? [])),
-  ];
-  const tagItems = [
-    { value: 'all', label: 'All tags' },
-    ...(denied
-      ? []
-      : (tags.data?.pages.flatMap((page) => page.items) ?? [])
-    ).map((tag) => ({
-      value: tag.id,
-      label: tag.key,
-    })),
-  ];
   const change = (next: Parameters<typeof updateWorkflowListSearch>[1]) => {
     onSearchChange((current) => updateWorkflowListSearch(current, next));
   };
@@ -139,7 +127,7 @@ export function WorkflowOrganizationFilters({
     >
       <OrganizationNameFilter
         key={search.query ?? ''}
-        value={search.query ?? ''}
+        initialQuery={search.query ?? ''}
         filterRef={filterRef}
         onChange={(query) => {
           change({ query });
@@ -160,17 +148,11 @@ export function WorkflowOrganizationFilters({
         >
           Clear filters
         </Button>
-        {workspace.role === 'owner' || workspace.role === 'admin' ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setManaging(true);
-            }}
-          >
-            Manage folders and tags…
-          </Button>
-        ) : null}
+        <OrganizationManagerAction
+          apiClient={apiClient}
+          userId={userId}
+          workspace={workspace}
+        />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <ToggleGroup
@@ -191,53 +173,14 @@ export function WorkflowOrganizationFilters({
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-        <Select
-          items={folderItems}
-          value={search.folderId ?? 'all'}
-          disabled={denied || folders.data === undefined}
-          onValueChange={(value) => {
-            if (typeof value === 'string')
-              change({ folderId: value === 'all' ? null : value });
-          }}
-        >
-          <SelectTrigger
-            aria-label="Filter by folder"
-            className="w-auto min-w-40"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {folderItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <Select
-          items={tagItems}
-          value={search.tagId ?? 'all'}
-          disabled={denied || tags.data === undefined}
-          onValueChange={(value) => {
-            if (typeof value === 'string')
-              change({ tagId: value === 'all' ? null : value });
-          }}
-        >
-          <SelectTrigger aria-label="Filter by tag" className="w-auto min-w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {tagItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        <OrganizationVocabularyControls
+          folders={denied ? undefined : folders.data?.items}
+          tags={
+            denied ? undefined : tags.data?.pages.flatMap((page) => page.items)
+          }
+          search={search}
+          onChange={change}
+        />
         <Button
           type="button"
           variant="outline"
@@ -285,33 +228,150 @@ export function WorkflowOrganizationFilters({
         onLoadMore={() => void tags.fetchNextPage()}
       />
       {denied || folders.isError || tags.isError ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void Promise.all([folders.refetch(), tags.refetch()]).then(
-                  (results) => {
-                    if (results.every((result) => result.isSuccess))
-                      lifetime.restore();
-                  },
-                );
-              }}
-            >
-              Retry folders and tags
-            </Button>
-          }
-        >
-          {denied
-            ? 'Access changed. Cached folders and tags were forgotten. Retry to read current authorized metadata.'
-            : folders.data !== undefined || tags.data !== undefined
-              ? 'Folders or tags couldn’t be refreshed. Showing the last authorized vocabulary; it may be stale.'
-              : 'Folders or tags couldn’t be read.'}{' '}
-          Existing filters remain in the URL; missing metadata is not an empty
-          vocabulary.
-        </Notice>
+        <OrganizationVocabularyReadFailure
+          denied={denied}
+          showing={folders.data !== undefined || tags.data !== undefined}
+          onRetry={() => {
+            void Promise.all([folders.refetch(), tags.refetch()]).then(
+              (results) => {
+                if (results.every((result) => result.isSuccess))
+                  lifetime.restore();
+              },
+            );
+          }}
+        />
       ) : null}
+    </section>
+  );
+}
+
+function OrganizationVocabularyControls({
+  folders,
+  tags,
+  search,
+  onChange: change,
+}: Readonly<{
+  folders: readonly WorkflowFolder[] | undefined;
+  tags: readonly WorkflowTag[] | undefined;
+  search: WorkflowListSearch;
+  onChange: (change: Parameters<typeof updateWorkflowListSearch>[1]) => void;
+}>) {
+  const folderItems = [
+    { value: 'all', label: 'All folders' },
+    { value: 'root', label: 'Unfiled' },
+    ...workflowFolderOptions(folders ?? []),
+  ];
+  const tagItems = [
+    { value: 'all', label: 'All tags' },
+    ...(tags ?? []).map((tag) => ({
+      value: tag.id,
+      label: tag.key,
+    })),
+  ];
+  return (
+    <>
+      <Select
+        items={folderItems}
+        value={search.folderId ?? 'all'}
+        disabled={folders === undefined}
+        onValueChange={(value) => {
+          if (typeof value === 'string')
+            change({ folderId: value === 'all' ? null : value });
+        }}
+      >
+        <SelectTrigger
+          aria-label="Filter by folder"
+          className="w-auto min-w-40"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {folderItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      <Select
+        items={tagItems}
+        value={search.tagId ?? 'all'}
+        disabled={tags === undefined}
+        onValueChange={(value) => {
+          if (typeof value === 'string')
+            change({ tagId: value === 'all' ? null : value });
+        }}
+      >
+        <SelectTrigger aria-label="Filter by tag" className="w-auto min-w-40">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {tagItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </>
+  );
+}
+
+function OrganizationVocabularyReadFailure({
+  denied,
+  showing,
+  onRetry,
+}: Readonly<{
+  denied: boolean;
+  showing: boolean;
+  onRetry: () => void;
+}>) {
+  return (
+    <Notice
+      tone="warning"
+      action={
+        <Button variant="ghost" onClick={onRetry}>
+          Retry folders and tags
+        </Button>
+      }
+    >
+      {denied
+        ? 'Access changed. Cached folders and tags were forgotten. Retry to read current authorized metadata.'
+        : showing
+          ? 'Folders or tags couldn’t be refreshed. Showing the last authorized vocabulary; it may be stale.'
+          : 'Folders or tags couldn’t be read.'}{' '}
+      Existing filters remain in the URL; missing metadata is not an empty
+      vocabulary.
+    </Notice>
+  );
+}
+
+function OrganizationManagerAction({
+  apiClient,
+  userId,
+  workspace,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+}>) {
+  const [managing, setManaging] = useState(false);
+  if (workspace.role !== 'owner' && workspace.role !== 'admin') return null;
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setManaging(true);
+        }}
+      >
+        Manage folders and tags…
+      </Button>
       {managing ? (
         <WorkflowOrganizationManager
           apiClient={apiClient}
@@ -321,7 +381,7 @@ export function WorkflowOrganizationFilters({
             setManaging(false);
           }}
         />
-      ) : null}
-    </section>
+      ) : null}{' '}
+    </>
   );
 }

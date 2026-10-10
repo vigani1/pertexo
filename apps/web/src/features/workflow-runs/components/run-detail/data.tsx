@@ -295,23 +295,6 @@ export function StepInputData({
   scope: RunDataScope;
 }>) {
   const nodeRunId = row.nodeRunId;
-  const recorded = useQuery({
-    ...nodeRunInputQueryOptions(
-      scope.apiClient,
-      scope.userId,
-      scope.workspace.id,
-      scope.runId,
-      {
-        nodeRunId: nodeRunId ?? '',
-        attemptNumber: row.currentAttemptNumber,
-        status: row.status,
-      },
-    ),
-    enabled:
-      nodeRunId !== undefined &&
-      row.usesConnection !== true &&
-      row.status !== 'skipped',
-  });
   // Skipped steps never received input; upstream values aren't their input.
   if (row.status === 'skipped')
     return <Muted>This step was skipped, so it received no input.</Muted>;
@@ -331,6 +314,38 @@ export function StepInputData({
         <SourceData>{sources}</SourceData>
       </div>
     );
+  return (
+    <RecordedStepInput row={row} nodeRunId={nodeRunId} scope={scope}>
+      {sources}
+    </RecordedStepInput>
+  );
+}
+
+/** This reader exists only for a step whose input may be retained. */
+function RecordedStepInput({
+  row,
+  nodeRunId,
+  scope,
+  children,
+}: Readonly<{
+  row: RunTimelineRow;
+  nodeRunId: string;
+  scope: RunDataScope;
+  children: ReactNode;
+}>) {
+  const recorded = useQuery({
+    ...nodeRunInputQueryOptions(
+      scope.apiClient,
+      scope.userId,
+      scope.workspace.id,
+      scope.runId,
+      {
+        nodeRunId,
+        attemptNumber: row.currentAttemptNumber,
+        status: row.status,
+      },
+    ),
+  });
   const data = recorded.data;
   if (data === undefined && !recorded.isError)
     return (
@@ -350,7 +365,7 @@ export function StepInputData({
           emptyText="This step received nothing."
           scope={scope}
         />
-        <SourcesDisclosure>{sources}</SourcesDisclosure>
+        <SourcesDisclosure>{children}</SourcesDisclosure>
       </div>
     );
   return (
@@ -381,7 +396,7 @@ export function StepInputData({
               : 'Pertexo didn’t keep exactly what this step received, for example because it was over 256 KB.'}
         </Muted>
       )}
-      <SourceData>{sources}</SourceData>
+      <SourceData>{children}</SourceData>
     </div>
   );
 }

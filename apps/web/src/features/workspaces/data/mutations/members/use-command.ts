@@ -85,7 +85,6 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
   const inFlight = useRef(false);
   const [state, setState] = useState<CommandState<Attempt>>({ kind: 'idle' });
   const stateRef = useRef<CommandState<Attempt>>(state);
-  const mutation = useMutation({ mutationFn: input.send });
   const membersKey = workspaceMemberKeys.list(
     input.actorUserId,
     input.workspaceId,
@@ -103,6 +102,21 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
     stateRef.current = next;
     setState(next);
   }, []);
+
+  const mutation = useMutation({
+    mutationFn: ({ attempt }: Readonly<{ attempt: Attempt; scope: symbol }>) =>
+      input.send(attempt),
+    onSuccess: async (_result, { attempt, scope }) => {
+      if (owner.current !== scope) return;
+      transition({ kind: 'executing', attempt, phase: 'reconciliation' });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: membersKey }),
+        queryClient.invalidateQueries({
+          queryKey: workspaceKeys.accessible(input.actorUserId),
+        }),
+      ]);
+    },
+  });
 
   async function settleFailure(
     scope: symbol,
@@ -172,15 +186,7 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
     inFlight.current = true;
     transition({ kind: 'executing', attempt, phase: 'request' });
     try {
-      await mutation.mutateAsync(attempt);
-      if (owner.current !== scope) return false;
-      transition({ kind: 'executing', attempt, phase: 'reconciliation' });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: membersKey }),
-        queryClient.invalidateQueries({
-          queryKey: workspaceKeys.accessible(input.actorUserId),
-        }),
-      ]);
+      await mutation.mutateAsync({ attempt, scope });
       if (owner.current !== scope) return false;
       transition({ kind: 'idle' });
       input.onDone(attempt);

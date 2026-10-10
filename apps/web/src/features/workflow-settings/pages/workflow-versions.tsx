@@ -4,6 +4,7 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
   WorkflowVersionResponse,
+  WorkflowSummary,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -33,36 +34,12 @@ import { workflowVersionsQueryOptions } from '../data/workflow-settings.queries'
 
 type Version = WorkflowVersionResponse;
 
-/** Which overlay is open over the versions: a preview, compare or restore. */
-function useVersionOverlays() {
-  const [previewing, setPreviewing] = useState<Version>();
-  const [restoring, setRestoring] = useState<Version>();
-  const [comparing, setComparing] = useState(false);
-  return {
-    previewing,
-    restoring,
-    comparing,
-    preview: setPreviewing,
-    restore: setRestoring,
-    compare: () => {
-      setComparing(true);
-    },
-    /** From a preview straight to restoring the same version. */
-    restoreFromPreview: (version: Version) => {
-      setPreviewing(undefined);
-      setRestoring(version);
-    },
-    closePreview: () => {
-      setPreviewing(undefined);
-    },
-    closeRestore: () => {
-      setRestoring(undefined);
-    },
-    closeCompare: () => {
-      setComparing(false);
-    },
-  } as const;
-}
+type VersionOverlay =
+  | Readonly<{ kind: 'none' | 'compare' }>
+  | Readonly<{
+      kind: 'preview' | 'restore' | 'duplicate' | 'export';
+      version: Version;
+    }>;
 
 /** "3 published · v3 is live", under the section's sentence. */
 function VersionsTally({
@@ -191,18 +168,13 @@ export function WorkflowVersionsPage({
   const summary = useQuery(
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
-  const overlays = useVersionOverlays();
-  const [duplicating, setDuplicating] = useState<Version>();
-  const [exporting, setExporting] = useState<Version>();
-  const navigate = useNavigate();
+  const [overlay, setOverlay] = useState<VersionOverlay>({ kind: 'none' });
   const workflow = visibleSettingsData(summary);
   const canRestore = workspace.capabilities.includes('workflow:update');
   const items = visibleSettingsData(versions)?.items;
   const liveVersionId = summary.data?.publishedVersionId ?? null;
   const archived = summary.data?.lifecycleStatus === 'archived';
   const live = items?.find((version) => version.id === liveVersionId);
-  const previous = (version: Version) =>
-    items?.find((candidate) => candidate.versionNumber < version.versionNumber);
 
   return (
     <>
@@ -229,86 +201,142 @@ export function WorkflowVersionsPage({
             liveVersionId={liveVersionId}
             archived={archived}
             canRestore={canRestore}
-            onCompare={overlays.compare}
-            onPreview={overlays.preview}
-            onRestore={overlays.restore}
+            onCompare={() => {
+              setOverlay({ kind: 'compare' });
+            }}
+            onPreview={(version) => {
+              setOverlay({ kind: 'preview', version });
+            }}
+            onRestore={(version) => {
+              setOverlay({ kind: 'restore', version });
+            }}
             onExport={
               workspace.capabilities.includes('workflow:read')
-                ? setExporting
+                ? (version) => {
+                    setOverlay({ kind: 'export', version });
+                  }
                 : undefined
             }
             onDuplicate={
               workflow !== undefined &&
               canDuplicateWorkflow(workspace, workflow)
-                ? setDuplicating
+                ? (version) => {
+                    setOverlay({ kind: 'duplicate', version });
+                  }
                 : undefined
             }
           />
         )}
       </SettingsSection>
-      <VersionCompareSheet
-        open={overlays.comparing && items !== undefined}
-        versions={items ?? []}
-        onClose={overlays.closeCompare}
+      <VersionOverlayContent
+        overlay={overlay}
+        onChange={setOverlay}
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        workflowId={workflowId}
+        workflow={workflow}
+        versions={items}
       />
-      <VersionPreviewSheet
-        version={items === undefined ? undefined : overlays.previewing}
-        previous={
-          overlays.previewing === undefined
-            ? undefined
-            : previous(overlays.previewing)
-        }
-        canRestore={canRestore}
-        onRestore={overlays.restoreFromPreview}
-        onClose={overlays.closePreview}
-      />
-      {overlays.restoring === undefined || items === undefined ? null : (
+    </>
+  );
+}
+
+/** One overlay selection prevents simultaneous preview/copy/export owners. */
+function VersionOverlayContent({
+  overlay,
+  onChange,
+  apiClient,
+  userId,
+  workspace,
+  workflowId,
+  workflow,
+  versions,
+}: Readonly<{
+  overlay: VersionOverlay;
+  onChange: (overlay: VersionOverlay) => void;
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  workflowId: string;
+  workflow: WorkflowSummary | undefined;
+  versions: readonly Version[] | undefined;
+}>) {
+  const navigate = useNavigate();
+  const close = () => {
+    onChange({ kind: 'none' });
+  };
+  switch (overlay.kind) {
+    case 'none':
+      return null;
+    case 'compare':
+      return (
+        <VersionCompareSheet
+          open={versions !== undefined}
+          versions={versions ?? []}
+          onClose={close}
+        />
+      );
+    case 'preview':
+      return (
+        <VersionPreviewSheet
+          version={versions === undefined ? undefined : overlay.version}
+          previous={versions?.find(
+            (candidate) =>
+              candidate.versionNumber < overlay.version.versionNumber,
+          )}
+          canRestore={workspace.capabilities.includes('workflow:update')}
+          onRestore={(version) => {
+            onChange({ kind: 'restore', version });
+          }}
+          onClose={close}
+        />
+      );
+    case 'restore':
+      return versions === undefined ? null : (
         <RestoreVersionDialog
-          key={overlays.restoring.id}
+          key={overlay.version.id}
           apiClient={apiClient}
-          userId={user.id}
+          userId={userId}
           workspaceId={workspace.id}
           workflowId={workflowId}
-          version={overlays.restoring}
-          onClose={overlays.closeRestore}
+          version={overlay.version}
+          onClose={close}
         />
-      )}
-      {duplicating === undefined || workflow === undefined ? null : (
+      );
+    case 'duplicate':
+      return workflow === undefined ? null : (
         <WorkflowDuplicateDialog
-          key={`${user.id}:${workspace.id}:${workflowId}:${duplicating.id}`}
+          key={`${userId}:${workspace.id}:${workflowId}:${overlay.version.id}`}
           apiClient={apiClient}
-          userId={user.id}
+          userId={userId}
           workspace={workspace}
           workflow={workflow}
-          source={{ kind: 'version', versionId: duplicating.id }}
-          versionNumber={duplicating.versionNumber}
-          allowed={items !== undefined}
-          onClose={() => {
-            setDuplicating(undefined);
-          }}
+          source={{ kind: 'version', versionId: overlay.version.id }}
+          versionNumber={overlay.version.versionNumber}
+          allowed={versions !== undefined}
+          onClose={close}
           onCreated={(destinationId) => {
-            setDuplicating(undefined);
+            close();
             void navigate({
               to: '/w/$workspaceId/workflows/$workflowId',
               params: { workspaceId: workspace.id, workflowId: destinationId },
             });
           }}
         />
-      )}
-      {exporting === undefined || workflow === undefined ? null : (
+      );
+    case 'export':
+      return workflow === undefined ? null : (
         <WorkflowExportDialog
-          key={`${user.id}:${workspace.id}:${workflowId}:${exporting.id}`}
+          key={`${userId}:${workspace.id}:${workflowId}:${overlay.version.id}`}
           apiClient={apiClient}
-          userId={user.id}
+          userId={userId}
           workspace={workspace}
           workflow={workflow}
-          source={{ kind: 'version', versionId: exporting.id }}
-          allowed={items !== undefined}
-          onClose={() => {
-            setExporting(undefined);
-          }}
+          source={{ kind: 'version', versionId: overlay.version.id }}
+          allowed={versions !== undefined}
+          onClose={close}
         />
-      )}
-    </>
-  );
+      );
+  }
 }

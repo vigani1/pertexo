@@ -14,7 +14,7 @@ interface Attempt {
   key: string;
   workflowId?: string;
 }
-interface CommandState {
+export interface WorkflowImportCommandState {
   kind: 'editable' | 'sending' | 'uncertain' | 'confirmed';
   error?: string;
   workflowId?: string;
@@ -27,7 +27,9 @@ export function useWorkflowImportCommand(
   lifetime: ReturnType<typeof usePortabilityLifetime>,
 ) {
   const queryClient = useQueryClient();
-  const [state, setState] = useState<CommandState>({ kind: 'editable' });
+  const [state, setState] = useState<WorkflowImportCommandState>({
+    kind: 'editable',
+  });
   const attempt = useRef<Attempt | undefined>(undefined);
   const busy = useRef(false);
   const clear = useCallback(() => {

@@ -20,7 +20,7 @@ export function LoomRunList({
       <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-sm text-xs text-subtle-foreground outline-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
         <ChevronDownIcon
           aria-hidden="true"
-          className="size-3.5 transition-transform group-open:rotate-180"
+          className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
         />
         {model.runCount === 1
           ? 'List the run on this timeline'

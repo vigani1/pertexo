@@ -38,7 +38,6 @@ export function TagManagement({
 }>) {
   const [selected, setSelected] = useState<string>();
   const [name, setName] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<WorkflowTag>();
   const current = tags.find((tag) => tag.id === selected);
   const disabled =
@@ -51,7 +50,6 @@ export function TagManagement({
       : 'Enter a tag key of 1–32 bytes using letters, numbers and single hyphens.';
   const changeConfirmation = (open: boolean) => {
     if (open) command.reset();
-    setConfirmDelete(open);
     setDeleteTarget(open ? current : undefined);
     onConfirmationChange(open);
   };
@@ -67,12 +65,13 @@ export function TagManagement({
               <Button
                 type="button"
                 variant="ghost"
+                className="h-auto min-h-9 max-w-full py-2 whitespace-normal wrap-anywhere pointer-coarse:h-auto pointer-coarse:min-h-10"
                 disabled={locked}
                 onClick={() => {
                   setSelected(tag.id);
                   fields.reset();
                   setName(tag.key);
-                  setConfirmDelete(false);
+                  setDeleteTarget(undefined);
                 }}
               >
                 Edit tag {tag.key}
@@ -115,6 +114,9 @@ export function TagManagement({
               <Input
                 {...control}
                 ref={fields.register('name')}
+                name="tag-key"
+                autoComplete="off"
+                spellCheck={false}
                 value={name}
                 disabled={disabled}
                 onChange={(event) => {
@@ -166,7 +168,7 @@ export function TagManagement({
                     setSelected(undefined);
                     fields.reset();
                     setName('');
-                    setConfirmDelete(false);
+                    setDeleteTarget(undefined);
                   }}
                 >
                   New tag
@@ -184,58 +186,79 @@ export function TagManagement({
           onClick={() => {
             setSelected(undefined);
             setName('');
-            setConfirmDelete(false);
+            setDeleteTarget(undefined);
           }}
         >
           New tag
         </Button>
       ) : null}
-      {confirmDelete && deleteTarget !== undefined ? (
-        <ConfirmDialog
-          open
+      {deleteTarget !== undefined ? (
+        <TagDeleteConfirmation
+          target={deleteTarget}
+          command={command}
+          pendingKind={pendingKind}
+          disabled={disabled}
           onOpenChange={changeConfirmation}
-          tone="destructive"
-          title={`Delete ${deleteTarget.key}?`}
-          description="Deletion also removes assignments from archived workflows. Up to 50 assignments can be detached together. If the tag is used by more workflows, review assignments and explicitly clean up selected workflows first."
-          pending={command.pending && pendingKind === 'delete-tag'}
-          pendingLabel="Deleting…"
-          locked={command.pending || command.retryAvailable}
-          confirmDisabled={
-            command.denied ||
-            (!command.retryAvailable &&
-              (disabled ||
-                command.error !== undefined ||
-                command.result !== undefined))
-          }
-          confirmLabel={
-            command.retryAvailable
-              ? 'Retry exact command'
-              : 'Confirm delete tag'
-          }
-          error={command.error}
-          errorTone={command.retryAvailable ? 'warning' : 'destructive'}
-          onConfirm={
-            command.retryAvailable
-              ? command.retry
-              : () => {
-                  if (current === undefined) return;
-                  start({
-                    ...scope,
-                    kind: 'delete-tag',
-                    tagId: deleteTarget.id,
-                    idempotencyKey: crypto.randomUUID(),
-                    body: { expectedTagRevision: deleteTarget.revision },
-                  });
-                }
-          }
-        >
-          {command.result === undefined ? null : (
-            <Notice tone="success">
-              Command completed. Current organization is being reloaded.
-            </Notice>
-          )}
-        </ConfirmDialog>
+          onDelete={() => {
+            if (current === undefined) return;
+            start({
+              ...scope,
+              kind: 'delete-tag',
+              tagId: deleteTarget.id,
+              idempotencyKey: crypto.randomUUID(),
+              body: { expectedTagRevision: deleteTarget.revision },
+            });
+          }}
+        />
       ) : null}
     </section>
+  );
+}
+
+function TagDeleteConfirmation({
+  target,
+  command,
+  pendingKind,
+  disabled,
+  onOpenChange,
+  onDelete,
+}: Readonly<{
+  target: WorkflowTag;
+  command: ReturnType<typeof useWorkflowOrganizationCommand>;
+  pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
+  disabled: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+}>) {
+  return (
+    <ConfirmDialog
+      open
+      onOpenChange={onOpenChange}
+      tone="destructive"
+      title={`Delete ${target.key}?`}
+      description="Deletion also removes assignments from archived workflows. Up to 50 assignments can be detached together. If the tag is used by more workflows, review assignments and explicitly clean up selected workflows first."
+      pending={command.pending && pendingKind === 'delete-tag'}
+      pendingLabel="Deleting…"
+      locked={command.pending || command.retryAvailable}
+      confirmDisabled={
+        command.denied ||
+        (!command.retryAvailable &&
+          (disabled ||
+            command.error !== undefined ||
+            command.result !== undefined))
+      }
+      confirmLabel={
+        command.retryAvailable ? 'Retry exact command' : 'Confirm delete tag'
+      }
+      error={command.error}
+      errorTone={command.retryAvailable ? 'warning' : 'destructive'}
+      onConfirm={command.retryAvailable ? command.retry : onDelete}
+    >
+      {command.result === undefined ? null : (
+        <Notice tone="success">
+          Command completed. Current organization is being reloaded.
+        </Notice>
+      )}
+    </ConfirmDialog>
   );
 }
