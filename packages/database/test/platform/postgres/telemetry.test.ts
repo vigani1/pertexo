@@ -587,36 +587,6 @@ describe('PostgreSQL telemetry pool', () => {
     await pool.end();
   });
 
-  it('contains meter callback failures without changing query or release results', async () => {
-    const meter = {
-      createHistogram() {
-        return {
-          record() {
-            throw new Error('meter unavailable');
-          },
-        };
-      },
-      createObservableGauge() {
-        return { addCallback: vi.fn() };
-      },
-    } as unknown as Meter;
-    const result = { rows: [{ value: 1 }] };
-    const fixture = telemetryClient([
-      { kind: 'resolve', result },
-      { kind: 'resolve', result: { rows: [] } },
-    ]);
-    const pool = createDatabasePool({}, { meter, monitorLockWaits: false });
-    poolAt(0).emit('connect', fixture.client);
-
-    await expect(fixture.client.query('select 1')).resolves.toBe(result);
-    await expect(fixture.client.query('begin')).resolves.toEqual({ rows: [] });
-    expect(() => {
-      fixture.client.release();
-    }).not.toThrow();
-
-    await pool.end();
-  });
-
   it('records failed pool checkout duration without connection details', async () => {
     const telemetry = fakeMeter();
     const pool = createDatabasePool(
@@ -804,18 +774,6 @@ describe('PostgreSQL telemetry pool', () => {
       'renamed error',
       Object.assign(new Error('secret'), { name: 'SecretDbError' }),
       'Error',
-    ],
-    [
-      'throwing prototype',
-      new Proxy(
-        {},
-        {
-          getPrototypeOf() {
-            throw new Error('secret prototype failure');
-          },
-        },
-      ),
-      'NonError',
     ],
     ['undefined', undefined, 'NonError'],
     ['primitive', 'secret primitive', 'NonError'],

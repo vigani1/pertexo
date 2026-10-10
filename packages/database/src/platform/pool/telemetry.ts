@@ -71,18 +71,6 @@ const meterStates = new WeakMap<Meter, MeterState>();
 const instrumentedClients = new WeakSet<PoolClient>();
 const transactionStartedAtByClient = new WeakMap<PoolClient, number>();
 
-function safeRecord(
-  histogram: Histogram,
-  value: number,
-  attributes: Record<string, string>,
-): void {
-  try {
-    histogram.record(value, attributes);
-  } catch {
-    // Observability must never affect a database operation's result.
-  }
-}
-
 function safeDiagnostic(
   diagnostics: DatabasePoolDiagnostics | undefined,
   operation: DatabasePoolDiagnosticEvent['operation'],
@@ -93,18 +81,10 @@ function safeDiagnostic(
     diagnostics?.record({
       operation,
       poolRole,
-      errorType: safeErrorType(error),
+      errorType: error instanceof Error ? 'Error' : 'NonError',
     });
   } catch {
     // Classification and reporting must not affect database availability.
-  }
-}
-
-function safeErrorType(error: unknown): 'Error' | 'NonError' {
-  try {
-    return error instanceof Error ? 'Error' : 'NonError';
-  } catch {
-    return 'NonError';
   }
 }
 
@@ -278,8 +258,7 @@ function instrumentClient(client: PoolClient, state: MeterState): void {
   ): void => {
     const transactionStartedAt = transactionStartedAtByClient.get(client);
     if (transactionStartedAt === undefined) return;
-    safeRecord(
-      state.transactionDuration,
+    state.transactionDuration.record(
       (performance.now() - transactionStartedAt) / 1_000,
       { outcome },
     );
@@ -293,7 +272,7 @@ function instrumentClient(client: PoolClient, state: MeterState): void {
       if (recorded) return;
       recorded = true;
       const finishedAt = performance.now();
-      safeRecord(state.queryDuration, (finishedAt - startedAt) / 1_000, {
+      state.queryDuration.record((finishedAt - startedAt) / 1_000, {
         operation,
         outcome,
       });
@@ -367,8 +346,7 @@ function instrumentClientRelease(client: PoolClient, state: MeterState): void {
   client.release = (destroy?: boolean | Error): void => {
     const transactionStartedAt = transactionStartedAtByClient.get(client);
     if (transactionStartedAt !== undefined) {
-      safeRecord(
-        state.transactionDuration,
+      state.transactionDuration.record(
         (performance.now() - transactionStartedAt) / 1_000,
         { outcome: destroy ? 'connection_error' : 'abandoned' },
       );
@@ -437,8 +415,7 @@ function startLockWaitMonitor(
         }
         for (const [pid, observation] of observations) {
           if (active.has(pid)) continue;
-          safeRecord(
-            state.lockWaitDuration,
+          state.lockWaitDuration.record(
             (observation.lastObservedAt - observation.firstObservedAt) / 1_000,
             { outcome: 'completed' },
           );
