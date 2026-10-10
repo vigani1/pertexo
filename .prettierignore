@@ -5,3 +5,6 @@ pnpm-lock.yaml
 AGENTS.md
 docs
 packages/contracts/artifacts/*.json
+
+# Alternate local checkouts must be formatted from their own repository roots.
+.claude/worktrees/
