@@ -15,7 +15,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 - [x] 6. Fit and scroll the run-input dialog at 768 pixels high.
 - [x] 7. Simplify workflow search, filters, selection and row actions.
 - [x] 8. Add a step to the right of the selected step and link it forward.
-- [ ] 9. Stabilize save-state width and tidy editor header links.
+- [x] 9. Stabilize save-state width and tidy editor header links.
 - [ ] 10. Put HTTP credentials first and display human-readable sizes.
 - [ ] 11. Call graph edges links; reserve connection for credentials.
 
@@ -108,3 +108,14 @@ link form one undoable transaction. Drag placement remains at the pointer;
 no selection, multiple selections, missing outputs and inputless steps retain
 standalone placement. The existing selection framing reveals the new step and
 respects reduced motion. No extra camera effect or draft store is introduced.
+
+
+## Editor header
+
+Slice 9 reserves the save-status slot and the changing Publish and Issues labels.
+Retry and Review remain visible, including on touch screens. Intermediate widths
+wrap tabs onto their own row before the identity becomes cramped; the compact
+three-column layout starts only when the content fits. Contract joins the
+existing action group. Starting itself links to Triggers instead of adding a
+second loose link. Save serialization, conflict recovery, declaration ownership
+and reduced-motion behavior remain with their existing owners.

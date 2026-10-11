@@ -30,7 +30,13 @@ export function PublishButton({
   );
   if (blockedReason === undefined)
     return (
-      <Button type="button" size="sm" variant="primary" onClick={onClick}>
+      <Button
+        type="button"
+        size="sm"
+        variant="primary"
+        className="w-48 max-w-full"
+        onClick={onClick}
+      >
         {content}
       </Button>
     );
@@ -43,6 +49,7 @@ export function PublishButton({
               type="button"
               size="sm"
               variant="primary"
+              className="w-48 max-w-full"
               disabled
               focusableWhenDisabled
               aria-describedby={reasonId}

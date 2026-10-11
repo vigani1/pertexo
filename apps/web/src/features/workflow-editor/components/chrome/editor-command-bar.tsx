@@ -78,15 +78,15 @@ export function EditorCommandBar({
             workflow={workflow}
           />
           <SaveState onRetry={onRetrySave} onReview={onReviewConflict} />
+        </>
+      }
+      actions={
+        <>
           <DeclarationDialog
             editable={
               !paused && workspace.capabilities.includes('workflow:update')
             }
           />
-        </>
-      }
-      actions={
-        <>
           <HistoryControls
             onUndo={onUndo}
             onRedo={onRedo}

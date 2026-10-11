@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { BracesIcon } from 'lucide-react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
+import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import {
   Dialog,
@@ -40,11 +42,18 @@ export function DeclarationDialog({
       }}
     >
       <DialogTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="max-sm:w-7 max-sm:px-0 pointer-coarse:max-sm:w-10"
+          />
+        }
         disabled={session === null && scratch}
         aria-label="Workflow contract"
-        className="inline-link rounded-sm font-sans text-[0.72rem] font-medium focus-ring"
       >
-        Contract
+        <BracesIcon aria-hidden="true" />
+        <span className="hidden sm:inline">Contract</span>
       </DialogTrigger>
       <DialogContent
         placement="top"
