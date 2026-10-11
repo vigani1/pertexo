@@ -31,6 +31,7 @@ export async function createFamily(
     slotLent?: boolean;
     childQueued?: boolean;
     workspaceId?: string;
+    executableJson?: unknown;
   }> = {},
 ) {
   const workspaceId = input.workspaceId ?? randomUUID();
@@ -62,8 +63,15 @@ export async function createFamily(
     await admin.query(
       `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by)
-       values($1,$2,$3,1,'{}','{}',$4,$5)`,
-      [versionId, workspaceId, workflowId, checksum, userId],
+       values($1,$2,$3,1,'{}',$6::jsonb,$4,$5)`,
+      [
+        versionId,
+        workspaceId,
+        workflowId,
+        checksum,
+        userId,
+        JSON.stringify(input.executableJson ?? {}),
+      ],
     );
   }
   await admin.query(

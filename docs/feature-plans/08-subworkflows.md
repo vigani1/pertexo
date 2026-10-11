@@ -526,6 +526,38 @@ are pure transition proofs; durable intent persistence, atomic child acceptance,
 result loading, worker recovery and the editor remain unfinished. Call is not
 yet registered in the serving node catalog, and slice 3 remains incomplete.
 
+### Slice 3 persistence and action qualification
+
+The next private checkpoint persists the Call intent, logical wait and wakeup in
+one parent checkpoint transaction. The child's terminal transaction writes its
+immutable fact and parent wakeup without a parent run/checkpoint lock. Result
+readers resolve the Call relation rather than SDK declaration input, including
+the callable result reader. Normal parent CAS consumes the fact and retains its
+small identity. Parent close records direct cancellation and wakes each child;
+the child applies its ordinary control in its own transaction.
+
+A workspace-scoped maintenance action runs before ordinary advancement. It
+recovers the recorded child before fresh target checks, uses shared run
+acceptance and transfers the existing admission row atomically. A candidate
+refusal rolls back child, checkpoint, event, receipt and outbox effects. Target
+and notification prerequisites precede parent locking; the counter remains last.
+The existing workspace admission lock now also pins current entitlements before
+run locking. Immutable workflow versions stay read-only; the three existing
+roles and forced row security are unchanged.
+
+All 720 live database tests pass (46 optional tests skipped), as do 526 database
+unit tests, 209 model tests and 14 execution tests. Fourteen new PostgreSQL cases
+cover declaration atomicity, rebound rollback, wrapper bounds, independent child
+completion under a held parent lock, result ownership/consumption, capacity-one
+acceptance, pre-commit interruption, post-commit recovery after receipt expiry,
+target/archive/input refusals, dispatched ordinary work, fixed accepted pin and
+deadline, transport mismatch, direct child control and closed-parent loan release.
+The repository check passes. Storage tests script transitions to qualify their
+transaction owner; they do not claim real worker or browser execution. Worker
+composition, publication dependency enforcement, the serving Call adapter,
+editor picker and integrated recovery/loop/history proofs remain unfinished.
+Slice 3 is not complete.
+
 | Slice                  | Behavior at its end                                                                                                                           | Required evidence                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0. Review              | Accepted callable/pin/authority/capacity/retention decisions and bounded contract                                                             | Owner accepted on 2026-10-10 with slot handoff and archive warning; reconcile exact source/interfaces before each runtime slice                                                                                                                   |

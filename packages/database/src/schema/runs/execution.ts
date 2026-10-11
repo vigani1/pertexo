@@ -134,7 +134,7 @@ export const workflowRuns = appSchema.table(
     ),
     check(
       'workflow_runs_trigger_type_valid',
-      sql`((trigger_type)::text = ANY (ARRAY[('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('webhook'::character varying)::text]))`,
+      sql`((trigger_type)::text = ANY (ARRAY[('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))`,
     ),
     unique('workflow_runs_failure_notification_pin_unique').on(
       table.workspaceId,
@@ -383,7 +383,7 @@ export const nodeRuns = appSchema.table(
     ),
     check(
       'node_runs_control_kind_valid',
-      sql`((control_kind IS NULL) OR ((control_kind)::text = 'for_each_barrier'::text))`,
+      sql`((control_kind IS NULL) OR ((control_kind)::text IN ('for_each_barrier'::text, 'workflow_call'::text)))`,
     ),
     check(
       'node_runs_due_wakeup_consistent',
@@ -431,7 +431,7 @@ export const nodeRuns = appSchema.table(
     ),
     check(
       'node_runs_wait_state_valid',
-      sql`(((((status)::text = 'waiting'::text) AND ((control_kind)::text = 'for_each_barrier'::text) AND (wait_kind IS NULL) AND (resume_at IS NULL) AND (retry_due_at IS NULL)) OR (((status)::text = 'waiting'::text) AND (control_kind IS NULL) AND ((((wait_kind)::text = 'node_wait'::text) AND (resume_at IS NOT NULL) AND (retry_due_at IS NULL)) OR (((wait_kind)::text = 'retry_backoff'::text) AND (resume_at IS NULL) AND (retry_due_at IS NOT NULL)))) OR (((status)::text <> 'waiting'::text) AND (control_kind IS NULL) AND (wait_kind IS NULL) AND (resume_at IS NULL) AND (retry_due_at IS NULL))) IS TRUE)`,
+      sql`(((((status)::text = 'waiting'::text) AND ((control_kind)::text IN ('for_each_barrier'::text, 'workflow_call'::text)) AND (wait_kind IS NULL) AND (resume_at IS NULL) AND (retry_due_at IS NULL)) OR (((status)::text = 'waiting'::text) AND (control_kind IS NULL) AND ((((wait_kind)::text = 'node_wait'::text) AND (resume_at IS NOT NULL) AND (retry_due_at IS NULL)) OR (((wait_kind)::text = 'retry_backoff'::text) AND (resume_at IS NULL) AND (retry_due_at IS NOT NULL)))) OR (((status)::text <> 'waiting'::text) AND (control_kind IS NULL) AND (wait_kind IS NULL) AND (resume_at IS NULL) AND (retry_due_at IS NULL))) IS TRUE)`,
     ),
     unique('node_runs_invocation_unique').on(
       table.workflowRunId,

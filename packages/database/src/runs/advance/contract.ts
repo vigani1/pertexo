@@ -1,4 +1,7 @@
-import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
+import type {
+  WorkflowCallOutcome,
+  WorkflowCheckpoint,
+} from '@pertexo/workflow-engine';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import type { PublishedWorkflow } from '../published-workflow.js';
@@ -25,6 +28,9 @@ export type RunAdvanceState = Readonly<{
   checkpoint: unknown;
   observations: readonly unknown[];
   completedOutputs: readonly unknown[];
+  /** A loan explicitly fences new parent node admissions. */
+  hasExecutionSlot: boolean;
+  callOutcomes: readonly WorkflowCallOutcome[];
   workflow: PublishedWorkflow;
   /** On-demand completion projection using the already locked run transaction. */
   readCompletionValues(nodeIds?: readonly string[]): Promise<

@@ -6,6 +6,10 @@ import {
   type CoordinatorAdvanceDelivery,
   type RunAdvanceResult,
 } from '../contract.js';
+import {
+  persistCallIntents,
+  persistConsumedCalls,
+} from '../../calls/persist.js';
 import { persistCoordinatorExecutionTransitions } from './node-admissions.js';
 import type { RunTransitionPlan } from '../plan.js';
 import {
@@ -69,6 +73,7 @@ export async function saveRunTransition(
     if (deferred !== undefined) return deferred;
   }
 
+  await persistCallIntents(client, input);
   const rejectedForEachDeclarations = await settleRejectedForEachDeclarations(
     client,
     workspaceId,
@@ -97,6 +102,7 @@ export async function saveRunTransition(
     ...(traceparent === undefined ? {} : { traceparent }),
     workspaceId,
   });
+  await persistConsumedCalls(client, workspaceId, runId, plan);
   const runTransition = await persistCoordinatorRunTransition(client, {
     authoritativeCancellation:
       previous.cancelRequested || row.cancel_requested_at !== null,

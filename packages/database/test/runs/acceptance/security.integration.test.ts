@@ -214,13 +214,11 @@ describe('workflow run persistence security and compatibility', () => {
       `);
       expect(privileges.rows).toHaveLength(8);
       for (const row of privileges.rows) {
-        // Maintenance reads and deletes workspace rows for retention and
-        // purge; its operator commands also record run events.
+        // Maintenance also accepts called runs through the shared implementation;
+        // neither runtime role can update an entire acceptance table.
         const maintenance = row.roleName === 'pertexo_maintenance';
         expect(row.canSelect).toBe(true);
-        expect(row.canInsert).toBe(
-          !maintenance || row.tableName === 'run_events',
-        );
+        expect(row.canInsert).toBe(true);
         expect(row.canUpdate).toBe(false);
         expect(row.canDelete).toBe(maintenance);
       }
@@ -231,7 +229,7 @@ describe('workflow run persistence security and compatibility', () => {
         roleName: string;
       }>(`
         with runtime_roles(role_name) as (
-          values ('pertexo_app'), ('pertexo_maintenance'), ('pertexo_app')
+          values ('pertexo_app'), ('pertexo_maintenance')
         ), idempotency_columns(column_name) as (
           values
             ('status'),
@@ -261,11 +259,10 @@ describe('workflow run persistence security and compatibility', () => {
         cross join idempotency_relation
         order by role_name, column_name
       `);
-      expect(idempotencyUpdatePrivileges.rows).toHaveLength(15);
+      expect(idempotencyUpdatePrivileges.rows).toHaveLength(10);
       for (const row of idempotencyUpdatePrivileges.rows) {
         expect(row.canUpdate).toBe(
-          (row.roleName === 'pertexo_app' || row.roleName === 'pertexo_app') &&
-            ['result_ref', 'status', 'updated_at'].includes(row.columnName),
+          ['result_ref', 'status', 'updated_at'].includes(row.columnName),
         );
       }
     } finally {

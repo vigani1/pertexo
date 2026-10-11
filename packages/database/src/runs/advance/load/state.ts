@@ -15,6 +15,7 @@ import {
   readPersistedFacts,
 } from './facts.js';
 import { pendingFailureObservations } from './pending-failures.js';
+import { readCallFacts } from '../../calls/facts.js';
 import { readRunCompletionValues } from './completion.js';
 
 /** The locked run row the transition is saved against. */
@@ -218,6 +219,7 @@ export async function loadRunForAdvance(
     row,
     pendingFailures: pendingFailures.rows,
     state: Object.freeze({
+      ...(await readCallFacts(client, workspaceId, runId)),
       runId,
       workflowVersionId: row.workflow_version_id,
       checkpoint: row.scheduler_state,

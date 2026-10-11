@@ -92,3 +92,7 @@ export {
   readExecutionStorageCapacity,
 } from '../artifacts/store.js';
 export type { ArtifactCapacityObservation } from '../artifacts/store.js';
+
+export { createWorkflowCallStore } from './calls/store.js';
+export { WorkflowCallRefusedError } from './calls/contract.js';
+export type { WorkflowCallStore } from './calls/contract.js';

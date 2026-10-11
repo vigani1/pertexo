@@ -42,7 +42,14 @@ export const FailureNotificationContextSchema = z
     workflowVersionId: z.uuid(),
     terminalEventSequence: z.number().int().positive(),
     terminalStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
-    triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
+    triggerType: z.enum([
+      'api',
+      'manual',
+      'replay',
+      'schedule',
+      'webhook',
+      'workflow_call',
+    ]),
     startedAt: z.iso.datetime(),
     completedAt: z.iso.datetime(),
     primaryFailure: z.union([
