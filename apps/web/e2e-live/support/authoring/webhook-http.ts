@@ -107,6 +107,15 @@ export async function authorWebhookHttpGraph(
     .click();
   await connect('Should send', 'true');
   await map('body', 'Run input', '$.body');
+  // Palette placement already saved the last link; wait for the final input edit.
+  await expect
+    .poll(
+      async () =>
+        (await readDraft(page, workflowPath)).graph.nodes.find(
+          ({ id }) => id === httpId,
+        )?.inputMappings,
+    )
+    .toEqual({ body: { kind: 'run_input', path: '$.body' } });
   await expect
     .poll(async () => (await readDraft(page, workflowPath)).graph.edges.length)
     .toBe(4);
