@@ -581,7 +581,7 @@ describe('connections page', () => {
     expect(
       await lens().findByText('The API refused these headers.'),
     ).toBeVisible();
-    expect(lens().getByRole('button', { name: 'Save anyway' })).toBeVisible();
+    expect(lens().getByRole('button', { name: 'Done' })).toBeVisible();
     expect(bodies).toEqual([
       {
         providerKey: 'http',
@@ -648,7 +648,8 @@ describe('connections page', () => {
     expect(
       await lens().findByText('The test failed: address not found.'),
     ).toBeVisible();
-    await actor.click(lens().getByRole('button', { name: 'Save anyway' }));
+    // Already saved before the test ran, so the way out is Done.
+    await actor.click(lens().getByRole('button', { name: 'Done' }));
     expect(
       await screen.findByText('last test failed · address not found'),
     ).toBeVisible();

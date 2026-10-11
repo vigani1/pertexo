@@ -158,9 +158,8 @@ function InputCaseToolbar({
         ) : null}
       </div>
       <p className="text-sm text-muted-foreground">
-        Shared synthetic JSON tied to a published version. Loading never runs
-        anything. Don’t save secrets or personal data: inputs are not
-        automatically redacted.
+        Saved example inputs for this workflow. Loading one only fills in the
+        input; it never starts a run. Don’t save secrets or personal data.
       </p>
     </>
   );

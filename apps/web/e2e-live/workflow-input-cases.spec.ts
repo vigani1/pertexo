@@ -312,7 +312,9 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
   ).toBe(3);
   // A later publication never changes the retained command.
   await expect(retryButton).toBeEnabled();
-  await expect(runDialog).toContainText('Original submitted version');
+  await expect(runDialog).toContainText(
+    'Retrying uses the version the first attempt was sent to',
+  );
   await retryButton.click();
   await expect(page).toHaveURL(/\/runs\/[^/]+$/u);
   expect(submitted).toHaveLength(2);
