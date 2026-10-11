@@ -95,7 +95,7 @@ export function describeConnectionHealth(
     };
   if (health.lastErrorCode !== null)
     return {
-      text: `${health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(connection.providerKey, health.lastErrorCode)}`,
+      text: `${connection.status === 'reauthorization_required' && health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(connection.providerKey, health.lastErrorCode)}`,
       tone: 'attention',
     };
   if (

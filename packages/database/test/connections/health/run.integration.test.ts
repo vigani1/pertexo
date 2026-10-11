@@ -11,7 +11,11 @@ import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptConnectionFenceError,
 } from '../../../src/testing.js';
-import { asAdmin, parseDatabaseConfig } from '../../runs/run-store/fixtures.js';
+import {
+  actorId,
+  asAdmin,
+  parseDatabaseConfig,
+} from '../../runs/run-store/fixtures.js';
 import {
   applyHealthCommand,
   claimHealthAttempt,
@@ -33,6 +37,7 @@ import {
   createHealthDispatcher,
   readAcceptedHealthExecution,
   withHealthWriteFailure,
+  withHealthApi,
 } from './run.fixture.js';
 
 describe('durable revision-fenced Slack run health (ADR059)', () => {
@@ -312,6 +317,49 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
       health_revision: '2',
       last_error_code: 'connection.slack_token_revoked',
       last_tested_at: null,
+    });
+  });
+
+  it('a pre-dispatch test failure cannot replace a newer run rejection', async () => {
+    const connection = await createHealthConnection();
+    const common = {
+      workspaceId: workspaceA,
+      actorId,
+      connectionId: connection.connectionId,
+      secretVersionId: connection.secretVersionId,
+      idempotencyKey: `preflight-${randomUUID()}`,
+      dispatchToken: randomUUID(),
+      requestHash: 'b'.repeat(64),
+    };
+    await withHealthApi(async (api) => {
+      await api.startConnectionTest({
+        ...common,
+        expectedProviderKey: 'slack',
+      });
+      await api.resolveConnectionTestSecret({
+        ...common,
+        expectedProviderKey: 'slack',
+      });
+      const lease = await claimHealthAttempt(connection);
+      await markHealthDispatched(lease, connection);
+      await nodeAttemptStore.complete(healthCompletion(lease));
+      await applyHealthCommand(await healthCommand(lease));
+      const current = await readHealth(connection.connectionId);
+      await api.completeConnectionTest({
+        ...common,
+        outcome: {
+          ok: false,
+          httpStatus: null,
+          errorCode: 'connection.test.dns_failed',
+          reauthorizationRequired: false,
+        },
+      });
+      expect(await readHealth(connection.connectionId)).toEqual(current);
+      expect(current).toMatchObject({
+        status: 'reauthorization_required',
+        last_error_code: 'connection.slack_token_revoked',
+        last_tested_at: null,
+      });
     });
   });
 

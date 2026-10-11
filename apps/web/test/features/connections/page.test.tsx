@@ -598,6 +598,70 @@ describe('connections page', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps the completed DNS failure visible after leaving add-connection setup', async () => {
+    let created = false;
+    let current = connection('Billing API', { providerKey: 'http' });
+    mockServer.use(
+      ...identityHandlers(),
+      listOf(() => (created ? [current] : [])),
+      detailOf(() => current),
+      http.post(base, () => {
+        created = true;
+        return HttpResponse.json(current, { status: 201 });
+      }),
+      http.post(`${base}/${connectionId}/test`, () => {
+        current = connection('Billing API', {
+          providerKey: 'http',
+          health: {
+            lastTestedAt: '2026-09-24T10:00:00.000Z',
+            lastHealthyAt: null,
+            lastErrorCode: 'connection.test.dns_failed',
+          },
+        });
+        return HttpResponse.json({
+          connection: current,
+          outcome: {
+            ok: false,
+            httpStatus: null,
+            errorCode: 'connection.test.dns_failed',
+          },
+        });
+      }),
+    );
+    renderApp(`/w/${workspaceId}/connections?add=http`, { strict: true });
+    const actor = userEvent.setup();
+    await actor.type(
+      await screen.findByLabelText('Header 1 value'),
+      'Bearer setup-secret',
+    );
+    await actor.click(lens().getByRole('button', { name: 'Continue' }));
+    await actor.clear(lens().getByLabelText('Connection name'));
+    await actor.type(lens().getByLabelText('Connection name'), 'Billing API');
+    await actor.click(lens().getByRole('button', { name: 'Save and test' }));
+    await actor.type(
+      await lens().findByLabelText('Address to call'),
+      'https://billing.example.test/me',
+    );
+    await actor.click(
+      lens().getByRole('button', { name: 'Call this address' }),
+    );
+    expect(
+      await lens().findByText('The test failed: address not found.'),
+    ).toBeVisible();
+    await actor.click(lens().getByRole('button', { name: 'Save anyway' }));
+    expect(
+      await screen.findByText('last test failed · address not found'),
+    ).toBeVisible();
+    expect(screen.queryByText('never tested')).not.toBeInTheDocument();
+    await actor.click(
+      screen.getByRole('button', { name: /Billing API, Unknown/u }),
+    );
+    expect(await lens().findByText('Last tested')).toBeVisible();
+    expect(
+      lens().getByText('Last tested').nextElementSibling,
+    ).not.toHaveTextContent('Never');
+  });
+
   it('creates a Resend connection and sends a test email only after it is allowed', async () => {
     const tests: unknown[] = [];
     let createBody: unknown;

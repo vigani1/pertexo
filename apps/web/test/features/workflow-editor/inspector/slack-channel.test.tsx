@@ -170,56 +170,97 @@ describe('the Slack step’s channel in Setup', { timeout: 30_000 }, () => {
     expect(lookups).toEqual([]);
   });
 
-  it('adds a Slack connection in place and comes back with it selected', async () => {
-    const createdId = '55555555-5555-4555-8555-555555555555';
-    const created = slackConnection(
-      workspaceId,
-      createdId,
-      'Control Operations Slack',
-    );
-    const { saved, event } = await openSlackStep(
-      slackGraph({ channelId: { kind: 'literal', value: 'C0123456789' } }, {}),
-      [...workspace.capabilities, 'connection:use', 'connection:manage'],
-    );
-    mockServer.use(
-      http.post(`${workspaceApi}/connections`, () =>
-        HttpResponse.json(created, { status: 201 }),
-      ),
-      http.post(`${workspaceApi}/connections/${createdId}/test`, () =>
-        HttpResponse.json({
-          connection: created,
-          outcome: { ok: true, httpStatus: 200, errorCode: null },
+  it.each(['passed', 'rejected'] as const)(
+    'returns the %s setup-test health when selecting a newly added Slack connection',
+    async (result) => {
+      const createdId = '55555555-5555-4555-8555-555555555555';
+      const created = slackConnection(
+        workspaceId,
+        createdId,
+        'Control Operations Slack',
+      );
+      const tested =
+        result === 'passed'
+          ? created
+          : {
+              ...created,
+              status: 'reauthorization_required' as const,
+              health: {
+                ...created.health,
+                lastTestedAt: '2026-10-11T10:00:00.000Z',
+                lastErrorCode: 'connection.credential_rejected',
+              },
+            };
+      const { saved, event } = await openSlackStep(
+        slackGraph(
+          { channelId: { kind: 'literal', value: 'C0123456789' } },
+          {},
+        ),
+        [...workspace.capabilities, 'connection:use', 'connection:manage'],
+      );
+      mockServer.use(
+        http.post(`${workspaceApi}/connections`, () =>
+          HttpResponse.json(created, { status: 201 }),
+        ),
+        http.post(`${workspaceApi}/connections/${createdId}/test`, () =>
+          HttpResponse.json({
+            connection: tested,
+            outcome:
+              result === 'passed'
+                ? { ok: true, httpStatus: 200, errorCode: null }
+                : {
+                    ok: false,
+                    httpStatus: 401,
+                    errorCode: 'connection.credential_rejected',
+                  },
+          }),
+        ),
+      );
+      await event.click(
+        screen.getByRole('button', { name: 'New Slack connection' }),
+      );
+      const lens = within(await screen.findByRole('dialog'));
+      expect(lens.getByText('Connect Slack')).toBeVisible();
+      await event.type(
+        lens.getByLabelText('Slack bot token'),
+        'xoxb-1234567890-secret',
+      );
+      await event.click(lens.getByRole('button', { name: 'Continue' }));
+      await event.click(lens.getByRole('button', { name: 'Save and test' }));
+      expect(
+        await lens.findByText(
+          result === 'passed'
+            ? 'Slack accepted the token.'
+            : 'Slack rejected the token.',
+        ),
+      ).toBeVisible();
+      await event.click(
+        lens.getByRole('button', {
+          name: result === 'passed' ? 'Done' : 'Save anyway',
         }),
-      ),
-    );
-    await event.click(
-      screen.getByRole('button', { name: 'New Slack connection' }),
-    );
-    const lens = within(await screen.findByRole('dialog'));
-    expect(lens.getByText('Connect Slack')).toBeVisible();
-    await event.type(
-      lens.getByLabelText('Slack bot token'),
-      'xoxb-1234567890-secret',
-    );
-    await event.click(lens.getByRole('button', { name: 'Continue' }));
-    await event.click(lens.getByRole('button', { name: 'Save and test' }));
-    expect(await lens.findByText('Slack accepted the token.')).toBeVisible();
-    await event.click(lens.getByRole('button', { name: 'Done' }));
+      );
 
-    expect(
-      await screen.findByText('Connected Control Operations Slack'),
-    ).toBeVisible();
-    expect(screen.queryByText('Connect Slack')).toBeNull();
-    expect(screen.getByLabelText('Slack connection')).toHaveTextContent(
-      'Control Operations Slack',
-    );
-    pressSave();
-    await waitFor(() => {
-      expect(saved.graph?.nodes[0]?.connectionRefs).toEqual({
-        slack_bot_token: createdId,
+      expect(
+        await screen.findByText(
+          result === 'passed'
+            ? 'Connected Control Operations Slack'
+            : 'Saved Control Operations Slack',
+        ),
+      ).toBeVisible();
+      expect(screen.queryByText('Connect Slack')).toBeNull();
+      expect(screen.getByLabelText('Slack connection')).toHaveTextContent(
+        result === 'passed'
+          ? 'Control Operations Slack'
+          : 'A connection that’s no longer active',
+      );
+      pressSave();
+      await waitFor(() => {
+        expect(saved.graph?.nodes[0]?.connectionRefs).toEqual({
+          slack_bot_token: createdId,
+        });
       });
-    });
-  });
+    },
+  );
 
   it('offers no connection in place while connections are unavailable', async () => {
     const lookups: string[] = [];
