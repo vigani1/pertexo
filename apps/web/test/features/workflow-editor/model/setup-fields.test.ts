@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { fieldLabel } from '@/features/workflow-editor/model/field-units';
+import {
+  fieldLabel,
+  toShownValue,
+  unitDisplay,
+} from '@/features/workflow-editor/model/field-units';
 import {
   parseNumberField,
   schemaFields,
@@ -44,13 +48,73 @@ describe('step setup fields', () => {
       ok: false,
       error: 'Timeout can be at most 30 s.',
     });
-    expect(parseNumberField(response, '20000000')).toEqual({
+    expect(parseNumberField(response, '11')).toEqual({
       ok: false,
       error: 'Largest response can be at most 10 MB.',
     });
     expect(parseNumberField(wait, '2592001')).toEqual({
       ok: false,
       error: 'Wait for can be at most 30 days.',
+    });
+  });
+
+  it.each([
+    { maximum: 10_485_760, bytes: 1_048_576, shown: 1 },
+    { maximum: 10_485_760, bytes: 1_153_434, shown: 1.1 },
+    { maximum: 10_485_760, bytes: 1_048_577, shown: 1.000001 },
+    { maximum: 262_144, bytes: 65_536, shown: 64 },
+    { maximum: 262_144, bytes: 65_537, shown: 64.001 },
+    { maximum: 1_023, bytes: 513, shown: 513 },
+  ])(
+    'round-trips $bytes bytes through the size field',
+    ({ maximum, bytes, shown }) => {
+      const field = {
+        key: 'sizeBytes',
+        label: 'Size',
+        kind: 'integer',
+        required: true,
+        unit: 'bytes',
+        minimum: 1,
+        maximum,
+      } as const;
+      expect(toShownValue(bytes, field.unit, maximum)).toBe(shown);
+      expect(parseNumberField(field, String(shown))).toEqual({
+        ok: true,
+        value: bytes,
+      });
+    },
+  );
+
+  it('keeps size units tied to the bound and reports bounds in human units', () => {
+    expect(unitDisplay('bytes', 10_485_760)).toMatchObject({
+      symbol: 'MB',
+      name: 'megabytes',
+    });
+    expect(unitDisplay('bytes', 262_144)).toMatchObject({
+      symbol: 'KB',
+      name: 'kilobytes',
+    });
+    expect(unitDisplay('bytes', 1_023)).toMatchObject({
+      symbol: 'B',
+      name: 'bytes',
+    });
+    const field = {
+      key: 'sizeBytes',
+      label: 'Size',
+      kind: 'integer',
+      required: true,
+      unit: 'bytes',
+      minimum: 1,
+      maximum: 262_144,
+    } as const;
+    expect(parseNumberField(field, '1.5')).toEqual({ ok: true, value: 1_536 });
+    expect(parseNumberField(field, '257')).toEqual({
+      ok: false,
+      error: 'Size can be at most 256 KB.',
+    });
+    expect(parseNumberField(field, '0')).toEqual({
+      ok: false,
+      error: 'Size must be at least 1 B.',
     });
   });
 });

@@ -67,27 +67,53 @@ export function fieldLabel(key: string): string {
 /** How the field shows a unit: its symbol and stored units per shown one. */
 export function unitDisplay(
   unit: FieldUnit,
-): Readonly<{ symbol: string; scale: number }> {
+  maximum?: number,
+): Readonly<{ symbol: string; name: string; scale: number }> {
   switch (unit) {
     case 'milliseconds':
-      return { symbol: 's', scale: 1_000 };
+      return { symbol: 's', name: 'seconds', scale: 1_000 };
     case 'seconds':
-      return { symbol: 's', scale: 1 };
+      return { symbol: 's', name: 'seconds', scale: 1 };
     case 'bytes':
-      return { symbol: 'bytes', scale: 1 };
+      // Choose from the catalog bound, so the unit stays put while typing.
+      if (maximum === undefined || maximum >= 1_048_576)
+        return { symbol: 'MB', name: 'megabytes', scale: 1_048_576 };
+      if (maximum >= 1_024)
+        return { symbol: 'KB', name: 'kilobytes', scale: 1_024 };
+      return { symbol: 'B', name: 'bytes', scale: 1 };
   }
 }
 
-/** A stored value as the field shows it: 10000 ms → "10". */
-export function toShownValue(value: number, unit: FieldUnit | undefined) {
+/** A stored value in the shown unit, preserving each whole byte on re-entry. */
+export function toShownValue(
+  value: number,
+  unit: FieldUnit | undefined,
+  maximum?: number,
+) {
   if (unit === undefined) return value;
-  return value / unitDisplay(unit).scale;
+  const { scale } = unitDisplay(unit, maximum);
+  const scaled = value / scale;
+  if (unit !== 'bytes' || !Number.isInteger(value)) return scaled;
+  // Use the shortest decimal that rounds back to the original byte count.
+  // Otherwise an ordinary 1.1 MB edit reloads as 1.1000003814697266.
+  for (let decimals = 0; decimals <= Math.ceil(Math.log10(scale)); decimals++) {
+    const shown = Number(scaled.toFixed(decimals));
+    if (Math.round(shown * scale) === value) return shown;
+  }
+  return scaled;
 }
 
 /** Shown text's number back in stored units, without float noise. */
-export function toStoredValue(shown: number, unit: FieldUnit | undefined) {
+export function toStoredValue(
+  shown: number,
+  unit: FieldUnit | undefined,
+  maximum?: number,
+) {
   if (unit === undefined) return shown;
-  return Math.round(shown * unitDisplay(unit).scale * 1_000) / 1_000;
+  const value = shown * unitDisplay(unit, maximum).scale;
+  return unit === 'bytes'
+    ? Math.round(value)
+    : Math.round(value * 1_000) / 1_000;
 }
 
 /** A stored amount in words with its unit: 30000 ms → "30 s". */
