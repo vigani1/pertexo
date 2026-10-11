@@ -128,6 +128,7 @@ describe('building a For each body', { timeout: 30_000 }, () => {
           HttpResponse.json(
             {
               valid: false,
+              currentPublication: null,
               issues: [
                 {
                   path: `$.nodes.loop.structured.body.nodes.check.${path}`,

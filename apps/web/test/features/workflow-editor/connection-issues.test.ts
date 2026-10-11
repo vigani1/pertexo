@@ -42,7 +42,12 @@ const linked = graph([
   node('post', { connectionRefs: { slack_bot_token: connectionId } }),
 ]);
 const draft = { generation: 0, revision: 1 };
-const report = { valid: true, issues: [], compatibility };
+const report = {
+  valid: true,
+  currentPublication: null,
+  issues: [],
+  compatibility,
+};
 const validation = { report, etag: 'same', requestedEtag: 'same', ...draft };
 const publication = {
   validation,
@@ -166,6 +171,7 @@ describe('editor credential issues', () => {
         report: {
           ...report,
           valid: false,
+          currentPublication: null,
           issues: [
             {
               path: '$.nodes[0].config.count',

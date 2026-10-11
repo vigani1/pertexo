@@ -13,11 +13,11 @@ import {
  * a tooltip and in its accessible description.
  */
 export function PublishButton({
-  versionLabel,
+  label,
   blockedReason,
   onClick,
 }: Readonly<{
-  versionLabel: string | undefined;
+  label: string;
   blockedReason: string | undefined;
   onClick: () => void;
 }>) {
@@ -25,7 +25,7 @@ export function PublishButton({
   const content = (
     <>
       <ArrowUpFromLineIcon data-icon="inline-start" />
-      {versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`}
+      {label}
     </>
   );
   if (blockedReason === undefined)

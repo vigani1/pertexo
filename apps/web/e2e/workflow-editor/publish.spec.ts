@@ -86,7 +86,9 @@ test('tests a step, publishes v1, and follows the exact accepted run', async ({
   await lens.getByRole('button', { name: 'Publish v1' }).click();
   await expect(lens).toBeHidden();
   await expect(page.getByText('v1 is live')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Publish v2' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'No changes since v1' }),
+  ).toBeDisabled();
 
   await page.getByRole('button', { name: 'Run', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Run published version' }).click();

@@ -100,6 +100,7 @@ function makeController() {
       representationTag: tag,
       body: {
         valid: true,
+        currentPublication: null,
         issues: [],
         compatibility: body.compatibility,
       },
@@ -276,6 +277,7 @@ describe('workflow authoring controller public seam', () => {
       controller.validate(request(), { workspaceId, workflowId }, { header }),
     ).resolves.toEqual({
       valid: true,
+      currentPublication: null,
       issues: [],
       compatibility: body.compatibility,
     });

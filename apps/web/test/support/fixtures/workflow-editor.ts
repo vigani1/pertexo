@@ -191,7 +191,7 @@ export function validHandler(
   return http.post(`${workflowApi}/validate`, () => {
     onValidate();
     return HttpResponse.json(
-      { valid: true, issues: [], compatibility },
+      { valid: true, currentPublication: null, issues: [], compatibility },
       { headers: { etag } },
     );
   });

@@ -12,12 +12,12 @@ import {
 
 type PublishAttempt = SavedDraft & Readonly<{ idempotencyKey: string }>;
 
-export type PublicationReceipt = Readonly<{
-  versionId: string;
-  versionNumber: number;
-  generation: number;
-  revision: number;
-}>;
+export type PublicationReceipt = SavedDraft &
+  Readonly<{
+    versionId: string;
+    versionNumber: number;
+    reused: boolean;
+  }>;
 
 export type PublishStage = 'saving' | 'checking' | 'publishing';
 export type PublishResult =
@@ -107,6 +107,13 @@ export function useWorkflowPublication({
       return 'blocked';
     }
     if (!checked.report.valid) return 'blocked';
+    const current = checked.report.currentPublication;
+    if (current?.matchesDraft === true) {
+      setPublishError(
+        `No changes since v${String(current.versionNumber)}. This version is already live.`,
+      );
+      return 'blocked';
+    }
     return { ...saved, idempotencyKey: crypto.randomUUID() };
   }
 
@@ -150,6 +157,8 @@ export function useWorkflowPublication({
       const receipt = {
         versionId: response.version.id,
         versionNumber: response.version.versionNumber,
+        reused: response.reused,
+        etag: prepared.etag,
         generation: prepared.generation,
         revision: prepared.revision,
       };

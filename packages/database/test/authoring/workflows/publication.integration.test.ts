@@ -284,6 +284,13 @@ describe('workflow publication projections', () => {
         workspaceId,
       });
       recordBenchmarkOperation('workflow-create', operationStartedAt);
+      await expect(
+        catalogAuthoring.validateDraft(
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+      ).resolves.toMatchObject({ currentPublication: null });
       const initialRepresentationTag = await currentRepresentationTag(
         catalogAuthoring,
         workspaceId,
@@ -328,6 +335,19 @@ describe('workflow publication projections', () => {
         workflowId: created.workflowId,
         workspaceId,
       });
+      await expect(
+        catalogAuthoring.validateDraft(
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+      ).resolves.toMatchObject({
+        currentPublication: {
+          versionId: first.version.id,
+          versionNumber: 1,
+          matchesDraft: true,
+        },
+      });
       const presentationOnly = await catalogAuthoring.publishWorkflow({
         actorId,
         representationTag: await currentRepresentationTag(
@@ -364,6 +384,19 @@ describe('workflow publication projections', () => {
         actorId,
         testDefinitionCatalog,
       );
+      await expect(
+        catalogAuthoring.validateDraft(
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+      ).resolves.toMatchObject({
+        currentPublication: {
+          versionId: first.version.id,
+          versionNumber: 1,
+          matchesDraft: false,
+        },
+      });
       operationStartedAt = performance.now();
       const executableChange = await catalogAuthoring.publishWorkflow({
         actorId,
@@ -379,10 +412,83 @@ describe('workflow publication projections', () => {
       expect(executableChange.version.checksum).not.toBe(
         first.version.checksum,
       );
+      await expect(
+        catalogAuthoring.validateDraft(
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+      ).resolves.toMatchObject({
+        currentPublication: {
+          versionId: executableChange.version.id,
+          versionNumber: 2,
+          matchesDraft: true,
+        },
+      });
+
+      await saveCurrentDraft(catalogAuthoring, {
+        actorId,
+        expectedRevision: 3,
+        graphJson: baseGraph,
+        workflowId: created.workflowId,
+        workspaceId,
+      });
+      await expect(
+        catalogAuthoring.validateDraft(
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+      ).resolves.toMatchObject({
+        currentPublication: {
+          versionId: executableChange.version.id,
+          versionNumber: 2,
+          matchesDraft: false,
+        },
+      });
+      const restoredPublication = await catalogAuthoring.publishWorkflow({
+        actorId,
+        workspaceId,
+        workflowId: created.workflowId,
+        representationTag: await currentRepresentationTag(
+          catalogAuthoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+          testDefinitionCatalog,
+        ),
+        idempotencyKey: 'publish-canonical-older',
+        requestHash: '5'.repeat(64),
+      });
+      expect(restoredPublication).toMatchObject({
+        reused: true,
+        version: { id: first.version.id },
+      });
+      await expect(
+        catalogAuthoring.validateDraft(
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+      ).resolves.toMatchObject({
+        currentPublication: {
+          versionId: first.version.id,
+          versionNumber: 1,
+          matchesDraft: true,
+        },
+      });
+      await expect(
+        catalogAuthoring.listVersions({
+          workspaceId,
+          workflowId: created.workflowId,
+          actorId,
+          limit: 1,
+        }),
+      ).resolves.toMatchObject({ items: [{ versionNumber: 2 }] });
 
       await saveCurrentDraft(authoring, {
         actorId,
-        expectedRevision: 3,
+        expectedRevision: 4,
         graphJson: emptyGraph,
         workflowId: created.workflowId,
         workspaceId,

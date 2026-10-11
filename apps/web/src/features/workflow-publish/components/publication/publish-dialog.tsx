@@ -23,7 +23,7 @@ import { PublishChanges } from './publish-changes';
 const stages: readonly Readonly<{ stage: PublishStage; label: string }>[] = [
   { stage: 'saving', label: 'Saving your last change' },
   { stage: 'checking', label: 'Checking for issues' },
-  { stage: 'publishing', label: 'Writing the new version' },
+  { stage: 'publishing', label: 'Making this version live' },
 ];
 
 /**
@@ -42,6 +42,7 @@ export function PublishDialog({
   error,
   recoveryPending,
   blockingGroups,
+  unchangedVersionNumber,
   onPublish,
   onFix,
 }: Readonly<{
@@ -55,6 +56,7 @@ export function PublishDialog({
   error: string | undefined;
   recoveryPending: boolean;
   blockingGroups: readonly WorkflowIssueGroup[];
+  unchangedVersionNumber: number | undefined;
   onPublish: () => void;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
@@ -85,6 +87,13 @@ export function PublishDialog({
           <PublishProgress stage={stage} />
         ) : (
           <div className="mt-5 flex flex-col gap-5">
+            {unchangedVersionNumber === undefined ||
+            error !== undefined ? null : (
+              <Notice>
+                No changes since v{unchangedVersionNumber}. This version is
+                already live.
+              </Notice>
+            )}
             <PublishChanges summary={summary} state={summaryState} />
             {blockingGroups.length === 0 ? null : (
               <section aria-label="Blocking issues">
@@ -129,7 +138,9 @@ export function PublishDialog({
             pending={pending}
             pendingLabel="Publishing…"
             icon={<ArrowUpFromLineIcon data-icon="inline-start" />}
-            disabled={blockingGroups.length > 0}
+            disabled={
+              blockingGroups.length > 0 || unchangedVersionNumber !== undefined
+            }
             onClick={onPublish}
           >
             {recoveryPending

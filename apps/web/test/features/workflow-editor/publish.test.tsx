@@ -205,6 +205,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
         HttpResponse.json(
           {
             valid: false,
+            currentPublication: null,
             issues: [
               {
                 path: '$',
@@ -345,6 +346,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
         HttpResponse.json(
           {
             valid: false,
+            currentPublication: null,
             issues: [
               {
                 path: `$.nodes.${nodeId}.config.count`,
@@ -439,6 +441,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
         HttpResponse.json(
           {
             valid: false,
+            currentPublication: null,
             issues: [
               {
                 path: '$.nodes.target.inputMappings.customer',

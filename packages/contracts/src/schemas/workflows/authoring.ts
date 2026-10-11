@@ -109,6 +109,14 @@ export const workflowValidateResponseSchema = z
       .array(workflowValidationIssueSchema)
       .max(WORKFLOW_VALIDATION_MAX_ISSUES),
     compatibility: workflowCompatibilityReportSchema,
+    currentPublication: z
+      .object({
+        versionId: z.uuid(),
+        versionNumber: positiveVersionSchema,
+        matchesDraft: z.boolean(),
+      })
+      .strict()
+      .nullable(),
   })
   .strict();
 

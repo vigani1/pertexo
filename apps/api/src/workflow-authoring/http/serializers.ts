@@ -98,6 +98,7 @@ export function serializeWorkflowDraft(
 export function serializeWorkflowValidation(
   draft: WorkflowDraftRecord,
   validation: ReturnType<typeof validateWorkflowGraph>,
+  currentPublication: WorkflowValidateResponse['currentPublication'],
 ): WorkflowValidationResult {
   const parsed = workflowValidateResponseSchema.safeParse({
     valid: validation.ok && draft.compatibility.compatible,
@@ -107,6 +108,7 @@ export function serializeWorkflowValidation(
       message: issue.message,
     })),
     compatibility: draft.compatibility,
+    currentPublication,
   });
   if (!parsed.success)
     throw new AuthoringValidationUnavailableError('report_limit');

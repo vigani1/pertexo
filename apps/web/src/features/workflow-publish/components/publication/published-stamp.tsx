@@ -18,6 +18,8 @@ export function PublishedStamp({
   workspaceId,
   workflowId,
   versionNumber,
+  reused,
+  liveAgain,
   hasTriggers,
   canRun,
   onRunNow,
@@ -26,6 +28,8 @@ export function PublishedStamp({
   workspaceId: string;
   workflowId: string;
   versionNumber: number;
+  reused: boolean;
+  liveAgain: boolean;
   hasTriggers: boolean;
   canRun: boolean;
   onRunNow: () => void;
@@ -34,15 +38,15 @@ export function PublishedStamp({
   const reducedMotion = usePrefersReducedMotion();
   const [shown, setShown] = useState(reducedMotion);
   useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion || reused) return;
     const timer = window.setTimeout(() => {
       setShown(true);
     }, WEAVE_IN_MS);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [reducedMotion]);
-  const visible = shown || reducedMotion;
+  }, [reducedMotion, reused]);
+  const visible = shown || reducedMotion || reused;
   return (
     // Beside the inspector lens, not over it; the editor sets the inset.
     <div
@@ -56,10 +60,12 @@ export function PublishedStamp({
             className={cn(
               'rounded-lg bg-action px-3.5 py-2.5 font-heading text-[0.95rem] font-semibold text-action-foreground shadow-action',
               !reducedMotion &&
+                !reused &&
                 'motion-safe:animate-[editor-stamp_2.6s_var(--ease-unspool)_both]',
             )}
           >
-            v{versionNumber} is live
+            v{versionNumber} is{' '}
+            {reused ? (liveAgain ? 'live again' : 'still live') : 'live'}
           </p>
           <div className="lens pointer-events-auto flex w-full flex-col gap-3 rounded-lg p-3">
             <div className="flex items-center justify-between gap-2">

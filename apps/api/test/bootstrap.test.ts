@@ -1114,6 +1114,7 @@ describe('API bootstrap ownership and health', () => {
         updatedAt: new Date(),
       };
       const validateDraft = vi.fn().mockResolvedValue({
+        currentPublication: null,
         draft,
         validation: {
           ok: true,
@@ -1168,6 +1169,7 @@ describe('API bootstrap ownership and health', () => {
       );
       expect(checked.json()).toMatchObject({
         valid: true,
+        currentPublication: null,
         issues: [],
         compatibility,
       });

@@ -1,0 +1,96 @@
+import type { PoolClient } from 'pg';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  EMPTY_WORKFLOW_GRAPH,
+  type GraphValidationResult,
+} from '@pertexo/workflow-model';
+import { EMPTY_DEFINITION_CATALOG } from '@pertexo/workflow-model/server';
+import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.js';
+import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
+
+const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const actorId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const versionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const graph = EMPTY_WORKFLOW_GRAPH;
+const checksum = testExecutableCompiler(graph).checksum;
+const valid: GraphValidationResult = {
+  ok: true,
+  issues: [],
+  expandedInvocations: 0,
+  worstCaseLoopIterations: 0,
+};
+
+async function compare(
+  validation = valid,
+  currentChecksum = checksum,
+  published = true,
+) {
+  const client = {
+    query: vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            workspace_id: workspaceId,
+            workflow_id: workflowId,
+            revision: 1,
+            graph_json: graph,
+            updated_by: actorId,
+            updated_at: new Date(),
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [{ setting: '30000', unit: 'ms' }] })
+      .mockResolvedValueOnce({
+        rows: published ? [{ versionId, versionNumber: 3, checksum }] : [],
+      }),
+  } as unknown as PoolClient;
+  const compiler = vi.fn(() => ({
+    checksum: currentChecksum,
+    executableJson: { graph },
+  }));
+  const store = createWorkflowAuthoringReadStore({
+    requireReader: () => Promise.resolve(),
+    catalogs: {
+      definitionCatalog: EMPTY_DEFINITION_CATALOG,
+      validateAuthoringGraph: () => Promise.resolve(validation),
+      executableCompiler: compiler,
+    },
+    transact: async (_workspace, _actor, operation) => operation(client),
+  });
+  return {
+    result: await store.validateDraft(workspaceId, workflowId, actorId),
+    compiler,
+  };
+}
+
+describe('current publication comparison', () => {
+  it('uses the injected publication compiler, including changes in runtime/catalog identity', async () => {
+    const unchanged = await compare();
+    expect(unchanged.result?.currentPublication).toEqual({
+      versionId,
+      versionNumber: 3,
+      matchesDraft: true,
+    });
+    const updatedRuntime = await compare(valid, `wf:sha256:${'f'.repeat(64)}`);
+    expect(updatedRuntime.result?.currentPublication).toEqual({
+      versionId,
+      versionNumber: 3,
+      matchesDraft: false,
+    });
+  });
+
+  it('does not compile an invalid or unpublished draft merely to compare it', async () => {
+    const invalid = await compare({
+      ...valid,
+      ok: false,
+      issues: [{ code: 'cycle', path: '$', message: 'A cycle.' }],
+    });
+    expect(invalid.result?.currentPublication?.matchesDraft).toBe(false);
+    expect(invalid.compiler).not.toHaveBeenCalled();
+    const unpublished = await compare(valid, checksum, false);
+    expect(unpublished.result?.currentPublication).toBeNull();
+    expect(unpublished.compiler).not.toHaveBeenCalled();
+  });
+});
