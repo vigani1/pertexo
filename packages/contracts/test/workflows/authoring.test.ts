@@ -96,6 +96,25 @@ describe('workflow-authoring public contracts', () => {
     ).toBe(true);
   });
 
+  it('supports exact version reads and rejects mixing them with pagination', () => {
+    const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+    expect(workflowVersionsQuerySchema.parse({ versionId })).toEqual({
+      versionId,
+    });
+    expect(
+      workflowVersionsQuerySchema.safeParse({ versionId: 'invalid' }).success,
+    ).toBe(false);
+    expect(
+      workflowVersionsQuerySchema.safeParse({ versionId, after: 'older-page' })
+        .success,
+    ).toBe(false);
+    expect(
+      workflowAuthoringOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions'
+      ].get.parameters.map(({ name }) => name),
+    ).toContain('versionId');
+  });
+
   it('documents Phase 2 routes, headers, and revision conflicts', () => {
     const paths = workflowAuthoringOpenApiDocument.paths;
     expect(Object.keys(paths)).toEqual([

@@ -343,6 +343,47 @@ describe('workflow authoring coordination', () => {
     });
     expect(first.items.map((version) => version.versionNumber)).toEqual([3, 2]);
     expect(first.nextCursor).toEqual({ beforeVersionNumber: 2 });
+    const oldest = await authoring.listVersions({
+      actorId,
+      workflowId: created.workflowId,
+      workspaceId,
+      beforeVersionNumber: 2,
+    });
+    const oldVersion = oldest.items[0];
+    if (oldVersion === undefined) throw new Error('Expected oldest version');
+    await expect(
+      authoring.listVersions({
+        actorId,
+        workflowId: created.workflowId,
+        workspaceId,
+        versionId: oldVersion.id,
+      }),
+    ).resolves.toMatchObject({ items: [oldVersion] });
+    const exact = await authoring.listVersions({
+      actorId,
+      workflowId: created.workflowId,
+      workspaceId,
+      versionId: oldVersion.id,
+    });
+    expect(exact.items).toHaveLength(1);
+    expect(exact.nextCursor).toBeUndefined();
+    await expect(
+      authoring.listVersions({
+        actorId,
+        workflowId,
+        workspaceId,
+        versionId: oldVersion.id,
+      }),
+    ).resolves.toEqual({ items: [] });
+    await expect(
+      authoring.listVersions({
+        actorId,
+        workflowId: created.workflowId,
+        workspaceId,
+        versionId: randomUUID(),
+      }),
+    ).resolves.toEqual({ items: [] });
+
     if (first.nextCursor === undefined)
       throw new Error('Expected version cursor');
     await expect(

@@ -140,6 +140,34 @@ function makeController() {
 }
 
 describe('workflow authoring controller public seam', () => {
+  it('passes an exact version filter under the normal workspace read authority', async () => {
+    const { controller, listVersions } = makeController();
+    await controller.versions(
+      request(),
+      { workspaceId, workflowId },
+      { versionId: version.id },
+    );
+    expect(listVersions.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        versionId: version.id,
+      }),
+    );
+    listVersions.execute.mockClear();
+    await expect(
+      controller.versions(
+        request(),
+        { workspaceId, workflowId },
+        {
+          versionId: version.id,
+          after: 'older-page',
+        },
+      ),
+    ).rejects.toThrow();
+    expect(listVersions.execute).not.toHaveBeenCalled();
+  });
+
   it('uses the exact opt-in origin projection with no-store while preserving default GET', async () => {
     const { controller, getWorkflow } = makeController();
     const header = vi.fn();

@@ -10,20 +10,25 @@ import {
   type WorkflowDraftSnapshot,
 } from '@/features/workflow-drafts/public';
 import type { ApiClient } from '@/lib/api/client';
-import { collectPages, cursorPages } from '@/lib/api/pagination';
+import { collectPages } from '@/lib/api/pagination';
 
 function versionsPath(workspaceId: string, workflowId: string) {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/versions` as const;
 }
 
-function getWorkflowVersionsPage(
+export function getWorkflowVersionsPage(
   apiClient: ApiClient,
   workspaceId: string,
   workflowId: string,
-  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
+  input: Readonly<{
+    after?: string;
+    versionId?: string;
+    signal?: AbortSignal;
+  }> = {},
 ): Promise<WorkflowVersionsResponse> {
   const query = new URLSearchParams({ limit: '25' });
   if (input.after !== undefined) query.set('after', input.after);
+  if (input.versionId !== undefined) query.set('versionId', input.versionId);
   return apiClient.request({
     path: `${versionsPath(workspaceId, workflowId)}?${query.toString()}`,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
@@ -70,16 +75,19 @@ export async function findWorkflowVersion(
   versionId: string,
   signal?: AbortSignal,
 ): Promise<WorkflowVersionResponse> {
-  for await (const page of cursorPages(
-    readVersionPage(apiClient, workspaceId, workflowId, signal),
-    { read: 'Workflow version lookup', signal },
-  )) {
-    const version = page.items.find((item) => item.id === versionId);
-    if (version !== undefined) return version;
-  }
-  throw new Error(
-    'The workflow version lookup exceeded its bounded result set.',
+  const page = await getWorkflowVersionsPage(
+    apiClient,
+    workspaceId,
+    workflowId,
+    {
+      versionId,
+      ...(signal === undefined ? {} : { signal }),
+    },
   );
+  const version = page.items.find((item) => item.id === versionId);
+  if (version === undefined)
+    throw new Error('The published workflow version is unavailable.');
+  return version;
 }
 
 export function restoreWorkflowVersion(

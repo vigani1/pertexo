@@ -447,6 +447,7 @@ export class WorkflowAuthoringController {
       ...context,
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
+      ...(input.versionId === undefined ? {} : { versionId: input.versionId }),
       ...(input.limit === undefined ? {} : { limit: input.limit }),
       ...(input.after === undefined ? {} : { after: input.after }),
     });

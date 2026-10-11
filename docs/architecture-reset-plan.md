@@ -231,7 +231,9 @@ now, as one ordered program — not "whenever we touch it".
         `maintenance` and `operator` barrels are replaced by one entry point
         per area folder (`@pertexo/database/runs`, `/authoring`,
         `/connections`, `/triggers`, `/tenant-access`, `/platform`, …), each
-        an `index.ts` in that folder, plus `/testing`.
+        an `index.ts` in that folder, plus `/testing`. This database-specific
+        exception is also recorded in AGENTS.md and ADR 069; other packages
+        retain the two-entry-point rule.
 - [x] **8. Package-by-package pass** — read every file of every package and app,
       bottom of the dependency graph first, and redo, remove or improve using
       the checklist below. One PR per package (several for the large ones):
@@ -739,11 +741,13 @@ features use the same role folders everywhere: `components/`, `hooks/`, `api/`
 (api + queries + mutations), `model/`, plus one public entry file. The design
 itself does not change.
 
-**Entry points.** Every package has at most two doors:
+**Entry points.** Packages use at most two doors:
 `@pertexo/<name>` (safe anywhere, including the browser) and
-`@pertexo/<name>/server` (Node only). Areas get their own subpath only when
-they are large (`@pertexo/database/runs`, `@pertexo/contracts/workflow-runs`).
-No consumer-named barrels (`@pertexo/database/api` re-exported 227 names until step 7).
+`@pertexo/<name>/server` (Node only). The database is the accepted exception
+recorded in step 7: Node-only area entry points (`@pertexo/database/runs`,
+`/authoring`, `/platform`, etc.) plus `/testing`. Other packages keep the two-door
+rule; area subpaths are not a general exception. No consumer-named barrels
+(`@pertexo/database/api` re-exported 227 names until step 7).
 ESLint enforces the doors at build time; the 36 runtime `server-only.ts` throws
 and the custom import allowlist script go away.
 

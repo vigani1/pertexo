@@ -140,6 +140,7 @@ export type ListWorkflowVersionsInput = Readonly<{
   workspaceId: string;
   workflowId: string;
   actorId: string;
+  versionId?: string;
   limit?: number;
   beforeVersionNumber?: number;
 }>;
