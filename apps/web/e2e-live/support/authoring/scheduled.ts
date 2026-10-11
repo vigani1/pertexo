@@ -129,10 +129,8 @@ export async function authorScheduledNestedGraph(
   await inspect(outer.id, 'Outer scheduled items');
   await limits();
   await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Connect a step', exact: true })
-    .click();
-  await page.getByLabel('Connect from step', { exact: true }).click();
+  await page.getByRole('button', { name: 'Link a step', exact: true }).click();
+  await page.getByLabel('Link from step', { exact: true }).click();
   await page
     .getByRole('option', { name: 'Minute schedule', exact: true })
     .click();
@@ -140,7 +138,7 @@ export async function authorScheduledNestedGraph(
   await page.getByRole('option', { name: 'out', exact: true }).click();
   await page.getByLabel('Into input', { exact: true }).click();
   await page.getByRole('option', { name: 'in', exact: true }).click();
-  await page.getByRole('button', { name: 'Connect', exact: true }).click();
+  await page.getByRole('button', { name: 'Link', exact: true }).click();
   await input('items', async (row) => {
     await row
       .getByLabel('JSON value', { exact: true })

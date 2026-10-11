@@ -22,7 +22,7 @@ import { StepChoiceList, StepSearch } from './step-picker';
 /**
  * Quick add: the add-step search and list in a lens at the drop point (or
  * beside the step for “Add step after”, or the For each's “Add step”).
- * Choosing a step adds it there, connected from the chosen output when it
+ * Choosing a step adds it there, linked from the chosen output when it
  * follows one. Escape or a click away closes it.
  */
 export function QuickAddLens({
@@ -97,7 +97,7 @@ function QuickAddContent({
       {request.from !== undefined && request.outputs.length > 1 ? (
         <div className="flex items-center gap-2">
           <FieldLabel htmlFor={portId} className="shrink-0">
-            Connect from
+            Link from
           </FieldLabel>
           <ChoiceSelect
             id={portId}

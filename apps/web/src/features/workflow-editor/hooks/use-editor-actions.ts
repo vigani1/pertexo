@@ -51,7 +51,7 @@ function edgeExists(
   );
 }
 
-/** Whether the steps (or, for connections only, the connections) are back. */
+/** Whether the steps (or, for links only, the links) are back. */
 function isRestored(
   graph: Parameters<typeof scopeOf>[0],
   removed: RemovedElements,
@@ -238,6 +238,6 @@ function removalTitle(removed: RemovedElements): string {
   if (removed.nodes.length > 1)
     return `Deleted ${String(removed.nodes.length)} steps`;
   return removed.edges.length === 1
-    ? 'Connection removed'
-    : `Removed ${String(removed.edges.length)} connections`;
+    ? 'Link removed'
+    : `Removed ${String(removed.edges.length)} links`;
 }

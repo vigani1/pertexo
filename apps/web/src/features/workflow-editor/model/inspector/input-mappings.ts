@@ -241,9 +241,9 @@ function rowSource(
     case 'node_output':
       break;
   }
-  if (row.nodeId === '') return { error: 'Choose a connected predecessor.' };
+  if (row.nodeId === '') return { error: 'Choose a linked predecessor.' };
   if (check.graph && !check.predecessors.has(row.nodeId))
-    return { error: 'The source must be a directly connected predecessor.' };
+    return { error: 'The source must be a directly linked predecessor.' };
   return {
     mapping: { kind: 'node_output', nodeId: row.nodeId, path: row.path },
   };

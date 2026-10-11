@@ -9,8 +9,8 @@ const PATH_STEP_LIMIT = 4;
 /**
  * The path that leads into a tested step, as the bar under the canvas
  * reads it: "New invoice → Check payload → Over 5,000? (false) → Post to
- * ERP". It follows single connections back from the step on its level; a
- * step more than one connection leads into starts the path with "…", as do
+ * ERP". It follows single links back from the step on its level; a
+ * step more than one link leads into starts the path with "…", as do
  * paths longer than a few steps. A branch names the port it left through.
  * Only the graph is read: which way a run would go is never guessed.
  */

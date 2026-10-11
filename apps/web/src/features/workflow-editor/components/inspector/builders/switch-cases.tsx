@@ -36,17 +36,17 @@ function isKind(value: string | null): value is ScalarKind {
 /**
  * Switch's cases in order: the first whose value equals the step's input
  * takes the run down its output, and anything else goes out Default. A case
- * with a step connected to its output can't be removed until it's
- * disconnected, since publishing refuses a connection from a case that
+ * with a step linked to its output can't be removed until it's
+ * unlinked, since publishing refuses a link from a case that
  * isn't there.
  */
 export function SwitchCases({
   cases,
-  connectedPorts,
+  linkedPorts,
   form,
 }: Readonly<{
   cases: readonly SwitchCase[];
-  connectedPorts: ReadonlySet<string>;
+  linkedPorts: ReadonlySet<string>;
   form: NodeFormApi;
 }>) {
   function change(
@@ -83,7 +83,7 @@ export function SwitchCases({
               entry={entry}
               index={index}
               count={cases.length}
-              connected={connectedPorts.has(entry.id)}
+              linked={linkedPorts.has(entry.id)}
               form={form}
               onChange={change}
             />
@@ -111,14 +111,14 @@ function CaseRow({
   entry,
   index,
   count,
-  connected,
+  linked,
   form,
   onChange,
 }: Readonly<{
   entry: SwitchCase;
   index: number;
   count: number;
-  connected: boolean;
+  linked: boolean;
   form: NodeFormApi;
   onChange: (
     update: (current: readonly SwitchCase[]) => readonly SwitchCase[],
@@ -146,10 +146,10 @@ function CaseRow({
           label={label}
           first={index === 0}
           last={index === count - 1}
-          canRemove={count > 1 && !connected}
+          canRemove={count > 1 && !linked}
           removeHint={
-            connected
-              ? 'A step is connected to this case. Disconnect it on the canvas first.'
+            linked
+              ? 'A step is linked to this case. Remove the link on the canvas first.'
               : 'A Switch needs at least one case.'
           }
           editable={form.editable}

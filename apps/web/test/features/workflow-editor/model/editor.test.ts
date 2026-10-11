@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 import {
   addDefinitionNode,
-  connectWorkflowNodes,
+  linkWorkflowNodes,
   moveWorkflowNode,
   removeWorkflowNode,
   updateWorkflowNode,
@@ -105,7 +105,7 @@ describe('workflow editor input mapping rows', () => {
       { x: 100, y: 0 },
       'target',
     );
-    const connected = connectWorkflowNodes(
+    const connected = linkWorkflowNodes(
       graph,
       {
         source: 'source',
@@ -190,7 +190,7 @@ describe('workflow editor input mapping rows', () => {
       },
       two: {
         destinationKey: 'Another input already uses this field.',
-        source: 'The source must be a directly connected predecessor.',
+        source: 'The source must be a directly linked predecessor.',
       },
       three: {
         destinationKey: 'Destination key is required.',
@@ -280,7 +280,7 @@ describe('workflow editor mapping sources and fields', () => {
       { x: 200, y: 0 },
       'target',
     );
-    const oneEdge = connectWorkflowNodes(
+    const oneEdge = linkWorkflowNodes(
       third,
       {
         source: 'source',
@@ -290,7 +290,7 @@ describe('workflow editor mapping sources and fields', () => {
       },
       'source-middle',
     );
-    const connected = connectWorkflowNodes(
+    const connected = linkWorkflowNodes(
       oneEdge ?? third,
       {
         source: 'middle',
@@ -329,7 +329,7 @@ describe('workflow editor mapping sources and fields', () => {
       ),
     ).toEqual({
       'source-row': {
-        source: 'The source must be a directly connected predecessor.',
+        source: 'The source must be a directly linked predecessor.',
       },
     });
     expect(
@@ -443,7 +443,7 @@ describe('workflow editor graph transitions', () => {
       'a',
     );
     const second = addDefinitionNode(first, definition, { x: 100, y: 0 }, 'b');
-    const connected = connectWorkflowNodes(
+    const connected = linkWorkflowNodes(
       second,
       { source: 'a', sourceHandle: 'out', target: 'b', targetHandle: 'in' },
       'edge-a-b',

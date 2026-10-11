@@ -602,8 +602,8 @@ Switch cases, Parallel branches and Validate rules have list builders
 (`workflow-editor/components/inspector/builders`, model in
 `model/inspector/setup-builders.ts`). Each reads the stored list only when it
 can write it back exactly, and otherwise leaves the list on JSON; each applies
-live like any other field. A case or branch whose output still has a connection
-can't be removed from the builder, since publication rejects an edge leaving an
+live like any other field. A case or branch whose output still has a link can't
+be removed from the builder, since publication rejects an edge leaving an
 unconfigured port (ADR 018, ADR 019). New steps start from
 `model/graph/starting-config.ts`: a schema-valid setup the editor chooses (two
 branches, one case, bounded HTTP limits, a Merge joining the only Parallel on
@@ -644,16 +644,16 @@ resolving the previous outcome before issuing a new command.
    return domain commands; selection/measurement/viewport are not serialized.
    Node position is persisted. Deletion removes/repairs dependent graph
    references according to shared structural rules; it is one undoable command.
-   Quick add (a connection dropped on empty canvas, or “Add step after” on the
-   step's ⋯ menu) is likewise one command that adds the step and its connection.
-   A For each is projected as a container card around its structured body (ADR
-   020); the projection never changes the stored graph. Its body is edited in
-   place: body steps are the container's React Flow children, positioned
-   relative to the body's corner, and every command resolves a step or
-   connection to its level (the workflow or a body, named by the For each steps
-   above it) through `model/graph/graph-scopes.ts`, then writes that level back
-   as one undoable graph change. Connections never cross a body's edge; a body
-   is stored in the layout it is shown in before its first change.
+   Quick add (a link dropped on empty canvas, or “Add step after” on the step's
+   ⋯ menu) is likewise one command that adds the step and its link. A For each
+   is projected as a container card around its structured body (ADR 020); the
+   projection never changes the stored graph. Its body is edited in place: body
+   steps are the container's React Flow children, positioned relative to the
+   body's corner, and every command resolves a step or link to its level (the
+   workflow or a body, named by the For each steps above it) through
+   `model/graph/scopes.ts`, then writes that level back as one undoable graph
+   change. Links never cross a body's edge; a body is stored in the layout it is
+   shown in before its first change.
 5. The save coordinator captures `{graph}` and the last acknowledged ETag,
    validates structure and sends `PUT .../draft` with `If-Match`.
 6. The accepted response updates the acknowledged baseline/ETag. Edits made
@@ -1151,8 +1151,8 @@ reduced motion renders still frames and static glyphs.
 **Accessibility:** preserve skip link/landmarks, page titles and navigation
 focus; labels and described errors; keyboard menus/dialogs; non-color statuses;
 announced save state without announcing every pointer move. Provide keyboard
-node placement and connection alternatives, not drag-only essential actions.
-Protect text input from canvas shortcuts and handle delete/undo intentionally.
+node placement and link alternatives, not drag-only essential actions. Protect
+text input from canvas shortcuts and handle delete/undo intentionally.
 
 **Performance:** lazy-load editor and feature CSS; keep canvas dependencies out
 of workflow-list entry code. Use stable node/edge component registrations and
@@ -1244,7 +1244,7 @@ in the same slice that introduces them:
 | Deployment          | Real callback/proxy/cookies, deep-link reload, SSE no buffering, lazy-load failure, signed storage CORS/upload when introduced                                                         |
 
 Browser golden path: sign in → choose workspace → create workflow →
-add/configure and connect supported nodes → save → reload same graph →
+add/configure and link supported nodes → save → reload same graph →
 validate/publish → start run → display the version ID accepted by the run
 response → observe completion → sign out without state leakage. Also test a
 two-tab editing conflict; a happy-path video alone is not enough.
@@ -1451,7 +1451,7 @@ current workflow-list landing page.
    workflow list. Unauthorized workspace deep links show forbidden/not-found; do
    not silently switch the URL to unrelated data.
 2. **Authoring:** list → create → editor → select catalog node → configure/apply
-   → connect → save/reload. Adding a credential opens a feature-owned dialog;
+   → link → save/reload. Adding a credential opens a feature-owned dialog;
    successful creation refreshes the picker and commits only its ID reference.
 3. **Execution:** editor → save/validate → publish → start run → run detail. Run
    detail shows the version accepted by the backend and permits a link back to

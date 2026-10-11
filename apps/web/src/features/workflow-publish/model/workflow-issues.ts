@@ -76,13 +76,13 @@ export function countIssues(groups: readonly WorkflowIssueGroup[]): number {
 
 const messagesByCode: Readonly<Record<string, string>> = {
   invalid_mapping:
-    'An input reads from a step that isn’t connected right before this one. Connect that step here, or choose another source.',
+    'An input reads from a step that isn’t linked right before this one. Link that step here, or choose another source.',
   cycle:
-    'These steps loop back on themselves. Remove one of the connections in the loop.',
+    'These steps loop back on themselves. Remove one of the links in the loop.',
   dangling_edge:
-    'A connection crosses into or out of a For each body. Connect steps inside the body instead.',
+    'A link crosses into or out of a For each body. Link steps inside the body instead.',
   duplicate_node_id: 'Two steps share the same ID. Delete one of them.',
-  duplicate_edge_id: 'Two connections share the same ID. Remove one of them.',
+  duplicate_edge_id: 'Two links share the same ID. Remove one of them.',
   invalid_loop_limit:
     'For each needs a positive item limit, and it can’t run more items at once than it allows in total.',
   loop_iteration_limit:
@@ -90,7 +90,7 @@ const messagesByCode: Readonly<Record<string, string>> = {
   expansion_limit:
     'This workflow would run too many steps in one run. Lower loop limits or split the workflow.',
   graph_limit:
-    'This workflow has too many steps or connections. Split it into smaller workflows.',
+    'This workflow has too many steps or links. Split it into smaller workflows.',
   unknown_definition:
     'This step’s type isn’t in the catalog any more. Replace it with an available step.',
 };

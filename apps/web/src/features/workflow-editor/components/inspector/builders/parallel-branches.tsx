@@ -15,22 +15,22 @@ import {
 
 /**
  * How many branches a Parallel splits into. Each is an output on the canvas;
- * the last one can't be dropped while a step is connected to it, since
- * publishing refuses a connection from a branch that isn't there.
+ * the last one can't be dropped while a step is linked to it, since
+ * publishing refuses a link from a branch that isn't there.
  */
 export function ParallelBranches({
   branches,
-  connectedPorts,
+  linkedPorts,
   form,
 }: Readonly<{
   branches: readonly string[];
-  connectedPorts: ReadonlySet<string>;
+  linkedPorts: ReadonlySet<string>;
   form: NodeFormApi;
 }>) {
   const id = fieldControlId(form.nodeId, 'branches');
   const count = branches.length;
   const last = lastParallelBranch(branches);
-  const lastConnected = last !== undefined && connectedPorts.has(last);
+  const lastLinked = last !== undefined && linkedPorts.has(last);
   function setCount(next: number) {
     form.commit(
       (node) => ({
@@ -61,12 +61,12 @@ export function ParallelBranches({
           variant="outline"
           aria-label="Fewer branches"
           title={
-            lastConnected
-              ? `A step is connected to ${last}. Disconnect it on the canvas first.`
+            lastLinked
+              ? `A step is linked to ${last}. Remove the link on the canvas first.`
               : undefined
           }
           disabled={
-            !form.editable || count <= PARALLEL_MIN_BRANCHES || lastConnected
+            !form.editable || count <= PARALLEL_MIN_BRANCHES || lastLinked
           }
           onClick={() => {
             setCount(count - 1);
@@ -90,9 +90,9 @@ export function ParallelBranches({
       <FieldDescription>
         {count < PARALLEL_MIN_BRANCHES
           ? 'A Parallel splits into at least two branches.'
-          : `Each branch is an output, ${first ?? ''} to ${last ?? ''}. Connect a step to each; they run side by side.`}
-        {lastConnected && count > PARALLEL_MIN_BRANCHES
-          ? ` To drop ${last}, disconnect its step first.`
+          : `Each branch is an output, ${first ?? ''} to ${last ?? ''}. Link a step to each; they run side by side.`}
+        {lastLinked && count > PARALLEL_MIN_BRANCHES
+          ? ` To drop ${last}, remove its link on the canvas first.`
           : ''}
       </FieldDescription>
     </Field>

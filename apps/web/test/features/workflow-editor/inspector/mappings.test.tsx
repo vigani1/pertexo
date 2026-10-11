@@ -335,27 +335,25 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
     fireEvent.click((await findCanvas()).getByText('Target'));
     await event.click(screen.getByRole('tab', { name: 'Inputs' }));
     expect(
-      screen.getByText('The source must be a directly connected predecessor.'),
+      screen.getByText('The source must be a directly linked predecessor.'),
     ).toBeVisible();
     expect(screen.getByLabelText('Source step')).toHaveAttribute(
       'aria-invalid',
       'true',
     );
 
-    await event.click(screen.getByRole('button', { name: 'Connect a step' }));
-    await choose(event, 'Connect from step', 'Manual input');
+    await event.click(screen.getByRole('button', { name: 'Link a step' }));
+    await choose(event, 'Link from step', 'Manual input');
     await choose(event, 'From output', 'out');
     await choose(event, 'Into input', 'in');
-    await event.click(screen.getByRole('button', { name: 'Connect' }));
+    await event.click(screen.getByRole('button', { name: 'Link' }));
     expect(
-      screen.queryByText(
-        'The source must be a directly connected predecessor.',
-      ),
+      screen.queryByText('The source must be a directly linked predecessor.'),
     ).toBeNull();
     expect(screen.getByLabelText('Field')).toHaveValue('customer');
     expect(
       screen.getByRole('button', {
-        name: 'Remove connection from Manual input',
+        name: 'Remove link from Manual input',
       }),
     ).toBeVisible();
   });
@@ -393,10 +391,10 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
 
     await event.click(
       screen.getByRole('button', {
-        name: 'Remove connection from Manual input',
+        name: 'Remove link from Manual input',
       }),
     );
-    expect(await screen.findByText('Connection removed')).toBeVisible();
+    expect(await screen.findByText('Link removed')).toBeVisible();
     pressSave();
     await waitFor(() => {
       expect(savedGraph?.edges).toEqual([]);

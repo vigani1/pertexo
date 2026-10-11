@@ -21,7 +21,7 @@ const noBody = Object.freeze({
  * A For each step as a container (ADR 020): its body runs once per item.
  * The body's steps are canvas steps of their own, drawn inside the body
  * area, fed by `item` and `ordinal` and ending in `result`; they never
- * connect to steps outside it. The one outer output, `done`, continues
+ * link to steps outside it. The one outer output, `done`, continues
  * after every item has finished. The footer shows the bounds, what the
  * body still needs, and Add step for the body.
  */

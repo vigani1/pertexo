@@ -134,7 +134,7 @@ export function Mark({
 /**
  * A branching step's ports, one labelled row each, as they're wired:
  * "true → Ask finance", "branch-02 ← Pull incidents", or the bare port
- * while nothing is connected. Handles sit on the card's edge beside them.
+ * while nothing is linked. Handles sit on the card's edge beside them.
  */
 export function PortRows({
   title,

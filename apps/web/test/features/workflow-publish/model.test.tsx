@@ -150,7 +150,7 @@ describe('publish summary', () => {
       { kind: 'removed', nodeId: 'old', name: 'Send Slack message' },
       { kind: 'changed', nodeId: 'check', name: 'Validate', detail: 'setup' },
     ]);
-    expect(summary.connectionsAdded).toBe(1);
+    expect(summary.linksAdded).toBe(1);
     expect(summary.triggerNames).toEqual(['New invoice']);
   });
 
@@ -172,6 +172,64 @@ describe('publish summary', () => {
         { ignoreLayout: true },
       ).changed,
     ).toEqual([]);
+  });
+
+  it('distinguishes credential changes from links added and removed', () => {
+    const before = graph(
+      [
+        node('start', 'core.manual'),
+        node('fetch', 'http.request', {
+          connectionRefs: {
+            http_headers: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          },
+        }),
+        node('finish', 'core.set'),
+      ],
+      [
+        {
+          id: 'old',
+          source: { nodeId: 'start', port: 'out' },
+          target: { nodeId: 'fetch', port: 'in' },
+        },
+      ],
+    );
+    const after = graph(
+      before.nodes.map((step) =>
+        step.id === 'fetch'
+          ? {
+              ...step,
+              connectionRefs: {
+                http_headers: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+              },
+            }
+          : step,
+      ),
+      [
+        {
+          id: 'new',
+          source: { nodeId: 'fetch', port: 'out' },
+          target: { nodeId: 'finish', port: 'in' },
+        },
+      ],
+    );
+    expect(diffWorkflowGraphs(before, after)).toMatchObject({
+      changed: [
+        {
+          before: before.nodes[1],
+          after: after.nodes[1],
+          aspects: ['connections'],
+        },
+      ],
+      linksAdded: 1,
+      linksRemoved: 1,
+    });
+    const credentialOnly = diffWorkflowGraphs(before, {
+      ...before,
+      nodes: after.nodes,
+    });
+    expect(credentialOnly.changed[0]?.aspects).toEqual(['connections']);
+    expect(credentialOnly.linksAdded).toBe(0);
+    expect(credentialOnly.linksRemoved).toBe(0);
   });
 });
 

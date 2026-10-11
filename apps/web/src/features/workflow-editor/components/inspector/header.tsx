@@ -34,7 +34,7 @@ import type { NodeFormApi } from '../../model/inspector/node-form';
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
 export type StepMenuActions = Readonly<{
-  /** Opens quick add for a step connected after this one. */
+  /** Opens quick add for a step linked after this one. */
   onAddAfter: (returnFocus: HTMLElement | null) => void;
   onDuplicate: () => void;
   onCopyId: () => void;

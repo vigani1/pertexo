@@ -11,7 +11,7 @@ import { describeAmount } from './field-units';
 import type { GraphLevel, WorkflowNode } from './graph/scopes';
 
 // What a step card says about its step, from the step's own setup and its
-// connections: which ports it draws (and where they lead), and a short
+// links: which ports it draws (and where they lead), and a short
 // summary for the type line. Nothing here is invented: a fact the draft
 // doesn't hold isn't shown.
 
@@ -26,7 +26,7 @@ const STARTER_PORTS = 2;
  * The ports a card draws, in catalog order. Branching steps draw only the
  * ports their setup names (Switch cases, Parallel branches, the branches of
  * the Parallel a Merge joins), Switch's default, and any port already
- * connected; before the setup names any, the first few, so a new step can
+ * linked; before the setup names any, the first few, so a new step can
  * still be wired. Other steps draw every port.
  */
 export function shownPorts(
@@ -41,11 +41,9 @@ export function shownPorts(
   if (definition === undefined || ports.length <= 2) return ports;
   const configured = configuredPorts(node, definition, level, side);
   if (configured === undefined) return ports;
-  const connected = new Set(
-    Object.keys(portLinks(node, level, side, noTitles)),
-  );
+  const linked = new Set(Object.keys(portLinks(node, level, side, noTitles)));
   const named = ports.filter(
-    (port) => configured.ids.has(port) || connected.has(port),
+    (port) => configured.ids.has(port) || linked.has(port),
   );
   const branches = ports.filter((port) => port !== DEFAULT_PORT);
   const shown = new Set(
@@ -59,7 +57,7 @@ export function shownPorts(
 const noTitles: ReadonlyMap<string, string> = new Map();
 
 /**
- * Where each connected port of a step leads: for outputs, the steps it
+ * Where each linked port of a step leads: for outputs, the steps it
  * runs next; for inputs, the steps that feed it. Titles come from `titles`.
  */
 export function portLinks(

@@ -33,7 +33,7 @@ const loopFields: Readonly<
 
 /**
  * "Insert data": inside a For each body, the item it runs for; the output
- * fields of steps connected right before this one (from their output
+ * fields of steps linked right before this one (from their output
  * schema); and the run input. Picking one fills the input row you were
  * editing, or adds a row named after the field.
  */
@@ -78,8 +78,8 @@ export function InsertDataPicker({
         <PopoverTitle>Insert data</PopoverTitle>
         <PopoverDescription>
           {loopPorts.length > 0
-            ? 'The item this body runs for, steps connected right before this one, and the run’s input.'
-            : 'Steps connected right before this one, and the run’s input.'}
+            ? 'The item this body runs for, steps linked right before this one, and the run’s input.'
+            : 'Steps linked right before this one, and the run’s input.'}
         </PopoverDescription>
         <ul className="mt-3 flex max-h-72 flex-col gap-3 overflow-y-auto">
           {loopPorts.length > 0 ? (
@@ -153,7 +153,7 @@ export function InsertDataPicker({
         </ul>
         {sources.length === 0 ? (
           <p className="mt-3 text-xs text-subtle-foreground">
-            Connect a step into this one to use its output here.
+            Link a step into this one to use its output here.
           </p>
         ) : null}
       </PopoverContent>

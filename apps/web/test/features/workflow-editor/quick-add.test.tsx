@@ -313,7 +313,7 @@ describe('quick add in the editor', { timeout: 30_000 }, () => {
     const lens = await screen.findByRole('dialog', {
       name: 'Add a step after “Over 5,000?”',
     });
-    await event.click(within(lens).getByLabelText('Connect from'));
+    await event.click(within(lens).getByLabelText('Link from'));
     await event.click(await screen.findByRole('option', { name: 'false' }));
     await event.click(
       within(lens).getByRole('button', { name: /Set fields/u }),

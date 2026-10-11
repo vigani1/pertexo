@@ -79,7 +79,7 @@ function topologyIssues(body: GraphLevel | undefined): readonly BodyIssue[] {
     return [
       {
         code: 'sinks',
-        message: `The body ends in ${String(sinks.length)} steps: ${names(body, sinks)}. Connect them into one last step; its output is each item’s result.`,
+        message: `The body ends in ${String(sinks.length)} steps: ${names(body, sinks)}. Link them into one last step; its output is each item’s result.`,
         nodeIds: sinks,
       },
     ];
@@ -89,7 +89,7 @@ function topologyIssues(body: GraphLevel | undefined): readonly BodyIssue[] {
     : [
         {
           code: 'unreachable',
-          message: `${names(body, stranded)} ${stranded.length === 1 ? 'isn’t' : 'aren’t'} on the way from the body’s start to its last step. Remove the connection that loops back, or connect ${stranded.length === 1 ? 'it' : 'them'} into the body’s path.`,
+          message: `${names(body, stranded)} ${stranded.length === 1 ? 'isn’t' : 'aren’t'} on the way from the body’s start to its last step. Remove the link that loops back, or link ${stranded.length === 1 ? 'it' : 'them'} into the body’s path.`,
           nodeIds: stranded,
         },
       ];
@@ -132,7 +132,7 @@ function reach(
   return reached;
 }
 
-/** Connections joining steps on different levels, for each body involved. */
+/** Links joining steps on different levels, for each body involved. */
 function crossingIssues(graph: GraphLevel): readonly [string, BodyIssue][] {
   const index = indexGraph(graph);
   const found: [string, BodyIssue][] = [];
@@ -149,7 +149,7 @@ function crossingIssues(graph: GraphLevel): readonly [string, BodyIssue][] {
           {
             code: 'crossing',
             message:
-              'A connection crosses the body’s edge. Steps in a body only connect to each other; remove that connection.',
+              'A link crosses the body’s edge. Steps in a body only link to each other; remove that link.',
             nodeIds: ends.flatMap((end) =>
               loopOf(end.scope) === loopId ? [end.id] : [],
             ),

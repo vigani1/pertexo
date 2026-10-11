@@ -23,8 +23,8 @@ export type PublishSummary = Readonly<{
   /** Null when nothing has been published yet. */
   previousVersionNumber: number | null;
   lines: readonly PublishSummaryLine[];
-  connectionsAdded: number;
-  connectionsRemoved: number;
+  linksAdded: number;
+  linksRemoved: number;
   layoutOnly: boolean;
   triggerNames: readonly string[];
 }>;
@@ -57,12 +57,12 @@ export function summarizePublish(
     nextVersionNumber: (latest?.versionNumber ?? 0) + 1,
     previousVersionNumber: latest?.versionNumber ?? null,
     lines,
-    connectionsAdded: diff.connectionsAdded,
-    connectionsRemoved: diff.connectionsRemoved,
+    linksAdded: diff.linksAdded,
+    linksRemoved: diff.linksRemoved,
     layoutOnly:
       lines.length === 0 &&
-      diff.connectionsAdded === 0 &&
-      diff.connectionsRemoved === 0 &&
+      diff.linksAdded === 0 &&
+      diff.linksRemoved === 0 &&
       withLayout.changed.length > 0,
     triggerNames: draft.nodes
       .filter((node) => TRIGGER_KEYS.has(node.definition.key))

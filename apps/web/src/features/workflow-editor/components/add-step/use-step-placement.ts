@@ -33,7 +33,7 @@ const CARD_HALF = Object.freeze({
  * Places new steps where people can see them: clicking an add-step item
  * follows a selected step to its right when their ports allow it, otherwise
  * drops at the visible centre. Dragging drops under the pointer, and quick add puts it where
- * it was asked for, already connected, inside a For each body when that's
+ * it was asked for, already linked, inside a For each body when that's
  * where it was asked for.
  */
 export function useStepPlacement({
@@ -134,7 +134,7 @@ export function useStepPlacement({
           y: position.y - CARD_HALF.y,
         });
     },
-    /** Adds a step where quick add asked for it, connected as asked. */
+    /** Adds a step where quick add asked for it, linked as asked. */
     addFromQuickAdd: place,
   } as const;
 }

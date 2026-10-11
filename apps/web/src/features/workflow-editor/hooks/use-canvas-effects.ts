@@ -12,7 +12,7 @@ const noEdges: ReadonlySet<string> = new Set();
 
 /**
  * Short-lived canvas moments that mean something: the path of a passed test
- * flows for a few seconds, and a publish weaves its connections in execution
+ * flows for a few seconds, and a publish weaves its links in execution
  * order. Timers are the external system; reduced motion is handled in CSS.
  * Each step's card also keeps the output size of its last passed test in
  * this session, when the output came back inline.

@@ -16,7 +16,7 @@ import {
   addBodyStep,
   addDefinitionNode,
   addStepAfter,
-  connectWorkflowNodes,
+  linkWorkflowNodes,
   moveWorkflowNodes,
   removeWorkflowElements,
   restoreWorkflowElements,
@@ -24,7 +24,7 @@ import {
 } from '@/features/workflow-editor/model/graph/commands';
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 import {
-  canConnectSteps,
+  canLinkSteps,
   levelAt,
   locateStep,
   mapLevel,
@@ -68,10 +68,10 @@ describe('the nested graph layer', () => {
     expect(
       mapLevel(graph, ['gone'], (level) => ({ ...level, nodes: [] })),
     ).toBe(graph);
-    expect(canConnectSteps(graph, 'check', 'reserve')).toBe(true);
-    expect(canConnectSteps(graph, 'start', 'check')).toBe(false);
-    expect(canConnectSteps(graph, 'check', 'loop')).toBe(false);
-    expect(canConnectSteps(graph, 'check', 'check')).toBe(false);
+    expect(canLinkSteps(graph, 'check', 'reserve')).toBe(true);
+    expect(canLinkSteps(graph, 'start', 'check')).toBe(false);
+    expect(canLinkSteps(graph, 'check', 'loop')).toBe(false);
+    expect(canLinkSteps(graph, 'check', 'check')).toBe(false);
   });
 
   it('gives a new For each an empty body with the exact ports and default bounds', () => {
@@ -205,7 +205,7 @@ describe('body graph commands', () => {
 
   it('connects body steps to each other and refuses connections across the body’s edge', () => {
     const graph = orderLoopGraph();
-    const wired = connectWorkflowNodes(
+    const wired = linkWorkflowNodes(
       graph,
       {
         source: 'reserve',
@@ -220,7 +220,7 @@ describe('body graph commands', () => {
       'back',
     ]);
     expect(
-      connectWorkflowNodes(graph, {
+      linkWorkflowNodes(graph, {
         source: 'start',
         sourceHandle: 'out',
         target: 'check',
@@ -228,7 +228,7 @@ describe('body graph commands', () => {
       }),
     ).toBeNull();
     expect(
-      connectWorkflowNodes(graph, {
+      linkWorkflowNodes(graph, {
         source: 'check',
         sourceHandle: 'out',
         target: 'reserve',
@@ -423,7 +423,7 @@ describe('body rules (ADR 020) as issues', () => {
       {
         code: 'sinks',
         message:
-          'The body ends in 2 steps: “B” and “C”. Connect them into one last step; its output is each item’s result.',
+          'The body ends in 2 steps: “B” and “C”. Link them into one last step; its output is each item’s result.',
         nodeIds: ['b', 'c'],
       },
     ]);

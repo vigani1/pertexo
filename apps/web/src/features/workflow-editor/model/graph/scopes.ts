@@ -1,7 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 // The nested-graph layer. A For each step owns its body (ADR 020): a graph
-// of its own, stored inside the step. Every step and connection lives on
+// of its own, stored inside the step. Every step and link lives on
 // one level, the workflow itself or a body, and a scope names that level by
 // the For each steps above it. Commands change one level and write it back,
 // so the rest of the workflow keeps its identity and a no-op stays a no-op.
@@ -79,7 +79,7 @@ export function walkLevels(
 
 const indexes = new WeakMap<GraphLevel, GraphIndex>();
 
-/** Where every step and connection lives. Cached per (immutable) graph. */
+/** Where every step and link lives. Cached per (immutable) graph. */
 export function indexGraph(graph: GraphLevel): GraphIndex {
   const cached = indexes.get(graph);
   if (cached !== undefined) return cached;
@@ -122,7 +122,7 @@ export function levelAt(
   return level;
 }
 
-/** The level a step lives on: its siblings and their connections. */
+/** The level a step lives on: its siblings and their links. */
 export function levelOf(
   graph: GraphLevel,
   nodeId: string,
@@ -166,8 +166,8 @@ export function sameScope(left: ScopePath, right: ScopePath): boolean {
   );
 }
 
-/** Two steps can be connected: both exist, differ and share a level. */
-export function canConnectSteps(
+/** Two steps can be linked: both exist, differ and share a level. */
+export function canLinkSteps(
   graph: GraphLevel,
   sourceId: string,
   targetId: string,

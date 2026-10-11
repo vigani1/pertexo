@@ -149,7 +149,7 @@ function StepOutputSource({
           invalid={stepInvalid}
           {...(stepInvalid ? { describedBy: errorId } : {})}
           choices={[
-            { value: null, label: 'Choose a connected step' },
+            { value: null, label: 'Choose a linked step' },
             ...predecessors.map((option) => ({
               value: option.nodeId,
               label: option.label,
@@ -159,7 +159,7 @@ function StepOutputSource({
               ? [
                   {
                     value: row.nodeId,
-                    label: 'A step that isn’t connected here',
+                    label: 'A step that isn’t linked here',
                   },
                 ]
               : []),
@@ -170,7 +170,7 @@ function StepOutputSource({
         />
         {predecessors.length === 0 ? (
           <FieldDescription>
-            Connect a step into this one to read its output.
+            Link a step into this one to read its output.
           </FieldDescription>
         ) : null}
         {stepInvalid ? <FieldError id={errorId}>{error}</FieldError> : null}
