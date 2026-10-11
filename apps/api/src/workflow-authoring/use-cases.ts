@@ -87,7 +87,7 @@ export type PublishWorkflowInput = WorkflowResourceInput &
     traceparent?: string;
   }>;
 export type ListWorkflowVersionsInput = WorkflowResourceInput &
-  Readonly<{ limit?: number; after?: string }>;
+  Readonly<{ limit?: number; after?: string; versionId?: string }>;
 
 export { InvalidWorkflowCursorError };
 
@@ -390,6 +390,9 @@ export class ListWorkflowVersionsUseCase {
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,
           actorId: input.actor.actorId,
+          ...(input.versionId === undefined
+            ? {}
+            : { versionId: input.versionId }),
           ...(input.limit === undefined ? {} : { limit: input.limit }),
           ...(input.after === undefined
             ? {}

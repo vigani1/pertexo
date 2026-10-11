@@ -618,7 +618,9 @@ persistence keeps one intent/outbox per failed run and preserves the distinct
 `workflow_call` origin. There is no family billing layer.
 
 The exact-version picker uses the existing Query/version doors and scoped editor
-history. Its named Call composition is separate from ordinary schema controls.
+history. Version discovery loads one page at a time on demand; the current pin
+uses an exact-version filter on the existing authorized list read, so an old pin
+never requires scanning newer history. Its named Call composition is separate from ordinary schema controls.
 Published-parent warnings share the lifecycle dialog’s Query snapshot. Call
 history refreshes only an active visible parent with pending/accepted Calls;
 terminal runs stop it. The changed frontend scan is 100/100 with zero React

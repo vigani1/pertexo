@@ -29,8 +29,11 @@
 
 ## Code conventions
 
-- Each package has at most two entry points: `@pertexo/<name>` (safe anywhere,
-  including the browser) and `@pertexo/<name>/server` (Node only).
+- Packages use at most two entry points: `@pertexo/<name>` (safe anywhere,
+  including the browser) and `@pertexo/<name>/server` (Node only). The database
+  is the accepted exception: Node-only entry points per area (`/runs`,
+  `/authoring`, `/platform`, etc.) and `/testing`, as recorded in the reset plan.
+  Do not add consumer-named barrels or expose database entry points to the browser.
 - Group files by directory: sub-area first, then role. A folder holds at most
   ~10 files; no long flat lists.
 - The folder names the area and the file names what it is. File names never

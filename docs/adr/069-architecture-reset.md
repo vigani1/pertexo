@@ -52,9 +52,11 @@ package).
    restore-before-serve, the external control ledger, legal hold, database-stored
    feature switches. Operator commands become one `ops` CLI; retention runs in
    the worker.
-7. **Code conventions:** each package has at most two entry points
-   (`@pertexo/<name>` and `@pertexo/<name>/server`) enforced by lint; folders are
-   grouped by sub-area and role with no long flat lists; file names never
+7. **Code conventions:** packages have at most two entry points
+   (`@pertexo/<name>` and `@pertexo/<name>/server`) enforced by lint. The database
+   is the exception recorded in reset step 7: Node-only entry points per area
+   plus `/testing`, replacing consumer-named barrels. Folders are grouped by
+   sub-area and role with no long flat lists; file names never
    repeat their folder; input is validated once at the boundary; tests check
    behavior, not structure.
 8. **Process:** ADRs only for hard-to-reverse decisions; the reset plan's

@@ -1,8 +1,19 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  type InfiniteData,
+  type UseInfiniteQueryResult,
+} from '@tanstack/react-query';
+import type {
+  WorkflowVersionResponse,
+  WorkflowVersionsResponse,
+} from '@pertexo/contracts';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import {
   workflowCallConfigSchema,
   type CallableType,
+  type WorkflowCallConfig,
 } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import { FieldDescription, LabelledField } from '@/components/ui/field';
@@ -10,6 +21,7 @@ import { Notice } from '@/components/ui/notice';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
 import {
   callTargetVersionsQueryOptions,
+  callPinnedVersionQueryOptions,
   type CallTargetScope,
 } from '../../../data/call-targets.queries';
 import {
@@ -33,6 +45,139 @@ export function CallTargetField({
   const pin = parsed.success ? parsed.data.target : undefined;
   const [browsingTarget, setBrowsingTarget] = useState<string | null>(null);
   const targetId = browsingTarget ?? pin?.workflowId ?? null;
+  const versions = useInfiniteQuery(
+    callTargetVersionsQueryOptions(scope, targetId),
+  );
+  const pinnedVersion = useQuery(callPinnedVersionQueryOptions(scope, pin));
+  const { targets, selected, selectedVersionId, upgrade } =
+    callVersionSelection(
+      versions.data?.pages.flatMap((page) => page.items) ?? [],
+      pinnedVersion.data,
+      pin,
+      targetId,
+    );
+  function chooseVersion(versionId: string | null) {
+    const version = targets.find((candidate) => candidate.id === versionId);
+    if (version === undefined) return;
+    form.commit(
+      {
+        config: {
+          target: {
+            workflowId: version.workflowId,
+            workflowVersionId: version.id,
+            executableChecksum: version.checksum,
+          },
+        },
+      },
+      `${node.id}:target:${version.id}`,
+    );
+    setBrowsingTarget(null);
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <ChildWorkflowField
+        scope={scope}
+        pin={pin}
+        targetId={targetId}
+        editable={form.editable}
+        nodeId={node.id}
+        onChange={setBrowsingTarget}
+      />
+      {targetId === null ? null : (
+        <LabelledField
+          id={fieldControlId(node.id, 'targetVersion')}
+          label="Published version"
+          description={versionDiscoveryDescription(versions, targets)}
+        >
+          {(control) => (
+            <ChoiceSelect
+              {...control}
+              describedBy={control['aria-describedby']}
+              value={selectedVersionId}
+              disabled={!form.editable || versions.isPending}
+              onChange={chooseVersion}
+              choices={[
+                { value: null, label: 'Choose an exact callable version' },
+                ...targets.map((version) => ({
+                  value: version.id,
+                  label: `Version ${String(version.versionNumber)}`,
+                })),
+              ]}
+            />
+          )}
+        </LabelledField>
+      )}
+      {targetId !== null && versions.hasNextPage ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={versions.isFetching}
+          onClick={() => {
+            void versions.fetchNextPage();
+          }}
+        >
+          Load more versions
+        </Button>
+      ) : null}
+      {pinnedVersion.isError ? (
+        <Notice tone="destructive">
+          The pinned version could not be loaded.{' '}
+          <Button
+            variant="link"
+            onClick={() => {
+              void pinnedVersion.refetch();
+            }}
+          >
+            Try again
+          </Button>
+        </Notice>
+      ) : null}
+      {pin === undefined ? null : (
+        <p className="text-xs text-subtle-foreground">
+          Pinned to{' '}
+          {selected === undefined
+            ? pin.workflowVersionId
+            : `version ${String(selected.versionNumber)}`}
+          . Changes to the child do not change this Call.
+        </p>
+      )}
+      {upgrade === undefined ? null : (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!form.editable}
+          onClick={() => {
+            chooseVersion(upgrade.id);
+          }}
+        >
+          Upgrade to version {upgrade.versionNumber}
+        </Button>
+      )}
+      <CallContractSummary version={selected} />
+      <FieldDescription>
+        Map the child’s input on the Inputs tab. This step waits for its
+        validated result; run the parent workflow to test the Call.
+      </FieldDescription>
+    </div>
+  );
+}
+
+/** Workflow discovery has its own pagination and failure state. */
+function ChildWorkflowField({
+  scope,
+  pin,
+  targetId,
+  editable,
+  nodeId,
+  onChange,
+}: Readonly<{
+  scope: CallTargetScope;
+  pin: WorkflowCallConfig['target'] | undefined;
+  targetId: string | null;
+  editable: boolean;
+  nodeId: string;
+  onChange: (workflowId: string | null) => void;
+}>) {
   const workflows = useInfiniteQuery(
     workflowsInfiniteQueryOptions(
       scope.apiClient,
@@ -40,7 +185,6 @@ export function CallTargetField({
       scope.workspaceId,
     ),
   );
-  const versions = useQuery(callTargetVersionsQueryOptions(scope, targetId));
   const discovered = workflows.data?.pages.flatMap((page) => page.items) ?? [];
   const choices = discovered.filter(
     (workflow) =>
@@ -64,39 +208,10 @@ export function CallTargetField({
                 : `${pinnedWorkflow.name} (archived)`,
           },
         ];
-  const targets = versions.data ?? [];
-  const selected = targets.find(
-    (version) => version.id === pin?.workflowVersionId,
-  );
-  const latest = targets.reduce<typeof selected>(
-    (current, version) =>
-      current === undefined || version.versionNumber > current.versionNumber
-        ? version
-        : current,
-    undefined,
-  );
-  const sameTarget = targetId === pin?.workflowId;
-  function chooseVersion(versionId: string | null) {
-    const version = targets.find((candidate) => candidate.id === versionId);
-    if (version === undefined) return;
-    form.commit(
-      {
-        config: {
-          target: {
-            workflowId: version.workflowId,
-            workflowVersionId: version.id,
-            executableChecksum: version.checksum,
-          },
-        },
-      },
-      `${node.id}:target:${version.id}`,
-    );
-    setBrowsingTarget(null);
-  }
   return (
-    <div className="flex flex-col gap-3">
+    <>
       <LabelledField
-        id={fieldControlId(node.id, 'target')}
+        id={fieldControlId(nodeId, 'target')}
         label="Child workflow"
         description="Choose a callable workflow in this workspace. Its exact version stays pinned until you change it."
       >
@@ -105,7 +220,7 @@ export function CallTargetField({
             {...control}
             describedBy={control['aria-describedby']}
             value={targetId}
-            disabled={!form.editable || workflows.isPending}
+            disabled={!editable || workflows.isPending}
             choices={[
               { value: null, label: 'Choose a published workflow' },
               ...pinnedChoice,
@@ -114,7 +229,7 @@ export function CallTargetField({
                 label: workflow.name,
               })),
             ]}
-            onChange={setBrowsingTarget}
+            onChange={onChange}
           />
         )}
       </LabelledField>
@@ -143,95 +258,102 @@ export function CallTargetField({
           </Button>
         </Notice>
       ) : null}
-      {targetId === null ? null : (
-        <LabelledField
-          id={fieldControlId(node.id, 'targetVersion')}
-          label="Published version"
-          description={
-            versions.isError ? (
-              <>
-                Versions could not be loaded.{' '}
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    void versions.refetch();
-                  }}
-                >
-                  Try again
-                </Button>
-              </>
-            ) : targets.length === 0 && !versions.isPending ? (
-              'This workflow has no published callable contract. Add a contract and publish it first.'
-            ) : undefined
-          }
-        >
-          {(control) => (
-            <ChoiceSelect
-              {...control}
-              describedBy={control['aria-describedby']}
-              value={sameTarget ? pin.workflowVersionId : null}
-              disabled={!form.editable || versions.isPending}
-              onChange={chooseVersion}
-              choices={[
-                { value: null, label: 'Choose an exact callable version' },
-                ...targets.map((version) => ({
-                  value: version.id,
-                  label: `Version ${String(version.versionNumber)}`,
-                })),
-              ]}
-            />
-          )}
-        </LabelledField>
-      )}
-      {pin === undefined ? null : (
-        <p className="text-xs text-subtle-foreground">
-          Pinned to{' '}
-          {selected === undefined
-            ? pin.workflowVersionId
-            : `version ${String(selected.versionNumber)}`}
-          . Changes to the child do not change this Call.
-        </p>
-      )}
-      {sameTarget &&
-      latest !== undefined &&
-      latest.id !== pin.workflowVersionId ? (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!form.editable}
-          onClick={() => {
-            chooseVersion(latest.id);
-          }}
-        >
-          Upgrade to version {latest.versionNumber}
-        </Button>
-      ) : null}
       {pinnedWorkflow?.lifecycleStatus === 'archived' ? (
         <Notice tone="warning">
           This child is archived. New Calls will fail until it is restored.
         </Notice>
       ) : null}
-      {selected?.graph.callable === undefined ? null : (
-        <dl className="space-y-2 text-xs">
-          <div>
-            <dt className="font-medium">Child input</dt>
-            <dd className="text-subtle-foreground">
-              {typeLabel(selected.graph.callable.input)}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-medium">Child result</dt>
-            <dd className="text-subtle-foreground">
-              {typeLabel(selected.graph.callable.resultType)}
-            </dd>
-          </div>
-        </dl>
-      )}
-      <FieldDescription>
-        Map the child’s input on the Inputs tab. This step waits for its
-        validated result; run the parent workflow to test the Call.
-      </FieldDescription>
-    </div>
+    </>
+  );
+}
+
+/** Discovery can add choices; only an explicit edit changes the exact pin. */
+function callVersionSelection(
+  versions: readonly WorkflowVersionResponse[],
+  pinnedVersion: WorkflowVersionResponse | undefined,
+  pin: WorkflowCallConfig['target'] | undefined,
+  targetId: string | null,
+) {
+  const discovered = versions.filter(
+    (version) => version.graph.callable !== undefined,
+  );
+  const selected =
+    discovered.find((version) => version.id === pin?.workflowVersionId) ??
+    pinnedVersion;
+  const sameTarget = targetId === pin?.workflowId;
+  const targets =
+    sameTarget &&
+    selected !== undefined &&
+    !discovered.some((version) => version.id === selected.id)
+      ? [...discovered, selected]
+      : discovered;
+  const latest = discovered.reduce<WorkflowVersionResponse | undefined>(
+    (current, version) =>
+      current === undefined || version.versionNumber > current.versionNumber
+        ? version
+        : current,
+    undefined,
+  );
+  return {
+    targets,
+    selected,
+    selectedVersionId: sameTarget ? pin.workflowVersionId : null,
+    upgrade:
+      sameTarget &&
+      selected !== undefined &&
+      latest !== undefined &&
+      latest.versionNumber > selected.versionNumber
+        ? latest
+        : undefined,
+  };
+}
+
+type VersionDiscovery = UseInfiniteQueryResult<
+  InfiniteData<WorkflowVersionsResponse>
+>;
+
+function versionDiscoveryDescription(
+  query: VersionDiscovery,
+  targets: readonly WorkflowVersionResponse[],
+): ReactNode {
+  if (query.isError)
+    return (
+      <>
+        Versions could not be loaded.{' '}
+        <Button
+          variant="link"
+          onClick={() => {
+            void query.refetch();
+          }}
+        >
+          Try again
+        </Button>
+      </>
+    );
+  if (query.isPending || targets.length > 0) return undefined;
+  return query.hasNextPage
+    ? 'No callable versions loaded yet. Load more versions to continue.'
+    : 'This workflow has no published callable contract. Add a contract and publish it first.';
+}
+
+function CallContractSummary({
+  version,
+}: Readonly<{ version: WorkflowVersionResponse | undefined }>) {
+  const contract = version?.graph.callable;
+  if (contract === undefined) return null;
+  return (
+    <dl className="space-y-2 text-xs">
+      <div>
+        <dt className="font-medium">Child input</dt>
+        <dd className="text-subtle-foreground">{typeLabel(contract.input)}</dd>
+      </div>
+      <div>
+        <dt className="font-medium">Child result</dt>
+        <dd className="text-subtle-foreground">
+          {typeLabel(contract.resultType)}
+        </dd>
+      </div>
+    </dl>
   );
 }
 

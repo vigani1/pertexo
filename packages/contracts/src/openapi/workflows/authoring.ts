@@ -450,6 +450,10 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           ...workflowParameters,
           queryParameter('limit', workflowVersionsQuerySchema.shape.limit),
           queryParameter('after', workflowVersionsQuerySchema.shape.after),
+          queryParameter(
+            'versionId',
+            workflowVersionsQuerySchema.shape.versionId,
+          ),
         ],
         responses: {
           '200': jsonResponse(
@@ -479,7 +483,10 @@ function jsonResponseWithHeaders(
 ) {
   return { ...jsonResponse(description, name), headers } as const;
 }
-function queryParameter(name: 'limit' | 'after' | 'order', schema: z.ZodType) {
+function queryParameter(
+  name: 'limit' | 'after' | 'order' | 'versionId',
+  schema: z.ZodType,
+) {
   return {
     name,
     in: 'query',

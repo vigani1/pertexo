@@ -1275,6 +1275,31 @@ describe('workflow authoring application seams', () => {
     expect(listWorkflows).not.toHaveBeenCalled();
   });
 
+  it('reads an exact immutable version through the authorized persistence seam', async () => {
+    const listVersions = vi.fn().mockResolvedValue({ items: [version()] });
+    const useCase = new ListWorkflowVersionsUseCase(
+      persistence({ listVersions }),
+      authorization(),
+    );
+    await expect(
+      useCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        versionId: version().id,
+      }),
+    ).resolves.toMatchObject({
+      items: [{ id: version().id }],
+      nextCursor: null,
+    });
+    expect(listVersions).toHaveBeenCalledWith({
+      actorId: actor.actorId,
+      workspaceId,
+      workflowId,
+      versionId: version().id,
+    });
+  });
+
   it('keeps workflow and version cursor variants distinct', async () => {
     const listVersions = vi
       .fn()

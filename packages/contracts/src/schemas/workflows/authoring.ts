@@ -296,8 +296,21 @@ export const workflowVersionsQuerySchema = z
   .object({
     limit: workflowPageLimitSchema.optional(),
     after: workflowCursorSchema.optional(),
+    versionId: z
+      .uuid()
+      .describe(
+        'Read one exact immutable version; cannot be combined with after.',
+      )
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (query) => query.versionId === undefined || query.after === undefined,
+    {
+      message: 'An exact version lookup cannot use a history cursor.',
+      path: ['after'],
+    },
+  );
 
 export const workflowRevisionConflictProblemSchema = createApiProblemSchema({
   status: z.literal(412),

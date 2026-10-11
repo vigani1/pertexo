@@ -227,8 +227,15 @@ export function createWorkflowAuthoringReadStore(
           `select ${workflowVersionRowSelection} from app.workflow_versions
            where workspace_id = $1 and workflow_id = $2
              and ($3::integer is null or version_number < $3)
+             and ($5::uuid is null or id = $5)
            order by version_number desc limit $4`,
-          [input.workspaceId, workflowId, beforeVersionNumber, limit + 1],
+          [
+            input.workspaceId,
+            workflowId,
+            beforeVersionNumber,
+            limit + 1,
+            input.versionId ?? null,
+          ],
         );
         const hasMore = result.rows.length > limit;
         const items = Object.freeze(
