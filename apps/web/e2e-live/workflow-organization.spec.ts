@@ -21,8 +21,15 @@ import {
 } from './support/ordinary-editor-session';
 
 let lastIdentityStatus = 0;
+// Only a fixed action category and control readiness leave the private journey.
+let failedControl: {
+  action: 'favorite' | 'invitation' | 'other';
+  matches: number;
+  enabled: boolean | null;
+} | null = null;
 test.beforeEach(({ page }) => {
   lastIdentityStatus = 0;
+  failedControl = null;
   page.on('response', (response) => {
     if (new URL(response.url()).pathname.includes('/auth/'))
       lastIdentityStatus = response.status();
@@ -59,6 +66,7 @@ test.afterEach(async ({ request, page }, info) => {
     {
       data: {
         line,
+        control: failedControl,
         identityStatus: lastIdentityStatus,
         identityStage: [
           '/sign-up',
@@ -142,16 +150,35 @@ async function command(
   status = 200,
   method = 'POST',
 ) {
-  const replied = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname.endsWith(suffix) &&
-      response.request().method() === method,
-  );
-  await expect(button).toBeEnabled();
-  await button.click();
-  const response = await replied;
-  expect(response.status()).toBe(status);
-  return response;
+  try {
+    await expect(button).toBeEnabled();
+    // Join both operations so a failed click cannot leave an unhandled waiter
+    // that masks the original UI failure with a later response timeout.
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname.endsWith(suffix) &&
+          response.request().method() === method,
+      ),
+      button.click(),
+    ]);
+    expect(response.status()).toBe(status);
+    return response;
+  } catch (error) {
+    const matches = await button.count().catch(() => 0);
+    failedControl = {
+      action:
+        suffix === '/favorite'
+          ? 'favorite'
+          : suffix === '/invitations'
+            ? 'invitation'
+            : 'other',
+      matches,
+      enabled:
+        matches === 1 ? await button.isEnabled().catch(() => null) : null,
+    };
+    throw error;
+  }
 }
 async function openFilters(page: Page) {
   await page.getByRole('button', { name: /^Filters/u }).click();
@@ -166,6 +193,12 @@ async function openRowMenu(page: Page, name: string) {
   await row(page, name)
     .getByRole('button', { name: `Actions for ${name}`, exact: true })
     .click();
+  const menu = page.getByRole('menu', {
+    name: `Actions for ${name}`,
+    exact: true,
+  });
+  await expect(menu).toBeVisible();
+  return menu;
 }
 async function openManager(page: Page) {
   await openFilters(page);
@@ -223,10 +256,10 @@ async function projection(page: Page, workspaceId: string, workflowId: string) {
   );
 }
 async function favorite(page: Page, name: string) {
-  await openRowMenu(page, name);
+  const menu = await openRowMenu(page, name);
   await command(
     page,
-    page.getByRole('menuitem', {
+    menu.getByRole('menuitem', {
       name: 'Add favorite',
       exact: true,
     }),
@@ -548,11 +581,12 @@ async function qualifyExtended(input: {
           }),
         ).toHaveCount(0);
         await closeFilters(actor.page);
-        await openRowMenu(actor.page, alphaName);
+        const alphaMenu = await openRowMenu(actor.page, alphaName);
         await expect(
           actor.page.getByRole('menuitem', { name: 'Organize…', exact: true }),
         ).toHaveCount(0);
-        await actor.page.keyboard.press('Escape');
+        await alphaMenu.press('Escape');
+        await expect(alphaMenu).not.toBeVisible();
         await expect(
           row(actor.page, alphaName).getByRole('checkbox', {
             name: `Select ${alphaName}`,

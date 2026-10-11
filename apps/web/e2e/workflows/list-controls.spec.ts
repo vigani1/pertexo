@@ -6,6 +6,7 @@ import {
   workflowId,
   workflowSummary,
   workspaceId,
+  workspace,
 } from '../workflow-editor/support';
 import { workflowListBody } from './list-support';
 
@@ -122,5 +123,54 @@ for (const width of [1280, 390]) {
       body: await page.screenshot(),
       contentType: 'image/png',
     });
+  });
+}
+
+for (const width of [1280, 390]) {
+  test(`hands viewer row menus back to their trigger at ${String(width)}px`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await addCsrfCookie(context);
+    await installEditorRoutes(page, remoteDraft(), {
+      accessibleWorkspace: {
+        ...workspace,
+        role: 'viewer',
+        capabilities: ['workspace:read', 'workflow:read', 'run:read'],
+      },
+    });
+    const alpha = workflowSummary('Alpha').workflow;
+    const beta = {
+      ...workflowSummary('Beta').workflow,
+      id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    };
+    await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
+      route.fulfill({
+        json: workflowListBody(route.request().url(), [alpha, beta]),
+      }),
+    );
+    await page.goto(`/w/${workspaceId}/workflows`);
+    for (const name of ['Alpha', 'Beta', 'Alpha']) {
+      const trigger = page.getByRole('button', {
+        name: `Actions for ${name}`,
+        exact: true,
+      });
+      await trigger.click();
+      const menu = page.getByRole('menu', {
+        name: `Actions for ${name}`,
+        exact: true,
+      });
+      await expect(
+        menu.getByRole('menuitem', { name: 'Add favorite', exact: true }),
+      ).toBeEnabled();
+      await expect(
+        menu.getByRole('menuitem', { name: 'Organize…', exact: true }),
+      ).toHaveCount(0);
+      // Escape belongs to the open popup, including before its autofocus settles.
+      await menu.press('Escape');
+      await expect(menu).not.toBeVisible();
+      await expect(trigger).toBeFocused();
+    }
   });
 }

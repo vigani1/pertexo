@@ -72,6 +72,7 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
     let browserPhase = 'startup';
     let failureLine = 0;
     let identityFailure = 'unknown';
+    let controlFailure = 'unknown';
     let publicEvidence: unknown;
     const testResults: {
       case: 'owner';
@@ -125,7 +126,7 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
           else
             reject(
               new Error(
-                `Owned F07 ${phase} exited unsuccessfully at ${browserPhase} line ${String(failureLine)} identity ${identityFailure}`,
+                `Owned F07 ${phase} exited unsuccessfully at ${browserPhase} line ${String(failureLine)} identity ${identityFailure} control ${controlFailure}`,
               ),
             );
         });
@@ -353,6 +354,14 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
                 const diagnostic = z
                   .object({
                     line: z.number().int().min(0).max(10000),
+                    control: z
+                      .object({
+                        action: z.enum(['favorite', 'invitation', 'other']),
+                        matches: z.number().int().min(0).max(100),
+                        enabled: z.boolean().nullable(),
+                      })
+                      .strict()
+                      .nullable(),
                     identityStatus: z.number().int().min(0).max(599),
                     identityStage: z.enum([
                       '/sign-up',
@@ -365,6 +374,10 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
                   .strict()
                   .parse(value);
                 failureLine = diagnostic.line;
+                if (diagnostic.control !== null) {
+                  const { action, matches, enabled } = diagnostic.control;
+                  controlFailure = `${action}:${String(matches)}:${String(enabled)}`;
+                }
                 identityFailure = `${diagnostic.identityStage}:${String(diagnostic.identityStatus)}`;
               } else if (url.pathname === '/organization-matrix') {
                 const evidence = matrixSchema.parse(value);
