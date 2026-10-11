@@ -91,10 +91,8 @@ test('tests a step, publishes v1, and follows the exact accepted run', async ({
   ).toBeDisabled();
 
   await page.getByRole('button', { name: 'Run', exact: true }).click();
+  // Nothing to fill in, so the run starts at once.
   await page.getByRole('menuitem', { name: 'Run published version' }).click();
-  await page
-    .getByRole('button', { name: 'Start published version', exact: true })
-    .click();
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${runId}`);
 });
 

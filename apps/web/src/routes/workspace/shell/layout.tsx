@@ -109,6 +109,10 @@ export function WorkspaceShellFrame({
       params: { workspaceId: workspace.id },
       fuzzy: true,
     }) !== false;
+  const viewedRun = matchRoute({
+    to: '/w/$workspaceId/runs/$runId',
+    params: { workspaceId: workspace.id },
+  });
   const routeCrumbs = useShellCrumbs(workspace);
 
   // Stable, so pages that receive it through context don't re-render.
@@ -150,6 +154,7 @@ export function WorkspaceShellFrame({
           scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
           summary={inboxSummary.data}
           quiet={onInboxPage}
+          viewingRunId={viewedRun === false ? undefined : viewedRun.runId}
           findAnchor={inboxAnchors.find}
         />
       ) : null}

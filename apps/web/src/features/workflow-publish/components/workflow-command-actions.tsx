@@ -181,8 +181,21 @@ export function WorkflowCommandActions({
     onPublished(result.receipt);
   }
 
-  function runNow() {
-    setRunOpen(true);
+  /**
+   * Starts the live version with no input. When that can't start (it needs
+   * input, the version changed, the outcome is unclear), the run dialog
+   * opens with the reason and the way forward.
+   */
+  async function runNow(
+    publishedVersionId = workflow?.publishedVersionId ?? undefined,
+  ) {
+    const started = await runSubmission.startNew({
+      value: {},
+      ...(publishedVersionId === undefined
+        ? {}
+        : { expectedPublishedVersionId: publishedVersionId }),
+    });
+    if (!started) setRunOpen(true);
   }
 
   return (
@@ -201,7 +214,7 @@ export function WorkflowCommandActions({
             acceptedRunPending={runSubmission.acceptedRunId !== undefined}
             unresolvedRun={runSubmission.retryAvailable}
             onRunNow={() => {
-              runNow();
+              void runNow();
             }}
             onRunWithInput={() => {
               setRunOpen(true);
@@ -290,7 +303,7 @@ export function WorkflowCommandActions({
           canRun={canRun}
           onRunNow={() => {
             setStamp(undefined);
-            runNow();
+            void runNow(stamp.receipt.versionId);
           }}
           onDismiss={() => {
             setStamp(undefined);

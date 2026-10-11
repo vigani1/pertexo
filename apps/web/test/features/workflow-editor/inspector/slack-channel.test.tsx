@@ -246,11 +246,7 @@ describe('the Slack step’s channel in Setup', { timeout: 30_000 }, () => {
           passed ? 'Slack accepted the token.' : 'Slack rejected the token.',
         ),
       ).toBeVisible();
-      await event.click(
-        lens.getByRole('button', {
-          name: passed ? 'Done' : 'Save anyway',
-        }),
-      );
+      await event.click(lens.getByRole('button', { name: 'Done' }));
 
       expect(
         await screen.findByText(

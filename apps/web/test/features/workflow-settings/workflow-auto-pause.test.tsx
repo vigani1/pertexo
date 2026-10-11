@@ -208,11 +208,7 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
-    expect(
-      within(section).getByText(
-        'Automatic pauses depend on enforcement being enabled for the deployment evaluator. Changing this rule does not enable it.',
-      ),
-    ).toBeVisible();
+    expect(within(section).queryByText(/enforcement/u)).toBeNull();
     await event.click(
       await within(section).findByRole('switch', {
         name: 'Auto-pause for this workflow',
