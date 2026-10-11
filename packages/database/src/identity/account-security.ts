@@ -15,6 +15,24 @@ import { withPlatformTransaction } from '../tenant-access/transactions.js';
 import { rethrowIdentityQueryFailure } from './query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 
+export async function hasCredentialAccount(
+  pool: Pool,
+  userId: string,
+): Promise<boolean> {
+  const accounts = await drizzle(pool)
+    .select({ id: authAccounts.id })
+    .from(authAccounts)
+    .where(
+      and(
+        eq(authAccounts.userId, userId),
+        eq(authAccounts.providerId, 'credential'),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowIdentityQueryFailure);
+  return accounts.length !== 0;
+}
+
 /** Credential changes and revocation share one database commit. */
 export async function changePasswordAndRevokeSessions(
   pool: Pool,

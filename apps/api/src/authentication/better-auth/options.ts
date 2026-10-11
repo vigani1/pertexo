@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { hasCredentialAccount } from '@pertexo/database/tenant-access';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { PostgresDialect } from 'kysely';
 import type { Pool } from 'pg';
@@ -184,12 +185,7 @@ function credentialPolicy(pool: Pool, mail: AuthenticationMail) {
     revokeSessionsOnPasswordReset: true,
     resetPasswordTokenExpiresIn: 60 * 60,
     sendResetPassword: async ({ user, url }) => {
-      const credential = await pool.query(
-        `select id from app.auth_accounts
-          where user_id=$1::uuid and provider_id='credential'`,
-        [user.id],
-      );
-      if (credential.rowCount === 0) return;
+      if (!(await hasCredentialAccount(pool, user.id))) return;
       await mail.sendPasswordReset({
         recipient: user.email,
         displayName: user.name,

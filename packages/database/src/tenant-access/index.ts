@@ -74,6 +74,7 @@ export type {
 } from '../identity/authentication-mail.js';
 
 export {
+  hasCredentialAccount,
   changePasswordAndRevokeSessions,
   setupPasswordAndRevokeSessions,
   resetPasswordAndRevokeSessions,
