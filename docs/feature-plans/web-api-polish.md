@@ -13,7 +13,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 - [x] 4. Count missing or disconnected credentials in editor issues.
 - [x] 5. Detect an unchanged live draft and explain reused publications.
 - [x] 6. Fit and scroll the run-input dialog at 768 pixels high.
-- [ ] 7. Simplify workflow search, filters, selection and row actions.
+- [x] 7. Simplify workflow search, filters, selection and row actions.
 - [ ] 8. Add a step to the right of the selected step and link it forward.
 - [ ] 9. Stabilize save-state width and tidy editor header links.
 - [ ] 10. Put HTTP credentials first and display human-readable sizes.
@@ -85,3 +85,15 @@ its form body scrolls within the existing viewport bound. Input cases, input,
 deadline and error notices share that scroll area. The existing confirmation
 pattern also keeps other long forms usable; command, focus and exact-retry
 ownership do not change. Verified at 1280, 768 and 390 pixels wide by 768 high.
+
+## Workflow list controls
+
+Slice 7 keeps URL-owned search text editable, including spaces. React optimistic state holds typed characters while router
+navigation completes, without a second committed search store. The query delays a
+new name read by 250 ms using the query's cancellation signal. Server filtering
+and pagination remain authoritative. Filters groups lifecycle, folder, tag and
+favorites; Clear filters returns to active workflows and preserves sorting.
+Bulk actions appear only for an explicit selection. Favorite and single-workflow
+organization actions share the existing row menu; pending mutations and failure
+feedback survive closing that popup. Existing glyphs, run strips and Weft tokens
+remain the page's visual focus.

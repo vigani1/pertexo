@@ -8,7 +8,7 @@ const tagId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const folderId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 describe('organization list URL scope', () => {
-  it('normalizes literal filters and preserves explicit root versus all folders', () => {
+  it('preserves editable search spaces and normalizes identity filters and preserves explicit root versus all folders', () => {
     expect(
       parseWorkflowListSearch({
         query: '  Ops\t  ',
@@ -17,7 +17,7 @@ describe('organization list URL scope', () => {
         favoritesOnly: 'true',
       }),
     ).toEqual({
-      query: 'Ops\t',
+      query: '  Ops\t  ',
       tagId,
       folderId: 'root',
       favoritesOnly: 'true',

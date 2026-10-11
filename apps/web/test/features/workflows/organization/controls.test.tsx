@@ -8,9 +8,10 @@ import {
   workflowOrganizationProjectionResponseSchema,
 } from '@pertexo/contracts';
 import { WorkflowOrganizationDialog } from '@/features/workflows/components/organization/dialog';
-import { WorkflowFavoriteButton } from '@/features/workflows/components/organization/row-menu';
+import { WorkflowOrganizationRowMenu } from '@/features/workflows/components/organization/row-menu';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../../support/mock-server';
+import { renderInRouter } from '../../../support/render-in-router';
 import { testFetch } from '../../../support/render-app';
 import {
   api,
@@ -78,11 +79,18 @@ function setup({
   const tree = () => (
     <QueryClientProvider client={client}>
       {favorite ? (
-        <WorkflowFavoriteButton
+        <WorkflowOrganizationRowMenu
           apiClient={apiClient}
           userId={userId}
           workspace={workspace}
           workflow={selected[0] ?? projection()}
+          runnable={false}
+          actions={{
+            onRename: vi.fn(),
+            onRun: vi.fn(),
+            onLifecycle: vi.fn(),
+            runningId: undefined,
+          }}
         />
       ) : (
         <WorkflowOrganizationDialog
@@ -95,7 +103,7 @@ function setup({
       )}
     </QueryClientProvider>
   );
-  const rendered = render(tree());
+  const rendered = favorite ? renderInRouter(tree()) : render(tree());
   return { ...rendered, client, onClose };
 }
 describe('organization editing controls', () => {
@@ -324,7 +332,7 @@ describe('organization editing controls', () => {
       screen.getByRole('button', { name: 'Replace selected tags' }),
     ).toBeDisabled();
   });
-  it('lets a viewer unfavorite an archived workflow with one click', async () => {
+  it('lets a viewer unfavorite an archived workflow from its row menu', async () => {
     const captures: unknown[] = [];
     mockServer.use(
       http.put(
@@ -337,9 +345,10 @@ describe('organization editing controls', () => {
     );
     setup({ role: 'viewer', archived: true, favorite: true });
     await userEvent.click(
-      screen.getByRole('button', {
-        name: 'Remove favorite for First workflow',
-      }),
+      await screen.findByRole('button', { name: 'Actions for First workflow' }),
+    );
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Remove favorite' }),
     );
     await waitFor(() => {
       expect(captures).toEqual([{ favorite: false }]);
@@ -354,9 +363,10 @@ describe('organization editing controls', () => {
     );
     setup({ favorite: true });
     await userEvent.click(
-      screen.getByRole('button', {
-        name: 'Remove favorite for First workflow',
-      }),
+      await screen.findByRole('button', { name: 'Actions for First workflow' }),
+    );
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Remove favorite' }),
     );
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Favorite not saved',

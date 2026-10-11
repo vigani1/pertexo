@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import {
@@ -42,12 +43,14 @@ export function WorkflowRowMenu({
   workflow,
   actions,
   runnable,
+  organizationActions,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   actions: WorkflowRowActions;
   /** The published version can be started from here right now. */
   runnable: boolean;
+  organizationActions?: ReactNode;
 }>) {
   const params = { workspaceId: workspace.id, workflowId: workflow.id };
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
@@ -68,6 +71,8 @@ export function WorkflowRowMenu({
         <EllipsisIcon aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-52">
+        {organizationActions}
+        {organizationActions === undefined ? null : <DropdownMenuSeparator />}
         {runnable ? (
           <>
             <DropdownMenuItem

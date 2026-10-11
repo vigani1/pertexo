@@ -116,13 +116,16 @@ export function workflowOrganizationInfiniteQueryOptions(
   const query = normalizeWorkflowOrganizationListQuery(input);
   return infiniteQueryOptions({
     queryKey: workflowOrganizationKeys.list(userId, workspaceId, query),
-    queryFn: ({ pageParam, signal }) =>
-      getWorkflowOrganizationPage(
+    queryFn: async ({ pageParam, signal }) => {
+      if (query.query !== undefined && pageParam === null)
+        await waitForSearch(signal);
+      return getWorkflowOrganizationPage(
         api,
         workspaceId,
         { ...query, after: pageParam ?? undefined },
         signal,
-      ),
+      );
+    },
     initialPageParam: query.after ?? null,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
@@ -204,5 +207,21 @@ export function workflowTagAssignmentsInfiniteQueryOptions(
     initialPageParam: query.after ?? null,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
+  });
+}
+
+/** Delay only a new name search; cancelling it also cancels the pending timer. */
+function waitForSearch(signal: AbortSignal): Promise<void> {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Search cancelled', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', abort);
+      resolve();
+    }, 250);
+    signal.addEventListener('abort', abort, { once: true });
   });
 }

@@ -15,7 +15,7 @@ export function WorkflowListRoute() {
       search={search}
       starterDraftWriter={saveWorkflowDraft}
       onSearchChange={(next) => {
-        void navigate({
+        return navigate({
           to: '/w/$workspaceId/workflows',
           params: { workspaceId: workspace.id },
           search: next,
