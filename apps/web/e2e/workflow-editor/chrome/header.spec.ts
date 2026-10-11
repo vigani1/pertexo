@@ -231,7 +231,7 @@ for (const width of [390, 1280]) {
     await openStep(page, width);
     const baseline = await measureHeader(page);
     await page
-      .getByLabel('Label', { exact: true })
+      .getByLabel('Value', { exact: true })
       .fill('Changed since publication');
     await expect(
       header.getByRole('button', { name: 'Publish v2', exact: true }),
