@@ -653,7 +653,8 @@ now, as one ordered program — not "whenever we touch it".
    is removed (two-question test).
 3. Names follow the conventions; no file repeats its folder; no version
    numbers before launch.
-4. Entry points: only the two doors; no oversized re-export files.
+4. Entry points: use the documented doors, including the database area exception;
+   no oversized re-export files.
 5. Code is readable: small functions, plain names, comments explain why.
 6. Validation happens once, at the boundary.
 7. Tests check behavior; structure-only tests and test hooks are removed.
