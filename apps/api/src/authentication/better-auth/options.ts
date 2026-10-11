@@ -196,8 +196,7 @@ function credentialPolicy(pool: Pool, mail: AuthenticationMail) {
 }
 
 /**
- * Identity changes end every browser session: a newly attached social account
- * and a completed email verification revoke the user's sessions, and only
+ * Newly attached social accounts revoke existing browser sessions, and only
  * active users may be given a new session.
  */
 function identityChangeHooks(pool: Pool) {
@@ -209,16 +208,6 @@ function identityChangeHooks(pool: Pool) {
             await context.context.internalAdapter.deleteUserSessions(
               account.userId,
             );
-        },
-      },
-    },
-    user: {
-      update: {
-        after: async (user, context) => {
-          if (context?.path === '/verify-email')
-            await pool.query('delete from app.auth_sessions where user_id=$1', [
-              user.id,
-            ]);
         },
       },
     },
