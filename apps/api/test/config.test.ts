@@ -31,6 +31,16 @@ function validDeployedEnvironment(): Record<string, string> {
 }
 
 describe('parseApiConfig', () => {
+  it('enables connection and webhook secrets from the same explicit development key', () => {
+    const config = parseApiConfig({
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      CONNECTION_ENCRYPTION_MODE: 'local',
+      CONNECTION_LOCAL_KEY: Buffer.alloc(32, 4).toString('base64'),
+    });
+    expect(config.webhooks).toEqual(config.connections);
+    expect(config.webhooks).toMatchObject({ mode: 'local' });
+  });
+
   it.each(['staging', 'production'] as const)(
     'refuses local connection keys in %s',
     (NODE_ENV) => {
@@ -608,7 +618,7 @@ describe('parseApiConfig identity boundary', () => {
       printLocalMailLinks: true,
     });
     expect(config.connections).toMatchObject({ mode: 'local' });
-    expect(config.webhooks).toBeUndefined();
+    expect(config.webhooks).toMatchObject({ mode: 'local' });
     expect(config.artifacts?.bucket).toBeDefined();
   });
 });

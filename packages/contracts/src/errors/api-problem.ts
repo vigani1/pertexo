@@ -64,6 +64,7 @@ export const API_PROBLEM_CODES = [
   'run.not_cancelable',
   'run.outcome_unknown',
   'connection.not_configured',
+  'webhook.not_configured',
   'connection.conflict',
   'connection.reauthorization_required',
   'connection.revoked',
@@ -368,6 +369,12 @@ const apiProblemDetails = {
   'connection.not_configured': {
     status: 503,
     title: 'Connections are not configured',
+    severity: 'warn',
+    exposeDetail: false,
+  },
+  'webhook.not_configured': {
+    status: 503,
+    title: 'Webhooks are not configured',
     severity: 'warn',
     exposeDetail: false,
   },

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import { Notice } from '@/components/ui/notice';
 import { describeReadError } from '@/lib/api/error-copy';
+import { isApiError } from '@/lib/api/error';
 import {
   settingsQueryIsUnavailable,
   type SettingsQuery,
@@ -40,6 +41,16 @@ export function SettingsQueryState({
       </div>
     );
   if (!query.isError) return null;
+  if (
+    isApiError(query.error) &&
+    query.error.problem?.code === 'webhook.not_configured'
+  )
+    return (
+      <Notice tone="warning">
+        Webhooks are unavailable on this server. Ask the operator to configure
+        webhook secret encryption.
+      </Notice>
+    );
   if (settingsQueryIsUnavailable(query))
     return (
       <p className="text-sm text-muted-foreground">

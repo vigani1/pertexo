@@ -2,6 +2,8 @@ import type { KMSClient } from '@aws-sdk/client-kms';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { createBoundedKmsClient } from '../credentials/kms-client.js';
+import { LocalEnvelopeKeyProvider } from '../credentials/local-key-provider.js';
+import type { ConnectionEnvelopeEncryptionConfig } from '../credentials/runtime.js';
 import {
   AwsKmsEnvelopeKeyProviderCore,
   EnvelopeCipher,
@@ -152,6 +154,29 @@ export function createAwsWebhookTriggerEnvelopeEncryption(
     ),
     close: () => {
       client.destroy();
+    },
+  });
+}
+
+export function createWebhookTriggerEnvelopeEncryption(
+  config: ConnectionEnvelopeEncryptionConfig,
+) {
+  if (!('mode' in config))
+    return createAwsWebhookTriggerEnvelopeEncryption({
+      keyReference: config.keyReference,
+      region: config.region,
+      ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
+    });
+  return Object.freeze({
+    encryption: new WebhookTriggerEnvelopeEncryption(
+      new LocalEnvelopeKeyProvider(
+        config.key,
+        webhookTriggerSecretAssociatedData,
+        failure,
+      ),
+    ),
+    close: (): void => {
+      // Local wrapping owns no client sockets or timers.
     },
   });
 }

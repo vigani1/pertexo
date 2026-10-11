@@ -4,7 +4,11 @@ import {
   type AwsConnectionEnvelopeEncryptionConfig,
   type AwsConnectionEnvelopeEncryptionRuntime,
 } from './aws-envelope-runtime.js';
-import { ConnectionEnvelopeEncryption } from './envelope-encryption.js';
+import {
+  ConnectionEnvelopeEncryption,
+  ConnectionSecretEncryptionError,
+  connectionSecretAssociatedData,
+} from './envelope-encryption.js';
 import { LocalEnvelopeKeyProvider } from './local-key-provider.js';
 
 export type LocalConnectionEncryptionConfig = Readonly<{
@@ -21,9 +25,7 @@ export function createConnectionEnvelopeEncryption(
 ): ConnectionEnvelopeEncryptionRuntime {
   if (!('mode' in config)) return createAwsConnectionEnvelopeEncryption(config);
   return Object.freeze({
-    encryption: new ConnectionEnvelopeEncryption(
-      new LocalEnvelopeKeyProvider(config.key),
-    ),
+    encryption: new ConnectionEnvelopeEncryption(localKeys(config.key)),
     close: (): void => {
       // Local wrapping owns no client sockets or timers.
     },
@@ -57,7 +59,7 @@ export function parseConnectionEncryptionConfig(
         'Local connection encryption requires CONNECTION_LOCAL_KEY',
       );
     // Validate the master key once, before either process starts accepting work.
-    new LocalEnvelopeKeyProvider(config.CONNECTION_LOCAL_KEY);
+    localKeys(config.CONNECTION_LOCAL_KEY);
     return Object.freeze({ mode: 'local', key: config.CONNECTION_LOCAL_KEY });
   }
   if (config.CONNECTION_LOCAL_KEY !== undefined)
@@ -86,4 +88,12 @@ export function parseConnectionEncryptionConfig(
       ? {}
       : { endpoint: config.CONNECTION_KMS_ENDPOINT }),
   });
+}
+
+function localKeys(key: string) {
+  return new LocalEnvelopeKeyProvider(
+    key,
+    connectionSecretAssociatedData,
+    () => new ConnectionSecretEncryptionError(),
+  );
 }

@@ -20,6 +20,46 @@ import {
   workspaceId,
 } from './support';
 
+test('explains disabled webhook encryption to an owner at phone width', async ({
+  page,
+}) => {
+  await installEditorRoutes(page, remoteDraft());
+  const workflowPath = `/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
+  await page.route(`**${workflowPath}/versions?**`, (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route(`**${workflowPath}/triggers/schedules`, (route) =>
+    route.fulfill({ json: { items: [] } }),
+  );
+  await page.route(`**${workflowPath}/triggers`, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/problem+json',
+      json: {
+        type: 'urn:pertexo:problem:webhook.not_configured',
+        title: 'Webhooks are not configured',
+        status: 503,
+        code: 'webhook.not_configured',
+        requestId: 'webhook-unconfigured',
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 768 });
+  await page.goto(`${editorUrl}/triggers`);
+  await expect(
+    page.getByText(/Webhooks are unavailable on this server/u),
+  ).toBeVisible();
+  await expect(page.getByText(/role changed/u)).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Create endpoint' }),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
 test('authors, reloads and publishes the complete real-pin webhook HTTP recipe through ordinary controls', async ({
   context,
   page,
