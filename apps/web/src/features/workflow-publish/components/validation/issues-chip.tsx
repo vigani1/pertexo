@@ -41,6 +41,7 @@ export function IssuesChip({
       aria-controls={open ? ISSUES_LENS_ID : undefined}
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'sm' }),
+        'w-14 px-1.5 sm:w-40 sm:px-2.5',
         count === 0 &&
           !state.stale &&
           hint === undefined &&

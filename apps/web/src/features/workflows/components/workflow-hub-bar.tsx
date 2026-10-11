@@ -98,11 +98,17 @@ export function WorkflowHubBar({
 }>) {
   const state =
     workflow === undefined ? undefined : describeWorkflowState(workflow);
+  const stateWord =
+    state === undefined ? null : (
+      <Status tone={state.tone} className="font-sans text-[0.75rem]">
+        {state.label}
+      </Status>
+    );
   return (
-    // On wide screens the tabs sit in a centre column of their own, so a
-    // long name or a busy action group never pushes them sideways.
-    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-2 py-2 xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(max-content,1fr)]">
-      <div className="flex min-w-[min(100%,12rem)] flex-1 items-center gap-3 xl:min-w-0">
+    // Keep room for the identity before fitting tabs and actions beside it.
+    // Intermediate widths put the tabs on their own row instead of squeezing saves.
+    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-2 py-2 min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]">
+      <div className="flex min-w-[min(100%,20rem)] flex-1 items-center gap-3 min-[1728px]:min-w-0">
         <Link
           to="/w/$workspaceId/workflows"
           params={{ workspaceId: workspace.id }}
@@ -131,12 +137,6 @@ export function WorkflowHubBar({
             </WorkflowNameWithDialog>
           )}
           <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 font-mono text-[0.7rem] text-subtle-foreground">
-            {state === undefined ? null : (
-              <Status tone={state.tone} className="font-sans text-[0.75rem]">
-                {state.label}
-              </Status>
-            )}
-            {detail}
             {/* Starting lasts until every trigger is ready; a webhook waits
                 for its endpoint, so say where to look. */}
             {workflow?.activationStatus === 'activating' &&
@@ -145,11 +145,15 @@ export function WorkflowHubBar({
               <Link
                 to="/w/$workspaceId/workflows/$workflowId/triggers"
                 params={{ workspaceId: workspace.id, workflowId }}
-                className="inline-link font-sans text-[0.72rem] font-medium"
+                aria-label="Starting — check triggers"
+                className="inline-link rounded-sm focus-ring"
               >
-                Check triggers
+                {stateWord}
               </Link>
-            ) : null}
+            ) : (
+              stateWord
+            )}
+            {detail}
           </div>
           <WorkflowTemplateOrigin
             apiClient={apiClient}
@@ -161,7 +165,7 @@ export function WorkflowHubBar({
       </div>
       <nav
         aria-label="Workflow sections"
-        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-white/6 bg-black/25 p-[3px] xl:order-none xl:w-auto"
+        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-white/6 bg-black/25 p-[3px] min-[1728px]:order-none min-[1728px]:w-auto"
       >
         {hubTabs(workspace).map((link) => (
           <Link
@@ -181,7 +185,7 @@ export function WorkflowHubBar({
           </Link>
         ))}
       </nav>
-      <div className="flex max-w-full flex-wrap items-center gap-1.5 xl:justify-self-end">
+      <div className="flex max-w-full flex-wrap items-center gap-1.5 min-[1728px]:justify-self-end">
         {workflow === undefined ? null : (
           <WorkflowExportAction
             apiClient={apiClient}
