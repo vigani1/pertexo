@@ -597,6 +597,9 @@ origins, dependencies and empty borrowed admissions. Desktop picker and mobile
 archive screenshots were inspected. No new CI job, browser case or production
 test hook was added.
 
+The existing core unit job includes the execution package explicitly, so Call
+action orchestration proofs run in CI alongside the engine and database suites.
+
 Current run detail returns safe Call metadata in its existing authorized
 workspace snapshot. Results stay hidden until logical completion. Detached
 90-day child summaries display expired history while retaining the Call’s
