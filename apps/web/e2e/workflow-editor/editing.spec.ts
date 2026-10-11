@@ -345,7 +345,7 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
   );
   await page.getByTestId('rf__node-node-a').click();
 
-  for (const width of [390, 720, 1024, 1280, 1440]) {
+  for (const width of [390, 720, 1024, 1280, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     const panels = page.getByRole('navigation', { name: 'Editor panels' });
     const canvas = page.getByRole('region', { name: 'Workflow canvas' });
@@ -366,7 +366,22 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
         width,
       );
     }
-    if (width === 1440) expect(barBox?.height).toBeLessThanOrEqual(64);
+    if (width === 1440 || width === 1920) {
+      const tabs = await bar
+        .getByRole('navigation', { name: 'Workflow sections' })
+        .boundingBox();
+      const publish = await bar
+        .getByRole('button', { name: /^Publish/u })
+        .boundingBox();
+      if (tabs === null || publish === null)
+        throw new Error('Workflow tabs and Publish must be visible');
+      if (width === 1440)
+        expect(tabs.y).toBeGreaterThanOrEqual(publish.y + publish.height);
+      else {
+        expect(tabs.y).toBeLessThan(publish.y + publish.height);
+        expect(tabs.y + tabs.height).toBeGreaterThan(publish.y);
+      }
+    }
     if (width === 390) expect(barBox?.height).toBeLessThanOrEqual(200);
     // Phones fold undo, redo and shortcuts into ⋯ so Publish never clips.
     const publishBox = await bar
