@@ -118,10 +118,10 @@ describe('workspace Usage', () => {
     ).toBeVisible();
     expect(current).toHaveTextContent('8 EB');
     expect(current).toHaveTextContent(
-      '2 active runs (running or waiting) + 1 reserved active slot',
+      '2 running or waiting, 1 held for a queued run about to start',
     );
     expect(current).toHaveTextContent(
-      'deleting artifacts remain charged until physical deletion',
+      'Files count from upload until they’re fully deleted',
     );
     expect(current.querySelector('time')).toHaveAttribute(
       'datetime',
@@ -226,10 +226,10 @@ describe('workspace Usage', () => {
       },
     });
     renderApp(path);
-    await screen.findByText('Unavailable', {}, coldStart);
+    await screen.findByText('unavailable', { selector: 'strong' }, coldStart);
     expect(screen.getAllByText('/ limit unavailable')).toHaveLength(2);
-    expect(screen.getByText('/ 0 B')).toBeVisible();
-    expect(screen.getByText(/Default capacity applies/u)).toBeVisible();
+    expect(screen.getByText('of 0 B')).toBeVisible();
+    expect(screen.getByText('No storage capacity')).toBeVisible();
   });
 
   it.each(['expired', 'suspended', 'not_yet_effective'])(
@@ -246,7 +246,7 @@ describe('workspace Usage', () => {
       });
       renderApp(path);
       await screen.findByText(
-        /This policy is not active for new acceptance/u,
+        /New runs aren’t accepted right now/u,
         {},
         coldStart,
       );

@@ -38,7 +38,7 @@ export function DestinationTest({
     <div className="col-span-full w-full max-w-sm min-w-0 pt-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          Test this destination’s thread
+          Send a test alert to check this destination
         </p>
         <Button
           type="button"

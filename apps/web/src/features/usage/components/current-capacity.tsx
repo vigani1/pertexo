@@ -1,5 +1,4 @@
 import type { UsageCapacityResponse } from '@pertexo/contracts';
-import { formatByteLength } from '@/lib/format/bytes';
 import { CapacityLoom, StorageSpool } from './capacity-loom';
 
 const policyLabels: Readonly<
@@ -16,25 +15,19 @@ function CapacityRow({
   label,
   used,
   limit,
-  unit,
 }: Readonly<{
   label: string;
-  used: string | number;
-  limit: string | number | null;
-  unit?: string;
+  used: number;
+  limit: number | null;
 }>) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-border py-4">
       <dt className="text-sm">{label}</dt>
       <dd className="min-w-0 break-all font-mono text-sm">
         <span className="text-foreground">{used}</span>
-        {unit === undefined ? null : ` ${unit}`}
         <span className="text-subtle-foreground">
           {' '}
-          /{' '}
-          {limit === null
-            ? 'limit unavailable'
-            : `${String(limit)}${unit === undefined ? '' : ` ${unit}`}`}
+          / {limit ?? 'limit unavailable'}
         </span>
       </dd>
     </div>
@@ -45,6 +38,7 @@ export function CurrentCapacity({
   snapshot,
 }: Readonly<{ snapshot: UsageCapacityResponse }>) {
   const { execution, artifacts } = snapshot;
+  const reserved = execution.reservedActiveSlots;
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div className="min-w-0">
@@ -52,7 +46,7 @@ export function CurrentCapacity({
         <CapacityLoom execution={execution} />
         <dl>
           <CapacityRow
-            label="Active capacity consumed"
+            label="Slots in use"
             used={execution.activeCapacityConsumed}
             limit={execution.policy.activeRunLimit}
           />
@@ -63,28 +57,21 @@ export function CurrentCapacity({
           />
         </dl>
         <p className="text-sm text-muted-foreground">
-          {execution.activeRuns} active{' '}
-          {execution.activeRuns === 1 ? 'run' : 'runs'} (running or waiting) +{' '}
-          {execution.reservedActiveSlots} reserved active{' '}
-          {execution.reservedActiveSlots === 1 ? 'slot' : 'slots'}. Reserved
-          runs are still queued; these figures must not be added as distinct
-          runs.
-        </p>
-        <p className="mt-3 text-sm">
-          Current acceptance policy:{' '}
-          <strong>{policyLabels[execution.policy.state]}</strong>
-          {execution.policy.version === null
+          {execution.activeRuns} running or waiting
+          {reserved === 0
             ? ''
-            : ` (version ${String(execution.policy.version)})`}
+            : `, ${String(reserved)} held for ${reserved === 1 ? 'a queued run' : 'queued runs'} about to start`}
           .
         </p>
-        <p className="mt-2 text-xs text-subtle-foreground">
-          Configured limits are not remaining admission slots. Already accepted
-          runs retain their pinned policy.{' '}
-          {execution.policy.state === 'active'
-            ? 'Capacity can change before a new run is submitted.'
-            : 'This policy is not active for new acceptance; unavailable or expired limits do not mean unlimited capacity.'}
-        </p>
+        {execution.policy.state === 'active' ? null : (
+          <p className="mt-3 text-sm">
+            New runs aren’t accepted right now: this workspace’s limits are{' '}
+            <strong>
+              {policyLabels[execution.policy.state].toLowerCase()}
+            </strong>
+            . Runs already accepted keep their limits.
+          </p>
+        )}
       </div>
       <div className="min-w-0">
         <h3 className="mb-2 text-sm font-semibold">Artifact storage</h3>
@@ -94,25 +81,13 @@ export function CurrentCapacity({
         />
         <dl>
           <CapacityRow
-            label="Charged storage"
-            used={formatByteLength(artifacts.chargedBytes)}
-            limit={formatByteLength(artifacts.byteLimit)}
-          />
-          <CapacityRow
-            label="Charged artifact count"
+            label="Files"
             used={artifacts.chargedCount}
             limit={artifacts.artifactCountLimit}
           />
         </dl>
         <p className="text-sm text-muted-foreground">
-          Pending, available and deleting artifacts remain charged until
-          physical deletion completes.
-        </p>
-        <p className="mt-3 text-xs text-subtle-foreground">
-          {artifacts.source === 'default'
-            ? 'Default capacity applies before the first artifact reservation.'
-            : 'Stored capacity. A zero limit means zero capacity, not unlimited storage.'}{' '}
-          Sizes use binary units, rounded to one decimal place.
+          Files count from upload until they’re fully deleted.
         </p>
       </div>
     </div>

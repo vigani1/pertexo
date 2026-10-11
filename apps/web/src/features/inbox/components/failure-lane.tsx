@@ -18,7 +18,7 @@ export function FailureLane({
   return (
     <figure
       className="mt-2 max-w-80"
-      aria-label={`${String(total)} retained failures in the last 30 days, by UTC day`}
+      aria-label={`${String(total)} ${total === 1 ? 'failure' : 'failures'} in the last 30 days`}
     >
       <div className="flex items-center" aria-hidden="true">
         {marks.map(({ day, count }) => (
@@ -32,12 +32,18 @@ export function FailureLane({
               className="absolute inset-x-0 h-px bg-border"
             />
             {count > 0 ? (
-              <span
+              // Weft's failure cross: the thread stops here.
+              <svg
                 aria-hidden="true"
-                className="relative font-mono text-sm text-destructive"
+                viewBox="8.5 4 8 8"
+                className="relative size-2.5 bg-background text-destructive"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
               >
-                ×
-              </span>
+                <path d="M9.5 5l6 6M15.5 5l-6 6" />
+              </svg>
             ) : null}
           </span>
         ))}
@@ -54,8 +60,8 @@ export function FailureLane({
         .
       </span>
       <figcaption className="mt-1 flex justify-between gap-3 font-mono text-[0.6rem] text-subtle-foreground">
-        <span>30 days · retained failures</span>
-        <span>today UTC</span>
+        <span>Last 30 days</span>
+        <span>Today</span>
       </figcaption>
     </figure>
   );
