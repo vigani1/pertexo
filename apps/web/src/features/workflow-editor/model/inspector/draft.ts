@@ -102,7 +102,7 @@ export function parseNumberField(
   const shown = Number(text);
   if (!Number.isFinite(shown))
     return { ok: false, error: `${field.label} must be a number.` };
-  const value = toStoredValue(shown, field.unit);
+  const value = toStoredValue(shown, field.unit, field.maximum);
   if (field.kind === 'integer' && !Number.isInteger(value))
     return {
       ok: false,

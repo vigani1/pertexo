@@ -180,12 +180,15 @@ function ConfigNumberField(props: LiveFieldProps) {
     props,
     (current) =>
       typeof current === 'number'
-        ? String(toShownValue(current, field.unit))
+        ? String(toShownValue(current, field.unit, field.maximum))
         : '',
     (text) => parseNumberField(field, text),
   );
   const errorId = `${id}-error`;
-  const unit = field.unit === undefined ? undefined : unitDisplay(field.unit);
+  const unit =
+    field.unit === undefined
+      ? undefined
+      : unitDisplay(field.unit, field.maximum);
   const hint =
     field.description ??
     unitHint(field, typeof value === 'number' ? value : undefined);
@@ -194,7 +197,9 @@ function ConfigNumberField(props: LiveFieldProps) {
     const base =
       live.text.trim() === '' || !Number.isFinite(current) ? 0 : current;
     const shownBound = (bound: number | undefined, fallback: number) =>
-      bound === undefined ? fallback : toShownValue(bound, field.unit);
+      bound === undefined
+        ? fallback
+        : toShownValue(bound, field.unit, field.maximum);
     const bounded = Math.min(
       shownBound(field.maximum, Number.POSITIVE_INFINITY),
       Math.max(
@@ -208,10 +213,8 @@ function ConfigNumberField(props: LiveFieldProps) {
     <Field data-invalid={live.error !== undefined}>
       <FieldLabel htmlFor={id}>
         {field.label}
-        {field.unit === undefined ? null : (
-          <span className="sr-only">
-            {field.unit === 'bytes' ? ' (in bytes)' : ' (in seconds)'}
-          </span>
+        {unit === undefined ? null : (
+          <span className="sr-only">{` (in ${unit.name})`}</span>
         )}
       </FieldLabel>
       <div className="flex items-center gap-1.5">
@@ -283,8 +286,8 @@ function ConfigNumberField(props: LiveFieldProps) {
 }
 
 /**
- * Words for a unit setting's value and bounds: "That's 1.0 MB. Up to
- * 10.0 MB." The value is said again only when words add something.
+ * Bounds in words, with a seconds value repeated only when larger time
+ * units add meaning. Byte fields already show the size in human units.
  */
 function unitHint(
   field: SchemaFieldSpec,
@@ -292,7 +295,7 @@ function unitHint(
 ): string | undefined {
   if (field.unit === undefined) return undefined;
   const parts: string[] = [];
-  if (value !== undefined && field.unit !== 'milliseconds') {
+  if (value !== undefined && field.unit === 'seconds') {
     const words = describeAmount(value, field.unit);
     if (words !== `${String(value)} s`) parts.push(`That’s ${words}.`);
   }

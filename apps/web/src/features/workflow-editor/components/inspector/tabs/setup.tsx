@@ -111,6 +111,15 @@ function CatalogSetupTab({
     schemaPropertyCount(definition.configSchema) === 0;
   return (
     <FieldGroup className="gap-4">
+      {(definition?.connectionRequirements ?? []).map((requirement) => (
+        <ConnectionSlot
+          key={requirement}
+          requirement={requirement}
+          selectedId={node.connectionRefs[requirement]}
+          connections={connections}
+          form={form}
+        />
+      ))}
       {nothingToSet ? (
         <div className="flex flex-col items-start gap-1.5 text-sm text-muted-foreground">
           <p>
@@ -149,15 +158,6 @@ function CatalogSetupTab({
           }}
         />
       )}
-      {(definition?.connectionRequirements ?? []).map((requirement) => (
-        <ConnectionSlot
-          key={requirement}
-          requirement={requirement}
-          selectedId={node.connectionRefs[requirement]}
-          connections={connections}
-          form={form}
-        />
-      ))}
     </FieldGroup>
   );
 }

@@ -16,7 +16,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 - [x] 7. Simplify workflow search, filters, selection and row actions.
 - [x] 8. Add a step to the right of the selected step and link it forward.
 - [x] 9. Stabilize save-state width and tidy editor header links.
-- [ ] 10. Put HTTP credentials first and display human-readable sizes.
+- [x] 10. Put HTTP credentials first and display human-readable sizes.
 - [ ] 11. Call graph edges links; reserve connection for credentials.
 
 ## Verification
@@ -119,3 +119,14 @@ three-column layout starts only when the content fits. Contract joins the
 existing action group. Starting itself links to Triggers instead of adding a
 second loose link. Save serialization, conflict recovery, declaration ownership
 and reduced-motion behavior remain with their existing owners.
+
+## HTTP setup
+
+Slice 10 puts required credential slots before catalog settings and JSON mode.
+Size fields show MB or KB chosen from the catalog bound, keeping the unit steady
+while editing. They use the app’s existing binary KB/MB labels and store whole
+bytes; fractional shown amounts round to the nearest byte. The shortest displayed
+decimal that round-trips preserves both ordinary values such as 1.1 MB and odd
+byte counts. Bounds, steppers, read-only access, unfinished input and non-field
+JSON settings remain with the existing inspector form. Millisecond settings
+continue to read in seconds.
