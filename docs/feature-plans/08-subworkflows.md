@@ -600,6 +600,13 @@ test hook was added.
 The existing core unit job includes the execution package explicitly, so Call
 action orchestration proofs run in CI alongside the engine and database suites.
 
+CI exposed an existing statistics fixture transaction started through
+`Pool.query`: slow seeding let the pool's idle timeout close its snapshot.
+The focused case reproduced the same 82-page failure locally. It now holds one
+checked-out client through rollback and verifies the pre-insert snapshot still
+sees no runs after seeding, with a short idle-pool timeout to exercise eviction.
+The zero all-visible-page and final zero-heap-fetch assertions remain intact.
+
 Current run detail returns safe Call metadata in its existing authorized
 workspace snapshot. Results stay hidden until logical completion. Detached
 90-day child summaries display expired history while retaining the Call’s

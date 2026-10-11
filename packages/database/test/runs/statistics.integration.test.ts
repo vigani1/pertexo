@@ -805,15 +805,31 @@ describe('run statistics query-plan budget', () => {
     const reader = new Pool({
       connectionString: statisticsDatabase.databaseUrl(superuserUrl),
       max: 1,
+      // Released transaction clients used to expire during a slow seed.
+      idleTimeoutMillis: 100,
     });
     const vacuum = new Pool({
       connectionString: statisticsDatabase.databaseUrl(superuserUrl),
       max: 1,
     });
+    const client = await reader.connect();
     try {
-      await reader.query('begin isolation level repeatable read');
-      await reader.query('select pg_current_snapshot()');
+      await client.query('begin isolation level repeatable read');
+      expect(
+        (
+          await client.query<{ count: number }>(
+            'select count(*)::integer as count from app.workflow_runs',
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
       await seedHistory();
+      expect(
+        (
+          await client.query<{ count: number }>(
+            'select count(*)::integer as count from app.workflow_runs',
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
       // Reproduce the old setup: VACUUM succeeds, but cannot establish the
       // all-visible precondition while the pre-insert snapshot is held.
       await vacuum.query('vacuum (analyze) app.workflow_runs');
@@ -825,7 +841,7 @@ describe('run statistics query-plan budget', () => {
       await expect(vacuumStatisticsFixture(50)).rejects.toThrow(
         'Statistics fixture still has active snapshots',
       );
-      await reader.query('rollback');
+      await client.query('rollback');
       await vacuumStatisticsFixture();
       const plan = await explainAsApi(
         `select workflow_id, status, count(*) from app.workflow_runs
@@ -845,8 +861,9 @@ describe('run statistics query-plan budget', () => {
       expect(explainWork(plan.Plan).rootSharedBufferTouches).toBeLessThan(40);
     } finally {
       try {
-        await reader.query('rollback');
+        await client.query('rollback');
       } finally {
+        client.release();
         await Promise.all([reader.end(), vacuum.end()]);
       }
     }
