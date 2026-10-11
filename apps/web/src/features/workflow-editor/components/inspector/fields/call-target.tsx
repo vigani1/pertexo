@@ -162,7 +162,7 @@ export function CallTargetField({
   );
 }
 
-/** Workflow discovery has its own pagination and failure state. */
+/** Keep workflow-discovery failures independent of the retained version pin. */
 function ChildWorkflowField({
   scope,
   pin,
