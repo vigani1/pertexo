@@ -1,3 +1,4 @@
+import { FailureLane } from './failure-lane';
 import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
@@ -77,6 +78,7 @@ export function InboxThreadRow({
           )}
           {view.reason === undefined ? null : ` · ${view.reason}`}
         </p>
+        <FailureLane days={thread.failureDays} nowMs={nowMs} />
       </div>
       {/* Below the notice on a phone, beside it on wider screens. */}
       <div className="relative z-10 col-start-2 -ml-2.5 flex items-center gap-1 sm:col-start-3 sm:row-start-1 sm:ml-0 sm:self-center">

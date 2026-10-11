@@ -11,11 +11,11 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import {
-  createAwsConnectionEnvelopeEncryption,
+  createConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,
   createSlackClient,
   createResendClient,
-  type AwsConnectionEnvelopeEncryptionRuntime,
+  type ConnectionEnvelopeEncryptionRuntime,
 } from '@pertexo/integrations/server';
 
 import {
@@ -47,7 +47,7 @@ export type ApiConnectionRuntimeOverrides = Readonly<{
   }>;
   encryption?: Readonly<{
     value?: ConnectionSecretEncryptionPort;
-    factory?: typeof createAwsConnectionEnvelopeEncryption;
+    factory?: typeof createConnectionEnvelopeEncryption;
   }>;
   persistence?: Readonly<{
     database?: ApiConnectionDatabase;
@@ -74,7 +74,7 @@ export async function createApiConnectionRuntime(
   let database: ApiConnectionDatabase | undefined;
   let destinationDatabase:
     ReturnType<typeof createFailureNotificationDestinationDatabase> | undefined;
-  let encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined;
+  let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   try {
     database =
       persistenceOverrides.database ??
@@ -88,12 +88,18 @@ export async function createApiConnectionRuntime(
     )(databaseConfig, runtime);
     if (encryptionOverrides.value === undefined)
       encryptionRuntime = (
-        encryptionOverrides.factory ?? createAwsConnectionEnvelopeEncryption
-      )({
-        keyReference: config.kmsKeyReference,
-        region: config.region,
-        ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
-      });
+        encryptionOverrides.factory ?? createConnectionEnvelopeEncryption
+      )(
+        'mode' in config
+          ? config
+          : {
+              keyReference: config.kmsKeyReference,
+              region: config.region,
+              ...(config.endpoint === undefined
+                ? {}
+                : { endpoint: config.endpoint }),
+            },
+      );
     const encryption =
       encryptionOverrides.value ?? encryptionRuntime?.encryption;
     if (encryption === undefined)
@@ -155,7 +161,7 @@ async function closeResources(
   destinationDatabase: ReturnType<
     typeof createFailureNotificationDestinationDatabase
   >,
-  encryption: AwsConnectionEnvelopeEncryptionRuntime | undefined,
+  encryption: ConnectionEnvelopeEncryptionRuntime | undefined,
 ): Promise<void> {
   const failures = await collectCloseFailures(
     database,
@@ -170,7 +176,7 @@ async function collectCloseFailures(
   database: ApiConnectionDatabase | undefined,
   destinationDatabase:
     ReturnType<typeof createFailureNotificationDestinationDatabase> | undefined,
-  encryption: AwsConnectionEnvelopeEncryptionRuntime | undefined,
+  encryption: ConnectionEnvelopeEncryptionRuntime | undefined,
 ): Promise<unknown[]> {
   const results = await Promise.allSettled([
     Promise.resolve().then(() => database?.close()),

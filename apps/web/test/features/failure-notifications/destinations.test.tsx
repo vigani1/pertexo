@@ -582,3 +582,108 @@ describe('alert destinations', () => {
     expect(destinationReads).toBe(0);
   });
 });
+
+describe('alert destination test threads', () => {
+  it('discloses the real message, pins the version, and ties a knot after acceptance', async () => {
+    const actor = userEvent.setup();
+    let posted: unknown;
+    mockServer.use(
+      ...identityHandlers(),
+      connectionHandler(),
+      destinationsOf(() => [destination()]),
+      http.post(
+        `${destinationsUrl}/${destinationId}/test`,
+        async ({ request }) => {
+          posted = await request.json();
+          return HttpResponse.json({
+            connection: {
+              ...connection,
+              health: {
+                lastTestedAt: timestamp,
+                lastHealthyAt: timestamp,
+                lastErrorCode: null,
+              },
+            },
+            outcome: { ok: true, httpStatus: 200, errorCode: null },
+          });
+        },
+      ),
+    );
+    renderApp(`/w/${workspaceId}/alerts`);
+    await actor.click(
+      await screen.findByRole('button', { name: /Send test to/u }),
+    );
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'one real test message',
+    );
+    expect(posted).toBeUndefined();
+    await actor.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Send test',
+      }),
+    );
+    expect(
+      await screen.findByText('The service accepted the test message.'),
+    ).toBeVisible();
+    expect(posted).toEqual({
+      expectedVersion: 1,
+      sideEffectDisclosureAccepted: true,
+    });
+    expect(document.querySelector('[data-slot="test-thread"]')).toHaveAttribute(
+      'data-phase',
+      'ok',
+    );
+  });
+
+  it('explains missing server encryption without suggesting lost owner access', async () => {
+    mockServer.use(
+      ...identityHandlers(),
+      connectionHandler(),
+      http.get(destinationsUrl, () =>
+        problem(503, 'connection.not_configured'),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/alerts`);
+    expect(
+      await screen.findByText('Connections need server configuration'),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/no connection encryption provider configured/u),
+    ).toBeVisible();
+    expect(screen.queryByText(/don’t have access/u)).not.toBeInTheDocument();
+  });
+
+  it('checks an unconfirmed send with the same key and keeps the outcome uncertain', async () => {
+    const actor = userEvent.setup();
+    const keys: (string | null)[] = [];
+    mockServer.use(
+      ...identityHandlers(),
+      connectionHandler(),
+      destinationsOf(() => [destination()]),
+      http.post(`${destinationsUrl}/${destinationId}/test`, ({ request }) => {
+        keys.push(request.headers.get('Idempotency-Key'));
+        return HttpResponse.error();
+      }),
+    );
+    renderApp(`/w/${workspaceId}/alerts`);
+    await actor.click(
+      await screen.findByRole('button', { name: /Send test to/u }),
+    );
+    await actor.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Send test',
+      }),
+    );
+    await actor.click(
+      await screen.findByRole('button', { name: /Check test result/u }),
+    );
+    await waitFor(() => {
+      expect(keys).toHaveLength(2);
+    });
+    expect(keys[1]).toBe(keys[0]);
+    expect(document.querySelector('[data-slot="test-thread"]')).toHaveAttribute(
+      'data-phase',
+      'unsure',
+    );
+  });
+});

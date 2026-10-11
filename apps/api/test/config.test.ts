@@ -31,6 +31,20 @@ function validDeployedEnvironment(): Record<string, string> {
 }
 
 describe('parseApiConfig', () => {
+  it.each(['staging', 'production'] as const)(
+    'refuses local connection keys in %s',
+    (NODE_ENV) => {
+      expect(() =>
+        parseApiConfig({
+          ...validDeployedEnvironment(),
+          NODE_ENV,
+          CONNECTION_ENCRYPTION_MODE: 'local',
+          CONNECTION_LOCAL_KEY: Buffer.alloc(32).toString('base64'),
+        }),
+      ).toThrow('forbidden when deployed');
+    },
+  );
+
   it('enables Better Auth from its secret and public origin', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
@@ -593,7 +607,8 @@ describe('parseApiConfig identity boundary', () => {
       mailMode: 'local',
       printLocalMailLinks: true,
     });
-    expect(config.connections).toBeUndefined();
+    expect(config.connections).toMatchObject({ mode: 'local' });
+    expect(config.webhooks).toBeUndefined();
     expect(config.artifacts?.bucket).toBeDefined();
   });
 });

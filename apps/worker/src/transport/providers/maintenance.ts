@@ -1,7 +1,7 @@
 import type { Provider } from '@nestjs/common';
 import type { FailureNotificationStore } from '@pertexo/database/notifications';
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
-import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
+import type { ConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
 import type { QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../../config/worker.js';
@@ -68,7 +68,7 @@ export async function createOwnedMaintenanceRuntime(
 
   let notificationStore: FailureNotificationStore | undefined;
   let invitationStore: WorkspaceInvitationDeliveryStore | undefined;
-  let encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined;
+  let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   const deliveryFactories = factories.notificationDelivery;
   try {
     let failureNotificationDelivery = dependencies.failureNotificationDelivery;

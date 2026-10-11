@@ -13,7 +13,7 @@ const sealedSchema = z
 export type ApplicationSealedSecret = z.output<typeof sealedSchema>;
 export type ApplicationSecretEnvelope = Readonly<{
   seal(plaintext: string, associatedData: string): ApplicationSealedSecret;
-  open(sealed: ApplicationSealedSecret, associatedData: string): string;
+  open(sealed: unknown, associatedData: string): string;
 }>;
 
 export function createApplicationSecretEnvelope(

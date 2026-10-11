@@ -14,6 +14,7 @@ import {
   failureNotificationDestinationAppendVersionRequestSchema,
   failureNotificationDestinationCreateRequestSchema,
   failureNotificationDestinationStatusRequestSchema,
+  failureNotificationDestinationTestRequestSchema,
   workflowFailureNotificationPolicyRequestSchema,
 } from '@pertexo/contracts';
 import { z } from 'zod';
@@ -23,7 +24,15 @@ import {
   SessionAuthenticationGuard,
 } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { requestIdempotencyKey } from '../../platform/http/index.js';
+import { TestConnectionUseCase } from '../use-cases/test-connection.js';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../../platform/http/application-error.js';
+import {
+  requestIdempotencyKey,
+  withRequestOperationSignal,
+} from '../../platform/http/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import {
   ConnectionManageGuard,
@@ -67,6 +76,7 @@ function requestCommand(
 export class FailureNotificationDestinationsController {
   public constructor(
     private readonly useCases: FailureNotificationDestinationUseCases,
+    private readonly testConnection: TestConnectionUseCase,
   ) {}
 
   @Post('failure-notification-destinations')
@@ -114,6 +124,45 @@ export class FailureNotificationDestinationsController {
       ...requestCommand(request, route.workspaceId),
       destinationId: route.destinationId,
     });
+  }
+
+  @Post('failure-notification-destinations/:destinationId/test')
+  @RateLimit('provider_test')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    ConnectionManageGuard,
+    CsrfProtectionGuard,
+  )
+  public async test(
+    @Req() request: ConnectionRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const route = destinationParamsSchema.parse(params);
+    const input = failureNotificationDestinationTestRequestSchema.parse(body);
+    const context = requestCommand(request, route.workspaceId);
+    const destination = await this.useCases.get({
+      ...context,
+      destinationId: route.destinationId,
+    });
+    if (destination.currentVersion !== input.expectedVersion)
+      return throwApplicationError(
+        applicationError('connection.conflict', {
+          safeDetail:
+            'The alert destination changed. Review it before sending a test.',
+        }),
+      );
+    return withRequestOperationSignal(request, (signal) =>
+      this.testConnection.executeDestination(
+        {
+          ...context,
+          idempotencyKey: requestIdempotencyKey(request.headers),
+          signal,
+        },
+        destination,
+      ),
+    );
   }
 
   @Post('failure-notification-destinations/:destinationId/versions')

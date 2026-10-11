@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/empty';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
+import { isApiError } from '@/lib/api/error';
 import { readFailureReason } from '@/lib/api/error-copy';
 import { AddConnectionSheet } from '../components/add-connection/sheet';
 import { ConnectionCollection } from '../components/connection-collection';
@@ -201,6 +202,18 @@ function ConnectionsSession({
           'connection:read',
           'see this workspace’s connections',
         )}
+      />
+    );
+  if (
+    connections.isError &&
+    isApiError(connections.error) &&
+    connections.error.problem?.code === 'connection.not_configured'
+  )
+    return (
+      <UnavailablePage
+        heading="Connections"
+        title="Connections need server configuration"
+        description="This server has no connection encryption provider configured. Enable local connection encryption for development, or configure AWS KMS on the server. Alerts need a connection too."
       />
     );
   if (connections.isError && connectionAccessLost(connections.error))

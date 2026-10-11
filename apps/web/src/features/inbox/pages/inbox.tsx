@@ -1,3 +1,4 @@
+import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -10,7 +11,7 @@ import {
   type UseInfiniteQueryResult,
   type InfiniteData,
 } from '@tanstack/react-query';
-import { CheckCheckIcon, InboxIcon } from 'lucide-react';
+import { CheckCheckIcon } from 'lucide-react';
 import { LoadMore } from '@/components/patterns/load-more';
 import {
   PageHeader,
@@ -104,8 +105,8 @@ function InboxHeader({
 function InboxEmpty({ filter }: Readonly<{ filter: WorkspaceInboxFilter }>) {
   return (
     <Empty>
-      <EmptyMedia>
-        <InboxIcon aria-hidden="true" className="size-6" />
+      <EmptyMedia className="w-full max-w-56">
+        <FinishedThread />
       </EmptyMedia>
       {filter === 'unread' ? (
         <>
@@ -119,8 +120,9 @@ function InboxEmpty({ filter }: Readonly<{ filter: WorkspaceInboxFilter }>) {
         <>
           <EmptyTitle>No failing workflows</EmptyTitle>
           <EmptyDescription>
-            When a run fails, times out or ends with an unknown outcome, its
-            workflow shows up here for 30 days after its latest failure.
+            No failing workflows need attention here. When a run fails, times
+            out or ends with an unknown outcome, its workflow shows up here for
+            30 days after its latest failure.
           </EmptyDescription>
         </>
       )}

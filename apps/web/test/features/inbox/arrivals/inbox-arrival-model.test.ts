@@ -14,6 +14,7 @@ function thread(
     workflowId,
     workflowName: `Workflow ${workflowId.slice(0, 1)}`,
     kind: 'failed',
+    failureDays: [],
     occurrenceCount: 1,
     firstOccurredAt: '2026-09-15T09:00:00.000000Z',
     latestOccurredAt: '2026-09-15T09:30:00.000000Z',
@@ -64,6 +65,7 @@ describe('inbox arrivals', () => {
     const view = describeInboxArrival([
       thread(first, {
         workflowName: 'Nightly import',
+        failureDays: [],
         occurrenceCount: 7,
         latestFailedStep: {
           nodeId: 'fetch',

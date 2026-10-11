@@ -12,6 +12,7 @@ import type {
 } from '@pertexo/observability';
 
 import type { ApiConfig } from './platform/config/api.js';
+import { ConnectionsModule } from './connections/index.js';
 import { CatalogModule } from './catalog/index.js';
 
 import {
@@ -240,6 +241,10 @@ function registerFeatureModules(
   const authorization =
     dependencies.identityRuntime?.dependencies.authorization;
   if (authorization === undefined) return modules;
+  if (dependencies.connectionRuntime === undefined)
+    modules.push(
+      ConnectionsModule.registerUnavailable(authorization, identityModule),
+    );
   if (dependencies.webhookRuntime !== undefined)
     modules.push(
       WebhookModule.register(

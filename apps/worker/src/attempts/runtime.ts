@@ -32,7 +32,7 @@ import {
   composeExecutableCatalog,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
-import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
+import type { ConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import {
   createNodeAttemptExecutionEngine,
@@ -90,7 +90,7 @@ type PreviewAttemptRuntimeDependency = Readonly<{
 
 export type NodeAttemptRuntimeOptions = Readonly<{
   artifactStore?: ArtifactStoreConfig;
-  connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
+  connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
   heartbeatIntervalMillis: number;

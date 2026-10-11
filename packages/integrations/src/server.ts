@@ -104,3 +104,13 @@ export type {
   HttpOutcomeDecision,
   HttpSideEffectClass,
 } from './http/outcome-policy.js';
+
+export {
+  createConnectionEnvelopeEncryption,
+  parseConnectionEncryptionConfig,
+} from './credentials/runtime.js';
+export type {
+  ConnectionEnvelopeEncryptionConfig,
+  ConnectionEnvelopeEncryptionRuntime,
+  LocalConnectionEncryptionConfig,
+} from './credentials/runtime.js';

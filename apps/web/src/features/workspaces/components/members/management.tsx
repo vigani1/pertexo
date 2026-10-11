@@ -1,3 +1,4 @@
+import { MembershipThread } from '../membership-thread';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -89,6 +90,7 @@ export function MemberManagement({
 }>) {
   const notifications = useNotifications();
   const [proposal, setProposal] = useState<Proposal>();
+  const [lastRemoved, setLastRemoved] = useState<WorkspaceMember>();
   const [removalTarget, setRemovalTarget] = useState<WorkspaceMember>();
   const [statusChange, setStatusChange] = useState<StatusChange>();
   const [transferTarget, setTransferTarget] = useState<WorkspaceMember>();
@@ -126,6 +128,7 @@ export function MemberManagement({
   const removal = useMemberRemovalCommand({
     ...scope,
     onRemoved: (member) => {
+      setLastRemoved(member);
       setRemovalTarget(undefined);
       notifications.success({
         title: `${member.displayName} was removed from ${workspace.name}`,
@@ -216,6 +219,17 @@ export function MemberManagement({
   return (
     <>
       <MemberList members={members} actorUserId={user.id} control={control} />
+      {lastRemoved === undefined ||
+      members.some((member) => member.userId === lastRemoved.userId) ? null : (
+        <div
+          role="status"
+          className="border-t border-border py-3 text-sm text-muted-foreground"
+        >
+          {lastRemoved.displayName} · removed this session
+          <MembershipThread state="removed" />
+        </div>
+      )}
+
       <MemberRoleDialog
         change={change}
         command={roleCommand}

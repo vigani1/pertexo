@@ -1,17 +1,18 @@
-// Shared byte-size text for files, payloads and uploads.
+// Decimal database byte counts stay exact beyond Number.MAX_SAFE_INTEGER.
+const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'] as const;
 
-const units = ['KB', 'MB', 'GB'] as const;
-
-/** 12 B, 3.1 KB, 4 MB: a whole size drops its ".0". */
-export function formatByteLength(bytes: number): string {
-  if (bytes < 1_024) return `${String(bytes)} B`;
-  let value = bytes / 1_024;
-  let unit: (typeof units)[number] = 'KB';
+/** Binary sizes using the app’s established KB/MB/GB labels. */
+export function formatByteLength(bytes: number | string | bigint): string {
+  const count =
+    typeof bytes === 'number' ? BigInt(Math.round(bytes)) : BigInt(bytes);
+  let divisor = 1n;
+  let unit: (typeof units)[number] = 'B';
   for (const next of units.slice(1)) {
-    if (value < 1_024) break;
-    value /= 1_024;
+    if (count < divisor * 1_024n) break;
+    divisor *= 1_024n;
     unit = next;
   }
-  const rounded = value.toFixed(1);
-  return `${rounded.endsWith('.0') ? rounded.slice(0, -2) : rounded} ${unit}`;
+  const tenths = (count * 10n + divisor / 2n) / divisor;
+  const fraction = tenths % 10n;
+  return `${String(tenths / 10n)}${fraction === 0n ? '' : `.${String(fraction)}`} ${unit}`;
 }

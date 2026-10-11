@@ -299,6 +299,7 @@ describe('connection public contracts', () => {
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/slack/channels',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}',
+      '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/test',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/versions',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/status',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/failure-notification-policy',

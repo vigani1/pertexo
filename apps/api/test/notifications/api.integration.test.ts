@@ -121,6 +121,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
           workflowId,
           workflowName: 'Nightly import',
           kind: 'failed',
+          failureDays: [],
           occurrenceCount: 1,
           latestRunId: runId,
           unread: true,

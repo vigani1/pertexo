@@ -30,6 +30,7 @@ import {
   failureNotificationDestinationListResponseSchema,
   failureNotificationDestinationResponseSchema,
   failureNotificationDestinationStatusRequestSchema,
+  failureNotificationDestinationTestRequestSchema,
   workflowFailureNotificationPolicyRequestSchema,
   workflowFailureNotificationPolicyResponseSchema,
 } from '../schemas/failure-notification-destinations.js';
@@ -66,6 +67,10 @@ const schemas = Object.freeze({
   FailureNotificationDestinationResponse: jsonSchema(
     failureNotificationDestinationResponseSchema,
     'output',
+  ),
+  FailureNotificationDestinationTestRequest: jsonSchema(
+    failureNotificationDestinationTestRequestSchema,
+    'input',
   ),
   FailureNotificationDestinationStatusRequest: jsonSchema(
     failureNotificationDestinationStatusRequestSchema,
@@ -143,6 +148,7 @@ export const connectionsOpenApiDocument = Object.freeze({
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
+          '503': responseReference('ServiceUnavailable'),
           '500': responseReference('Unexpected'),
         },
       },
@@ -310,6 +316,7 @@ export const connectionsOpenApiDocument = Object.freeze({
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
+          '503': responseReference('ServiceUnavailable'),
           '500': responseReference('Unexpected'),
         },
       },
@@ -346,6 +353,36 @@ export const connectionsOpenApiDocument = Object.freeze({
             '401': responseReference('Unauthenticated'),
             '403': responseReference('Forbidden'),
             '404': responseReference('NotFound'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
+    '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/test':
+      {
+        post: {
+          operationId: 'testFailureNotificationDestination',
+          description:
+            'Sends one real test message to the reviewed destination version. Replays a completed attempt with the same idempotency key; an uncertain dispatched attempt must not be sent again with a new key.',
+          security: [{ cookieSession: [] }],
+          parameters: [
+            workspaceParameter,
+            destinationParameter,
+            csrfParameter,
+            idempotencyParameter,
+          ],
+          requestBody: jsonRequest('FailureNotificationDestinationTestRequest'),
+          responses: {
+            '200': jsonResponse(
+              'Alert destination test outcome',
+              'ConnectionTestResponse',
+            ),
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '409': responseReference('Conflict'),
+            '429': responseReference('RateLimited'),
+            '503': responseReference('ServiceUnavailable'),
             '500': responseReference('Unexpected'),
           },
         },

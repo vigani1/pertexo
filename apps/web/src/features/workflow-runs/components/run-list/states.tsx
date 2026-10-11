@@ -1,7 +1,10 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 import { Link } from '@tanstack/react-router';
-import { BarredThread } from '@/components/patterns/states/thread-illustrations';
+import {
+  BarredThread,
+  LooseThread,
+} from '@/components/patterns/states/thread-illustrations';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
@@ -65,8 +68,8 @@ export function NoMatchingRuns({
 }: Readonly<{ onClearFilters: () => void; partial: boolean }>) {
   return (
     <Empty>
-      <EmptyMedia>
-        <StatusGlyph tone="skipped" className="size-6" />
+      <EmptyMedia className="w-full max-w-56">
+        <LooseThread />
       </EmptyMedia>
       <EmptyTitle>No runs match these filters</EmptyTitle>
       <EmptyDescription>
@@ -89,6 +92,9 @@ export function NoRunsYet({
 }: Readonly<{ workspaceId: string; canReadWorkflows: boolean }>) {
   return (
     <Empty>
+      <EmptyMedia className="w-full max-w-56">
+        <LooseThread />
+      </EmptyMedia>
       <EmptyTitle>No runs yet</EmptyTitle>
       <EmptyDescription>
         Runs show up here once a published workflow runs, from one of its
@@ -116,6 +122,9 @@ export function NoWorkflowRunsYet({
 }: Readonly<{ workspaceId: string; workflowId: string }>) {
   return (
     <Empty>
+      <EmptyMedia className="w-full max-w-56">
+        <LooseThread />
+      </EmptyMedia>
       <EmptyTitle>No runs yet</EmptyTitle>
       <EmptyDescription>
         This workflow’s runs show up here once it’s published and runs, from one

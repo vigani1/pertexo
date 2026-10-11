@@ -44,6 +44,7 @@ function thread(
     workflowId,
     workflowName: workflowId === importId ? 'Nightly import' : 'Billing sync',
     kind: 'failed',
+    failureDays: [],
     occurrenceCount: 1,
     firstOccurredAt: '2026-09-15T09:00:00.000000Z',
     latestOccurredAt: '2026-09-15T09:30:00.000000Z',
@@ -151,6 +152,7 @@ describe('workspace inbox', () => {
       threads: [
         thread(importId, {
           kind: 'timed_out',
+          failureDays: [],
           occurrenceCount: 3,
           latestFailedStep: {
             nodeId: 'fetch',
@@ -302,6 +304,7 @@ describe('new failure notice', () => {
     state.threads = [
       thread(importId, {
         revision: '8',
+        failureDays: [],
         occurrenceCount: 3,
         latestFailedStep: failedStep,
       }),

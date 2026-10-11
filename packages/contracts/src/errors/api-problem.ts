@@ -63,6 +63,7 @@ export const API_PROBLEM_CODES = [
   'workflow.activation_failed',
   'run.not_cancelable',
   'run.outcome_unknown',
+  'connection.not_configured',
   'connection.conflict',
   'connection.reauthorization_required',
   'connection.revoked',
@@ -363,6 +364,12 @@ const apiProblemDetails = {
     title: 'Run outcome is unknown',
     severity: 'warn',
     exposeDetail: true,
+  },
+  'connection.not_configured': {
+    status: 503,
+    title: 'Connections are not configured',
+    severity: 'warn',
+    exposeDetail: false,
   },
   'connection.conflict': {
     status: 409,

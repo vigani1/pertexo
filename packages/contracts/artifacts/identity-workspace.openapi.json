@@ -2411,6 +2411,7 @@
               "workflow.activation_failed",
               "run.not_cancelable",
               "run.outcome_unknown",
+              "connection.not_configured",
               "connection.conflict",
               "connection.reauthorization_required",
               "connection.revoked",

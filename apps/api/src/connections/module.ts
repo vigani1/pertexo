@@ -1,3 +1,5 @@
+import { UnconfiguredConnectionsController } from './http/unavailable.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
@@ -31,6 +33,22 @@ import {
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class ConnectionsModule {
+  public static registerUnavailable(
+    authorization: WorkspaceAuthorizationSource,
+    identityModule: DynamicModule,
+  ): DynamicModule {
+    return {
+      module: ConnectionsModule,
+      imports: [identityModule],
+      controllers: [UnconfiguredConnectionsController],
+      providers: [
+        { provide: CONNECTION_AUTHORIZATION, useValue: authorization },
+        ConnectionReadGuard,
+        FailureNotificationWorkflowEditGuard,
+      ],
+    };
+  }
+
   public static register(
     dependencies: ConnectionDependencies,
     identityModule: DynamicModule,

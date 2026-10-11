@@ -175,9 +175,9 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
   ).toBeVisible();
   const capacity = page.getByRole('region', { name: 'Current capacity' });
   await expect(
-    capacity.getByText('9007199254740993', { exact: true }),
+    capacity.getByText('8 PB', { exact: true }).first(),
   ).toBeVisible();
-  await expect(capacity).toContainText('/ 0 bytes');
+  await expect(capacity).toContainText('/ 0 B');
   await expect(capacity).toContainText('Expired');
   await expect(capacity).toContainText('not active for new acceptance');
   await expect(
@@ -232,14 +232,10 @@ test('Usage removes denied cached capacity without hiding retained activity', as
 }) => {
   const { deny, failCapacity, authorize } = await install(page);
   await page.goto(`/w/${workspaceId}/settings/usage`);
-  await expect(
-    page.getByText('9007199254740993', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('8 PB', { exact: true }).first()).toBeVisible();
   deny();
   await page.getByRole('button', { name: 'Refresh current capacity' }).click();
-  await expect(page.getByText('9007199254740993', { exact: true })).toHaveCount(
-    0,
-  );
+  await expect(page.getByText('8 PB', { exact: true }).first()).toHaveCount(0);
   await expect(page.getByText('Daily intake', { exact: true })).toBeVisible();
   for (const status of [503, 0]) {
     failCapacity(status);
@@ -253,13 +249,13 @@ test('Usage removes denied cached capacity without hiding retained activity', as
           : 'Current capacity couldn’t be loaded. Try again.',
       ),
     ).toBeVisible();
-    await expect(
-      page.getByText('9007199254740993', { exact: true }),
-    ).toHaveCount(0);
+    await expect(page.getByText('8 PB', { exact: true }).first()).toHaveCount(
+      0,
+    );
   }
   authorize();
   await page.getByRole('button', { name: 'Refresh current capacity' }).click();
-  await expect(page.getByText('42', { exact: true })).toBeVisible();
+  await expect(page.getByText('42 B', { exact: true }).first()).toBeVisible();
 });
 
 test('Usage forgets denied activity across windows, transient failures and fresh recovery', async ({
@@ -294,9 +290,7 @@ test('Usage forgets denied activity across windows, transient failures and fresh
     ),
   ).toBeVisible();
   await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
-  await expect(
-    page.getByText('9007199254740993', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('8 PB', { exact: true }).first()).toBeVisible();
   authorize();
   await page
     .getByRole('button', { name: 'Refresh retained run activity' })

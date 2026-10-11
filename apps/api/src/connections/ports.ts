@@ -47,7 +47,8 @@ export type ConnectionHttpClient = Pick<SecureHttpClient, 'execute'>;
 export type ConnectionSlackClient = Pick<
   SlackClient,
   'authTest' | 'lookupChannel'
->;
+> &
+  Partial<Pick<SlackClient, 'sendMessage'>>;
 export type ConnectionEmailClient = Pick<ResendClient, 'sendNotification'>;
 
 export type ConnectionDependencies = Readonly<{

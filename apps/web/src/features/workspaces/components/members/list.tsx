@@ -1,3 +1,4 @@
+import { MembershipThread } from '../membership-thread';
 import type { WorkspaceMember } from '@pertexo/contracts';
 import {
   CirclePauseIcon,
@@ -153,6 +154,11 @@ function MemberRow({
         >
           {member.email}
         </p>
+        <MembershipThread
+          state={
+            member.membershipStatus === 'active' ? 'accepted' : 'suspended'
+          }
+        />
       </div>
       <div>
         {control.canChange(member) ? (
