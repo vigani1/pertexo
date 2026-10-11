@@ -57,8 +57,11 @@ test('reports real current capacity and retained activity with exact drilldowns'
     artifactCountLimit: 1000,
   });
   const current = page.getByRole('region', { name: 'Current capacity' });
-  await expect(current.getByText('11', { exact: true })).toBeVisible();
-  await expect(current).toContainText('/ 1073741824 bytes');
+  await expect(current.getByTitle('11 bytes')).toHaveText('11 B');
+  await expect(
+    current.getByRole('figure', { name: '11 B stored of 1 GB' }),
+  ).toBeVisible();
+  await expect(current).toContainText('/ 1 GB');
   await expect(current).toContainText(
     '1 active run (running or waiting) + 0 reserved active slots',
   );
@@ -109,7 +112,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
   ).toBeVisible();
   await page.goto(path);
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(current.getByText('11', { exact: true })).toBeVisible();
+  await expect(current.getByTitle('11 bytes')).toHaveText('11 B');
   await page.getByRole('button', { name: '6 hours' }).focus();
   await page.keyboard.press('Space');
   await expect(page).toHaveURL(/window=6h/u);
