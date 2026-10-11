@@ -103,27 +103,16 @@ export function ConfirmDialog({
       }}
     >
       {trigger === undefined ? null : <DialogTrigger render={trigger} />}
-      <DialogContent>
-        <DialogTitle>{title}</DialogTitle>
+      <DialogContent className="flex flex-col overflow-hidden">
+        <DialogTitle className="shrink-0">{title}</DialogTitle>
         {description === undefined ? null : (
-          <DialogDescription>{description}</DialogDescription>
-        )}
-        {consequences === undefined ? null : (
-          <ul className="mt-4 flex flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
-            {consequences.map((line) => (
-              <li key={line} className="flex gap-2.5">
-                <span
-                  aria-hidden="true"
-                  className="mt-2.5 h-px w-3 shrink-0 bg-border-strong"
-                />
-                {line}
-              </li>
-            ))}
-          </ul>
+          <DialogDescription className="shrink-0">
+            {description}
+          </DialogDescription>
         )}
         <form
           noValidate
-          className="mt-6 flex flex-col gap-5"
+          className="mt-6 flex min-h-0 flex-1 flex-col gap-5"
           onSubmit={(event) => {
             event.preventDefault();
             if (pending || confirmDisabled) return;
@@ -131,17 +120,32 @@ export function ConfirmDialog({
             void Promise.resolve(run()).catch(() => undefined);
           }}
         >
-          {children}
-          {error === undefined ? null : (
-            <Notice
-              role="alert"
-              tone={unconfirmed === undefined ? errorTone : 'warning'}
-              action={errorAction}
-            >
-              {error}
-            </Notice>
-          )}
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain px-1 -mx-1">
+            {consequences === undefined ? null : (
+              <ul className="flex flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
+                {consequences.map((line) => (
+                  <li key={line} className="flex gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="mt-2.5 h-px w-3 shrink-0 bg-border-strong"
+                    />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {children}
+            {error === undefined ? null : (
+              <Notice
+                role="alert"
+                tone={unconfirmed === undefined ? errorTone : 'warning'}
+                action={errorAction}
+              >
+                {error}
+              </Notice>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
             {cancel === undefined ? (
               <DialogClose
                 disabled={locked}
