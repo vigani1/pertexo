@@ -226,15 +226,19 @@ export function createConnectionTestPersistence(
              where workspace_id = $1 and operation = 'connection.test'
                and scope = $2 and key_hash = $3 and request_hash = $4
                and status = 'in_progress'
-               and result_ref->>'dispatchToken' = $5 for share`,
+               and result_ref->>'dispatchToken' = $5
+               and result_ref->>'state' = 'claimed' for update`,
             [workspaceId, scope, digest, requestHash, dispatchToken],
           );
           if (claim.rowCount !== 1)
             throw new ConnectionTestInProgressError(
               'Connection test credential ownership was lost',
             );
-          const resolved = await client.query<Record<string, unknown>>(
+          const resolved = await client.query<
+            Record<string, unknown> & { test_health_revision: string }
+          >(
             `select connection.*,
+                    connection.health_revision::text as test_health_revision,
                     secret.id as secret_id,
                     secret.kms_key_reference,
                     secret.encrypted_data_key,
@@ -261,6 +265,27 @@ export function createConnectionTestPersistence(
           const secretVersionId = uuidSchema.parse(row.secret_id);
           if (secretVersionId !== connection.currentSecretVersionId)
             throw new Error('Connection secret pointer is corrupt');
+          // DNS and safety checks may fail before dispatch. Capture their
+          // current-credential fence now, without inventing dispatch evidence.
+          await client.query(
+            `update app.idempotency_records
+             set result_ref = $1::jsonb, updated_at = transaction_timestamp()
+             where workspace_id = $2 and operation = 'connection.test'
+               and scope = $3 and key_hash = $4`,
+            [
+              JSON.stringify(
+                connectionTestClaim(
+                  dispatchToken,
+                  'claimed',
+                  secretVersionId,
+                  row.test_health_revision,
+                ),
+              ),
+              workspaceId,
+              scope,
+              digest,
+            ],
+          );
           await client.query(
             `insert into app.connection_events
                (id, workspace_id, connection_id, event_type, actor_kind,
@@ -323,15 +348,16 @@ export function createConnectionTestPersistence(
             claim.rows[0].result_ref,
           );
           if (
-            claimState.state === 'dispatched' &&
             claimState.secretVersionId !== undefined &&
             claimState.secretVersionId !== secretVersionId
           )
             throw new ConnectionTestInProgressError(
-              'Connection test secret version does not match dispatch evidence',
+              'Connection test secret version does not match credential evidence',
             );
           if (
-            (outcome.ok || outcome.httpStatus !== null) &&
+            (outcome.ok ||
+              outcome.httpStatus !== null ||
+              outcome.reauthorizationRequired) &&
             claimState.state !== 'dispatched'
           )
             throw new ConnectionTestInProgressError(
@@ -357,10 +383,7 @@ export function createConnectionTestPersistence(
           const connection = await applyCurrentConnectionTestHealth(client, {
             current,
             secretVersionId,
-            healthRevision:
-              claimState.state === 'dispatched'
-                ? claimState.healthRevision
-                : undefined,
+            healthRevision: claimState.healthRevision,
             outcome,
             actorId,
             ...metadata,

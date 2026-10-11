@@ -66,6 +66,30 @@ describe('connection health in words', () => {
       ).text,
     ).toMatch(/^healthy run /u);
   });
+  it('calls a failed explicit test a test even when a previous run established health', () => {
+    expect(
+      describeConnectionHealth(
+        {
+          providerKey: 'http',
+          status: 'active',
+          updatedAt: '2026-09-24T10:00:00.000Z',
+          health: {
+            ...health({
+              lastTestedAt: '2026-09-24T10:00:00.000Z',
+              lastHealthyAt: '2026-09-24T09:00:00.000Z',
+              lastErrorCode: 'connection.test.dns_failed',
+            }),
+            lastHealthTransitionSource: 'run',
+          },
+        },
+        now,
+      ),
+    ).toEqual({
+      text: 'last test failed · address not found',
+      tone: 'attention',
+    });
+  });
+
   it('maps every status to one word and tone', () => {
     expect(describeConnectionStatus('active')).toEqual({
       tone: 'neutral',

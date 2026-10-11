@@ -18,7 +18,8 @@ export function connectionTestClaim(
   const base = {
     dispatchToken: uuidSchema.parse(dispatchToken),
   };
-  if (state === 'claimed') return Object.freeze({ ...base, state });
+  if (state === 'claimed' && secretVersionId === undefined)
+    return Object.freeze({ ...base, state });
   return Object.freeze({
     ...base,
     state,
@@ -39,6 +40,11 @@ export const connectionTestClaimSchema = z.discriminatedUnion('state', [
     .object({
       state: z.literal('claimed'),
       dispatchToken: z.uuid(),
+      secretVersionId: z.uuid().optional(),
+      healthRevision: z
+        .string()
+        .regex(/^[1-9][0-9]*$/u)
+        .optional(),
     })
     .strict(),
   z

@@ -109,7 +109,7 @@ export function AddConnectionSheet({
     if (create.isPending) return;
     if (created !== undefined) {
       notifications.success(savedMessage(created.name, test.phase === 'ok'));
-      onCreated?.(created);
+      onCreated?.(test.result?.connection ?? created);
     }
     attempt.current = undefined;
     setChosen(undefined);
