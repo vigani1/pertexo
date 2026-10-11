@@ -447,7 +447,7 @@ function waitGraph() {
   };
 }
 
-async function insertCompiledWorkflow(
+export async function insertCompiledWorkflow(
   query: Query,
   input: Readonly<{
     actorId: string;
