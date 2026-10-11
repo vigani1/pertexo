@@ -381,6 +381,10 @@ async function construct(
   resources.capabilities = capabilities;
   active();
   const coordinator = await createCoordinatorRuntime({
+    maintenanceDatabase: parseDatabaseConfig({
+      connectionString: raw.dispatcherUrl,
+      max: 2,
+    }),
     database,
     maximumAdmissions: 10,
     redisUrl: namespace.redisUrl,

@@ -34,6 +34,7 @@ import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/runtime-capabilities.js';
 import {
   databaseUrl,
+  operatorUrl,
   redisConnection,
   redisUrl,
   workerUrl,
@@ -379,6 +380,10 @@ export async function createHttpNodeAttemptProofRuntime(
     const coordinator = own(
       'coordinator runtime',
       await createCoordinatorRuntime({
+        maintenanceDatabase: parseDatabaseConfig({
+          connectionString: databaseUrl(operatorUrl),
+          max: 2,
+        }),
         database: parseDatabaseConfig({
           connectionString: databaseUrl(workerUrl),
           max: 3,

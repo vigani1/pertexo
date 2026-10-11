@@ -29,6 +29,7 @@ const {
   conditionWorkflowId,
   conditionWorkflowVersionId,
   databaseUrl,
+  dispatcherUrl,
   forEachWorkflowId,
   forEachWorkflowVersionId,
   apiUrl,
@@ -74,6 +75,10 @@ export async function createCoordinatorRedeliveryHarness(
   let queue: Queue;
   try {
     runtime = await createCoordinatorRuntime({
+      maintenanceDatabase: parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 2,
+      }),
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
         max: 4,

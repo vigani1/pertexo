@@ -3,9 +3,11 @@ import {
   createDueNodeWakeupScanner,
   createDeadlineWakeupScanner,
   createRunAdvanceStore,
+  createWorkflowCallStore,
   type DueNodeWakeupScanner,
   type DeadlineWakeupScanner,
   type RunAdvanceStore,
+  type WorkflowCallStore,
 } from '@pertexo/database/runs';
 import type {
   DatabaseConfig,
@@ -52,6 +54,8 @@ export type CoordinatorRuntime = ScannerRuntime;
 
 export type CoordinatorRuntimeOptions = Readonly<{
   database: DatabaseConfig;
+  maintenanceDatabase: DatabaseConfig;
+  maintenanceDatabaseRuntime?: DatabaseRuntime;
   databaseRuntime?: DatabaseRuntime;
   backgroundTaskShutdownTimeoutMillis?: number;
   dueWakeupBatchSize?: number;
@@ -70,6 +74,7 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   deadlineWakeupScanner?: DeadlineWakeupScanner;
   notifications?: RunEventNotificationPublisher;
   runStore?: RunAdvanceStore;
+  callStore?: WorkflowCallStore;
   telemetry?: CoordinatorTelemetry;
   logger?: StructuredLogger;
 }>;
@@ -80,6 +85,7 @@ export type CoordinatorCompositionFactories = Readonly<{
   dueScanner: typeof createDueNodeWakeupScanner;
   notifications(redisUrl: string): RunEventNotificationPublisher;
   runStore: typeof createRunAdvanceStore;
+  callStore: typeof createWorkflowCallStore;
   telemetry: typeof createCoordinatorTelemetry;
   traceRunner: typeof createQueueTraceRunner;
 }>;
@@ -91,6 +97,7 @@ const productionFactories: CoordinatorCompositionFactories = {
   notifications: (redisUrl) =>
     new RedisRunEventNotificationPublisher({ redisUrl }),
   runStore: createRunAdvanceStore,
+  callStore: createWorkflowCallStore,
   telemetry: createCoordinatorTelemetry,
   traceRunner: createQueueTraceRunner,
 };
@@ -138,6 +145,7 @@ export async function createCoordinatorRuntime(
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();
   let runStore: RunAdvanceStore | undefined;
+  let callStore: WorkflowCallStore | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
   let dueWakeupScanner: DueNodeWakeupScanner | undefined;
   let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
@@ -152,6 +160,12 @@ export async function createCoordinatorRuntime(
     runStore =
       dependencies.runStore ??
       factories.runStore(options.database, options.databaseRuntime);
+    callStore =
+      dependencies.callStore ??
+      factories.callStore(
+        options.maintenanceDatabase,
+        options.maintenanceDatabaseRuntime,
+      );
     notifications =
       dependencies.notifications ?? factories.notifications(options.redisUrl);
     dueWakeupScanner =
@@ -163,6 +177,7 @@ export async function createCoordinatorRuntime(
     const clock = dependencies.clock ?? systemClock();
     const advanceDependencies = Object.freeze({
       runs: runStore,
+      calls: callStore,
       verification: { catalog },
       maximumAdmissions: options.maximumAdmissions,
       now: () => clock.now(),
@@ -189,6 +204,7 @@ export async function createCoordinatorRuntime(
         deadlineWakeupScanner,
         notifications,
         runStore,
+        callStore,
         expressionOwner,
       ],
       backgroundTaskShutdownTimeoutMillis,
@@ -210,6 +226,7 @@ export async function createCoordinatorRuntime(
       deadlineWakeupScanner,
       notifications,
       runStore,
+      callStore,
       expressionOwner,
     ],
     pollIntervalMillis: dueWakeupPollIntervalMillis,

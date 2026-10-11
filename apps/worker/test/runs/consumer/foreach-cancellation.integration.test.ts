@@ -146,6 +146,7 @@ describeIntegration('For Each cancellation recovery', () => {
             env: {
               ...process.env,
               FOR_EACH_DATABASE_URL: databaseUrl(workerUrl),
+              FOR_EACH_MAINTENANCE_DATABASE_URL: databaseUrl(dispatcherUrl),
               FOR_EACH_REDIS_URL: redisUrl,
             },
             stdio: ['ignore', 'pipe', 'pipe'],

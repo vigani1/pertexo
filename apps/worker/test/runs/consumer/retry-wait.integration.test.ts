@@ -36,6 +36,7 @@ const {
   adminUrl,
   apiQuery,
   databaseUrl,
+  dispatcherUrl,
   enabled,
   ownerQuery,
   redisConnection,
@@ -316,6 +317,10 @@ describeIntegration('Retry and Wait outage recovery', () => {
     const advance = (input: Parameters<RunAdvanceStore['advance']>[0]) =>
       retryStore.advance(input, retryDecide);
     const runtimeOptions = {
+      maintenanceDatabase: parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 2,
+      }),
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
         max: 6,
@@ -542,6 +547,10 @@ describeIntegration('Retry and Wait outage recovery', () => {
     });
     const producer = createQueueProducer({ redisUrl });
     let coordinator = await createCoordinatorRuntime({
+      maintenanceDatabase: parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 2,
+      }),
       database,
       maximumAdmissions: 1,
       redisUrl,
@@ -734,6 +743,10 @@ describeIntegration('Retry and Wait outage recovery', () => {
         throw new Error('Wait control outboxes are incomplete');
 
       coordinator = await createCoordinatorRuntime({
+        maintenanceDatabase: parseDatabaseConfig({
+          connectionString: databaseUrl(dispatcherUrl),
+          max: 2,
+        }),
         database,
         maximumAdmissions: 1,
         redisUrl,
@@ -799,6 +812,10 @@ describeIntegration('Retry and Wait outage recovery', () => {
 
       await coordinator.close();
       coordinator = await createCoordinatorRuntime({
+        maintenanceDatabase: parseDatabaseConfig({
+          connectionString: databaseUrl(dispatcherUrl),
+          max: 2,
+        }),
         database,
         maximumAdmissions: 1,
         redisUrl,

@@ -27,6 +27,13 @@ export function coordinatorRuntimeProvider(
       return createCoordinatorRuntime(
         {
           database: config.database,
+          maintenanceDatabase: config.dispatcherDatabase,
+          ...(dependencies.dispatcherDatabaseRuntime === undefined
+            ? {}
+            : {
+                maintenanceDatabaseRuntime:
+                  dependencies.dispatcherDatabaseRuntime,
+              }),
           ...(dependencies.databaseRuntime === undefined
             ? {}
             : { databaseRuntime: dependencies.databaseRuntime }),

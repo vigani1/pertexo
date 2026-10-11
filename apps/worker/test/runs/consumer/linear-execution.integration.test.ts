@@ -18,6 +18,7 @@ import {
 
 const {
   databaseUrl,
+  dispatcherUrl,
   enabled,
   redisConnection,
   redisUrl,
@@ -53,6 +54,10 @@ describeIntegration('Linear node execution resilience', () => {
       ),
     );
     const coordinator = await createCoordinatorRuntime({
+      maintenanceDatabase: parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 2,
+      }),
       database,
       maximumAdmissions: 1,
       redisUrl,

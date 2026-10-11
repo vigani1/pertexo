@@ -21,6 +21,7 @@ import {
   acceptDelivery,
   acceptWorkflowDelivery,
   databaseUrl,
+  dispatcherUrl,
   providerEffectCount,
   redisConnectionOptions,
   redisUrl,
@@ -270,6 +271,10 @@ describeIntegration('core.validate persisted workflow execution', () => {
       max: 4,
     });
     const coordinator = await createCoordinatorRuntime({
+      maintenanceDatabase: parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 2,
+      }),
       database,
       maximumAdmissions: 1,
       redisUrl,
