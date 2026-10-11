@@ -35,6 +35,8 @@ export function createDecisionEngine(
                 workflowVersionId: input.workflowVersionId,
                 checkpoint: input.checkpoint,
                 observations: input.observations,
+                hasExecutionSlot: true,
+                callOutcomes: [],
                 completedOutputs: input.completedOutputs ?? [],
                 workflow: input.projection,
                 readCompletionValues: () =>

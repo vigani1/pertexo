@@ -154,11 +154,14 @@ export async function loadNodeAttemptInputs(
         }>(
           `select node.invocation_key,node.node_id,
                   node.output_ref as node_output_ref,
-                  attempt.output_ref as attempt_output_ref
+                  case when call.id is not null then call.result_ref else attempt.output_ref end as attempt_output_ref
            from app.node_runs node
            join app.node_attempts attempt
              on attempt.workspace_id=node.workspace_id
             and attempt.id=node.current_attempt_id
+           left join app.workflow_calls call
+             on call.workspace_id=node.workspace_id and call.parent_run_id=node.workflow_run_id
+            and call.invocation_key=node.invocation_key and call.status='succeeded'
             where node.workspace_id=$1 and node.workflow_run_id=$2
               and node.invocation_key=any($3::varchar[])
               and node.status='succeeded' and attempt.status='succeeded'

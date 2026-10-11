@@ -4,7 +4,10 @@ import type {
   RunAdvanceInput,
   RunAdvanceResult,
   RunAdvanceStore,
+  WorkflowCallStore,
 } from '@pertexo/database/runs';
+import { WorkflowCallRefusedError } from '@pertexo/database/runs';
+import { createInitialCheckpoint } from './initial-checkpoint.js';
 import {
   advanceWorkflow,
   parseCheckpoint,
@@ -20,6 +23,7 @@ import {
 
 export type AdvanceRunDependencies = Readonly<{
   runs: RunAdvanceStore;
+  calls?: WorkflowCallStore;
   verification: PersistedWorkflowProjectionVerificationOptions;
   /** Most node attempts one transition may admit. */
   maximumAdmissions: number;
@@ -32,10 +36,19 @@ export type AdvanceRunDependencies = Readonly<{
  * decides what happens next from its checkpoint and new facts, and the
  * decision is saved.
  */
-export function advanceRun(
+export async function advanceRun(
   dependencies: AdvanceRunDependencies,
   input: RunAdvanceInput,
 ): Promise<RunAdvanceResult> {
+  await dependencies.calls?.performActions(input, (projection) => {
+    const initial = createInitialCheckpoint(
+      projection,
+      dependencies.verification,
+    );
+    if (initial.validateInput === undefined)
+      throw new WorkflowCallRefusedError('call_target_not_callable');
+    return initial;
+  });
   return dependencies.runs.advance(input, async (state) => {
     const previous = parseCheckpoint(state.checkpoint);
     const executable = verifyPersistedWorkflowProjection(
@@ -49,6 +62,8 @@ export function advanceRun(
       checkpoint: state.checkpoint,
       observations: state.observations,
       completedOutputs: state.completedOutputs,
+      callOutcomes: state.callOutcomes,
+      hasExecutionSlot: state.hasExecutionSlot,
       occurredAt: dependencies.now(),
       maximumAdmissions: dependencies.maximumAdmissions,
       signal: input.signal,

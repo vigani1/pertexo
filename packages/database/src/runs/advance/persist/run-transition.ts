@@ -16,6 +16,7 @@ import {
   parseStoredExecutionValue,
   serializeStoredExecutionJsonValue,
 } from '../../../platform/stored-execution-value.js';
+import { persistCallCompletion } from '../../calls/persist.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 async function persistDerivedContinuation(
@@ -179,6 +180,7 @@ export async function persistCoordinatorRunTransition(
       runFailure ?? null,
     ],
   );
+  await persistCallCompletion(client, input);
   const scheduleDueAt = scheduledOccurrence(row, plan);
   await persistDerivedContinuation(client, input);
   return Object.freeze(scheduleDueAt === undefined ? {} : { scheduleDueAt });

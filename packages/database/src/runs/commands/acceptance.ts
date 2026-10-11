@@ -40,7 +40,14 @@ const acceptWorkflowRunInputSchema = z
     runInput: z.unknown().optional(),
     scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
     traceparent: traceparentSchema,
-    triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
+    triggerType: z.enum([
+      'api',
+      'manual',
+      'replay',
+      'schedule',
+      'webhook',
+      'workflow_call',
+    ]),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
   })
@@ -267,9 +274,34 @@ export async function readWorkflowRunAcceptanceReplay(
   return readExistingAcceptance(transaction, parsed, { kind: 'request_only' });
 }
 
+export type PreparedWorkflowRunAcceptance = Readonly<{
+  failureNotificationPolicy: Awaited<
+    ReturnType<typeof resolveWorkflowFailureNotificationPolicy>
+  >;
+}>;
+
+/** Call spawn acquires ordinary admission prerequisites before its parent lock. */
+export async function prepareWorkflowRunAcceptance(
+  transaction: WorkspaceTransaction,
+  workflowId: string,
+): Promise<PreparedWorkflowRunAcceptance> {
+  try {
+    await assertWorkspaceAcceptsNewRuns(transaction);
+  } catch (error: unknown) {
+    throwWorkflowRunAdmissionError(error);
+  }
+  return {
+    failureNotificationPolicy: await resolveWorkflowFailureNotificationPolicy(
+      transaction,
+      workflowId,
+    ),
+  };
+}
+
 export async function acceptWorkflowRun(
   transaction: WorkspaceTransaction,
   input: AcceptWorkflowRunInput,
+  preparation?: PreparedWorkflowRunAcceptance,
 ): Promise<AcceptedWorkflowRun> {
   const parsed = acceptWorkflowRunInputSchema.parse(input);
   const preparedRunInput =
@@ -294,16 +326,9 @@ export async function acceptWorkflowRun(
     storedRunInputJson === null ? 0 : Buffer.byteLength(storedRunInputJson),
   );
 
-  try {
-    await assertWorkspaceAcceptsNewRuns(transaction);
-  } catch (error: unknown) {
-    throwWorkflowRunAdmissionError(error);
-  }
-  const failureNotificationPolicy =
-    await resolveWorkflowFailureNotificationPolicy(
-      transaction,
-      parsed.workflowId,
-    );
+  const { failureNotificationPolicy } =
+    preparation ??
+    (await prepareWorkflowRunAcceptance(transaction, parsed.workflowId));
   const idempotencyRecordId = generatePersistedId();
   const runId = generatePersistedId();
   const outboxEventId = generatePersistedId();
