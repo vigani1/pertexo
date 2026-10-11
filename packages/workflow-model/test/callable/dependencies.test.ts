@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   validateCallDependencyClosure,
+  summarizeWorkflowCalls,
   type CallableVersionSummary,
 } from '../../src/callable/dependencies.js';
 
@@ -18,6 +19,7 @@ const version = (
   calls,
 });
 const call = (pin: CallableVersionSummary, multiplicity = 1) => ({
+  nodeId: 'call',
   pin,
   multiplicity,
 });
@@ -30,7 +32,7 @@ const reader = (...versions: CallableVersionSummary[]) =>
     return Promise.resolve(target);
   });
 
-describe('private Call publication closure', () => {
+describe('Call publication closure', () => {
   it('counts repeated sites and loop products while resolving each version once', async () => {
     const shared = version('shared', 'shared-v1', 3);
     const left = version('left', 'left-v1', 2, [call(shared, 2)]);
@@ -119,4 +121,60 @@ describe('private Call publication closure', () => {
       validateCallDependencyClosure(root, reader(child), 200),
     ).rejects.toMatchObject({ code: 'pin' });
   });
+});
+
+it('preserves nested loop products and scoped site identities in publication summaries', () => {
+  const pin = {
+    workflowId: '11111111-1111-4111-8111-111111111111',
+    workflowVersionId: '22222222-2222-4222-8222-222222222222',
+    executableChecksum: `wf:sha256:${'a'.repeat(64)}`,
+  };
+  const node = (id: string, key: string) => ({
+    id,
+    definition: { key, version: 1 },
+    configVersion: 1,
+    config: {},
+    inputMappings: {},
+    connectionRefs: {},
+    position: { x: 0, y: 0 },
+  });
+  const body = {
+    settings: {},
+    nodes: [{ ...node('deep', 'core.call'), config: { target: pin } }],
+    edges: [],
+    inputPorts: ['item', 'ordinal'],
+    outputPorts: ['result'],
+  };
+  const graph = {
+    settings: {},
+    edges: [],
+    nodes: [
+      {
+        ...node('loop', 'core.foreach'),
+        structured: {
+          kind: 'for_each' as const,
+          maxIterations: 10,
+          maxConcurrency: 1,
+          body: {
+            ...body,
+            nodes: [
+              {
+                ...node('nested', 'core.foreach'),
+                structured: {
+                  kind: 'for_each' as const,
+                  maxIterations: 3,
+                  maxConcurrency: 1,
+                  body,
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
+  };
+  expect(
+    summarizeWorkflowCalls({ ...pin, workspaceId: 'workspace' }, graph, 41)
+      .calls,
+  ).toEqual([{ nodeId: 'deep', pin, multiplicity: 30 }]);
 });

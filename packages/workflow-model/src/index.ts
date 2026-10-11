@@ -115,3 +115,10 @@ export { compareOrdinal } from './ordering.js';
 
 export { isRecord } from './json/object.js';
 export { UUID_PATTERN } from './identifiers.js';
+
+export {
+  summarizeWorkflowCalls,
+  validateCallDependencyClosure,
+  WorkflowCallDependencyError,
+  type CallableVersionSummary,
+} from './callable/dependencies.js';
