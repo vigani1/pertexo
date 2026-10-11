@@ -12,7 +12,7 @@ import {
   STEP_CARD,
 } from './for-each-body-layout';
 import {
-  canConnectSteps,
+  canLinkSteps,
   emptyLoopStructure,
   findStep,
   groupByScope,
@@ -31,7 +31,7 @@ import {
 
 // Pure graph transitions. Each returns the same graph object when nothing
 // changes, so a no-op never becomes an undo step or a save. Steps and
-// connections are found wherever they live, inside For each bodies too, and
+// links are found wherever they live, inside For each bodies too, and
 // every change stays on the level it belongs to.
 
 type Position = Readonly<{ x: number; y: number }>;
@@ -39,11 +39,11 @@ type Position = Readonly<{ x: number; y: number }>;
 export type RemovedElements = Readonly<{
   nodes: readonly WorkflowNode[];
   edges: readonly WorkflowEdge[];
-  /** The level each removed step or connection was on, by ID. */
+  /** The level each removed step or link was on, by ID. */
   scopes: Readonly<Record<string, ScopePath>>;
 }>;
 
-/** One end of a connection: a step and one of its ports. */
+/** One end of a link: a step and one of its ports. */
 export type PortRef = Readonly<{ nodeId: string; port: string }>;
 
 type NewIds = Readonly<{ nodeId: string; edgeId: string }>;
@@ -89,7 +89,7 @@ export function addDefinitionNode(
 }
 
 /**
- * Adds a step and connects it from `from` as one change, so a single undo
+ * Adds a step and links it from `from` as one change, so a single undo
  * takes both back. The step joins `from` on its level (inside the same
  * body, if it's in one). It uses the input named like the source port when
  * it has one (a Merge pairs `branch-03` with `branch-03`), otherwise its
@@ -122,7 +122,7 @@ export function addStepAfter(
 }
 
 /**
- * Adds a step inside a For each's body, connected from `from` when given
+ * Adds a step inside a For each's body, linked from `from` when given
  * (a step already in that body). A For each without a body gets one.
  */
 export function addBodyStep(
@@ -278,8 +278,8 @@ type Removal = Readonly<{
 }>;
 
 /**
- * Removes steps (with their connections and, for a For each, its body) and
- * connections as one change, wherever they are.
+ * Removes steps (with their links and, for a For each, its body) and
+ * links as one change, wherever they are.
  */
 export function removeWorkflowElements(
   graph: WorkflowGraphContract,
@@ -351,7 +351,7 @@ function removeInLoop(
 }
 
 /**
- * Puts removed steps and connections back on their levels. Used by an Undo
+ * Puts removed steps and links back on their levels. Used by an Undo
  * toast after other edits happened, so it only restores what still fits the
  * current graph: a level that's gone takes its steps with it.
  */
@@ -394,20 +394,19 @@ export function restoreWorkflowElements(
 }
 
 /**
- * Connects two steps on the same level. Returns null for anything the
- * workflow can't hold: a missing port, a step connected to itself, a
- * connection across a For each body's edge, or one that already exists.
+ * Links two steps on the same level. Returns null for anything the
+ * workflow can't hold: a missing port, a step linked to itself, a
+ * link across a For each body's edge, or one that already exists.
  */
-export function connectWorkflowNodes(
+export function linkWorkflowNodes(
   graph: WorkflowGraphContract,
-  connection: Connection,
+  link: Connection,
   id: string = crypto.randomUUID(),
 ): WorkflowGraphContract | null {
-  const { source, sourceHandle, target, targetHandle } = connection;
+  const { source, sourceHandle, target, targetHandle } = link;
   if (sourceHandle === null || targetHandle === null) return null;
   const scope = scopeOf(graph, source);
-  if (scope === undefined || !canConnectSteps(graph, source, target))
-    return null;
+  if (scope === undefined || !canLinkSteps(graph, source, target)) return null;
   const duplicate = levelAt(graph, scope)?.edges.some(
     (edge) =>
       edge.source.nodeId === source &&

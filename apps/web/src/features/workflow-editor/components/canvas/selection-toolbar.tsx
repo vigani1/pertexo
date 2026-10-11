@@ -5,7 +5,7 @@ import { useEditorStore } from '../../model/state/context';
 import { shortcut } from '@/lib/shortcut-keys';
 
 /**
- * Commands for several selected steps or connections at once, floating over
+ * Commands for several selected steps or links at once, floating over
  * the canvas. A single step's commands live in its inspector instead.
  */
 export function SelectionToolbar({
@@ -25,7 +25,7 @@ export function SelectionToolbar({
       ? `${String(nodeCount)} ${nodeCount === 1 ? 'step' : 'steps'}`
       : undefined,
     edgeCount > 0
-      ? `${String(edgeCount)} ${edgeCount === 1 ? 'connection' : 'connections'}`
+      ? `${String(edgeCount)} ${edgeCount === 1 ? 'link' : 'links'}`
       : undefined,
   ].filter((part) => part !== undefined);
   return (

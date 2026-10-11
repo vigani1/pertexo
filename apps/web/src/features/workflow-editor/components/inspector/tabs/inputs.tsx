@@ -14,7 +14,7 @@ import {
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings';
 import { useInputMappingDraft } from '../input-mappings/use-draft';
-import { IncomingConnections } from '../incoming-links';
+import { IncomingLinks } from '../incoming-links';
 import {
   InsertDataPicker,
   type InsertedSource,
@@ -59,7 +59,7 @@ export function InputsTab({
   form: NodeFormApi;
   focusTarget:
     (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
-  onConnect: (connection: Connection) => void;
+  onConnect: (link: Connection) => void;
   onRemoveEdge: (edgeId: string) => void;
 }>) {
   const activeRowId = useRef<string | undefined>(undefined);
@@ -78,8 +78,8 @@ export function InputsTab({
   const editable = form.editable && definition !== undefined;
   const suggestions = inputKeySuggestions(definition?.inputSchema);
   const predecessors = directPredecessorOptions(graph, node.id);
-  const connections = (
-    <IncomingConnections
+  const links = (
+    <IncomingLinks
       node={node}
       graph={graph}
       definitions={definitions}
@@ -95,7 +95,7 @@ export function InputsTab({
           This trigger receives the run’s input directly, so it has no inputs to
           map.
         </p>
-        {connections}
+        {links}
       </div>
     );
 
@@ -132,7 +132,7 @@ export function InputsTab({
         {mappings.rows.length === 0 ? (
           <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-muted-foreground">
             No input mappings yet. Add a value, part of the run input, or the
-            output of a step connected before this one.
+            output of a step linked before this one.
           </p>
         ) : (
           <ol className="flex flex-col gap-3">
@@ -203,7 +203,7 @@ export function InputsTab({
           </div>
         ) : null}
       </section>
-      {connections}
+      {links}
     </div>
   );
 }

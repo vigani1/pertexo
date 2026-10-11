@@ -24,7 +24,7 @@ import { shownPorts } from '../../model/step-card';
 type Point = Readonly<{ x: number; y: number }>;
 
 export type QuickAddRequest = Readonly<{
-  /** The step the new one follows, and the output it connects from. */
+  /** The step the new one follows, and the output it links from. */
   from: PortRef | undefined;
   /** That step's outputs, so people can still pick another one. */
   outputs: readonly string[];
@@ -46,11 +46,11 @@ export type QuickAddTarget = Pick<
 
 /**
  * Quick add: which step a new one will follow, from which output, and where
- * it lands. Dropping a connection on empty canvas asks at the drop point;
+ * it lands. Dropping a link on empty canvas asks at the drop point;
  * “Add step after” asks beside the step; a For each's “Add step” asks for
  * its body, after the step that ends it. A new step always joins the level
  * of the step it follows, so a body step's quick add stays in its body.
- * Choosing hands the result to `onAdd`, which adds (and connects) it as one
+ * Choosing hands the result to `onAdd`, which adds (and links) it as one
  * undoable change.
  */
 export function useQuickAdd({

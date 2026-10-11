@@ -446,18 +446,18 @@ describe('working inside a For each body', { timeout: 30_000 }, () => {
       });
     });
 
-    await event.click(screen.getByRole('button', { name: 'Connect a step' }));
-    await event.click(screen.getByLabelText('Connect from step'));
+    await event.click(screen.getByRole('button', { name: 'Link a step' }));
+    await event.click(screen.getByLabelText('Link from step'));
     const options = await screen.findAllByRole('option');
     expect(options.map((option) => option.textContent)).toEqual([
       'Choose a step',
       'Reserve item',
     ]);
     await event.keyboard('{Escape}');
-    await choose(event, 'Connect from step', 'Reserve item');
+    await choose(event, 'Link from step', 'Reserve item');
     await choose(event, 'From output', 'out');
     await choose(event, 'Into input', 'in');
-    await event.click(screen.getByRole('button', { name: 'Connect' }));
+    await event.click(screen.getByRole('button', { name: 'Link' }));
     pressSave();
     await waitFor(() => {
       expect(savedBody(saved)?.edges.map((edge) => edge.id)).toHaveLength(2);

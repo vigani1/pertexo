@@ -44,7 +44,7 @@ type SetupTabProps = Readonly<{
   definition: NodeDefinitionCatalogItem | undefined;
   connections: readonly ConnectionResponse[];
   form: NodeFormApi;
-  /** The steps around this one and their connections. */
+  /** The steps around this one and their links. */
   graph: GraphLevel;
   /** Shows the Inputs tab, where a step with no setup is decided. */
   onOpenInputs: () => void;
@@ -208,7 +208,7 @@ function listBuilder(
   graph: GraphLevel,
   form: NodeFormApi,
 ): Readonly<{ control: ReactNode; covers: number }> | undefined {
-  const connectedPorts = new Set(
+  const linkedPorts = new Set(
     graph.edges
       .filter((edge) => edge.source.nodeId === node.id)
       .map((edge) => edge.source.port),
@@ -222,7 +222,7 @@ function listBuilder(
             control: (
               <SwitchCases
                 cases={cases}
-                connectedPorts={connectedPorts}
+                linkedPorts={linkedPorts}
                 form={form}
               />
             ),
@@ -237,7 +237,7 @@ function listBuilder(
             control: (
               <ParallelBranches
                 branches={branches}
-                connectedPorts={connectedPorts}
+                linkedPorts={linkedPorts}
                 form={form}
               />
             ),

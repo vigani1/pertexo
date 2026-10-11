@@ -56,7 +56,7 @@ interface WorkflowNodeData extends Record<string, unknown> {
   outputPorts: readonly string[];
   /** The step can have several inputs or outputs, so its ports are labelled. */
   branching: Readonly<{ inputs: boolean; outputs: boolean }>;
-  /** Titles of the steps each port connects to, by port. */
+  /** Titles of the steps each port links to, by port. */
   links: Readonly<{
     inputs: Readonly<Record<string, readonly string[]>>;
     outputs: Readonly<Record<string, readonly string[]>>;
@@ -81,11 +81,11 @@ interface WorkflowNodeData extends Record<string, unknown> {
 interface WorkflowEdgeData extends Record<string, unknown> {
   sourceLabel: string;
   targetLabel: string;
-  /** The last successful test ran along this connection. */
+  /** The last successful test ran along this link. */
   flowing: boolean;
   /** Execution depth for the publish weave-in; null when not weaving. */
   weaveOrder: number | null;
-  /** The step this connection leads into has issues. */
+  /** The step this link leads into has issues. */
   intoIssue: boolean;
 }
 

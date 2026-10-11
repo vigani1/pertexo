@@ -33,17 +33,17 @@ export async function authorWebhookHttpGraph(
   async function connect(label: string, output = 'out') {
     await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
     await page
-      .getByRole('button', { name: 'Connect a step', exact: true })
+      .getByRole('button', { name: 'Link a step', exact: true })
       .click();
     for (const [field, choice] of [
-      ['Connect from step', label],
+      ['Link from step', label],
       ['From output', output],
       ['Into input', 'in'],
     ] as const) {
       await page.getByLabel(field, { exact: true }).click();
       await page.getByRole('option', { name: choice, exact: true }).click();
     }
-    await page.getByRole('button', { name: 'Connect', exact: true }).click();
+    await page.getByRole('button', { name: 'Link', exact: true }).click();
   }
   async function map(field: string, source: string, path: string) {
     await page.getByRole('tab', { name: 'Inputs', exact: true }).click();

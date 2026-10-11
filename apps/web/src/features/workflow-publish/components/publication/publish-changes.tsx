@@ -56,7 +56,7 @@ export function PublishChanges({
         <p className="mt-2 text-sm text-muted-foreground">
           {summary.layoutOnly
             ? 'Only the layout changed. Runs behave exactly as before.'
-            : (connectionSentence(summary) ??
+            : (linkSentence(summary) ??
               'No step changes. Publishing makes the same steps live again.')}
         </p>
       ) : (
@@ -64,10 +64,8 @@ export function PublishChanges({
           {summary.lines.map((line) => (
             <ChangeLine key={`${line.kind}:${line.nodeId}`} line={line} />
           ))}
-          {connectionSentence(summary) === undefined ? null : (
-            <li className="text-muted-foreground">
-              {connectionSentence(summary)}
-            </li>
+          {linkSentence(summary) === undefined ? null : (
+            <li className="text-muted-foreground">{linkSentence(summary)}</li>
           )}
         </ul>
       )}
@@ -94,13 +92,13 @@ function ChangeLine({ line }: Readonly<{ line: PublishSummaryLine }>) {
   );
 }
 
-function connectionSentence(summary: PublishSummary): string | undefined {
+function linkSentence(summary: PublishSummary): string | undefined {
   const parts = [
-    summary.connectionsAdded > 0
-      ? `${String(summary.connectionsAdded)} ${summary.connectionsAdded === 1 ? 'connection' : 'connections'} added`
+    summary.linksAdded > 0
+      ? `${String(summary.linksAdded)} ${summary.linksAdded === 1 ? 'link' : 'links'} added`
       : undefined,
-    summary.connectionsRemoved > 0
-      ? `${String(summary.connectionsRemoved)} removed`
+    summary.linksRemoved > 0
+      ? `${String(summary.linksRemoved)} ${summary.linksRemoved === 1 ? 'link' : 'links'} removed`
       : undefined,
   ].filter((part) => part !== undefined);
   return parts.length === 0 ? undefined : `${parts.join(', ')}.`;

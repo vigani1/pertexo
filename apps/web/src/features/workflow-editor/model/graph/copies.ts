@@ -19,7 +19,7 @@ type CreateId = () => string;
 /**
  * Copies steps with fresh IDs, each on its own level, placed just below the
  * copied steps and clear of any other step (or `offset` from the originals
- * when given). Connections between copied steps are copied too, and mappings that
+ * when given). Links between copied steps are copied too, and mappings that
  * read a copied step follow it. A copied For each gets a copy of its body,
  * with fresh IDs throughout, since IDs are unique across the workflow.
  */
@@ -155,7 +155,7 @@ function copyStep(
   };
 }
 
-/** Connections between copied steps, joining the copies. */
+/** Links between copied steps, joining the copies. */
 function copyEdges(
   edges: readonly WorkflowEdge[],
   idMap: ReadonlyMap<string, string>,
@@ -177,7 +177,7 @@ function copyEdges(
 
 /**
  * Makes one step match another version of the graph: copies it (with its
- * connections to steps that exist here) or removes it if that version has
+ * links to steps that exist here) or removes it if that version has
  * none. This is how a kept copy's edits are re-applied after a conflict.
  */
 export function adoptStepFrom(

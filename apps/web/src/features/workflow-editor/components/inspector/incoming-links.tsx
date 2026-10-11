@@ -9,13 +9,13 @@ import type { GraphLevel, WorkflowNode } from '../../model/graph/scopes';
 import { ChoiceSelect } from './fields/choice-select';
 
 /**
- * Connections into this step, kept apart from its input mapping: wiring
- * decides when the step runs, inputs decide what it gets. "Connect a step"
+ * Links into this step, kept apart from its input mapping: wiring
+ * decides when the step runs, inputs decide what it gets. "Link a step"
  * opens a keyboard way to add one, so the canvas drag is never the only
  * way to wire steps. Only steps on the same level (the workflow, or the
  * same For each body) are offered.
  */
-export function IncomingConnections({
+export function IncomingLinks({
   node,
   graph,
   definitions,
@@ -27,7 +27,7 @@ export function IncomingConnections({
   graph: GraphLevel;
   definitions: readonly NodeDefinitionCatalogItem[];
   editable: boolean;
-  onConnect: (connection: Connection) => void;
+  onConnect: (link: Connection) => void;
   onRemoveEdge: (edgeId: string) => void;
 }>) {
   const [wiring, setWiring] = useState(false);
@@ -54,7 +54,7 @@ export function IncomingConnections({
     >
       <div>
         <h3 id={`incoming-${node.id}`} className="text-sm font-semibold">
-          Connected from
+          Linked from
         </h3>
         <p className="mt-0.5 text-xs text-subtle-foreground">
           Wiring decides when this step runs. Its inputs above decide what it
@@ -81,7 +81,7 @@ export function IncomingConnections({
                   type="button"
                   size="icon-xs"
                   variant="ghost"
-                  aria-label={`Remove connection from ${titles.get(edge.source.nodeId) ?? 'a step'}`}
+                  aria-label={`Remove link from ${titles.get(edge.source.nodeId) ?? 'a step'}`}
                   onClick={() => {
                     onRemoveEdge(edge.id);
                   }}
@@ -104,17 +104,17 @@ export function IncomingConnections({
           }}
         >
           <LinkIcon data-icon="inline-start" />
-          Connect a step
+          Link a step
         </Button>
       ) : null}
       {editable && others.length > 0 && wiring ? (
         <FieldGroup className="gap-3 rounded-lg border border-white/7 bg-black/18 p-3">
           <Field>
-            <FieldLabel htmlFor={`connect-source-${node.id}`}>
-              Connect from step
+            <FieldLabel htmlFor={`link-source-${node.id}`}>
+              Link from step
             </FieldLabel>
             <ChoiceSelect
-              id={`connect-source-${node.id}`}
+              id={`link-source-${node.id}`}
               value={sourceId}
               disabled={false}
               choices={[
@@ -132,11 +132,11 @@ export function IncomingConnections({
           </Field>
           <div className="grid grid-cols-2 gap-2">
             <Field>
-              <FieldLabel htmlFor={`connect-output-${node.id}`}>
+              <FieldLabel htmlFor={`link-output-${node.id}`}>
                 From output
               </FieldLabel>
               <ChoiceSelect
-                id={`connect-output-${node.id}`}
+                id={`link-output-${node.id}`}
                 value={sourcePort}
                 disabled={source === undefined}
                 choices={[
@@ -147,11 +147,11 @@ export function IncomingConnections({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor={`connect-input-${node.id}`}>
+              <FieldLabel htmlFor={`link-input-${node.id}`}>
                 Into input
               </FieldLabel>
               <ChoiceSelect
-                id={`connect-input-${node.id}`}
+                id={`link-input-${node.id}`}
                 value={targetPort}
                 disabled={false}
                 choices={[
@@ -189,7 +189,7 @@ export function IncomingConnections({
               }}
             >
               <LinkIcon data-icon="inline-start" />
-              Connect
+              Link
             </Button>
             <Button
               type="button"

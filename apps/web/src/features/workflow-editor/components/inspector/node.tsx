@@ -38,7 +38,7 @@ import { shortcut } from '@/lib/shortcut-keys';
 
 export type NodeInspectorActions = StepMenuActions &
   Readonly<{
-    onConnect: (connection: Connection) => void;
+    onConnect: (link: Connection) => void;
     onRemoveEdge: (edgeId: string) => void;
     onDiscardScratch: () => void;
     /** Shows another step in the inspector, e.g. one inside this body. */
@@ -50,7 +50,7 @@ export type NodeInspectorActions = StepMenuActions &
 /**
  * One step's inspector. Keyed by step, so its local scratch never leaks to
  * another step; every valid edit is applied to the draft as it happens. A
- * step inside a For each body sees only its body: its siblings to connect
+ * step inside a For each body sees only its body: its siblings to link
  * and map from, and the item the body runs for.
  */
 export function NodeInspector({

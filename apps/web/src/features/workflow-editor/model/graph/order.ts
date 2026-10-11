@@ -2,7 +2,7 @@ import type { GraphLevel } from './scopes';
 
 /**
  * Execution depth of every step on one level: steps without incoming
- * connections are 0, every other step is one more than its deepest
+ * links are 0, every other step is one more than its deepest
  * predecessor. Cycles (which validation rejects anyway) are cut rather than
  * looping forever.
  */
@@ -33,7 +33,7 @@ export function stepDepths(graph: GraphLevel): ReadonlyMap<string, number> {
   return depths;
 }
 
-/** Each connection lights in the order its source step would run. */
+/** Each link lights in the order its source step would run. */
 export function edgeWeaveOrder(graph: GraphLevel): ReadonlyMap<string, number> {
   const depths = stepDepths(graph);
   return new Map(
@@ -41,7 +41,7 @@ export function edgeWeaveOrder(graph: GraphLevel): ReadonlyMap<string, number> {
   );
 }
 
-/** Connections on any path that leads into `nodeId`: a test's path. */
+/** Links on any path that leads into `nodeId`: a test's path. */
 export function upstreamEdgeIds(
   graph: GraphLevel,
   nodeId: string,

@@ -21,8 +21,8 @@ export type WorkflowGraphDiff = Readonly<{
   added: readonly WorkflowNode[];
   removed: readonly WorkflowNode[];
   changed: readonly ChangedStep[];
-  connectionsAdded: number;
-  connectionsRemoved: number;
+  linksAdded: number;
+  linksRemoved: number;
 }>;
 
 /**
@@ -58,10 +58,8 @@ export function diffWorkflowGraphs(
     added,
     removed: before.nodes.filter((node) => !afterIds.has(node.id)),
     changed,
-    connectionsAdded: [...afterEdges].filter((key) => !beforeEdges.has(key))
-      .length,
-    connectionsRemoved: [...beforeEdges].filter((key) => !afterEdges.has(key))
-      .length,
+    linksAdded: [...afterEdges].filter((key) => !beforeEdges.has(key)).length,
+    linksRemoved: [...beforeEdges].filter((key) => !afterEdges.has(key)).length,
   };
 }
 

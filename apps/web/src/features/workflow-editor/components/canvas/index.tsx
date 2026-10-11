@@ -26,12 +26,12 @@ import {
   type WorkflowFlowNode,
 } from '../../model/graph/adapter';
 import {
-  connectWorkflowNodes,
+  linkWorkflowNodes,
   moveWorkflowNodes,
   type PortRef,
 } from '../../model/graph/commands';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
-import { canConnectSteps } from '../../model/graph/scopes';
+import { canLinkSteps } from '../../model/graph/scopes';
 import { gestureEndPoint, portDropSource } from '../../model/quick-add';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';
@@ -61,9 +61,9 @@ export type CanvasOverlays = Pick<
  * The workflow drawn on the weave. Gestures become editor commands: drags
  * move steps as one change when they end, selection goes through the
  * editor's guard, ⌫ is handled by the editor rather than React Flow, and a
- * connection dropped on empty canvas (or an empty part of a For each body)
+ * link dropped on empty canvas (or an empty part of a For each body)
  * asks which step to add there. For each bodies are edited in place: their
- * steps are the container's children, and connections never cross a body's
+ * steps are the container's children, and links never cross a body's
  * edge.
  */
 export function WorkflowCanvas({
@@ -85,7 +85,7 @@ export function WorkflowCanvas({
   onSelectNodes: (nodeIds: readonly string[]) => void;
   onRemoveEdge: (edgeId: string) => void;
   onDropStep: (identity: string, position: Position) => void;
-  /** A connection from `from` ended over empty canvas at `point`. */
+  /** A link from `from` ended over empty canvas at `point`. */
   onPortDrop: (from: PortRef, point: Position) => void;
   onAddToBody: (loopId: string, opener: HTMLElement) => void;
   children?: ReactNode;
@@ -115,7 +115,7 @@ export function WorkflowCanvas({
     [store],
   );
 
-  const connections = useConnectionGestures(store, editable, onPortDrop);
+  const linkGestures = useLinkGestures(store, editable, onPortDrop);
 
   const actions = useMemo(
     () => ({ editable, removeEdge: onRemoveEdge, addToBody: onAddToBody }),
@@ -160,9 +160,9 @@ export function WorkflowCanvas({
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          isValidConnection={connections.isValidConnection}
-          onConnect={connections.onConnect}
-          onConnectEnd={connections.onConnectEnd}
+          isValidConnection={linkGestures.isValidConnection}
+          onConnect={linkGestures.onConnect}
+          onConnectEnd={linkGestures.onConnectEnd}
           onPaneClick={(event) => {
             event.currentTarget
               .closest<HTMLElement>('[data-workflow-canvas]')
@@ -303,29 +303,25 @@ function useCanvasProjection({
 }
 
 /**
- * Connections drawn on the canvas: only between steps on the same level (a
- * body's steps connect only to each other), added as one change, and a
- * connection dropped on empty canvas opens quick add there.
+ * Links drawn on the canvas: only between steps on the same level (a
+ * body's steps link only to each other), added as one change, and a
+ * link dropped on empty canvas opens quick add there.
  */
-function useConnectionGestures(
+function useLinkGestures(
   store: ReturnType<typeof useEditorStoreApi>,
   editable: boolean,
   onPortDrop: (from: PortRef, point: Position) => void,
 ) {
   const isValidConnection = useCallback(
-    (connection: Connection | Edge) =>
-      canConnectSteps(
-        store.getState().graph,
-        connection.source,
-        connection.target,
-      ),
+    (link: Connection | Edge) =>
+      canLinkSteps(store.getState().graph, link.source, link.target),
     [store],
   );
   const onConnect = useCallback(
-    (connection: Connection) => {
+    (link: Connection) => {
       if (!editable) return;
       const state = store.getState();
-      const next = connectWorkflowNodes(state.graph, connection);
+      const next = linkWorkflowNodes(state.graph, link);
       if (next !== null) state.transact(next);
     },
     [editable, store],

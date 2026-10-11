@@ -128,7 +128,7 @@ test('edits, autosaves, and preserves both drafts during a two-tab conflict', as
   });
   await conflict.getByRole('button', { name: 'Compare' }).click();
   await second.getByRole('tab', { name: 'JSON' }).click();
-  await expect(second.getByText(/1 step, 0 connections/u)).toHaveCount(2);
+  await expect(second.getByText(/1 step, 0 links/u)).toHaveCount(2);
   await second.getByRole('button', { name: 'Close' }).click();
   await conflict.getByRole('button', { name: 'Keep mine' }).click();
   await expect(conflict).toContainText('Your copy is kept for comparison');

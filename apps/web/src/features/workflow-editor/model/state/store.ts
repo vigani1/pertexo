@@ -225,7 +225,7 @@ function adoptRemote(conflict: EditorConflict, generation: number) {
   } as const;
 }
 
-/** Drops selected steps and connections that no longer exist anywhere. */
+/** Drops selected steps and links that no longer exist anywhere. */
 function pruneSelection(
   graph: WorkflowGraphContract,
   current: Pick<

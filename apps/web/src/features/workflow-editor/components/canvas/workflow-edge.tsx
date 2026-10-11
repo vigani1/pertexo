@@ -14,7 +14,7 @@ const HIDE_DELAY_MS = 160;
 const WEAVE_STEP_MS = 320;
 
 /**
- * A connection is a thread: it brightens on hover, turns cyan when selected
+ * A link is a thread: it brightens on hover, turns cyan when selected
  * and offers ✕ to remove it. Into a step with issues it runs dashed; after a
  * passed test it flows; on publish it weaves in by execution order.
  */
@@ -110,7 +110,7 @@ export function WorkflowEdge({
         <EdgeLabelRenderer>
           <button
             type="button"
-            aria-label={`Remove connection from ${data?.sourceLabel ?? 'a step'} to ${data?.targetLabel ?? 'a step'}`}
+            aria-label={`Remove link from ${data?.sourceLabel ?? 'a step'} to ${data?.targetLabel ?? 'a step'}`}
             className="nodrag nopan lens pointer-events-auto absolute grid size-6 place-items-center rounded-full text-muted-foreground outline-none hover:text-destructive focus-ring [&_svg]:size-3.5"
             style={{
               transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY)}px)`,

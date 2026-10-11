@@ -17,7 +17,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 - [x] 8. Add a step to the right of the selected step and link it forward.
 - [x] 9. Stabilize save-state width and tidy editor header links.
 - [x] 10. Put HTTP credentials first and display human-readable sizes.
-- [ ] 11. Call graph edges links; reserve connection for credentials.
+- [x] 11. Call graph edges links; reserve connection for credentials.
 
 ## Verification
 
@@ -130,3 +130,14 @@ decimal that round-trips preserves both ordinary values such as 1.1 MB and odd
 byte counts. Bounds, steppers, read-only access, unfinished input and non-field
 JSON settings remain with the existing inspector form. Millisecond settings
 continue to read in seconds.
+
+## Editor terminology
+
+Slice 11 calls the directed relationships between steps links throughout the
+canvas, incoming-step controls, input mappings, validation, undo, comparisons
+and publication summaries. Connection continues to mean a workspace credential
+for an external service. Graph change counts use linksAdded/linksRemoved;
+credential-reference changes remain a separate connection aspect. The glossary
+and web guide record that distinction. React Flow's external API names and
+stored graph fields remain unchanged. The incoming-link file move has its own
+gated commit before the copy and helper names change.

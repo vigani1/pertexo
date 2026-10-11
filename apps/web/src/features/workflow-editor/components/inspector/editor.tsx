@@ -19,7 +19,7 @@ import {
 } from '../../model/add-connection-context';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import { stepTitle } from '../../model/graph/adapter';
-import { connectWorkflowNodes } from '../../model/graph/commands';
+import { linkWorkflowNodes } from '../../model/graph/commands';
 import { findStep, levelOf } from '../../model/graph/scopes';
 import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../hooks/use-editor-actions';
@@ -146,9 +146,9 @@ export function EditorInspector({
             });
         },
         onClose,
-        onConnect: (connection: Connection) => {
+        onConnect: (link: Connection) => {
           const state = store.getState();
-          const next = connectWorkflowNodes(state.graph, connection);
+          const next = linkWorkflowNodes(state.graph, link);
           if (next !== null) state.transact(next);
         },
         onRemoveEdge,

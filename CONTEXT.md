@@ -5,6 +5,13 @@ versions while preserving operational history.
 
 ## Language
 
+**Workflow link**: A directed relationship from one step’s output to another
+step’s input, within a workflow or a loop body. Links determine when steps run;
+input mappings determine the data they receive. _Avoid_: Connection, credential
+
+**Workflow connection**: A workspace’s named credentials for an external
+service, referenced by workflow steps. _Avoid_: Workflow link, sign-in method
+
 **Workflow organization**: Shared workspace metadata that helps people discover
 and arrange workflows without changing their behavior or access. _Avoid_:
 Workflow graph, permission inheritance
