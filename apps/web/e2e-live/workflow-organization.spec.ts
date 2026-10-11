@@ -153,15 +153,34 @@ async function command(
   expect(response.status()).toBe(status);
   return response;
 }
+async function openFilters(page: Page) {
+  await page.getByRole('button', { name: /^Filters/u }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Filter workflows' }),
+  ).toBeVisible();
+}
+async function closeFilters(page: Page) {
+  await page.getByRole('button', { name: /^Filters/u }).press('Escape');
+}
+async function openRowMenu(page: Page, name: string) {
+  await row(page, name)
+    .getByRole('button', { name: `Actions for ${name}`, exact: true })
+    .click();
+}
+async function openManager(page: Page) {
+  await openFilters(page);
+  await page
+    .getByRole('button', { name: 'Manage folders and tags…', exact: true })
+    .click();
+}
 async function organize(
   page: Page,
   name: string,
   operation: 'move' | 'tags',
   destination: string,
 ) {
-  await row(page, name)
-    .getByRole('button', { name: 'Organize…', exact: true })
-    .click();
+  await openRowMenu(page, name);
+  await page.getByRole('menuitem', { name: 'Organize…', exact: true }).click();
   const dialog = page.getByRole('dialog', {
     name: 'Organize workflow',
     exact: true,
@@ -204,10 +223,11 @@ async function projection(page: Page, workspaceId: string, workflowId: string) {
   );
 }
 async function favorite(page: Page, name: string) {
+  await openRowMenu(page, name);
   await command(
     page,
-    row(page, name).getByRole('button', {
-      name: `Add favorite for ${name}`,
+    page.getByRole('menuitem', {
+      name: 'Add favorite',
       exact: true,
     }),
     '/favorite',
@@ -248,9 +268,7 @@ async function lifecycle(
   await expect(dialog).not.toBeVisible();
 }
 async function cleanupTag(page: Page, workflowName: string) {
-  await page
-    .getByRole('button', { name: 'Manage folders and tags…', exact: true })
-    .click();
+  await openManager(page);
   const manager = page.getByRole('dialog', {
     name: 'Manage workflow organization',
     exact: true,
@@ -504,7 +522,7 @@ async function qualifyExtended(input: {
   }
   await expect(
     page.getByRole('button', { name: 'Clear selection', exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await phase('roles');
   await organize(page, betaName, 'tags', 'ops');
   if (input.role === 'admin') {
@@ -522,18 +540,19 @@ async function qualifyExtended(input: {
         (await projection(page, workspaceId, alpha)).organization.isFavorite,
       ).toBe(true);
       if (role === 'viewer') {
+        await openFilters(actor.page);
         await expect(
           actor.page.getByRole('button', {
             name: 'Manage folders and tags…',
             exact: true,
           }),
         ).toHaveCount(0);
+        await closeFilters(actor.page);
+        await openRowMenu(actor.page, alphaName);
         await expect(
-          row(actor.page, alphaName).getByRole('button', {
-            name: 'Organize…',
-            exact: true,
-          }),
+          actor.page.getByRole('menuitem', { name: 'Organize…', exact: true }),
         ).toHaveCount(0);
+        await actor.page.keyboard.press('Escape');
         await expect(
           row(actor.page, alphaName).getByRole('checkbox', {
             name: `Select ${alphaName}`,
@@ -548,9 +567,11 @@ async function qualifyExtended(input: {
         expect(
           (await projection(page, workspaceId, beta)).organization.isFavorite,
         ).toBe(false);
+        await openFilters(actor.page);
         await actor.page
           .getByRole('button', { name: 'My favorites', exact: true })
           .click();
+        await closeFilters(actor.page);
         await expect(row(actor.page, betaName)).toBeVisible();
         await expect(row(actor.page, alphaName)).toHaveCount(0);
         await actor.page.setViewportSize({ width: 390, height: 844 });
@@ -559,12 +580,14 @@ async function qualifyExtended(input: {
           fullPage: true,
         });
       } else if (role === 'builder') {
+        await openFilters(actor.page);
         await expect(
           actor.page.getByRole('button', {
             name: 'Manage folders and tags…',
             exact: true,
           }),
         ).toHaveCount(0);
+        await closeFilters(actor.page);
         await organize(actor.page, alphaName, 'move', 'Delivery');
         expect(
           (await projection(page, workspaceId, alpha)).organization.folderId,
@@ -573,13 +596,13 @@ async function qualifyExtended(input: {
         await lifecycle(page, betaName, 'archive');
         await actor.page.goto(`${listPath}?view=archived`);
         await expect(row(actor.page, betaName)).toBeVisible();
+        await openRowMenu(actor.page, betaName);
         await expect(
-          row(actor.page, betaName).getByRole('button', {
-            name: 'Organize…',
-            exact: true,
-          }),
+          actor.page.getByRole('menuitem', { name: 'Organize…', exact: true }),
         ).toHaveCount(0);
+        await actor.page.keyboard.press('Escape');
       } else {
+        await openFilters(actor.page);
         await expect(
           actor.page.getByRole('button', {
             name: 'Manage folders and tags…',
@@ -592,8 +615,9 @@ async function qualifyExtended(input: {
         expect(
           (await projection(page, workspaceId, beta)).organization.folderId,
         ).toBe(input.folderId);
-        await row(actor.page, betaName)
-          .getByRole('button', { name: 'Organize…', exact: true })
+        await openRowMenu(actor.page, betaName);
+        await actor.page
+          .getByRole('menuitem', { name: 'Organize…', exact: true })
           .click();
         const dialog = actor.page.getByRole('dialog', {
           name: 'Organize workflow',
@@ -693,7 +717,7 @@ test('ordinary owner persists shared organization, exact recovery and private di
   const listPath = `/w/${workspaceId}/workflows`;
   await page.goto(listPath);
   await phase('manager');
-  await page.getByRole('button', { name: 'Manage folders and tags…' }).click();
+  await openManager(page);
   const manager = page.getByRole('dialog', {
     name: 'Manage workflow organization',
   });
@@ -783,13 +807,12 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await organize(page, alphaName, 'move', 'Delivery');
   await organize(page, alphaName, 'tags', 'ops');
   await favorite(page, alphaName);
-  await page.getByLabel('Name contains', { exact: true }).fill('Alpha');
+  await page.getByRole('searchbox', { name: 'Search workflows' }).fill('Alpha');
   await phase('filters');
-  await page
-    .locator('form')
-    .filter({ has: page.getByLabel('Name contains', { exact: true }) })
-    .getByRole('button', { name: 'Search', exact: true })
-    .click();
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get('query') === 'Alpha',
+  );
+  await openFilters(page);
   await choose(
     page,
     page.getByRole('combobox', { name: 'Filter by tag' }),
@@ -817,6 +840,7 @@ test('ordinary owner persists shared organization, exact recovery and private di
   expect(filtered.searchParams.get('favoritesOnly')).toBe(
     JSON.stringify('true'),
   );
+  await closeFilters(page);
   await row(page, alphaName)
     .getByRole('link', { name: alphaName, exact: true })
     .click();
@@ -824,11 +848,14 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await page.goBack();
   await expect(page).toHaveURL(filtered.toString());
   await expect(row(page, alphaName)).toBeVisible();
+  await openFilters(page);
   await page
     .getByRole('button', { name: 'Clear filters', exact: true })
     .click();
+  await closeFilters(page);
   await organize(page, alphaName, 'move', 'Unfiled / top level');
   await phase('unfile');
+  await openFilters(page);
   await choose(
     page,
     page.getByRole('combobox', { name: 'Filter by folder' }),
@@ -837,6 +864,7 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await expect(row(page, alphaName)).toBeVisible();
   await expect(row(page, betaName)).toBeVisible();
   expect(new URL(page.url()).searchParams.get('folderId')).toBe('root');
+  await closeFilters(page);
 
   // Lose only a REAL completed response. No response body is fabricated and
   // the same full parent command must replay through current authority.
@@ -907,9 +935,11 @@ test('ordinary owner persists shared organization, exact recovery and private di
       .items.every((item) => item.status === 'updated' && item.replayed),
   ).toBe(true);
   await bulk.getByRole('button', { name: 'Close', exact: true }).click();
+  await openFilters(page);
   await page
     .getByRole('button', { name: 'Clear filters', exact: true })
     .click();
+  await closeFilters(page);
 
   await phase('cleanup');
   await cleanupTag(page, alphaName);
