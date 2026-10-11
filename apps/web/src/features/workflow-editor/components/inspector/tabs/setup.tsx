@@ -1,3 +1,5 @@
+import { CallTargetField } from '../fields/call-target';
+import type { CallTargetScope } from '../../../data/call-targets.queries';
 import type {
   NodeDefinitionCatalogItem,
   ConnectionResponse,
@@ -37,14 +39,7 @@ const SCHEDULE_KEY = 'core.schedule';
  * connection slots and "Edit as JSON" for everything the controls don't
  * model. Nothing a schema allows is dropped.
  */
-export function SetupTab({
-  node,
-  definition,
-  connections,
-  form,
-  graph,
-  onOpenInputs,
-}: Readonly<{
+type SetupTabProps = Readonly<{
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
   connections: readonly ConnectionResponse[];
@@ -53,7 +48,34 @@ export function SetupTab({
   graph: GraphLevel;
   /** Shows the Inputs tab, where a step with no setup is decided. */
   onOpenInputs: () => void;
-}>) {
+  callScope?: CallTargetScope;
+}>;
+
+export function SetupTab(props: SetupTabProps) {
+  if (
+    props.node.definition.key === 'core.call' &&
+    props.callScope !== undefined
+  )
+    return (
+      <FieldGroup className="gap-4">
+        <CallTargetField
+          node={props.node}
+          form={props.form}
+          scope={props.callScope}
+        />
+      </FieldGroup>
+    );
+  return <CatalogSetupTab {...props} />;
+}
+
+function CatalogSetupTab({
+  node,
+  definition,
+  connections,
+  form,
+  graph,
+  onOpenInputs,
+}: SetupTabProps) {
   const fields = useMemo(
     () => withStepChoices(schemaFields(definition?.configSchema), node, graph),
     [definition?.configSchema, node, graph],

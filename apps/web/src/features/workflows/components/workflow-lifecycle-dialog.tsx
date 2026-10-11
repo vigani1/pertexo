@@ -1,3 +1,8 @@
+import type { WorkflowSummary } from '@pertexo/contracts';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Notice } from '@/components/ui/notice';
+import { pinnedParentsQueryOptions } from '../data/pins/queries';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
@@ -53,6 +58,16 @@ export function WorkflowLifecycleDialog({
     workspaceId,
     workflowId,
   });
+  const pins = useQuery(
+    pinnedParentsQueryOptions({
+      apiClient,
+      userId,
+      workspaceId,
+      workflowId,
+      enabled: intent?.command === 'archive',
+    }),
+  );
+  const checkingPins = intent?.command === 'archive' && !lifecycle.exactRetry;
   const action = intent?.command ?? 'archive';
   const copy = COPY[action];
 
@@ -87,7 +102,52 @@ export function WorkflowLifecycleDialog({
       pending={lifecycle.pending}
       error={lifecycle.error}
       errorTone={lifecycle.exactRetry ? 'warning' : 'destructive'}
+      confirmDisabled={
+        checkingPins && (pins.isPending || pins.isError || pins.isFetching)
+      }
       onConfirm={confirm}
-    />
+    >
+      {intent?.command === 'archive' ? (
+        <PublishedParentNotice query={pins} />
+      ) : null}
+    </ConfirmDialog>
+  );
+}
+
+function PublishedParentNotice({
+  query,
+}: Readonly<{ query: UseQueryResult<readonly WorkflowSummary[]> }>) {
+  if (query.isPending)
+    return <p role="status">Checking published parent workflows…</p>;
+  if (query.isError)
+    return (
+      <Notice
+        tone="destructive"
+        action={
+          <Button
+            onClick={() => {
+              void query.refetch();
+            }}
+          >
+            Try again
+          </Button>
+        }
+      >
+        Published parents could not be checked.
+      </Notice>
+    );
+  if (query.data.length === 0) return null;
+  return (
+    <Notice tone="warning" title="Published parents pin this workflow">
+      <p>
+        New Calls from these workflows will fail while this child is archived.
+        Already accepted child runs continue.
+      </p>
+      <ul className="mt-2 list-disc pl-5">
+        {query.data.map((parent) => (
+          <li key={parent.id}>{parent.name}</li>
+        ))}
+      </ul>
+    </Notice>
   );
 }

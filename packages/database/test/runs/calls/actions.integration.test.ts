@@ -11,7 +11,13 @@ import { createWorkflowCallStore } from '../../../src/runs/calls/store.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
-import { apiUrl, maintenanceUrl } from '../../lifecycle/retention.support.js';
+import {
+  apiUrl,
+  maintenanceUrl,
+  waitForPostgresLock,
+  withApplicationName,
+} from '../../lifecycle/retention.support.js';
+import { randomUUID } from 'node:crypto';
 import { declarationFixture } from './storage-fixtures.js';
 
 let runs: ReturnType<typeof createRunAdvanceStore>;
@@ -91,6 +97,61 @@ async function outcome(parentRunId: string) {
 }
 
 describe('ordinary run acceptance as a durable Call action', () => {
+  it.each(['request', 'settlement'] as const)(
+    'does not spawn after an opposing parent cancellation %s commits',
+    async (kind) => {
+      const fixture = await pending();
+      const name = `call-close-${randomUUID()}`;
+      const competing = createWorkflowCallStore(
+        parseDatabaseConfig({
+          connectionString: withApplicationName(maintenanceUrl, name),
+          max: 1,
+        }),
+      );
+      const blocker = new Pool({ connectionString: apiUrl, max: 1 });
+      const held = await blocker.connect();
+      let accepting: Promise<void> | undefined;
+      try {
+        await held.query('begin');
+        await held.query("select set_config('app.workspace_id',$1,true)", [
+          fixture.workspaceId,
+        ]);
+        await held.query(
+          'select id from app.workflow_runs where id=$1 for no key update',
+          [fixture.parentRunId],
+        );
+        accepting = competing.performActions(fixture.input, initial);
+        await waitForPostgresLock(name);
+        await held.query(
+          kind === 'request'
+            ? "update app.workflow_runs set cancel_requested_at=clock_timestamp(),cancel_reason='user_requested',cancel_requested_by='call-close-test' where id=$1"
+            : "update app.workflow_runs set status='canceled',completed_at=clock_timestamp() where id=$1",
+          [fixture.parentRunId],
+        );
+        await held.query('commit');
+        await accepting;
+        expect(await outcome(fixture.parentRunId)).toMatchObject({
+          status: 'pending',
+          child_run_id: null,
+          slot_lent: false,
+        });
+        expect(
+          (
+            await admin.query(
+              'select id from app.workflow_runs where workflow_id=$1',
+              [fixture.childWorkflowId],
+            )
+          ).rows,
+        ).toEqual([]);
+      } finally {
+        await held.query('rollback');
+        await accepting;
+        held.release();
+        await Promise.all([competing.close(), blocker.end()]);
+      }
+    },
+  );
+
   it('accepts one real child at capacity one, lends the existing slot, and recovers after action commit before receipt completion', async () => {
     const fixture = await pending();
     await admin.query(

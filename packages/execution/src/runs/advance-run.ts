@@ -23,7 +23,7 @@ import {
 
 export type AdvanceRunDependencies = Readonly<{
   runs: RunAdvanceStore;
-  calls?: WorkflowCallStore;
+  calls: WorkflowCallStore;
   verification: PersistedWorkflowProjectionVerificationOptions;
   /** Most node attempts one transition may admit. */
   maximumAdmissions: number;
@@ -40,7 +40,7 @@ export async function advanceRun(
   dependencies: AdvanceRunDependencies,
   input: RunAdvanceInput,
 ): Promise<RunAdvanceResult> {
-  await dependencies.calls?.performActions(input, (projection) => {
+  await dependencies.calls.performActions(input, (projection) => {
     const initial = createInitialCheckpoint(
       projection,
       dependencies.verification,

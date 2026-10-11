@@ -19,6 +19,10 @@ import { createCuratedTemplateEnvelopeContext } from '../../../../infrastructure
 import { createEditorWebhookRuntime } from './editor/webhook-runtime.js';
 import { createEditorHttpControl } from './editor/http-control.js';
 import {
+  callsEvidenceSchema,
+  verifyCallsEvidence,
+} from './editor/evidence/calls.js';
+import {
   callableEvidenceSchema,
   verifyCallableEvidence,
 } from './editor/evidence/callable.js';
@@ -163,6 +167,7 @@ let portabilityEvidence:
   z.infer<typeof workflowPortabilityBrowserEvidenceSchema> | undefined;
 let inputCasesEvidence:
   z.infer<typeof workflowInputCasesEvidenceSchema> | undefined;
+let callsEvidence: z.infer<typeof callsEvidenceSchema> | undefined;
 let callableEvidence: z.infer<typeof callableEvidenceSchema> | undefined;
 let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
 let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
@@ -714,6 +719,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           url.pathname === '/evidence/curated-templates' ||
           url.pathname === '/input-cases-evidence' ||
           url.pathname === '/evidence/callable' ||
+          url.pathname === '/evidence/calls' ||
           url.pathname === '/evidence/readonly' ||
           url.pathname === '/evidence/schedule')
       ) {
@@ -730,6 +736,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
               scenario === 'callable'
             )
               callableEvidence = callableEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/evidence/calls' &&
+              scenario === 'callable'
+            )
+              callsEvidence = callsEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/curated-templates' &&
               scenario === 'curated-templates'
@@ -933,6 +944,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       if (callableEvidence === undefined)
         throw new Error('Callable browser evidence missing');
       await verifyCallableEvidence(api.database(), callableEvidence);
+      if (callsEvidence === undefined)
+        throw new Error('Workflow Call browser evidence missing');
+      await verifyCallsEvidence(api.database(), callsEvidence);
       process.stdout.write(
         `Live browser callable verified identities ${JSON.stringify(callableEvidence)}\n`,
       );

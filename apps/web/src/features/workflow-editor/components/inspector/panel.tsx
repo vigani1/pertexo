@@ -1,3 +1,4 @@
+import type { CallTargetScope } from '../../data/call-targets.queries';
 import type {
   NodeDefinitionCatalogItem,
   ConnectionResponse,
@@ -29,6 +30,7 @@ export function InspectorPanel({
   definitions,
   connections,
   channelLookup,
+  callScope,
   editable,
   scratchVersion,
   tab,
@@ -41,6 +43,7 @@ export function InspectorPanel({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
+  callScope?: CallTargetScope;
   editable: boolean;
   scratchVersion: number;
   tab: InspectorTab;
@@ -70,6 +73,7 @@ export function InspectorPanel({
         definitions={definitions}
         connections={connections}
         channelLookup={channelLookup}
+        {...(callScope === undefined ? {} : { callScope })}
         editable={editable}
         tab={tab}
         onTabChange={onTabChange}

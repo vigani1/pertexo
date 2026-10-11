@@ -161,6 +161,62 @@ afterEach(() => {
 });
 
 describe('run page', () => {
+  it('shows retained Call outcomes and child/parent links without linking expired child history', async () => {
+    installRun({
+      run: fixtureRun(runId, 'succeeded'),
+      nodes: [node('succeeded', { completedAt: secondsAgo(5) })],
+    });
+    const call = {
+      id: artifactId,
+      invocationKey: 'send-receipt:0',
+      targetWorkflowId: workflowId,
+      targetVersionId: fixtureIds.version,
+      childRunId: fixtureIds.secondRun,
+      childHistory: 'retained',
+      status: 'succeeded',
+      slotLent: false,
+      detailsRetired: false,
+      safeErrorCode: null,
+    };
+    mockServer.use(
+      http.get(`${apiBase}/runs/${runId}`, () =>
+        HttpResponse.json({
+          run: fixtureRun(runId, 'succeeded', { triggerType: 'workflow_call' }),
+          nodes: [node('succeeded')],
+          calls: [
+            call,
+            {
+              ...call,
+              id: fixtureIds.version,
+              invocationKey: 'old:0',
+              childHistory: 'expired',
+              detailsRetired: true,
+            },
+          ],
+          parentCall: {
+            id: fixtureIds.workflow,
+            parentRunId: fixtureIds.replayRun,
+            invocationKey: 'parent:0',
+          },
+        }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/runs/${runId}`, { strict: true });
+    const history = await screen.findByRole(
+      'region',
+      { name: 'Workflow Calls' },
+      coldStart,
+    );
+    expect(
+      within(history).getByRole('link', { name: 'Open child run' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/runs/${fixtureIds.secondRun}`);
+    expect(
+      within(history).getByRole('link', { name: 'Open parent run' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/runs/${fixtureIds.replayRun}`);
+    expect(history).toHaveTextContent('Child history expired.');
+    expect(history).toHaveTextContent('Call input and result details expired.');
+  });
+
   it('updates the visible run and step status when a waiting run resumes', async () => {
     installRun({ run: fixtureRun(runId, 'waiting'), nodes: [node('waiting')] });
     let status: 'waiting' | 'running' = 'waiting';

@@ -52,6 +52,12 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
     icon: CalendarClockIcon,
     family: 'trigger',
   },
+  'core.call': {
+    name: 'Call workflow',
+    description: 'Run an exact published workflow and wait for its result',
+    icon: GitForkIcon,
+    family: 'logic',
+  },
   'core.manual': {
     name: 'Manual start',
     description: 'Start when someone runs it by hand',

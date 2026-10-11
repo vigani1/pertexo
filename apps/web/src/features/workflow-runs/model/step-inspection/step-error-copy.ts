@@ -37,6 +37,45 @@ const outcomeUnknown: StepErrorCopy = {
 };
 
 const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
+  call_target_unavailable: {
+    sentence: 'The child workflow could not accept this Call.',
+    advice: 'Check that the child is active, then replay the parent.',
+  },
+  call_target_capacity_exceeded: {
+    sentence:
+      'The child workflow’s concurrency or ordering policy refused this Call.',
+    advice:
+      'Wait for the child workflow’s other runs to finish, then replay the parent.',
+  },
+  call_target_not_callable: {
+    sentence: 'The pinned child version has no callable contract.',
+    advice:
+      'Choose a published callable version in Build, then publish and replay the parent.',
+  },
+  call_input_invalid: {
+    sentence: 'The mapped input does not match the child’s contract.',
+    advice:
+      'Review this Call’s input mappings and the pinned child contract, then publish and replay.',
+  },
+  call_input_too_large: {
+    sentence: 'The mapped input exceeds the Call’s inline value limit.',
+    advice:
+      'Reduce the mapped input to fit 256 KiB including its storage wrapper, then publish and replay.',
+  },
+  call_input_artifact_unsupported: {
+    sentence: 'This Call cannot pass a file into another run.',
+    advice:
+      'Map bounded inline JSON matching the child’s contract, then publish and replay.',
+  },
+  call_deadline_expired: {
+    sentence:
+      'The Call reached its recorded deadline before the child started.',
+    advice: 'Review the parent and child deadlines before replaying.',
+  },
+  call_parent_closed: {
+    sentence: 'The parent ended before this Call could start.',
+    advice: 'Review the parent’s history before replaying.',
+  },
   'provider.unavailable': providerUnavailable,
   'connection.provider_unavailable': providerUnavailable,
   'provider.rate_limited': providerRateLimited,

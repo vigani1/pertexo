@@ -219,6 +219,7 @@ export const workflowListQuerySchema = z
     limit: workflowPageLimitSchema.optional(),
     after: workflowCursorSchema.optional(),
     order: workflowListOrderSchema.optional(),
+    pinsWorkflowId: z.uuid().optional(),
   })
   .strict();
 
@@ -234,6 +235,25 @@ export const workflowOrganizationListQuerySchema = workflowListQuerySchema
     folderId: workflowOrganizationFolderFilterSchema.optional(),
     favoritesOnly: z.literal('true').optional(),
     include: z.literal('organization').optional(),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.pinsWorkflowId !== undefined &&
+      [
+        value.query,
+        value.view,
+        value.tagId,
+        value.folderId,
+        value.favoritesOnly,
+        value.include,
+      ].some((item) => item !== undefined)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['pinsWorkflowId'],
+        message:
+          'Pin discovery uses its own paged list; organization filters cannot be combined.',
+      });
   })
   .overwrite(({ query, ...rest }) =>
     query === '' || query === undefined ? rest : { ...rest, query },

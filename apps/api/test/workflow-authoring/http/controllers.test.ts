@@ -308,6 +308,26 @@ describe('workflow authoring controller public seam', () => {
     expect(listWorkflows.execute).toHaveBeenCalledOnce();
   });
 
+  it('delegates a pinned-parent read and rejects organization filters mixed with it', async () => {
+    const { controller, listWorkflows } = makeController();
+    await controller.list(
+      request(),
+      { workspaceId },
+      { pinsWorkflowId: workflowId },
+    );
+    expect(listWorkflows.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ pinsWorkflowId: workflowId }),
+    );
+    await expect(
+      controller.list(
+        request(),
+        { workspaceId },
+        { pinsWorkflowId: workflowId, query: 'ignored' },
+      ),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(listWorkflows.execute).toHaveBeenCalledOnce();
+  });
+
   it('uses session context without a guard and gives guarded context precedence', async () => {
     const { controller, createWorkflow } = makeController();
     await controller.create(

@@ -850,6 +850,11 @@ Do not create a stream per node or a global event bus.
   forbidden and rate-limit responses. Show reconnecting/degraded state. On
   stream loss use bounded visible-view polling; stop redundant polling once
   healthy.
+- A pending or accepted Workflow Call also refreshes its visible parent snapshot
+  every two seconds: acceptance actions update lineage between parent transition
+  events. Query owns that snapshot; polling stops for terminal parents and is
+  paused in the background. No local lineage mirror or per-child stream is
+  added.
 - Abort on route/workspace/session changes. Reconnect/refetch after visibility
   recovery. On terminal events obtain a final snapshot; do not reconnect forever
   after a verified terminal result. Disconnecting never cancels the server run.

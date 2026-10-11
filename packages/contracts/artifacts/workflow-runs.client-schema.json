@@ -390,7 +390,8 @@
                 "manual",
                 "replay",
                 "schedule",
-                "webhook"
+                "webhook",
+                "workflow_call"
               ]
             },
             "createdAt": {
@@ -522,7 +523,8 @@
             "manual",
             "replay",
             "schedule",
-            "webhook"
+            "webhook",
+            "workflow_call"
           ]
         },
         "createdAt": {
@@ -644,7 +646,8 @@
             "manual",
             "replay",
             "schedule",
-            "webhook"
+            "webhook",
+            "workflow_call"
           ]
         },
         "createdAt": {
@@ -818,7 +821,8 @@
             "manual",
             "replay",
             "schedule",
-            "webhook"
+            "webhook",
+            "workflow_call"
           ]
         },
         "createdAt": {
@@ -1058,7 +1062,8 @@
                   "manual",
                   "replay",
                   "schedule",
-                  "webhook"
+                  "webhook",
+                  "workflow_call"
                 ]
               },
               "createdAt": {
@@ -1666,7 +1671,8 @@
                 "manual",
                 "replay",
                 "schedule",
-                "webhook"
+                "webhook",
+                "workflow_call"
               ]
             },
             "createdAt": {
@@ -1899,6 +1905,125 @@
             ],
             "additionalProperties": false
           }
+        },
+        "calls": {
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "invocationKey": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "targetWorkflowId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "targetVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "childRunId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "childHistory": {
+                "type": "string",
+                "enum": [
+                  "not_started",
+                  "retained",
+                  "expired"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "accepted",
+                  "refused",
+                  "succeeded",
+                  "failed",
+                  "canceled",
+                  "timed_out",
+                  "outcome_unknown"
+                ]
+              },
+              "slotLent": {
+                "type": "boolean"
+              },
+              "detailsRetired": {
+                "type": "boolean"
+              },
+              "safeErrorCode": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "invocationKey",
+              "targetWorkflowId",
+              "targetVersionId",
+              "childRunId",
+              "childHistory",
+              "status",
+              "slotLent",
+              "detailsRetired",
+              "safeErrorCode"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "parentCall": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "parentRunId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "invocationKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "id",
+            "parentRunId",
+            "invocationKey"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -1966,7 +2091,8 @@
                 "manual",
                 "replay",
                 "schedule",
-                "webhook"
+                "webhook",
+                "workflow_call"
               ]
             },
             "createdAt": {
@@ -2138,6 +2264,25 @@
             },
             "outputRef": {
               "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "call"
+                    },
+                    "callId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "callId"
+                  ],
+                  "additionalProperties": false
+                },
                 {
                   "type": "object",
                   "properties": {

@@ -120,13 +120,27 @@ export function createWorkflowAuthoringReadStore(
           order === 'updated_desc'
             ? `select *, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
                from app.workflows where workspace_id = $1
+                 and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
+                   where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
+                     and dependency.target_workflow_id=$5))
                  and ($2::timestamptz is null or (updated_at, id) < ($2::timestamptz, $3::uuid))
                order by updated_at desc, id desc limit $4`
             : `select *, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
                from app.workflows where workspace_id = $1
+                 and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
+                   where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
+                     and dependency.target_workflow_id=$5))
                  and ($2::timestamptz is null or (created_at, id) > ($2::timestamptz, $3::uuid))
                order by created_at, id limit $4`,
-          [input.workspaceId, afterPositionAt, afterId, limit + 1],
+          [
+            input.workspaceId,
+            afterPositionAt,
+            afterId,
+            limit + 1,
+            input.pinsWorkflowId === undefined
+              ? null
+              : uuidSchema.parse(input.pinsWorkflowId),
+          ],
         );
         const hasMore = result.rows.length > limit;
         const pageRows = result.rows.slice(0, limit);

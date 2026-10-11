@@ -42,6 +42,7 @@ export type StepStoryEntry = Readonly<{
 }>;
 
 export type StepOutput =
+  | Readonly<{ kind: 'call'; callId: string; attemptNumber?: number }>
   | Readonly<{ kind: 'artifact'; artifactId: string; attemptNumber?: number }>
   | Readonly<{ kind: 'inline'; attemptId: string; attemptNumber?: number }>;
 

@@ -15,6 +15,7 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { OutcomeUnknownCard } from '../components/run-detail/outcome-unknown-card';
 import { RunDetailTabs } from '../components/run-detail/tabs';
+import { CallHistory } from '../components/run-detail/call-history';
 import { RunHeader } from '../components/run-detail/header';
 import {
   StepError,
@@ -195,6 +196,12 @@ export function RunDetailPage({
           onReplayOpenChange={setReplayOpen}
           onReconnect={events.reconnect}
           onRunAccepted={onRunAccepted}
+        />
+        <CallHistory
+          calls={snapshot.calls ?? []}
+          parentCall={snapshot.parentCall}
+          labels={rowLabels}
+          workspace={workspace}
         />
         {compact ? (
           <PhoneFailureNotice

@@ -87,7 +87,7 @@ export function getWorkflowsPage(
   apiClient: ApiClient,
   workspaceId: string,
   input: Readonly<
-    Pick<WorkflowListQuery, 'after' | 'limit' | 'order'> & {
+    Pick<WorkflowListQuery, 'after' | 'limit' | 'order' | 'pinsWorkflowId'> & {
       signal?: AbortSignal;
     }
   > = {},
@@ -95,6 +95,8 @@ export function getWorkflowsPage(
   const query = new URLSearchParams({ limit: String(input.limit ?? 25) });
   if (input.after !== undefined) query.set('after', input.after);
   if (input.order !== undefined) query.set('order', input.order);
+  if (input.pinsWorkflowId !== undefined)
+    query.set('pinsWorkflowId', input.pinsWorkflowId);
   return apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows?${query.toString()}`,
     ...(input.signal === undefined ? {} : { signal: input.signal }),

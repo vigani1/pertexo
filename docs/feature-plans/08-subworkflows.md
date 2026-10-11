@@ -1,8 +1,8 @@
 # F08 — Reusable subworkflows after the architecture reset
 
-Status: accepted by the owner on 2026-10-10; slice 1 implements finished-loop
-pruning at the current limits. Slice 2 implements and qualifies standalone
-callable contracts; Call execution remains pending. This document
+Status: accepted by the owner on 2026-10-10; slices 1–4 implement and qualify
+finished-loop pruning, callable contracts, durable Calls, controls and history.
+All existing limits remain unchanged; slice 5 requires a separate owner decision. This document
 replaces the former F08 outline; it does not restore the
 reverted implementation. [ADR 070](../adr/070-workflow-call-boundaries.md)
 records the accepted decisions. [Architecture](../architecture.md) and
@@ -556,7 +556,74 @@ The repository check passes. Storage tests script transitions to qualify their
 transaction owner; they do not claim real worker or browser execution. Worker
 composition, publication dependency enforcement, the serving Call adapter,
 editor picker and integrated recovery/loop/history proofs remain unfinished.
-Slice 3 is not complete.
+At this persistence checkpoint, slice 3 was not complete; integrated evidence
+is recorded below.
+
+### Slices 3–4 integrated qualification (2026-10-11)
+
+The serving catalog supports `core.call@1`. Its SDK executor prepares input;
+child acceptance remains an execution action through the coordinator-owned
+maintenance store, required by the execution seam. Publication validates exact
+same-workspace pins, callable contracts, workflow-identity cycles and the
+memoized weighted closure at 200. Repeated sites and For Each products count;
+shared siblings remain legal. Current published-parent discovery extends the
+existing bounded workflow list read, including cursors bound to the pinned child,
+pagination and superseded pins.
+
+Fourteen real PostgreSQL/Redis worker cases cover typed completion after worker
+restart and receipt expiry, nested handoff at capacity one, all five default
+slots lent, stable parallel ordering with no second unreserved child, scoped
+Calls in two pruned serial iterations, authoritative action redelivery before
+receipt completion, public result/origin/lineage reads, nested parent close,
+independent child cancellation, inherited and narrowed deadlines, invalid
+results, unknown outcome and accepted continuation after archive/member
+revocation. The PostgreSQL action suite separately stops before spawn commit
+and recovers after spawn commit before receipt completion. The parent retains
+its own timeout; at a shared deadline the child’s ordinary timeout and direct
+parent-close cancellation race, so its first settled control wins.
+
+Opposing-writer PostgreSQL tests hold the parent row while a spawn action blocks,
+then commit cancellation intent or terminal cancellation. Neither case allocates
+a child or lends a slot. Child completion and slot return also remain independent
+of an opposing parent or child writer, respectively.
+
+The existing owned callable browser case now has two journeys. It proves the
+ordinary contract flow plus browser-created Call selection, immutable version
+1 after a newer child publication, explicit upgrade to version 2, validated
+results through real workers, current parent/child links, mobile archive warning
+with the published parent’s name, and a fresh archived-target refusal without
+allocating a child. Private SQL verification checks retained calls, results,
+origins, dependencies and empty borrowed admissions. Desktop picker and mobile
+archive screenshots were inspected. No new CI job, browser case or production
+test hook was added.
+
+Current run detail returns safe Call metadata in its existing authorized
+workspace snapshot. Results stay hidden until logical completion. Detached
+90-day child summaries display expired history while retaining the Call’s
+identity/outcome; retired 30-day Call input/results are labeled expired. The
+same lifecycle suite proves outstanding-loan protection and dependency-ordered
+workspace purge. Ordinary run statistics count the child once under its own
+workflow and the parent’s work once under the parent. Failure-notification
+persistence keeps one intent/outbox per failed run and preserves the distinct
+`workflow_call` origin. There is no family billing layer.
+
+The exact-version picker uses the existing Query/version doors and scoped editor
+history. Its named Call composition is separate from ordinary schema controls.
+Published-parent warnings share the lifecycle dialog’s Query snapshot. Call
+history refreshes only an active visible parent with pending/accepted Calls;
+terminal runs stop it. The changed frontend scan is 100/100 with zero React
+Doctor findings (18 files); that is a change-scope score, not a whole-app claim.
+All 1,058 web unit tests and 93 browser tests pass. Repository/live suite totals
+and the authored/generated diff are reported in the PR after the final gates.
+
+Pre-launch rollout applies the three additive migrations before starting the
+matching API/worker/catalog build. The only supported stored shapes remain the
+current ones. Interrupted waits, admission rebinds, expired HTTP receipts and
+terminal borrowers recover through existing hints/receipts. Keep accepted Call
+rows and immutable pins through forward fixes; do not roll back by dropping the
+relations or installing an older worker that cannot settle them. No production
+deployment or destructive rollback was performed. Slice 5 remains separately
+reviewable, and no execution/checkpoint/value bound changed.
 
 | Slice                  | Behavior at its end                                                                                                                           | Required evidence                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -626,10 +693,12 @@ references inform the accepted behavior, not acceptance evidence.
 - [x] Slice 2: callable contract implemented and verified for standalone runs;
       editor, HTTP input/result, immutable executable, real persistence,
       worker restart/redelivery and private dependency evidence recorded above.
-- [ ] Parent/child acceptance, completion and controls implemented and verified.
-- [ ] Real integrated editor/history/recovery evidence recorded.
-- [ ] Call waits inside pruned loops qualified with the slice 3 runtime.
-- [ ] Retention, rollout/rollback and any measured limit change verified.
+- [x] Parent/child acceptance, completion and controls implemented and verified.
+- [x] Real integrated editor/history/recovery evidence recorded.
+- [x] Call waits inside pruned loops qualified with the slice 3 runtime.
+- [x] Call retention and forward-fix rollout guidance verified; limits unchanged.
+- [ ] Slice 5: propose a measured limit change only after separate owner review.
 
-Existing For Each pruning and standalone callable contracts are implemented.
-The Call node and parent/child runtime remain pending.
+Reusable Workflow Calls, pruning and standalone callable contracts are
+implemented. Larger execution limits and the intentionally excluded input/entry
+features remain outside this delivery.

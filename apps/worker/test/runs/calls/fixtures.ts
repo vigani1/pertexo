@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { createDeadlineWakeupScanner } from '@pertexo/database/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import { createInitialCheckpoint } from '@pertexo/execution';
@@ -149,7 +150,7 @@ export async function accept(
     }),
   );
 }
-export async function runtime() {
+export async function runtime(registry = createPlatformNodeRegistry()) {
   const database = parseDatabaseConfig({
     connectionString: fixture.databaseUrl(fixture.workerUrl),
     max: 6,
@@ -187,7 +188,7 @@ export async function runtime() {
         redisUrl: fixture.redisUrl,
         workerId: `call-${randomUUID()}`,
       },
-      { registry: createPlatformNodeRegistry(), runtimeCapabilities: {} },
+      { registry, runtimeCapabilities: {} },
     );
     await Promise.all([
       coordinator.consumer.waitUntilReady(5_000),
@@ -225,11 +226,14 @@ export async function runtime() {
       },
     );
     owners.splice(0, 2, dispatcher);
+    const deadlines = createDeadlineWakeupScanner(database);
+    owners.push(deadlines);
     await startWorkers();
     return {
       async until(check: () => Promise<void>) {
         await vi.waitFor(
           async () => {
+            await deadlines.claimDueWakeups(20);
             await dispatcher.dispatchOnce();
             await check();
           },

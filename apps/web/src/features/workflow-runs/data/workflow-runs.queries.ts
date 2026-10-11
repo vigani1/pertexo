@@ -12,7 +12,7 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
 import type { RunHistoryFilters } from '../model/list/run-search';
-import type { RunStatus } from '../model/run-status';
+import { isActiveRunStatus, type RunStatus } from '../model/run-status';
 import { isApiError } from '@/lib/api/error';
 import {
   getRunsSince,
@@ -382,6 +382,18 @@ export function workflowRunQueryOptions(
         await forgetUnavailableRunReads(client, queryKey, queryKey, error);
         throw error;
       }
+    },
+    // Call acceptance is an action between parent transitions. Refresh its
+    // lineage while it waits; ordinary event-driven runs need no polling.
+    refetchInterval: (query) => {
+      const snapshot = query.state.data;
+      return snapshot !== undefined &&
+        isActiveRunStatus(snapshot.run.status) &&
+        snapshot.calls?.some(
+          (call) => call.status === 'pending' || call.status === 'accepted',
+        ) === true
+        ? 2_000
+        : false;
     },
     staleTime: 0,
   });

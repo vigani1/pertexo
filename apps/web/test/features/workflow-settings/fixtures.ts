@@ -176,6 +176,9 @@ export function installQueries(
   capabilities: readonly string[] = defaultCapabilities,
 ) {
   mockServer.use(
+    http.get(`${api}/workflows`, () =>
+      HttpResponse.json({ items: [], nextCursor: null }),
+    ),
     http.get('http://pertexo.test/v1/users/me', () => HttpResponse.json(user)),
     http.get('http://pertexo.test/v1/workspaces', () =>
       HttpResponse.json({
