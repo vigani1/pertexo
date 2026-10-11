@@ -109,11 +109,13 @@ local settings and configure `CONNECTION_KMS_KEY_REFERENCE` and
 `CONNECTION_KMS_REGION` instead. Connection credentials and webhook signing
 secrets keep separate purpose-bound envelopes. An unconfigured local server
 explains that Connections, Alerts and webhooks need encryption rather than
-reporting a workspace access failure. Invitation emails wait for their separate
-delivery configuration. Local connection encryption does not simulate providers:
-tests and alert delivery still call the configured service. Existing `.env`
-files are not overwritten; add the two local connection settings from
-`.env.example` to enable them.
+reporting a workspace access failure. When invitation token protection is
+absent, Team disables Invite and resend with a configuration reason, and sending
+commands return a typed 503. Existing invitations can still be listed and
+revoked. Invitation emails wait for their separate delivery configuration. Local
+connection encryption does not simulate providers: tests and alert delivery
+still call the configured service. Existing `.env` files are not overwritten;
+add the two local connection settings from `.env.example` to enable them.
 
 To run one process on its own, load `.env` into the shell first
 (`set -a; . ./.env; set +a`) and use `pnpm dev:api`, `pnpm dev:worker` or

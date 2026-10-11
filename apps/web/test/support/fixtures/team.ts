@@ -73,7 +73,7 @@ export function membersOf(items: () => readonly unknown[]) {
 
 export function noInvitations() {
   return http.get(`${api}/invitations`, () =>
-    HttpResponse.json({ items: [], nextCursor: null }),
+    HttpResponse.json({ issuanceAvailable: true, items: [], nextCursor: null }),
   );
 }
 

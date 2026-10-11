@@ -41,6 +41,7 @@ export const API_PROBLEM_CODES = [
   'workspace.invitation_recipient_mismatch',
   'workspace.invitation_unavailable',
   'workspace.invitation_delivery_unavailable',
+  'workspace.invitation_not_configured',
   'user.profile_revision_conflict',
   'workflow.revision_conflict',
   'workflow.lifecycle_conflict',
@@ -282,6 +283,12 @@ const apiProblemDetails = {
     title: 'Invitation delivery unavailable',
     severity: 'error',
     exposeDetail: true,
+  },
+  'workspace.invitation_not_configured': {
+    status: 503,
+    title: 'Invitations are not configured',
+    severity: 'warn',
+    exposeDetail: false,
   },
   'user.profile_revision_conflict': {
     status: 412,

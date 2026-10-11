@@ -1,20 +1,10 @@
-import type {
-  IdentityWorkspacePersistence,
-  InvitationTokenProtector,
-} from '../ports.js';
+import type { IdentityWorkspacePersistence } from '../ports.js';
 
 /*
  * Optional identity-workspace capabilities narrowed to the required ports the
  * use cases depend on. An unconfigured capability fails closed when used
  * instead of failing module registration.
  */
-
-export const missingInvitationTokenProtector: InvitationTokenProtector =
-  Object.freeze({
-    seal: () => {
-      throw new Error('Invitation token protection is not configured');
-    },
-  });
 
 type InvitationPersistence = Required<
   Pick<

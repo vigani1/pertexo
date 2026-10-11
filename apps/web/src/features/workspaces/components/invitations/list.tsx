@@ -23,10 +23,12 @@ export type InvitationAction = 'resend' | 'revoke';
 function InvitationRow({
   invitation,
   disabled,
+  issuanceAvailable,
   onAction,
 }: Readonly<{
   invitation: WorkspaceInvitation;
   disabled: boolean;
+  issuanceAvailable: boolean;
   onAction: (invitation: WorkspaceInvitation, action: InvitationAction) => void;
 }>) {
   const status = describeInvitationStatus(invitation.status);
@@ -81,6 +83,7 @@ function InvitationRow({
           <DropdownMenuContent>
             <DropdownMenuGroup>
               <DropdownMenuItem
+                disabled={!issuanceAvailable}
                 onClick={() => {
                   onAction(invitation, 'resend');
                 }}
@@ -110,10 +113,12 @@ function InvitationRow({
 export function InvitationList({
   invitations,
   disabled,
+  issuanceAvailable,
   onAction,
 }: Readonly<{
   invitations: readonly WorkspaceInvitation[];
   disabled: boolean;
+  issuanceAvailable: boolean;
   onAction: (invitation: WorkspaceInvitation, action: InvitationAction) => void;
 }>) {
   return (
@@ -123,6 +128,7 @@ export function InvitationList({
           key={invitation.id}
           invitation={invitation}
           disabled={disabled}
+          issuanceAvailable={issuanceAvailable}
           onAction={onAction}
         />
       ))}

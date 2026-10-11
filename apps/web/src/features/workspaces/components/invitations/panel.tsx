@@ -97,13 +97,16 @@ export function InvitationsPanel({
           <EmptyTitle>No invitations yet</EmptyTitle>
           {/* Invite people sits in the page header already. */}
           <EmptyDescription>
-            Invite people by email and pick the role they start with.
+            {query.data?.pages[0]?.issuanceAvailable === false
+              ? 'Invitations will appear here when this server is configured to issue them.'
+              : 'Invite people by email and pick the role they start with.'}
           </EmptyDescription>
         </Empty>
       ) : (
         <InvitationList
           invitations={invitations}
           disabled={command.locked}
+          issuanceAvailable={query.data?.pages[0]?.issuanceAvailable === true}
           onAction={(invitation, action) => {
             if (command.locked) return;
             setFailure(undefined);

@@ -182,6 +182,7 @@ export const workspaceInvitationCommandResponseSchema = z
   .strict();
 export const workspaceInvitationsResponseSchema = z
   .object({
+    issuanceAvailable: z.boolean(),
     items: z.array(workspaceInvitationSchema).max(100),
     nextCursor: z.string().min(1).max(512).nullable(),
   })
