@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../../platform/http/application-error.js';
 
 import {
   digestSha256Hex,
@@ -40,7 +44,7 @@ type InvitationPersistence = Required<
 export class WorkspaceInvitationManagementUseCase {
   public constructor(
     private readonly persistence: InvitationPersistence,
-    private readonly tokens: InvitationTokenProtector,
+    private readonly tokens: InvitationTokenProtector | undefined,
     private readonly crypto: IdentityCrypto,
     private readonly clock: IdentityClock,
   ) {}
@@ -64,6 +68,7 @@ export class WorkspaceInvitationManagementUseCase {
       },
     );
     return workspaceInvitationsResponseSchema.parse({
+      issuanceAvailable: this.tokens !== undefined,
       items: page.items.map(toResponse),
       nextCursor:
         page.nextCursor === undefined
@@ -76,6 +81,7 @@ export class WorkspaceInvitationManagementUseCase {
     input: InvitationCommandContext & Readonly<{ request: unknown }>,
   ): Promise<WorkspaceInvitationCommandResponse> {
     const request = workspaceInvitationCreateRequestSchema.parse(input.request);
+    const protector = this.requireTokenProtection();
     const invitationId = randomUUID();
     const deliveryAttemptId = randomUUID();
     const token = this.issueToken(input.routeWorkspaceId, invitationId);
@@ -87,7 +93,7 @@ export class WorkspaceInvitationManagementUseCase {
       email: request.email.normalize('NFKC').toLowerCase(),
       role: request.role,
       tokenDigest: digestSha256Hex(token.secret, this.crypto),
-      sealedToken: await this.tokens.seal(
+      sealedToken: await protector.seal(
         token.value,
         associatedData(input.routeWorkspaceId, invitationId, deliveryAttemptId),
       ),
@@ -134,13 +140,14 @@ export class WorkspaceInvitationManagementUseCase {
     if (operation === 'revoke') {
       result = await this.persistence.revokeWorkspaceInvitation(common);
     } else {
+      const protector = this.requireTokenProtection();
       const deliveryAttemptId = randomUUID();
       const token = this.issueToken(input.routeWorkspaceId, input.invitationId);
       result = await this.persistence.resendWorkspaceInvitation({
         ...common,
         deliveryAttemptId,
         tokenDigest: digestSha256Hex(token.secret, this.crypto),
-        sealedToken: await this.tokens.seal(
+        sealedToken: await protector.seal(
           token.value,
           associatedData(
             input.routeWorkspaceId,
@@ -155,6 +162,14 @@ export class WorkspaceInvitationManagementUseCase {
       invitation: toResponse(result.invitation),
       replayed: result.replayed,
     });
+  }
+
+  private requireTokenProtection(): InvitationTokenProtector {
+    if (this.tokens === undefined)
+      return throwApplicationError(
+        applicationError('workspace.invitation_not_configured'),
+      );
+    return this.tokens;
   }
 
   private issueToken(workspaceId: string, invitationId: string) {

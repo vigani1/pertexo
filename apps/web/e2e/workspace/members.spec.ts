@@ -69,7 +69,9 @@ async function installRoutes(page: Page) {
     });
   });
   await page.route(`**/v1/workspaces/${workspaceId}/invitations?**`, (route) =>
-    route.fulfill({ json: { items: [], nextCursor: null } }),
+    route.fulfill({
+      json: { issuanceAvailable: true, items: [], nextCursor: null },
+    }),
   );
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
@@ -250,7 +252,13 @@ test('creates an invitation and refreshes the authoritative pending list', async
     async (route) => {
       const request = route.request();
       if (request.method() === 'GET') {
-        await route.fulfill({ json: { items: invitations, nextCursor: null } });
+        await route.fulfill({
+          json: {
+            issuanceAvailable: true,
+            items: invitations,
+            nextCursor: null,
+          },
+        });
         return;
       }
       expect(request.headers()['x-csrf-token']).toBe(csrfToken);
@@ -297,3 +305,79 @@ test('creates an invitation and refreshes the authoritative pending list', async
   await expect(row.getByText('Builder', { exact: true })).toBeVisible();
   await expect(row.getByText(/^Sending/u)).toBeVisible();
 });
+
+for (const width of [390, 1280]) {
+  test(`explains disabled invitation sending at ${String(width)} pixels`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await installRoutes(page);
+    await page.route('**/v1/workspaces?**', (route) =>
+      route.fulfill({
+        json: {
+          items: [
+            {
+              id: workspaceId,
+              name: 'Control Operations',
+              slug: 'control-operations',
+              status: 'active',
+              revision: 1,
+              role: 'owner',
+              capabilities: ['workspace:read', 'member:read', 'member:manage'],
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            },
+          ],
+          nextCursor: null,
+        },
+      }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/invitations?**`,
+      (route) =>
+        route.fulfill({
+          json: {
+            issuanceAvailable: false,
+            items: [
+              {
+                id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+                email: 'existing@example.test',
+                role: 'viewer',
+                status: 'pending',
+                revision: 1,
+                deliveryStatus: 'queued',
+                expiresAt: '2026-10-22T10:00:00.000Z',
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              },
+            ],
+            nextCursor: null,
+          },
+        }),
+    );
+    await page.goto(`/w/${workspaceId}/team?tab=invitations&invite=true`);
+    await expect(
+      page.getByText(
+        'Invitations are unavailable on this server. Ask the operator to configure invitations.',
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Invite people' }),
+    ).toBeDisabled();
+    await expect(page.locator('[data-slot="sheet-content"]')).toHaveCount(0);
+    await page
+      .getByRole('button', { name: 'Actions for existing@example.test' })
+      .click();
+    await expect(
+      page.getByRole('menuitem', { name: 'Send a new link' }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole('menuitem', { name: 'Revoke invitation' }),
+    ).toBeEnabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  });
+}

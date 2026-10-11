@@ -60,6 +60,11 @@ function uncertainMessage(attempt: Attempt): string {
 function commandError(error: unknown, attempt: Attempt): string {
   if (
     isApiError(error) &&
+    error.problem?.code === 'workspace.invitation_not_configured'
+  )
+    return 'Invitations are unavailable on this server. Ask the operator to configure invitations.';
+  if (
+    isApiError(error) &&
     error.problem?.code === 'workspace.invitation_delivery_unavailable'
   )
     return 'The last email for this invitation is still being delivered. Wait a minute before sending a new link.';

@@ -42,14 +42,12 @@ import {
 import type {
   IdentityWorkspaceDependencies,
   IdentitySessionAuthority,
-  InvitationTokenProtector,
 } from './ports.js';
 import {
   acceptancePersistence,
   invitationPersistence,
   memberRemovalPersistence,
   membershipLifecyclePersistence,
-  missingInvitationTokenProtector,
   profilePersistence,
   renamePersistence,
 } from './persistence/capabilities.js';
@@ -62,7 +60,6 @@ import {
   SESSION_AUTHORITY,
   SESSION_COOKIE_POLICY,
   IDENTITY_WORKSPACE_TELEMETRY,
-  INVITATION_TOKEN_PROTECTOR,
   INVITATION_ALLOWED_ORIGIN,
 } from './tokens.js';
 import {
@@ -94,11 +91,6 @@ export class IdentityWorkspaceModule {
       {
         provide: IDENTITY_WORKSPACE_PERSISTENCE,
         useValue: dependencies.persistence,
-      },
-      {
-        provide: INVITATION_TOKEN_PROTECTOR,
-        useValue:
-          dependencies.invitationTokens ?? missingInvitationTokenProtector,
       },
       {
         provide: WORKSPACE_AUTHORIZATION,
@@ -158,19 +150,17 @@ export class IdentityWorkspaceModule {
         provide: WorkspaceInvitationManagementUseCase,
         useFactory: (
           persistence: IdentityWorkspaceDependencies['persistence'],
-          invitationTokens: InvitationTokenProtector,
           identityCrypto: IdentityCrypto,
           identityClock: IdentityClock,
         ) =>
           new WorkspaceInvitationManagementUseCase(
             invitationPersistence(persistence),
-            invitationTokens,
+            dependencies.invitationTokens,
             identityCrypto,
             identityClock,
           ),
         inject: [
           IDENTITY_WORKSPACE_PERSISTENCE,
-          INVITATION_TOKEN_PROTECTOR,
           IDENTITY_CRYPTO,
           IDENTITY_CLOCK,
         ],

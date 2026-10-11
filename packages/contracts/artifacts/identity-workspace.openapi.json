@@ -2376,6 +2376,7 @@
               "workspace.invitation_recipient_mismatch",
               "workspace.invitation_unavailable",
               "workspace.invitation_delivery_unavailable",
+              "workspace.invitation_not_configured",
               "user.profile_revision_conflict",
               "workflow.revision_conflict",
               "workflow.lifecycle_conflict",
@@ -3286,6 +3287,9 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
+          "issuanceAvailable": {
+            "type": "boolean"
+          },
           "items": {
             "maxItems": 100,
             "type": "array",
@@ -3379,6 +3383,7 @@
           }
         },
         "required": [
+          "issuanceAvailable",
           "items",
           "nextCursor"
         ],

@@ -67,6 +67,71 @@ async function pickRole(
 }
 
 describe('team: invitations', () => {
+  it('explains unavailable issuance, blocks a direct Invite link, and leaves revocation usable', async () => {
+    mockServer.use(
+      ...identityHandlers(ownerWorkspace),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'owner')]),
+      http.get(`${api}/invitations`, () =>
+        HttpResponse.json({
+          issuanceAvailable: false,
+          items: [invitation('existing@example.test')],
+          nextCursor: null,
+        }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/team?tab=invitations&invite=true`, {
+      strict: true,
+    });
+    expect(
+      await screen.findByText(/Invitations are unavailable on this server/u),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Invite people' }),
+    ).toBeDisabled();
+    expect(sheet()).not.toBeInTheDocument();
+    const actor = userEvent.setup();
+    await actor.click(
+      await screen.findByRole('button', {
+        name: 'Actions for existing@example.test',
+      }),
+    );
+    expect(
+      await screen.findByRole('menuitem', { name: 'Send a new link' }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      await screen.findByRole('menuitem', { name: 'Revoke invitation' }),
+    ).toBeEnabled();
+  });
+
+  it('explains a server that loses invitation configuration after the form opens', async () => {
+    mockServer.use(
+      ...identityHandlers(ownerWorkspace),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'owner')]),
+      noInvitations(),
+      http.post(`${api}/invitations`, () =>
+        problem(503, 'workspace.invitation_not_configured'),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/team`);
+    const actor = userEvent.setup();
+    await actor.click(
+      await screen.findByRole('button', { name: 'Invite people' }),
+    );
+    await actor.type(
+      lens().getByLabelText('Email addresses'),
+      'new@example.test',
+    );
+    await actor.click(lens().getByRole('button', { name: 'Send invitation' }));
+    expect(
+      await screen.findByText(
+        'Invitations are unavailable on this server. Ask the operator to configure invitations.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/still being delivered|role changed/u),
+    ).not.toBeInTheDocument();
+  });
+
   it('creates an invitation and retries an uncertain command with the exact body and key', async () => {
     const commandRequests: { body: unknown; key: string | null }[] = [];
     mockServer.use(
@@ -257,6 +322,7 @@ describe('team: invitations', () => {
         const after = new URL(request.url).searchParams.get('after');
         requestedCursors.push(after);
         return HttpResponse.json({
+          issuanceAvailable: true,
           items: [
             after === null
               ? invitation('first.invite@example.test')
@@ -295,6 +361,7 @@ describe('team: invitations', () => {
       membersOf(() => [member(firstMemberId, 'Ada Operator', 'owner')]),
       http.get(`${api}/invitations`, () =>
         HttpResponse.json({
+          issuanceAvailable: true,
           items: [
             {
               ...invitation('first.invite@example.test'),

@@ -8,7 +8,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 ## Slices
 
 - [x] 1. Enable local webhook envelopes; explain unavailable webhooks plainly.
-- [ ] 2. Make local invitations usable or explicitly unavailable; never 500.
+- [x] 2. Make local invitations usable or explicitly unavailable; never 500.
 - [ ] 3. Record the add-connection setup test in connection health.
 - [ ] 4. Count missing or disconnected credentials in editor issues.
 - [ ] 5. Detect an unchanged live draft and explain reused publications.
@@ -26,3 +26,12 @@ the slice's PR records CI and merge. Preserve real development data. Test
 authorization and late-response ownership where the change touches them, and
 check rendered controls at desktop and phone widths. React Doctor's changed
 scan checks introduced diagnostics; report its scope honestly.
+
+## Invitation availability
+
+Slice 2 uses the permitted disable-with-a-reason option locally. Token protection
+is required before issuing or resending an invitation; unconfigured issuance is
+reported in the authorized invitation list and as a typed 503 for commands.
+Viewing and revoking existing invitations remain available. Local auth-mail mode
+is not invitation delivery; enable the existing token and worker mail settings
+together when sending real invitations.

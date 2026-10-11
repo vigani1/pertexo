@@ -5,7 +5,6 @@ import {
   invitationPersistence,
   memberRemovalPersistence,
   membershipLifecyclePersistence,
-  missingInvitationTokenProtector,
   profilePersistence,
   renamePersistence,
 } from '../../src/workspaces/persistence/capabilities.js';
@@ -65,13 +64,6 @@ async function expectEveryCapabilityRejects(
 }
 
 describe('identity-workspace persistence capabilities', () => {
-  it('fails closed when invitation token protection is not configured', () => {
-    expect(() =>
-      missingInvitationTokenProtector.seal('plaintext', 'associated-data'),
-    ).toThrow('Invitation token protection is not configured');
-    expect(Object.isFrozen(missingInvitationTokenProtector)).toBe(true);
-  });
-
   it('fails closed for every unconfigured capability group', async () => {
     const persistence = persistenceWith([], []);
 

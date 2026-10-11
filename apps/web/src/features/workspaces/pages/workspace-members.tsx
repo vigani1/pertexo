@@ -13,6 +13,7 @@ import {
 } from '@/components/patterns/page-header';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
+import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isUnauthenticated } from '@/features/auth/session/session-identity.public';
@@ -64,41 +65,82 @@ function blockedCopy(
   return undefined;
 }
 
+function describeInvitationAvailability(
+  available: boolean | undefined,
+  failed: boolean,
+) {
+  const message =
+    available === true
+      ? undefined
+      : available === false
+        ? 'Invitations are unavailable on this server. Ask the operator to configure invitations.'
+        : failed
+          ? 'Invitation availability couldn’t be checked. Retry on the Invitations tab.'
+          : 'Checking invitation availability…';
+  return {
+    message,
+    tone:
+      available === undefined && !failed
+        ? ('info' as const)
+        : ('warning' as const),
+  };
+}
+
 /** The title, how many people and pending invitations, and Invite. */
 function TeamHeader({
   pendingInvitations,
   canManage,
+  invitationAvailability,
   onInvite,
 }: Readonly<{
   /** "12" or "50+" once the members have loaded. */
   pendingInvitations: number;
   canManage: boolean;
+  invitationAvailability: ReturnType<typeof describeInvitationAvailability>;
   onInvite: () => void;
 }>) {
   return (
-    <PageHeader>
-      <div>
-        <PageHeaderTitle>Team</PageHeaderTitle>
-        {/* The Members tab counts people; the header only flags what's
+    <>
+      <PageHeader>
+        <div>
+          <PageHeaderTitle>Team</PageHeaderTitle>
+          {/* The Members tab counts people; the header only flags what's
             waiting on someone. */}
-        {pendingInvitations > 0 ? (
-          <PageHeaderMeta>
-            <Status tone="queued">
-              {pendingInvitations}{' '}
-              {pendingInvitations === 1 ? 'invitation' : 'invitations'} pending
-            </Status>
-          </PageHeaderMeta>
+          {pendingInvitations > 0 ? (
+            <PageHeaderMeta>
+              <Status tone="queued">
+                {pendingInvitations}{' '}
+                {pendingInvitations === 1 ? 'invitation' : 'invitations'}{' '}
+                pending
+              </Status>
+            </PageHeaderMeta>
+          ) : null}
+        </div>
+        {canManage ? (
+          <PageHeaderActions>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={invitationAvailability.message !== undefined}
+              aria-describedby={
+                invitationAvailability.message === undefined
+                  ? undefined
+                  : 'invitation-availability'
+              }
+              onClick={onInvite}
+            >
+              <PlusIcon data-icon="inline-start" aria-hidden="true" />
+              Invite people
+            </Button>
+          </PageHeaderActions>
         ) : null}
-      </div>
-      {canManage ? (
-        <PageHeaderActions>
-          <Button type="button" variant="primary" onClick={onInvite}>
-            <PlusIcon data-icon="inline-start" aria-hidden="true" />
-            Invite people
-          </Button>
-        </PageHeaderActions>
+      </PageHeader>
+      {canManage && invitationAvailability.message !== undefined ? (
+        <Notice id="invitation-availability" tone={invitationAvailability.tone}>
+          {invitationAvailability.message}
+        </Notice>
       ) : null}
-    </PageHeader>
+    </>
   );
 }
 
@@ -159,6 +201,11 @@ export function WorkspaceMembersPage({
   const memberItems = members.data?.pages.flatMap((page) => page.items) ?? [];
   const invitationItems =
     invitations.data?.pages.flatMap((page) => page.items) ?? [];
+  const issuanceAvailable = invitations.data?.pages[0]?.issuanceAvailable;
+  const invitationAvailability = describeInvitationAvailability(
+    issuanceAvailable,
+    invitations.isError,
+  );
   const pendingInvitations = invitationItems.filter(
     (item) => item.status === 'pending',
   ).length;
@@ -184,6 +231,7 @@ export function WorkspaceMembersPage({
       <TeamHeader
         pendingInvitations={pendingInvitations}
         canManage={canManage}
+        invitationAvailability={invitationAvailability}
         onInvite={openInvite}
       />
 
@@ -238,7 +286,7 @@ export function WorkspaceMembersPage({
         <RolesMatrix yourRole={workspace.role} className="max-w-3xl" />
       </div>
 
-      {canManage ? (
+      {canManage && issuanceAvailable === true ? (
         <InvitePeopleSheet
           open={
             search.invite === true || command.activeAttempt?.kind === 'create'
