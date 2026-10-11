@@ -155,6 +155,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
       'limit',
       'after',
       'order',
+      'pinsWorkflowId',
       'query',
       'view',
       'tagId',

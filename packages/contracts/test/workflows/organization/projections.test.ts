@@ -32,6 +32,36 @@ const organization = {
 };
 
 describe('additive organization projection contracts', () => {
+  it('keeps published-parent discovery paged and separate from organization filters', () => {
+    const discovery = { pinsWorkflowId: id, limit: '5', order: 'updated_desc' };
+    expect(workflowListQuerySchema.parse(discovery)).toEqual({
+      pinsWorkflowId: id,
+      limit: 5,
+      order: 'updated_desc',
+    });
+    expect(workflowOrganizationListQuerySchema.parse(discovery)).toEqual(
+      workflowListQuerySchema.parse(discovery),
+    );
+    for (const filter of [
+      { query: 'Parent' },
+      { view: 'active' },
+      { tagId: id },
+      { folderId: id },
+      { favoritesOnly: 'true' },
+      { include: 'organization' },
+    ])
+      expect(
+        workflowOrganizationListQuerySchema.safeParse({
+          ...discovery,
+          ...filter,
+        }).success,
+      ).toBe(false);
+    expect(
+      workflowListQuerySchema.safeParse({ pinsWorkflowId: 'not-a-workflow' })
+        .success,
+    ).toBe(false);
+  });
+
   it('keeps the default query and response paths unchanged and strict', () => {
     expect(workflowListQuerySchema.parse({ limit: '5' })).toEqual({ limit: 5 });
     expect(workflowSummaryResponseSchema.parse({ workflow })).toEqual({
