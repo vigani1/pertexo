@@ -120,31 +120,14 @@ export function ConfirmDialog({
             void Promise.resolve(run()).catch(() => undefined);
           }}
         >
-          <div className="flex min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain px-1 -mx-1">
-            {consequences === undefined ? null : (
-              <ul className="flex flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
-                {consequences.map((line) => (
-                  <li key={line} className="flex gap-2.5">
-                    <span
-                      aria-hidden="true"
-                      className="mt-2.5 h-px w-3 shrink-0 bg-border-strong"
-                    />
-                    {line}
-                  </li>
-                ))}
-              </ul>
-            )}
+          <ConfirmationDetails
+            consequences={consequences}
+            error={error}
+            tone={unconfirmed === undefined ? errorTone : 'warning'}
+            errorAction={errorAction}
+          >
             {children}
-            {error === undefined ? null : (
-              <Notice
-                role="alert"
-                tone={unconfirmed === undefined ? errorTone : 'warning'}
-                action={errorAction}
-              >
-                {error}
-              </Notice>
-            )}
-          </div>
+          </ConfirmationDetails>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
             {cancel === undefined ? (
               <DialogClose
@@ -172,5 +155,50 @@ export function ConfirmDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The scrollable form content; simple confirmations need no empty area. */
+function ConfirmationDetails({
+  consequences,
+  children,
+  error,
+  tone,
+  errorAction,
+}: Readonly<{
+  consequences: readonly string[] | undefined;
+  children: ReactNode;
+  error: ReactNode;
+  tone: 'destructive' | 'warning';
+  errorAction: ReactNode;
+}>) {
+  if (
+    children === undefined &&
+    consequences === undefined &&
+    error === undefined
+  )
+    return null;
+  return (
+    <div className="-mx-1 flex min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain px-1">
+      {consequences === undefined ? null : (
+        <ul className="flex flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
+          {consequences.map((line) => (
+            <li key={line} className="flex gap-2.5">
+              <span
+                aria-hidden="true"
+                className="mt-2.5 h-px w-3 shrink-0 bg-border-strong"
+              />
+              {line}
+            </li>
+          ))}
+        </ul>
+      )}
+      {children}
+      {error === undefined ? null : (
+        <Notice role="alert" tone={tone} action={errorAction}>
+          {error}
+        </Notice>
+      )}
+    </div>
   );
 }
