@@ -12,7 +12,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 - [x] 3. Record the add-connection setup test in connection health.
 - [x] 4. Count missing or disconnected credentials in editor issues.
 - [x] 5. Detect an unchanged live draft and explain reused publications.
-- [ ] 6. Fit and scroll the run-input dialog at 768 pixels high.
+- [x] 6. Fit and scroll the run-input dialog at 768 pixels high.
 - [ ] 7. Simplify workflow search, filters, selection and row actions.
 - [ ] 8. Add a step to the right of the selected step and link it forward.
 - [ ] 9. Stabilize save-state width and tidy editor header links.
@@ -77,3 +77,11 @@ lens also stops an unchanged draft. An uncertain original command remains
 recoverable. Publication receipts retain the server's reuse result: an already
 live version says “still live”; reactivating an older retained version says
 “live again”. Reuse does not animate a new version weaving into the canvas.
+
+## Run-input scrolling
+
+Slice 6 keeps the confirmation title, description and actions visible while
+its form body scrolls within the existing viewport bound. Input cases, input,
+deadline and error notices share that scroll area. The existing confirmation
+pattern also keeps other long forms usable; command, focus and exact-retry
+ownership do not change. Verified at 1280, 768 and 390 pixels wide by 768 high.
