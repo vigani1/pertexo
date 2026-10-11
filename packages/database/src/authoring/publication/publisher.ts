@@ -8,6 +8,7 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   InvalidWorkflowGraphError,
   type WorkflowGraph,
+  type CallableVersionSummary,
 } from '@pertexo/workflow-model';
 import {
   parseWorkflowGraphForPublish,
@@ -40,6 +41,7 @@ import {
   reconcileWorkflowTriggersPayload,
   persistPublishedWorkflowTriggers,
 } from './trigger-reconciliation.js';
+import { validatePublicationCalls, persistPublicationCalls } from './calls.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 export { reconcileWorkflowTriggersPayload } from './trigger-reconciliation.js';
@@ -88,6 +90,8 @@ type PublicationClaim = Readonly<{
 }>;
 
 type CompiledPublication = Readonly<{
+  versionId: string;
+  calls: CallableVersionSummary['calls'];
   checksum: string;
   definitionCatalog: WorkflowDefinitionCatalog;
   executable: z.output<typeof executableSchema>;
@@ -179,7 +183,21 @@ async function lockAndCompilePublication(
     variant.definitionCatalog,
   );
   const executable = executableSchema.parse(variant.executableCompiler(graph));
+  const versionId = generatePersistedId();
+  const { calls } = await validatePublicationCalls(
+    client,
+    {
+      workspaceId: input.workspaceId,
+      workflowId,
+      workflowVersionId: versionId,
+      executableChecksum: executable.checksum,
+    },
+    graph,
+    validation.expandedInvocations,
+  );
   return Object.freeze({
+    versionId,
+    calls,
     checksum: executable.checksum,
     definitionCatalog: variant.definitionCatalog,
     executable,
@@ -214,7 +232,7 @@ async function persistVersion(
        where workspace_id=$2 and workflow_id=$3
        returning ${workflowVersionRowSelection}`,
       [
-        generatePersistedId(),
+        publication.versionId,
         input.workspaceId,
         workflowId,
         JSON.stringify(publication.graph),
@@ -260,6 +278,12 @@ async function persistPublicationProjections(
          provider_key varchar(64),operation_key varchar(128),connection_id uuid)`,
       [input.workspaceId, version.id, JSON.stringify(usage)],
     );
+  await persistPublicationCalls(
+    client,
+    input.workspaceId,
+    version.id,
+    publication.calls,
+  );
   await persistPublishedWorkflowTriggers(client, {
     workspaceId: input.workspaceId,
     workflowId,

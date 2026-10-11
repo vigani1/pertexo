@@ -1,4 +1,9 @@
-/** Private publication contracts until the Call node is delivered. */
+import type { WorkflowGraph } from '../graph/contract.js';
+import {
+  isWorkflowCallDefinition,
+  workflowCallConfigSchema,
+} from './invocation.js';
+
 export interface WorkflowCallPin {
   readonly workflowId: string;
   readonly workflowVersionId: string;
@@ -10,12 +15,13 @@ export interface CallableVersionSummary extends WorkflowCallPin {
   /** Includes each local Call invocation, with For Each products applied. */
   readonly expandedInvocations: number;
   readonly calls: readonly Readonly<{
+    nodeId: string;
     pin: WorkflowCallPin;
     multiplicity: number;
   }>[];
 }
 
-class WorkflowCallDependencyError extends TypeError {
+export class WorkflowCallDependencyError extends TypeError {
   public override readonly name = 'WorkflowCallDependencyError';
   public constructor(
     readonly code: 'workspace' | 'pin' | 'cycle' | 'expansion',
@@ -80,4 +86,30 @@ export async function validateCallDependencyClosure(
     return closure;
   };
   return (await visit(root)).count;
+}
+
+/** Graph validation supplies the local count; each structured site retains its weight. */
+export function summarizeWorkflowCalls(
+  identity: WorkflowCallPin & Readonly<{ workspaceId: string }>,
+  graph: WorkflowGraph,
+  expandedInvocations: number,
+): CallableVersionSummary {
+  const calls: CallableVersionSummary['calls'][number][] = [];
+  const visit = (current: WorkflowGraph, multiplicity: number): void => {
+    for (const node of current.nodes) {
+      if (isWorkflowCallDefinition(node.definition))
+        calls.push({
+          nodeId: node.id,
+          pin: workflowCallConfigSchema.parse(node.config).target,
+          multiplicity,
+        });
+      if (node.structured !== undefined)
+        visit(
+          node.structured.body,
+          multiplicity * node.structured.maxIterations,
+        );
+    }
+  };
+  visit(graph, 1);
+  return { ...identity, expandedInvocations, calls };
 }
