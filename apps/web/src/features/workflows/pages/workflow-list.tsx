@@ -177,7 +177,7 @@ function WorkflowListContent({
   search: WorkflowListSearch;
   /** Saves starter steps; without it the lens offers Blank only. */
   starterDraftWriter?: StarterDraftWriter | undefined;
-  onSearchChange: (search: WorkflowListSearchUpdate) => void;
+  onSearchChange: (search: WorkflowListSearchUpdate) => void | Promise<void>;
   onCreated: (workflowId: string) => void;
   /** Opens a run started from a row. */
   onRunStarted: (runId: string) => void;
@@ -204,7 +204,7 @@ function WorkflowListContent({
 
   function openCreate(choice: StartChoice) {
     setStartChoice(choice);
-    onSearchChange(updateWorkflowListSearch(search, { create: true }));
+    void onSearchChange(updateWorkflowListSearch(search, { create: true }));
   }
 
   useListShortcuts({
@@ -307,11 +307,15 @@ function WorkflowListContent({
           writer={starterDraftWriter}
           onChoiceChange={setStartChoice}
           onOpenChange={(open) => {
-            onSearchChange(updateWorkflowListSearch(search, { create: open }));
+            void onSearchChange(
+              updateWorkflowListSearch(search, { create: open }),
+            );
           }}
           onCreated={onCreated}
           onChooseTemplate={() => {
-            onSearchChange(updateWorkflowListSearch(search, { create: false }));
+            void onSearchChange(
+              updateWorkflowListSearch(search, { create: false }),
+            );
             setImporting(true);
           }}
         />

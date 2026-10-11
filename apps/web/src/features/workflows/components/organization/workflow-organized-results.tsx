@@ -15,8 +15,9 @@ import { StaleLine } from '@/components/patterns/states/stale-line';
 import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowRowActions } from '../list/workflow-row-actions';
 import { WorkflowRows, WorkflowListFooter } from '../list/workflow-rows';
+import { canEditOrganization } from './editing';
 import { WorkflowOrganizationDialog } from './dialog';
-import { WorkflowFavoriteButton } from './row-menu';
+import { WorkflowOrganizationRowMenu } from './row-menu';
 
 /** Selection is explicit, ordered and bounded to loaded rows in one URL scope. */
 export function WorkflowOrganizedResults({
@@ -51,18 +52,13 @@ export function WorkflowOrganizedResults({
     const item = items.find((entry) => entry.workflow.id === id);
     return item === undefined ? [] : [item];
   });
-  const canEdit =
-    workspace.role === 'owner' ||
-    workspace.role === 'admin' ||
-    workspace.role === 'builder';
+  const canEdit = canEditOrganization(workspace, [], 'move');
   const byId = new Map(items.map((item) => [item.workflow.id, item]));
   function controls(id: string): ReactNode {
     const item = byId.get(id);
     if (item === undefined) return null;
-    const allowed =
-      canEdit &&
-      (item.workflow.lifecycleStatus !== 'archived' ||
-        workspace.role !== 'builder');
+    const allowed = canEditOrganization(workspace, [item], 'move');
+    if (!allowed && item.organization.tags.length === 0) return null;
     return (
       <div className="relative z-10 flex flex-wrap items-center gap-2">
         {allowed ? (
@@ -82,34 +78,17 @@ export function WorkflowOrganizedResults({
             }}
           />
         ) : null}
-        <WorkflowFavoriteButton
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          workflow={item}
-          disabled={editing !== undefined}
-        />
-        {allowed ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setEditing([item]);
-            }}
-            disabled={editing !== undefined}
-          >
-            Organize…
-          </Button>
-        ) : null}
-        <span className="text-xs text-muted-foreground">
-          {item.organization.tags.map((tag) => tag.key).join(' · ')}
-        </span>
+        {item.organization.tags.length === 0 ? null : (
+          <span className="text-xs text-muted-foreground">
+            {item.organization.tags.map((tag) => tag.key).join(' · ')}
+          </span>
+        )}
       </div>
     );
   }
   return (
     <section aria-label="Workspace workflows" className="flex flex-col gap-4">
-      {canEdit ? (
+      {canEdit && currentSelected.length > 0 ? (
         <div
           className="flex flex-wrap items-center gap-2"
           aria-label="Selected workflows"
@@ -161,6 +140,29 @@ export function WorkflowOrganizedResults({
           workflows={items.map((item) => item.workflow)}
           actions={actions}
           organizationControls={controls}
+          rowMenu={(id, runnable) => {
+            const item = byId.get(id);
+            if (item === undefined) return null;
+            const allowed = canEditOrganization(workspace, [item], 'move');
+            return (
+              <WorkflowOrganizationRowMenu
+                apiClient={apiClient}
+                userId={userId}
+                workspace={workspace}
+                workflow={item}
+                actions={actions}
+                runnable={runnable}
+                disabled={editing !== undefined}
+                {...(allowed
+                  ? {
+                      onOrganize: () => {
+                        setEditing([item]);
+                      },
+                    }
+                  : {})}
+              />
+            );
+          }}
         />
       )}
       <WorkflowListFooter

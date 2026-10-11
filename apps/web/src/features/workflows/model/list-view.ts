@@ -48,8 +48,9 @@ export function parseWorkflowListSearch(search: unknown): WorkflowListSearch {
     const parsed = workflowOrganizationListQuerySchema.shape[key].safeParse(
       key === 'favoritesOnly' && raw === true ? 'true' : (value ?? undefined),
     );
-    if (parsed.success && parsed.data !== undefined && parsed.data !== '')
-      filters[key] = parsed.data;
+    if (parsed.success && parsed.data !== undefined && value !== '')
+      // Preserve typing spaces in URL state; transport normalizes the query.
+      filters[key] = key === 'query' ? value : parsed.data;
   }
   return {
     ...(create === true || create === 'true' || create === 1 || create === '1'

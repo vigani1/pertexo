@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -25,9 +25,16 @@ const organization = {
   tags: [{ id: tagId, key: 'ops', revision: 1 }],
   isFavorite: true,
 };
-function install(read: (url: URL) => Record<string, unknown>) {
+function install(
+  read: (url: URL) => Record<string, unknown>,
+  capabilities: readonly string[] = [
+    'workflow:create',
+    'workflow:update',
+    'connection:read',
+  ],
+) {
   mockServer.use(
-    ...discoveryHandlers(),
+    ...discoveryHandlers(capabilities),
     draftHandler(),
     http.get(`${api}/workflow-folders`, () =>
       HttpResponse.json({
@@ -65,6 +72,12 @@ describe('owned organization workflow list integration', () => {
       `/w/${workspaceId}/workflows?folderId=${folderId}&tagId=${tagId}`,
     );
     await screen.findByRole('link', { name: 'Daily intake' });
+    if (
+      screen
+        .getByRole('button', { name: /^Filters/u })
+        .getAttribute('aria-expanded') !== 'true'
+    )
+      await userEvent.click(screen.getByRole('button', { name: /^Filters/u }));
     await screen.findByText('Operations');
     mockServer.use(
       http.get(`${api}/workflows`, ({ request }) =>
@@ -92,6 +105,12 @@ describe('owned organization workflow list integration', () => {
         name: 'Remove favorite for Daily intake',
       }),
     ).not.toBeInTheDocument();
+    if (
+      screen
+        .getByRole('button', { name: /^Filters/u })
+        .getAttribute('aria-expanded') !== 'true'
+    )
+      await userEvent.click(screen.getByRole('button', { name: /^Filters/u }));
     expect(
       screen.getByRole('combobox', { name: 'Filter by tag' }),
     ).toBeDisabled();
@@ -113,8 +132,11 @@ describe('owned organization workflow list integration', () => {
       ],
     });
     expect(screen.getByRole('link', { name: 'Daily intake' })).toBeVisible();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Actions for Daily intake' }),
+    );
     expect(
-      screen.getByRole('button', { name: 'Remove favorite for Daily intake' }),
+      await screen.findByRole('menuitem', { name: 'Remove favorite' }),
     ).toBeVisible();
     await screen.findByText(/couldn’t refresh/i);
   });
@@ -140,6 +162,12 @@ describe('owned organization workflow list integration', () => {
       view: 'all',
     }))
       expect(organizedRead?.searchParams.get(key)).toBe(value);
+    if (
+      screen
+        .getByRole('button', { name: /^Filters/u })
+        .getAttribute('aria-expanded') !== 'true'
+    )
+      await userEvent.click(screen.getByRole('button', { name: /^Filters/u }));
     await userEvent.click(screen.getByRole('button', { name: 'Archived' }));
     await waitFor(() => {
       expect(
@@ -153,9 +181,27 @@ describe('owned organization workflow list integration', () => {
       });
     });
     expect(
-      screen.getByRole('searchbox', { name: 'Name contains' }),
+      screen.getByRole('searchbox', { name: 'Search workflows' }),
     ).toHaveValue('Ops');
   });
+  it('keeps private favorites available without exposing organization editing to a read-only capability snapshot', async () => {
+    install(() => page(), []);
+    renderApp(`/w/${workspaceId}/workflows`);
+    await screen.findByRole('link', { name: 'Daily intake' });
+    expect(
+      screen.queryByRole('checkbox', { name: 'Select Daily intake' }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Actions for Daily intake' }),
+    );
+    expect(
+      await screen.findByRole('menuitem', { name: 'Remove favorite' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Organize…' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('selects only explicit loaded rows, keeps pagination and clears selection at a new filter scope', async () => {
     const reads: URL[] = [];
     install((url) => {
@@ -166,8 +212,12 @@ describe('owned organization workflow list integration', () => {
     });
     renderApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
+    await screen.findByRole('checkbox', { name: 'Select Daily intake' });
+    expect(
+      screen.queryByRole('button', { name: 'Organize selected…' }),
+    ).not.toBeInTheDocument();
     await event.click(
-      await screen.findByRole('checkbox', { name: 'Select Daily intake' }),
+      screen.getByRole('checkbox', { name: 'Select Daily intake' }),
     );
     expect(
       screen.getByRole('button', { name: 'Organize selected…' }),
@@ -180,6 +230,12 @@ describe('owned organization workflow list integration', () => {
     expect(
       screen.getByRole('checkbox', { name: 'Select Second workflow' }),
     ).not.toBeChecked();
+    if (
+      screen
+        .getByRole('button', { name: /^Filters/u })
+        .getAttribute('aria-expanded') !== 'true'
+    )
+      await event.click(screen.getByRole('button', { name: /^Filters/u }));
     await event.click(screen.getByRole('button', { name: 'My favorites' }));
     await waitFor(() => {
       expect(reads.at(-1)?.searchParams.get('favoritesOnly')).toBe('true');
@@ -190,8 +246,8 @@ describe('owned organization workflow list integration', () => {
       ).not.toBeChecked(),
     );
     expect(
-      screen.getByRole('button', { name: 'Organize selected…' }),
-    ).toBeDisabled();
+      screen.queryByRole('button', { name: 'Organize selected…' }),
+    ).not.toBeInTheDocument();
     expect(reads.at(-1)?.searchParams.has('after')).toBe(false);
   });
   it('searches literal names across unloaded pages and can clear filters from an empty result', async () => {
@@ -206,21 +262,22 @@ describe('owned organization workflow list integration', () => {
     const event = userEvent.setup();
     await screen.findByRole('link', { name: 'Daily intake' });
     await event.type(
-      screen.getByRole('searchbox', { name: 'Name contains' }),
+      screen.getByRole('searchbox', { name: 'Search workflows' }),
       ' Ops%_ ',
-    );
-    await event.click(
-      within(
-        screen.getByRole('region', { name: 'Find and organize workflows' }),
-      ).getByRole('button', { name: 'Search' }),
     );
     await screen.findByText('No workflows match these filters');
     expect(reads.at(-1)?.searchParams.get('query')).toBe('Ops%_');
-    expect(router.state.location.search).toMatchObject({ query: 'Ops%_' });
+    expect(router.state.location.search).toMatchObject({ query: ' Ops%_ ' });
+    if (
+      screen
+        .getByRole('button', { name: /^Filters/u })
+        .getAttribute('aria-expanded') !== 'true'
+    )
+      await event.click(screen.getByRole('button', { name: /^Filters/u }));
     await event.click(screen.getByRole('button', { name: 'Clear filters' }));
     await screen.findByRole('link', { name: 'Daily intake' });
     expect(
-      screen.getByRole('searchbox', { name: 'Name contains' }),
+      screen.getByRole('searchbox', { name: 'Search workflows' }),
     ).toHaveValue('');
   });
   it('keeps missing organization unavailable rather than rendering summary data as empty metadata', async () => {
@@ -230,13 +287,15 @@ describe('owned organization workflow list integration', () => {
     }));
     renderApp(`/w/${workspaceId}/workflows`);
     await screen.findByText('Workflows didn’t load');
+    if (
+      screen
+        .getByRole('button', { name: /^Filters/u })
+        .getAttribute('aria-expanded') !== 'true'
+    )
+      await userEvent.click(screen.getByRole('button', { name: /^Filters/u }));
     expect(
       screen.queryByText('Unsafe legacy response'),
     ).not.toBeInTheDocument();
-    expect(
-      within(
-        screen.getByRole('region', { name: 'Find and organize workflows' }),
-      ).getByRole('button', { name: 'Clear filters' }),
-    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Clear filters' })).toBeVisible();
   });
 });

@@ -212,12 +212,14 @@ export function WorkflowRow({
   workflow,
   actions,
   organizationControls,
+  rowMenu,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   actions: WorkflowRowActions;
+  rowMenu?: (workflowId: string, runnable: boolean) => ReactNode;
   organizationControls?: ReactNode;
 }>) {
   const [observe, seen] = useHasBeenVisible<HTMLLIElement>();
@@ -293,14 +295,18 @@ export function WorkflowRow({
             onRun={actions.onRun}
           />
         ) : null}
-        <WorkflowRowMenu
-          workspace={workspace}
-          workflow={workflow}
-          actions={actions}
-          runnable={run !== undefined}
-        />
+        {rowMenu === undefined ? (
+          <WorkflowRowMenu
+            workspace={workspace}
+            workflow={workflow}
+            actions={actions}
+            runnable={run !== undefined}
+          />
+        ) : (
+          rowMenu(workflow.id, run !== undefined)
+        )}
       </div>
-      {organizationControls === undefined ? null : (
+      {organizationControls == null ? null : (
         <div className="col-span-full pl-0 sm:pl-20">
           {organizationControls}
         </div>

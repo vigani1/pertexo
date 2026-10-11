@@ -3,24 +3,32 @@ import type {
   AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,
 } from '@pertexo/contracts';
-import { Button } from '@/components/ui/button';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { WorkflowRowMenu } from '../list/workflow-row-menu';
+import type { WorkflowRowActions } from '../list/workflow-row-actions';
 import type { ApiClient } from '@/lib/api/client';
 import { setWorkflowFavorite } from '../../data/organization/api';
 import { workflowOrganizationKeys } from '../../data/organization/queries';
 
-/** Marks or unmarks a workflow as one of the user's favorites. */
-export function WorkflowFavoriteButton({
+/** The mutation survives the popup closing so its result has one feedback owner. */
+export function WorkflowOrganizationRowMenu({
   apiClient,
   userId,
   workspace,
   workflow,
   disabled = false,
+  runnable,
+  actions,
+  onOrganize,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowOrganizationProjectionResponse;
   disabled?: boolean;
+  runnable: boolean;
+  actions: WorkflowRowActions;
+  onOrganize?: () => void;
 }>) {
   const queryClient = useQueryClient();
   const favorite = useMutation({
@@ -40,23 +48,38 @@ export function WorkflowFavoriteButton({
     : workflow.organization.isFavorite;
   return (
     <span className="inline-flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={`${isFavorite ? 'Remove' : 'Add'} favorite for ${workflow.workflow.name}`}
-        aria-pressed={isFavorite}
-        disabled={
-          disabled ||
-          favorite.isPending ||
-          workspace.status !== 'active' ||
-          !workspace.capabilities.includes('workflow:read')
+      <WorkflowRowMenu
+        workspace={workspace}
+        workflow={workflow.workflow}
+        actions={actions}
+        runnable={runnable}
+        organizationActions={
+          <>
+            <DropdownMenuItem
+              disabled={
+                disabled ||
+                favorite.isPending ||
+                workspace.status !== 'active' ||
+                !workspace.capabilities.includes('workflow:read')
+              }
+              onClick={() => {
+                favorite.mutate(!isFavorite);
+              }}
+            >
+              {favorite.isPending
+                ? 'Saving favorite…'
+                : isFavorite
+                  ? 'Remove favorite'
+                  : 'Add favorite'}
+            </DropdownMenuItem>
+            {onOrganize === undefined ? null : (
+              <DropdownMenuItem disabled={disabled} onClick={onOrganize}>
+                Organize…
+              </DropdownMenuItem>
+            )}
+          </>
         }
-        onClick={() => {
-          favorite.mutate(!isFavorite);
-        }}
-      >
-        {isFavorite ? 'Remove favorite' : 'Add favorite'}
-      </Button>
+      />
       {favorite.isError ? (
         <span role="alert" className="text-xs text-destructive">
           Favorite not saved

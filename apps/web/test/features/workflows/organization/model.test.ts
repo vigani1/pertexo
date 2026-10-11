@@ -770,6 +770,51 @@ describe('workflow organization transport', () => {
     queries.clear();
   });
 
+  it('cancels a superseded name search before dispatch and reads the final phrase', async () => {
+    vi.useFakeTimers();
+    const queries = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(json({ items: [], nextCursor: null })),
+      );
+    try {
+      const first = workflowOrganizationInfiniteQueryOptions(
+        client(fetch),
+        userId,
+        workspaceId,
+        { query: 'Daily', include: 'organization' },
+      );
+      const pending = queries.infiniteQuery(first).catch(() => undefined);
+      await queries.cancelQueries({ queryKey: first.queryKey });
+      await vi.advanceTimersByTimeAsync(300);
+      await pending;
+      expect(fetch).not.toHaveBeenCalled();
+      const final = queries.infiniteQuery(
+        workflowOrganizationInfiniteQueryOptions(
+          client(fetch),
+          userId,
+          workspaceId,
+          { query: 'Daily intake ', include: 'organization' },
+        ),
+      );
+      await vi.advanceTimersByTimeAsync(250);
+      await final;
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(
+        new URL(
+          requestUrl(fetch.mock.calls[0]?.[0]),
+          'http://test',
+        ).searchParams.get('query'),
+      ).toBe('Daily intake');
+    } finally {
+      queries.clear();
+      vi.useRealTimers();
+    }
+  });
+
   it('cancels reads and ignores a late response even when transport ignores abort', async () => {
     let finish!: (response: Response) => void;
     const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(

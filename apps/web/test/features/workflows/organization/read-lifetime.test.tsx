@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useState } from 'react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -158,6 +159,12 @@ function setup(
 }
 async function ready() {
   await screen.findByText('Protected workflow Private favorite');
+  if (
+    screen
+      .getByRole('button', { name: /^Filters/u })
+      .getAttribute('aria-expanded') !== 'true'
+  )
+    await userEvent.click(screen.getByRole('button', { name: /^Filters/u }));
   await screen.findByText('Private folder');
   await screen.findByText('private-tag');
 }
@@ -282,27 +289,34 @@ describe('organization reads without a command dialog', () => {
       sort: 'created',
       create: true,
     };
-    render(
-      <QueryClientProvider client={client}>
-        <WorkflowOrganizationFilters
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          search={current}
-          filterRef={null}
-          onSearchChange={(
-            next:
-              | WorkflowListSearch
-              | ((search: WorkflowListSearch) => WorkflowListSearch),
-          ) => {
-            current = typeof next === 'function' ? next(current) : next;
-          }}
-        />
-      </QueryClientProvider>,
-    );
+    function Harness() {
+      const [search, setSearch] = useState(current);
+      return (
+        <QueryClientProvider client={client}>
+          <WorkflowOrganizationFilters
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            search={search}
+            filterRef={null}
+            onSearchChange={(next) => {
+              current = typeof next === 'function' ? next(current) : next;
+              setSearch(current);
+            }}
+          />
+        </QueryClientProvider>
+      );
+    }
+    render(<Harness />);
     const event = userEvent.setup();
-    await event.type(screen.getByLabelText('Name contains'), 'Alpha');
-    await event.click(screen.getByRole('button', { name: 'Search' }));
+    await event.type(screen.getByLabelText('Search workflows'), 'Alpha');
+
+    if (
+      screen
+        .getByRole('button', { name: /^Filters/u })
+        .getAttribute('aria-expanded') !== 'true'
+    )
+      await event.click(screen.getByRole('button', { name: /^Filters/u }));
     await event.click(screen.getByRole('combobox', { name: 'Filter by tag' }));
     await event.click(
       await screen.findByRole('option', { name: 'private-tag' }),
@@ -326,13 +340,19 @@ describe('organization reads without a command dialog', () => {
     await event.click(screen.getByRole('button', { name: 'My favorites' }));
     expect(current.favoritesOnly).toBeUndefined();
     expect(current.query).toBe('Alpha');
-    await event.clear(screen.getByLabelText('Name contains'));
-    await event.click(screen.getByRole('button', { name: 'Search' }));
+    await event.clear(screen.getByLabelText('Search workflows'));
+
     expect(current.query).toBeUndefined();
     expect(current.tagId).toBe(tagId);
     expect(current.folderId).toBe(folderId);
+    if (
+      screen
+        .getByRole('button', { name: /^Filters/u })
+        .getAttribute('aria-expanded') !== 'true'
+    )
+      await event.click(screen.getByRole('button', { name: /^Filters/u }));
     await event.click(screen.getByRole('button', { name: 'Clear filters' }));
-    expect(current).toEqual({ view: 'all', sort: 'created', create: true });
+    expect(current).toEqual({ sort: 'created', create: true });
   });
   it.each([401, 403, 404])(
     'forgets all organization siblings on %s without touching legacy/F06/other scopes',
@@ -355,6 +375,14 @@ describe('organization reads without a command dialog', () => {
       for (const key of preserved)
         expect(client.getQueryData(key)).toEqual({ snapshot: 'untouched' });
       expect(getWorkflowOrganizationPage).toHaveBeenCalledTimes(2);
+      if (
+        screen
+          .getByRole('button', { name: /^Filters/u })
+          .getAttribute('aria-expanded') !== 'true'
+      )
+        await userEvent.click(
+          screen.getByRole('button', { name: /^Filters/u }),
+        );
       expect(
         screen.getByRole('combobox', { name: 'Filter by tag' }),
       ).toBeDisabled();
