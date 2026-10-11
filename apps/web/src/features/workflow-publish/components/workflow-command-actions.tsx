@@ -155,8 +155,6 @@ export function WorkflowCommandActions({
     });
   const canPublish = workspace.capabilities.includes('workflow:publish');
   const canRun = workspace.capabilities.includes('run:start');
-  const blockingGroups =
-    issues.groups !== undefined && !issues.stale ? issues.groups : [];
   const emptyHint = emptyDraftHint(graph, triggersAvailable);
 
   async function confirmPublish() {
@@ -217,7 +215,7 @@ export function WorkflowCommandActions({
         stage={publication.publishStage}
         error={publication.publishError}
         recoveryPending={publication.publishRecoveryPending}
-        blockingGroups={blockingGroups}
+        blockingGroups={issues.blockingGroups}
         onPublish={() => void confirmPublish()}
         onFix={onFix}
       />

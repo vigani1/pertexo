@@ -8,6 +8,7 @@ import {
   AddConnectionSheet,
   providerForCredential,
 } from '@/features/connections/add-connection.public';
+import { isUsableConnection } from '@/features/connections/queries.public';
 import { AddConnectionContext } from '../../../model/add-connection-context';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from './choice-select';
@@ -135,13 +136,12 @@ function usableConnections(
   requirement: string,
   created: ConnectionResponse | undefined,
 ): readonly ConnectionResponse[] {
-  const usable = connections.filter(
-    (connection) =>
-      connection.authType === requirement && connection.status === 'active',
+  const usable = connections.filter((connection) =>
+    isUsableConnection(connection, requirement),
   );
   const fresh =
-    created?.authType === requirement &&
-    created.status === 'active' &&
-    !usable.some((connection) => connection.id === created.id);
+    created !== undefined &&
+    isUsableConnection(created, requirement) &&
+    !connections.some((connection) => connection.id === created.id);
   return fresh ? [...usable, created] : usable;
 }
