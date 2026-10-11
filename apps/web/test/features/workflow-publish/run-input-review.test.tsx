@@ -128,7 +128,7 @@ it('blocks new case and run commands until a reviewed publication is actually di
   const event = userEvent.setup();
   const newCase = await screen.findByRole('button', { name: 'New input case' });
   await event.click(screen.getByRole('button', { name: 'Load Original case' }));
-  await screen.findByText(/Loaded case: Original case/u);
+  await screen.findByText(/with “Original case”/u);
   await event.click(
     screen.getByRole('button', {
       name: 'Read current publication and review copied input',

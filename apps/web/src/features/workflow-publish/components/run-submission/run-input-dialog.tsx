@@ -68,16 +68,10 @@ function RunVersionNotice({
   return (
     <p className="text-sm text-muted-foreground">
       {recovering
-        ? 'Original submitted version'
-        : loadedName === undefined
-          ? 'Current published version'
-          : `Loaded case: ${loadedName}`}{' '}
-      · <span className="break-all font-mono">{expectedVersion}</span>.{' '}
-      {recovering
-        ? 'This exact retry may recover a run already accepted on this version. It never substitutes the current publication.'
+        ? 'Retrying uses the version the first attempt was sent to, never a newer one.'
         : stale
-          ? 'This case belongs to an older version. Review the current publication and create or load a new case; it will not be rebound automatically.'
-          : 'The server will reject a changed publication instead of starting another version.'}
+          ? `${loadedName === undefined ? 'This case' : `“${loadedName}”`} was saved for an older version. Create or load a case for the version that’s live now.`
+          : `Runs the version that’s live now${loadedName === undefined ? '' : `, with “${loadedName}”`}. If a newer version is published first, nothing starts.`}
     </p>
   );
 }
@@ -225,7 +219,7 @@ function RunInputDialogContent({
       description={
         retryAvailable
           ? 'Retry sends the original input, deadline and version precondition (if any) within 24 hours of the first attempt. A replacement run is blocked until this outcome is resolved.'
-          : 'This starts a real workflow run, not a test. It can send messages, make requests and create other external effects. Confirm the input and published version before starting.'
+          : 'This starts a real run of the published version. It can send messages and call other services.'
       }
       confirmLabel={
         retryAvailable ? 'Retry same run' : 'Start published version'

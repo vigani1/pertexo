@@ -581,7 +581,7 @@ describe('connections page', () => {
     expect(
       await lens().findByText('The API refused these headers.'),
     ).toBeVisible();
-    expect(lens().getByRole('button', { name: 'Save anyway' })).toBeVisible();
+    expect(lens().getByRole('button', { name: 'Done' })).toBeVisible();
     expect(bodies).toEqual([
       {
         providerKey: 'http',

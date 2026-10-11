@@ -24,6 +24,7 @@ import {
   upstreamEdgeIds,
 } from '@/features/workflow-editor/model/graph/order';
 import {
+  firstStepChoice,
   groupStepChoices,
   isStartTrigger,
   placeableDefinitions,
@@ -362,6 +363,26 @@ describe('add-step choices', () => {
 
     const [alone] = groupStepChoices([logic('core.switch')], '');
     expect(alone?.entries.map((entry) => entry.kind)).toEqual(['step']);
+  });
+
+  it('lists the step whose name matches first, so Enter adds it', () => {
+    const logic = (key: string) =>
+      ({
+        ...definition,
+        definition: { key, version: 1 },
+        family: 'logic',
+      }) satisfies NodeDefinitionCatalogItem;
+    // Call workflow's description mentions waiting; Wait is the name match.
+    const catalog = [definition, logic('core.call'), logic('core.wait')];
+    expect(
+      groupStepChoices(catalog, 'wait').flatMap((group) =>
+        group.choices.map((choice) => choice.step.name),
+      ),
+    ).toEqual(['Wait', 'Call workflow']);
+    expect(firstStepChoice(catalog, 'wait')?.step.name).toBe('Wait');
+    expect(firstStepChoice(catalog, 'slack')?.step.name).toBe(
+      'Send Slack message',
+    );
   });
 
   it('starts drafts only with triggers', () => {

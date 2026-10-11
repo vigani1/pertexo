@@ -380,11 +380,7 @@ function AddConnectionFooter({
         disabled={tested === 'running'}
         onClick={onCancel}
       >
-        {tested === 'ok'
-          ? 'Done'
-          : tested === 'idle'
-            ? 'Skip test'
-            : 'Save anyway'}
+        {tested === 'idle' ? 'Skip test' : 'Done'}
       </Button>
     );
   const back =

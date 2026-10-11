@@ -97,7 +97,7 @@ function ChangeLine({ line }: Readonly<{ line: PublishSummaryLine }>) {
 function connectionSentence(summary: PublishSummary): string | undefined {
   const parts = [
     summary.connectionsAdded > 0
-      ? `${String(summary.connectionsAdded)} ${summary.connectionsAdded === 1 ? 'connection' : 'connections'} added`
+      ? `${String(summary.connectionsAdded)} ${summary.connectionsAdded === 1 ? 'link' : 'links'} between steps added`
       : undefined,
     summary.connectionsRemoved > 0
       ? `${String(summary.connectionsRemoved)} removed`

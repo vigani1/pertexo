@@ -131,11 +131,9 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     await event.click(addStepButton(/Set fields/u));
     expect(screen.getByText('Edited since v1')).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Run' }));
+    // Starts at once: no input to confirm for a run with nothing to fill in.
     await event.click(
       await screen.findByRole('menuitem', { name: 'Run published version' }),
-    );
-    await event.click(
-      await screen.findByRole('button', { name: 'Start published version' }),
     );
     await waitFor(() => {
       expect(app.router.state.location.pathname).toBe(
@@ -293,7 +291,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(within(lens).getByText('Changes since v7')).toBeVisible();
     expect(within(lens).getByText('Target')).toBeVisible();
     expect(within(lens).getByText('Added:')).toBeInTheDocument();
-    expect(within(lens).getByText('1 connection added.')).toBeVisible();
+    expect(within(lens).getByText('1 link between steps added.')).toBeVisible();
   });
 
   it('disables Run until something is published and Publish until the draft has a step', async () => {
