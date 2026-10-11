@@ -49,3 +49,8 @@ The browser pass checked desktop and phone views, including 320 CSS pixels,
 with no page overflow. Reduced motion disabled all Usage and pending-test
 animations. Screenshots include the actual workspace before/after and clearly
 identified synthetic populated states.
+
+The live Usage browser/API/PostgreSQL qualification also passed after its byte
+assertions were updated to readable units and the exact byte title. The initial
+CI browser failure was this stale raw-byte expectation; production behavior did
+not change in the follow-up fix.
