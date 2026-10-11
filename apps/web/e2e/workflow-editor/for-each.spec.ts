@@ -327,3 +327,43 @@ test('adds a first body step from the container and never connects across the bo
   expect(remote.graph.edges).toEqual([]);
   expect(savedBody(remote)?.edges).toEqual([]);
 });
+
+for (const width of [1280, 390]) {
+  test(`palette follows a selected body step at ${String(width)}px`, async ({
+    page,
+    context,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const remote = orderLoopDraft();
+    await addCsrfCookie(context);
+    await openEditor(page, remote);
+    await page.getByTestId('rf__node-reserve').click();
+    if (width < 640)
+      await page
+        .getByRole('navigation', { name: 'Editor panels' })
+        .getByRole('button', { name: 'Add step', exact: true })
+        .click();
+    await page
+      .getByRole('complementary', { name: 'Add a step' })
+      .getByRole('button', { name: /Set fields/u })
+      .click();
+    await expect.poll(() => savedBody(remote)?.nodes.length).toBe(3);
+    const added = savedBody(remote)?.nodes.at(-1);
+    expect(remote.graph.nodes).toHaveLength(2);
+    expect(added?.position.x).toBeGreaterThan(300 + 224);
+    expect(savedBody(remote)?.edges.at(-1)).toMatchObject({
+      source: { nodeId: 'reserve' },
+      target: { nodeId: added?.id },
+    });
+    expect(remote.graph.edges).toHaveLength(1);
+    await expect(page.getByTestId(`rf__node-${added?.id ?? ''}`)).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath(`selected-body-${String(width)}.png`),
+      fullPage: true,
+    });
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect.poll(() => savedBody(remote)?.nodes.length).toBe(2);
+    expect(savedBody(remote)?.edges).toHaveLength(1);
+  });
+}

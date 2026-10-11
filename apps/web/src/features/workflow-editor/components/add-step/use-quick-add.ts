@@ -3,6 +3,7 @@ import { useReactFlow } from '@xyflow/react';
 import { useState } from 'react';
 import {
   shownLevel,
+  cardSize,
   STEP_CARD,
   toBodyPosition,
 } from '../../model/graph/for-each-body-layout';
@@ -18,6 +19,7 @@ import {
   type GraphLevel,
 } from '../../model/graph/scopes';
 import { openOutputPort } from '../../model/quick-add';
+import { shownPorts } from '../../model/step-card';
 
 type Point = Readonly<{ x: number; y: number }>;
 
@@ -68,9 +70,16 @@ export function useQuickAdd({
   const [request, setRequest] = useState<QuickAddRequest>();
 
   function outputsOf(nodeId: string): readonly string[] {
-    const node = findStep(store.getState().graph, nodeId);
-    if (node === undefined) return [];
-    return findDefinition(definitions, node)?.ports.outputs ?? [];
+    const graph = store.getState().graph;
+    const level = shownLevel(graph, scopeOf(graph, nodeId) ?? []);
+    const node = level?.nodes.find(({ id }) => id === nodeId);
+    if (node === undefined || level === undefined) return [];
+    return shownPorts(
+      node,
+      findDefinition(definitions, node),
+      level,
+      'outputs',
+    );
   }
 
   /** A step on its level as drawn now, and its card's size. */
@@ -81,8 +90,8 @@ export function useQuickAdd({
       ? undefined
       : {
           node,
-          width: measured?.width ?? STEP_CARD.width,
-          height: measured?.height ?? STEP_CARD.height,
+          width: measured?.width ?? cardSize(node).width,
+          height: measured?.height ?? cardSize(node).height,
         };
   }
 

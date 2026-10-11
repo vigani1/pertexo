@@ -1,15 +1,23 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { useReactFlow } from '@xyflow/react';
 import type { RefObject } from 'react';
-import { shownLevel, STEP_CARD } from '../../model/graph/for-each-body-layout';
+import {
+  cardSize,
+  shownLevel,
+  STEP_CARD,
+} from '../../model/graph/for-each-body-layout';
 import type { EditorStore } from '../../model/state/store';
 import {
   addBodyStep,
   addDefinitionNode,
   addStepAfter,
   freePosition,
+  positionAfter,
 } from '../../model/graph/commands';
-import { scopeOf, type ScopePath } from '../../model/graph/scopes';
+import { loopOf, scopeOf, type ScopePath } from '../../model/graph/scopes';
+import { findDefinition } from '../../model/graph/adapter';
+import { openOutputPort } from '../../model/quick-add';
+import { shownPorts } from '../../model/step-card';
 import { findDefinitionByIdentity } from '../../model/step-catalog';
 import type { QuickAddTarget } from './use-quick-add';
 
@@ -23,8 +31,8 @@ const CARD_HALF = Object.freeze({
 
 /**
  * Places new steps where people can see them: clicking an add-step item
- * drops it at the centre of the visible canvas (nudged off any step already
- * there), dragging drops it under the pointer, and quick add puts it where
+ * follows a selected step to its right when their ports allow it, otherwise
+ * drops at the visible centre. Dragging drops under the pointer, and quick add puts it where
  * it was asked for, already connected, inside a For each body when that's
  * where it was asked for.
  */
@@ -39,7 +47,7 @@ export function useStepPlacement({
   canvasRef: RefObject<HTMLDivElement | null>;
   onPlaced: (nodeId: string) => void;
 }>) {
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, getInternalNode } = useReactFlow();
 
   function viewportCentre(): Position {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -85,9 +93,38 @@ export function useStepPlacement({
     place(definition, { from: undefined, loopId: undefined, position });
   }
 
+  function afterSelection(
+    definition: NodeDefinitionCatalogItem,
+  ): QuickAddTarget | undefined {
+    const { graph, selectedNodeId } = store.getState();
+    if (selectedNodeId === null || definition.ports.inputs.length === 0)
+      return undefined;
+    const scope = scopeOf(graph, selectedNodeId);
+    const level = scope === undefined ? undefined : shownLevel(graph, scope);
+    const source = level?.nodes.find(({ id }) => id === selectedNodeId);
+    if (source === undefined || level === undefined || scope === undefined)
+      return undefined;
+    const port = openOutputPort(
+      level,
+      source.id,
+      shownPorts(source, findDefinition(definitions, source), level, 'outputs'),
+    );
+    if (port === undefined) return undefined;
+    return {
+      from: { nodeId: source.id, port },
+      loopId: loopOf(scope),
+      position: positionAfter(
+        source,
+        getInternalNode(source.id)?.measured.width ?? cardSize(source).width,
+      ),
+    };
+  }
+
   return {
     addAtCentre: (definition: NodeDefinitionCatalogItem) => {
-      addOnCanvas(definition, viewportCentre());
+      const target = afterSelection(definition);
+      if (target === undefined) addOnCanvas(definition, viewportCentre());
+      else place(definition, target);
     },
     addAt: (identity: string, position: Position) => {
       const definition = findDefinitionByIdentity(definitions, identity);

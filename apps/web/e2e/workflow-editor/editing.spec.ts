@@ -506,3 +506,65 @@ test('gives a read-only actor the canvas and a read-only step panel', async ({
   await expect(inputs.getByLabel('JSON value', { exact: true })).toBeDisabled();
   expect(remote.revision).toBe(1);
 });
+
+for (const width of [1280, 390]) {
+  test(`palette links forward from the selected step at ${String(width)}px`, async ({
+    page,
+    context,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 768 });
+    const remote = remoteDraft(mappingGraph());
+    await addCsrfCookie(context);
+    await installEditorRoutes(page, remote, {
+      definitions: [manualDefinition, definition],
+    });
+    await page.goto(editorUrl);
+    await page.getByTestId('rf__node-target').click();
+    if (width < 640)
+      await page
+        .getByRole('navigation', { name: 'Editor panels' })
+        .getByRole('button', { name: 'Add step', exact: true })
+        .click();
+    await addStep(page, /Set fields/u).click();
+    await expect.poll(() => remote.graph.nodes.length).toBe(3);
+    const added = remote.graph.nodes.at(-1) as {
+      id: string;
+      position: { x: number; y: number };
+    };
+    expect(added.position.x).toBeGreaterThan(340 + 224);
+    expect(remote.graph.edges.at(-1)).toMatchObject({
+      source: { nodeId: 'target', port: 'out' },
+      target: { nodeId: added.id, port: 'in' },
+    });
+    await expect(page.getByTestId(`rf__node-${added.id}`)).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath(`selected-step-${String(width)}.png`),
+      fullPage: true,
+    });
+    await page.reload();
+    await expect(page.getByTestId(`rf__node-${added.id}`)).toBeVisible();
+    expect(remote.graph.edges).toHaveLength(2);
+  });
+}
+
+test('palette leaves a multiple selection unlinked', async ({
+  page,
+  context,
+}) => {
+  const remote = remoteDraft(mappingGraph());
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remote, {
+    definitions: [manualDefinition, definition],
+  });
+  await page.goto(editorUrl);
+  await page.getByTestId('rf__node-manual').click();
+  await page
+    .getByTestId('rf__node-target')
+    .click({ modifiers: ['ControlOrMeta'] });
+  await expect(
+    page.getByRole('toolbar', { name: 'Canvas selection' }),
+  ).toContainText('2 steps');
+  await addStep(page, /Set fields/u).click();
+  await expect.poll(() => remote.graph.nodes.length).toBe(3);
+  expect(remote.graph.edges).toHaveLength(1);
+});
