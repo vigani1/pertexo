@@ -101,6 +101,7 @@
               "workflow.activation_failed",
               "run.not_cancelable",
               "run.outcome_unknown",
+              "connection.not_configured",
               "connection.conflict",
               "connection.reauthorization_required",
               "connection.revoked",
@@ -190,6 +191,30 @@
                     "timed_out",
                     "outcome_unknown"
                   ]
+                },
+                "failureDays": {
+                  "maxItems": 30,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "day": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "day",
+                      "count"
+                    ],
+                    "additionalProperties": false
+                  }
                 },
                 "occurrenceCount": {
                   "type": "integer",
@@ -283,6 +308,7 @@
                 "workflowId",
                 "workflowName",
                 "kind",
+                "failureDays",
                 "occurrenceCount",
                 "firstOccurredAt",
                 "latestOccurredAt",

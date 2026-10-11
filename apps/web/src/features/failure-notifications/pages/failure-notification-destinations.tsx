@@ -225,6 +225,18 @@ export function FailureNotificationDestinationsPage({
         )}
       />
     );
+  if (
+    destinations.isError &&
+    isApiError(destinations.error) &&
+    destinations.error.problem?.code === 'connection.not_configured'
+  )
+    return (
+      <UnavailablePage
+        heading="Alerts"
+        title="Connections need server configuration"
+        description="This server has no connection encryption provider configured. Enable local connection encryption for development, or configure AWS KMS on the server. Alerts need a connection too."
+      />
+    );
   if (destinations.isError && isHidden(destinations.error))
     return (
       <UnavailablePage

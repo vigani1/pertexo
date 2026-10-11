@@ -99,11 +99,19 @@ Ctrl+C; services keep their data until `docker compose down -v`.
 
 The example environment is for local development only; do not commit credentials
 or production configuration. Local authentication mail is never sent: the API
-prints each verification or reset link to its log. The example leaves connection
-encryption (`CONNECTION_KMS_*`) unset, so the connections API is off and the
-workflow editor offers no connections. The worker runs every job kind and
-retention; failure notifications and invitation emails wait in the outbox until
-connection encryption and invitation email are configured.
+prints each verification or reset link to its log. Connections and Alerts use
+`CONNECTION_ENCRYPTION_MODE=local` and `CONNECTION_LOCAL_KEY` from the example.
+The key must encode 32 bytes and remain stable across API and worker restarts;
+changing it makes existing local connection secrets unreadable. The example key
+is public and intended only for disposable development credentials. Staging and
+production refuse local mode: remove both local settings and configure
+`CONNECTION_KMS_KEY_REFERENCE` and `CONNECTION_KMS_REGION` instead. Webhooks
+continue to require KMS. An unconfigured local server explains that Connections
+and Alerts need encryption rather than reporting a workspace access failure.
+Invitation emails wait for their separate delivery configuration. Local
+connection encryption does not simulate providers: tests and alert delivery
+still call the configured service. Existing `.env` files are not overwritten;
+add the two local connection settings from `.env.example` to enable them.
 
 To run one process on its own, load `.env` into the shell first
 (`set -a; . ./.env; set +a`) and use `pnpm dev:api`, `pnpm dev:worker` or

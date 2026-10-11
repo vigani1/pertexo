@@ -12,6 +12,7 @@ type Thread = Readonly<{
   workflowId: string;
   workflowName: string;
   kind: 'failed' | 'timed_out' | 'outcome_unknown';
+  failureDays: [];
   occurrenceCount: number;
   firstOccurredAt: string;
   latestOccurredAt: string;
@@ -26,6 +27,7 @@ function thread(workflowId: string, workflowName: string): Thread {
     workflowId,
     workflowName,
     kind: 'failed',
+    failureDays: [],
     occurrenceCount: 2,
     firstOccurredAt: '2026-09-15T09:00:00.000000Z',
     latestOccurredAt: '2026-09-15T09:30:00.000000Z',

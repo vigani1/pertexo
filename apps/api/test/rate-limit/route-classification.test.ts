@@ -1,3 +1,4 @@
+import { UnconfiguredConnectionsController } from '../../src/connections/http/unavailable.js';
 import { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
 
@@ -49,6 +50,8 @@ const routes: readonly (readonly [
   [WorkspaceController, 'rename', 'ordinary_mutation'],
   [WorkspaceController, 'requestDeletion', 'ordinary_mutation'],
   [WorkspaceController, 'restore', 'ordinary_mutation'],
+  [UnconfiguredConnectionsController, 'connections', 'authenticated_read'],
+  [UnconfiguredConnectionsController, 'destinations', 'authenticated_read'],
   [ConnectionsController, 'list', 'authenticated_read'],
   [ConnectionsController, 'read', 'authenticated_read'],
   [ConnectionsController, 'create', 'ordinary_mutation'],
@@ -56,6 +59,7 @@ const routes: readonly (readonly [
   [ConnectionsController, 'revoke', 'connection_mutation'],
   [ConnectionsController, 'test', 'provider_test'],
   [ConnectionsController, 'slackChannels', 'provider_test'],
+  [FailureNotificationDestinationsController, 'test', 'provider_test'],
   [FailureNotificationDestinationsController, 'create', 'ordinary_mutation'],
   [FailureNotificationDestinationsController, 'list', 'authenticated_read'],
   [FailureNotificationDestinationsController, 'get', 'authenticated_read'],

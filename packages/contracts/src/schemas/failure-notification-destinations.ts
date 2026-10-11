@@ -62,3 +62,11 @@ export type FailureNotificationDestinationResponse = z.output<
 export type WorkflowFailureNotificationPolicyResponse = z.output<
   typeof workflowFailureNotificationPolicyResponseSchema
 >;
+
+/** A destination test sends one real message to the version the owner reviewed. */
+export const failureNotificationDestinationTestRequestSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    sideEffectDisclosureAccepted: z.literal(true),
+  })
+  .strict();

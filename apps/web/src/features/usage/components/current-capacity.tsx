@@ -1,4 +1,6 @@
 import type { UsageCapacityResponse } from '@pertexo/contracts';
+import { formatByteLength } from '@/lib/format/bytes';
+import { CapacityLoom, StorageSpool } from './capacity-loom';
 
 const policyLabels: Readonly<
   Record<UsageCapacityResponse['execution']['policy']['state'], string>
@@ -47,6 +49,7 @@ export function CurrentCapacity({
     <div className="grid gap-8 lg:grid-cols-2">
       <div className="min-w-0">
         <h3 className="mb-2 text-sm font-semibold">Execution</h3>
+        <CapacityLoom execution={execution} />
         <dl>
           <CapacityRow
             label="Active capacity consumed"
@@ -85,12 +88,15 @@ export function CurrentCapacity({
       </div>
       <div className="min-w-0">
         <h3 className="mb-2 text-sm font-semibold">Artifact storage</h3>
+        <StorageSpool
+          chargedBytes={artifacts.chargedBytes}
+          byteLimit={artifacts.byteLimit}
+        />
         <dl>
           <CapacityRow
-            label="Charged artifact bytes"
-            used={artifacts.chargedBytes}
-            limit={artifacts.byteLimit}
-            unit="bytes"
+            label="Charged storage"
+            used={formatByteLength(artifacts.chargedBytes)}
+            limit={formatByteLength(artifacts.byteLimit)}
           />
           <CapacityRow
             label="Charged artifact count"
@@ -106,7 +112,7 @@ export function CurrentCapacity({
           {artifacts.source === 'default'
             ? 'Default capacity applies before the first artifact reservation.'
             : 'Stored capacity. A zero limit means zero capacity, not unlimited storage.'}{' '}
-          Exact byte values are shown without rounding.
+          Sizes use binary units, rounded to one decimal place.
         </p>
       </div>
     </div>

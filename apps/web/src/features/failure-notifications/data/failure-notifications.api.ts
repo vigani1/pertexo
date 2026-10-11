@@ -4,6 +4,8 @@ import {
   failureNotificationDestinationListResponseSchema,
   failureNotificationDestinationResponseSchema,
   failureNotificationDestinationStatusRequestSchema,
+  failureNotificationDestinationTestRequestSchema,
+  connectionTestResponseSchema,
   type FailureNotificationDestinationConfig,
   type FailureNotificationDestinationResponse,
 } from '@pertexo/contracts';
@@ -103,3 +105,27 @@ export function setFailureNotificationDestinationStatus(
 export type FailureNotificationDestinationList = Awaited<
   ReturnType<typeof getFailureNotificationDestinations>
 >;
+
+export function testFailureNotificationDestination(
+  apiClient: ApiClient,
+  workspaceId: string,
+  input: Readonly<{
+    destinationId: string;
+    expectedVersion: number;
+    idempotencyKey: string;
+  }>,
+) {
+  return apiClient.request({
+    path: `${destinationsPath(workspaceId)}/${encodeURIComponent(input.destinationId)}/test`,
+    method: 'POST',
+    headers: { 'Idempotency-Key': input.idempotencyKey },
+    body: failureNotificationDestinationTestRequestSchema.parse({
+      expectedVersion: input.expectedVersion,
+      sideEffectDisclosureAccepted: true,
+    }),
+    response: {
+      kind: 'json',
+      decode: (value) => connectionTestResponseSchema.parse(value),
+    },
+  });
+}

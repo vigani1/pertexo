@@ -91,7 +91,7 @@ async function storeConnection(
   });
 }
 
-function useConnectionResultScope(scope: ConnectionMutationScope) {
+export function useConnectionResultScope(scope: ConnectionMutationScope) {
   const owner = useRef<symbol | undefined>(undefined);
   const queryClient = useQueryClient();
   useEffect(() => {

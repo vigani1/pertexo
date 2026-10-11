@@ -21,6 +21,26 @@ const requiredEnvironment = {
 } as const;
 
 describe('parseWorkerConfig', () => {
+  it('enables the shared local provider only outside deployed environments', () => {
+    const local = {
+      ...requiredEnvironment,
+      CONNECTION_ENCRYPTION_MODE: 'local',
+      CONNECTION_LOCAL_KEY: Buffer.alloc(32).toString('base64'),
+    };
+    expect(parseWorkerConfig(local).connectionEncryption).toMatchObject({
+      mode: 'local',
+    });
+    for (const NODE_ENV of ['staging', 'production']) {
+      expect(() =>
+        parseWorkerConfig({
+          ...local,
+          NODE_ENV,
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://telemetry.example.test',
+        }),
+      ).toThrow('Invalid worker configuration');
+    }
+  });
+
   it('parses the dedicated authentication-mail worker configuration', () => {
     expect(
       parseWorkerConfig({

@@ -710,3 +710,143 @@ describe('connection provider outcome projection', () => {
     },
   );
 });
+
+describe('alert destination tests', () => {
+  const destination = {
+    id: '55555555-5555-4555-8555-555555555555',
+    workspaceId,
+    kind: 'slack' as const,
+    status: 'enabled' as const,
+    currentVersion: 2,
+    config: { kind: 'slack' as const, connectionId, channelId: 'C12345' },
+    createdAt: '2026-08-22T12:00:00.000Z',
+    updatedAt: '2026-08-22T12:00:00.000Z',
+  };
+  const input = {
+    actor,
+    routeWorkspaceId: workspaceId,
+    idempotencyKey: 'destination-test',
+  };
+
+  it('posts to the reviewed Slack channel after recording dispatch, rather than auth.test', async () => {
+    const store = persistence();
+    const authTest = vi.fn();
+    const sendMessage = vi.fn<
+      NonNullable<ConnectionSlackClient['sendMessage']>
+    >(async (request) => {
+      await request.beforeDispatch();
+      expect(store.markConnectionTestDispatched).toHaveBeenCalled();
+      return {
+        kind: 'succeeded',
+        channelId: request.channelId,
+        messageTs: '1.0',
+      };
+    });
+    const useCase = new TestConnectionUseCase(
+      store,
+      { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
+      {
+        seal: vi.fn(),
+        open: vi.fn().mockImplementation(() =>
+          Promise.resolve(
+            Buffer.from(
+              JSON.stringify({
+                type: 'slack_bot_token',
+                botToken: 'xoxb-local-test',
+              }),
+            ),
+          ),
+        ),
+      },
+      { execute: vi.fn() },
+      undefined,
+      { authTest, sendMessage },
+    );
+    expect(
+      (await useCase.executeDestination(input, destination)).outcome.ok,
+    ).toBe(true);
+    expect(authTest).not.toHaveBeenCalled();
+    const message = sendMessage.mock.calls[0]?.[0];
+    expect(message?.channelId).toBe('C12345');
+    expect(message?.text).toContain('No workflow failed');
+    const firstHash = vi.mocked(store.startConnectionTest).mock.calls[0]?.[0]
+      .requestHash;
+    await useCase.executeDestination(input, {
+      ...destination,
+      currentVersion: 3,
+    });
+    expect(
+      vi.mocked(store.startConnectionTest).mock.calls[1]?.[0].requestHash,
+    ).not.toBe(firstHash);
+  });
+
+  it('sends an email to the destination address with stable provider idempotency', async () => {
+    const store = persistence();
+    const sendNotification = vi.fn<ConnectionEmailClient['sendNotification']>(
+      async (request) => {
+        await request.beforeDispatch();
+        return { kind: 'succeeded', emailId: 'test-message' };
+      },
+    );
+    const useCase = new TestConnectionUseCase(
+      store,
+      { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
+      {
+        seal: vi.fn(),
+        open: vi.fn().mockResolvedValue(
+          Buffer.from(
+            JSON.stringify({
+              type: 'resend_api_key',
+              apiKey: 're_local',
+              fromEmail: 'alerts@example.test',
+            }),
+          ),
+        ),
+      },
+      { execute: vi.fn() },
+      undefined,
+      undefined,
+      { sendNotification },
+    );
+    await useCase.executeDestination(input, {
+      ...destination,
+      kind: 'email',
+      config: {
+        kind: 'email',
+        connectionId,
+        toEmail: 'destination@example.test',
+      },
+    });
+    const notification = sendNotification.mock.calls[0]?.[0];
+    expect(notification?.toEmail).toBe('destination@example.test');
+    expect(notification?.subject).toBe('Pertexo alert destination test');
+    expect(notification?.idempotencyKey).toBeTypeOf('string');
+  });
+
+  it('replays without decrypting or sending another message', async () => {
+    const store = persistence({
+      startConnectionTest: vi.fn().mockResolvedValue({
+        kind: 'replay',
+        result: {
+          connection: record(),
+          outcome: { ok: true, httpStatus: 200 },
+        },
+      }),
+    });
+    const open = vi.fn();
+    const sendMessage = vi.fn();
+    const useCase = new TestConnectionUseCase(
+      store,
+      { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
+      { seal: vi.fn(), open },
+      { execute: vi.fn() },
+      undefined,
+      { authTest: vi.fn(), sendMessage },
+    );
+    expect(
+      (await useCase.executeDestination(input, destination)).outcome.ok,
+    ).toBe(true);
+    expect(open).not.toHaveBeenCalled();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+});

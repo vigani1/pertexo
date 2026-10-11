@@ -1,3 +1,5 @@
+import { useId } from 'react';
+import { StatusGlyph } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 
 // Small decorative thread drawings for system states. Motion stops under
@@ -9,6 +11,7 @@ const frame = 'h-24 w-full max-w-56 overflow-visible';
 
 /** A thread that drifts off into nothing: something isn't here. */
 export function LooseThread({ className }: IllustrationProps) {
+  const fadeId = useId();
   return (
     <svg
       aria-hidden="true"
@@ -16,7 +19,7 @@ export function LooseThread({ className }: IllustrationProps) {
       className={cn(frame, className)}
     >
       <defs>
-        <linearGradient id="loose-thread-fade" x1="0" x2="1">
+        <linearGradient id={fadeId} x1="0" x2="1">
           <stop offset="0" stopColor="var(--muted-foreground)" />
           <stop
             offset="1"
@@ -29,7 +32,7 @@ export function LooseThread({ className }: IllustrationProps) {
       <path
         d="M24 45 C 70 45, 80 20, 120 32 S 180 72, 214 52"
         fill="none"
-        stroke="url(#loose-thread-fade)"
+        stroke={`url(#${fadeId})`}
         strokeWidth="2"
         strokeLinecap="round"
         strokeDasharray="6 10"
@@ -86,5 +89,21 @@ export function BarredThread({ className }: IllustrationProps) {
         strokeWidth="1.6"
       />
     </svg>
+  );
+}
+
+/** A finished thread keeps its knot: no open end needs attention. */
+export function FinishedThread({ className }: IllustrationProps) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        'flex h-24 w-full max-w-56 items-center justify-center',
+        className,
+      )}
+    >
+      <span className="h-px w-24 bg-success/40" />
+      <StatusGlyph tone="success" className="size-10 text-success" />
+    </div>
   );
 }

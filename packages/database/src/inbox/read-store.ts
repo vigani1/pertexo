@@ -1,3 +1,4 @@
+import { readFailureDays } from './failure-days.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -27,6 +28,7 @@ export type WorkspaceInboxThreadRecord = Readonly<{
   workflowId: string;
   workflowName: string;
   kind: WorkspaceInboxFailureKind;
+  failureDays: readonly Readonly<{ day: string; count: number }>[];
   occurrenceCount: number;
   firstOccurredAt: string;
   latestOccurredAt: string;
@@ -219,6 +221,11 @@ export function createWorkspaceInboxDatabase(
             }),
             page.map((row) => row.latest_run_id),
           );
+          const failureDays = await readFailureDays(
+            drizzle(client, { schema: databaseSchema }),
+            parsed.workspaceId,
+            page.map((row) => row.workflow_id),
+          );
           const last = page.at(-1);
           return Object.freeze({
             items: Object.freeze(
@@ -227,6 +234,7 @@ export function createWorkspaceInboxDatabase(
                   workflowId: row.workflow_id,
                   workflowName: row.workflow_name,
                   kind: row.latest_kind,
+                  failureDays: failureDays.get(row.workflow_id) ?? [],
                   occurrenceCount: row.occurrence_count,
                   firstOccurredAt: row.first_occurred_at,
                   latestOccurredAt: row.latest_occurred_at,

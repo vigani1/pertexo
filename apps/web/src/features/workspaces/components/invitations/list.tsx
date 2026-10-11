@@ -1,3 +1,4 @@
+import { MembershipThread } from '../membership-thread';
 import type { WorkspaceInvitation } from '@pertexo/contracts';
 import { MoreHorizontalIcon, RotateCwIcon, XCircleIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -37,6 +38,15 @@ function InvitationRow({
         <p className="truncate text-sm font-semibold" title={invitation.email}>
           {invitation.email}
         </p>
+        <MembershipThread
+          state={
+            invitation.status === 'pending'
+              ? 'pending'
+              : invitation.status === 'accepted'
+                ? 'accepted'
+                : 'removed'
+          }
+        />
         <p className="text-xs text-muted-foreground sm:hidden">
           {ROLE_NAMES[invitation.role]} · {status.label}
         </p>

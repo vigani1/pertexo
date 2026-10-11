@@ -19,9 +19,9 @@ import {
   type WorkspaceDatabase,
 } from '@pertexo/database/platform';
 import {
-  createAwsConnectionEnvelopeEncryption,
-  type AwsConnectionEnvelopeEncryptionConfig,
-  type AwsConnectionEnvelopeEncryptionRuntime,
+  createConnectionEnvelopeEncryption,
+  type ConnectionEnvelopeEncryptionConfig,
+  type ConnectionEnvelopeEncryptionRuntime,
   type ConnectionEnvelopeEncryption,
 } from '@pertexo/integrations/server';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
@@ -46,7 +46,7 @@ function assertCapabilityRuntimeOpen(lifecycle: { terminal: boolean }): void {
 
 export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   database: DatabaseConfig;
-  connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
+  connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
   artifactStore?: ArtifactStoreConfig;
   artifactRetentionMillis?: number;
   redisUrl?: string;
@@ -134,7 +134,7 @@ export async function createWorkerNodeRuntimeCapabilities(
   const retentionMillis =
     options.artifactRetentionMillis ?? DEFAULT_ARTIFACT_RETENTION_MILLIS;
 
-  let encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined;
+  let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   let ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;
   let ownedArtifactDatabase: WorkspaceDatabase | undefined;
   let ownedArtifactStore: ArtifactStore | undefined;
@@ -203,7 +203,7 @@ export async function createWorkerNodeRuntimeCapabilities(
         dependencies.connectionEncryption ??
         (options.connectionEncryption === undefined
           ? undefined
-          : (encryptionRuntime = createAwsConnectionEnvelopeEncryption(
+          : (encryptionRuntime = createConnectionEnvelopeEncryption(
               options.connectionEncryption,
             )).encryption);
       if (encryption === undefined)

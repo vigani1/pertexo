@@ -1,9 +1,11 @@
+import { useConnectionResultScope } from '@/features/connections/commands.public';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import {
   appendFailureNotificationDestinationVersion,
   createFailureNotificationDestination,
   setFailureNotificationDestinationStatus,
+  testFailureNotificationDestination,
 } from './failure-notifications.api';
 import { failureNotificationDestinationKeys } from './failure-notifications.queries';
 
@@ -86,5 +88,31 @@ export function useSetFailureNotificationDestinationStatusMutation(
         command,
       ),
     onSuccess: invalidate,
+  });
+}
+
+export function useTestFailureNotificationDestinationMutation(
+  scope: DestinationMutationScope,
+) {
+  const resultScope = useConnectionResultScope(scope);
+  return useMutation({
+    onMutate: resultScope,
+    onSuccess: (result, _command, owner) => owner.store(result.connection),
+    onError: (_error, _command, owner) => owner?.invalidate(),
+    mutationKey: [
+      'failure-notification-destinations',
+      scope.userId,
+      scope.workspaceId,
+      'test',
+    ],
+    mutationFn: (
+      command: Parameters<typeof testFailureNotificationDestination>[2],
+    ) =>
+      testFailureNotificationDestination(
+        scope.apiClient,
+        scope.workspaceId,
+        command,
+      ),
+    retry: false,
   });
 }

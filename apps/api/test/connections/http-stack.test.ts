@@ -360,6 +360,41 @@ describe('connections real Nest HTTP stack', () => {
     application = undefined;
   });
 
+  it('reports unconfigured connections only to an eligible workspace reader', async () => {
+    application = await createApiApplication(config, {
+      database,
+      identityRuntime: identityRuntime(),
+      logger,
+      rateLimitConsumer,
+      telemetry,
+    });
+    await application.init();
+    for (const resource of [
+      'connections',
+      'failure-notification-destinations',
+    ]) {
+      const url = `/v1/workspaces/${workspaceId}/${resource}`;
+      expect(
+        (await application.inject({ method: 'GET', url })).statusCode,
+      ).toBe(401);
+      const configured = await application.inject({
+        method: 'GET',
+        url,
+        headers: authenticatedHeaders,
+      });
+      expect(configured.statusCode).toBe(503);
+      expect(configured.json()).toMatchObject({
+        code: 'connection.not_configured',
+      });
+      const foreign = await application.inject({
+        method: 'GET',
+        url: `/v1/workspaces/11111111-1111-4111-8111-111111111111/${resource}`,
+        headers: authenticatedHeaders,
+      });
+      expect(foreign.statusCode).toBe(404);
+    }
+  });
+
   it('rejects unauthenticated and invalid-CSRF mutations before persistence or encryption', async () => {
     const { application, connection } = await start();
     const unauthenticated = await application.inject({

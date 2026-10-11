@@ -95,6 +95,7 @@
             "workflow.activation_failed",
             "run.not_cancelable",
             "run.outcome_unknown",
+            "connection.not_configured",
             "connection.conflict",
             "connection.reauthorization_required",
             "connection.revoked",
@@ -1551,6 +1552,26 @@
         "config",
         "createdAt",
         "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "FailureNotificationDestinationTestRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "sideEffectDisclosureAccepted": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "expectedVersion",
+        "sideEffectDisclosureAccepted"
       ],
       "additionalProperties": false
     },

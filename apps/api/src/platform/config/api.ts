@@ -1,4 +1,8 @@
 import { isIP } from 'node:net';
+import {
+  parseConnectionEncryptionConfig,
+  type LocalConnectionEncryptionConfig,
+} from '@pertexo/integrations/server';
 
 import { z } from 'zod';
 import {
@@ -58,9 +62,6 @@ const apiEnvironmentSchema = z
       .positive()
       .default(30_000),
     DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
-    CONNECTION_KMS_ENDPOINT: z.url().optional(),
-    CONNECTION_KMS_KEY_REFERENCE: z.string().min(1).max(2_048).optional(),
-    CONNECTION_KMS_REGION: z.string().min(1).max(128).optional(),
     HOST: z.string().trim().min(1).default('0.0.0.0'),
     NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
     LOG_LEVEL: z
@@ -102,11 +103,13 @@ export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 
 export type ApiConfig = Readonly<{
   artifacts?: ArtifactStoreConfig;
-  connections?: Readonly<{
-    kmsKeyReference: string;
-    region: string;
-    endpoint?: string;
-  }>;
+  connections?:
+    | LocalConnectionEncryptionConfig
+    | Readonly<{
+        kmsKeyReference: string;
+        region: string;
+        endpoint?: string;
+      }>;
   webhooks?: Readonly<{
     kmsKeyReference: string;
     region: string;
@@ -156,7 +159,9 @@ export function parseApiConfig(
   return Object.freeze({
     ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),
-    ...(connections === undefined ? {} : { webhooks: connections }),
+    ...(connections === undefined || 'mode' in connections
+      ? {}
+      : { webhooks: connections }),
     database: Object.freeze({
       connectionString: parsed.DATABASE_URL,
       connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
@@ -178,30 +183,15 @@ function parseConnectionsConfig(
   environment: ParsedApiEnvironment,
   rawEnvironment: Record<string, string | undefined>,
 ): ApiConfig['connections'] {
-  const configured = Object.entries(rawEnvironment).some(
-    ([name, value]) =>
-      value !== undefined && name.startsWith('CONNECTION_KMS_'),
+  const parsed = parseConnectionEncryptionConfig(
+    rawEnvironment,
+    environment.NODE_ENV === 'staging' || environment.NODE_ENV === 'production',
   );
-  const deployed =
-    environment.NODE_ENV === 'staging' || environment.NODE_ENV === 'production';
-  if (!configured && !deployed) return undefined;
-  if (
-    environment.CONNECTION_KMS_KEY_REFERENCE === undefined ||
-    environment.CONNECTION_KMS_REGION === undefined
-  )
-    throw new Error('Connection KMS configuration is incomplete');
-  if (
-    deployed &&
-    environment.CONNECTION_KMS_ENDPOINT !== undefined &&
-    new URL(environment.CONNECTION_KMS_ENDPOINT).protocol !== 'https:'
-  )
-    throw new Error('HTTPS connection KMS endpoint is required when deployed');
+  if (parsed === undefined || 'mode' in parsed) return parsed;
   return Object.freeze({
-    kmsKeyReference: environment.CONNECTION_KMS_KEY_REFERENCE,
-    region: environment.CONNECTION_KMS_REGION,
-    ...(environment.CONNECTION_KMS_ENDPOINT === undefined
-      ? {}
-      : { endpoint: environment.CONNECTION_KMS_ENDPOINT }),
+    kmsKeyReference: parsed.keyReference,
+    region: parsed.region,
+    ...(parsed.endpoint === undefined ? {} : { endpoint: parsed.endpoint }),
   });
 }
 

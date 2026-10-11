@@ -20,6 +20,7 @@ const thread = {
   workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   workflowName: 'Nightly import',
   kind: 'failed',
+  failureDays: [],
   occurrenceCount: 3,
   firstOccurredAt: '2026-09-28T10:00:00.000100Z',
   latestOccurredAt: '2026-09-28T11:00:00.000900Z',

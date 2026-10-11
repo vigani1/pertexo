@@ -7,7 +7,10 @@ import {
   parseMaintenanceDatabaseConfig,
   type DatabaseConfig,
 } from '@pertexo/database/platform';
-import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
+import {
+  parseConnectionEncryptionConfig,
+  type ConnectionEnvelopeEncryptionConfig,
+} from '@pertexo/integrations/server';
 import { parseObservabilityConfig } from '@pertexo/observability/startup';
 
 import {
@@ -363,7 +366,7 @@ export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     artifactStore: ArtifactStoreConfig;
     retention: RetentionConfig;
-    connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
+    connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
     authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
   }
@@ -385,39 +388,6 @@ function stringEnvironment(
       throw new TypeError('Worker environment values must be scalar');
     }),
   );
-}
-
-function connectionEncryptionConfig(
-  environment: Readonly<Record<string, string | undefined>>,
-  deployed: boolean,
-): AwsConnectionEnvelopeEncryptionConfig | undefined {
-  const values = [
-    environment.CONNECTION_KMS_KEY_REFERENCE,
-    environment.CONNECTION_KMS_REGION,
-    environment.CONNECTION_KMS_ENDPOINT,
-  ];
-  if (values.every((value) => value === undefined)) return undefined;
-  const parsed = z
-    .object({
-      keyReference: z.string().min(1).max(2_048),
-      region: z.string().min(1).max(128),
-      endpoint: z.url().optional(),
-    })
-    .strict()
-    .parse({
-      keyReference: environment.CONNECTION_KMS_KEY_REFERENCE,
-      region: environment.CONNECTION_KMS_REGION,
-      ...(environment.CONNECTION_KMS_ENDPOINT === undefined
-        ? {}
-        : { endpoint: environment.CONNECTION_KMS_ENDPOINT }),
-    });
-  if (
-    deployed &&
-    parsed.endpoint !== undefined &&
-    new URL(parsed.endpoint).protocol !== 'https:'
-  )
-    throw new Error('HTTPS connection KMS endpoint is required when deployed');
-  return Object.freeze(parsed);
 }
 
 function artifactStoreConfig(
@@ -442,7 +412,7 @@ export function parseWorkerConfig(
     const raw = stringEnvironment(environment);
     const deployed =
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
-    const connectionEncryption = connectionEncryptionConfig(raw, deployed);
+    const connectionEncryption = parseConnectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
     const invitationDelivery = parseInvitationDeliveryConfig(raw, deployed);
     const authenticationMailDelivery = parseAuthenticationMailDeliveryConfig(

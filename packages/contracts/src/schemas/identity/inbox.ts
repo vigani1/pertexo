@@ -35,6 +35,16 @@ export const workspaceInboxThreadSchema = z
     workflowId: z.uuid(),
     workflowName: z.string().min(1).max(200),
     kind: workspaceInboxFailureKindSchema,
+    failureDays: z
+      .array(
+        z
+          .object({
+            day: z.iso.date(),
+            count: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+          })
+          .strict(),
+      )
+      .max(30),
     occurrenceCount: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
     firstOccurredAt: workspaceInboxTimestampSchema,
     latestOccurredAt: workspaceInboxTimestampSchema,

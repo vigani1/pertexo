@@ -1,3 +1,4 @@
+import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { randomUUID } from 'node:crypto';
 
 import type { ConnectionTestOutcome } from '@pertexo/database/connections';
@@ -63,12 +64,40 @@ export class TestConnectionUseCase {
     private readonly encryption: ConnectionSecretEncryptionPort,
     private readonly httpClient: ConnectionHttpClient,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
-    private readonly slackClient?: Pick<ConnectionSlackClient, 'authTest'>,
+    private readonly slackClient?: Pick<
+      ConnectionSlackClient,
+      'authTest' | 'sendMessage'
+    >,
     private readonly emailClient?: ConnectionEmailClient,
   ) {}
 
   public execute(
     input: TestConnectionCommand,
+  ): Promise<ConnectionTestResponse> {
+    return this.run(input);
+  }
+
+  /** The target is resolved and authorized by the destination use case, never caller supplied. */
+  public executeDestination(
+    input: Omit<TestConnectionCommand, 'connectionId' | 'request'>,
+    destination: FailureNotificationDestinationResponse,
+  ): Promise<ConnectionTestResponse> {
+    return this.run(
+      {
+        ...input,
+        connectionId: destination.config.connectionId,
+        request:
+          destination.kind === 'email'
+            ? { providerKey: 'email', sideEffectDisclosureAccepted: true }
+            : { providerKey: 'slack' },
+      },
+      destination,
+    );
+  }
+
+  private run(
+    input: TestConnectionCommand,
+    destination?: FailureNotificationDestinationResponse,
   ): Promise<ConnectionTestResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.test, async () => {
       await authorizeConnectionOperation(
@@ -82,6 +111,13 @@ export class TestConnectionUseCase {
       const requestHash = hashRequest({
         connectionId: input.connectionId,
         ...request,
+        ...(destination === undefined
+          ? {}
+          : {
+              destinationId: destination.id,
+              configVersion: destination.currentVersion,
+              config: destination.config,
+            }),
       });
       const dispatchToken = randomUUID();
       const common = Object.freeze({
@@ -124,6 +160,7 @@ export class TestConnectionUseCase {
         const credential = decodeCredential(plaintext);
         try {
           const outcome = await this.testProvider(
+            destination,
             expectedProviderKey,
             request,
             credential,
@@ -168,6 +205,7 @@ export class TestConnectionUseCase {
   }
 
   private async testProvider(
+    destination: FailureNotificationDestinationResponse | undefined,
     expectedProviderKey: 'email' | 'http' | 'slack',
     request: ParsedConnectionTestRequest,
     credential: DecodedConnectionCredential,
@@ -184,9 +222,18 @@ export class TestConnectionUseCase {
       const result = await this.emailClient.sendNotification({
         apiKey: credential.apiKey,
         fromEmail: credential.fromEmail,
-        toEmail: 'delivered@resend.dev',
-        subject: 'Pertexo Resend connection test',
-        text: 'This message verifies a Pertexo Resend sending connection.',
+        toEmail:
+          destination?.config.kind === 'email'
+            ? destination.config.toEmail
+            : 'delivered@resend.dev',
+        subject:
+          destination === undefined
+            ? 'Pertexo Resend connection test'
+            : 'Pertexo alert destination test',
+        text:
+          destination === undefined
+            ? 'This message verifies a Pertexo Resend sending connection.'
+            : 'This is a test of your Pertexo alert destination. No workflow failed.',
         idempotencyKey: connectionTestProviderKey(
           input.connectionId,
           input.idempotencyKey,
@@ -203,6 +250,19 @@ export class TestConnectionUseCase {
         this.slackClient === undefined
       )
         throw new ConnectionSecretEncryptionError();
+      if (destination?.config.kind === 'slack') {
+        if (this.slackClient.sendMessage === undefined)
+          throw new ConnectionSecretEncryptionError();
+        const result = await this.slackClient.sendMessage({
+          botToken: credential.botToken,
+          channelId: destination.config.channelId,
+          text: 'This is a test of your Pertexo alert destination. No workflow failed.',
+          timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
+          signal,
+          beforeDispatch,
+        });
+        return slackTestOutcome(result);
+      }
       const result = await this.slackClient.authTest({
         botToken: credential.botToken,
         timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,

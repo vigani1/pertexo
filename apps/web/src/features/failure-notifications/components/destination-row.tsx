@@ -1,3 +1,4 @@
+import { DestinationTest } from './destination-test';
 import type {
   ConnectionResponse,
   FailureNotificationDestinationResponse,
@@ -72,6 +73,15 @@ export function DestinationRow({
           <PencilIcon data-icon="inline-start" aria-hidden="true" />
           Edit
         </Button>
+      ) : null}
+      {canManage ? (
+        <DestinationTest
+          key={`${destination.id}:${String(destination.currentVersion)}`}
+          scope={scope}
+          destination={destination}
+          label={label}
+          disabled={connectionProblem !== undefined}
+        />
       ) : null}
     </li>
   );

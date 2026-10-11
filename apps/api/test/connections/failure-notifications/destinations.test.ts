@@ -1,3 +1,9 @@
+import { TestConnectionUseCase } from '../../../src/connections/use-cases/test-connection.js';
+import {
+  authorization,
+  connectionTestPersistence,
+  sealed,
+} from '../support/use-case-fixture.js';
 import {
   FailureNotificationDestinationError,
   type FailureNotificationDestinationDatabase,
@@ -152,10 +158,73 @@ describe('failure notification destination API seams', () => {
     );
   });
 
+  it('refuses a changed destination before decrypting or dispatching a test', async () => {
+    const database = persistence();
+    const open = vi.fn();
+    const connectionTests = connectionTestPersistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+      new TestConnectionUseCase(
+        connectionTests,
+        authorization(),
+        { seal: vi.fn(), open },
+        { execute: vi.fn() },
+      ),
+    );
+    await expect(
+      controller.test(
+        request({ 'idempotency-key': 'destination-test-42' }),
+        { workspaceId, destinationId },
+        { expectedVersion: 2, sideEffectDisclosureAccepted: true },
+      ),
+    ).rejects.toMatchObject({ code: 'connection.conflict' });
+    expect(open).not.toHaveBeenCalled();
+    expect(connectionTests.startConnectionTest).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { expectedVersion: 1, sideEffectDisclosureAccepted: false },
+    {
+      expectedVersion: 1,
+      sideEffectDisclosureAccepted: true,
+      channelId: 'COTHER',
+    },
+  ])(
+    'rejects an undisclosed or caller-targeted destination test %j',
+    async (body) => {
+      const database = persistence();
+      const connectionTests = connectionTestPersistence();
+      const controller = new FailureNotificationDestinationsController(
+        new FailureNotificationDestinationUseCases(database),
+        new TestConnectionUseCase(
+          connectionTests,
+          authorization(),
+          { seal: vi.fn(), open: vi.fn() },
+          { execute: vi.fn() },
+        ),
+      );
+      await expect(
+        controller.test(
+          request({ 'idempotency-key': 'destination-test-42' }),
+          { workspaceId, destinationId },
+          body,
+        ),
+      ).rejects.toThrow();
+      expect(database.get).not.toHaveBeenCalled();
+      expect(connectionTests.startConnectionTest).not.toHaveBeenCalled();
+    },
+  );
+
   it('uses guarded actor identifiers consistently in destination commands', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),
+      new TestConnectionUseCase(
+        connectionTestPersistence(),
+        authorization(),
+        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        { execute: vi.fn() },
+      ),
     );
     const guardedActor = createActorContext({
       actorId: '99999999-9999-4999-8999-999999999999',
@@ -194,6 +263,12 @@ describe('failure notification destination API seams', () => {
     async (value) => {
       const controller = new FailureNotificationDestinationsController(
         new FailureNotificationDestinationUseCases(persistence()),
+        new TestConnectionUseCase(
+          connectionTestPersistence(),
+          authorization(),
+          { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+          { execute: vi.fn() },
+        ),
       );
 
       await expect(
@@ -210,6 +285,12 @@ describe('failure notification destination API seams', () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),
+      new TestConnectionUseCase(
+        connectionTestPersistence(),
+        authorization(),
+        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        { execute: vi.fn() },
+      ),
     );
 
     await expect(
@@ -266,6 +347,12 @@ describe('failure notification destination API seams', () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),
+      new TestConnectionUseCase(
+        connectionTestPersistence(),
+        authorization(),
+        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        { execute: vi.fn() },
+      ),
     );
 
     await expect(
@@ -287,6 +374,12 @@ describe('failure notification destination API seams', () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),
+      new TestConnectionUseCase(
+        connectionTestPersistence(),
+        authorization(),
+        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        { execute: vi.fn() },
+      ),
     );
 
     const current = await controller.getPolicy(request(), {
@@ -327,6 +420,12 @@ describe('failure notification destination API seams', () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),
+      new TestConnectionUseCase(
+        connectionTestPersistence(),
+        authorization(),
+        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        { execute: vi.fn() },
+      ),
     );
     const body = {
       expectedVersion: 1,
@@ -383,6 +482,12 @@ describe('failure notification destination API seams', () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),
+      new TestConnectionUseCase(
+        connectionTestPersistence(),
+        authorization(),
+        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        { execute: vi.fn() },
+      ),
     );
     const setRequest = request({ 'idempotency-key': 'policy-set-42' });
     const clearRequest = request({ 'idempotency-key': 'policy-clear-42' });
@@ -423,6 +528,12 @@ describe('failure notification destination API seams', () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),
+      new TestConnectionUseCase(
+        connectionTestPersistence(),
+        authorization(),
+        { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
+        { execute: vi.fn() },
+      ),
     );
     vi.mocked(database.get).mockRejectedValueOnce(
       new FailureNotificationDestinationError('not_found'),

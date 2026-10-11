@@ -113,8 +113,10 @@ describe('workspace Usage', () => {
     renderApp(`${path}?window=6h&ignored=secret`);
     await screen.findByRole('heading', { name: 'Usage' }, coldStart);
     const current = screen.getByRole('region', { name: 'Current capacity' });
-    expect(await within(current).findByText('9007199254740993')).toBeVisible();
-    expect(current).toHaveTextContent('9223372036854775807 bytes');
+    expect(
+      await within(current).findByText('8 PB', { selector: 'p' }),
+    ).toBeVisible();
+    expect(current).toHaveTextContent('8 EB');
     expect(current).toHaveTextContent(
       '2 active runs (running or waiting) + 1 reserved active slot',
     );
@@ -226,7 +228,7 @@ describe('workspace Usage', () => {
     renderApp(path);
     await screen.findByText('Unavailable', {}, coldStart);
     expect(screen.getAllByText('/ limit unavailable')).toHaveLength(2);
-    expect(screen.getByText('/ 0 bytes')).toBeVisible();
+    expect(screen.getByText('/ 0 B')).toBeVisible();
     expect(screen.getByText(/Default capacity applies/u)).toBeVisible();
   });
 
@@ -271,19 +273,21 @@ describe('workspace Usage', () => {
             : new HttpResponse(null, { status }),
       });
       const { router } = renderApp(path);
-      await screen.findByText('9007199254740993', {}, coldStart);
+      await screen.findByText('8 PB', { selector: 'p' }, coldStart);
       status = 503;
       await userEvent.click(
         screen.getByRole('button', { name: 'Refresh current capacity' }),
       );
       await screen.findByText(/Couldn’t refresh. Showing results/u);
-      expect(screen.getByText('9007199254740993')).toBeVisible();
+      expect(screen.getByText('8 PB', { selector: 'p' })).toBeVisible();
       status = denial;
       await userEvent.click(
         screen.getByRole('button', { name: 'Refresh current capacity' }),
       );
       await waitFor(() =>
-        expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument(),
+        expect(
+          screen.queryByText('8 PB', { selector: 'p' }),
+        ).not.toBeInTheDocument(),
       );
       expect(screen.getByText('Daily intake')).toBeVisible();
       status = 503;
@@ -293,7 +297,9 @@ describe('workspace Usage', () => {
       await screen.findByText(
         'Current capacity couldn’t be loaded. Try again.',
       );
-      expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('8 PB', { selector: 'p' }),
+      ).not.toBeInTheDocument();
       await act(() =>
         router.navigate({
           to: '/w/$workspaceId/settings',
@@ -310,14 +316,18 @@ describe('workspace Usage', () => {
       await screen.findByText(
         'Current capacity couldn’t be loaded. Try again.',
       );
-      expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('8 PB', { selector: 'p' }),
+      ).not.toBeInTheDocument();
       fresh = true;
       status = 200;
       await userEvent.click(
         screen.getByRole('button', { name: 'Refresh current capacity' }),
       );
-      expect(await screen.findByText('42')).toBeVisible();
-      expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument();
+      expect(await screen.findByText('42 B', { selector: 'p' })).toBeVisible();
+      expect(
+        screen.queryByText('8 PB', { selector: 'p' }),
+      ).not.toBeInTheDocument();
     },
   );
 
@@ -395,7 +405,7 @@ describe('workspace Usage', () => {
         'Retained run activity couldn’t be loaded. Try again.',
       );
       expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
-      expect(screen.getByText('9007199254740993')).toBeVisible();
+      expect(screen.getByText('8 PB', { selector: 'p' })).toBeVisible();
       status = 200;
       fresh = true;
       await userEvent.click(
@@ -425,7 +435,7 @@ describe('workspace Usage', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Refresh current capacity' }),
     );
-    expect(await screen.findByText('9007199254740993')).toBeVisible();
+    expect(await screen.findByText('8 PB', { selector: 'p' })).toBeVisible();
   });
 
   it('sanitizes unsupported windows without introducing calendar ranges', () => {
@@ -454,7 +464,7 @@ describe('workspace Usage', () => {
       {},
       coldStart,
     );
-    expect(screen.getByText('9007199254740993')).toBeVisible();
+    expect(screen.getByText('8 PB', { selector: 'p' })).toBeVisible();
     failing = false;
     await userEvent.click(
       screen.getByRole('button', { name: 'Refresh retained run activity' }),
