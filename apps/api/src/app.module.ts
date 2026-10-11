@@ -245,14 +245,13 @@ function registerFeatureModules(
     modules.push(
       ConnectionsModule.registerUnavailable(authorization, identityModule),
     );
-  if (dependencies.webhookRuntime !== undefined)
-    modules.push(
-      WebhookModule.register(
-        dependencies.webhookRuntime.service,
-        authorization,
-        identityModule,
-      ),
-    );
+  modules.push(
+    WebhookModule.register(
+      dependencies.webhookRuntime?.service,
+      authorization,
+      identityModule,
+    ),
+  );
   if (dependencies.scheduleRuntime !== undefined)
     modules.push(
       ScheduleModule.register(

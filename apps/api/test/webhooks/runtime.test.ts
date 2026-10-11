@@ -32,6 +32,29 @@ function envelope(close: () => void) {
 }
 
 describe('API webhook runtime ownership', () => {
+  it('composes the real local envelope without creating an AWS client', async () => {
+    const databaseClose = vi.fn();
+    const runtime = await createApiWebhookRuntime(
+      { mode: 'local', key: Buffer.alloc(32, 4).toString('base64') },
+      databaseConfig,
+      database(databaseClose),
+    );
+    const context = {
+      workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      triggerId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      secretVersionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    };
+    const sealed = await runtime.ingress.encryption.seal(
+      new Uint8Array(32).fill(9),
+      context,
+    );
+    const opened = await runtime.ingress.encryption.open(sealed, context);
+    expect(opened).toEqual(new Uint8Array(32).fill(9));
+    opened.fill(0);
+    await runtime.close();
+    expect(databaseClose).toHaveBeenCalledOnce();
+  });
+
   it('defers and aggregates every closer once in reverse acquisition order', async () => {
     const envelopeFailure = new Error('envelope close failed');
     const databaseFailure = new Error('database close rejected');

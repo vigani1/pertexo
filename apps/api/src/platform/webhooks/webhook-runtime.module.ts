@@ -3,7 +3,7 @@ import {
   type WebhookTriggerDatabase,
 } from '@pertexo/database/triggers';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
-import { createAwsWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import { createWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
@@ -19,12 +19,12 @@ export type ApiWebhookRuntime = Readonly<{
 }>;
 
 type WebhookEnvelopeRuntime = ReturnType<
-  typeof createAwsWebhookTriggerEnvelopeEncryption
+  typeof createWebhookTriggerEnvelopeEncryption
 >;
 
 export type ApiWebhookRuntimeFactories = Readonly<{
   database?: typeof createWebhookTriggerDatabase;
-  envelope?: typeof createAwsWebhookTriggerEnvelopeEncryption;
+  envelope?: typeof createWebhookTriggerEnvelopeEncryption;
 }>;
 
 export async function createApiWebhookRuntime(
@@ -44,13 +44,17 @@ export async function createApiWebhookRuntime(
         databaseConfig,
         runtime,
       );
-    envelope = (
-      factories.envelope ?? createAwsWebhookTriggerEnvelopeEncryption
-    )({
-      keyReference: config.kmsKeyReference,
-      region: config.region,
-      ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
-    });
+    envelope = (factories.envelope ?? createWebhookTriggerEnvelopeEncryption)(
+      'mode' in config
+        ? config
+        : {
+            keyReference: config.kmsKeyReference,
+            region: config.region,
+            ...(config.endpoint === undefined
+              ? {}
+              : { endpoint: config.endpoint }),
+          },
+    );
     const acquiredDatabase = database;
     const acquiredEnvelope = envelope;
     let closePromise: Promise<void> | undefined;

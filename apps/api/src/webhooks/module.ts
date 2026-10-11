@@ -6,22 +6,29 @@ import { WebhookManagementController } from './controllers.js';
 import { WebhookManagementService } from './service.js';
 import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';
 import { WEBHOOK_AUTHORIZATION } from './tokens.js';
+import { UnconfiguredWebhooksController } from './unavailable.js';
 
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class WebhookModule {
   public static register(
-    service: WebhookManagementService,
+    service: WebhookManagementService | undefined,
     authorization: WorkspaceAuthorizationSource,
     identityModule: DynamicModule,
   ): DynamicModule {
     return {
       module: WebhookModule,
       imports: [identityModule],
-      controllers: [WebhookManagementController],
+      controllers: [
+        service === undefined
+          ? UnconfiguredWebhooksController
+          : WebhookManagementController,
+      ],
       providers: [
-        { provide: WebhookManagementService, useValue: service },
+        ...(service === undefined
+          ? []
+          : [{ provide: WebhookManagementService, useValue: service }]),
         { provide: WEBHOOK_AUTHORIZATION, useValue: authorization },
         WebhookReadGuard,
         WebhookUpdateGuard,

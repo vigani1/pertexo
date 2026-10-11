@@ -395,6 +395,43 @@ describe('connections real Nest HTTP stack', () => {
     }
   });
 
+  it('reports unavailable webhooks only after authentication and workspace authorization', async () => {
+    application = await createApiApplication(config, {
+      database,
+      identityRuntime: identityRuntime(),
+      logger,
+      rateLimitConsumer,
+      telemetry,
+    });
+    await application.init();
+    const parent = `/v1/workspaces/${workspaceId}/workflows/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/triggers`;
+    expect(
+      (await application.inject({ method: 'GET', url: parent })).statusCode,
+    ).toBe(401);
+    const unavailable = await application.inject({
+      method: 'GET',
+      url: parent,
+      headers: authenticatedHeaders,
+    });
+    expect(unavailable.statusCode).toBe(503);
+    expect(unavailable.json()).toMatchObject({
+      code: 'webhook.not_configured',
+    });
+    const foreign = await application.inject({
+      method: 'GET',
+      url: parent.replace(workspaceId, '11111111-1111-4111-8111-111111111111'),
+      headers: authenticatedHeaders,
+    });
+    expect(foreign.statusCode).toBe(404);
+    const mutation = await application.inject({
+      method: 'POST',
+      url: `${parent}/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/webhook/provision`,
+      headers: authenticatedHeaders,
+    });
+    expect(mutation.statusCode).toBe(503);
+    expect(mutation.json()).toMatchObject({ code: 'webhook.not_configured' });
+  });
+
   it('rejects unauthenticated and invalid-CSRF mutations before persistence or encryption', async () => {
     const { application, connection } = await start();
     const unauthenticated = await application.inject({

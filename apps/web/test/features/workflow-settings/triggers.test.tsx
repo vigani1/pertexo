@@ -6,6 +6,7 @@ import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import {
   api,
+  problem,
   installQueries,
   schedule,
   scheduleId,
@@ -44,6 +45,26 @@ async function acknowledgeCredentials(event: UserEvent) {
 }
 
 describe('workflow triggers tab', () => {
+  it('explains server-disabled webhooks without suggesting a role change and keeps schedules usable', async () => {
+    installQueries();
+    mockServer.use(
+      http.get(`${workflowApi}/triggers`, () =>
+        problem(503, 'webhook.not_configured'),
+      ),
+    );
+    renderApp(triggersPath);
+    expect(
+      await screen.findByText(/Webhooks are unavailable on this server/u),
+    ).toBeVisible();
+    expect(screen.queryByText(/role changed/u)).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('article', { name: 'Schedule: Nightly check' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Create endpoint' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('names triggers by their step and describes schedules in words', async () => {
     installQueries();
     renderApp(triggersPath);

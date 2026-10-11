@@ -1,35 +1,38 @@
 import { randomBytes } from 'node:crypto';
 import { createApplicationSecretEnvelope } from '../security/application-secret-envelope.js';
-import {
-  connectionSecretAssociatedData,
-  ConnectionSecretEncryptionError,
-  type ConnectionSecretContext,
-  type EnvelopeKeyProvider,
-  type GeneratedEnvelopeKey,
-} from './envelope-encryption.js';
+import type {
+  EnvelopeKeyProviderCore,
+  EnvelopeKeyMaterial,
+} from '../crypto/envelope-cipher.js';
 
 const KEY_REFERENCE = 'local:development';
 
 /** Wraps data keys locally; the deployment gate belongs to startup configuration. */
-export class LocalEnvelopeKeyProvider implements EnvelopeKeyProvider {
+export class LocalEnvelopeKeyProvider<
+  Context,
+> implements EnvelopeKeyProviderCore<Context> {
   private readonly envelope;
 
-  public constructor(key: string) {
+  public constructor(
+    key: string,
+    private readonly associatedData: (context: Context) => Uint8Array,
+    private readonly failure: () => Error,
+  ) {
     this.envelope = createApplicationSecretEnvelope({
       current: { version: KEY_REFERENCE, key },
     });
   }
 
   public generateDataKey(
-    context: ConnectionSecretContext,
+    context: Context,
     signal?: AbortSignal,
-  ): Promise<GeneratedEnvelopeKey> {
+  ): Promise<EnvelopeKeyMaterial> {
     signal?.throwIfAborted();
     const plaintextKey = randomBytes(32);
     try {
       const sealed = this.envelope.seal(
         plaintextKey.toString('base64url'),
-        Buffer.from(connectionSecretAssociatedData(context)).toString('utf8'),
+        Buffer.from(this.associatedData(context)).toString('utf8'),
       );
       return Promise.resolve({
         plaintextKey,
@@ -38,36 +41,36 @@ export class LocalEnvelopeKeyProvider implements EnvelopeKeyProvider {
       });
     } catch {
       plaintextKey.fill(0);
-      throw new ConnectionSecretEncryptionError();
+      throw this.failure();
     }
   }
 
   public decryptDataKey(
     encryptedDataKey: Uint8Array,
     keyReference: string,
-    context: ConnectionSecretContext,
+    context: Context,
     signal?: AbortSignal,
   ): Promise<Uint8Array> {
     signal?.throwIfAborted();
     try {
       if (keyReference !== KEY_REFERENCE || encryptedDataKey.byteLength > 1_024)
-        throw new ConnectionSecretEncryptionError();
+        throw this.failure();
       const sealed: unknown = JSON.parse(
         Buffer.from(encryptedDataKey).toString('utf8'),
       );
       // The envelope validates its opaque stored representation at this boundary.
       const encoded = this.envelope.open(
         sealed,
-        Buffer.from(connectionSecretAssociatedData(context)).toString('utf8'),
+        Buffer.from(this.associatedData(context)).toString('utf8'),
       );
       const key = Buffer.from(encoded, 'base64url');
       if (key.byteLength !== 32 || key.toString('base64url') !== encoded) {
         key.fill(0);
-        throw new ConnectionSecretEncryptionError();
+        throw this.failure();
       }
       return Promise.resolve(key);
     } catch {
-      throw new ConnectionSecretEncryptionError();
+      throw this.failure();
     }
   }
 }

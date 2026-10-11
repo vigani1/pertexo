@@ -20,6 +20,7 @@ export type {
 export {
   AwsKmsWebhookEnvelopeKeyProvider,
   createAwsWebhookTriggerEnvelopeEncryption,
+  createWebhookTriggerEnvelopeEncryption,
   WebhookTriggerEnvelopeEncryption,
   WebhookTriggerSecretEncryptionError,
   verifyWebhookSignature,
