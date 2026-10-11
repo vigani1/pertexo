@@ -14,7 +14,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 - [x] 5. Detect an unchanged live draft and explain reused publications.
 - [x] 6. Fit and scroll the run-input dialog at 768 pixels high.
 - [x] 7. Simplify workflow search, filters, selection and row actions.
-- [ ] 8. Add a step to the right of the selected step and link it forward.
+- [x] 8. Add a step to the right of the selected step and link it forward.
 - [ ] 9. Stabilize save-state width and tidy editor header links.
 - [ ] 10. Put HTTP credentials first and display human-readable sizes.
 - [ ] 11. Call graph edges links; reserve connection for credentials.
@@ -97,3 +97,14 @@ Bulk actions appear only for an explicit selection. Favorite and single-workflow
 organization actions share the existing row menu; pending mutations and failure
 feedback survive closing that popup. Existing glyphs, run strips and Weft tokens
 remain the page's visual focus.
+
+## Selected-step placement
+
+Slice 8 follows one selected step on its own graph level, using a configured
+visible output (first free, otherwise first) and the new step’s compatible
+input. Measured card width and the existing body layout place it to the right;
+collision handling and loop growth remain in the existing commands. Step and
+link form one undoable transaction. Drag placement remains at the pointer;
+no selection, multiple selections, missing outputs and inputless steps retain
+standalone placement. The existing selection framing reveals the new step and
+respects reduced motion. No extra camera effect or draft store is introduced.
