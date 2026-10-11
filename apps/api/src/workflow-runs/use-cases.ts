@@ -475,6 +475,10 @@ function toRunSummary(
 function toRunResponse(result: WorkflowRunReadModel): WorkflowRunResponse {
   return workflowRunResponseSchema.parse({
     run: toRunSummary(result.run),
+    ...(result.calls === undefined ? {} : { calls: result.calls }),
+    ...(result.parentCall === undefined
+      ? {}
+      : { parentCall: result.parentCall }),
     nodes: result.nodes.map((node) => ({
       ...node,
       startedAt: iso(node.startedAt),

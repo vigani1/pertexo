@@ -135,6 +135,41 @@ describe('immutable Call publication dependencies', () => {
     ]);
   });
 
+  it('lists current published parents once per workflow and pages without retaining superseded publications', async () => {
+    const child = await create('Archive target');
+    const target = pin(await publish(child, graph()));
+    const first = await create('Archive parent one');
+    const second = await create('Archive parent two');
+    await publish(first, graph([target, target]));
+    await publish(second, graph([target]));
+    const input = { workspaceId, actorId, pinsWorkflowId: child, limit: 1 };
+    const page = await database.listWorkflows(input);
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).toBeDefined();
+    if (page.nextCursor === undefined)
+      throw new Error('Expected pinned parent cursor');
+    const next = await database.listWorkflows({
+      ...input,
+      after: page.nextCursor,
+    });
+    expect(next.items).toHaveLength(1);
+    expect(
+      new Set([...page.items, ...next.items].map((workflow) => workflow.id)),
+    ).toEqual(new Set([first, second]));
+    await publish(first, graph());
+    const current = await database.listWorkflows({ ...input, limit: 100 });
+    expect(current.items.map((workflow) => workflow.id)).toEqual([second]);
+    expect(
+      (
+        await database.listWorkflows({
+          ...input,
+          workspaceId: otherWorkspaceId,
+          actorId: otherActorId,
+        })
+      ).items,
+    ).toEqual([]);
+  });
+
   it('rejects rebound checksums, invisible pins and non-callable targets without publication effects', async () => {
     const child = await create('Pin checks');
     const callable = await publish(child, graph());

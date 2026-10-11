@@ -61,7 +61,7 @@ function eligibleNotificationConnection(
   );
 }
 
-/** Acceptance-time resolver shared by manual, webhook, and schedule admission. */
+/** One notification policy resolver for ordinary run acceptance. */
 export async function resolveWorkflowFailureNotificationPolicy(
   transaction: WorkspaceTransaction,
   workflowId: string,

@@ -119,6 +119,9 @@ export class WorkflowAuthoringController {
     return this.listWorkflows.execute({
       ...context,
       routeWorkspaceId: workspaceId,
+      ...(input.pinsWorkflowId === undefined
+        ? {}
+        : { pinsWorkflowId: input.pinsWorkflowId }),
       ...(input.limit === undefined ? {} : { limit: input.limit }),
       ...(input.after === undefined ? {} : { after: input.after }),
       ...(input.order === undefined ? {} : { order: input.order }),

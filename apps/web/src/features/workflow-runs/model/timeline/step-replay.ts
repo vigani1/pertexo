@@ -301,9 +301,11 @@ class StepReplayBuilder {
     if (outputRef === undefined) return;
     const attempt = attemptNumber === undefined ? {} : { attemptNumber };
     this.outputs.push(
-      outputRef.kind === 'artifact'
-        ? { kind: 'artifact', artifactId: outputRef.artifactId, ...attempt }
-        : { kind: 'inline', attemptId: outputRef.attemptId, ...attempt },
+      outputRef.kind === 'call'
+        ? { kind: 'call', callId: outputRef.callId, ...attempt }
+        : outputRef.kind === 'artifact'
+          ? { kind: 'artifact', artifactId: outputRef.artifactId, ...attempt }
+          : { kind: 'inline', attemptId: outputRef.attemptId, ...attempt },
     );
   }
 

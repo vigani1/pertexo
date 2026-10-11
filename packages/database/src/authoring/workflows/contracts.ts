@@ -129,6 +129,7 @@ export type ListWorkflowsInput = Readonly<{
   actorId: string;
   limit?: number;
   order?: 'created_asc' | 'updated_desc';
+  pinsWorkflowId?: string;
   after?: Readonly<{ positionAt: string; id: string }>;
 }>;
 export type WorkflowPage = Readonly<{

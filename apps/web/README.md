@@ -30,8 +30,11 @@ commands retain their exact input, deadline, version and key for the original
 The editor's Contract control declares bounded JSON input and result types for
 workflows with one Manual or Webhook entry. Property names, required fields,
 array bounds and the result source are edited locally, then applied as one
-undoable draft change. Published standalone runs enforce the contract. Call
-Workflow execution and child-version selection remain pending F08 slice 3.
+undoable draft change. Published runs enforce the contract. Call workflow steps
+select an exact child version; upgrading is an explicit undoable draft edit.
+Calls wait for the child’s validated result, and run detail links both
+directions while distinguishing expired child history. Archive confirmation
+lists published parents that pin the child before stopping fresh Calls.
 
 Read [Frontend architecture](ARCHITECTURE.md) for folder ownership, shared
 contracts, state, forms, saving conflicts, auth, SSE, Weft and verification.

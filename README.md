@@ -13,13 +13,16 @@ authentication and data flows also require the API and its local dependencies.
 
 For code ownership, start with [the architecture map](./docs/architecture.md).
 The [reset plan](./docs/architecture-reset-plan.md) records the completed reset
-and its remaining plan-only F08 handoff.
+and the [F08 plan](./docs/feature-plans/08-subworkflows.md) records reusable
+workflow Calls and their qualification.
 
 ## What Is Implemented
 
 - Separate NestJS API and worker process roles in a TypeScript monorepo.
 - PostgreSQL-backed workspaces with enforced row-level tenant isolation.
 - Workflow drafting, immutable publication, version pinning, and execution.
+- Callable contracts and durable same-workspace Calls with exact child versions,
+  slot handoff, parent/child controls and linked history.
 - Durable checkpoints, node attempts, retries, cancellation, and recovery.
 - Transactional outbox and idempotent BullMQ consumers over Redis.
 - Bounded artifact storage and lifecycle handling for larger payloads.

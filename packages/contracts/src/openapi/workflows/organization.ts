@@ -439,7 +439,7 @@ export const workflowOrganizationListReadContract = {
   ),
   response: {
     description:
-      'Default or filtered workflow summaries; include=organization explicitly requests private organization metadata. Filters apply before bounded pagination; unknown/foreign tag or folder filters return an empty scoped page. folderId selects an exact UUID without descendants, root selects unfiled, and omission includes all placements. Live pagination is not a snapshot and has no total count.',
+      'Default or filtered workflow summaries; include=organization explicitly requests private organization metadata. Filters apply before bounded pagination; unknown/foreign tag or folder filters return an empty scoped page. folderId selects an exact UUID without descendants, root selects unfiled, and omission includes all placements. pinsWorkflowId lists workflows whose current publication directly pins that target, using the ordinary list response and cursor; it cannot be combined with organization filters. Live pagination is not a snapshot and has no total count.',
     headers: {
       'Cache-Control': {
         schema: { type: 'string', const: 'private, no-store' },

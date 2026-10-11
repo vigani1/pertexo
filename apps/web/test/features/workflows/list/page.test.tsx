@@ -22,11 +22,13 @@ import {
 
 function listHandler(pages: (after: string | null) => Record<string, unknown>) {
   return http.get(`${api}/workflows`, ({ request }) =>
-    HttpResponse.json(
-      organizedPage(
-        pages(new URL(request.url).searchParams.get('after')) as never,
-      ),
-    ),
+    new URL(request.url).searchParams.has('pinsWorkflowId')
+      ? HttpResponse.json({ items: [], nextCursor: null })
+      : HttpResponse.json(
+          organizedPage(
+            pages(new URL(request.url).searchParams.get('after')) as never,
+          ),
+        ),
   );
 }
 
@@ -354,6 +356,63 @@ describe('workflow list', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]?.key).toBeTruthy();
     expect(requests[0]?.body).toEqual({ expectedLifecycleRevision: 4 });
+  });
+
+  it('lists published parents before a child archive and keeps confirmation blocked when that read fails', async () => {
+    let allowRead = false;
+    mockServer.use(
+      ...discoveryHandlers(['workflow:create', 'workflow:publish']),
+      draftHandler(),
+      http.get(`${api}/workflows`, ({ request }) => {
+        if (
+          new URL(request.url).searchParams.get('pinsWorkflowId') === workflowId
+        )
+          return allowRead
+            ? HttpResponse.json({
+                items: [summary(secondWorkflowId, 'Published invoice parent')],
+                nextCursor: null,
+              })
+            : new HttpResponse(null, { status: 503 });
+        return HttpResponse.json(
+          organizedPage({
+            items: [summary(workflowId, 'Child workflow')],
+            nextCursor: null,
+          }),
+        );
+      }),
+    );
+    renderApp(`/w/${workspaceId}/workflows`, { strict: true });
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Actions for Child workflow' }),
+    );
+    await event.click(
+      await screen.findByRole('menuitem', { name: 'Archive…' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Archive this workflow?',
+    });
+    expect(
+      await within(dialog).findByText(
+        'Published parents could not be checked.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('button', { name: 'Archive' }),
+    ).toBeDisabled();
+    allowRead = true;
+    await event.click(
+      within(dialog).getByRole('button', { name: 'Try again' }),
+    );
+    expect(
+      await within(dialog).findByText('Published invoice parent'),
+    ).toBeVisible();
+    expect(dialog).toHaveTextContent('Already accepted child runs continue.');
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', { name: 'Archive' }),
+      ).toBeEnabled(),
+    );
   });
 
   async function archiveAgainstProblem(problem: {

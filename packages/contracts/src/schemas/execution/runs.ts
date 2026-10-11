@@ -42,6 +42,7 @@ export const workflowRunTriggerTypeSchema = z.enum([
   'replay',
   'schedule',
   'webhook',
+  'workflow_call',
 ]);
 export const workflowRunPageLimitSchema = z.coerce
   .number()
@@ -359,10 +360,46 @@ export const workflowNodeRunInputResponseSchema = z
 export const workflowRunStartResponseSchema = z
   .object({ run: workflowRunSummarySchema, replayed: z.boolean() })
   .strict();
+/** A logical Call's retained identity, without mapped input or result payloads. */
+const workflowCallSummarySchema = z
+  .object({
+    id: z.uuid(),
+    invocationKey: z.string().min(1).max(256),
+    targetWorkflowId: z.uuid(),
+    targetVersionId: z.uuid(),
+    childRunId: z.uuid().nullable(),
+    childHistory: z.enum(['not_started', 'retained', 'expired']),
+    status: z.enum([
+      'pending',
+      'accepted',
+      'refused',
+      'succeeded',
+      'failed',
+      'canceled',
+      'timed_out',
+      'outcome_unknown',
+    ]),
+    slotLent: z.boolean(),
+    detailsRetired: z.boolean(),
+    safeErrorCode: z.string().min(1).max(128).nullable(),
+  })
+  .strict();
+const workflowParentCallSchema = z
+  .object({
+    id: z.uuid(),
+    parentRunId: z.uuid(),
+    invocationKey: z.string().min(1).max(256),
+  })
+  .strict();
+export type WorkflowCallSummary = z.output<typeof workflowCallSummarySchema>;
+export type WorkflowParentCall = z.output<typeof workflowParentCallSchema>;
+
 export const workflowRunResponseSchema = z
   .object({
     run: workflowRunReadSummarySchema,
     nodes: z.array(workflowNodeRunSummarySchema).max(1_000),
+    calls: z.array(workflowCallSummarySchema).max(200).optional(),
+    parentCall: workflowParentCallSchema.optional(),
   })
   .strict();
 export const workflowRunCancelResponseSchema = z
@@ -392,6 +429,7 @@ const workflowRunEventTypeSchema = z.enum([
   'node.outcome_unknown',
 ]);
 const workflowRunOutputReferenceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('call'), callId: z.uuid() }).strict(),
   z.object({ kind: z.literal('inline'), attemptId: z.uuid() }).strict(),
   z.object({ kind: z.literal('artifact'), artifactId: z.uuid() }).strict(),
 ]);

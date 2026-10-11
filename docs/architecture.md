@@ -70,7 +70,18 @@ the acceptance validator and resolves the result once before success; the
 database persists it with the ordinary terminal transition. Selecting a step
 output requires exactly one successful invocation, including retained loop
 scopes. The editor applies contract edits through its existing draft history.
-Call execution remains the next F08 slice.
+The model owns the Call pin/config; the SDK adapter only prepares bounded JSON.
+The engine records a Call wait and intent. Execution performs the durable Call
+action before the parent advance transaction; the maintenance store reuses
+ordinary child acceptance and atomically transfers the existing slot. Direct
+child completion records a fact and parent hint without locking the parent.
+Parents consume that fact through their existing checkpoint CAS. One typed Call
+relation owns spawn identity, input/result lifetime and the direct slot return;
+publication dependencies retain immutable target versions. Parallel Calls lend
+one slot in stable invocation order, and nested Calls pass the same slot down
+and return it one direct level at a time. Parent close uses direct cancellation
+intents consumed under each child’s own lock. There is no recursive executor or
+separate family ledger.
 
 Manual acceptance, cancellation and replay persist through
 `database/src/runs/commands/`. HTTP owns actor authorization. Accepted commands
@@ -78,7 +89,7 @@ share workspace idempotency records; manual starts serialize a key with one
 transaction advisory lock. Attempts persist through `/attempts`; execution
 projects their inputs and the worker runs the pinned executor. The database and
 worker retain durable retries, waits, deadlines, cancellation and
-unknown-outcome reconciliation. Subworkflows are pending the separate F08 plan.
+unknown-outcome reconciliation, including reusable subworkflows under ADR 070.
 
 Outbox rows and delivery receipts bind durable work to an exact payload
 checksum. Dispatch claims work fairly under the maintenance role and publishes
@@ -89,7 +100,7 @@ reconnect or missed events.
 
 ## Database boundaries
 
-All 80 tables are declared once under `packages/database/src/schema/`. Typed
+All 82 tables are declared once under `packages/database/src/schema/`. Typed
 Drizzle reads/writes and typed `sql` statements share those definitions. Runtime
 code contains application rules; PostgreSQL retains constraints, forced
 workspace row security, transactions, queue claims, atomic capacity counters and

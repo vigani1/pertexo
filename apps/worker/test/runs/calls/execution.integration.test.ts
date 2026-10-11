@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import { createWorkflowCallStore } from '@pertexo/database/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createInitialCheckpoint } from '@pertexo/execution';
@@ -174,7 +176,7 @@ describeIntegration('Workflow Call execution through real transport', () => {
     }
   }, 30_000);
 
-  it('recovers an accepted child when the worker stops before completing the parent delivery receipt', async () => {
+  it('recovers durable Call identity across paused workers and uncompleted action redelivery', async () => {
     const child = await publishGraph(childGraph());
     const parent = await publishGraph(parentGraph(child.pin));
     const accepted = await accept(parent);
@@ -195,15 +197,26 @@ describeIntegration('Workflow Call execution through real transport', () => {
         ).toEqual([{ status: 'pending' }]);
       });
       await workers.pause();
-      const [hint] = await fixture.workerQuery<{
-        id: string;
-        payload_checksum: string;
-      }>(
-        `select id,payload_checksum from app.outbox_events where aggregate_id=$1 and job_name='advance-workflow-run' and not exists(select 1 from app.inbox_receipts receipt where receipt.message_id=app.outbox_events.id and receipt.completed_at is not null) order by created_at desc limit 1`,
-        [accepted.runId],
+      const id = randomUUID();
+      const payload = {
+        workspaceId: fixture.workspaceId,
+        runId: accepted.runId,
+        outboxEventId: id,
+      };
+      const hint = {
+        id,
+        payload_checksum: canonicalOutboxPayloadChecksum(payload),
+      };
+      await fixture.ownerQuery(
+        `insert into app.outbox_events(id,workspace_id,aggregate_type,aggregate_id,job_name,payload,payload_checksum) values($1,$2,'workflow-run',$3,'advance-workflow-run',$4::jsonb,$5)`,
+        [
+          id,
+          fixture.workspaceId,
+          accepted.runId,
+          JSON.stringify(payload),
+          hint.payload_checksum,
+        ],
       );
-      if (hint === undefined)
-        throw new Error('Pending Call action hint missing');
       const input = {
         workspaceId: fixture.workspaceId,
         runId: accepted.runId,

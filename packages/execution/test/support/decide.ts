@@ -49,6 +49,10 @@ export function createDecisionEngine(
             },
             close: () => Promise.resolve(),
           },
+          calls: {
+            performActions: () => Promise.resolve(),
+            close: () => Promise.resolve(),
+          },
           verification,
           maximumAdmissions: input.maximumAdmissions,
           now: () => input.occurredAt,

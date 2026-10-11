@@ -1,5 +1,7 @@
+import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
+import { parseDatabaseConfig } from '../../../src/config.js';
 import { Client } from 'pg';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { enforceRetention } from '../../support/retention.js';
 import { purgeWorkspace } from '../../support/workspace-purge.js';
 import {
@@ -18,6 +20,10 @@ import {
   runRow,
 } from './fixtures.js';
 
+const reads = createWorkflowRunDatabase(
+  parseDatabaseConfig({ connectionString: withDatabase(apiUrl), max: 1 }),
+);
+afterAll(() => reads.close());
 const retire = () => enforceRetention(maintenanceUrl, 2);
 
 describe('parent-owned call retention', () => {
@@ -43,6 +49,21 @@ describe('parent-owned call retention', () => {
     const family = await createFamily({ childDays: 91 });
     await retire();
     expect(await runRow(family.childRunId)).toBeUndefined();
+    expect(
+      (
+        await reads.get({
+          workspaceId: family.workspaceId,
+          runId: family.parentRunId,
+        })
+      )?.calls,
+    ).toMatchObject([
+      {
+        childRunId: family.childRunId,
+        childHistory: 'expired',
+        status: 'succeeded',
+        detailsRetired: false,
+      },
+    ]);
     expect(await callRow(family.callId)).toMatchObject({
       child_run_id: family.childRunId,
       live_child_run_id: null,
@@ -70,6 +91,14 @@ describe('parent-owned call retention', () => {
       details_purged_at: expect.any(Date) as unknown,
       child_run_id: family.childRunId,
     });
+    expect(
+      (
+        await reads.get({
+          workspaceId: family.workspaceId,
+          runId: family.parentRunId,
+        })
+      )?.calls,
+    ).toMatchObject([{ detailsRetired: true, status: 'succeeded' }]);
     await admin.query(
       'update app.workflow_runs set completed_at=$2 where id=$1',
       [family.parentRunId, daysAgo(91)],

@@ -1,3 +1,8 @@
+import {
+  readWorkflowCalls,
+  type WorkflowCallReadRecord,
+  type WorkflowParentCallReadRecord,
+} from './calls.js';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -63,6 +68,8 @@ export type WorkflowNodeRunRecord = Readonly<{
 export type WorkflowRunReadModel = Readonly<{
   run: WorkflowRunReadRecord;
   nodes: readonly WorkflowNodeRunRecord[];
+  calls?: readonly WorkflowCallReadRecord[];
+  parentCall?: WorkflowParentCallReadRecord;
 }>;
 
 /** One run and its node runs, read in a workspace-scoped snapshot. */
@@ -111,6 +118,7 @@ async function readRunModel(
   if (nodes.rows.length > 1_000) throw new WorkflowRunReadCapacityError();
   return Object.freeze({
     run,
+    ...(await readWorkflowCalls(transaction, runId)),
     nodes: Object.freeze(nodes.rows.map(toNodeRecord)),
   });
 }

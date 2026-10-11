@@ -8,6 +8,7 @@ import {
 const workflowCursorPayloadSchema = z
   .object({
     kind: z.literal('workflow'),
+    pinsWorkflowId: z.uuid().optional(),
     createdAt: z.iso.datetime(),
     id: z.uuid(),
   })
@@ -17,6 +18,7 @@ const workflowCursorPayloadSchema = z
 const workflowUpdatedCursorPayloadSchema = z
   .object({
     kind: z.literal('workflow_updated'),
+    pinsWorkflowId: z.uuid().optional(),
     updatedAt: z.iso.datetime(),
     id: z.uuid(),
   })
@@ -57,15 +59,18 @@ function decodeCursor(value: string): z.output<typeof cursorPayloadSchema> {
 export function encodeWorkflowCursor(
   cursor: Readonly<{ positionAt: string; id: string }>,
   order: 'created_asc' | 'updated_desc' = 'created_asc',
+  pinsWorkflowId?: string,
 ): string {
   return order === 'updated_desc'
     ? encodeCursor({
         kind: 'workflow_updated',
+        ...(pinsWorkflowId === undefined ? {} : { pinsWorkflowId }),
         updatedAt: cursor.positionAt,
         id: cursor.id,
       })
     : encodeCursor({
         kind: 'workflow',
+        ...(pinsWorkflowId === undefined ? {} : { pinsWorkflowId }),
         createdAt: cursor.positionAt,
         id: cursor.id,
       });
@@ -74,8 +79,11 @@ export function encodeWorkflowCursor(
 export function decodeWorkflowCursor(
   value: string,
   order: 'created_asc' | 'updated_desc' = 'created_asc',
+  pinsWorkflowId?: string,
 ): Readonly<{ positionAt: string; id: string }> {
   const payload = decodeCursor(value);
+  if (payload.kind === 'versions' || payload.pinsWorkflowId !== pinsWorkflowId)
+    throw new InvalidWorkflowCursorError();
   if (order === 'updated_desc') {
     if (payload.kind !== 'workflow_updated')
       throw new InvalidWorkflowCursorError();

@@ -60,6 +60,7 @@ export type ListWorkflowsInput = WorkflowApplicationInput &
     limit?: number;
     after?: string;
     order?: 'created_asc' | 'updated_desc';
+    pinsWorkflowId?: string;
   }>;
 export type CreateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
@@ -110,16 +111,29 @@ export class ListWorkflowsUseCase {
         const page = await this.persistence.listWorkflows({
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,
+          ...(input.pinsWorkflowId === undefined
+            ? {}
+            : { pinsWorkflowId: input.pinsWorkflowId }),
           ...(input.limit === undefined ? {} : { limit: input.limit }),
           ...(input.after === undefined
             ? {}
-            : { after: decodeWorkflowCursor(input.after, input.order) }),
+            : {
+                after: decodeWorkflowCursor(
+                  input.after,
+                  input.order,
+                  input.pinsWorkflowId,
+                ),
+              }),
           ...(input.order === undefined ? {} : { order: input.order }),
         });
         const nextCursor =
           page.nextCursor === undefined
             ? null
-            : encodeWorkflowCursor(page.nextCursor, input.order);
+            : encodeWorkflowCursor(
+                page.nextCursor,
+                input.order,
+                input.pinsWorkflowId,
+              );
         return serializeWorkflowList(page.items, nextCursor);
       },
     );

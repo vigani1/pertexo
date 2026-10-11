@@ -1,3 +1,4 @@
+import type { CallTargetScope } from '../../data/call-targets.queries';
 import type {
   NodeDefinitionCatalogItem,
   ConnectionResponse,
@@ -60,6 +61,7 @@ export function NodeInspector({
   definitions,
   connections,
   channelLookup,
+  callScope,
   editable,
   tab,
   onTabChange,
@@ -77,6 +79,7 @@ export function NodeInspector({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
+  callScope?: CallTargetScope;
   editable: boolean;
   tab: InspectorTab;
   onTabChange: (tab: InspectorTab) => void;
@@ -176,6 +179,7 @@ export function NodeInspector({
               ) : null}
               <SetupTab
                 node={node}
+                {...(callScope === undefined ? {} : { callScope })}
                 definition={definition}
                 connections={connections}
                 form={form}

@@ -123,6 +123,7 @@ export function EditorInspector({
       definitions={definitions}
       connections={connections}
       channelLookup={channelLookup}
+      callScope={{ apiClient, userId, workspaceId, workflowId }}
       editable={editable}
       scratchVersion={actions.scratchVersion}
       tab={tab}
@@ -159,30 +160,37 @@ export function EditorInspector({
           if (selectedNodeId !== null) onAddToBody(selectedNodeId, opener);
         },
       }}
-      renderTest={(nodeId, stepSideEffect) => (
-        <NodeTestPanel
-          apiClient={apiClient}
-          workspaceId={workspaceId}
-          workflowId={workflowId}
-          nodeId={nodeId}
-          stepSideEffect={stepSideEffect}
-          priorPreview={priorTestFor(graph, passedTest, nodeId)}
-          rememberedPreview={
-            rememberedTest?.nodeId === nodeId
-              ? rememberedTest.preview
-              : undefined
-          }
-          ensureSaved={ensureSaved}
-          actionRef={testRef}
-          onFinished={(preview) => {
-            onTestFinished({ nodeId, preview });
-          }}
-          onSucceeded={(preview) => {
-            setPassedTest({ previewId: preview.id, nodeId });
-            onTestPassed(nodeId, inlineOutputBytes(preview.output));
-          }}
-        />
-      )}
+      renderTest={(nodeId, stepSideEffect) =>
+        findStep(graph, nodeId)?.definition.key === 'core.call' ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            Run this workflow to test the Call with its child. A single-step
+            preview cannot return a child result.
+          </p>
+        ) : (
+          <NodeTestPanel
+            apiClient={apiClient}
+            workspaceId={workspaceId}
+            workflowId={workflowId}
+            nodeId={nodeId}
+            stepSideEffect={stepSideEffect}
+            priorPreview={priorTestFor(graph, passedTest, nodeId)}
+            rememberedPreview={
+              rememberedTest?.nodeId === nodeId
+                ? rememberedTest.preview
+                : undefined
+            }
+            ensureSaved={ensureSaved}
+            actionRef={testRef}
+            onFinished={(preview) => {
+              onTestFinished({ nodeId, preview });
+            }}
+            onSucceeded={(preview) => {
+              setPassedTest({ previewId: preview.id, nodeId });
+              onTestPassed(nodeId, inlineOutputBytes(preview.output));
+            }}
+          />
+        )
+      }
     />
   );
   // The Schedule step's builder previews its rule against this workflow, and

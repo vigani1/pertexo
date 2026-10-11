@@ -49,6 +49,17 @@ redelivery, retry
 and the result it returns. It can run on its own. _Avoid_: A loop body, a
 different trigger kind
 
+**Workflow Call**: One scoped Call workflow step that pins an immutable callable
+version in the same workspace and waits for a separate child run’s validated
+result. Its identity includes branch and iteration scope. _Avoid_: Preview,
+recursive in-process execution, a mutable target
+
+**Child run**: A separate ordinary execution accepted by a Workflow Call. It can
+call another workflow and become a parent itself. A waiting parent lends its
+workspace active-run slot to one child and takes it back when the child settles.
+_Avoid_: A nested For Each body, another workspace slot, a synthetic manual
+start
+
 **Run-input case**: A named, shared workflow input with an explicit published
 version context. Loading it supplies editable input for a separately confirmed
 real manual run; it is not an execution or a substitute for provider effects.
