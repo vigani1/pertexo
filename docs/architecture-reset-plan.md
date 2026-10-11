@@ -539,6 +539,8 @@ now, as one ordered program — not "whenever we touch it".
           locks and Better Auth behavior. Better Auth retains its pool wiring.
           Password-reset mail checks credential existence through the typed
           database authentication code instead of a query in its configuration.
+          The unreachable native email-verification revocation hook goes; owned
+          email proofs already revoke sessions in their verification transaction.
           Read-only admission and invitation checks follow the SQL decisions
           below. The mail test hook goes; tests observe the local sink.
     - [x] Equivalent record, ordinal, UUID and database serializer helpers are
