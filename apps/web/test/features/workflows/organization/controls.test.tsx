@@ -8,7 +8,7 @@ import {
   workflowOrganizationProjectionResponseSchema,
 } from '@pertexo/contracts';
 import { WorkflowOrganizationDialog } from '@/features/workflows/components/organization/dialog';
-import { WorkflowFavoriteButton } from '@/features/workflows/components/organization/favorites/button';
+import { WorkflowFavoriteButton } from '@/features/workflows/components/organization/row-menu';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';

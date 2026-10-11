@@ -16,7 +16,7 @@ import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowRowActions } from '../list/workflow-row-actions';
 import { WorkflowRows, WorkflowListFooter } from '../list/workflow-rows';
 import { WorkflowOrganizationDialog } from './dialog';
-import { WorkflowFavoriteButton } from './favorites/button';
+import { WorkflowFavoriteButton } from './row-menu';
 
 /** Selection is explicit, ordered and bounded to loaded rows in one URL scope. */
 export function WorkflowOrganizedResults({
