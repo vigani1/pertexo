@@ -20,6 +20,7 @@ import {
   useWorkflowCommandSession,
   WorkflowCommandActions,
   workflowIssuesView,
+  type WorkflowIssue,
 } from '@/features/workflow-publish/public';
 import { workflowRunKeys } from '@/features/workflow-runs/queries.public';
 import {
@@ -46,6 +47,7 @@ import { useEditorSavePipeline } from '../hooks/use-editor-save-pipeline';
 import { useEditorSessionVerification } from '../hooks/use-editor-session-verification';
 import { useLeaveGuard } from '../hooks/use-leave-guard';
 import { workflowDraftQueryOptions } from '../data/workflow-editor.queries';
+import { workflowConnectionIssues } from '../model/connection-issues';
 
 const NO_CONNECTIONS: readonly ConnectionResponse[] = [];
 
@@ -205,7 +207,22 @@ function WorkflowEditorSession({
     revision,
     generation,
   });
-  const issues = useIssuesView(publication, graph, { generation, revision });
+  const connectionIssues = useMemo(
+    () =>
+      workflowConnectionIssues(
+        graph,
+        definitions,
+        connections,
+        connectionsAvailable,
+      ),
+    [graph, definitions, connections, connectionsAvailable],
+  );
+  const issues = useIssuesView(
+    publication,
+    graph,
+    { generation, revision },
+    connectionIssues,
+  );
   const actions = useEditorActions({ store, isPaused: verification.isPaused });
   const effects = useCanvasEffects(graph);
   const triggersAvailable = definitions.some(isStartTrigger);
@@ -329,6 +346,7 @@ function useIssuesView(
   publication: ReturnType<typeof useWorkflowCommandSession>['publication'],
   graph: WorkflowGraphContract,
   draft: Readonly<{ generation: number; revision: number }>,
+  connectionIssues: readonly WorkflowIssue[],
 ) {
   const { validation, validationPending, validationError } = publication;
   const { generation, revision } = draft;
@@ -338,6 +356,7 @@ function useIssuesView(
         { validation, validationPending, validationError },
         graph,
         { generation, revision },
+        connectionIssues,
       ),
     [
       generation,
@@ -346,6 +365,7 @@ function useIssuesView(
       validation,
       validationError,
       validationPending,
+      connectionIssues,
     ],
   );
 }

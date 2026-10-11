@@ -39,6 +39,13 @@ export function groupWorkflowIssues(
       target: resolveWorkflowCompatibilityTarget(issue, graph),
     })),
   ];
+  return groupWorkflowFindings(issues);
+}
+
+/** Findings from server validation and current credential readiness share a step. */
+export function groupWorkflowFindings(
+  issues: readonly WorkflowIssue[],
+): readonly WorkflowIssueGroup[] {
   const groups = new Map<string | null, WorkflowIssue[]>();
   for (const issue of issues) {
     const key = issue.target?.nodeId ?? null;

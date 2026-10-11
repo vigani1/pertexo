@@ -10,5 +10,6 @@ export {
   type WorkflowIssuesView,
 } from './model/issues-state';
 export type { WorkflowValidationTarget } from './model/validation-target';
+export type { WorkflowIssue } from './model/workflow-issues';
 export { useAutoValidation } from './hooks/use-auto-validation';
 export { useWorkflowCommandSession } from './hooks/use-workflow-command-session';

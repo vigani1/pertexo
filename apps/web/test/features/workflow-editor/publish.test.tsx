@@ -377,7 +377,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     // The chip opens the issues lens at the bottom, not a popover.
     const lens = screen.getByRole('region', { name: '2 issues' });
     expect(
-      within(lens).getByText('Fix these before publishing.'),
+      within(lens).getByText('Review these before publishing or running.'),
     ).toBeVisible();
     await event.click(
       screen.getByRole('button', {

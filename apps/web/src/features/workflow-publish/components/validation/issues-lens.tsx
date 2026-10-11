@@ -122,5 +122,5 @@ function describeState(state: IssuesState, count: number | undefined) {
     ? ' This check describes a different draft; check again after reviewing your changes.'
     : '';
   if (count === 0) return `Nothing blocks publishing.${staleNote}`;
-  return `Fix these before publishing.${staleNote}`;
+  return `Review these before publishing or running.${staleNote}`;
 }

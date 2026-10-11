@@ -10,7 +10,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 - [x] 1. Enable local webhook envelopes; explain unavailable webhooks plainly.
 - [x] 2. Make local invitations usable or explicitly unavailable; never 500.
 - [x] 3. Record the add-connection setup test in connection health.
-- [ ] 4. Count missing or disconnected credentials in editor issues.
+- [x] 4. Count missing or disconnected credentials in editor issues.
 - [ ] 5. Detect an unchanged live draft and explain reused publications.
 - [ ] 6. Fit and scroll the run-input dialog at 768 pixels high.
 - [ ] 7. Simplify workflow search, filters, selection and row actions.
@@ -45,3 +45,18 @@ credential rejection still requires dispatch evidence. Rotation, revocation
 and newer test or run health protect the current record from stale outcomes.
 The inline add lens returns the tested connection rather than its earlier
 creation snapshot. Retained historical records are not rewritten.
+
+## Credential issues
+
+Slice 4 derives readiness from the editor's complete authorized connection
+snapshot and the enabled draft steps, including enabled loop bodies. Missing,
+unavailable, revoked, rejected or mismatched credentials join the issues chip,
+canvas counts and Fix lens. Active credentials with unknown or inconclusive
+test health remain selectable. Disabled steps and disabled loop bodies do not
+add credential findings. A refreshed connection record supersedes the inline
+add lens's temporary creation snapshot.
+
+These findings are feedback about running the workflow; the existing server
+validation continues to govern publication. A missing credential does not
+silently introduce a new publication rule. Restoring a credential refreshes
+the issue count without requiring a draft edit or another server validation.
