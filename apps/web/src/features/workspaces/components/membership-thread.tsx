@@ -2,7 +2,7 @@ import { StatusGlyph } from '@/components/ui/status';
 
 export function MembershipThread({
   state,
-}: Readonly<{ state: 'pending' | 'accepted' | 'removed' | 'suspended' }>) {
+}: Readonly<{ state: 'pending' | 'accepted' | 'removed' }>) {
   return (
     <div
       aria-hidden="true"
@@ -28,20 +28,8 @@ export function MembershipThread({
         <span className="size-1 rounded-full bg-muted-foreground/40" />
       ) : (
         <StatusGlyph
-          tone={
-            state === 'accepted'
-              ? 'success'
-              : state === 'removed'
-                ? 'failure'
-                : 'waiting'
-          }
-          className={
-            state === 'removed'
-              ? 'text-destructive'
-              : state === 'accepted'
-                ? 'text-success'
-                : 'text-warning'
-          }
+          tone={state === 'accepted' ? 'success' : 'failure'}
+          className={state === 'accepted' ? 'text-success' : 'text-destructive'}
         />
       )}
     </div>

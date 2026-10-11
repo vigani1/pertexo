@@ -177,9 +177,9 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
   await expect(
     capacity.getByText('8 PB', { exact: true }).first(),
   ).toBeVisible();
-  await expect(capacity).toContainText('/ 0 B');
-  await expect(capacity).toContainText('Expired');
-  await expect(capacity).toContainText('not active for new acceptance');
+  await expect(capacity).toContainText('of 0 B');
+  await expect(capacity).toContainText('limits are expired');
+  await expect(capacity).toContainText('New runs aren’t accepted right now');
   await expect(
     page.getByText('Workflow groups shown: 1 (maximum 50).', { exact: false }),
   ).toBeVisible();
