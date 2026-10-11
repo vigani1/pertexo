@@ -35,6 +35,14 @@ function runtimeOptions(
       max: 5,
       ownerRole: 'pertexo_owner',
     },
+    maintenanceDatabase: {
+      connectionString:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 30_000,
+      max: 2,
+      ownerRole: 'pertexo_owner',
+    },
     maximumAdmissions: 32,
     redisUrl: 'redis://unreachable.invalid:6379/0',
     ...overrides,
@@ -56,6 +64,10 @@ function runtimeDependencies(
       resync: vi.fn(),
     },
     runStore: { advance: vi.fn(), close: vi.fn() },
+    callStore: {
+      performActions: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn(),
+    },
     dueWakeupScanner,
     deadlineWakeupScanner,
   };
@@ -66,12 +78,22 @@ describe('coordinator runtime', () => {
     ['telemetry', []],
     ['traceRunner', []],
     ['runStore', []],
-    ['notifications', ['runStore']],
-    ['dueScanner', ['runStore', 'notifications']],
-    ['deadlineScanner', ['runStore', 'notifications', 'dueScanner']],
+    ['callStore', ['runStore']],
+    ['notifications', ['runStore', 'callStore']],
+    ['dueScanner', ['runStore', 'callStore', 'notifications']],
+    [
+      'deadlineScanner',
+      ['runStore', 'callStore', 'notifications', 'dueScanner'],
+    ],
     [
       'consumer',
-      ['runStore', 'notifications', 'dueScanner', 'deadlineScanner'],
+      [
+        'runStore',
+        'callStore',
+        'notifications',
+        'dueScanner',
+        'deadlineScanner',
+      ],
     ],
   ] as const)(
     'rolls back every owner acquired before %s construction fails',
@@ -79,6 +101,13 @@ describe('coordinator runtime', () => {
       const constructionFailure = new Error(`${failedStage} failed`);
       const closed: string[] = [];
       const owned = {
+        callStore: {
+          performActions: vi.fn(),
+          close: vi.fn(() => {
+            closed.push('callStore');
+            return Promise.resolve();
+          }),
+        },
         runStore: {
           advance: vi.fn(),
           close: vi.fn(() => {
@@ -129,6 +158,7 @@ describe('coordinator runtime', () => {
           acquire('notifications', owned.notifications),
         ),
         runStore: vi.fn(() => acquire('runStore', owned.runStore)),
+        callStore: vi.fn(() => acquire('callStore', owned.callStore)),
         telemetry: vi.fn(() => acquire('telemetry', {})),
         traceRunner: vi.fn(() => acquire('traceRunner', {})),
       } as unknown as CoordinatorCompositionFactories;
@@ -227,8 +257,13 @@ describe('coordinator runtime', () => {
       deadline: new Error('deadline close failed'),
       notifications: new Error('notifications close failed'),
       runStore: new Error('run store close failed'),
+      callStore: new Error('call store close failed'),
     };
     const runtime = await createCoordinatorRuntime(runtimeOptions(), {
+      callStore: {
+        performActions: vi.fn(),
+        close: vi.fn().mockRejectedValue(failures.callStore),
+      },
       consumerFactory: () => ({
         close: vi.fn(() => {
           throw failures.consumer;
@@ -272,6 +307,7 @@ describe('coordinator runtime', () => {
       failures.deadline,
       failures.notifications,
       failures.runStore,
+      failures.callStore,
     ]);
   });
 
@@ -310,6 +346,14 @@ describe('coordinator runtime', () => {
         },
         dueWakeupBatchSize: 10,
         dueWakeupPollIntervalMillis: 20,
+        maintenanceDatabase: {
+          connectionString:
+            'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+          connectionTimeoutMillis: 5_000,
+          idleTimeoutMillis: 30_000,
+          max: 2,
+          ownerRole: 'pertexo_owner',
+        },
         maximumAdmissions: 32,
         redisUrl: 'redis://unreachable.invalid:6379/0',
       },
@@ -317,6 +361,7 @@ describe('coordinator runtime', () => {
         consumerFactory: () => consumer,
         notifications,
         runStore: { ...adapter, advance: vi.fn() },
+        callStore: { ...adapter, performActions: vi.fn() },
         dueWakeupScanner: scanner,
         deadlineWakeupScanner: {
           claimDueWakeups: vi.fn().mockResolvedValue(0),
@@ -447,6 +492,14 @@ describe('coordinator runtime', () => {
           max: 5,
           ownerRole: 'pertexo_owner',
         },
+        maintenanceDatabase: {
+          connectionString:
+            'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+          connectionTimeoutMillis: 5_000,
+          idleTimeoutMillis: 30_000,
+          max: 2,
+          ownerRole: 'pertexo_owner',
+        },
         maximumAdmissions: 32,
         redisUrl: 'redis://unreachable.invalid:6379/0',
       },
@@ -464,6 +517,10 @@ describe('coordinator runtime', () => {
           close: vi.fn().mockResolvedValue(undefined),
         },
         runStore,
+        callStore: {
+          performActions: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn(),
+        },
       },
     );
 

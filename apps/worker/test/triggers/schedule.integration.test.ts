@@ -250,6 +250,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
     await runtime.consumer.waitUntilReady(5_000);
     const coordinator = registerResource(
       await createCoordinatorRuntime({
+        maintenanceDatabase: dispatcherConfig,
         database: workerConfig,
         maximumAdmissions: 10,
         redisUrl,

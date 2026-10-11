@@ -9,6 +9,7 @@ import { acceptRun } from '../../support/coordinator/runs.js';
 
 const {
   databaseUrl,
+  dispatcherUrl,
   enabled,
   redisConnection,
   redisUrl,
@@ -31,6 +32,10 @@ describeIntegration('Coordinator transport identity fencing', () => {
       acceptRun(),
     ]);
     const runtime = await createCoordinatorRuntime({
+      maintenanceDatabase: parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 2,
+      }),
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
         max: 4,

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { parseDatabaseConfig } from '@pertexo/database/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   createQueueProducer,
@@ -13,8 +13,15 @@ import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
 import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
 import { coordinatorFixture } from './consumer.js';
 
-const { redisConnection, redisUrl, waitFor, workerQuery, workspaceId } =
-  coordinatorFixture;
+const {
+  databaseUrl,
+  dispatcherUrl,
+  redisConnection,
+  redisUrl,
+  waitFor,
+  workerQuery,
+  workspaceId,
+} = coordinatorFixture;
 import {
   waitForCoordinatorOutbox,
   type waitForAttemptOutbox,
@@ -81,6 +88,10 @@ export async function createCoordinatorRecoveryHarness(input: {
     let attempts: RecoveryWorkers['attempts'] | undefined;
     try {
       coordinator = await createCoordinatorRuntime({
+        maintenanceDatabase: parseDatabaseConfig({
+          connectionString: databaseUrl(dispatcherUrl),
+          max: 2,
+        }),
         database: input.database,
         maximumAdmissions: 10,
         redisUrl,

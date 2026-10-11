@@ -7,8 +7,13 @@ import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
 import { createNodeAttemptRuntime } from '../../../src/attempts/runtime.js';
 
 const databaseUrl = process.env.FOR_EACH_DATABASE_URL;
+const maintenanceDatabaseUrl = process.env.FOR_EACH_MAINTENANCE_DATABASE_URL;
 const redisUrl = process.env.FOR_EACH_REDIS_URL;
-if (databaseUrl === undefined || redisUrl === undefined)
+if (
+  databaseUrl === undefined ||
+  maintenanceDatabaseUrl === undefined ||
+  redisUrl === undefined
+)
   throw new Error('For Each process fixture configuration is incomplete');
 
 const database = parseDatabaseConfig({ connectionString: databaseUrl, max: 6 });
@@ -49,6 +54,10 @@ process.once('SIGINT', handleSignal);
 
 try {
   coordinator = await createCoordinatorRuntime({
+    maintenanceDatabase: parseDatabaseConfig({
+      connectionString: maintenanceDatabaseUrl,
+      max: 2,
+    }),
     database,
     maximumAdmissions: 10,
     redisUrl,
