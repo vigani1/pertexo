@@ -6,6 +6,7 @@ import {
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
+import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import type { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
@@ -74,7 +75,10 @@ export function createPlatformPreviewNodeInvoker(
     try {
       // Acceptance pinned this node, its definition and its executor.
       const node = previewExecutableNodeSchema.parse(lease.executableNode);
-      if (node.definition.key === 'core.wait' && node.definition.version === 1)
+      if (
+        isWorkflowCallDefinition(node.definition) ||
+        (node.definition.key === 'core.wait' && node.definition.version === 1)
+      )
         return failedWith('preview.suspension_not_supported');
       const resolvedInput = await resolveSingleNodePreviewInput({
         node,

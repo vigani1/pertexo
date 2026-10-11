@@ -1,5 +1,6 @@
 import type { NodeExecutorRegistration } from '@pertexo/node-sdk/server';
 
+import { coreCallExecutor } from './call/executor.js';
 import { coreConditionExecutor } from './condition/executor.js';
 import { coreForEachExecutor } from './for-each/executor.js';
 import { coreManualExecutor } from './manual/executor.js';
@@ -16,6 +17,7 @@ import { coreWebhookExecutor } from './webhook/executor.js';
 /** One implementation per core executor, in definition order. */
 export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration[] =
   Object.freeze([
+    coreCallExecutor,
     coreScheduleExecutor,
     coreWebhookExecutor,
     coreWaitExecutor,

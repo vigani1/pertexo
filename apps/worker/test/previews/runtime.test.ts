@@ -336,32 +336,35 @@ describe('platform preview node invoker', () => {
     expect(secret.every((byte) => byte === 0)).toBe(true);
   });
 
-  it('rejects Wait with a stable suspension-not-supported outcome', async () => {
-    const execute = vi.fn();
-    const invoker = createPlatformPreviewNodeInvoker({
-      registry: { execute } as never,
-    });
-    const lease = {
-      ...leaseFixture({
-        config: { durationSeconds: 60 },
-        configVersion: 1,
-        connectionRefs: {},
-        definition: { key: 'core.wait', version: 1 },
-        id: 'node-1',
-        inputMappings: {},
-      }),
-      definitionKey: 'core.wait',
-      executorKey: 'core.wait',
-    };
+  it.each(['core.wait', 'core.call'])(
+    'rejects %s with a stable suspension-not-supported outcome',
+    async (key) => {
+      const execute = vi.fn();
+      const invoker = createPlatformPreviewNodeInvoker({
+        registry: { execute } as never,
+      });
+      const lease = {
+        ...leaseFixture({
+          config: { durationSeconds: 60 },
+          configVersion: 1,
+          connectionRefs: {},
+          definition: { key, version: 1 },
+          id: 'node-1',
+          inputMappings: {},
+        }),
+        definitionKey: key,
+        executorKey: key,
+      };
 
-    await expect(
-      invoker.invoke({ lease, signal: new AbortController().signal }),
-    ).resolves.toEqual({
-      safeErrorCode: 'preview.suspension_not_supported',
-      status: 'failed',
-    });
-    expect(execute).not.toHaveBeenCalled();
-  });
+      await expect(
+        invoker.invoke({ lease, signal: new AbortController().signal }),
+      ).resolves.toEqual({
+        safeErrorCode: 'preview.suspension_not_supported',
+        status: 'failed',
+      });
+      expect(execute).not.toHaveBeenCalled();
+    },
+  );
 
   it('resolves mappings through the production resolver before execution', async () => {
     const execute = vi.fn((request: { input: unknown }) =>

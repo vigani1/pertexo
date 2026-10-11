@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CORE_CALL_DEFINITION,
+  CORE_CALL_EXECUTOR,
   CORE_CONDITION_DEFINITION,
   CORE_CONDITION_EXECUTOR,
   CORE_FOR_EACH_DEFINITION,
@@ -25,6 +27,20 @@ const signal = new AbortController().signal;
 
 describe('core node public execution contracts', () => {
   it.each([
+    {
+      name: 'Call input preparation',
+      definition: CORE_CALL_DEFINITION,
+      executor: CORE_CALL_EXECUTOR,
+      config: {
+        target: {
+          workflowId: '11111111-1111-4111-8111-111111111111',
+          workflowVersionId: '22222222-2222-4222-8222-222222222222',
+          executableChecksum: `wf:sha256:${'a'.repeat(64)}`,
+        },
+      },
+      input: { input: { value: 42 } },
+      expected: { value: 42 },
+    },
     {
       name: 'Condition true selection',
       definition: CORE_CONDITION_DEFINITION,
