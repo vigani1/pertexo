@@ -23,6 +23,7 @@ import type {
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { admitWorkflowAuthoring } from './admission.js';
 import type { AuthoringCatalogs } from './catalogs.js';
+import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 
 type ReadStore = Pick<
   WorkflowAuthoringDatabase,
@@ -43,7 +44,7 @@ export type WorkflowAuthoringReadContext = Readonly<{
   ): Promise<void>;
   catalogs: Pick<
     AuthoringCatalogs,
-    'definitionCatalog' | 'validateAuthoringGraph'
+    'definitionCatalog' | 'validateAuthoringGraph' | 'executableCompiler'
   >;
   transact<T>(
     workspaceId: string,
@@ -85,7 +86,36 @@ export function createWorkflowAuthoringReadStore(
             parseWorkflowGraphDraft(draft.graphJson),
             options.signal,
           );
-          return Object.freeze({ draft, validation });
+          const publication = await client.query<{
+            versionId: string;
+            versionNumber: number;
+            checksum: string;
+          }>(
+            `select version.id as "versionId", version.version_number as "versionNumber", version.checksum
+             from app.workflows workflow join app.workflow_versions version
+               on version.workspace_id = workflow.workspace_id and version.workflow_id = workflow.id
+                 and version.id = workflow.published_version_id
+             where workflow.workspace_id = $1 and workflow.id = $2`,
+            [workspaceId, workflowId],
+          );
+          const live = publication.rows[0];
+          const currentPublication =
+            live === undefined
+              ? null
+              : Object.freeze({
+                  versionId: live.versionId,
+                  versionNumber: live.versionNumber,
+                  matchesDraft:
+                    validation.ok &&
+                    draft.compatibility.compatible &&
+                    variant.executableCompiler(
+                      parseWorkflowGraphForPublish(
+                        draft.graphJson,
+                        variant.definitionCatalog,
+                      ),
+                    ).checksum === live.checksum,
+                });
+          return Object.freeze({ draft, validation, currentPublication });
         },
         options.signal,
       ),

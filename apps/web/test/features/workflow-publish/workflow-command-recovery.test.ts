@@ -31,7 +31,12 @@ describe('workflow publication recovery', () => {
       requests.push(request);
       if (request.path.endsWith('/validate'))
         return Promise.resolve({
-          report: { valid: true, issues: [], compatibility: compatibility() },
+          report: {
+            valid: true,
+            currentPublication: null,
+            issues: [],
+            compatibility: compatibility(),
+          },
           etag: etagA,
         });
       publishCalls += 1;
@@ -94,6 +99,8 @@ describe('workflow publication recovery', () => {
     expect(hook.result.current.publicationReceipt).toEqual({
       versionId,
       versionNumber: 1,
+      reused: true,
+      etag: etagA,
       generation: 4,
       revision: 2,
     });

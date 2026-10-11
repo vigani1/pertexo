@@ -10,6 +10,7 @@ import {
   workflowRevisionConflictProblemSchema,
   workflowVersionsQuerySchema,
   workflowValidationIssueSchema,
+  workflowValidateResponseSchema,
 } from '../../src/schemas/workflows/authoring.js';
 import {
   workflowAuthoringClientContract,
@@ -17,6 +18,46 @@ import {
 } from '../../src/server.js';
 
 describe('workflow-authoring public contracts', () => {
+  it('requires an explicit current-publication comparison and rejects malformed metadata', () => {
+    const report = {
+      valid: true,
+      issues: [],
+      compatibility: {
+        compatible: true,
+        fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
+        issues: [],
+      },
+    };
+    expect(workflowValidateResponseSchema.safeParse(report).success).toBe(
+      false,
+    );
+    expect(
+      workflowValidateResponseSchema.parse({
+        ...report,
+        currentPublication: null,
+      }).currentPublication,
+    ).toBeNull();
+    const currentPublication = {
+      versionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      versionNumber: 1,
+      matchesDraft: true,
+    };
+    expect(
+      workflowValidateResponseSchema.parse({ ...report, currentPublication })
+        .currentPublication,
+    ).toEqual(currentPublication);
+    for (const invalid of [
+      { ...currentPublication, versionId: 'unknown' },
+      { ...currentPublication, versionNumber: 0 },
+      { ...currentPublication, matchesDraft: 'true' },
+    ])
+      expect(
+        workflowValidateResponseSchema.safeParse({
+          ...report,
+          currentPublication: invalid,
+        }).success,
+      ).toBe(false);
+  });
   it('keeps expression and executable issue codes representable and declares checked snapshot/unavailability metadata', () => {
     for (const code of ['invalid_expression', 'executable_invalid'])
       expect(

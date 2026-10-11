@@ -271,7 +271,8 @@ describe('snapshot validation and publication ordering', () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({ rows: [row] })
-      .mockResolvedValueOnce(budget);
+      .mockResolvedValueOnce(budget)
+      .mockResolvedValueOnce({ rows: [] });
     const client = { query } as unknown as PoolClient;
     const validator = vi.fn().mockResolvedValue(invalid);
     const transactions = vi.fn();
@@ -289,6 +290,7 @@ describe('snapshot validation and publication ordering', () => {
       requireReader: vi.fn().mockResolvedValue(undefined),
       catalogs: {
         definitionCatalog: catalog,
+        executableCompiler: testExecutableCompiler,
         validateAuthoringGraph: validator,
       },
       transact,

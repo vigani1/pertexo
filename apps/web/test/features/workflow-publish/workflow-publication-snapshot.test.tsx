@@ -15,6 +15,7 @@ const etagB = `"draft.${'b'.repeat(43)}"`;
 const graph = { nodes: [], edges: [], settings: {} };
 const report = {
   valid: true,
+  currentPublication: null,
   issues: [],
   compatibility: {
     compatible: true,

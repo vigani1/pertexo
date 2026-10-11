@@ -149,7 +149,12 @@ export async function installEditorRoutes(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/validate`,
     (route) =>
       route.fulfill({
-        json: { valid: true, issues: [], compatibility: compatibility() },
+        json: {
+          valid: true,
+          currentPublication: null,
+          issues: [],
+          compatibility: compatibility(),
+        },
         headers: { etag: currentEtag(remote) },
       }),
   );

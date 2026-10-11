@@ -11,7 +11,7 @@ then rebase-merge only after CI passes. No new subsystem, role or CI job.
 - [x] 2. Make local invitations usable or explicitly unavailable; never 500.
 - [x] 3. Record the add-connection setup test in connection health.
 - [x] 4. Count missing or disconnected credentials in editor issues.
-- [ ] 5. Detect an unchanged live draft and explain reused publications.
+- [x] 5. Detect an unchanged live draft and explain reused publications.
 - [ ] 6. Fit and scroll the run-input dialog at 768 pixels high.
 - [ ] 7. Simplify workflow search, filters, selection and row actions.
 - [ ] 8. Add a step to the right of the selected step and link it forward.
@@ -60,3 +60,20 @@ These findings are feedback about running the workflow; the existing server
 validation continues to govern publication. A missing credential does not
 silently introduce a new publication rule. Restoring a credential refreshes
 the issue count without requiring a draft edit or another server validation.
+
+## Unchanged publications
+
+Slice 5 adds a current-publication comparison to the existing checked-draft
+response. It uses the injected publication compiler's executable checksum and
+the workflow's current published pointer, including when a higher-numbered
+version is retained. Presentation-only edits do not create execution changes;
+runtime, catalog and execution changes use the same identity as publication.
+There is no new stored format or database column.
+
+The editor disables Publish with “No changes since vN” only for its exact saved
+snapshot. Unsaved edits, unfinished inspector input and stale checks cannot
+disable it using an earlier comparison. A check inside an already-open publish
+lens also stops an unchanged draft. An uncertain original command remains
+recoverable. Publication receipts retain the server's reuse result: an already
+live version says “still live”; reactivating an older retained version says
+“live again”. Reuse does not animate a new version weaving into the canvas.

@@ -234,6 +234,11 @@ export type WorkflowAuthoringDatabase = Readonly<{
   ): Promise<Readonly<{
     draft: WorkflowDraftRecord;
     validation: GraphValidationResult;
+    currentPublication: Readonly<{
+      versionId: string;
+      versionNumber: number;
+      matchesDraft: boolean;
+    }> | null;
   }> | null>;
   getVersion(
     workspaceId: string,

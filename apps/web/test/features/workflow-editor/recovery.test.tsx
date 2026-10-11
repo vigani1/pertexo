@@ -28,6 +28,7 @@ import {
   versionBody,
   versionId,
   workflowApi,
+  workflowSummaryHandler,
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
 
@@ -128,6 +129,13 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     mockServer.use(
       identityHandler(() => identity),
       validHandler(undefined, etagA),
+      http.get(`${workflowApi}/versions`, () =>
+        HttpResponse.json({
+          items:
+            requests.length > 1 ? [versionBody(versionId, oneStepGraph)] : [],
+          nextCursor: null,
+        }),
+      ),
       http.post(`${workflowApi}/publish`, async ({ request }) => {
         requests.push({
           body: await request.clone().text(),
@@ -135,8 +143,9 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
           key: request.headers.get('idempotency-key'),
         });
         if (requests.length === 1) return HttpResponse.error();
+        mockServer.use(workflowSummaryHandler('Test workflow', versionId));
         return HttpResponse.json({
-          version: versionBody(versionId, emptyGraph),
+          version: versionBody(versionId, oneStepGraph),
           reused: true,
         });
       }),
@@ -184,7 +193,7 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     expect(requests[0]?.key).toBeTruthy();
     expect(requests[1]).toEqual(requests[0]);
     expect(
-      await screen.findByText('v1 is live', {}, { timeout: 4_000 }),
+      await screen.findByText('v1 is still live', {}, { timeout: 4_000 }),
     ).toBeVisible();
   });
 });

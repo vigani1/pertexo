@@ -1,12 +1,9 @@
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkflowPublication } from '../data/mutations/use-workflow-publication';
 import { useWorkflowRunSubmission } from '../data/mutations/use-workflow-run-submission';
+import type { SavedDraft } from '../data/mutations/use-workflow-draft-validation';
 
-export type SavedDraftIdentity = Readonly<{
-  etag: string;
-  generation: number;
-  revision: number;
-}>;
+export type SavedDraftIdentity = SavedDraft;
 
 export function useWorkflowCommandSession({
   apiClient,
@@ -55,7 +52,7 @@ export function useWorkflowCommandSession({
     ...(onRunCommandAccepted === undefined ? {} : { onRunCommandAccepted }),
   });
 
-  return { publication, runSubmission } as const;
+  return { publication, runSubmission, isSavedDraftCurrent } as const;
 }
 
 export type WorkflowCommandSession = ReturnType<

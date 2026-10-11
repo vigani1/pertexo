@@ -181,6 +181,7 @@ describe('workflow issues', () => {
     const groups = groupWorkflowIssues(
       {
         valid: false,
+        currentPublication: null,
         issues: [
           { path: '$', code: 'cycle', message: 'cycle contains a' },
           {
@@ -236,6 +237,7 @@ describe('workflow issues', () => {
     const groups = groupWorkflowIssues(
       {
         valid: false,
+        currentPublication: null,
         issues: [
           {
             path: `${body}.nodes.check.inputMappings.item`,

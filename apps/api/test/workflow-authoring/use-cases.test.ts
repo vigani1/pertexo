@@ -137,6 +137,7 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
     getWorkflow: vi.fn().mockResolvedValue(workflow()),
     getDraft: vi.fn().mockResolvedValue(draft()),
     validateDraft: vi.fn().mockResolvedValue({
+      currentPublication: null,
       draft: draft(),
       validation: validateWorkflowGraph(graph),
     }),
@@ -1084,6 +1085,7 @@ describe('workflow authoring application seams', () => {
     };
     const store = persistence({
       validateDraft: vi.fn().mockResolvedValue({
+        currentPublication: null,
         draft: draft({ compatibility }),
         validation: {
           ok: true,

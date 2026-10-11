@@ -20,6 +20,7 @@ import type { WorkflowValidationTarget } from '../model/validation-target';
 import type { PublicationReceipt } from '../data/mutations/use-workflow-publication';
 import type { WorkflowCommandSession } from '../hooks/use-workflow-command-session';
 import { latestVersionQueryOptions } from '../data/workflow-publish.queries';
+import { unchangedLiveVersion } from '../model/unchanged-publication';
 
 /**
  * "Edited since v4" once the draft moves on from what was just published.
@@ -139,7 +140,8 @@ export function WorkflowCommandActions({
 }>) {
   const [publishOpen, setPublishOpen] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
-  const [stamp, setStamp] = useState<PublicationReceipt>();
+  const [stamp, setStamp] =
+    useState<Readonly<{ receipt: PublicationReceipt; liveAgain: boolean }>>();
   const queryClient = useQueryClient();
   const { publication, runSubmission } = commandSession;
   const receipt = publication.publicationReceipt;
@@ -156,12 +158,26 @@ export function WorkflowCommandActions({
   const canPublish = workspace.capabilities.includes('workflow:publish');
   const canRun = workspace.capabilities.includes('run:start');
   const emptyHint = emptyDraftHint(graph, triggersAvailable);
+  const unchangedVersionNumber = unchangedLiveVersion(
+    publication,
+    workflow?.publishedVersionId,
+    commandSession.isSavedDraftCurrent,
+  );
+  const unchangedReason =
+    unchangedVersionNumber === undefined
+      ? undefined
+      : `No changes since v${String(unchangedVersionNumber)}`;
 
   async function confirmPublish() {
     const result = await publication.publish();
     if (result.kind !== 'published') return;
     setPublishOpen(false);
-    setStamp(result.receipt);
+    setStamp({
+      receipt: result.receipt,
+      liveAgain:
+        workflow?.publishedVersionId != null &&
+        workflow.publishedVersionId !== result.receipt.versionId,
+    });
     onPublished(result.receipt);
   }
 
@@ -197,8 +213,11 @@ export function WorkflowCommandActions({
       )}
       {canPublish ? (
         <PublishButton
-          versionLabel={versionLabel}
-          blockedReason={emptyHint?.label}
+          label={
+            unchangedReason ??
+            (versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`)
+          }
+          blockedReason={unchangedReason ?? emptyHint?.label}
           onClick={() => {
             publication.clearPublishError();
             setPublishOpen(true);
@@ -216,6 +235,7 @@ export function WorkflowCommandActions({
         error={publication.publishError}
         recoveryPending={publication.publishRecoveryPending}
         blockingGroups={issues.blockingGroups}
+        unchangedVersionNumber={unchangedVersionNumber}
         onPublish={() => void confirmPublish()}
         onFix={onFix}
       />
@@ -251,10 +271,12 @@ export function WorkflowCommandActions({
       />
       {stamp === undefined ? null : (
         <PublishedStamp
-          key={stamp.versionId}
+          key={stamp.receipt.versionId}
           workspaceId={workspace.id}
           workflowId={workflowId}
-          versionNumber={stamp.versionNumber}
+          versionNumber={stamp.receipt.versionNumber}
+          reused={stamp.receipt.reused}
+          liveAgain={stamp.liveAgain}
           hasTriggers={(summary?.triggerNames.length ?? 0) > 0}
           canRun={canRun}
           onRunNow={() => {

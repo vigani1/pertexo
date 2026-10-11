@@ -327,7 +327,11 @@ export class ValidateWorkflowDraftUseCase {
         );
         if (result === null)
           throw new WorkflowNotFoundError('Workflow is not visible');
-        return serializeWorkflowValidation(result.draft, result.validation);
+        return serializeWorkflowValidation(
+          result.draft,
+          result.validation,
+          result.currentPublication,
+        );
       },
     );
   }

@@ -112,11 +112,15 @@ describe('authoring API admission adapter', () => {
       path: '$.nodes.loop.structured.body.nodes.action.inputMappings.value',
       message: 'The expression cannot be parsed.',
     };
-    const result = serializeWorkflowValidation(draft, {
-      ...valid,
-      ok: false,
-      issues: [issue],
-    });
+    const result = serializeWorkflowValidation(
+      draft,
+      {
+        ...valid,
+        ok: false,
+        issues: [issue],
+      },
+      null,
+    );
     expect(result.body).toMatchObject({
       valid: false,
       issues: [issue],
@@ -131,7 +135,7 @@ describe('authoring API admission adapter', () => {
       }),
     );
     expect(
-      serializeWorkflowValidation({ ...draft, revision: 10 }, valid)
+      serializeWorkflowValidation({ ...draft, revision: 10 }, valid, null)
         .representationTag,
     ).not.toBe(result.representationTag);
   });
@@ -146,11 +150,15 @@ describe('authoring API admission adapter', () => {
         [field]: 'x'.repeat(field === 'path' ? 1025 : 501),
       };
       expect(() =>
-        serializeWorkflowValidation(draft, {
-          ...valid,
-          ok: false,
-          issues: [issue],
-        }),
+        serializeWorkflowValidation(
+          draft,
+          {
+            ...valid,
+            ok: false,
+            issues: [issue],
+          },
+          null,
+        ),
       ).toThrow(AuthoringValidationUnavailableError);
       const mapped = mapWorkflowAuthoringError(
         new InvalidWorkflowGraphError([issue]),

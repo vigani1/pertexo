@@ -291,7 +291,9 @@ function WorkflowEditorSession({
                     triggersAvailable={triggersAvailable}
                     onIssuesOpenChange={chrome.onIssuesOpenChange}
                     onFix={chrome.onFix}
-                    onPublished={effects.weaveIn}
+                    onPublished={(receipt) => {
+                      if (!receipt.reused) effects.weaveIn();
+                    }}
                   />
                 )
               }
