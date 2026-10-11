@@ -14,7 +14,7 @@ import {
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings';
 import { useInputMappingDraft } from '../input-mappings/use-draft';
-import { IncomingConnections } from '../incoming-connections';
+import { IncomingConnections } from '../incoming-links';
 import {
   InsertDataPicker,
   type InsertedSource,
