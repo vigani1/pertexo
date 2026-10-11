@@ -11,8 +11,8 @@ import { cn } from '@/lib/utils';
 const WEAVE_IN_MS = 1_450;
 
 /**
- * "v8 is live", pressed in once the canvas has woven the new version, with
- * the next useful steps. Reduced motion shows it at once, without motion.
+ * One notice, "v8 is live", pressed in once the canvas has woven the new
+ * version, with the next useful steps. Reduced motion shows it at once, without motion.
  */
 export function PublishedStamp({
   workspaceId,
@@ -55,51 +55,50 @@ export function PublishedStamp({
       className="pointer-events-none fixed top-24 right-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col items-end gap-2 lg:right-[var(--editor-right-inset,1rem)]"
     >
       {visible ? (
-        <>
-          <p
-            className={cn(
-              'rounded-lg bg-action px-3.5 py-2.5 font-heading text-[0.95rem] font-semibold text-action-foreground shadow-action',
-              !reducedMotion &&
-                !reused &&
-                'motion-safe:animate-[editor-stamp_2.6s_var(--ease-unspool)_both]',
-            )}
-          >
-            v{versionNumber} is{' '}
-            {reused ? (liveAgain ? 'live again' : 'still live') : 'live'}
-          </p>
-          <div className="lens pointer-events-auto flex w-full flex-col gap-3 rounded-lg p-3">
-            <div className="flex items-center justify-between gap-2">
-              <Status tone="success">Published</Status>
-              <Button
-                type="button"
-                size="icon-xs"
-                variant="ghost"
-                aria-label="Dismiss"
-                onClick={onDismiss}
-              >
-                <XIcon />
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {hasTriggers ? (
-                <Link
-                  to="/w/$workspaceId/workflows/$workflowId/triggers"
-                  params={{ workspaceId, workflowId }}
-                  className={buttonVariants({ size: 'sm', variant: 'outline' })}
-                >
-                  <ZapIcon data-icon="inline-start" />
-                  Open Triggers
-                </Link>
-              ) : null}
-              {canRun ? (
-                <Button type="button" size="sm" onClick={onRunNow}>
-                  <PlayIcon data-icon="inline-start" />
-                  Run now
-                </Button>
-              ) : null}
-            </div>
+        <div
+          className={cn(
+            'lens pointer-events-auto flex w-full flex-col gap-3 rounded-lg p-3',
+            !reducedMotion &&
+              !reused &&
+              'motion-safe:animate-[editor-stamp_2.6s_var(--ease-unspool)_both]',
+          )}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <Status tone="success">
+              <span className="font-heading text-[0.95rem] font-semibold text-foreground">
+                v{versionNumber} is{' '}
+                {reused ? (liveAgain ? 'live again' : 'still live') : 'live'}
+              </span>
+            </Status>
+            <Button
+              type="button"
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Dismiss"
+              onClick={onDismiss}
+            >
+              <XIcon />
+            </Button>
           </div>
-        </>
+          <div className="flex flex-wrap gap-2">
+            {hasTriggers ? (
+              <Link
+                to="/w/$workspaceId/workflows/$workflowId/triggers"
+                params={{ workspaceId, workflowId }}
+                className={buttonVariants({ size: 'sm', variant: 'outline' })}
+              >
+                <ZapIcon data-icon="inline-start" />
+                Open Triggers
+              </Link>
+            ) : null}
+            {canRun ? (
+              <Button type="button" size="sm" onClick={onRunNow}>
+                <PlayIcon data-icon="inline-start" />
+                Run now
+              </Button>
+            ) : null}
+          </div>
+        </div>
       ) : null}
     </div>
   );

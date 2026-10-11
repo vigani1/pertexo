@@ -81,28 +81,28 @@ export function groupStepChoices(
   query: string,
 ): readonly StepChoiceGroup[] {
   const needle = query.trim().toLowerCase();
+  const ranks = new Map<string, number>();
   const choices = placeableDefinitions(definitions).flatMap(
     (definition): StepChoice[] => {
       const step = describeStep(definition.definition.key, definition.family);
-      const haystack =
-        `${step.name} ${step.description} ${definition.definition.key}`.toLowerCase();
-      if (needle !== '' && !haystack.includes(needle)) return [];
-      return [
-        {
-          identity: definitionIdentity(
-            definition.definition.key,
-            definition.definition.version,
-          ),
-          definition,
-          step,
-        },
-      ];
+      const identity = definitionIdentity(
+        definition.definition.key,
+        definition.definition.version,
+      );
+      if (needle !== '') {
+        const rank = matchRank(step, definition.definition.key, needle);
+        if (rank === undefined) return [];
+        ranks.set(identity, rank);
+      }
+      return [{ identity, definition, step }];
     },
   );
-  return stepGroups.flatMap((group) => {
-    const grouped = choices.filter(
-      (choice) => choice.definition.family === group.family,
-    );
+  const rankOf = (choice: StepChoice) => ranks.get(choice.identity) ?? 0;
+  const groups = stepGroups.flatMap((group) => {
+    const grouped = choices
+      .filter((choice) => choice.definition.family === group.family)
+      // A stable sort: equally good matches keep the catalog's order.
+      .sort((left, right) => rankOf(left) - rankOf(right));
     if (grouped.length === 0) return [];
     const entries =
       needle === ''
@@ -110,6 +110,29 @@ export function groupStepChoices(
         : grouped.map((choice) => ({ kind: 'step' as const, choice }));
     return [{ ...group, choices: grouped, entries }];
   });
+  // The group holding the best match comes first, so Enter adds it.
+  return groups.sort(
+    (left, right) =>
+      Math.min(...left.choices.map(rankOf)) -
+      Math.min(...right.choices.map(rankOf)),
+  );
+}
+
+/**
+ * How well a step matches a search: its exact name, then a name that starts
+ * with the query, then any name match, then its description or key.
+ */
+function matchRank(
+  step: Readonly<{ name: string; description: string }>,
+  key: string,
+  needle: string,
+): number | undefined {
+  const name = step.name.toLowerCase();
+  if (name === needle) return 0;
+  if (name.startsWith(needle)) return 1;
+  if (name.includes(needle)) return 2;
+  if (`${step.description} ${key}`.toLowerCase().includes(needle)) return 3;
+  return undefined;
 }
 
 /**

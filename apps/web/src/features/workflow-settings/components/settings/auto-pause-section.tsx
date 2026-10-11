@@ -138,7 +138,7 @@ function WorkflowRule({
         label="Auto-pause for this workflow"
         description={
           current.enabled
-            ? 'When enforcement is enabled, schedules and webhooks pause after repeated failures. Runs in progress finish; manual runs and replays still work.'
+            ? 'Schedules and webhooks pause after repeated failures. Runs in progress finish; manual runs and replays still work.'
             : 'This workflow keeps starting runs however often it fails. Turning this off does not resume an existing pause.'
         }
       >
@@ -340,10 +340,6 @@ export function AutoPauseSection(scope: Scope) {
       title="Automatic pause"
       description="Configure when repeated failures should stop scheduled and webhook runs."
     >
-      <p className="mb-5 max-w-lg text-sm text-muted-foreground">
-        Automatic pauses depend on enforcement being enabled for the deployment
-        evaluator. Changing this rule does not enable it.
-      </p>
       <SettingsQueryState query={query} resource="The auto-pause rule" />
       {settings === undefined ? null : (
         <WorkflowRule settings={settings} scope={scope} />

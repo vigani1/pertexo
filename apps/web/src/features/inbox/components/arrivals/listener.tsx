@@ -77,12 +77,15 @@ export function InboxArrivals({
   scope,
   summary,
   quiet,
+  viewingRunId,
   findAnchor,
 }: Readonly<{
   scope: InboxScope;
   summary: WorkspaceInboxSummaryResponse | undefined;
   /** The inbox page is open: its list shows new failures in place. */
   quiet: boolean;
+  /** The run on screen; its own failure already shows there. */
+  viewingRunId?: string | undefined;
   findAnchor: () => InboxArrivalAnchor | undefined;
 }>) {
   const [manager] = useState<ArrivalManager>(() =>
@@ -144,7 +147,11 @@ export function InboxArrivals({
   }
 
   useInboxArrivals(scope, summary, (arrived) => {
-    if (!quiet) present(arrived);
+    if (quiet) return;
+    const elsewhere = arrived.filter(
+      (thread) => thread.latestRunId !== viewingRunId,
+    );
+    if (elsewhere.length > 0) present(elsewhere);
   });
 
   const flush = useEffectEvent(() => {

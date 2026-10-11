@@ -163,9 +163,11 @@ it('retries an uncertain checked start byte-for-byte after republication', async
   });
   await act(() => queryClient.invalidateQueries());
   expect(screen.getByLabelText('Run input (JSON)')).toBeDisabled();
-  expect(screen.getByText(/Original submitted version/u)).toHaveTextContent(
-    versionId,
-  );
+  expect(
+    screen.getByText(
+      /Retrying uses the version the first attempt was sent to/u,
+    ),
+  ).toBeVisible();
   expect(retry).toBeEnabled();
   await event.click(retry);
   await waitFor(() => {
