@@ -1,0 +1,15 @@
+{
+	admin off
+}
+
+{$APP_HOST} {
+	reverse_proxy web:8080 {
+		flush_interval -1
+	}
+}
+
+{$FILES_HOST} {
+	@administration path /rustfs/admin /rustfs/admin/* /minio/admin /minio/admin/*
+	respond @administration 404
+	reverse_proxy storage:9000
+}

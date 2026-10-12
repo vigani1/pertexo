@@ -227,15 +227,6 @@ const workerConfigSchema = z
   })
   .superRefine((value, context) => {
     if (
-      value.NODE_ENV === 'production' &&
-      value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
-    )
-      context.addIssue({
-        code: 'custom',
-        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
-        message: 'Production worker requires OTLP telemetry export',
-      });
-    if (
       value.NODE_ATTEMPT_HEARTBEAT_MILLIS >=
       value.NODE_ATTEMPT_LEASE_SECONDS * 1_000
     )

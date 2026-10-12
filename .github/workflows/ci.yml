@@ -70,6 +70,8 @@ jobs:
         run: pnpm format:check
       - name: Build
         run: pnpm build
+      - name: Single-server deployment checks
+        run: node --test infrastructure/single-server/test/*.test.mjs
       - name: Lint
         run: pnpm lint
       - name: Typecheck
@@ -185,6 +187,9 @@ jobs:
             pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
           API_SSE_RESILIENCE_INTEGRATION=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
+      - name: Qualify pinned beta storage
+        if: matrix.group == 'services'
+        run: node infrastructure/single-server/storage/qualify.mjs
       - name: Service logs
         if: failure()
         run: docker compose logs --no-color --timestamps

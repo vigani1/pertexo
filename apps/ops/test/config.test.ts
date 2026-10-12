@@ -298,11 +298,6 @@ describe('operator command config', () => {
       change: { OPERATOR_OUTBOX_EVENT_ID: 'not-a-uuid' },
       expected: /OPERATOR_OUTBOX_EVENT_ID/u,
     },
-    {
-      label: 'production without telemetry export',
-      change: { NODE_ENV: 'production' },
-      expected: /Production operator job requires OTLP telemetry export/u,
-    },
   ])(
     'rejects $label from an otherwise valid environment',
     ({ change, expected }) => {
@@ -351,7 +346,16 @@ describe('operator command config', () => {
     },
   );
 
-  it('accepts production only with an explicit telemetry endpoint', () => {
+  it('accepts production logs without an exporter', () => {
+    expect(
+      parseOperatorCommandConfig({
+        ...validOutboxEnvironment(),
+        NODE_ENV: 'production',
+      }).observability.otlpHttpEndpoint,
+    ).toBeUndefined();
+  });
+
+  it('accepts an explicit telemetry endpoint in production', () => {
     expect(
       parseOperatorCommandConfig({
         ...validOutboxEnvironment(),

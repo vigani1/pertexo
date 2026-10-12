@@ -102,13 +102,13 @@ describe('parseApiConfig', () => {
     });
   });
 
-  it('rejects production OTLP omission independently', () => {
+  it('accepts production logs without an optional OTLP exporter', () => {
     const environment = validDeployedEnvironment();
     delete environment.OTEL_EXPORTER_OTLP_ENDPOINT;
 
-    expect(() => parseApiConfig(environment)).toThrow(
-      'Production API requires OTLP telemetry export',
-    );
+    expect(
+      parseApiConfig(environment).observability.otlpHttpEndpoint,
+    ).toBeUndefined();
   });
 
   it('rejects deployed proxy omission independently', () => {

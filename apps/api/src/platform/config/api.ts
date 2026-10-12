@@ -46,58 +46,46 @@ const trustedProxyCidrsSchema = z
       .min(1),
   );
 
-const apiEnvironmentSchema = z
-  .object({
-    DATABASE_URL: z.url().refine((value) => value.startsWith('postgresql://'), {
-      message: 'DATABASE_URL must be a postgresql:// URL',
-    }),
-    DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(5_000),
-    DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(30_000),
-    DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
-    HOST: z.string().trim().min(1).default('0.0.0.0'),
-    NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
-    LOG_LEVEL: z
-      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
-      .default('info'),
-    OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
-    ...identityEnvironmentShape,
-    PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
-    REDIS_URL: z
-      .url()
-      .refine((value) => {
-        const parsed = new URL(value);
-        return (
-          (parsed.protocol === 'redis:' || parsed.protocol === 'rediss:') &&
-          parsed.hostname.length > 0
-        );
-      }, 'REDIS_URL must use redis:// or rediss:// with a hostname')
-      .optional(),
-    SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
-    TRUST_PROXY_CIDRS: trustedProxyCidrsSchema.optional(),
-    POSTGRES_OWNER_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_owner'),
-  })
-  .superRefine((value, context) => {
-    if (
-      value.NODE_ENV === 'production' &&
-      value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'Production API requires OTLP telemetry export',
-        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
-      });
-  });
+const apiEnvironmentSchema = z.object({
+  DATABASE_URL: z.url().refine((value) => value.startsWith('postgresql://'), {
+    message: 'DATABASE_URL must be a postgresql:// URL',
+  }),
+  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5_000),
+  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30_000),
+  DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
+  HOST: z.string().trim().min(1).default('0.0.0.0'),
+  NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+    .default('info'),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+  ...identityEnvironmentShape,
+  PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  REDIS_URL: z
+    .url()
+    .refine((value) => {
+      const parsed = new URL(value);
+      return (
+        (parsed.protocol === 'redis:' || parsed.protocol === 'rediss:') &&
+        parsed.hostname.length > 0
+      );
+    }, 'REDIS_URL must use redis:// or rediss:// with a hostname')
+    .optional(),
+  SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
+  TRUST_PROXY_CIDRS: trustedProxyCidrsSchema.optional(),
+  POSTGRES_OWNER_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_owner'),
+});
 
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 

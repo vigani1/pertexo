@@ -1,0 +1,225 @@
+name: pertexo-beta
+x-service: &service
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: '3' }
+  networks: [private]
+x-runtime: &runtime
+  <<: *service
+  image: ghcr.io/vigani1/pertexo:${SERVICE_VERSION:?Full commit required}
+  read_only: true
+  tmpfs: [/tmp]
+  stop_grace_period: 1m
+x-environment: &environment
+  NODE_ENV: production
+  SERVICE_VERSION: ${SERVICE_VERSION}
+  DATABASE_URL: ${DATABASE_URL:?}
+  REDIS_URL: ${REDIS_URL:?}
+  ARTIFACT_STORE_ENDPOINT: ${ARTIFACT_STORE_ENDPOINT:?}
+  ARTIFACT_STORE_REGION: ${ARTIFACT_STORE_REGION:?}
+  ARTIFACT_STORE_BUCKET: ${ARTIFACT_STORE_BUCKET:?}
+  ARTIFACT_STORE_ACCESS_KEY_ID: ${ARTIFACT_STORE_ACCESS_KEY_ID:?}
+  ARTIFACT_STORE_SECRET_ACCESS_KEY: ${ARTIFACT_STORE_SECRET_ACCESS_KEY:?}
+  ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
+  CONNECTION_KMS_KEY_REFERENCE: ${CONNECTION_KMS_KEY_REFERENCE:?}
+  CONNECTION_KMS_REGION: ${CONNECTION_KMS_REGION:?}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?}
+  PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN:?}
+  AUTH_MAIL_KEY: ${AUTH_MAIL_KEY:?}
+  AUTH_MAIL_KEY_VERSION: ${AUTH_MAIL_KEY_VERSION:?}
+  INVITATION_TOKEN_KEY: ${INVITATION_TOKEN_KEY:?}
+  INVITATION_TOKEN_KEY_VERSION: ${INVITATION_TOKEN_KEY_VERSION:?}
+services:
+  proxy:
+    <<: *service
+    image: caddy:2.11.7-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
+    ports: ['80:80', '443:443']
+    environment:
+      APP_HOST: ${APP_HOST:?}
+      FILES_HOST: ${FILES_HOST:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      private:
+        aliases: ['${APP_HOST}', '${FILES_HOST}']
+    depends_on: [web, storage]
+  web:
+    <<: *service
+    image: ghcr.io/vigani1/pertexo-web:${SERVICE_VERSION}
+    read_only: true
+    tmpfs: [/tmp, '/etc/nginx/conf.d:uid=101,gid=101,mode=0755']
+    environment:
+      PERTEXO_API_UPSTREAM: http://api:3000
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  api:
+    <<: *runtime
+    command: [node, apps/api/dist/main.js]
+    env_file: ['${BETA_STATE_DIR}/api.env']
+    environment:
+      <<: *environment
+      AUTH_MAIL_MODE: durable
+      AUTH_MAIL_FROM: ${AUTH_MAIL_FROM:?}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
+      SESSION_COOKIE_SECURE: 'true'
+      TRUST_PROXY_CIDRS: 172.30.42.0/24
+    depends_on:
+      migration: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      storage: { condition: service_started }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 15s
+  worker:
+    <<: *runtime
+    env_file: ['${BETA_STATE_DIR}/worker.env']
+    command:
+      [
+        /bin/sh,
+        -c,
+        'export WORKER_INSTANCE_ID=$$HOSTNAME; exec node
+        apps/worker/dist/main.js',
+      ]
+    environment:
+      <<: *environment
+      DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
+      AUTH_MAIL_EMAIL_API_KEY: ${AUTH_MAIL_EMAIL_API_KEY:?}
+      INVITATION_EMAIL_API_KEY: ${INVITATION_EMAIL_API_KEY:?}
+      INVITATION_EMAIL_FROM: ${INVITATION_EMAIL_FROM:?}
+    depends_on:
+      migration: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'test -f /tmp/pertexo-worker-ready && test ! -f
+          /tmp/pertexo-worker-not-ready && kill -0 1',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 15s
+  migration:
+    <<: *runtime
+    restart: 'no'
+    command: [node, packages/database/dist/migrate.js]
+    environment:
+      NODE_ENV: production
+      DATABASE_MIGRATION_URL: ${DATABASE_MIGRATION_URL:?}
+    depends_on:
+      postgres: { condition: service_healthy }
+  ops:
+    <<: *runtime
+    profiles: [ops]
+    restart: 'no'
+    command: [node, apps/ops/dist/main.js]
+    environment:
+      NODE_ENV: production
+      SERVICE_VERSION: ${SERVICE_VERSION}
+      DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
+  postgres:
+    <<: *service
+    image: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    environment:
+      POSTGRES_DB: pertexo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?}
+      POSTGRES_OWNER_USER: pertexo_owner
+      POSTGRES_MIGRATION_USER: pertexo_migration
+      POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?}
+      POSTGRES_APP_USER: pertexo_app
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?}
+      POSTGRES_MAINTENANCE_USER: pertexo_maintenance
+      POSTGRES_MAINTENANCE_PASSWORD: ${POSTGRES_MAINTENANCE_PASSWORD:?}
+    command:
+      [
+        postgres,
+        -c,
+        shared_preload_libraries=pg_stat_statements,
+        -c,
+        compute_query_id=on,
+        -c,
+        pg_stat_statements.max=20000,
+      ]
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d pertexo']
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    stop_grace_period: 1m
+  redis:
+    <<: *service
+    image: redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+    command:
+      [
+        redis-server,
+        --appendonly,
+        'yes',
+        --appendfsync,
+        everysec,
+        --maxmemory,
+        256mb,
+        --maxmemory-policy,
+        noeviction,
+        --requirepass,
+        '${REDIS_PASSWORD}',
+      ]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  storage:
+    <<: *service
+    image: rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
+    command: [/data]
+    environment:
+      RUSTFS_ACCESS_KEY: ${STORAGE_ADMIN_ACCESS_KEY_ID:?}
+      RUSTFS_SECRET_KEY: ${STORAGE_ADMIN_SECRET_ACCESS_KEY:?}
+      RUSTFS_CONSOLE_ENABLE: 'false'
+      RUSTFS_REGION: ${ARTIFACT_STORE_REGION}
+      RUSTFS_CORS_ALLOWED_ORIGINS: ${PUBLIC_WEB_ORIGIN}
+    volumes: [storage-data:/data]
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:9000/health]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    stop_grace_period: 1m
+networks:
+  private:
+    ipam:
+      config: [{ subnet: 172.30.42.0/24 }]
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:
+  caddy-data:
+  caddy-config:
