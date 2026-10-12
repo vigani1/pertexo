@@ -118,15 +118,15 @@ describe('workspace Usage', () => {
     ).toBeVisible();
     expect(current).toHaveTextContent('8 EB');
     expect(current).toHaveTextContent(
-      '2 running or waiting, 1 held for a queued run about to start',
+      '1 slot is held for a queued run about to start.',
     );
     expect(current).toHaveTextContent(
       'Files count from upload until they’re fully deleted',
     );
-    expect(current.querySelector('time')).toHaveAttribute(
-      'datetime',
-      capacity.asOf,
-    );
+    // The header shows the older of the two snapshot times.
+    expect(
+      document.querySelector('[data-slot="page-header-meta"] time'),
+    ).toHaveAttribute('datetime', '2026-09-15T10:00:00.000000Z');
     expect(await screen.findByText('Daily intake')).toBeVisible();
     const failed = screen.getByRole('list', {
       name: 'Activity by current run status',
@@ -182,9 +182,7 @@ describe('workspace Usage', () => {
     await screen.findByText('Workflow cccc…cccc', {}, coldStart);
     expect(screen.queryByText('Daily intake')).not.toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Current capacity requires both run and artifact read access.',
-      ),
+      screen.getByText('You need access to runs and files to see capacity.'),
     ).toBeVisible();
     expect(reads()).toBe(0);
   });
@@ -195,7 +193,7 @@ describe('workspace Usage', () => {
     });
     renderApp(path);
     await screen.findByText(
-      'Retained run activity requires run read access.',
+      'You need access to runs to see recent runs.',
       {},
       coldStart,
     );
@@ -364,29 +362,25 @@ describe('workspace Usage', () => {
       await screen.findByText('Old activity');
       status = 503;
       await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh retained run activity' }),
+        screen.getByRole('button', { name: 'Refresh recent runs' }),
       );
       await screen.findByText(/Couldn’t refresh. Showing results/u);
       expect(screen.getByText('Old activity')).toBeVisible();
       status = denial;
       await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh retained run activity' }),
+        screen.getByRole('button', { name: 'Refresh recent runs' }),
       );
       await waitFor(() =>
         expect(screen.queryByText('Old activity')).not.toBeInTheDocument(),
       );
       status = 503;
       await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh retained run activity' }),
+        screen.getByRole('button', { name: 'Refresh recent runs' }),
       );
-      await screen.findByText(
-        'Retained run activity couldn’t be loaded. Try again.',
-      );
+      await screen.findByText('Recent runs couldn’t be loaded. Try again.');
       expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: '24 hours' }));
-      await screen.findByText(
-        'Retained run activity couldn’t be loaded. Try again.',
-      );
+      await screen.findByText('Recent runs couldn’t be loaded. Try again.');
       expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
       await act(() =>
         router.navigate({
@@ -401,15 +395,13 @@ describe('workspace Usage', () => {
           search: { window: '6h' },
         }),
       );
-      await screen.findByText(
-        'Retained run activity couldn’t be loaded. Try again.',
-      );
+      await screen.findByText('Recent runs couldn’t be loaded. Try again.');
       expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
       expect(screen.getByText('8 PB', { selector: 'p' })).toBeVisible();
       status = 200;
       fresh = true;
       await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh retained run activity' }),
+        screen.getByRole('button', { name: 'Refresh recent runs' }),
       );
       expect(await screen.findByText('Fresh activity')).toBeVisible();
       expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
@@ -460,14 +452,14 @@ describe('workspace Usage', () => {
     );
     renderApp(path);
     await screen.findByText(
-      'Retained run activity couldn’t be loaded. Try again.',
+      'Recent runs couldn’t be loaded. Try again.',
       {},
       coldStart,
     );
     expect(screen.getByText('8 PB', { selector: 'p' })).toBeVisible();
     failing = false;
     await userEvent.click(
-      screen.getByRole('button', { name: 'Refresh retained run activity' }),
+      screen.getByRole('button', { name: 'Refresh recent runs' }),
     );
     expect(
       await screen.findByText('No workflow runs in this window.'),

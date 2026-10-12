@@ -3,10 +3,15 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
+import {
+  PageHeader,
+  PageHeaderMeta,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
 import { Notice } from '@/components/ui/notice';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ApiClient } from '@/lib/api/client';
+import { formatShortTime } from '@/lib/format/time';
 import { CurrentCapacity } from '../components/current-capacity';
 import { RetainedActivity } from '../components/retained-activity';
 import { UsageSnapshot } from '../components/usage-snapshot';
@@ -23,6 +28,20 @@ const windows = {
   '24h': '24 hours',
   '7d': '7 days',
 } as const;
+
+const windowPhrases: Readonly<Record<keyof typeof windows, string>> = {
+  '1h': 'in the last hour',
+  '6h': 'in the last 6 hours',
+  '24h': 'in the last 24 hours',
+  '7d': 'in the last 7 days',
+};
+
+/** The older of two snapshot times: the page is only as fresh as that. */
+function olderOf(...times: readonly (string | undefined)[]) {
+  return times
+    .filter((time) => time !== undefined)
+    .sort((left, right) => Date.parse(left) - Date.parse(right))[0];
+}
 
 export function UsagePage({
   apiClient,
@@ -60,21 +79,29 @@ export function UsagePage({
     canReadCapacity && !accessLost(capacity.error) ? capacity.data : undefined;
   const activityData =
     canReadRuns && !accessLost(activity.error) ? activity.data : undefined;
+  const asOf = olderOf(capacityData?.asOf, activityData?.asOf);
   return (
     <div className="flex flex-col gap-10">
       <PageHeader>
         <div>
           <PageHeaderTitle>Usage</PageHeaderTitle>
+          {asOf === undefined ? null : (
+            <PageHeaderMeta>
+              <span>
+                as of <time dateTime={asOf}>{formatShortTime(asOf)}</time>
+              </span>
+            </PageHeaderMeta>
+          )}
           <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-            Current operational capacity and retained run activity. These are
-            separate snapshots, not billing or consumed-operation meters.
+            What this workspace is using right now, and how many runs started
+            recently.
           </p>
         </div>
       </PageHeader>
       {canReadCapacity ? (
         <UsageSnapshot
           title="Current capacity"
-          asOf={capacityData?.asOf}
+          snapshotAt={capacityData?.asOf}
           error={capacity.error}
           pending={capacity.isPending}
           retrying={capacity.isFetching}
@@ -94,54 +121,50 @@ export function UsagePage({
           <Notice>
             {workspace.status !== 'active'
               ? 'Current capacity is available only for an active workspace.'
-              : 'Current capacity requires both run and artifact read access.'}
+              : 'You need access to runs and files to see capacity.'}
           </Notice>
         </section>
       )}
       {canReadRuns ? (
-        <div className="space-y-4">
-          <ToggleGroup
-            aria-label="Activity window"
-            value={[search.window]}
-            onValueChange={(values) => {
-              if (values[0] !== undefined)
-                onSearchChange(parseUsageSearch({ window: values[0] }));
-            }}
-          >
-            {Object.entries(windows).map(([value, label]) => (
-              <ToggleGroupItem key={value} value={value}>
-                {label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-          <UsageSnapshot
-            title="Retained run activity"
-            asOf={activityData?.asOf}
-            error={activity.error}
-            pending={activity.isPending}
-            retrying={activity.isFetching}
-            onRetry={() => {
-              void activity.refetch();
-            }}
-          >
-            {activityData === undefined ? null : (
-              <RetainedActivity
-                snapshot={activityData}
-                workspaceId={workspace.id}
-                canReadWorkflowNames={workspace.capabilities.includes(
-                  'workflow:read',
-                )}
-              />
-            )}
-          </UsageSnapshot>
-          <p className="text-xs text-subtle-foreground">
-            Fixed durations do not use calendar resets or timezone settings.
-            Activity and current capacity refresh independently every 30 seconds
-            while this page is visible.
-          </p>
-        </div>
+        <UsageSnapshot
+          title="Recent runs"
+          actions={
+            <ToggleGroup
+              aria-label="Activity window"
+              value={[search.window]}
+              onValueChange={(values) => {
+                if (values[0] !== undefined)
+                  onSearchChange(parseUsageSearch({ window: values[0] }));
+              }}
+            >
+              {Object.entries(windows).map(([value, label]) => (
+                <ToggleGroupItem key={value} value={value}>
+                  {label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          }
+          snapshotAt={activityData?.asOf}
+          error={activity.error}
+          pending={activity.isPending}
+          retrying={activity.isFetching}
+          onRetry={() => {
+            void activity.refetch();
+          }}
+        >
+          {activityData === undefined ? null : (
+            <RetainedActivity
+              snapshot={activityData}
+              windowPhrase={windowPhrases[search.window]}
+              workspaceId={workspace.id}
+              canReadWorkflowNames={workspace.capabilities.includes(
+                'workflow:read',
+              )}
+            />
+          )}
+        </UsageSnapshot>
       ) : (
-        <Notice>Retained run activity requires run read access.</Notice>
+        <Notice>You need access to runs to see recent runs.</Notice>
       )}
     </div>
   );

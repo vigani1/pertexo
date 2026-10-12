@@ -62,18 +62,16 @@ test('reports real current capacity and retained activity with exact drilldowns'
     current.getByRole('figure', { name: '11 B stored of 1 GB' }),
   ).toBeVisible();
   await expect(current).toContainText('of 1 GB');
-  await expect(current).toContainText('1 running or waiting.');
+  await expect(current).toContainText('1 / 5');
   const oneHour = workflowRunStatisticsResponseSchema.parse(
     await (await oneHourResponse).json(),
   );
   expect(oneHour.window.total).toBe(3);
-  const activity = page.getByRole('region', { name: 'Retained run activity' });
+  const activity = page.getByRole('region', { name: 'Recent runs' });
   const renderedTotal = activity
     .locator('p')
-    .filter({ hasText: 'retained runs created in this window' });
-  await expect(renderedTotal).toHaveText(
-    '3 retained runs created in this window',
-  );
+    .filter({ hasText: /runs? started in the last/u });
+  await expect(renderedTotal).toHaveText('3 runs started in the last hour');
   const sixHourResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/run-statistics?') &&
@@ -86,9 +84,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
     await (await sixHourResponse).json(),
   );
   expect(sixHour.window.total).toBe(4);
-  await expect(renderedTotal).toHaveText(
-    '4 retained runs created in this window',
-  );
+  await expect(renderedTotal).toHaveText('4 runs started in the last 6 hours');
   await expect(page).toHaveURL(/window=6h/u);
   const failed = page
     .getByRole('list', { name: 'Activity by current run status' })
@@ -123,21 +119,17 @@ test('reports real current capacity and retained activity with exact drilldowns'
       new URL(response.url()).searchParams.get('breakdown') === 'workflow' &&
       response.status() === 200,
   );
-  await page
-    .getByRole('button', { name: 'Refresh retained run activity' })
-    .click();
+  await page.getByRole('button', { name: 'Refresh recent runs' }).click();
   const mobile = workflowRunStatisticsResponseSchema.parse(
     await (await mobileResponse).json(),
   );
   expect(mobile.window.total).toBe(4);
-  await expect(renderedTotal).toHaveText(
-    '4 retained runs created in this window',
-  );
+  await expect(renderedTotal).toHaveText('4 runs started in the last 6 hours');
   await expect(
-    page.getByRole('button', { name: 'Refresh retained run activity' }),
+    page.getByRole('button', { name: 'Refresh recent runs' }),
   ).toBeEnabled();
   await expect(
-    activity.getByRole('link', { name: 'View runs in this window' }),
+    activity.getByRole('link', { name: 'View these runs' }),
   ).toBeVisible();
   expect(
     await page.evaluate(
