@@ -117,11 +117,9 @@ for (const screen of [
       await page.goto(`/w/${workspaceId}/workflows`);
       const rows = page.getByRole('list', { name: 'Workflows', exact: true });
       const alphaTitle = rows.getByRole('link', { name: 'Alpha', exact: true });
-      const alphaRow = rows
-        .getByRole('listitem')
-        .filter({
-          has: page.getByRole('link', { name: 'Alpha', exact: true }),
-        });
+      const alphaRow = rows.getByRole('listitem').filter({
+        has: page.getByRole('link', { name: 'Alpha', exact: true }),
+      });
       const betaRow = rows
         .getByRole('listitem')
         .filter({ has: page.getByRole('link', { name: 'Beta', exact: true }) });
