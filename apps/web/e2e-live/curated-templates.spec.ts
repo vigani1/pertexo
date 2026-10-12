@@ -94,6 +94,12 @@ test('owned complete examples retain historical origin through independent edits
       exact: true,
     });
     await expect(choice).toBeEnabled();
+    // What the example takes, its limits and its effects are one fold away
+    // on its card, before anything is chosen.
+    await dialog
+      .getByRole('article', { name: descriptor.title, exact: true })
+      .getByText('Details', { exact: true })
+      .click();
     await expect(
       dialog.getByText(descriptor.inputSummary, { exact: true }),
     ).toBeVisible();
