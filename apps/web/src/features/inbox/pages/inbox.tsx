@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/empty';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ApiClient } from '@/lib/api/client';
 import { isForbidden, isNotFound } from '@/lib/api/error-copy';
@@ -130,13 +130,24 @@ function InboxEmpty({ filter }: Readonly<{ filter: WorkspaceInboxFilter }>) {
   );
 }
 
+/** Notices loading in their own shape: a ring, a name and a thread. */
 function InboxSkeleton() {
   return (
-    <ul aria-hidden="true" className="flex flex-col gap-2">
-      {[0, 1, 2].map((row) => (
-        <li key={row} className="px-3 py-3">
-          <Skeleton className="h-4 w-1/3" />
-          <Skeleton className="mt-2 h-3 w-1/2" />
+    <ul aria-hidden="true" className="flex flex-col">
+      {[38, 52, 30].map((width, order) => (
+        <li
+          key={width}
+          className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-4 px-3 py-4"
+        >
+          <span className="size-8 rounded-full border border-border" />
+          <div className="flex flex-col gap-2 pt-1">
+            <Skeleton className="h-3" style={{ width: `${String(width)}%` }} />
+            <Skeleton
+              className="h-2.5"
+              style={{ width: `${String(width + 20)}%` }}
+            />
+            <SkeletonThread order={order} className="mt-3 w-full" />
+          </div>
         </li>
       ))}
     </ul>
