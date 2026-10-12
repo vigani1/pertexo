@@ -45,12 +45,9 @@ export function WorkspaceNameField({
     onReloaded: onWorkspaceChanged,
     onAccessLost,
   });
+  const type = cn('text-sm font-semibold', nameClassName);
   const display = (
-    <span
-      className={cn('min-w-0 text-sm font-semibold break-all', nameClassName)}
-    >
-      {workspace.name}
-    </span>
+    <span className={cn('min-w-0 break-words', type)}>{workspace.name}</span>
   );
   if (
     workspace.status !== 'active' ||
@@ -64,8 +61,7 @@ export function WorkspaceNameField({
       revision={workspace.revision}
       subject="workspace"
       label="Workspace name"
-      // The row already says Name; the field keeps it for readers.
-      className="[&_[data-slot=field-label]]:sr-only"
+      textClassName={type}
       validate={nameError}
       command={command}
       onSave={(name, expectedRevision) =>

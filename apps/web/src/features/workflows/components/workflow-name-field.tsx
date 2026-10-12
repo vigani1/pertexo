@@ -16,6 +16,8 @@ type WorkflowNameProps = Readonly<{
   workflow: WorkflowSummary;
   /** Layout of the editing form, e.g. a row in the hub bar. */
   className?: string;
+  /** The name's type, kept while it is edited in place. */
+  textClassName?: string;
   /** How the name reads when not editing. */
   children: ReactNode;
 }>;
@@ -26,6 +28,7 @@ function EditableWorkflowName({
   workspace,
   workflow,
   className,
+  textClassName,
   children,
 }: WorkflowNameProps) {
   const notifications = useNotifications();
@@ -48,6 +51,7 @@ function EditableWorkflowName({
       command={command}
       onSave={command.start}
       {...(className === undefined ? {} : { className })}
+      {...(textClassName === undefined ? {} : { textClassName })}
     >
       {children}
     </InlineRename>

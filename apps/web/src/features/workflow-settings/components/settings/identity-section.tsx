@@ -66,8 +66,7 @@ export function IdentitySection({
                 userId={userId}
                 workspace={workspace}
                 workflow={workflow}
-                // The row already says Name; the field keeps it for readers.
-                className="[&_[data-slot=field-label]]:sr-only"
+                textClassName="text-base font-semibold"
               >
                 <span className="min-w-0 text-base font-semibold break-words">
                   {workflow.name}
