@@ -1,6 +1,6 @@
 # Single-server beta deployment
 
-Status: proposed 2026-10-12. The owner wants a private beta that costs nothing,
+Status: accepted 2026-10-12; implementation in progress. The owner wants a private beta that costs nothing,
 or close to it, before any paid hosting. ADR 015 and ADR 028 stay the target
 for paying customers: AWS in Frankfurt with Terraform and startup credits. This
 plan adds a cheaper first home behind the same image, settings and migrations.
@@ -134,6 +134,22 @@ the outbox forever.
 ## Slices
 
 One PR each, in order. The first PR also adds this plan.
+
+### Implementation tracker
+
+Checked items have their repository implementation and local checks complete;
+their PR records CI and merge. This tracker does not claim a live launch or a
+restore drill without the owner's accounts.
+
+- [x] 1. ADR 071 and this plan.
+- [ ] 2. Runtime and web images, proxy scheme, worker settings and ARM publishing.
+- [ ] 3. Single-server stack, secrets, deploy command and runbook.
+- [ ] 4. Nightly backups, fresh-stack restore and timer.
+- [ ] 5. Manual deployment workflow with CI and SSH verification.
+- [ ] 6. Owner-assisted first launch, smoke tests and restore drill; automatic
+      deploys only after a stable week. Not part of the current implementation.
+
+### Slice details
 
 1. **ADR 071, single-server beta.** Records the topology, what the beta gives
    up, and that AWS remains the paid target.
