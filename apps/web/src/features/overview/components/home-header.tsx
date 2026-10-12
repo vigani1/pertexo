@@ -13,7 +13,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LiveRunCounts, RunCount } from '@/features/workflow-runs/loom.public';
 import type { RunStatistics } from '@/features/workflow-runs/queries.public';
-import { formatClock } from '@/lib/format/time';
+import { formatShortTime } from '@/lib/format/time';
 import { shortcut } from '@/lib/shortcut-keys';
 
 /**
@@ -48,7 +48,7 @@ export function HomeHeader({
               count={statistics.window.byStatus.failed}
               label="failed in 24 h"
             />
-            <span>as of {formatClock(statistics.asOf)}</span>
+            <span>as of {formatShortTime(statistics.asOf)}</span>
           </PageHeaderMeta>
         )}
       </div>
