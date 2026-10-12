@@ -13,7 +13,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Empty, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import type { ApiClient } from '@/lib/api/client';
-import type { WorkflowRowActions } from '../list/workflow-row-actions';
+import { cn } from '@/lib/utils';
+import {
+  ROW_REVEAL_CLASS,
+  type WorkflowRowActions,
+} from '../list/workflow-row-actions';
 import { WorkflowRows, WorkflowListFooter } from '../list/workflow-rows';
 import { canEditOrganization } from './editing';
 import { WorkflowOrganizationDialog } from './dialog';
@@ -54,36 +58,40 @@ export function WorkflowOrganizedResults({
   });
   const canEdit = canEditOrganization(workspace, [], 'move');
   const byId = new Map(items.map((item) => [item.workflow.id, item]));
-  function controls(id: string): ReactNode {
+  function selectionControl(id: string): ReactNode {
     const item = byId.get(id);
     if (item === undefined) return null;
     const allowed = canEditOrganization(workspace, [item], 'move');
-    if (!allowed && item.organization.tags.length === 0) return null;
+    if (!allowed) return null;
     return (
-      <div className="relative z-10 flex flex-wrap items-center gap-2">
-        {allowed ? (
-          <Checkbox
-            aria-label={`Select ${item.workflow.name}`}
-            checked={selected.includes(id)}
-            disabled={
-              editing !== undefined ||
-              (!selected.includes(id) && selected.length >= 50)
-            }
-            onCheckedChange={(checked) => {
-              setSelected((previous) =>
-                checked
-                  ? [...previous.filter((entry) => entry !== id), id]
-                  : previous.filter((entry) => entry !== id),
-              );
-            }}
-          />
-        ) : null}
-        {item.organization.tags.length === 0 ? null : (
-          <span className="text-xs text-muted-foreground">
-            {item.organization.tags.map((tag) => tag.key).join(' · ')}
-          </span>
+      <Checkbox
+        aria-label={`Select ${item.workflow.name}`}
+        className={cn(
+          'size-8 pointer-coarse:size-11',
+          currentSelected.length === 0 && ROW_REVEAL_CLASS,
         )}
-      </div>
+        checked={selected.includes(id)}
+        disabled={
+          editing !== undefined ||
+          (!selected.includes(id) && selected.length >= 50)
+        }
+        onCheckedChange={(checked) => {
+          setSelected((previous) =>
+            checked
+              ? [...previous.filter((entry) => entry !== id), id]
+              : previous.filter((entry) => entry !== id),
+          );
+        }}
+      />
+    );
+  }
+  function tags(id: string): ReactNode {
+    const item = byId.get(id);
+    if (item === undefined || item.organization.tags.length === 0) return null;
+    return (
+      <span className="text-xs text-muted-foreground">
+        {item.organization.tags.map((tag) => tag.key).join(' · ')}
+      </span>
     );
   }
   return (
@@ -139,7 +147,8 @@ export function WorkflowOrganizedResults({
           workspace={workspace}
           workflows={items.map((item) => item.workflow)}
           actions={actions}
-          organizationControls={controls}
+          rowSelection={selectionControl}
+          rowTags={tags}
           rowMenu={(id, runnable) => {
             const item = byId.get(id);
             if (item === undefined) return null;
