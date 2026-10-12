@@ -32,8 +32,8 @@ export function ConnectionUsage({
       <div>
         <h3 className="font-semibold">Used by</h3>
         <p className="text-xs text-muted-foreground">
-          Retained published versions, including historical versions used by
-          pinned runs. Drafts aren’t included.
+          Published versions that use it, including older ones runs still rely
+          on. Drafts aren’t counted.
         </p>
       </div>
       {!canRead ? (

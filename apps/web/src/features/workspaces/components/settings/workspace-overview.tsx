@@ -31,8 +31,9 @@ function counted(count: number, one: string, many: string): string {
 }
 
 /**
- * One thing that lives in the workspace: how many there are, in a large
- * figure, a line about them, and the whole tile opens their page.
+ * One column of the ledger: how many there are, in a large figure, a line
+ * about them, and the whole column opens their page. Page content lies flat,
+ * so columns are ruled by hairlines rather than framed as cards.
  */
 function OverviewTile({
   workspaceId,
@@ -60,7 +61,7 @@ function OverviewTile({
     <Link
       to={to}
       params={{ workspaceId }}
-      className="group flex min-h-36 flex-col rounded-xl border border-border bg-card/40 p-4 outline-none transition-colors duration-150 hover:border-border-strong hover:bg-card/70 focus-ring motion-reduce:transition-none"
+      className="group flex min-h-32 flex-col border-border px-4 py-4 outline-none transition-colors duration-150 not-first:border-l hover:bg-white/[0.03] focus-ring max-xl:odd:border-l-0 max-xl:nth-[n+3]:border-t motion-reduce:transition-none"
     >
       <span className="flex items-center justify-between text-muted-foreground [&_svg]:size-4">
         {icon}
@@ -73,7 +74,7 @@ function OverviewTile({
         {loading ? (
           <Skeleton className="h-8 w-10" />
         ) : (
-          <span className="font-display text-4xl leading-none tabular-nums [--display-optical-size:32]">
+          <span className="font-display text-5xl leading-none tabular-nums [--display-optical-size:40]">
             {failed || count === undefined ? '—' : String(count)}
             {more ? '+' : ''}
           </span>
@@ -278,7 +279,7 @@ export function WorkspaceOverview({
     workspace.capabilities.includes(capability);
   const scope = { apiClient, userId, workspaceId: workspace.id };
   return (
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 border-y border-border xl:grid-cols-4">
       {can('workflow:read') ? <WorkflowsTile {...scope} /> : null}
       {can('member:read') ? <MembersTile {...scope} /> : null}
       {can('connection:read') ? <ConnectionsTile {...scope} /> : null}
