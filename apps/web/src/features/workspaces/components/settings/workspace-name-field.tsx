@@ -24,6 +24,7 @@ export function WorkspaceNameField({
   onWorkspaceChanged,
   onAccessLost,
   nameClassName,
+  onDraftChange,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -32,6 +33,8 @@ export function WorkspaceNameField({
   onAccessLost: () => void;
   /** How the name reads when it isn't being edited. */
   nameClassName?: string;
+  /** The name as typed, and `undefined` once editing ends. */
+  onDraftChange?: (draft: string | undefined) => void;
 }>) {
   const notifications = useNotifications();
   const command = useWorkspaceRename({
@@ -62,6 +65,7 @@ export function WorkspaceNameField({
       subject="workspace"
       label="Workspace name"
       textClassName={type}
+      {...(onDraftChange === undefined ? {} : { onDraftChange })}
       validate={nameError}
       command={command}
       onSave={(name, expectedRevision) =>
