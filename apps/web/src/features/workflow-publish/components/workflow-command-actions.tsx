@@ -187,43 +187,52 @@ export function WorkflowCommandActions({
 
   return (
     <>
-      <IssuesChip
-        state={issues}
-        emptyHint={emptyHint}
-        open={issuesOpen}
-        onOpenChange={onIssuesOpenChange}
-      />
-      {canRun ? (
-        <RunMenu
-          published={workflow === undefined || everPublished}
-          pending={runSubmission.pending}
-          acceptedRunPending={runSubmission.acceptedRunId !== undefined}
-          unresolvedRun={runSubmission.retryAvailable}
-          onRunNow={() => {
-            runNow();
-          }}
-          onRunWithInput={() => {
-            setRunOpen(true);
-          }}
-          onOpenAcceptedRun={() => void runSubmission.openAcceptedRun()}
+      <div className="flex min-w-0 items-center gap-1.5 max-sm:flex-1">
+        <IssuesChip
+          state={issues}
+          emptyHint={emptyHint}
+          open={issuesOpen}
+          onOpenChange={onIssuesOpenChange}
         />
-      ) : null}
-      {receipt === undefined ? null : (
-        <EditedSinceNote receipt={receipt} draft={draft} />
-      )}
-      {canPublish ? (
-        <PublishButton
-          label={
-            unchangedReason ??
-            (versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`)
-          }
-          blockedReason={unchangedReason ?? emptyHint?.label}
-          onClick={() => {
-            publication.clearPublishError();
-            setPublishOpen(true);
-          }}
-        />
-      ) : null}
+        {canRun ? (
+          <RunMenu
+            published={workflow === undefined || everPublished}
+            pending={runSubmission.pending}
+            acceptedRunPending={runSubmission.acceptedRunId !== undefined}
+            unresolvedRun={runSubmission.retryAvailable}
+            onRunNow={() => {
+              runNow();
+            }}
+            onRunWithInput={() => {
+              setRunOpen(true);
+            }}
+            onOpenAcceptedRun={() => void runSubmission.openAcceptedRun()}
+          />
+        ) : null}
+        {receipt === undefined ? null : (
+          <EditedSinceNote receipt={receipt} draft={draft} />
+        )}
+        {canPublish ? (
+          <PublishButton
+            {...(unchangedVersionNumber === undefined
+              ? {}
+              : {
+                  compactLabel: 'No changes',
+                })}
+            label={
+              unchangedReason ??
+              (versionLabel === undefined
+                ? 'Publish'
+                : `Publish ${versionLabel}`)
+            }
+            blockedReason={unchangedReason ?? emptyHint?.label}
+            onClick={() => {
+              publication.clearPublishError();
+              setPublishOpen(true);
+            }}
+          />
+        ) : null}
+      </div>
       <PublishDialog
         open={publishOpen}
         onOpenChange={setPublishOpen}

@@ -1,10 +1,14 @@
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { useRef, type ReactNode } from 'react';
+import { BracesIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { WorkflowHubBar } from '@/features/workflows/hub.public';
 import { PatternGlyph } from '@/features/workflows/shape.public';
 import type { ApiClient } from '@/lib/api/client';
 import { useEditorStore } from '../../model/state/context';
-import { CompactHistoryMenu, HistoryControls } from './history-controls';
+import { HistoryMenuItems, HistoryControls } from './history-controls';
 import { LiveVersion } from './live-version';
 import { SaveState } from './save-state';
 import { ShortcutSheet } from './shortcut-sheet';
@@ -53,63 +57,95 @@ export function EditorCommandBar({
       state.conflict !== null,
   );
   const moreRef = useRef<HTMLButtonElement>(null);
+  const contractBlocked = useEditorStore((state) => state.inspectorScratch);
+  function finalFocus() {
+    const trigger = moreRef.current;
+    return trigger !== null && trigger.getClientRects().length > 0
+      ? trigger
+      : true;
+  }
   return (
-    <WorkflowHubBar
-      apiClient={apiClient}
-      userId={userId}
-      workspace={workspace}
-      workflowId={workflowId}
-      workflow={workflow}
-      activeTab="build"
-      duplicateBlocked={duplicateBlocked}
-      glyph={
-        <PatternGlyph
-          graph={graph}
-          muted={(workflow?.publishedVersionId ?? null) === null}
-          className="hidden sm:block"
-        />
-      }
-      detail={
-        <>
-          <LiveVersion
-            apiClient={apiClient}
-            userId={userId}
-            workspaceId={workspace.id}
-            workflow={workflow}
+    <DeclarationDialog
+      editable={!paused && workspace.capabilities.includes('workflow:update')}
+      finalFocus={finalFocus}
+    >
+      <WorkflowHubBar
+        apiClient={apiClient}
+        userId={userId}
+        workspace={workspace}
+        workflowId={workflowId}
+        workflow={workflow}
+        activeTab="build"
+        duplicateBlocked={duplicateBlocked}
+        overflowRef={moreRef}
+        mobileActions={
+          <>
+            <DialogTrigger
+              render={<DropdownMenuItem />}
+              disabled={contractBlocked}
+              aria-label="Workflow contract"
+            >
+              <BracesIcon aria-hidden="true" />
+              Contract
+            </DialogTrigger>
+            <HistoryMenuItems
+              onUndo={onUndo}
+              onRedo={onRedo}
+              onShowShortcuts={() => {
+                onShortcutsOpenChange(true);
+              }}
+            />
+          </>
+        }
+        glyph={
+          <PatternGlyph
+            graph={graph}
+            muted={(workflow?.publishedVersionId ?? null) === null}
+            className="hidden sm:block"
           />
-          <SaveState onRetry={onRetrySave} onReview={onReviewConflict} />
-        </>
-      }
-      actions={
-        <>
-          <DeclarationDialog
-            editable={
-              !paused && workspace.capabilities.includes('workflow:update')
-            }
-          />
-          <HistoryControls
-            onUndo={onUndo}
-            onRedo={onRedo}
-            className="hidden sm:flex"
-          />
-          <ShortcutSheet
-            open={shortcutsOpen}
-            onOpenChange={onShortcutsOpenChange}
-            triggerClassName="hidden sm:inline-flex"
-            fallbackAnchor={moreRef}
-          />
-          <CompactHistoryMenu
-            triggerRef={moreRef}
-            className="sm:hidden"
-            onUndo={onUndo}
-            onRedo={onRedo}
-            onShowShortcuts={() => {
-              onShortcutsOpenChange(true);
-            }}
-          />
-          {commands}
-        </>
-      }
-    />
+        }
+        detail={
+          <>
+            <LiveVersion
+              apiClient={apiClient}
+              userId={userId}
+              workspaceId={workspace.id}
+              workflow={workflow}
+            />
+            <SaveState onRetry={onRetrySave} onReview={onReviewConflict} />
+          </>
+        }
+        actions={
+          <>
+            <DialogTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:inline-flex"
+                />
+              }
+              disabled={contractBlocked}
+              aria-label="Workflow contract"
+            >
+              <BracesIcon aria-hidden="true" />
+              Contract
+            </DialogTrigger>
+            <HistoryControls
+              onUndo={onUndo}
+              onRedo={onRedo}
+              className="hidden sm:flex"
+            />
+            <ShortcutSheet
+              open={shortcutsOpen}
+              onOpenChange={onShortcutsOpenChange}
+              triggerClassName="hidden sm:inline-flex"
+              fallbackAnchor={moreRef}
+            />
+            {commands}
+          </>
+        }
+      />
+    </DeclarationDialog>
   );
 }

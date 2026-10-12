@@ -14,18 +14,32 @@ import {
  */
 export function PublishButton({
   label,
+  compactLabel,
   blockedReason,
   onClick,
 }: Readonly<{
   label: string;
+  compactLabel?: string;
   blockedReason: string | undefined;
   onClick: () => void;
 }>) {
   const reasonId = useId();
   const content = (
     <>
-      <ArrowUpFromLineIcon data-icon="inline-start" />
-      {label}
+      <ArrowUpFromLineIcon
+        data-icon="inline-start"
+        className="hidden sm:block"
+      />
+      {compactLabel === undefined ? (
+        <span className="min-w-0 truncate">{label}</span>
+      ) : (
+        <>
+          <span className="hidden min-w-0 truncate sm:inline">{label}</span>
+          <span className="min-w-0 truncate sm:hidden" aria-hidden="true">
+            {compactLabel}
+          </span>
+        </>
+      )}
     </>
   );
   if (blockedReason === undefined)
@@ -34,7 +48,8 @@ export function PublishButton({
         type="button"
         size="sm"
         variant="primary"
-        className="w-48 max-w-full"
+        className="w-48 max-w-full max-sm:min-w-0 max-sm:flex-1"
+        aria-label={label}
         onClick={onClick}
       >
         {content}
@@ -49,7 +64,8 @@ export function PublishButton({
               type="button"
               size="sm"
               variant="primary"
-              className="w-48 max-w-full"
+              className="w-48 max-w-full max-sm:min-w-0 max-sm:flex-1"
+              aria-label={label}
               disabled
               focusableWhenDisabled
               aria-describedby={reasonId}

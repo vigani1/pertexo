@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ComponentProps } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,10 @@ type InputCasesActionProps = Readonly<{
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  triggerClassName?: string;
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }>;
 
 export function InputCasesAction(props: InputCasesActionProps) {
@@ -36,8 +40,11 @@ function InputCasesDialog({
   userId,
   workspace,
   workflow,
+  open,
+  onOpenChange,
+  triggerClassName,
+  finalFocus,
 }: InputCasesActionProps) {
-  const [open, setOpen] = useState(false);
   const cases = useInputCases(
     apiClient,
     userId,
@@ -58,17 +65,24 @@ function InputCasesDialog({
       open={open}
       onOpenChange={(next) => {
         if (next || !locked) {
-          setOpen(next);
+          onOpenChange(next);
           if (!next) setLoaded(undefined);
         }
       }}
     >
       <DialogTrigger
-        render={<Button type="button" variant="ghost" size="sm" />}
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={triggerClassName}
+          />
+        }
       >
         Input cases
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <DialogTitle>Input cases</DialogTitle>
         <DialogDescription>
           Browse shared run inputs. Nothing here starts or tests a workflow.
@@ -112,7 +126,7 @@ function InputCasesDialog({
               variant="ghost"
               disabled={locked}
               onClick={() => {
-                setOpen(false);
+                onOpenChange(false);
                 setLoaded(undefined);
               }}
             >

@@ -137,7 +137,7 @@ describe('workflow editor command bar', { timeout: 30_000 }, () => {
     });
 
     await event.click(
-      screen.getByRole('button', { name: 'More editor actions' }),
+      screen.getByRole('button', { name: 'More workflow actions' }),
     );
     const menu = await screen.findByRole('menu');
     expect(
@@ -149,7 +149,7 @@ describe('workflow editor command bar', { timeout: 30_000 }, () => {
     });
 
     await event.click(
-      screen.getByRole('button', { name: 'More editor actions' }),
+      screen.getByRole('button', { name: 'More workflow actions' }),
     );
     await event.click(
       await screen.findByRole('menuitem', { name: /Keyboard shortcuts/u }),

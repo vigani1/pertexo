@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ComponentProps } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
   workflowDuplicateRequestSchema,
@@ -33,6 +33,7 @@ export function WorkflowDuplicateDialog({
   allowed = true,
   onClose,
   onCreated,
+  finalFocus,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -43,6 +44,7 @@ export function WorkflowDuplicateDialog({
   allowed?: boolean;
   onClose: () => void;
   onCreated: (workflowId: string) => void;
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }>) {
   const [name, setName] = useState(
     () => `${workflow.name.slice(0, 121)} (copy)`,
@@ -71,7 +73,7 @@ export function WorkflowDuplicateDialog({
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <DialogTitle>Duplicate workflow</DialogTitle>
         <DialogDescription>
           {state.kind === 'denied' ? (
@@ -181,14 +183,21 @@ export function WorkflowDuplicateAction({
   workspace,
   workflow,
   blocked = false,
+  open,
+  onOpenChange,
+  triggerClassName,
+  finalFocus,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   blocked?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  triggerClassName?: string;
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }>) {
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   if (!canDuplicateWorkflow(workspace, workflow)) return null;
   return (
@@ -198,13 +207,14 @@ export function WorkflowDuplicateAction({
         variant="ghost"
         size="sm"
         disabled={blocked}
+        className={triggerClassName}
         title={
           blocked
             ? 'Save or resolve unfinished edits and conflicts before copying the saved draft.'
             : undefined
         }
         onClick={() => {
-          setOpen(true);
+          onOpenChange(true);
         }}
       >
         Duplicate…
@@ -217,12 +227,13 @@ export function WorkflowDuplicateAction({
           workspace={workspace}
           workflow={workflow}
           source={{ kind: 'draft' }}
+          finalFocus={finalFocus}
           allowed={!blocked}
           onClose={() => {
-            setOpen(false);
+            onOpenChange(false);
           }}
           onCreated={(workflowId) => {
-            setOpen(false);
+            onOpenChange(false);
             void navigate({
               to: '/w/$workspaceId/workflows/$workflowId',
               params: { workspaceId: workspace.id, workflowId },

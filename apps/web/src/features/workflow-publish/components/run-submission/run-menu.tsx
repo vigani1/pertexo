@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LoadingOrb } from '@/components/ui/loading-orb';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -44,9 +45,14 @@ export function RunMenu({
         size="sm"
         variant="outline"
         disabled={pending}
+        className="max-sm:w-20 max-sm:shrink-0"
+        aria-label="Recover unconfirmed run"
         onClick={onRunWithInput}
       >
-        Recover unconfirmed run
+        <span className="hidden sm:inline">Recover unconfirmed run</span>
+        <span className="min-w-0 truncate sm:hidden" aria-hidden="true">
+          Recover
+        </span>
       </Button>
     );
   if (acceptedRunPending)
@@ -55,9 +61,16 @@ export function RunMenu({
         type="button"
         size="sm"
         disabled={pending}
+        className="max-sm:w-20 max-sm:shrink-0"
+        aria-label={pending ? 'Verifying…' : 'Open accepted run'}
         onClick={onOpenAcceptedRun}
       >
-        {pending ? 'Verifying…' : 'Open accepted run'}
+        <span className="hidden sm:inline">
+          {pending ? 'Verifying…' : 'Open accepted run'}
+        </span>
+        <span className="min-w-0 truncate sm:hidden" aria-hidden="true">
+          {pending ? 'Verifying…' : 'Open run'}
+        </span>
       </Button>
     );
   if (!published)
@@ -72,10 +85,11 @@ export function RunMenu({
               disabled
               focusableWhenDisabled
               aria-label="Run (publish first)"
+              className="max-sm:w-20 max-sm:shrink-0"
             />
           }
         >
-          <PlayIcon data-icon="inline-start" />
+          <PlayIcon data-icon="inline-start" className="hidden sm:block" />
           Run
         </TooltipTrigger>
         <TooltipContent>Publish first</TooltipContent>
@@ -85,11 +99,20 @@ export function RunMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={pending}
-        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+        className={cn(
+          buttonVariants({ variant: 'outline', size: 'sm' }),
+          'max-sm:w-20 max-sm:shrink-0',
+        )}
       >
-        {pending ? <LoadingOrb /> : <PlayIcon data-icon="inline-start" />}
-        {pending ? 'Starting…' : 'Run'}
-        <ChevronDownIcon data-icon="inline-end" />
+        {pending ? (
+          <LoadingOrb />
+        ) : (
+          <PlayIcon data-icon="inline-start" className="hidden sm:block" />
+        )}
+        <span className="min-w-0 truncate">
+          {pending ? 'Starting…' : 'Run'}
+        </span>
+        {pending ? null : <ChevronDownIcon data-icon="inline-end" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuGroup>
