@@ -72,7 +72,7 @@ export function WorkflowFileDrop({
           aria-hidden="true"
           className="grid h-12 w-[8.25rem] shrink-0 place-items-center rounded-md bg-black/25"
         >
-          {read ? <PatternGlyph graph={manifest.graph} /> : <LooseThread />}
+          {read ? <PatternGlyph graph={manifest.graph} /> : <UnwovenThread />}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           {reading ? (
@@ -142,7 +142,7 @@ export function WorkflowFileDrop({
 }
 
 /** No file yet: a thread with a loose end, waiting to be woven in. */
-function LooseThread() {
+function UnwovenThread() {
   return (
     <svg
       viewBox="0 0 120 32"
