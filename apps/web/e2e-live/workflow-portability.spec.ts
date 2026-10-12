@@ -10,6 +10,7 @@ import {
   type WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
 import { test } from './support/browser-fixture';
+import { openWorkflowAction } from './support/authoring/workflow-actions';
 import { startSingleStep, waitForRun } from './support/authoring/single-step';
 
 interface Seed {
@@ -166,7 +167,7 @@ test('real cross-workspace reviewed exports, explicit rebinding, independent edi
     seed.sourceWorkspaceId,
     seed.sourceWorkflowId,
   );
-  await page.getByRole('button', { name: 'Export…', exact: true }).click();
+  await openWorkflowAction(page, 'Export…');
   const savedFile = await downloadReviewedSource(
     page,
     info,
@@ -270,7 +271,7 @@ test('real cross-workspace reviewed exports, explicit rebinding, independent edi
   await page.goto(
     `/w/${seed.sourceWorkspaceId}/workflows/${seed.coreWorkflowId}`,
   );
-  await page.getByRole('button', { name: 'Export…', exact: true }).click();
+  await openWorkflowAction(page, 'Export…');
   const coreFile = await downloadReviewedSource(
     page,
     info,

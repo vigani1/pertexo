@@ -57,12 +57,15 @@ export function EditorCommandBar({
       state.conflict !== null,
   );
   const moreRef = useRef<HTMLButtonElement>(null);
+  const contractRef = useRef<HTMLButtonElement>(null);
   const contractBlocked = useEditorStore((state) => state.inspectorScratch);
+  // The contract opens from ⋯ only where its own button is hidden; there the
+  // menu item is gone once the dialog closes, so focus returns to ⋯.
   function finalFocus() {
-    const trigger = moreRef.current;
-    return trigger !== null && trigger.getClientRects().length > 0
-      ? trigger
-      : true;
+    const inline = contractRef.current;
+    if (inline !== null && inline.getClientRects().length > 0) return true;
+    const more = moreRef.current;
+    return more !== null && more.getClientRects().length > 0 ? more : true;
   }
   return (
     <DeclarationDialog
@@ -118,6 +121,7 @@ export function EditorCommandBar({
         actions={
           <>
             <DialogTrigger
+              ref={contractRef}
               render={
                 <Button
                   variant="ghost"

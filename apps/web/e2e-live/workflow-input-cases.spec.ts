@@ -10,6 +10,7 @@ import {
   apiProblemSchema,
 } from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
+import { openWorkflowAction } from './support/authoring/workflow-actions';
 import {
   createEditorWorkspace,
   registerEditorUser,
@@ -142,7 +143,7 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
     .getByRole('region', { name: 'Workspace workflows', exact: true })
     .getByRole('link', { name: 'Input cases sender', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Input cases', exact: true }).click();
+  await openWorkflowAction(page, 'Input cases');
   const manager = page.getByRole('dialog', {
     name: 'Input cases',
     exact: true,

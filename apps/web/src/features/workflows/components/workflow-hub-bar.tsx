@@ -3,6 +3,7 @@ import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link, type LinkProps } from '@tanstack/react-router';
 import { ArrowLeftIcon, EllipsisIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
+import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
@@ -72,6 +73,9 @@ function hubTabs(workspace: AccessibleWorkspace): readonly TabLink[] {
   );
   return tabs;
 }
+
+/** Below Tailwind's sm breakpoint, where the page's own controls fold away. */
+const PHONE_MEDIA_QUERY = '(max-width: 39.999rem)';
 
 const TITLE_CLASS =
   'truncate font-display text-lg leading-tight [--display-optical-size:19] [--display-width:84%]';
@@ -236,6 +240,7 @@ function HubSecondaryActions({
   overflowRef: RefObject<HTMLButtonElement | null> | undefined;
 }>) {
   const [dialog, setDialog] = useState<'export' | 'cases' | 'duplicate'>();
+  const phone = useMediaQuery(PHONE_MEDIA_QUERY);
   const localRef = useRef<HTMLButtonElement>(null);
   const moreRef = overflowRef ?? localRef;
   function finalFocus() {
@@ -251,7 +256,9 @@ function HubSecondaryActions({
     workspace,
     workflow,
     finalFocus,
-    triggerClassName: 'hidden sm:inline-flex',
+    // Below 2xl these three fold into the ⋯ menu, so a laptop-width header
+    // keeps its actions on the name's row instead of a row of their own.
+    triggerClassName: 'hidden 2xl:inline-flex',
   };
   return (
     <>
@@ -261,7 +268,7 @@ function HubSecondaryActions({
           aria-label="More workflow actions"
           className={cn(
             buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
-            'shrink-0 sm:hidden',
+            'shrink-0 2xl:hidden',
           )}
         >
           <EllipsisIcon />
@@ -298,7 +305,9 @@ function HubSecondaryActions({
               </DropdownMenuItem>
             ) : null}
           </DropdownMenuGroup>
-          {mobileActions === undefined ? null : (
+          {/* The page's own controls join the menu only on phones; hidden
+              items would still take arrow-key turns, so they aren't rendered. */}
+          {mobileActions === undefined || !phone ? null : (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>{mobileActions}</DropdownMenuGroup>

@@ -11,6 +11,7 @@ import {
 } from '@pertexo/workflow-model';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { test } from './support/browser-fixture';
+import { openWorkflowAction } from './support/authoring/workflow-actions';
 
 interface Seed {
   workspaceId: string;
@@ -191,7 +192,7 @@ test('owned complete examples retain historical origin through independent edits
   expect(await readOrigin(page, seed.workspaceId, editedWorkflowId)).toEqual(
     originalOrigin,
   );
-  await page.getByRole('button', { name: 'Duplicate…', exact: true }).click();
+  await openWorkflowAction(page, 'Duplicate…');
   const duplicate = page.getByRole('dialog', {
     name: 'Duplicate workflow',
     exact: true,
@@ -222,7 +223,7 @@ test('owned complete examples retain historical origin through independent edits
   await page.screenshot({
     path: info.outputPath('curated-origin-live-desktop.png'),
   });
-  await page.getByRole('button', { name: 'Export…', exact: true }).click();
+  await openWorkflowAction(page, 'Export…');
   const exporter = page.getByRole('dialog', {
     name: 'Export workflow',
     exact: true,

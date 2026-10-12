@@ -79,9 +79,21 @@ export const manualDefinition = {
   ports: { inputs: [], outputs: ['out'] },
 };
 
-/** The same workflow action is a button on desktop and a menu item on phones. */
+/** Export, Input cases and Duplicate fold into ⋯ below 2xl. */
+const FOLDED_WORKFLOW_ACTIONS = new Set([
+  'Export…',
+  'Input cases',
+  'Duplicate…',
+]);
+
+/**
+ * A workflow action is a header button on wide screens and a ⋯ menu item
+ * below them: below 2xl for the workflow's own actions, and on phones for
+ * the editor's controls such as the contract.
+ */
 export async function openWorkflowAction(page: Page, name: string) {
-  if ((page.viewportSize()?.width ?? 1280) < 640) {
+  const width = page.viewportSize()?.width ?? 1280;
+  if (width < (FOLDED_WORKFLOW_ACTIONS.has(name) ? 1536 : 640)) {
     await page
       .getByRole('button', { name: 'More workflow actions', exact: true })
       .click();

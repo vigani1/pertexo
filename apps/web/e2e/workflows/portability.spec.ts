@@ -11,6 +11,7 @@ import {
   workflowId,
   workspace,
   workspaceId,
+  openWorkflowAction,
 } from '../workflow-editor/support';
 
 const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -104,7 +105,7 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
     },
   );
   await page.goto(editorUrl);
-  await page.getByRole('button', { name: 'Export…', exact: true }).click();
+  await openWorkflowAction(page, 'Export…');
   const exporting = page.getByRole('dialog', {
     name: 'Export workflow',
     exact: true,
