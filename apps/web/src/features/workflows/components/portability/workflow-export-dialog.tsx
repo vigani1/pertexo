@@ -222,8 +222,8 @@ function WorkflowExportSession({
             </Notice>
             {review === undefined ? null : (
               <>
-                <p className="font-mono text-xs text-muted-foreground">
-                  {review.label}. Unsaved browser edits are not exported.
+                <p className="text-xs text-muted-foreground">
+                  {review.label}. Edits that aren’t saved yet stay out.
                 </p>
                 <PortableGraphReview
                   graph={review.graph}

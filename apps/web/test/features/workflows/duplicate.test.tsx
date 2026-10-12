@@ -75,7 +75,7 @@ describe('Duplicate workflow', () => {
       ),
     );
     const { event, onCreated } = open();
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     await event.clear(screen.getByLabelText('Copy name'));
     await event.type(screen.getByLabelText('Copy name'), 'Keep this intent');
     await event.click(
@@ -105,7 +105,7 @@ describe('Duplicate workflow', () => {
       }),
     );
     const { event, onCreated, queryClient } = open();
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
@@ -129,9 +129,7 @@ describe('Duplicate workflow', () => {
     release?.();
     expect(screen.getByLabelText('Copy name')).toBeDisabled();
     expect(screen.getByLabelText('Copy name')).toHaveValue('');
-    expect(
-      screen.queryByText(/independent, unpublished copy of/u),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/unpublished copy of/u)).not.toBeInTheDocument();
     expect(queryClient.getQueryData(key)).toBeUndefined();
     expect(onCreated).not.toHaveBeenCalled();
   });
@@ -145,7 +143,7 @@ describe('Duplicate workflow', () => {
       }),
     );
     const { event, onCreated } = open();
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
@@ -176,9 +174,7 @@ describe('Duplicate workflow', () => {
       ),
     );
     const { event, onCreated } = open();
-    expect(
-      await screen.findByText(/Source: saved draft revision 1/u),
-    ).toBeVisible();
+    expect(await screen.findByText(/last saved, revision 1/u)).toBeVisible();
     const input = screen.getByLabelText('Copy name');
     expect(input).toHaveValue('Source (copy)');
     await event.clear(input);
@@ -227,7 +223,7 @@ describe('Duplicate workflow', () => {
       ),
     );
     const { event, onCreated, onClose } = open();
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
@@ -279,7 +275,7 @@ describe('Duplicate workflow', () => {
       ),
     );
     const { event, onCreated } = open();
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
@@ -296,7 +292,7 @@ describe('Duplicate workflow', () => {
     await event.click(
       screen.getByRole('button', { name: 'Read current saved draft' }),
     );
-    await screen.findByText(/Source: saved draft revision 2/u);
+    await screen.findByText(/last saved, revision 2/u);
     expect(requests).toHaveLength(1);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
@@ -324,7 +320,7 @@ describe('Duplicate workflow', () => {
       ),
     );
     const { event, onCreated } = open({ kind: 'version', versionId });
-    await screen.findByText(/Source: immutable version v3/u);
+    await screen.findByText(/Copies v3 exactly as it was published/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
@@ -348,7 +344,7 @@ describe('Duplicate workflow', () => {
       }),
     );
     const { event, onCreated, queryClient } = open();
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );

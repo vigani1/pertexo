@@ -35,7 +35,7 @@ export async function readWorkflowExportSource(
     );
     return {
       graph: version.graph,
-      label: `Immutable version ${String(version.versionNumber)}`,
+      label: `Exports v${String(version.versionNumber)} exactly as it was published`,
     };
   }
   return apiClient.request({
@@ -48,7 +48,7 @@ export async function readWorkflowExportSource(
         return {
           graph: draft.graph,
           etag: strongEtagSchema.parse(metadata.header('etag')),
-          label: `Saved draft revision ${String(draft.revision)}`,
+          label: `Exports the draft as last saved, revision ${String(draft.revision)}`,
         };
       },
     },
