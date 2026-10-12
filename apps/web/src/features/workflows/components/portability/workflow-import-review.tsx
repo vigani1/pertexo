@@ -20,13 +20,85 @@ import {
 } from '@/components/ui/select';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import type { ApiClient } from '@/lib/api/client';
+import {
+  describeConnectionRequirement,
+  describeStep,
+  familyWord,
+  StepTile,
+} from '@/features/catalog/presentation.public';
 import { PortableGraphReview } from './portable-graph-review';
+
+type PortableNode = WorkflowPortableManifest['graph']['nodes'][number];
+
+function stepName(node: PortableNode | undefined, fallback: string): string {
+  if (node === undefined) return fallback;
+  return node.label ?? describeStep(node.definition.key).name;
+}
+
+/**
+ * The file's steps in words, each marked where it reaches outside Pertexo,
+ * with every value of the file one fold away and never shortened.
+ */
+function ImportContents({
+  manifest,
+}: Readonly<{ manifest: WorkflowPortableManifest }>) {
+  const nodes = manifest.graph.nodes;
+  return (
+    <section
+      aria-label="What the file contains"
+      className="flex flex-col gap-2"
+    >
+      <h3 className="text-sm font-semibold text-foreground">What’s inside</h3>
+      <ol className="flex flex-col rounded-lg border border-border">
+        {nodes.map((node) => {
+          const step = describeStep(node.definition.key);
+          return (
+            <li
+              key={node.id}
+              className="flex items-center gap-3 border-t border-border px-3 py-2 first:border-t-0"
+            >
+              <StepTile step={step} size="sm" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm text-foreground">
+                  {stepName(node, step.name)}
+                </span>
+                <span className="block text-xs text-subtle-foreground">
+                  {familyWord(step.family)}
+                  {node.label === undefined ? '' : ` · ${step.name}`}
+                </span>
+              </span>
+              {step.sideEffect === undefined ? null : (
+                <span className="max-w-56 text-right text-xs text-warning">
+                  {step.sideEffect
+                    .replace(/^This /u, '')
+                    .replace(/^\w/u, (letter) => letter.toUpperCase())}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      <details className="text-xs text-muted-foreground">
+        <summary className="w-fit cursor-pointer rounded-sm text-subtle-foreground outline-none select-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+          Everything in the file
+        </summary>
+        <div className="mt-2">
+          <PortableGraphReview
+            graph={manifest.graph}
+            label="Complete imported graph"
+          />
+        </div>
+      </details>
+    </section>
+  );
+}
 
 function WorkflowImportConnections({
   apiClient,
   userId,
   workspace,
   slots,
+  nodes,
   bindings,
   disabled,
   onChange,
@@ -35,6 +107,7 @@ function WorkflowImportConnections({
   userId: string;
   workspace: AccessibleWorkspace;
   slots: readonly PortableConnectionSlot[];
+  nodes: readonly PortableNode[];
   bindings: readonly PortableConnectionBinding[];
   disabled: boolean;
   onChange: (bindings: PortableConnectionBinding[]) => void;
@@ -50,11 +123,12 @@ function WorkflowImportConnections({
       aria-label="Destination connection bindings"
       className="flex flex-col gap-3"
     >
-      <h3 className="font-heading text-sm">Choose destination connections</h3>
+      <h3 className="text-sm font-semibold text-foreground">
+        Connections to use
+      </h3>
       <p className="text-sm text-muted-foreground">
-        {slots.length === 0
-          ? 'This file declares no connection slots.'
-          : 'Choose every slot explicitly. Source connection names and IDs are not reused.'}
+        The file never brings its own credentials. Choose one of this
+        workspace’s connections for each step that needs one.
       </p>
       {!canRead && slots.length > 0 ? (
         <Notice tone="warning">
@@ -89,8 +163,11 @@ function WorkflowImportConnections({
           <LabelledField
             key={JSON.stringify([slot.nodeId, slot.slot])}
             id={`portable-slot-${String(index)}`}
-            label={`${slot.nodeId} · ${slot.slot}`}
-            description={`${slot.providerKey} / ${slot.authType}${choices.length === 0 && !connections.isFetching ? ' — no eligible connections' : ''}`}
+            label={stepName(
+              nodes.find((node) => node.id === slot.nodeId),
+              slot.nodeId,
+            )}
+            description={`${describeConnectionRequirement(slot.authType)}${choices.length === 0 && !connections.isFetching ? '. This workspace has none yet; add one in Connections.' : ''}`}
           >
             {(control) => (
               <Select
@@ -160,8 +237,8 @@ function WorkflowImportCompatibility({
     >
       <Notice tone={preview.compatible ? 'success' : 'warning'}>
         {preview.compatible
-          ? 'Compatible with this workspace. Import creates an unpublished draft, not a runnable publication.'
-          : 'This file is incompatible. Resolve the issues before importing.'}
+          ? 'Compatible with this workspace. Importing creates an unpublished draft.'
+          : 'This file doesn’t fit this workspace yet. Fix the issues below, then check again.'}
       </Notice>
       {[...issues].map(([key, issue]) => (
         <p key={key} className="text-sm">
@@ -203,19 +280,19 @@ export function WorkflowImportReview({
     <>
       {manifest === undefined ? null : (
         <>
-          <PortableGraphReview
-            graph={manifest.graph}
-            label="Complete imported graph"
-          />
-          <WorkflowImportConnections
-            apiClient={apiClient}
-            userId={userId}
-            workspace={workspace}
-            slots={manifest.connectionSlots}
-            bindings={bindings}
-            disabled={disabled}
-            onChange={onBindingsChange}
-          />
+          <ImportContents manifest={manifest} />
+          {manifest.connectionSlots.length === 0 ? null : (
+            <WorkflowImportConnections
+              apiClient={apiClient}
+              userId={userId}
+              workspace={workspace}
+              slots={manifest.connectionSlots}
+              nodes={manifest.graph.nodes}
+              bindings={bindings}
+              disabled={disabled}
+              onChange={onBindingsChange}
+            />
+          )}
         </>
       )}
       {preview === undefined ? null : (
