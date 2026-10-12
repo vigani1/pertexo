@@ -26,75 +26,128 @@ const disclosure = {
   dryRun: 'not_supported',
 };
 
-test('tests a step, publishes v1, and follows the exact accepted run', async ({
-  context,
-  page,
-}) => {
-  const remote = remoteDraft();
-  await addCsrfCookie(context);
-  await installEditorRoutes(page, remote);
-  await installNodeTestRoute(page, remote);
-  await installPublishRoutes(page, remote);
+for (const width of [375, 1280]) {
+  for (const action of ['menu', 'stamp'] as const) {
+    test(`tests a step, publishes v1, and starts from ${action} at ${String(width)}px`, async ({
+      context,
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 768 });
+      const remote = remoteDraft();
+      await addCsrfCookie(context);
+      await installEditorRoutes(page, remote);
+      await installNodeTestRoute(page, remote);
+      await installPublishRoutes(page, remote);
 
-  await page.goto(editorUrl);
-  // No trigger is enabled in this catalog: the empty draft says what to add
-  // instead of “No issues”, and Publish waits for a step.
-  await expect(
-    page.getByRole('heading', { name: 'No triggers are enabled here' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Add a step to start' }),
-  ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Publish v1' })).toBeDisabled();
-  // The chip opens the issues lens at the bottom of the editor, over the
-  // canvas, instead of a popover under the command bar.
-  await page.getByRole('button', { name: 'Add a step to start' }).click();
-  const issues = page.getByRole('region', { name: 'Issues' });
-  await expect(issues).toContainText('This draft has no steps yet');
-  const issuesBox = await issues.boundingBox();
-  expect((issuesBox?.y ?? 0) + (issuesBox?.height ?? 0)).toBeGreaterThan(
-    (page.viewportSize()?.height ?? 0) - 48,
-  );
-  await issues.getByRole('button', { name: 'Close issues' }).click();
-  await expect(issues).toBeHidden();
-  await addStep(page, /Set fields/u).click();
-  await expect.poll(() => remote.revision, { timeout: 4_000 }).toBe(2);
-  await page.locator('.react-flow__node').click();
-  await page.getByRole('tab', { name: 'Test' }).click();
-  await page.getByRole('button', { name: 'Check setup' }).click();
-  await expect(page.getByText('Setup looks right')).toBeVisible();
-  // Set fields changes nothing outside Pertexo, so no acknowledgement.
-  await expect(
-    page.getByRole('switch', { name: 'I understand this test runs for real' }),
-  ).toHaveCount(0);
-  await page.getByRole('button', { name: 'Run test' }).click();
-  await expect(
-    page.getByRole('region', { name: 'Test result' }).getByText('Test passed'),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('region', { name: 'Last test' }).getByText('Test passed'),
-  ).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Test output' })).toContainText(
-    'accepted',
-  );
+      await page.goto(editorUrl);
+      // No trigger is enabled in this catalog: the empty draft says what to add
+      // instead of “No issues”, and Publish waits for a step.
+      await expect(
+        page.getByRole('heading', { name: 'No triggers are enabled here' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Add a step to start' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Publish v1' }),
+      ).toBeDisabled();
+      // The chip opens the issues lens at the bottom of the editor, over the
+      // canvas, instead of a popover under the command bar.
+      await page.getByRole('button', { name: 'Add a step to start' }).click();
+      const issues = page.getByRole('region', { name: 'Issues' });
+      await expect(issues).toContainText('This draft has no steps yet');
+      const issuesBox = await issues.boundingBox();
+      const lowerBoundary =
+        width < 1024
+          ? (
+              await page
+                .getByRole('navigation', { name: 'Editor panels' })
+                .boundingBox()
+            )?.y
+          : page.viewportSize()?.height;
+      expect(lowerBoundary).toBeDefined();
+      expect((issuesBox?.y ?? 0) + (issuesBox?.height ?? 0)).toBeGreaterThan(
+        (lowerBoundary ?? 0) - 48,
+      );
+      await issues.getByRole('button', { name: 'Close issues' }).click();
+      await expect(issues).toBeHidden();
+      if (width < 1024) {
+        await page
+          .getByRole('navigation', { name: 'Editor panels' })
+          .getByRole('button', { name: 'Add step', exact: true })
+          .click();
+      }
+      await addStep(page, /Set fields/u).click();
+      await expect.poll(() => remote.revision, { timeout: 4_000 }).toBe(2);
+      if (width < 1024) {
+        await page
+          .getByRole('navigation', { name: 'Editor panels' })
+          .getByRole('button', { name: 'Canvas', exact: true })
+          .click();
+      }
+      await page.locator('.react-flow__node').click();
+      if (width < 1024) {
+        await page
+          .getByRole('navigation', { name: 'Editor panels' })
+          .getByRole('button', { name: 'Step', exact: true })
+          .click();
+      }
+      await page.getByRole('tab', { name: 'Test' }).click();
+      await page.getByRole('button', { name: 'Check setup' }).click();
+      await expect(page.getByText('Setup looks right')).toBeVisible();
+      // Set fields changes nothing outside Pertexo, so no acknowledgement.
+      await expect(
+        page.getByRole('switch', {
+          name: 'I understand this test runs for real',
+        }),
+      ).toHaveCount(0);
+      await page.getByRole('button', { name: 'Run test' }).click();
+      await expect(
+        page
+          .getByRole('region', { name: 'Test result' })
+          .getByText('Test passed'),
+      ).toBeVisible();
+      await expect(
+        page
+          .getByRole('region', { name: 'Last test' })
+          .getByText('Test passed'),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('group', { name: 'Test output' }),
+      ).toContainText('accepted');
 
-  await expect(
-    page.getByRole('button', { name: 'Run (publish first)' }),
-  ).toBeDisabled();
-  await page.getByRole('button', { name: 'Publish v1' }).click();
-  const lens = page.getByRole('dialog', { name: 'Publish v1' });
-  await lens.getByRole('button', { name: 'Publish v1' }).click();
-  await expect(lens).toBeHidden();
-  await expect(page.getByText('v1 is live')).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'No changes since v1' }),
-  ).toBeDisabled();
+      await expect(
+        page.getByRole('button', { name: 'Run (publish first)' }),
+      ).toBeDisabled();
+      await page.getByRole('button', { name: 'Publish v1' }).click();
+      const lens = page.getByRole('dialog', { name: 'Publish v1' });
+      await lens.getByRole('button', { name: 'Publish v1' }).click();
+      await expect(lens).toBeHidden();
+      await expect(page.getByText('v1 is live')).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'No changes since v1' }),
+      ).toBeDisabled();
 
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
-  // Nothing to fill in, so the run starts at once.
-  await page.getByRole('menuitem', { name: 'Run published version' }).click();
-  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${runId}`);
-});
+      await page.screenshot({
+        path: `/tmp/pertexo-245-${action}-${String(width)}.png`,
+      });
+      if (action === 'menu') {
+        await page.getByRole('button', { name: 'Run', exact: true }).click();
+        await page
+          .getByRole('menuitem', { name: 'Run published version' })
+          .click();
+      } else {
+        await page
+          .getByRole('button', { name: 'Run now', exact: true })
+          .click();
+      }
+      await expect(page).toHaveURL(`/w/${workspaceId}/runs/${runId}`);
+      await expect(
+        page.getByRole('dialog', { name: 'Run published version' }),
+      ).toHaveCount(0);
+    });
+  }
+}
 
 test('animates active execution flow and disables the marker for reduced motion', async ({
   page,
