@@ -11,22 +11,41 @@ import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { StatusGuide } from '@/components/patterns/guidance/status-guide';
 import { WORKFLOW_LIST_GUIDE } from '../../model/guide';
 import { countWorkflowStates } from '../../model/list-view';
 
-/** The list's one primary action, with its N shortcut. */
+/**
+ * The list's one primary action. Its N shortcut shows on hover, not as an
+ * unexplained letter inside the button.
+ */
 export function NewWorkflowButton({
   onClick,
 }: Readonly<{ onClick: () => void }>) {
   return (
-    <Button type="button" variant="primary" onClick={onClick}>
-      <PlusIcon aria-hidden="true" data-icon="inline-start" />
-      New workflow
-      <Kbd aria-hidden="true" className="hidden sm:inline-flex">
-        N
-      </Kbd>
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="primary"
+            aria-keyshortcuts="N"
+            onClick={onClick}
+          />
+        }
+      >
+        <PlusIcon aria-hidden="true" data-icon="inline-start" />
+        New workflow
+      </TooltipTrigger>
+      <TooltipContent className="flex items-center gap-1.5">
+        Shortcut <Kbd>N</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
