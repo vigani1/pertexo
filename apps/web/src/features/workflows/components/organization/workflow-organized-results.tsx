@@ -1,3 +1,4 @@
+import { XIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type {
   AccessibleWorkspace,
@@ -67,9 +68,9 @@ export function WorkflowOrganizedResults({
       <Checkbox
         aria-label={`Select ${item.workflow.name}`}
         className={cn(
-          // A normal-size box with a 32px (44px on touch) hit area around
-          // it, filled so the thread's first knot doesn't show through.
-          'relative before:absolute before:inset-0 before:-z-10 before:rounded-sm before:bg-background after:absolute after:-inset-[7px] pointer-coarse:after:-inset-[13px]',
+          // A bead: a hollow loop that ties into a knot when picked, with a
+          // 32px (44px on touch) hit area around it.
+          'relative size-4 rounded-full [&_svg]:size-2.5 after:absolute after:-inset-2 pointer-coarse:after:-inset-3.5',
           currentSelected.length === 0 && ROW_REVEAL_CLASS,
         )}
         checked={selected.includes(id)}
@@ -98,32 +99,49 @@ export function WorkflowOrganizedResults({
   }
   return (
     <section aria-label="Workspace workflows" className="flex flex-col gap-4">
+      {/* Floats above the list instead of pushing it down, so picking the
+          first workflow never moves the row under the pointer. */}
       {canEdit && currentSelected.length > 0 ? (
         <div
-          className="flex flex-wrap items-center gap-2"
+          role="toolbar"
           aria-label="Selected workflows"
+          className="lens fixed bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-xl py-1.5 pr-1.5 pl-3.5 motion-safe:animate-[rise_0.25s_var(--ease-unspool)] md:bottom-6"
         >
-          <span className="text-sm text-muted-foreground">
+          <span
+            aria-hidden="true"
+            className="mr-1 size-2.5 shrink-0 rounded-full bg-action shadow-[0_0_0_3px_color-mix(in_srgb,var(--action)_18%,transparent)]"
+          />
+          <span
+            className="mr-2 text-sm whitespace-nowrap text-foreground"
+            aria-live="polite"
+          >
             {String(currentSelected.length)} selected
-            {currentSelected.length >= 50 ? ' · the most at once' : ''}
+            {currentSelected.length >= 50 ? (
+              <span className="text-muted-foreground"> · the most at once</span>
+            ) : null}
           </span>
           <Button
-            variant="outline"
-            disabled={currentSelected.length === 0 || editing !== undefined}
+            variant="default"
+            size="sm"
+            aria-label="Organize selected…"
+            disabled={editing !== undefined}
             onClick={() => {
               setEditing(currentSelected);
             }}
           >
-            Organize selected…
+            Organize…
           </Button>
           <Button
             variant="ghost"
-            disabled={selected.length === 0 || editing !== undefined}
+            size="icon-sm"
+            aria-label="Clear selection"
+            title="Clear selection"
+            disabled={editing !== undefined}
             onClick={() => {
               setSelected([]);
             }}
           >
-            Clear selection
+            <XIcon aria-hidden="true" />
           </Button>
         </div>
       ) : null}
@@ -149,7 +167,7 @@ export function WorkflowOrganizedResults({
           workspace={workspace}
           workflows={items.map((item) => item.workflow)}
           actions={actions}
-          rowSelection={selectionControl}
+          {...(canEdit ? { rowSelection: selectionControl } : {})}
           rowTags={tags}
           rowMenu={(id, runnable) => {
             const item = byId.get(id);

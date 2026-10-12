@@ -23,6 +23,7 @@ import { WorkflowExportDialog } from '../components/portability/workflow-export-
 import { WorkflowImportDialog } from '../components/portability/workflow-import-dialog';
 import { Button } from '@/components/ui/button';
 import { WorkflowRowsSkeleton } from '../components/list/workflow-rows';
+import { canEditOrganization } from '../components/organization/editing';
 import { lifecycleIntentFor, type LifecycleIntent } from '../model/lifecycle';
 import {
   isUnfilteredWorkflowList,
@@ -261,7 +262,11 @@ function WorkflowListContent({
           className="-mt-3 w-full"
         />
       ) : null}
-      {list.shown === 'loading' ? <WorkflowRowsSkeleton /> : null}
+      {list.shown === 'loading' ? (
+        <WorkflowRowsSkeleton
+          selectable={canEditOrganization(workspace, [], 'move')}
+        />
+      ) : null}
       {list.shown === 'failed' ? (
         <WorkflowListError
           error={workflows.error}
