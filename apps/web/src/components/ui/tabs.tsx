@@ -8,7 +8,7 @@ export function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        'flex min-w-0 items-center gap-5 overflow-x-auto border-b border-border',
+        'flex min-w-0 items-center gap-5 overflow-x-auto overflow-y-hidden border-b border-border',
         className,
       )}
       {...props}
@@ -16,14 +16,15 @@ export function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
   );
 }
 
-// A glowing cyan thread marks the active tab.
+// A glowing cyan thread marks the active tab. It sits inside the list: the
+// list scrolls sideways on phones, which clips anything below its border.
 export function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
         "relative inline-flex items-center gap-1.5 py-2.5 text-sm font-medium whitespace-nowrap text-subtle-foreground outline-none transition-colors hover:text-foreground focus-visible:text-foreground disabled:pointer-events-none disabled:opacity-50 data-active:text-foreground [&_svg:not([class*='size-'])]:size-4",
-        'after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-action after:opacity-0 after:transition-opacity data-active:after:opacity-100',
+        'after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-action after:opacity-0 after:transition-opacity data-active:after:opacity-100',
         className,
       )}
       {...props}
