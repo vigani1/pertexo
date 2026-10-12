@@ -4,6 +4,8 @@ set -Eeuo pipefail
 source "$(dirname "$0")/common.sh"
 check_commit "$1"
 operation_lock
+[[ ! -f "$BETA_STATE_DIR/restore-fence" ]] || { echo 'Restore is incomplete; use a fresh stack' >&2; exit 1; }
+require_no_ops
 prepare_release "$1"
 previous=''
 [[ ! -f "$BETA_STATE_DIR/current" ]] || previous=$(cat "$BETA_STATE_DIR/current")

@@ -29,7 +29,10 @@ approved RustFS after SeaweedFS failed workspace purge qualification; no
 application compatibility workaround was accepted. Its pinned `rc` client is
 used only for idempotent storage setup. Only S3 reaches
 the files proxy; storage administration and internal ports stay private. Backup
-copies preserve artifact metadata and capture the database and objects while
+copies use the existing AWS SDK to preserve exact artifact metadata. The owner
+approved this adjustment after rclone and `rc` round trips added metadata that
+the unchanged adapter rejects. Rclone handles database files, downloaded byte
+comparisons and retention. Backups capture the database and objects while
 serving writers and public storage ingress are paused.
 
 The beta accepts these trade-offs:

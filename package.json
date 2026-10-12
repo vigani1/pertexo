@@ -21,7 +21,10 @@
           "infrastructure/testing/curated-template-owned-fixture.d.mts",
           "infrastructure/testing/connection-health-slack-transport.d.mts",
           "infrastructure/single-server/generate-secrets.mjs",
-          "infrastructure/single-server/storage/prepare.mjs"
+          "infrastructure/single-server/storage/prepare.mjs",
+          "infrastructure/single-server/backup/prepare.mjs",
+          "infrastructure/single-server/backup/copy-objects.mjs",
+          "infrastructure/single-server/backup/recovery-points.mjs"
         ]
       },
       "apps/web": {
@@ -94,5 +97,8 @@
     "typescript-eslint": "8.71.1",
     "vitest": "4.1.11",
     "yaml": "2.9.1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1148.0"
   }
 }

@@ -190,6 +190,9 @@ jobs:
       - name: Qualify pinned beta storage
         if: matrix.group == 'services'
         run: node infrastructure/single-server/storage/qualify.mjs
+      - name: Qualify matched beta recovery
+        if: matrix.group == 'services'
+        run: node infrastructure/single-server/backup/qualify.mjs
       - name: Service logs
         if: failure()
         run: docker compose logs --no-color --timestamps
@@ -282,6 +285,10 @@ jobs:
               import('./apps/ops/dist/run.js'),
               import('./packages/database/dist/migrations.js')
             ])"
+      - name: Qualify beta operational helpers in the production image
+        run:
+          node infrastructure/single-server/backup/verify-runtime.mjs
+          pertexo-ci:${{ github.sha }}
       - name: Build and qualify the web image
         run: |
           set -euo pipefail
@@ -324,6 +331,7 @@ jobs:
               import('./apps/ops/dist/run.js'),
               import('./packages/database/dist/migrations.js')
             ])"
+          node infrastructure/single-server/backup/verify-runtime.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA"
           node infrastructure/images/verify-web.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA" ghcr.io/vigani1/pertexo-web:"$GITHUB_SHA"
       - name: Publish commit tags to GHCR
         env:
