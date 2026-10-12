@@ -208,9 +208,7 @@ test('real same-workspace draft and selected-version copies preserve graph IDs a
     name: 'Duplicate workflow',
     exact: true,
   });
-  await expect(
-    draftDialog.getByText(/last saved, revision/u),
-  ).toBeVisible();
+  await expect(draftDialog.getByText(/last saved, revision/u)).toBeVisible();
   await draftDialog.getByLabel('Copy name').fill('Saved draft copy');
   const draftPending = page.waitForResponse(
     (response) =>
