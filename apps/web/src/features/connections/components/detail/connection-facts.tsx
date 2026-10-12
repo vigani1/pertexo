@@ -44,6 +44,18 @@ export function ConnectionFacts({
   connection,
 }: Readonly<{ connection: ConnectionResponse }>) {
   const provider = PROVIDERS[connection.providerKey];
+  const { health } = connection;
+  // With no history at all the status line already says "never tested";
+  // once a run has reported, "Last tested: Never" is the useful contrast.
+  const anyHistory = [
+    health.lastTestedAt,
+    health.lastHealthyAt,
+    health.lastRunObservedAt,
+    health.lastHealthTransitionAt,
+  ].some((value) => value != null);
+  const edited =
+    Date.parse(connection.updatedAt) - Date.parse(connection.createdAt) >=
+    60_000;
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-sm">
@@ -53,37 +65,43 @@ export function ConnectionFacts({
           {provider.credential.slice(1)}, stored encrypted
         </Fact>
         <Fact term="Works with">{provider.usedBy}</Fact>
-        <Fact term="Last tested">
-          {testedWhen(connection.health.lastTestedAt)}
-        </Fact>
-        <Fact term="Last healthy">
-          {testedWhen(connection.health.lastHealthyAt)}
-        </Fact>
-        <Fact term="Last run observed">
-          {testedWhen(connection.health.lastRunObservedAt)}
-        </Fact>
-        <Fact term="Health changed">
-          {testedWhen(connection.health.lastHealthTransitionAt)}
-          {connection.health.lastHealthTransitionSource == null ? null : (
-            <span className="block text-xs text-muted-foreground">
-              {
+        {anyHistory ? (
+          <Fact term="Last tested">{testedWhen(health.lastTestedAt)}</Fact>
+        ) : null}
+        {health.lastHealthyAt == null ? null : (
+          <Fact term="Last healthy">{testedWhen(health.lastHealthyAt)}</Fact>
+        )}
+        {health.lastRunObservedAt == null ? null : (
+          <Fact term="Used by a run">
+            {testedWhen(health.lastRunObservedAt)}
+          </Fact>
+        )}
+        {health.lastHealthTransitionAt == null ? null : (
+          <Fact term="Health changed">
+            {testedWhen(health.lastHealthTransitionAt)}
+            {health.lastHealthTransitionSource == null ? null : (
+              <span className="block text-xs text-muted-foreground">
                 {
-                  run: 'From a workflow run',
-                  test: 'From an explicit test',
-                  rotation: 'Credential replaced',
-                  revoke: 'Connection revoked',
-                }[connection.health.lastHealthTransitionSource]
-              }
-            </span>
-          )}
-        </Fact>
+                  {
+                    run: 'From a workflow run',
+                    test: 'From an explicit test',
+                    rotation: 'Credential replaced',
+                    revoke: 'Connection revoked',
+                  }[health.lastHealthTransitionSource]
+                }
+              </span>
+            )}
+          </Fact>
+        )}
         <Fact term="Added">{formatDateTime(connection.createdAt)}</Fact>
-        <Fact term="Updated">{formatDateTime(connection.updatedAt)}</Fact>
+        {edited ? (
+          <Fact term="Updated">{formatDateTime(connection.updatedAt)}</Fact>
+        ) : null}
       </dl>
-      <p className="text-xs text-muted-foreground">
-        Automatic run health covers Slack Send message only, when enabled. Other
-        services use explicit tests. A failed test is not a service-outage
-        report.
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Runs that send Slack messages keep Slack health up to date; for other
+        services, use Test. A failed test means Pertexo couldn’t use this
+        credential, not that the service is down.
       </p>
       <details className="group/details text-sm">
         <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-subtle-foreground outline-none select-none hover:text-foreground focus-visible:text-foreground [&::-webkit-details-marker]:hidden">

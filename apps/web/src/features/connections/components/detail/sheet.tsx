@@ -122,12 +122,10 @@ function OverviewActions({
   connection,
   permissions,
   onMode,
-  scope,
 }: Readonly<{
   connection: ConnectionResponse;
   permissions: ConnectionPermissions;
   onMode: (mode: Mode) => void;
-  scope: ConnectionMutationScope;
 }>) {
   if (connection.status === 'revoked') return null;
   const reconnect = connection.status === 'reauthorization_required';
@@ -165,20 +163,6 @@ function OverviewActions({
           </Button>
         ) : null}
       </div>
-      {permissions.canManage ? (
-        <>
-          <Separator />
-          <section
-            aria-label="Danger zone"
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
-            <p className="max-w-64 text-sm text-muted-foreground">
-              Revoking stops every step and alert that uses it.
-            </p>
-            <RevokeConnectionDialog scope={scope} connection={connection} />
-          </section>
-        </>
-      ) : null}
     </>
   );
 }
@@ -206,7 +190,6 @@ function DetailBody({
             connection={connection}
             permissions={permissions}
             onMode={setMode}
-            scope={scope}
           />
           <Separator />
           <ConnectionFacts connection={connection} />
@@ -216,6 +199,21 @@ function DetailBody({
             connectionId={connection.id}
             canRead={permissions.canReadUsage ?? false}
           />
+          {/* Last, after everything it would stop. */}
+          {permissions.canManage && connection.status !== 'revoked' ? (
+            <>
+              <Separator />
+              <section
+                aria-label="Danger zone"
+                className="flex flex-wrap items-center justify-between gap-3"
+              >
+                <p className="max-w-64 text-sm text-muted-foreground">
+                  Revoking stops every step and alert that uses it.
+                </p>
+                <RevokeConnectionDialog scope={scope} connection={connection} />
+              </section>
+            </>
+          ) : null}
         </>
       ) : null}
       {mode === 'test' &&
