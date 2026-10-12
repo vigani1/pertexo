@@ -137,7 +137,7 @@ describe('Duplicate command lifecycle recovery', () => {
             ? HttpResponse.json({ malformed: true }, { status })
             : created(),
       );
-      await screen.findByText(/Source: saved draft revision 1/u);
+      await screen.findByText(/last saved, revision 1/u);
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),
       );
@@ -168,7 +168,7 @@ describe('Duplicate command lifecycle recovery', () => {
           ? problem(409, 'request.idempotency_conflict')
           : created(),
     );
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
@@ -197,7 +197,7 @@ describe('Duplicate command lifecycle recovery', () => {
           ? staleResponse()
           : created(),
     );
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
@@ -229,7 +229,7 @@ describe('Duplicate command lifecycle recovery', () => {
     await event.click(
       screen.getByRole('button', { name: 'Read current saved draft' }),
     );
-    await screen.findByText(/Source: saved draft revision 2/u);
+    await screen.findByText(/last saved, revision 2/u);
     expect(requests).toHaveLength(2);
     expect(onCreated).not.toHaveBeenCalled();
     await event.click(
@@ -252,7 +252,7 @@ describe('Duplicate command lifecycle recovery', () => {
         mockServer.use(http.get(url, response));
         return created();
       });
-      await screen.findByText(/Source: saved draft revision 1/u);
+      await screen.findByText(/last saved, revision 1/u);
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),
       );
@@ -292,7 +292,7 @@ describe('Duplicate command lifecycle recovery', () => {
       const requests = captureCopies((count) =>
         count === 1 ? HttpResponse.error() : created(),
       );
-      await screen.findByText(/Source: saved draft revision 1/u);
+      await screen.findByText(/last saved, revision 1/u);
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),
       );
@@ -327,7 +327,7 @@ describe('Duplicate command lifecycle recovery', () => {
             ? transient(status)
             : created(),
       );
-      await screen.findByText(/Source: saved draft revision 1/u);
+      await screen.findByText(/last saved, revision 1/u);
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),
       );
@@ -363,7 +363,7 @@ describe('Duplicate command lifecycle recovery', () => {
         mockServer.use(http.get(identityUrl, response));
         return created();
       });
-      await screen.findByText(/Source: saved draft revision 1/u);
+      await screen.findByText(/last saved, revision 1/u);
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),
       );
@@ -380,7 +380,7 @@ describe('Duplicate command lifecycle recovery', () => {
   it('does not offer command replay when initial authority verification failed before any POST', async () => {
     const { event, onCreated } = open();
     const requests = captureCopies(created);
-    await screen.findByText(/Source: saved draft revision 1/u);
+    await screen.findByText(/last saved, revision 1/u);
     mockServer.use(http.get(identityUrl, () => HttpResponse.error()));
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),

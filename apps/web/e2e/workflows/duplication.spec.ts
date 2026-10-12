@@ -89,7 +89,7 @@ test('keeps a workflow copy exact through retry and postflight outages until ver
     exact: true,
   });
   await expect(
-    dialog.getByText(/Source: saved draft revision 1/u),
+    dialog.getByText(/last saved, revision 1/u),
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await dialog.getByLabel('Copy name').fill('An independent copy');

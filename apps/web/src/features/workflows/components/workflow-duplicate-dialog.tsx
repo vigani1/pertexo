@@ -80,8 +80,8 @@ export function WorkflowDuplicateDialog({
             'Your access to this source changed.'
           ) : (
             <>
-              Make an independent, unpublished copy of “{workflow.name}” in this
-              workspace. Publishing and running remain separate actions.
+              Make an unpublished copy of “{workflow.name}”. It starts as a
+              draft; nothing runs until you publish it.
             </>
           )}
         </DialogDescription>
@@ -259,12 +259,12 @@ function DuplicateSourceReview({
       {state.kind === 'denied' ? null : (
         <>
           {source.kind === 'version'
-            ? `Source: immutable version v${String(versionNumber ?? '?')}.`
+            ? `Copies v${String(versionNumber ?? '?')} exactly as it was published.`
             : state.draft === undefined
-              ? 'Reading the saved current draft…'
-              : `Source: saved draft revision ${String(state.draft.revision)}.`}{' '}
-          Unsaved browser edits are never copied. Connection references stay in
-          this workspace; credentials and operational history are not copied.
+              ? 'Reading the saved draft…'
+              : `Copies the draft as last saved, revision ${String(state.draft.revision)}.`}{' '}
+          Edits that aren’t saved yet stay out. The copy uses the same
+          connections, and its run history starts empty.
         </>
       )}
     </p>
