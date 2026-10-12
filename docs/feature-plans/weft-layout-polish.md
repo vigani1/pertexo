@@ -1,4 +1,4 @@
-# Weft list and phone header polish
+# Weft workflow list polish
 
 Use the existing Weft glyphs, tokens and accessible controls. Deliver each
 requested layout correction in its own PR; verify lint, TypeScript, unit and
@@ -9,12 +9,8 @@ selection, command, dialog and save ownership.
   Desktop hover/focus reveals it; touch and an existing selection keep it
   visible. Only tagged workflows get an additional tag line. Long menus stay
   within the available viewport height and scroll when needed.
-- [ ] 2. Below sm, share one overflow menu for Export, Input cases, Duplicate,
-  Contract and editor history. Keep Issues, Run and Publish together on one
-  row, including at 375px.
-
 Check row geometry before and during selection, tag and readonly behavior,
-touch targets and keyboard focus. Check the phone header with issue counts,
-publication labels and save recovery; dialogs keep their existing owners.
+touch targets, keyboard focus and long owner menus. The phone editor header
+has its own plan and PR.
 
 Checked items have passed local verification; each PR records its CI and merge.
