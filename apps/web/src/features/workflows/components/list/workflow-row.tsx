@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonThread } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
@@ -36,9 +36,13 @@ import {
 } from './workflow-row-actions';
 import { WorkflowRowMenu } from './workflow-row-menu';
 
-/** Shared by the column header and rows so both stay aligned. */
+/**
+ * Shared by the column header and rows so both stay aligned. A list that
+ * offers selection sets `--row-select` to make room for the bead before the
+ * thread, so the bead never sits on anything.
+ */
 export const WORKFLOW_ROW_COLUMNS =
-  'grid-cols-[3.9rem_minmax(0,1fr)_auto] lg:grid-cols-[3.9rem_minmax(0,1fr)_8.5rem_4.5rem_8.75rem_5.5rem_6rem]';
+  'grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_auto] lg:grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_8.5rem_4.5rem_8.75rem_5.5rem_6rem]';
 
 const TRIGGERS: Readonly<
   Record<TriggerKind, Readonly<{ label: string; Icon: LucideIcon }>>
@@ -116,7 +120,8 @@ function RowTitle({
           {describeWorkflowPath(graph)}
         </p>
       ) : shapeFailed ? null : (
-        <Skeleton className="mt-1.5 h-2.5 w-40 max-w-full" />
+        // The path is still being read: a thread spools where it will be.
+        <SkeletonThread className="mt-2.5 w-40 max-w-full" />
       )}
     </div>
   );
@@ -259,19 +264,17 @@ export function WorkflowRow({
       }}
       className={`group/row relative grid ${WORKFLOW_ROW_COLUMNS} items-center gap-x-4 gap-y-1.5 rounded-lg px-3 py-3 transition-colors duration-150 before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-border first:before:hidden focus-within:bg-white/[0.03] hover:bg-white/[0.035] hover:before:opacity-0 hover:shadow-[inset_0_0_0_1px_rgb(255_255_255/6%)] motion-reduce:transition-none`}
     >
-      <div className="relative row-span-2 lg:row-span-1">
+      <div className="row-span-2 flex items-center gap-2 lg:row-span-1">
+        {selectionControl == null ? null : (
+          <span className="relative z-10 flex size-4 shrink-0">
+            {selectionControl}
+          </span>
+        )}
         <RowGlyph
           graph={graph}
           failed={shape.isError}
           muted={workflow.publishedVersionId === null}
         />
-        {/* The box takes the place of the thread's first knot, so the
-            thread runs out of it instead of under it. */}
-        {selectionControl == null ? null : (
-          <div className="absolute inset-y-0 left-0 z-10 flex items-center">
-            {selectionControl}
-          </div>
-        )}
       </div>
       <RowTitle
         workspaceId={workspace.id}
