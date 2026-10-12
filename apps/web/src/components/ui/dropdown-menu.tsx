@@ -22,7 +22,11 @@ export function DropdownMenuContent({
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
-          className={cn(popupSurface, 'min-w-48 p-1', className)}
+          className={cn(
+            popupSurface,
+            'max-h-(--available-height) min-w-48 overflow-y-auto overscroll-contain p-1',
+            className,
+          )}
           {...props}
         />
       </MenuPrimitive.Positioner>
