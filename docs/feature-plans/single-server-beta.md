@@ -172,7 +172,7 @@ restore drill without the owner's accounts.
 - [x] 2. Runtime and web images, proxy scheme, worker settings and ARM publishing.
 - [x] 3. Single-server stack, secrets, deploy command and runbook.
 - [x] 4. Nightly backups, fresh-stack restore and timer.
-- [ ] 5. Manual deployment workflow with CI and SSH verification.
+- [x] 5. Manual deployment workflow with CI and SSH verification.
 - [ ] 6. Owner-assisted first launch, smoke tests and restore drill; automatic
       deploys only after a stable week. Not part of the current implementation.
 
@@ -205,6 +205,16 @@ fresh recovery succeeds. Local qualification restores the repository schema,
 all workspace rows, grants and forced RLS into a fresh PostgreSQL instance, and
 checks artifact bytes and metadata through the unchanged adapter. The real
 Oracle endpoint, installed timer and owner restore drill remain slice 6.
+
+Slice 5 adds manual-only main dispatch with a full commit SHA, verifies the latest
+successful main push CI run and its native ARM publisher, and sends only a
+literal deploy command over SSH with dedicated credentials and pinned host
+trust. The restricted server dispatcher uses the installed trusted control
+scripts so older image rollbacks retain current recovery fences; the image tags
+and extracted Compose/configuration sources still match the selected commit.
+Tests cover refused evidence, command injection, private key cleanup and SSH
+trust options. No real SSH connection, repository secret, launch or automatic
+deployment is configured here; those remain owner-assisted slice 6.
 
 1. **ADR 071, single-server beta.** Records the topology, what the beta gives
    up, and that AWS remains the paid target.
