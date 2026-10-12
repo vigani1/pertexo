@@ -127,9 +127,12 @@ function WaysIn() {
                 : 'border border-white/20',
             )}
           />
-          <span className="w-20 shrink-0 font-medium">{way.name}</span>
-          <span className="min-w-0 flex-1 text-muted-foreground">
-            {way.detail}
+          {/* Phones stack the sentence under its name, not beside it. */}
+          <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
+            <span className="font-medium sm:w-20 sm:shrink-0">{way.name}</span>
+            <span className="text-muted-foreground max-sm:text-xs">
+              {way.detail}
+            </span>
           </span>
           <span
             className={cn(
