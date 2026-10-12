@@ -67,7 +67,9 @@ export function WorkflowOrganizedResults({
       <Checkbox
         aria-label={`Select ${item.workflow.name}`}
         className={cn(
-          'size-8 pointer-coarse:size-11',
+          // A normal-size box with a 32px (44px on touch) hit area around
+          // it, filled so the thread's first knot doesn't show through.
+          'relative before:absolute before:inset-0 before:-z-10 before:rounded-sm before:bg-background after:absolute after:-inset-[7px] pointer-coarse:after:-inset-[13px]',
           currentSelected.length === 0 && ROW_REVEAL_CLASS,
         )}
         checked={selected.includes(id)}
@@ -102,8 +104,8 @@ export function WorkflowOrganizedResults({
           aria-label="Selected workflows"
         >
           <span className="text-sm text-muted-foreground">
-            {String(currentSelected.length)} selected · up to 50 loaded
-            workflows
+            {String(currentSelected.length)} selected
+            {currentSelected.length >= 50 ? ' · the most at once' : ''}
           </span>
           <Button
             variant="outline"
