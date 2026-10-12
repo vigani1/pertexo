@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { SettingsSection } from '@/components/patterns/settings-section';
 import { cn } from '@/lib/utils';
 import {
   ROLE_MATRIX,
@@ -14,23 +15,13 @@ import {
  */
 export function RolesMatrix({
   yourRole,
-  className,
-}: Readonly<{ yourRole: WorkspaceRole; className?: string }>) {
+}: Readonly<{ yourRole: WorkspaceRole }>) {
   return (
-    <section
-      aria-labelledby="roles-matrix-title"
-      className={cn(
-        'rounded-xl border border-border bg-card/40 p-4',
-        className,
-      )}
+    <SettingsSection
+      title="What each role can do"
+      description={`You’re ${withArticle(yourRole)}. Your column is highlighted.`}
     >
-      <h2 id="roles-matrix-title" className="text-base font-semibold">
-        What each role can do
-      </h2>
-      <p className="mt-1 text-xs text-muted-foreground">
-        You’re {withArticle(yourRole)}. Your column is highlighted.
-      </p>
-      <table className="mt-4 w-full border-collapse text-xs">
+      <table className="w-full max-w-3xl border-collapse text-xs">
         <thead>
           <tr>
             <th scope="col" className="sr-only">
@@ -107,6 +98,6 @@ export function RolesMatrix({
           ))}
         </tbody>
       </table>
-    </section>
+    </SettingsSection>
   );
 }

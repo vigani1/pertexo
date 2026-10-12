@@ -235,9 +235,9 @@ export function WorkspaceMembersPage({
         onInvite={openInvite}
       />
 
-      {/* The roles matrix reads below the list at full width: squeezed
-          into a side column its abilities wrapped to three lines. */}
-      <div className="grid items-start gap-8">
+      {/* The roles matrix reads below the list as a settings band, so its
+          abilities have the width they need instead of wrapping. */}
+      <div className="flex flex-col gap-8">
         <Tabs
           value={tab}
           onValueChange={(next) => {
@@ -283,7 +283,7 @@ export function WorkspaceMembersPage({
             </TabsContent>
           ) : null}
         </Tabs>
-        <RolesMatrix yourRole={workspace.role} className="max-w-3xl" />
+        <RolesMatrix yourRole={workspace.role} />
       </div>
 
       {canManage && issuanceAvailable === true ? (
