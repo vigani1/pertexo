@@ -196,6 +196,7 @@ function WorkflowListContent({
   const [duplicating, setDuplicating] = useState<WorkflowSummary>();
   const [exporting, setExporting] = useState<WorkflowSummary>();
   const [importing, setImporting] = useState(false);
+  const [importExamples, setImportExamples] = useState(false);
   const runner = useRunWorkflow({
     apiClient,
     userId: user.id,
@@ -321,6 +322,7 @@ function WorkflowListContent({
             void onSearchChange(
               updateWorkflowListSearch(search, { create: false }),
             );
+            setImportExamples(true);
             setImporting(true);
           }}
         />
@@ -374,11 +376,13 @@ function WorkflowListContent({
         userId={user.id}
         workspace={workspace}
         open={importing}
+        examplesFirst={importExamples}
         onReopen={() => {
           setImporting(true);
         }}
         onClose={() => {
           setImporting(false);
+          setImportExamples(false);
         }}
         onCreated={(id) => {
           setImporting(false);

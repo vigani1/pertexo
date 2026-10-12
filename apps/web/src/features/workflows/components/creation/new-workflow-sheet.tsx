@@ -161,16 +161,6 @@ export function NewWorkflowSheet({
             </SheetDescription>
           </SheetHeader>
           <SheetBody className="flex flex-col gap-6">
-            {onChooseTemplate === undefined ? null : (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={mutation.isPending}
-                onClick={onChooseTemplate}
-              >
-                Choose a complete example…
-              </Button>
-            )}
             <LabelledField
               id="workflow-name"
               label="Workflow name"
@@ -201,6 +191,18 @@ export function NewWorkflowSheet({
                 onChange={onChoiceChange}
               />
             ) : null}
+            {/* After the choices, not before the name: an example is the
+                less common start and brings its own name. */}
+            {onChooseTemplate === undefined ? null : (
+              <button
+                type="button"
+                disabled={mutation.isPending}
+                onClick={onChooseTemplate}
+                className="-mt-2 w-fit rounded-sm text-sm text-muted-foreground underline decoration-current/30 underline-offset-4 outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
+              >
+                Or start from a ready-made example…
+              </button>
+            )}
             {mutation.isError ? (
               <Notice tone="destructive">
                 {createErrorMessage(mutation.error)}

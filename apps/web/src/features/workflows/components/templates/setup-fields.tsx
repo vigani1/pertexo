@@ -33,7 +33,7 @@ export function CuratedSetupFields({
           error={validation.error(`setup-${String(index)}`)}
           description={
             target.valueKind === 'https_endpoint'
-              ? 'Curated setup requires lowercase https://, a lowercase ASCII DNS host and an explicit /path. No ports or credentials; use uppercase %HH escapes.'
+              ? 'A lowercase https:// address with a path, such as https://example.com/hooks. No ports, passwords or tokens.'
               : 'Do not enter credentials or secrets.'
           }
         >
@@ -61,8 +61,8 @@ export function CuratedSetupFields({
         </LabelledField>
       ))}
       <p className="text-sm text-muted-foreground">
-        Historical origin records this initial template basis only. Later edits
-        do not remain synchronized with the example or certify safety.
+        Pertexo remembers which example this draft started from. Your later
+        edits don’t change the example.
       </p>
     </FieldGroup>
   );

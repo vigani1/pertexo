@@ -84,6 +84,8 @@ function mount() {
         </button>
         <WorkflowImportDialog
           {...props}
+          // Opened to choose an example, as from New workflow.
+          examplesFirst
           open={open}
           onClose={() => {
             setOpen(false);
@@ -123,15 +125,13 @@ describe('Curated template setup in the existing import session', () => {
       await screen.findByLabelText('Workflow JSON file'),
       file,
     );
-    await screen.findByText('Reading workflow file…');
+    await screen.findByText('Reading old.json…');
     const choose = await screen.findByRole('button', {
       name: `Set up ${first.title}`,
     });
     await waitFor(() => expect(choose).toBeEnabled());
     await event.click(choose);
-    expect(
-      screen.queryByText('Reading workflow file…'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Reading old.json…')).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Preview import' }),
     ).toBeEnabled();
@@ -189,7 +189,7 @@ describe('Curated template setup in the existing import session', () => {
     await event.click(choose);
     expect(screen.getByLabelText('HTTPS endpoint')).toHaveValue('');
     expect(screen.getByLabelText('HTTPS endpoint')).toHaveAccessibleDescription(
-      'Curated setup requires lowercase https://, a lowercase ASCII DNS host and an explicit /path. No ports or credentials; use uppercase %HH escapes.',
+      'A lowercase https:// address with a path, such as https://example.com/hooks. No ports, passwords or tokens.',
     );
     expect(screen.getByLabelText('Slack channel ID')).toHaveValue('');
     expect(
@@ -287,7 +287,7 @@ describe('Curated template setup in the existing import session', () => {
       expect(screen.getByLabelText('New workflow name')).toHaveValue(''),
     );
     expect(
-      screen.queryByText(/Historical origin records/u),
+      screen.queryByText(/remembers which example/u),
     ).not.toBeInTheDocument();
     expect(attempts).toHaveLength(2);
   });
