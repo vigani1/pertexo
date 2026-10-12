@@ -64,7 +64,7 @@ published:
 | `ops` | Root image | On demand: `docker compose run --rm ops …` |
 | `postgres` | `postgres:18` (as in `compose.yaml`) | Reuses `infrastructure/postgres/init/10-roles.sh` for the owner, migration, app and maintenance roles |
 | `redis` | Redis (as in `compose.yaml`) | Password, AOF, `noeviction` |
-| `storage` | MinIO (pinned) | S3-compatible file storage |
+| `storage` | SeaweedFS (pinned), `weed mini` | One-process S3-compatible file storage; only its S3 port reaches the proxy |
 
 Health checks and `restart: unless-stopped` follow `infrastructure/ecs/workloads.json`:
 - `api` checks `/health/ready`.
@@ -89,12 +89,33 @@ Logs use the json-file driver with size rotation.
   - So the endpoint is `https://<files host>`, and `ARTIFACT_STORE_FORCE_PATH_STYLE=true`.
   - The `proxy` service carries both hostnames as network aliases, so `api` and
     `worker` reach storage by the same name and certificate.
-  - MinIO allows CORS only from `https://<app host>`.
+  - Storage allows CORS only from `https://<app host>`.
   - A setup step creates the bucket.
 - **ARM.**
   - The Dockerfile already installs both `amd64` and `arm64` security patches.
   - Images are built natively on GitHub's `ubuntu-24.04-arm` runner, free for
     public repositories. CI keeps building `amd64`.
+
+## Storage revision approved by the owner
+
+The original MinIO image and `mc` choices are replaced: the official
+[MinIO server repository](https://github.com/minio/minio) and
+[client repository](https://github.com/minio/mc) are archived. The owner approved
+revising storage rather than deploying their unmaintained legacy binaries.
+
+Use a pinned [SeaweedFS `weed mini`](https://github.com/seaweedfs/seaweedfs/wiki/Quick-Start-with-weed-mini)
+image as the single storage container and pinned
+[rclone](https://rclone.org/s3/#metadata) for backup and restore copies.
+Both publish ARM64 images. Keep the existing S3 adapter and settings; qualify
+conditional uploads, SHA-256 checks, presigned links, user metadata, workspace
+purging and CORS against the pinned provider in slice 3. Publish only the S3
+endpoint through Caddy; storage administration, filer and RPC ports remain
+private. No storage cluster, extra database or provider account is added.
+
+Backups preserve user metadata and content type. They do not depend on provider
+version IDs: Pertexo's artifact identities and immutable object keys remain the
+existing authority. Oracle backup endpoint, bucket, region and dedicated S3
+credentials are owner-supplied in slice 6, using the same Oracle account.
 
 ## Settings
 
@@ -115,7 +136,7 @@ Keep `.env.production.example` (names and comments, no values) in
   - `INVITATION_TOKEN_KEY`;
   - the Postgres superuser, migration, app and maintenance passwords;
   - `REDIS_PASSWORD`;
-  - the MinIO root and application credentials.
+  - the storage administrator and application credentials.
 
   It prints them once in the format each schema expects; check each against
   its parser. Version variables start at 1.
@@ -174,8 +195,13 @@ restore drill without the owner's accounts.
      including Ubuntu's iptables rules for 80 and 443, SSH keys only,
      unattended upgrades), first launch, deploy, rollback and `ops` commands.
 4. **Backups.**
-   - `backup.sh`: nightly `pg_dump` (custom format, superuser) and an `mc
-     mirror` of the bucket to Oracle Object Storage through its S3 API.
+   - `backup.sh`: nightly `pg_dump` (custom format, superuser) and a pinned `rclone`
+     metadata-preserving copy of the bucket to Oracle Object Storage through
+     its S3 API. Each recovery point has its own dated prefix. Pause serving
+     writers and public storage ingress while capturing the matching database
+     and objects, then resume them even if backup fails. Publish a completion
+     marker only after both copies succeed; incomplete copies are not restore
+     candidates.
    - Keep 14 days.
    - `restore.sh` into a fresh stack.
    - A systemd timer.

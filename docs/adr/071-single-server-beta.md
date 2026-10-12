@@ -12,7 +12,7 @@ reset. This exception changes deployment guarantees, not application rules.
 Caddy terminates HTTPS for the app and files hostnames. Only its ports are
 published. The web image serves the existing frontend and proxies the API;
 separate API, worker, migration and on-demand ops containers share a private
-network with PostgreSQL, Redis and MinIO. Reuse the existing database roles,
+network with PostgreSQL, Redis and SeaweedFS in its one-process `weed mini` mode. Reuse the existing database roles,
 migrations, artifact-store interface and health contracts. Deployed encryption
 continues to use AWS KMS; local encryption is not a beta production option.
 
@@ -21,6 +21,13 @@ processes start. An unhealthy release without a migration can return to the
 previous release; a release that applied a migration must fix forward. Deploys
 start as manual GitHub dispatches. Automatic deploys require a separate change
 after the owner has completed the launch checks and observed a stable week.
+
+The owner approved replacing MinIO after its community server and `mc` client
+were archived. Use pinned SeaweedFS and rclone releases with ARM64 images,
+qualifying the unchanged S3 adapter against the chosen release. Only S3 reaches
+the files proxy; storage administration and internal ports stay private. Backup
+copies preserve artifact metadata and capture the database and objects while
+serving writers and public storage ingress are paused.
 
 The beta accepts these trade-offs:
 
