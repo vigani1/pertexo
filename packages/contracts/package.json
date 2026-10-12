@@ -25,7 +25,7 @@
   "dependencies": {
     "@pertexo/templates": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
-    "zod": "4.4.3"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@redocly/cli": "2.54.3",
