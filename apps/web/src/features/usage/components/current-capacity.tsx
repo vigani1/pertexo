@@ -1,4 +1,6 @@
 import type { UsageCapacityResponse } from '@pertexo/contracts';
+import type { ReactNode } from 'react';
+import { formatByteLength } from '@/lib/format/bytes';
 import { CapacityLoom, StorageSpool } from './capacity-loom';
 
 const policyLabels: Readonly<
@@ -17,18 +19,15 @@ function CapacityRow({
   limit,
 }: Readonly<{
   label: string;
-  used: number;
-  limit: number | null;
+  used: ReactNode;
+  limit: ReactNode;
 }>) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-border py-4">
       <dt className="text-sm">{label}</dt>
       <dd className="min-w-0 break-all font-mono text-sm">
         <span className="text-foreground">{used}</span>
-        <span className="text-subtle-foreground">
-          {' '}
-          / {limit ?? 'limit unavailable'}
-        </span>
+        <span className="text-subtle-foreground"> / {limit}</span>
       </dd>
     </div>
   );
@@ -40,31 +39,32 @@ export function CurrentCapacity({
   const { execution, artifacts } = snapshot;
   const reserved = execution.reservedActiveSlots;
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
+    // Two halves with the same anatomy: a label, a drawing in the same
+    // rack, two exact rows and one note.
+    <div className="grid gap-x-10 gap-y-8 lg:grid-cols-2">
       <div className="min-w-0">
-        <h3 className="mb-2 text-sm font-semibold">Run slots</h3>
+        <h3 className="text-sm font-semibold">Run slots</h3>
         <CapacityLoom execution={execution} />
         <dl>
           <CapacityRow
             label="Slots in use"
             used={execution.activeCapacityConsumed}
-            limit={execution.policy.activeRunLimit}
+            limit={execution.policy.activeRunLimit ?? 'limit unavailable'}
           />
           <CapacityRow
             label="Queued runs"
             used={execution.queuedRuns}
-            limit={execution.policy.queuedRunLimit}
+            limit={execution.policy.queuedRunLimit ?? 'limit unavailable'}
           />
         </dl>
-        {/* Slots in use already counts running and waiting runs; only a
-            slot held for a run about to start needs saying. */}
-        {reserved === 0 ? null : (
-          <p className="text-sm text-muted-foreground">
-            {reserved === 1
-              ? '1 slot is held for a queued run about to start.'
-              : `${String(reserved)} slots are held for queued runs about to start.`}
-          </p>
-        )}
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+          A run keeps its slot until it finishes, even while it waits.
+          {reserved === 0
+            ? null
+            : reserved === 1
+              ? ' 1 slot is held for a queued run about to start.'
+              : ` ${String(reserved)} slots are held for queued runs about to start.`}
+        </p>
         {execution.policy.state === 'active' ? null : (
           <p className="mt-3 text-sm">
             New runs aren’t accepted right now: this workspace’s limits are{' '}
@@ -76,19 +76,28 @@ export function CurrentCapacity({
         )}
       </div>
       <div className="min-w-0">
-        <h3 className="mb-2 text-sm font-semibold">Storage</h3>
+        <h3 className="text-sm font-semibold">Storage</h3>
         <StorageSpool
           chargedBytes={artifacts.chargedBytes}
           byteLimit={artifacts.byteLimit}
         />
         <dl>
           <CapacityRow
+            label="Stored"
+            used={
+              <span title={`${artifacts.chargedBytes} bytes`}>
+                {formatByteLength(artifacts.chargedBytes)}
+              </span>
+            }
+            limit={formatByteLength(artifacts.byteLimit)}
+          />
+          <CapacityRow
             label="Files"
             used={artifacts.chargedCount}
             limit={artifacts.artifactCountLimit}
           />
         </dl>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
           Files count from upload until they’re fully deleted.
         </p>
       </div>
