@@ -29,7 +29,6 @@
         "ARTIFACT_STORE_REGION",
         "CONNECTION_KMS_KEY_REFERENCE",
         "CONNECTION_KMS_REGION",
-        "INVITATION_TOKEN_KEY_VERSION",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
         "PUBLIC_WEB_ORIGIN",
         "SERVICE_VERSION",
@@ -40,11 +39,13 @@
         "ARTIFACT_STORE_SECRET_ACCESS_KEY",
         "DATABASE_URL",
         "BETTER_AUTH_SECRET",
-        "INVITATION_TOKEN_KEY",
         "REDIS_URL"
       ],
-      "sharedConfiguration": ["AUTH_MAIL_KEY_VERSION"],
-      "sharedSecrets": ["AUTH_MAIL_KEY"],
+      "sharedConfiguration": [
+        "AUTH_MAIL_KEY_VERSION",
+        "INVITATION_TOKEN_KEY_VERSION"
+      ],
+      "sharedSecrets": ["AUTH_MAIL_KEY", "INVITATION_TOKEN_KEY"],
       "port": 3000,
       "healthCheck": [
         "CMD-SHELL",
@@ -78,19 +79,25 @@
         "ARTIFACT_STORE_REGION",
         "CONNECTION_KMS_KEY_REFERENCE",
         "CONNECTION_KMS_REGION",
+        "INVITATION_EMAIL_FROM",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "PUBLIC_WEB_ORIGIN",
         "SERVICE_VERSION"
       ],
       "secrets": [
         "AUTH_MAIL_EMAIL_API_KEY",
+        "INVITATION_EMAIL_API_KEY",
         "DATABASE_URL",
         "DATABASE_MAINTENANCE_URL",
         "REDIS_URL",
         "ARTIFACT_STORE_ACCESS_KEY_ID",
         "ARTIFACT_STORE_SECRET_ACCESS_KEY"
       ],
-      "sharedConfiguration": ["AUTH_MAIL_KEY_VERSION"],
-      "sharedSecrets": ["AUTH_MAIL_KEY"],
+      "sharedConfiguration": [
+        "AUTH_MAIL_KEY_VERSION",
+        "INVITATION_TOKEN_KEY_VERSION"
+      ],
+      "sharedSecrets": ["AUTH_MAIL_KEY", "INVITATION_TOKEN_KEY"],
       "healthCheck": [
         "CMD-SHELL",
         "test -f /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready && kill -0 1"
