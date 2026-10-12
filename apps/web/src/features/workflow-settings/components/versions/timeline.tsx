@@ -1,5 +1,5 @@
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
-import { EyeIcon, RotateCcwIcon } from 'lucide-react';
+import { CopyIcon, DownloadIcon, EyeIcon, RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
@@ -74,37 +74,8 @@ export function VersionTimeline({
                   </time>{' '}
                   · {stepCountLabel(version.graph.nodes.length)}
                 </p>
-                <p className="mt-0.5 font-mono text-[0.72rem] text-subtle-foreground">
-                  {formatDateTime(version.publishedAt)}
-                </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {onExport === undefined ? null : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Export ${label}`}
-                    onClick={() => {
-                      onExport(version);
-                    }}
-                  >
-                    Export version
-                  </Button>
-                )}
-                {onDuplicate === undefined ? null : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Duplicate ${label}`}
-                    onClick={() => {
-                      onDuplicate(version);
-                    }}
-                  >
-                    Duplicate version
-                  </Button>
-                )}
+              <div className="flex flex-wrap gap-1.5">
                 <Button
                   type="button"
                   variant="outline"
@@ -133,6 +104,34 @@ export function VersionTimeline({
                     Restore to draft
                   </Button>
                 ) : null}
+                {onExport === undefined ? null : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Export ${label}`}
+                    onClick={() => {
+                      onExport(version);
+                    }}
+                  >
+                    <DownloadIcon aria-hidden="true" data-icon="inline-start" />
+                    Export
+                  </Button>
+                )}
+                {onDuplicate === undefined ? null : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Duplicate ${label}`}
+                    onClick={() => {
+                      onDuplicate(version);
+                    }}
+                  >
+                    <CopyIcon aria-hidden="true" data-icon="inline-start" />
+                    Duplicate
+                  </Button>
+                )}
               </div>
             </div>
           </li>

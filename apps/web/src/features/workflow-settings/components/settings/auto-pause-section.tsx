@@ -157,7 +157,7 @@ function WorkflowRule({
       <LabelledField
         id="workflow-auto-pause-threshold"
         label="Pause after failures in a row"
-        description={`Leave blank to use the workspace default (${String(settings.workspaceThreshold)}). Changes apply to the next evaluation, without publishing; they do not resume a pause.`}
+        description={`Leave blank to use the workspace default (${String(settings.workspaceThreshold)}). Applies from the next failure, without publishing. Changing it doesn’t resume a paused workflow.`}
         error={validation.error('threshold')}
       >
         {(control) => (
@@ -338,7 +338,7 @@ export function AutoPauseSection(scope: Scope) {
   return (
     <SettingsSection
       title="Automatic pause"
-      description="Configure when repeated failures should stop scheduled and webhook runs."
+      description="When repeated failures should stop scheduled and webhook runs."
     >
       <SettingsQueryState query={query} resource="The auto-pause rule" />
       {settings === undefined ? null : (
