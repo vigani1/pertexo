@@ -7,7 +7,8 @@ selection, command, dialog and save ownership.
 
 - [x] 1. Put row selection in the glyph column without changing row height.
   Desktop hover/focus reveals it; touch and an existing selection keep it
-  visible. Only tagged workflows get an additional tag line.
+  visible. Only tagged workflows get an additional tag line. Long menus stay
+  within the available viewport height and scroll when needed.
 - [ ] 2. Below sm, share one overflow menu for Export, Input cases, Duplicate,
   Contract and editor history. Keep Issues, Run and Publish together on one
   row, including at 375px.

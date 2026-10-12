@@ -32,6 +32,7 @@ for (const screen of [
     });
     try {
       const page = await context.newPage();
+      await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
       await addCsrfCookie(context);
       const remote = remoteDraft(mappingGraph());
       await installEditorRoutes(page, remote);
@@ -42,12 +43,36 @@ for (const screen of [
       };
       let editable = true;
       let tagged = false;
+      let favoriteCalls = 0;
+      await page.route(
+        `**/v1/workspaces/${workspaceId}/workflows/${beta.id}/favorite`,
+        (route) => {
+          favoriteCalls += 1;
+          return route.fulfill({
+            status: 503,
+            contentType: 'application/problem+json',
+            json: {
+              type: 'urn:pertexo:problem:internal.unexpected',
+              title: 'Try again',
+              status: 503,
+              code: 'internal.unexpected',
+              requestId: 'favorite-outage',
+            },
+          });
+        },
+      );
       await page.route('**/v1/workspaces?**', (route) =>
         route.fulfill({
           json: {
             items: [
               editable
-                ? workspace
+                ? {
+                    ...workspace,
+                    capabilities: [
+                      ...workspace.capabilities,
+                      'workflow:create',
+                    ],
+                  }
                 : {
                     ...workspace,
                     role: 'viewer',
@@ -182,6 +207,20 @@ for (const screen of [
         body: await page.screenshot(),
         contentType: 'image/png',
       });
+      await page.setViewportSize({ width: screen.width, height: 480 });
+      await betaRow
+        .getByRole('button', { name: 'Actions for Beta', exact: true })
+        .click();
+      const menu = page.getByRole('menu', {
+        name: 'Actions for Beta',
+        exact: true,
+      });
+      await expect(menu).toBeInViewport({ ratio: 1 });
+      await menu
+        .getByRole('menuitem', { name: 'Add favorite', exact: true })
+        .click();
+      await expect.poll(() => favoriteCalls).toBe(1);
+      await expect(betaRow.getByRole('alert')).toHaveText('Favorite not saved');
       editable = false;
       tagged = false;
       await page.reload();
