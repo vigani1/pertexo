@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -30,6 +30,13 @@ import {
   versionId,
   problem,
 } from './list/fixtures';
+
+function InputCasesActionHarness(
+  props: Omit<ComponentProps<typeof InputCasesAction>, 'open' | 'onOpenChange'>,
+) {
+  const [open, setOpen] = useState(false);
+  return <InputCasesAction {...props} open={open} onOpenChange={setOpen} />;
+}
 
 const caseId = '34343434-3434-4343-8343-343434343434';
 const path = `${api}/workflows/${workflowId}/input-cases`;
@@ -214,7 +221,7 @@ describe('shared workflow input cases', () => {
       }),
     );
     renderInRouter(
-      <InputCasesAction
+      <InputCasesActionHarness
         apiClient={createApiClient({
           fetch: testFetch,
           readCsrfToken: () =>
@@ -293,7 +300,7 @@ describe('shared workflow input cases', () => {
       }),
     );
     renderInRouter(
-      <InputCasesAction
+      <InputCasesActionHarness
         apiClient={createApiClient({
           fetch: testFetch,
           readCsrfToken: () =>

@@ -6,6 +6,7 @@ import {
   editorUrl,
   installEditorRoutes,
   manualDefinition,
+  openWorkflowAction,
   mappingGraph,
   remoteDraft,
   workflowId,
@@ -19,7 +20,13 @@ async function measureHeader(page: Page) {
     header,
     header.getByRole('status'),
     header.getByRole('navigation', { name: 'Workflow sections' }),
-    header.getByRole('button', { name: 'Workflow contract', exact: true }),
+    header.getByRole('button', {
+      name:
+        (page.viewportSize()?.width ?? 1280) < 640
+          ? 'More workflow actions'
+          : 'Workflow contract',
+      exact: true,
+    }),
     header.getByRole('button', { name: /^(Publish v|No changes since v)/u }),
     header.locator('#editor-issues-chip'),
   ];
@@ -215,9 +222,7 @@ for (const width of [390, 1280]) {
     await expect(
       header.getByRole('link', { name: 'Check triggers', exact: true }),
     ).toHaveCount(0);
-    await header
-      .getByRole('button', { name: 'Workflow contract', exact: true })
-      .click();
+    await openWorkflowAction(page, 'Workflow contract');
     const contract = page.getByRole('dialog', {
       name: 'Workflow contract',
       exact: true,
@@ -225,6 +230,12 @@ for (const width of [390, 1280]) {
     await expect(contract).toBeVisible();
     await contract.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(contract).not.toBeVisible();
+    await expect(
+      header.getByRole('button', {
+        name: width < 640 ? 'More workflow actions' : 'Workflow contract',
+        exact: true,
+      }),
+    ).toBeFocused();
     await expect(
       header.getByRole('button', { name: 'No changes since v1', exact: true }),
     ).toBeDisabled();

@@ -16,8 +16,8 @@ export const ISSUES_CHIP_ID = 'editor-issues-chip';
 /**
  * The command bar's issue count. Opens and closes the bottom issues lens.
  * An empty draft says what to add first instead of claiming “No issues”,
- * unless the server found some. On phones only the glyph and count show,
- * so Run and Publish keep their room; the words stay for screen readers.
+ * unless the server found some. Phones keep a readable label beside the
+ * glyph and count, with long guidance truncated visually.
  */
 export function IssuesChip({
   state,
@@ -41,7 +41,7 @@ export function IssuesChip({
       aria-controls={open ? ISSUES_LENS_ID : undefined}
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'sm' }),
-        'w-14 px-1.5 sm:w-40 sm:px-2.5',
+        'w-24 shrink-0 gap-1 px-1.5 sm:w-40 sm:gap-2 sm:px-2.5',
         count === 0 &&
           !state.stale &&
           hint === undefined &&
@@ -67,9 +67,9 @@ export function IssuesChip({
   );
 }
 
-/** Words that fold away on phones, where the chip keeps only its glyph. */
+/** Long setup or check messages retain their complete accessible name. */
 function Words({ children }: Readonly<{ children: ReactNode }>) {
-  return <span className="max-sm:sr-only">{children}</span>;
+  return <span className="min-w-0 truncate">{children}</span>;
 }
 
 function ChipLabel({

@@ -353,10 +353,30 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
       .locator('header')
       .filter({ has: page.getByRole('link', { name: 'Back to workflows' }) });
     const barBox = await bar.boundingBox();
-    await expect(bar.getByRole('button', { name: 'Export…' })).toBeVisible();
-    await expect(
-      bar.getByRole('button', { name: 'Input cases' }),
-    ).toBeVisible();
+    if (width < 640) {
+      const more = bar.getByRole('button', {
+        name: 'More workflow actions',
+        exact: true,
+      });
+      await more.click();
+      const menu = page.getByRole('menu', {
+        name: 'More workflow actions',
+        exact: true,
+      });
+      await expect(
+        menu.getByRole('menuitem', { name: 'Export…', exact: true }),
+      ).toBeVisible();
+      await expect(
+        menu.getByRole('menuitem', { name: 'Input cases', exact: true }),
+      ).toBeVisible();
+      await menu.press('Escape');
+      await expect(menu).not.toBeVisible();
+    } else {
+      await expect(bar.getByRole('button', { name: 'Export…' })).toBeVisible();
+      await expect(
+        bar.getByRole('button', { name: 'Input cases' }),
+      ).toBeVisible();
+    }
     for (const action of await bar.getByRole('button').all()) {
       if (!(await action.isVisible())) continue;
       const actionBox = await action.boundingBox();
@@ -390,7 +410,7 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
     expect((publishBox?.x ?? 0) + (publishBox?.width ?? 0)).toBeLessThanOrEqual(
       width,
     );
-    const more = bar.getByRole('button', { name: 'More editor actions' });
+    const more = bar.getByRole('button', { name: 'More workflow actions' });
     if (width < 640) {
       await expect(more).toBeVisible();
       await expect(bar.getByRole('button', { name: 'Undo' })).toBeHidden();

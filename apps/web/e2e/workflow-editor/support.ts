@@ -79,6 +79,18 @@ export const manualDefinition = {
   ports: { inputs: [], outputs: ['out'] },
 };
 
+/** The same workflow action is a button on desktop and a menu item on phones. */
+export async function openWorkflowAction(page: Page, name: string) {
+  if ((page.viewportSize()?.width ?? 1280) < 640) {
+    await page
+      .getByRole('button', { name: 'More workflow actions', exact: true })
+      .click();
+    await page.getByRole('menuitem', { name, exact: true }).click();
+  } else {
+    await page.getByRole('button', { name, exact: true }).click();
+  }
+}
+
 export type Graph = Readonly<{
   nodes: readonly unknown[];
   edges: readonly unknown[];
