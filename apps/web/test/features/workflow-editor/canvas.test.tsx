@@ -119,7 +119,21 @@ describe('workflow editor overview map', { timeout: 30_000 }, () => {
 });
 
 describe('workflow editor command bar', { timeout: 30_000 }, () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+  });
+
   it('folds undo, redo and the shortcuts into ⋯ for narrow screens', async () => {
+    // A phone: the page's own controls join ⋯ only there.
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === '(max-width: 39.999rem)',
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }),
+    });
     mockServer.use(
       ...editorHandlers(() => undefined, {
         graph: graphWithMappingNodes(),

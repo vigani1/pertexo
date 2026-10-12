@@ -353,7 +353,7 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
       .locator('header')
       .filter({ has: page.getByRole('link', { name: 'Back to workflows' }) });
     const barBox = await bar.boundingBox();
-    if (width < 640) {
+    if (width < 1536) {
       const more = bar.getByRole('button', {
         name: 'More workflow actions',
         exact: true,
@@ -411,10 +411,10 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
       width,
     );
     const more = bar.getByRole('button', { name: 'More workflow actions' });
-    if (width < 640) {
-      await expect(more).toBeVisible();
+    if (width < 1536) await expect(more).toBeVisible();
+    else await expect(more).toBeHidden();
+    if (width < 640)
       await expect(bar.getByRole('button', { name: 'Undo' })).toBeHidden();
-    } else await expect(more).toBeHidden();
     const heading = bar.getByRole('heading', { name: longWorkflowName });
     const headingBox = await heading.boundingBox();
     expect((headingBox?.x ?? 0) + (headingBox?.width ?? 0)).toBeLessThanOrEqual(

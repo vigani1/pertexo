@@ -8,6 +8,7 @@ import {
   workflowId,
   workspace,
   workspaceId,
+  openWorkflowAction,
 } from '../workflow-editor/support';
 
 test('keeps a workflow copy exact through retry and postflight outages until verified recovery', async ({
@@ -82,7 +83,7 @@ test('keeps a workflow copy exact through retry and postflight outages until ver
     },
   );
   await page.goto(editorUrl);
-  await page.getByRole('button', { name: 'Duplicate…', exact: true }).click();
+  await openWorkflowAction(page, 'Duplicate…');
   const dialog = page.getByRole('dialog', {
     name: 'Duplicate workflow',
     exact: true,
