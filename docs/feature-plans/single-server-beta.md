@@ -172,6 +172,14 @@ restore drill without the owner's accounts.
 
 ### Slice details
 
+Slice 2 implementation is in review: both image targets build locally, runtime
+roles load as UID 10001 on a read-only root, and the real web image passes proxy
+scheme, host/path, SPA-boundary and unbuffered-stream checks as UID 101. The API
+and worker share the invitation token key and version references in the ECS
+manifest. The main-only native ARM publishing job must succeed after merge
+before slice 2 is checked and slice 3 begins. Owner HTTPS sign-in and provider
+smoke evidence still belong to slice 6.
+
 1. **ADR 071, single-server beta.** Records the topology, what the beta gives
    up, and that AWS remains the paid target.
 2. **Images.**

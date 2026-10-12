@@ -63,6 +63,20 @@ describe('same-origin web proxy configuration', () => {
       'add_header X-Content-Type-Options "nosniff" always;',
     );
   });
+
+  it('retains a trusted proxy scheme and falls back to the direct scheme', async () => {
+    const configuration = await readFile(
+      new URL('../deployment/nginx.conf.template', import.meta.url),
+      'utf8',
+    );
+    const mapping = nginxBlock(configuration, 'map $http_x_forwarded_proto');
+    expect(mapping.body).toContain('default $scheme;');
+    expect(mapping.body).toContain('http http;');
+    expect(mapping.body).toContain('https https;');
+    expect(nginxBlock(configuration, 'location /v1').body).toContain(
+      'proxy_set_header X-Forwarded-Proto $pertexo_forwarded_proto;',
+    );
+  });
 });
 
 function nginxBlock(source: string, marker: string) {

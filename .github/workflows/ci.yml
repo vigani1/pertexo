@@ -256,8 +256,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Use the Docker Hub mirror
         uses: ./.github/actions/docker-mirror
+      - name: Set up Node.js for the transport probe
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
       - name: Build production image
-        run: docker buildx build --load --tag pertexo-ci:${{ github.sha }} .
+        run:
+          docker buildx build --load --target runtime --build-arg
+          SOURCE_COMMIT=${{ github.sha }} --tag pertexo-ci:${{ github.sha }} .
       - name:
           Runs as non-root on a read-only filesystem and loads every entrypoint
         run: |
@@ -271,6 +277,62 @@ jobs:
               import('./apps/ops/dist/run.js'),
               import('./packages/database/dist/migrations.js')
             ])"
+      - name: Build and qualify the web image
+        run: |
+          set -euo pipefail
+          docker buildx build --load --target web --build-arg SOURCE_COMMIT=${{ github.sha }} \
+            --tag pertexo-web-ci:${{ github.sha }} .
+          node infrastructure/images/verify-web.mjs pertexo-ci:${{ github.sha }} pertexo-web-ci:${{ github.sha }}
+
+  publish-arm-images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, unit, integration, e2e, image, security]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
+      - name: Set up Node.js for the transport probe
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+      - name: Build and qualify native ARM images
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          docker buildx build --load --platform linux/arm64 --target runtime \
+            --build-arg SOURCE_COMMIT="$GITHUB_SHA" --tag ghcr.io/vigani1/pertexo:"$GITHUB_SHA" .
+          docker buildx build --load --platform linux/arm64 --target web \
+            --build-arg SOURCE_COMMIT="$GITHUB_SHA" --tag ghcr.io/vigani1/pertexo-web:"$GITHUB_SHA" .
+          test "$(docker image inspect --format '{{.Architecture}}' ghcr.io/vigani1/pertexo:"$GITHUB_SHA")" = arm64
+          test "$(docker run --rm --read-only --tmpfs /tmp --entrypoint id ghcr.io/vigani1/pertexo:"$GITHUB_SHA" -u)" = 10001
+          docker run --rm --read-only --tmpfs /tmp --entrypoint node \
+            ghcr.io/vigani1/pertexo:"$GITHUB_SHA" --input-type=module --eval \
+            "await Promise.all([
+              import('./apps/api/dist/app.js'),
+              import('./apps/worker/dist/app.js'),
+              import('./apps/ops/dist/run.js'),
+              import('./packages/database/dist/migrations.js')
+            ])"
+          node infrastructure/images/verify-web.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA" ghcr.io/vigani1/pertexo-web:"$GITHUB_SHA"
+      - name: Publish commit tags to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          for image in ghcr.io/vigani1/pertexo ghcr.io/vigani1/pertexo-web; do
+            # A rerun must not replace an already published release tag.
+            if ! docker manifest inspect "$image:$GITHUB_SHA" >/dev/null 2>&1; then
+              docker push "$image:$GITHUB_SHA"
+            fi
+          done
+          docker logout ghcr.io
 
   security:
     runs-on: ubuntu-latest

@@ -5,6 +5,16 @@ RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
 RUN pnpm install --frozen-lockfile && pnpm build
 
+FROM nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:56b8272e43a0525f67aed68d1e0794a712d10e3e45a563e118e9a77c817e6f86 AS web
+ARG SOURCE_COMMIT=unknown
+LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
+  org.opencontainers.image.revision=$SOURCE_COMMIT
+ENV PERTEXO_API_UPSTREAM=http://api:3000 \
+  NGINX_ENVSUBST_FILTER=^PERTEXO_API_UPSTREAM$
+COPY --from=build --chown=101:101 /workspace/apps/web/dist /usr/share/nginx/html
+COPY --chown=101:101 apps/web/deployment/nginx.conf.template /etc/nginx/templates/default.conf.template
+EXPOSE 8080
+
 FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS production-dependencies
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
@@ -20,6 +30,9 @@ ADD --checksum=sha256:d7d1943aec9597629bf73075efcc5ef6dc9bda96d78e80d843156ecd44
 ADD --checksum=sha256:03d979b849a1a0a8955eee28b988dbc25a407fd3a0581df5c94e6ae7bcc01ddf https://deb.debian.org/debian-security/pool/updates/main/p/perl/perl-base_5.36.0-7+deb12u4_arm64.deb /perl-arm64.deb
 
 FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS runtime
+ARG SOURCE_COMMIT=unknown
+LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
+  org.opencontainers.image.revision=$SOURCE_COMMIT
 ENV NODE_ENV=production
 WORKDIR /workspace
 # Debian's PCRE2 and Perl security fixes postdate the pinned Node base.
