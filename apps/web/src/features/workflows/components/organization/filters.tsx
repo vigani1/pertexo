@@ -62,9 +62,12 @@ function OrganizationNameFilter({
   const [optimisticQuery, setOptimisticQuery] = useOptimistic(query);
   const [error, setError] = useState<string>();
   return (
+    // The placeholder says what the box is; like the Runs search, the label
+    // is for screen readers only.
     <LabelledField
       id="workflow-organization-query"
       label="Search workflows"
+      className="[&_[data-slot=field-label]]:sr-only"
       error={error}
     >
       {(control) => (

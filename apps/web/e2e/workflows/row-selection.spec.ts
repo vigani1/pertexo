@@ -174,8 +174,17 @@ for (const screen of [
       await page.mouse.move(0, 0);
       await expect(selection).toHaveCSS('opacity', screen.touch ? '1' : '0');
       if (screen.touch) {
-        expect(selectionBox.width).toBeGreaterThanOrEqual(44);
-        expect(selectionBox.height).toBeGreaterThanOrEqual(44);
+        // The box stays small; its hit area reaches past it.
+        const hitArea = await selection.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          const area = getComputedStyle(element, '::after');
+          return {
+            width: box.width - parseFloat(area.left) - parseFloat(area.right),
+            height: box.height - parseFloat(area.top) - parseFloat(area.bottom),
+          };
+        });
+        expect(hitArea.width).toBeGreaterThanOrEqual(44);
+        expect(hitArea.height).toBeGreaterThanOrEqual(44);
       } else {
         await alphaRow.hover();
         await expect(selection).toHaveCSS('opacity', '1');

@@ -265,8 +265,10 @@ export function WorkflowRow({
           failed={shape.isError}
           muted={workflow.publishedVersionId === null}
         />
+        {/* The box takes the place of the thread's first knot, so the
+            thread runs out of it instead of under it. */}
         {selectionControl == null ? null : (
-          <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <div className="absolute inset-y-0 left-0 z-10 flex items-center">
             {selectionControl}
           </div>
         )}
