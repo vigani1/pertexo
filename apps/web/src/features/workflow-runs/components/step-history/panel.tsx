@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { InfoHint } from '@/components/patterns/guidance/info-hint';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
@@ -196,11 +196,7 @@ export function StepHistoryPanel({
       </p>
     );
   if (health.data === undefined || runs.data === undefined)
-    return (
-      <div role="status" aria-label="Loading this step’s runs">
-        <Skeleton className="h-24 w-full" />
-      </div>
-    );
+    return <SkeletonRows label="Loading this step’s runs" />;
   const { runsConsidered, oldestRunAt } = health.data;
   const stepHealth = health.data.items.find((item) => item.nodeId === nodeId);
   if (runsConsidered === 0)

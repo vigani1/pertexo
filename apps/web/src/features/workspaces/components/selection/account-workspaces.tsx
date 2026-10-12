@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon } from 'lucide-react';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { readFailureReason } from '@/lib/api/error-copy';
@@ -33,15 +33,7 @@ export function AccountWorkspacesSection({
       description="Where you’re a member, and your role in each. Roles are set by each workspace’s admins."
     >
       {query.isPending ? (
-        <div role="status" className="flex flex-col gap-3">
-          <span className="sr-only">Loading your workspaces…</span>
-          {[0, 1].map((row) => (
-            <div key={row} className="flex items-center gap-3">
-              <Skeleton className="size-9 rounded-lg" />
-              <Skeleton className="h-3 w-40" />
-            </div>
-          ))}
-        </div>
+        <SkeletonRows label="Loading your workspaces" rows={2} />
       ) : query.isError && query.data === undefined ? (
         <p className="text-sm text-muted-foreground">
           {readFailureReason(query.error)}

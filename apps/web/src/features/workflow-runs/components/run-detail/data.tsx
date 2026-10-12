@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import { ArtifactDownload } from '@/features/artifacts/public';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -168,11 +168,7 @@ function RunDataRead({
         </Button>
       </div>
     );
-  return (
-    <div role="status" aria-label={`Loading ${title}`}>
-      <Skeleton className="h-16 w-full" />
-    </div>
-  );
+  return <SkeletonLines label={`Loading ${title}`} />;
 }
 
 /** The run's own input, as the trigger handed it over. */
@@ -348,11 +344,7 @@ function RecordedStepInput({
   });
   const data = recorded.data;
   if (data === undefined && !recorded.isError)
-    return (
-      <div role="status" aria-label={`Loading Data in of ${row.label}`}>
-        <Skeleton className="h-16 w-full" />
-      </div>
-    );
+    return <SkeletonLines label={`Loading Data in of ${row.label}`} />;
   if (data?.kind === 'inline' || data?.kind === 'artifact')
     return (
       <div className="flex flex-col gap-3">

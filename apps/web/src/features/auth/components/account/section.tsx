@@ -2,7 +2,6 @@ import { Link, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   accountCommandFailure,
   needsFreshSignIn,
@@ -36,24 +35,6 @@ export function AccountSection({
     >
       {children}
     </SettingsSection>
-  );
-}
-
-/** Rows loading in the shape of the account lists. */
-export function AccountRowsPending({ label }: Readonly<{ label: string }>) {
-  return (
-    <div role="status" className="flex flex-col gap-4">
-      <span className="sr-only">{label}</span>
-      {[0, 1].map((row) => (
-        <div key={row} className="flex items-center gap-3">
-          <Skeleton className="size-9 rounded-md" />
-          <div className="flex flex-1 flex-col gap-2">
-            <Skeleton className="h-3 w-40" />
-            <Skeleton className="h-2.5 w-24" />
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
