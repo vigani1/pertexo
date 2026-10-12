@@ -1,11 +1,12 @@
 import { CheckIcon, PencilIcon, RotateCwIcon, XIcon } from 'lucide-react';
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
+import { StatusGlyph } from '@/components/ui/status';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { cn } from '@/lib/utils';
 
@@ -66,7 +67,10 @@ function useRenameDraft({
   RenameFormProps,
   'name' | 'revision' | 'validate' | 'command' | 'onSave'
 > &
-  Readonly<{ onClose: () => void }>) {
+  Readonly<{
+    /** `true` when the rename was saved, `false` when it was let go. */
+    onClose: (saved: boolean) => void;
+  }>) {
   const [startedAs] = useState(name);
   // The revision people last saw: where the edit started, or the newer one
   // they chose to replace with "Keep mine". A background refresh never moves it.
@@ -79,14 +83,14 @@ function useRenameDraft({
   /** A confirmed rename closes the form; anything else keeps it open. */
   function settle(confirmed: Promise<boolean> | undefined) {
     void confirmed?.then((done) => {
-      if (done) onClose();
+      if (done) onClose(true);
     });
   }
 
   function close() {
     command.dismiss();
     command.clearError();
-    onClose();
+    onClose(false);
   }
 
   function save(expectedRevision: number) {
@@ -243,10 +247,16 @@ function RenameOutcome({
   );
 }
 
+/** A key you could press instead: Enter saves, Escape lets go. */
+const KEYCAP =
+  'inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[5px] border px-1.5 font-mono text-[0.66rem] leading-none shadow-[inset_0_-1px_0_rgb(255_255_255/6%)] outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 motion-reduce:transition-none pointer-coarse:h-10 pointer-coarse:min-w-10 [&_svg]:size-3.5';
+
 /**
- * The name edited where it stands: the same type on a thread that draws in
- * under it, with Save and Cancel as marks beside it, so nothing around it
- * moves. Only a failure or a conflict adds a line below.
+ * The name edited where it stands. It lifts onto a glass plate, the same
+ * size and face, written on a thread that draws in under it; Save and
+ * Cancel are the keys that do them (↵ and esc, or ✓ and × on touch). The
+ * plate floats over its surroundings, so nothing around it moves; only a
+ * failure or a conflict adds a line below.
  */
 function RenameInPlace({
   name,
@@ -254,11 +264,16 @@ function RenameInPlace({
   label,
   command,
   onClose,
+  onDraftChange,
   className,
   textClassName,
   ...rest
 }: RenameFormProps &
-  Readonly<{ onClose: () => void; textClassName?: string | undefined }>) {
+  Readonly<{
+    onClose: (saved: boolean) => void;
+    onDraftChange?: ((draft: string) => void) | undefined;
+    textClassName?: string | undefined;
+  }>) {
   const id = useId();
   const rename = useRenameDraft({ name, command, onClose, ...rest });
   const error = rename.validation.error('name');
@@ -278,7 +293,13 @@ function RenameInPlace({
         if (event.key === 'Escape' && !rename.locked) rename.close();
       }}
     >
-      <div className="flex min-w-0 items-center gap-1">
+      {/* As wide as the name and its keys, so the plate hugs them. */}
+      <div className="relative flex w-fit max-w-full min-w-0 items-center gap-1.5">
+        {/* The plate the name is lifted onto while it's edited. */}
+        <span
+          aria-hidden="true"
+          className="lens pointer-events-none absolute -inset-x-2.5 -inset-y-1.5 rounded-lg motion-safe:animate-[skeleton-in_0.18s_ease-out]"
+        />
         <span className="relative min-w-0">
           <label htmlFor={`${id}-name`} className="sr-only">
             {label}
@@ -293,12 +314,12 @@ function RenameInPlace({
             disabled={rename.locked}
             aria-invalid={error === undefined ? undefined : true}
             aria-describedby={error === undefined ? undefined : `${id}-error`}
-            // As wide as the name, so the marks stay beside it as it grows.
+            // As wide as the name, so the keys stay beside it as it grows.
             style={{
               width: `${String(Math.max(rename.draft.length, 4) + 1)}ch`,
             }}
             className={cn(
-              'block max-w-full min-w-0 bg-transparent p-0 text-foreground caret-action outline-none disabled:opacity-70',
+              'block max-w-full min-w-0 bg-transparent p-0 text-foreground caret-action outline-none selection:bg-action/30 disabled:opacity-70',
               textClassName,
             )}
             onFocus={(event) => {
@@ -306,6 +327,7 @@ function RenameInPlace({
             }}
             onChange={(event) => {
               rename.change(event.currentTarget.value);
+              onDraftChange?.(event.currentTarget.value);
             }}
           />
           {/* The thread the name is written on: it draws in as editing
@@ -314,7 +336,7 @@ function RenameInPlace({
           <span
             aria-hidden="true"
             className={cn(
-              'pointer-events-none absolute inset-x-0 -bottom-1 h-px origin-left overflow-hidden rounded-full motion-safe:animate-fray',
+              'pointer-events-none absolute inset-x-0 -bottom-0.5 h-px origin-left overflow-hidden rounded-full motion-safe:animate-fray',
               error === undefined ? 'bg-action/70' : 'bg-destructive',
               busy &&
                 'after:absolute after:inset-y-0 after:left-[-45%] after:w-[45%] after:bg-linear-to-r after:from-transparent after:via-foreground after:to-transparent after:content-[""] motion-safe:after:animate-spool',
@@ -322,38 +344,55 @@ function RenameInPlace({
           />
         </span>
         {rename.conflict ? null : (
-          <>
-            <Button
+          <span className="relative flex items-center gap-1">
+            <button
               type="submit"
-              variant="ghost"
-              size="icon-sm"
               aria-label={saveLabel}
-              title={saveLabel}
+              title={`${saveLabel} (Enter)`}
               disabled={busy}
-              className="text-action"
+              className={cn(
+                KEYCAP,
+                'border-action/40 bg-action/[0.08] text-action hover:border-action/70',
+              )}
             >
               {busy ? (
                 <LoadingOrb />
               ) : command.retryAvailable || rename.accepted ? (
                 <RotateCwIcon aria-hidden="true" />
               ) : (
-                <CheckIcon aria-hidden="true" />
+                <>
+                  <span aria-hidden="true" className="pointer-coarse:hidden">
+                    ↵
+                  </span>
+                  <CheckIcon
+                    aria-hidden="true"
+                    className="hidden pointer-coarse:block"
+                  />
+                </>
               )}
-            </Button>
+            </button>
             {rename.accepted ? null : (
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 aria-label="Cancel"
                 title="Cancel (Esc)"
                 disabled={command.pending}
+                className={cn(
+                  KEYCAP,
+                  'border-border-strong bg-white/[0.04] text-muted-foreground hover:text-foreground',
+                )}
                 onClick={rename.close}
               >
-                <XIcon aria-hidden="true" />
-              </Button>
+                <span aria-hidden="true" className="pointer-coarse:hidden">
+                  esc
+                </span>
+                <XIcon
+                  aria-hidden="true"
+                  className="hidden pointer-coarse:block"
+                />
+              </button>
             )}
-          </>
+          </span>
         )}
       </div>
       {error === undefined ? null : (
@@ -372,34 +411,56 @@ function RenameInPlace({
 }
 
 /**
- * A name with a pencil that opens the rename form in place. `children` is
- * how the name reads when not editing; render only `children` for people
- * who can't rename.
+ * A name with a pencil that opens the rename in place. `children` is how
+ * the name reads when not editing; render only `children` for people who
+ * can't rename. A saved rename ties a knot at the end of the name.
  */
 export function InlineRename({
   children,
   textClassName,
+  onDraftChange,
   ...form
 }: RenameFormProps &
   Readonly<{
     children: ReactNode;
     /** The name's type, so editing keeps its size, weight and face. */
     textClassName?: string;
+    /** The name as typed, and `undefined` once editing ends. */
+    onDraftChange?: (draft: string | undefined) => void;
   }>) {
   const [editing, setEditing] = useState(false);
+  const [knotted, setKnotted] = useState(false);
+  useEffect(() => {
+    if (!knotted) return;
+    const timer = window.setTimeout(() => {
+      setKnotted(false);
+    }, 2_400);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [knotted]);
   if (editing)
     return (
       <RenameInPlace
         {...form}
         textClassName={textClassName}
-        onClose={() => {
+        onDraftChange={onDraftChange}
+        onClose={(saved) => {
           setEditing(false);
+          setKnotted(saved);
+          onDraftChange?.(undefined);
         }}
       />
     );
   return (
     <div className="group/rename flex min-w-0 items-center gap-1">
       {children}
+      {knotted ? (
+        // The new name is tied off with a knot for a moment.
+        <span className="grid size-5 place-items-center text-success">
+          <StatusGlyph tone="success" className="motion-safe:animate-knot" />
+        </span>
+      ) : null}
       <Button
         type="button"
         variant="ghost"
@@ -407,7 +468,9 @@ export function InlineRename({
         aria-label={`Rename ${form.subject}`}
         className="text-subtle-foreground hover:text-foreground"
         onClick={() => {
+          setKnotted(false);
           setEditing(true);
+          onDraftChange?.(form.name);
         }}
       >
         <PencilIcon aria-hidden="true" />
