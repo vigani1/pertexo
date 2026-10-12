@@ -49,7 +49,8 @@ export function WorkflowRows({
   workspace,
   workflows,
   actions,
-  organizationControls,
+  rowSelection,
+  rowTags,
   rowMenu,
 }: Readonly<{
   apiClient: ApiClient;
@@ -58,7 +59,8 @@ export function WorkflowRows({
   workflows: readonly WorkflowSummary[];
   actions: WorkflowRowActions;
   rowMenu?: (workflowId: string, runnable: boolean) => ReactNode;
-  organizationControls?: (workflowId: string) => ReactNode;
+  rowSelection?: (workflowId: string) => ReactNode;
+  rowTags?: (workflowId: string) => ReactNode;
 }>) {
   return (
     <div>
@@ -86,7 +88,8 @@ export function WorkflowRows({
             workflow={workflow}
             actions={actions}
             {...(rowMenu === undefined ? {} : { rowMenu })}
-            organizationControls={organizationControls?.(workflow.id)}
+            selectionControl={rowSelection?.(workflow.id)}
+            tags={rowTags?.(workflow.id)}
           />
         ))}
       </ul>

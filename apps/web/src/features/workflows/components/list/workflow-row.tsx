@@ -211,7 +211,8 @@ export function WorkflowRow({
   workspace,
   workflow,
   actions,
-  organizationControls,
+  selectionControl,
+  tags,
   rowMenu,
 }: Readonly<{
   apiClient: ApiClient;
@@ -220,7 +221,8 @@ export function WorkflowRow({
   workflow: WorkflowSummary;
   actions: WorkflowRowActions;
   rowMenu?: (workflowId: string, runnable: boolean) => ReactNode;
-  organizationControls?: ReactNode;
+  selectionControl?: ReactNode;
+  tags?: ReactNode;
 }>) {
   const [observe, seen] = useHasBeenVisible<HTMLLIElement>();
   const showRuns = workspace.capabilities.includes('run:read');
@@ -257,12 +259,17 @@ export function WorkflowRow({
       }}
       className={`group/row relative grid ${WORKFLOW_ROW_COLUMNS} items-center gap-x-4 gap-y-1.5 rounded-lg px-3 py-3 transition-colors duration-150 before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-border first:before:hidden focus-within:bg-white/[0.03] hover:bg-white/[0.035] hover:before:opacity-0 hover:shadow-[inset_0_0_0_1px_rgb(255_255_255/6%)] motion-reduce:transition-none`}
     >
-      <div className="row-span-2 lg:row-span-1">
+      <div className="relative row-span-2 lg:row-span-1">
         <RowGlyph
           graph={graph}
           failed={shape.isError}
           muted={workflow.publishedVersionId === null}
         />
+        {selectionControl == null ? null : (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            {selectionControl}
+          </div>
+        )}
       </div>
       <RowTitle
         workspaceId={workspace.id}
@@ -306,9 +313,9 @@ export function WorkflowRow({
           rowMenu(workflow.id, run !== undefined)
         )}
       </div>
-      {organizationControls == null ? null : (
-        <div className="col-span-full pl-0 sm:pl-20">
-          {organizationControls}
+      {tags == null ? null : (
+        <div className="col-start-2 row-start-3 min-w-0 lg:row-start-2">
+          {tags}
         </div>
       )}
     </li>
