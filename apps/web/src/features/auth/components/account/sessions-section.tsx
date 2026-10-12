@@ -34,7 +34,7 @@ function SessionRow({
     ? SmartphoneIcon
     : LaptopIcon;
   return (
-    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0">
+    <li className="flex items-center justify-between gap-4 py-3 first:pt-0">
       <div className="flex min-w-0 items-center gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[0.035] text-muted-foreground">
           <Icon aria-hidden="true" className="size-4" />
@@ -67,6 +67,7 @@ function SessionRow({
           size="sm"
           variant="outline"
           aria-label={`Sign out ${label}`}
+          className="shrink-0"
           disabled={busy}
           onClick={onEnd}
         >
