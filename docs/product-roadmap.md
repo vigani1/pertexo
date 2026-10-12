@@ -190,13 +190,13 @@ only after its gate is resolved.
 | [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | Delivered: ADR055 database (PR118), worker (PR119), API (PR120) and web (PR123) slices merged; local acceptance recorded; producer on |
 | [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs and artifact lifecycle | Backend foundation exists; consumer contract + frontend missing | L | Proposed |
 | F05 | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Duplicate released through PR142 on natural main `5f78e155`; ADR062 import/export released with F02 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical qualification/repair evidence retained; production activation unauthorized |
-| F06 | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Locally qualified and independently reviewed; primary final review/release open; production gates off |
-| F07 | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Proposed |
-| [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | Proposed |
+| F06 | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Released on main: turned on in the web app with F07 (`433edad9`, 2026-10-10); examples open from New workflow and Import. External qualification open |
+| F07 | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Released on main: folders, tags, favorites and bulk organize, turned on in the web app (`433edad9`, 2026-10-10) |
+| [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | Slices 1–4 released on main: authoring, execution and run history of workflow Calls (through `4d3cae4a`). Slice 5, a measured limit change, waits for owner review |
 | [F09](feature-plans/09-failure-paths-and-recovery.md) | Workflow-authored failure paths and explicit recovery UX | Existing recovery foundation + new graph behavior | XL | Proposed |
 | [F10](feature-plans/10-human-approvals.md) | Durable human approvals and resume decisions | New cross-stack durable interaction | XL | Proposed |
 | [F11](feature-plans/11-forms-and-resume-input.md) | Hosted forms and structured human input | New trigger/frontend product | L–XL | Proposed |
-| [F12](feature-plans/12-usage-and-insights.md) | Usage, limits and workflow insights without billing | Backend projection + frontend reporting | L | First capacity/activity slice locally verified; review/CI pending; warnings/trends deferred |
+| [F12](feature-plans/12-usage-and-insights.md) | Usage, limits and workflow insights without billing | Backend projection + frontend reporting | L | First capacity/activity slice released (PR137) and redesigned in the Weft pass (2026-10-12); warnings/trends deferred |
 | [F13](feature-plans/13-configuration-and-variables.md) | Workspace variables and reusable non-secret configuration | New version-aware configuration | L | Proposed |
 | [F14](feature-plans/14-data-tables.md) | Workflow-owned lookup tables and durable records | New optional storage product | XL | Proposed |
 | [F15](feature-plans/15-synchronous-webhook-responses.md) | Bounded synchronous webhook responses | New opt-in trigger mode | XL | Proposed |
@@ -210,7 +210,7 @@ only after its gate is resolved.
 | [F23](feature-plans/23-billing-and-commercialization.md) | Billing and commercial entitlements | Explicitly deferred optional business slice | XL | Proposed |
 | [F24](feature-plans/24-data-transform-toolkit.md) | Discoverable data transforms and batch tools | New node UX over existing mapping/JSONata foundations | L | Proposed |
 | [F25](feature-plans/25-event-coordination.md) | Business-event deduplication, debounce and throttling | Optional durable coordination beyond queue reliability | XL | Proposed |
-| F26 | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Design accepted (ADR056); implementation next |
+| F26 | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Released: workflow auto-pause controls (#135) and worker failure streaks; always on since the reset (ADR 069) |
 | [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
 | [F28](feature-plans/28-single-sign-on-and-provisioning.md) | Single sign-on (SAML/OIDC) and SCIM user provisioning | Extends the session authority for organizations | L–XL | Proposed |
 | [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Queue-only first slice qualified; skip overflow deferred |
