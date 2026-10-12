@@ -5,6 +5,8 @@ pnpm-lock.yaml
 AGENTS.md
 docs
 packages/contracts/artifacts/*.json
+# The license text stays exactly as published.
+LICENSE.md
 
 # Alternate local checkouts must be formatted from their own repository roots.
 .claude/worktrees/
