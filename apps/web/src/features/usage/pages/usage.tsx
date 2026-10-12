@@ -8,6 +8,7 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
+import { SettingsSection } from '@/components/patterns/settings-section';
 import { Notice } from '@/components/ui/notice';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ApiClient } from '@/lib/api/client';
@@ -81,7 +82,7 @@ export function UsagePage({
     canReadRuns && !accessLost(activity.error) ? activity.data : undefined;
   const asOf = olderOf(capacityData?.asOf, activityData?.asOf);
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader>
         <div>
           <PageHeaderTitle>Usage</PageHeaderTitle>
@@ -98,74 +99,77 @@ export function UsagePage({
           </p>
         </div>
       </PageHeader>
-      {canReadCapacity ? (
-        <UsageSnapshot
-          title="Current capacity"
-          snapshotAt={capacityData?.asOf}
-          error={capacity.error}
-          pending={capacity.isPending}
-          retrying={capacity.isFetching}
-          onRetry={() => {
-            void capacity.refetch();
-          }}
-        >
-          {capacityData === undefined ? null : (
-            <CurrentCapacity snapshot={capacityData} />
-          )}
-        </UsageSnapshot>
-      ) : (
-        <section aria-label="Current capacity">
-          <h2 className="mb-4 font-heading text-lg font-semibold">
-            Current capacity
-          </h2>
-          <Notice>
-            {workspace.status !== 'active'
-              ? 'Current capacity is available only for an active workspace.'
-              : 'You need access to runs and files to see capacity.'}
-          </Notice>
-        </section>
-      )}
-      {canReadRuns ? (
-        <UsageSnapshot
-          title="Recent runs"
-          actions={
-            <ToggleGroup
-              aria-label="Activity window"
-              value={[search.window]}
-              onValueChange={(values) => {
-                if (values[0] !== undefined)
-                  onSearchChange(parseUsageSearch({ window: values[0] }));
-              }}
-            >
-              {Object.entries(windows).map(([value, label]) => (
-                <ToggleGroupItem key={value} value={value}>
-                  {label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          }
-          snapshotAt={activityData?.asOf}
-          error={activity.error}
-          pending={activity.isPending}
-          retrying={activity.isFetching}
-          onRetry={() => {
-            void activity.refetch();
-          }}
-        >
-          {activityData === undefined ? null : (
-            <RetainedActivity
-              snapshot={activityData}
-              windowPhrase={windowPhrases[search.window]}
-              workspaceId={workspace.id}
-              canReadWorkflowNames={workspace.capabilities.includes(
-                'workflow:read',
-              )}
-            />
-          )}
-        </UsageSnapshot>
-      ) : (
-        <Notice>You need access to runs to see recent runs.</Notice>
-      )}
+      <div className="flex flex-col">
+        {canReadCapacity ? (
+          <UsageSnapshot
+            title="Current capacity"
+            description="What’s running, waiting to start and stored right now."
+            snapshotAt={capacityData?.asOf}
+            error={capacity.error}
+            pending={capacity.isPending}
+            retrying={capacity.isFetching}
+            onRetry={() => {
+              void capacity.refetch();
+            }}
+          >
+            {capacityData === undefined ? null : (
+              <CurrentCapacity snapshot={capacityData} />
+            )}
+          </UsageSnapshot>
+        ) : (
+          <SettingsSection title="Current capacity">
+            <Notice>
+              {workspace.status !== 'active'
+                ? 'Current capacity is available only for an active workspace.'
+                : 'You need access to runs and files to see capacity.'}
+            </Notice>
+          </SettingsSection>
+        )}
+        {canReadRuns ? (
+          <UsageSnapshot
+            title="Recent runs"
+            description="Runs that started in the chosen window, by where they stand now."
+            controls={
+              <ToggleGroup
+                aria-label="Activity window"
+                value={[search.window]}
+                onValueChange={(values) => {
+                  if (values[0] !== undefined)
+                    onSearchChange(parseUsageSearch({ window: values[0] }));
+                }}
+              >
+                {Object.entries(windows).map(([value, label]) => (
+                  <ToggleGroupItem key={value} value={value}>
+                    {label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            }
+            snapshotAt={activityData?.asOf}
+            error={activity.error}
+            pending={activity.isPending}
+            retrying={activity.isFetching}
+            onRetry={() => {
+              void activity.refetch();
+            }}
+          >
+            {activityData === undefined ? null : (
+              <RetainedActivity
+                snapshot={activityData}
+                windowPhrase={windowPhrases[search.window]}
+                workspaceId={workspace.id}
+                canReadWorkflowNames={workspace.capabilities.includes(
+                  'workflow:read',
+                )}
+              />
+            )}
+          </UsageSnapshot>
+        ) : (
+          <SettingsSection title="Recent runs">
+            <Notice>You need access to runs to see recent runs.</Notice>
+          </SettingsSection>
+        )}
+      </div>
     </div>
   );
 }
