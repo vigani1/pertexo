@@ -24,6 +24,7 @@ export function WorkspaceNameField({
   onWorkspaceChanged,
   onAccessLost,
   nameClassName,
+  onDraftChange,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -32,6 +33,8 @@ export function WorkspaceNameField({
   onAccessLost: () => void;
   /** How the name reads when it isn't being edited. */
   nameClassName?: string;
+  /** The name as typed, and `undefined` once editing ends. */
+  onDraftChange?: (draft: string | undefined) => void;
 }>) {
   const notifications = useNotifications();
   const command = useWorkspaceRename({
@@ -45,12 +48,9 @@ export function WorkspaceNameField({
     onReloaded: onWorkspaceChanged,
     onAccessLost,
   });
+  const type = cn('text-sm font-semibold', nameClassName);
   const display = (
-    <span
-      className={cn('min-w-0 text-sm font-semibold break-all', nameClassName)}
-    >
-      {workspace.name}
-    </span>
+    <span className={cn('min-w-0 break-words', type)}>{workspace.name}</span>
   );
   if (
     workspace.status !== 'active' ||
@@ -64,8 +64,8 @@ export function WorkspaceNameField({
       revision={workspace.revision}
       subject="workspace"
       label="Workspace name"
-      // The row already says Name; the field keeps it for readers.
-      className="[&_[data-slot=field-label]]:sr-only"
+      textClassName={type}
+      {...(onDraftChange === undefined ? {} : { onDraftChange })}
       validate={nameError}
       command={command}
       onSave={(name, expectedRevision) =>

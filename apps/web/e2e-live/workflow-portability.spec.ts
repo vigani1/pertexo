@@ -103,7 +103,9 @@ async function openImport(
     mimeType: 'application/json',
     buffer: file,
   });
-  await expect(dialog.getByLabel('Complete imported graph')).toBeVisible();
+  await expect(
+    dialog.getByRole('region', { name: 'What the file contains' }),
+  ).toBeVisible();
   await dialog.getByLabel('New workflow name').fill(name);
   return dialog;
 }

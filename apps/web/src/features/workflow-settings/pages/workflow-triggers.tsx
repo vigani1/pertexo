@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/empty';
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 import { visibleSettingsData } from '../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { SettingsQueryState } from '../components/settings-query-state';
@@ -32,7 +33,6 @@ type TriggersPageProps = Readonly<{
   workflowId: string;
 }>;
 
-/** Webhooks and schedules from the published version, and their controls. */
 /** A trigger kind the published version lacks, and where to add one. */
 function NoTriggerStep({
   kind,
@@ -58,6 +58,7 @@ function NoTriggerStep({
   );
 }
 
+/** Webhooks and schedules from the published version, and their controls. */
 export function WorkflowTriggersPage(props: TriggersPageProps) {
   // A new identity is a new session: late credentials never cross workflows.
   return (
@@ -74,7 +75,7 @@ function NoTriggers({
   published,
 }: Readonly<{ workspaceId: string; workflowId: string; published: boolean }>) {
   // The tab's first content sits right under the hub bar, like the Versions
-  // tab's empty state: no divider above it and no decorative glyph.
+  // tab's empty state: no divider above it.
   return (
     <Empty className="border-t-0 py-2">
       <EmptyTitle>
@@ -82,9 +83,10 @@ function NoTriggers({
       </EmptyTitle>
       <EmptyDescription>
         {published
-          ? 'Add a Webhook or Schedule step in Build, then publish. Until then, runs start only when someone runs the workflow.'
+          ? 'Runs start only when someone runs the workflow. To start them on their own, add a Webhook or Schedule step in Build, then publish.'
           : 'Triggers come from the published version. Add a Webhook or Schedule step in Build, then publish.'}
       </EmptyDescription>
+      {published ? <WaysIn /> : null}
       <EmptyActions>
         <Link
           to="/w/$workspaceId/workflows/$workflowId"
@@ -95,6 +97,54 @@ function NoTriggers({
         </Link>
       </EmptyActions>
     </Empty>
+  );
+}
+
+const WAYS_IN = [
+  { name: 'By hand', detail: 'Someone runs it from the workflow.', on: true },
+  { name: 'Webhook', detail: 'Another system sends it an event.', on: false },
+  { name: 'Schedule', detail: 'It runs on a timetable.', on: false },
+] as const;
+
+/** The ways a run can start, with the one this version has lit. */
+function WaysIn() {
+  return (
+    <ul
+      aria-label="Ways a run can start"
+      className="my-1 flex w-full max-w-lg flex-col border-y border-border"
+    >
+      {WAYS_IN.map((way) => (
+        <li
+          key={way.name}
+          className="flex items-center gap-3 border-t border-border py-2.5 text-sm first:border-t-0"
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              'size-2.5 shrink-0 rounded-full',
+              way.on
+                ? 'bg-action shadow-[0_0_8px_var(--action)]'
+                : 'border border-white/20',
+            )}
+          />
+          {/* Phones stack the sentence under its name, not beside it. */}
+          <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
+            <span className="font-medium sm:w-20 sm:shrink-0">{way.name}</span>
+            <span className="text-muted-foreground max-sm:text-xs">
+              {way.detail}
+            </span>
+          </span>
+          <span
+            className={cn(
+              'shrink-0 text-xs',
+              way.on ? 'text-action' : 'text-subtle-foreground',
+            )}
+          >
+            {way.on ? 'On' : 'Not added'}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

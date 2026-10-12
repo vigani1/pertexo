@@ -3,25 +3,40 @@ import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
+import { PatternGlyphPlaceholder } from '../pattern-glyph';
 import { WORKFLOW_ROW_COLUMNS, WorkflowRow } from './workflow-row';
 import type { WorkflowRowActions } from './workflow-row-actions';
 
 const SKELETON_WIDTHS = [62, 44, 78, 36, 58, 70] as const;
 
-/** Rows in the list's own shape; waits 150 ms so fast loads never flash. */
-export function WorkflowRowsSkeleton() {
+/**
+ * Rows in the list's own shape, room for the selection bead included, so
+ * nothing moves when they arrive; waits 150 ms so fast loads never flash.
+ */
+export function WorkflowRowsSkeleton({
+  selectable,
+}: Readonly<{ selectable: boolean }>) {
   return (
     <div
       role="status"
       aria-label="Loading workflows"
-      className="flex flex-col motion-safe:animate-[rise_0.3s_var(--ease-unspool)_150ms_backwards]"
+      className={cn(
+        'flex flex-col motion-safe:animate-[rise_0.3s_var(--ease-unspool)_150ms_backwards]',
+        selectable && '[--row-select:1.5rem]',
+      )}
     >
       {SKELETON_WIDTHS.map((width, order) => (
         <div
           key={width}
           className={`grid ${WORKFLOW_ROW_COLUMNS} items-center gap-x-4 border-t border-border px-3 py-4 first:border-t-0`}
         >
-          <Skeleton className="h-3 w-14 rounded-full" />
+          <span className="flex items-center gap-2">
+            {selectable ? (
+              <span className="size-4 shrink-0 rounded-full border border-border" />
+            ) : null}
+            <PatternGlyphPlaceholder state="loading" />
+          </span>
           <div className="flex flex-col gap-2">
             <Skeleton
               className="h-3"
@@ -63,7 +78,13 @@ export function WorkflowRows({
   rowTags?: (workflowId: string) => ReactNode;
 }>) {
   return (
-    <div>
+    // A bead (1rem) and its gap (0.5rem) before each thread when rows can be
+    // selected; the header moves with them.
+    <div
+      className={
+        rowSelection === undefined ? undefined : '[--row-select:1.5rem]'
+      }
+    >
       <div
         aria-hidden="true"
         className={`hidden ${WORKFLOW_ROW_COLUMNS} gap-x-4 px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground lg:grid`}

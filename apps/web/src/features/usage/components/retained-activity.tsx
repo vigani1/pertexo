@@ -32,7 +32,8 @@ export function RetainedActivity({
   };
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-3 border-t border-border pt-4">
+      {/* The count is its own sentence; the link sits beside it. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <p>
           <span className="font-mono text-2xl">{snapshot.window.total}</span>{' '}
           <span className="text-sm text-muted-foreground">

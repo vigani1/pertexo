@@ -3,7 +3,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { WorkflowInputCase, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
 import type { useInputCases } from '../../hooks/use-input-cases';
 import { InputCaseEditor } from './editor';
@@ -184,7 +184,9 @@ function InputCaseList({
 }: CaseListProps) {
   return (
     <>
-      {query.isPending ? <Skeleton className="h-12 w-full" /> : null}
+      {query.isPending ? (
+        <SkeletonLines label="Loading input cases" lines={2} />
+      ) : null}
       {query.error ? (
         <ReadFailure
           resource="Input cases"

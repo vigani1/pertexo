@@ -1,6 +1,6 @@
 import { RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import { ScheduleRunTimes } from '@/features/catalog/presentation.public';
 import { useSchedulePreview } from '@/features/workflow-publish/schedule-preview.public';
 import type { ScheduleRecurrence } from '../../../model/inspector/schedule-draft';
@@ -21,15 +21,7 @@ export function DraftNextRuns({
         Next runs if published now
       </p>
       {preview.status === 'loading' ? (
-        <div
-          role="status"
-          aria-label="Working out the next runs"
-          className="flex flex-col gap-2 py-1"
-        >
-          {[0, 1, 2].map((row) => (
-            <Skeleton key={row} className="h-3 w-3/5" />
-          ))}
-        </div>
+        <SkeletonLines label="Working out the next runs" />
       ) : null}
       {preview.status === 'failed' ? (
         <div

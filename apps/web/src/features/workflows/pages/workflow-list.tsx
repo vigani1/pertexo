@@ -23,6 +23,7 @@ import { WorkflowExportDialog } from '../components/portability/workflow-export-
 import { WorkflowImportDialog } from '../components/portability/workflow-import-dialog';
 import { Button } from '@/components/ui/button';
 import { WorkflowRowsSkeleton } from '../components/list/workflow-rows';
+import { canEditOrganization } from '../components/organization/editing';
 import { lifecycleIntentFor, type LifecycleIntent } from '../model/lifecycle';
 import {
   isUnfilteredWorkflowList,
@@ -195,6 +196,7 @@ function WorkflowListContent({
   const [duplicating, setDuplicating] = useState<WorkflowSummary>();
   const [exporting, setExporting] = useState<WorkflowSummary>();
   const [importing, setImporting] = useState(false);
+  const [importExamples, setImportExamples] = useState(false);
   const runner = useRunWorkflow({
     apiClient,
     userId: user.id,
@@ -261,7 +263,11 @@ function WorkflowListContent({
           className="-mt-3 w-full"
         />
       ) : null}
-      {list.shown === 'loading' ? <WorkflowRowsSkeleton /> : null}
+      {list.shown === 'loading' ? (
+        <WorkflowRowsSkeleton
+          selectable={canEditOrganization(workspace, [], 'move')}
+        />
+      ) : null}
       {list.shown === 'failed' ? (
         <WorkflowListError
           error={workflows.error}
@@ -316,6 +322,7 @@ function WorkflowListContent({
             void onSearchChange(
               updateWorkflowListSearch(search, { create: false }),
             );
+            setImportExamples(true);
             setImporting(true);
           }}
         />
@@ -369,11 +376,13 @@ function WorkflowListContent({
         userId={user.id}
         workspace={workspace}
         open={importing}
+        examplesFirst={importExamples}
         onReopen={() => {
           setImporting(true);
         }}
         onClose={() => {
           setImporting(false);
+          setImportExamples(false);
         }}
         onCreated={(id) => {
           setImporting(false);

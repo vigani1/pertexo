@@ -80,7 +80,10 @@ test('owned complete examples retain historical origin through independent edits
       .getByRole('button', { name: 'New workflow', exact: true })
       .click();
     await page
-      .getByRole('button', { name: 'Choose a complete example…', exact: true })
+      .getByRole('button', {
+        name: 'Or start from a ready-made example…',
+        exact: true,
+      })
       .click();
     const dialog = page.getByRole('dialog', {
       name: 'Import workflow',
@@ -91,6 +94,12 @@ test('owned complete examples retain historical origin through independent edits
       exact: true,
     });
     await expect(choice).toBeEnabled();
+    // What the example takes, its limits and its effects are one fold away
+    // on its card, before anything is chosen.
+    await dialog
+      .getByRole('article', { name: descriptor.title, exact: true })
+      .getByText('Details', { exact: true })
+      .click();
     await expect(
       dialog.getByText(descriptor.inputSummary, { exact: true }),
     ).toBeVisible();
@@ -101,7 +110,9 @@ test('owned complete examples retain historical origin through independent edits
       dialog.getByText(descriptor.effectsSummary, { exact: true }),
     ).toBeVisible();
     await choice.click();
-    await expect(dialog.getByLabel('Complete imported graph')).toBeVisible();
+    await expect(
+      dialog.getByRole('region', { name: 'What the file contains' }),
+    ).toBeVisible();
     await dialog
       .getByLabel('New workflow name')
       .fill(`F06 ${descriptor.templateId}`);

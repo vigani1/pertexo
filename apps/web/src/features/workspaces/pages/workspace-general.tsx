@@ -2,7 +2,7 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { CopyButton } from '@/components/ui/copy-button';
 import type { ApiClient } from '@/lib/api/client';
@@ -53,6 +53,12 @@ export function WorkspaceGeneralPage({
   onLeft: () => void | Promise<void>;
 }>) {
   const canManage = workspace.capabilities.includes('workspace:manage');
+  // The name as it's being typed: the mark is woven from it live.
+  const [draftName, setDraftName] = useState<string>();
+  const markName =
+    draftName === undefined || draftName.trim() === ''
+      ? workspace.name
+      : draftName.trim();
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <PageHeader>
@@ -66,8 +72,12 @@ export function WorkspaceGeneralPage({
         >
           <div className="flex min-w-0 items-center gap-4">
             <WorkspaceMark
-              name={workspace.name}
-              className="size-14 rounded-xl text-lg"
+              name={markName}
+              className={cn(
+                'size-14 rounded-xl text-lg transition-[box-shadow] duration-200 motion-reduce:transition-none',
+                draftName !== undefined &&
+                  'shadow-[0_0_0_2px_var(--background),0_0_0_3.5px_color-mix(in_srgb,var(--action)_60%,transparent)]',
+              )}
             />
             <div className="flex min-w-0 flex-col gap-1">
               <WorkspaceNameField
@@ -75,6 +85,7 @@ export function WorkspaceGeneralPage({
                 userId={user.id}
                 workspace={workspace}
                 nameClassName="font-display text-2xl leading-tight [--display-optical-size:24] [--display-width:84%]"
+                onDraftChange={setDraftName}
                 onWorkspaceChanged={() => {
                   void onWorkspaceChanged();
                 }}

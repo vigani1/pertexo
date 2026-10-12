@@ -2,6 +2,7 @@ import type { UserProfileResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
 import { accountSecurityQueryOptions } from '../data/account-security.queries';
@@ -10,10 +11,7 @@ import { AccountFactsSection } from '../components/account/facts-section';
 import { AccountMethodsSection } from '../components/account/methods-section';
 import { AccountPasswordSection } from '../components/account/password-section';
 import { AccountProfileSection } from '../components/account/profile/section';
-import {
-  AccountReadFailure,
-  AccountRowsPending,
-} from '../components/account/section';
+import { AccountReadFailure } from '../components/account/section';
 import { AccountSessionsSection } from '../components/account/sessions-section';
 import { accountReadFailure } from '../model/account/failure';
 import { Notice } from '@/components/ui/notice';
@@ -93,7 +91,7 @@ export function AccountSecurityPage({
             <LinkOutcomeLine outcome={linkOutcome} />
           )}
           {security.isPending ? (
-            <AccountRowsPending label="Loading your sign-in methods…" />
+            <SkeletonRows label="Loading your sign-in methods" rows={2} />
           ) : security.isError ? (
             securityFailure
           ) : (

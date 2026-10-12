@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { accountSecuritySessionsQueryOptions } from '../../data/account-security.queries';
@@ -14,12 +15,7 @@ import {
 } from '../../model/account/failure';
 import { orderSessions } from '../../model/account/sessions';
 import { describeUserAgent } from '../../model/account/user-agent';
-import {
-  AccountReadFailure,
-  AccountRowsPending,
-  AccountSection,
-  FreshSignInLink,
-} from './section';
+import { AccountReadFailure, AccountSection, FreshSignInLink } from './section';
 import { useSessionEnding, type SessionEnding } from './use-session-ending';
 
 type Session = AccountSecuritySessionsResponse['items'][number];
@@ -38,7 +34,7 @@ function SessionRow({
     ? SmartphoneIcon
     : LaptopIcon;
   return (
-    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+    <li className="flex items-center justify-between gap-4 py-3 first:pt-0">
       <div className="flex min-w-0 items-center gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[0.035] text-muted-foreground">
           <Icon aria-hidden="true" className="size-4" />
@@ -71,6 +67,7 @@ function SessionRow({
           size="sm"
           variant="outline"
           aria-label={`Sign out ${label}`}
+          className="shrink-0"
           disabled={busy}
           onClick={onEnd}
         >
@@ -97,7 +94,7 @@ function SessionList({
     <>
       <ul
         aria-label="Signed-in devices"
-        className="divide-y divide-border rounded-lg border border-border"
+        className="flex flex-col divide-y divide-border"
       >
         {orderSessions(items)
           .slice(0, showAll ? undefined : SHOWN_SESSIONS)
@@ -214,7 +211,7 @@ export function AccountSessionsSection({
       }
     >
       {sessions.isPending ? (
-        <AccountRowsPending label="Loading your sessions…" />
+        <SkeletonRows label="Loading your sessions" rows={2} />
       ) : sessions.isError ? (
         <AccountReadFailure
           message={accountReadFailure(sessions.error, 'sessions')}

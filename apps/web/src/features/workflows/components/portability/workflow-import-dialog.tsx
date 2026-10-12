@@ -26,6 +26,8 @@ type WorkflowImportDialogProps = Readonly<{
   onCreated: (workflowId: string) => void;
   open?: boolean;
   onReopen?: () => void;
+  /** Opened to choose a ready-made example rather than a file. */
+  examplesFirst?: boolean;
 }>;
 
 export function WorkflowImportDialog(props: WorkflowImportDialogProps) {
@@ -56,6 +58,7 @@ function WorkflowImportSession({
   onCreated,
   open = true,
   onReopen,
+  examplesFirst = false,
 }: WorkflowImportDialogProps) {
   const draft = useImportDraft(apiClient, userId, workspace);
   return (
@@ -76,33 +79,27 @@ function WorkflowImportSession({
           <DialogDescription>
             {draft.denied
               ? 'Access changed. The file, preview and retained command have been cleared.'
-              : `Create an independent, unpublished draft in “${workspace.name}”. Publishing and running are separate actions.`}
+              : `Bring a workflow into “${workspace.name}” as an unpublished draft. Nothing runs until you publish it.`}
           </DialogDescription>
           {draft.denied ? null : (
-            <div className="mt-5 flex flex-col gap-4">
-              <Notice tone="warning">
-                Workflow files are untrusted. Review all configuration and
-                expressions before importing. Imported steps can cause real
-                effects when you later publish, preview or run them. This check
-                does not execute steps or promise that the workflow is safe.
-              </Notice>
+            <div className="mt-5 flex flex-col gap-5">
               <WorkflowImportSourceFields
                 apiClient={apiClient}
                 userId={userId}
                 template={draft.template}
+                manifest={draft.manifest}
                 setupValues={draft.setupValues}
                 name={draft.name}
                 fileGeneration={draft.fileGeneration}
+                reading={draft.reading}
                 locked={draft.locked}
+                examplesFirst={examplesFirst}
                 validation={draft.validation}
                 onChooseTemplate={draft.chooseTemplate}
                 onChooseFile={(file) => void draft.chooseFile(file)}
                 onNameChange={draft.changeName}
                 onSetupChange={draft.changeSetup}
               />
-              {draft.reading ? (
-                <p role="status">Reading workflow file…</p>
-              ) : null}
               <WorkflowImportReview
                 apiClient={apiClient}
                 userId={userId}
@@ -113,6 +110,13 @@ function WorkflowImportSession({
                 disabled={draft.locked}
                 onBindingsChange={draft.changeBindings}
               />
+              {draft.manifest === undefined ? null : (
+                <Notice tone="warning">
+                  Imported steps can call services and send messages once you
+                  publish and run them. Check each step’s setup in Build before
+                  publishing; this check doesn’t run anything.
+                </Notice>
+              )}
             </div>
           )}
           <WorkflowImportFeedback

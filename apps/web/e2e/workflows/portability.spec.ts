@@ -210,7 +210,7 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
     importing.getByRole('button', { name: 'Preview import' }),
   ).toBeDisabled();
   const binding = importing.getByRole('combobox', {
-    name: 'sender · slack_bot_token',
+    name: 'Private source label',
   });
   await expect(binding).toContainText('Choose a connection');
   await expect(binding).toBeDisabled();
@@ -326,7 +326,9 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(manifest)),
   });
-  await expect(importing.getByLabel('Complete imported graph')).toBeVisible();
+  await expect(
+    importing.getByRole('region', { name: 'What the file contains' }),
+  ).toBeVisible();
   await importing
     .getByLabel('New workflow name')
     .fill('Deliberate second draft');
