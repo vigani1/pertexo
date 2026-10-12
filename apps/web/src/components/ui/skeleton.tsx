@@ -49,6 +49,32 @@ export function SkeletonThread({
 const ROW_WIDTHS = [64, 40, 78, 52] as const;
 
 /**
+ * Text or data loading as spooling lines, announced once with `label`.
+ * Use it where the content has no row shape: values, previews, timestamps.
+ */
+export function SkeletonLines({
+  label,
+  lines = 3,
+  className,
+}: Readonly<{ label: string; lines?: number; className?: string }>) {
+  return (
+    <div
+      role="status"
+      aria-label={label}
+      className={cn('flex flex-col gap-3 py-1.5', className)}
+    >
+      {ROW_WIDTHS.slice(0, lines).map((width, order) => (
+        <SkeletonThread
+          key={width}
+          order={order}
+          style={{ width: `${String(width)}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
  * A list loading in the shape of its rows — a mark, a name and a spooling
  * thread per row — announced once with `label`, e.g. "Loading members".
  */

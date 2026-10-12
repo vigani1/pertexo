@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import { describeReadError, isNotFound } from '@/lib/api/error-copy';
 import { cn } from '@/lib/utils';
@@ -80,10 +80,7 @@ function ConnectionReadState({
             Retry
           </Button>
         ) : (
-          <>
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-24" />
-          </>
+          <SkeletonLines label="Loading this connection" lines={4} />
         )}
       </SheetBody>
     </>

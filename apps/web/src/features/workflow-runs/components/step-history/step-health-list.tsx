@@ -3,7 +3,7 @@ import type {
   WorkflowStepHealth,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
@@ -63,11 +63,7 @@ export function StepHealthList({
       </p>
     );
   if (health.data === undefined)
-    return (
-      <div role="status" aria-label="Loading step health">
-        <Skeleton className="h-20 w-full" />
-      </div>
-    );
+    return <SkeletonRows label="Loading step health" />;
   const { runsConsidered, oldestRunAt } = health.data;
   if (runsConsidered === 0)
     return (

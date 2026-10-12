@@ -1,5 +1,5 @@
 import { MinusIcon, PencilIcon, PlusIcon } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import type {
   PublishSummary,
   PublishSummaryLine,
@@ -32,12 +32,7 @@ export function PublishChanges({
   state: 'loading' | 'error' | 'ready';
 }>) {
   if (state === 'loading')
-    return (
-      <div aria-label="Loading changes" className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-4 w-56" />
-      </div>
-    );
+    return <SkeletonLines label="Loading changes" lines={2} />;
   if (state === 'error' || summary === undefined)
     return (
       <p className="text-sm text-muted-foreground">

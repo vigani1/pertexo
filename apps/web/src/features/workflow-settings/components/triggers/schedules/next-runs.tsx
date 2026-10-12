@@ -2,7 +2,7 @@ import { useId } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import { ScheduleRunTimes } from '@/features/catalog/presentation.public';
 import type { ApiClient } from '@/lib/api/client';
 import { scheduleNextRunsQueryOptions } from '../../../data/workflow-settings.queries';
@@ -40,17 +40,7 @@ export function ScheduleNextRuns({
       <h4 id={headingId} className="text-sm font-semibold">
         Next runs
       </h4>
-      {nextRuns.isPending ? (
-        <div
-          role="status"
-          aria-label="Loading next runs"
-          className="flex flex-col gap-2 py-1"
-        >
-          {[0, 1, 2].map((row) => (
-            <Skeleton key={row} className="h-3 w-3/5" />
-          ))}
-        </div>
-      ) : null}
+      {nextRuns.isPending ? <SkeletonLines label="Loading next runs" /> : null}
       {nextRuns.isError ? (
         <ReadFailure
           resource="Next runs"

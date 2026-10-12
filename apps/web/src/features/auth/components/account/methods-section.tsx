@@ -85,12 +85,12 @@ export function AccountMethodsSection({
     >
       <ul
         aria-label="Sign-in methods"
-        className="divide-y divide-border rounded-lg border border-border"
+        className="flex flex-col divide-y divide-border"
       >
         {security.methods.map((method) => (
           <li
             key={method.id}
-            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0"
           >
             <div className="flex min-w-0 items-center gap-3">
               <MethodMark method={method} />
