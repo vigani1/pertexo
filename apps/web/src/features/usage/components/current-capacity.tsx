@@ -43,11 +43,11 @@ export function CurrentCapacity({
     // rack, two exact rows and one note.
     <div className="grid gap-x-10 gap-y-8 lg:grid-cols-2">
       <div className="min-w-0">
-        <h3 className="text-sm font-semibold">Run slots</h3>
+        <h3 className="text-sm font-semibold">Runs at once</h3>
         <CapacityLoom execution={execution} />
         <dl>
           <CapacityRow
-            label="Slots in use"
+            label="In progress"
             used={execution.activeCapacityConsumed}
             limit={execution.policy.activeRunLimit ?? 'limit unavailable'}
           />
@@ -58,12 +58,12 @@ export function CurrentCapacity({
           />
         </dl>
         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-          A run keeps its slot until it finishes, even while it waits.
+          A run stays in progress until it finishes, even while it waits.
           {reserved === 0
             ? null
             : reserved === 1
-              ? ' 1 slot is held for a queued run about to start.'
-              : ` ${String(reserved)} slots are held for queued runs about to start.`}
+              ? ' One more place is held for a queued run about to start.'
+              : ` ${String(reserved)} more places are held for queued runs about to start.`}
         </p>
         {execution.policy.state === 'active' ? null : (
           <p className="mt-3 text-sm">
