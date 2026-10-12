@@ -15,10 +15,13 @@ type RunStatus = WorkflowRunSummary['status'];
 /** Every link preserves the exact server snapshot's half-open bounds. */
 export function RetainedActivity({
   snapshot,
+  windowPhrase,
   workspaceId,
   canReadWorkflowNames,
 }: Readonly<{
   snapshot: WorkflowRunStatisticsResponse;
+  /** "in the last 24 hours" */
+  windowPhrase: string;
   workspaceId: string;
   canReadWorkflowNames: boolean;
 }>) {
@@ -33,7 +36,8 @@ export function RetainedActivity({
         <p>
           <span className="font-mono text-2xl">{snapshot.window.total}</span>{' '}
           <span className="text-sm text-muted-foreground">
-            retained runs created in this window
+            {snapshot.window.total === 1 ? 'run' : 'runs'} started{' '}
+            {windowPhrase}
           </span>
         </p>
         <Link
@@ -42,7 +46,7 @@ export function RetainedActivity({
           search={search}
           className="focus-ring rounded-sm text-sm text-accent-foreground underline underline-offset-4 hover:text-foreground"
         >
-          View runs in this window
+          View these runs
         </Link>
       </div>
       <ul
@@ -88,7 +92,7 @@ export function RetainedActivity({
                     search={{ ...search, workflowId: workflow.workflowId }}
                     className="focus-ring flex min-w-0 items-center justify-between gap-4 rounded-sm border-t border-border py-3 text-sm hover:text-accent-foreground"
                   >
-                    <span className="min-w-0 break-all">
+                    <span className="min-w-0 break-words">
                       {(canReadWorkflowNames ? workflow.workflowName : null) ??
                         `Workflow ${shortRunId(workflow.workflowId)}`}
                     </span>
@@ -100,30 +104,24 @@ export function RetainedActivity({
           )}
           {snapshot.workflows.truncated ? (
             <p className="mt-2 text-xs text-subtle-foreground">
-              Workflow groups shown: {snapshot.workflows.items.length} (maximum
-              50). Other workflows remain included in the activity total.
+              Showing {snapshot.workflows.items.length}{' '}
+              {snapshot.workflows.items.length === 1 ? 'workflow' : 'workflows'}
+              . The total above includes the rest.
             </p>
           ) : null}
         </div>
       )}
-      <p className="break-all text-xs text-subtle-foreground">
-        Created from{' '}
-        <time
-          dateTime={snapshot.window.createdAtFrom}
-          title={snapshot.window.createdAtFrom}
-        >
+      <p className="text-xs text-subtle-foreground">
+        Runs started from{' '}
+        <time dateTime={snapshot.window.createdAtFrom}>
           {formatDateTime(snapshot.window.createdAtFrom)}
         </time>{' '}
-        up to, but not including,{' '}
-        <time
-          dateTime={snapshot.window.createdAtBefore}
-          title={snapshot.window.createdAtBefore}
-        >
+        to{' '}
+        <time dateTime={snapshot.window.createdAtBefore}>
           {formatDateTime(snapshot.window.createdAtBefore)}
         </time>
-        . Counts use each run’s current status, not status transitions. Retained
-        summaries only; deleted history is not reconstructed. Retries stay in
-        the same run; replay creates a new run.
+        , counted once each by their current status. A replay counts as a new
+        run; retries stay in the same run.
       </p>
     </div>
   );

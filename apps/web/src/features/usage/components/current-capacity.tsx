@@ -42,7 +42,7 @@ export function CurrentCapacity({
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div className="min-w-0">
-        <h3 className="mb-2 text-sm font-semibold">Execution</h3>
+        <h3 className="mb-2 text-sm font-semibold">Run slots</h3>
         <CapacityLoom execution={execution} />
         <dl>
           <CapacityRow
@@ -56,13 +56,15 @@ export function CurrentCapacity({
             limit={execution.policy.queuedRunLimit}
           />
         </dl>
-        <p className="text-sm text-muted-foreground">
-          {execution.activeRuns} running or waiting
-          {reserved === 0
-            ? ''
-            : `, ${String(reserved)} held for ${reserved === 1 ? 'a queued run' : 'queued runs'} about to start`}
-          .
-        </p>
+        {/* Slots in use already counts running and waiting runs; only a
+            slot held for a run about to start needs saying. */}
+        {reserved === 0 ? null : (
+          <p className="text-sm text-muted-foreground">
+            {reserved === 1
+              ? '1 slot is held for a queued run about to start.'
+              : `${String(reserved)} slots are held for queued runs about to start.`}
+          </p>
+        )}
         {execution.policy.state === 'active' ? null : (
           <p className="mt-3 text-sm">
             New runs aren’t accepted right now: this workspace’s limits are{' '}
@@ -74,7 +76,7 @@ export function CurrentCapacity({
         )}
       </div>
       <div className="min-w-0">
-        <h3 className="mb-2 text-sm font-semibold">Artifact storage</h3>
+        <h3 className="mb-2 text-sm font-semibold">Storage</h3>
         <StorageSpool
           chargedBytes={artifacts.chargedBytes}
           byteLimit={artifacts.byteLimit}

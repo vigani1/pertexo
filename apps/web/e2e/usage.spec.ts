@@ -181,7 +181,7 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
   await expect(capacity).toContainText('limits are expired');
   await expect(capacity).toContainText('New runs aren’t accepted right now');
   await expect(
-    page.getByText('Workflow groups shown: 1 (maximum 50).', { exact: false }),
+    page.getByText('Showing 1 workflow.', { exact: false }),
   ).toBeVisible();
   await page.getByRole('button', { name: '6 hours' }).click();
   await expect(page).toHaveURL(/window=6h/u);
@@ -210,7 +210,7 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
     'true',
   );
   await expect(
-    page.getByRole('button', { name: 'Refresh retained run activity' }),
+    page.getByRole('button', { name: 'Refresh recent runs' }),
   ).toBeEnabled();
   expect(
     await page.evaluate(
@@ -267,34 +267,28 @@ test('Usage forgets denied activity across windows, transient failures and fresh
   await page.getByRole('button', { name: '6 hours' }).click();
   await expect(page).toHaveURL(/window=6h/u);
   await expect(
-    page.getByRole('button', { name: 'Refresh retained run activity' }),
+    page.getByRole('button', { name: 'Refresh recent runs' }),
   ).toBeEnabled();
   failActivity(404);
-  await page
-    .getByRole('button', { name: 'Refresh retained run activity' })
-    .click();
+  await page.getByRole('button', { name: 'Refresh recent runs' }).click();
   await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
   failActivity(503);
   await page.getByRole('button', { name: '24 hours' }).click();
   await expect(
-    page.getByText('Retained run activity couldn’t be loaded. Try again.'),
+    page.getByText('Recent runs couldn’t be loaded. Try again.'),
   ).toBeVisible();
   await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
   failActivity(0);
-  await page
-    .getByRole('button', { name: 'Refresh retained run activity' })
-    .click();
+  await page.getByRole('button', { name: 'Refresh recent runs' }).click();
   await expect(
     page.getByText(
-      'Retained run activity couldn’t be reached. Check your connection and try again.',
+      'Recent runs couldn’t be reached. Check your connection and try again.',
     ),
   ).toBeVisible();
   await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
   await expect(page.getByText('8 PB', { exact: true }).first()).toBeVisible();
   authorize();
-  await page
-    .getByRole('button', { name: 'Refresh retained run activity' })
-    .click();
+  await page.getByRole('button', { name: 'Refresh recent runs' }).click();
   await expect(page.getByText('Fresh activity', { exact: true })).toBeVisible();
 });
 

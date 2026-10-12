@@ -1,15 +1,20 @@
+import { RefreshCwIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/error-copy';
-import { formatDateTime } from '@/lib/format/time';
+import { cn } from '@/lib/utils';
 
-/** Independent recovery keeps a failed capacity read from hiding activity. */
+/**
+ * One section of the Usage page with its own refresh, so a failed capacity
+ * read never hides run counts. The page header says how fresh they are.
+ */
 export function UsageSnapshot({
   title,
-  asOf,
+  actions,
+  snapshotAt,
   error,
   pending,
   retrying,
@@ -17,7 +22,9 @@ export function UsageSnapshot({
   children,
 }: Readonly<{
   title: string;
-  asOf: string | undefined;
+  /** Controls beside the refresh button, such as a time window. */
+  actions?: ReactNode;
+  snapshotAt: string | undefined;
   error: unknown;
   pending: boolean;
   retrying: boolean;
@@ -28,11 +35,24 @@ export function UsageSnapshot({
     <section aria-label={title} className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-heading text-lg font-semibold">{title}</h2>
-        <Button variant="ghost" size="sm" disabled={retrying} onClick={onRetry}>
-          {retrying ? 'Refreshing…' : `Refresh ${title.toLowerCase()}`}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {actions}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Refresh ${title.toLowerCase()}`}
+            title="Refresh"
+            disabled={retrying}
+            onClick={onRetry}
+          >
+            <RefreshCwIcon
+              aria-hidden="true"
+              className={cn(retrying && 'motion-safe:animate-spin')}
+            />
+          </Button>
+        </div>
       </div>
-      {asOf === undefined ? (
+      {snapshotAt === undefined ? (
         pending ? (
           <div role="status" aria-label={`Loading ${title.toLowerCase()}`}>
             <SkeletonThread order={0} />
@@ -42,15 +62,9 @@ export function UsageSnapshot({
         )
       ) : (
         <>
-          <p className="break-all text-xs text-subtle-foreground">
-            As of{' '}
-            <time dateTime={asOf} title={asOf} className="font-mono">
-              {formatDateTime(asOf)}
-            </time>
-          </p>
           {error === null || error === undefined ? null : (
             <StaleLine
-              updatedAt={Date.parse(asOf)}
+              updatedAt={Date.parse(snapshotAt)}
               retrying={retrying}
               onRetry={onRetry}
             />
