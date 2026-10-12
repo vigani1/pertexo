@@ -95,7 +95,21 @@ test('authors a callable contract with keyboard controls and validates standalon
   await dialog.getByRole('button', { name: 'Apply contract' }).focus();
   await page.keyboard.press('Enter');
   await expect(dialog).toBeHidden();
-  await expect(contract).toBeFocused();
+  const more = page.getByRole('button', {
+    name: 'More workflow actions',
+    exact: true,
+  });
+  await expect(more).toBeFocused();
+  await more.press('Enter');
+  await page
+    .getByRole('menuitem', { name: 'Workflow contract', exact: true })
+    .press('Enter');
+  await expect(dialog).toBeVisible();
+  await dialog
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(more).toBeFocused();
   await expect
     .poll(
       async () =>
