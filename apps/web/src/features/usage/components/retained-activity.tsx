@@ -32,24 +32,23 @@ export function RetainedActivity({
   };
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span>
-            <span className="font-mono text-2xl">{snapshot.window.total}</span>{' '}
-            <span className="text-sm text-muted-foreground">
-              {snapshot.window.total === 1 ? 'run' : 'runs'} started{' '}
-              {windowPhrase}
-            </span>
+      {/* The count is its own sentence; the link sits beside it. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <p>
+          <span className="font-mono text-2xl">{snapshot.window.total}</span>{' '}
+          <span className="text-sm text-muted-foreground">
+            {snapshot.window.total === 1 ? 'run' : 'runs'} started{' '}
+            {windowPhrase}
           </span>
-          <Link
-            to="/w/$workspaceId/runs"
-            params={{ workspaceId }}
-            search={search}
-            className="focus-ring rounded-sm text-sm text-accent-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            View these runs
-          </Link>
         </p>
+        <Link
+          to="/w/$workspaceId/runs"
+          params={{ workspaceId }}
+          search={search}
+          className="focus-ring rounded-sm text-sm text-accent-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          View these runs
+        </Link>
       </div>
       <ul
         className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-4"
