@@ -43,6 +43,12 @@ export function ShortcutSheet({
   fallbackAnchor?: RefObject<HTMLElement | null>;
 }>) {
   const triggerRef = useRef<HTMLButtonElement>(null);
+  function focusAnchor() {
+    const trigger = triggerRef.current;
+    return trigger !== null && trigger.getClientRects().length > 0
+      ? trigger
+      : (fallbackAnchor?.current ?? undefined);
+  }
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
@@ -57,13 +63,9 @@ export function ShortcutSheet({
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-80"
-        anchor={() => {
-          const trigger = triggerRef.current;
-          return trigger !== null && trigger.getClientRects().length > 0
-            ? trigger
-            : (fallbackAnchor?.current ?? trigger);
-        }}
+        className="w-80 max-w-[calc(100vw-2rem)]"
+        anchor={() => focusAnchor() ?? null}
+        finalFocus={focusAnchor}
       >
         <PopoverTitle>Keyboard shortcuts</PopoverTitle>
         <dl className="mt-3 flex flex-col gap-2 text-sm">

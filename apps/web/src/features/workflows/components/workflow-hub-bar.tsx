@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
+import { useRef, useState, type ReactNode, type RefObject } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link, type LinkProps } from '@tanstack/react-router';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, EllipsisIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
@@ -13,6 +13,15 @@ import { WorkflowDuplicateAction } from './workflow-duplicate-dialog';
 import { WorkflowExportAction } from './portability/workflow-export-dialog';
 import { WorkflowTemplateOrigin } from './templates/origin';
 import { InputCasesAction } from './input-cases/action';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { canDuplicateWorkflow } from '../model/duplicate/allowed';
 
 export type WorkflowHubTab =
   'build' | 'runs' | 'triggers' | 'versions' | 'settings';
@@ -84,6 +93,8 @@ export function WorkflowHubBar({
   detail,
   actions,
   duplicateBlocked = false,
+  mobileActions,
+  overflowRef,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -95,6 +106,8 @@ export function WorkflowHubBar({
   detail?: ReactNode;
   actions?: ReactNode;
   duplicateBlocked?: boolean;
+  mobileActions?: ReactNode;
+  overflowRef?: RefObject<HTMLButtonElement | null>;
 }>) {
   const state =
     workflow === undefined ? undefined : describeWorkflowState(workflow);
@@ -107,7 +120,7 @@ export function WorkflowHubBar({
   return (
     // Keep room for the identity before fitting tabs and actions beside it.
     // Intermediate widths put the tabs on their own row instead of squeezing saves.
-    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-2 py-2 min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]">
+    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-2 py-1.5 sm:gap-y-2 sm:py-2 min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]">
       <div className="flex min-w-[min(100%,20rem)] flex-1 items-center gap-3 min-[1728px]:min-w-0">
         <Link
           to="/w/$workspaceId/workflows"
@@ -185,36 +198,137 @@ export function WorkflowHubBar({
           </Link>
         ))}
       </nav>
-      <div className="flex max-w-full flex-wrap items-center gap-1.5 min-[1728px]:justify-self-end">
+      <div className="flex max-w-full flex-wrap items-center gap-1.5 max-sm:w-full max-sm:flex-nowrap min-[1728px]:justify-self-end">
         {workflow === undefined ? null : (
-          <WorkflowExportAction
-            apiClient={apiClient}
-            userId={userId}
-            workspace={workspace}
-            workflow={workflow}
-            blocked={duplicateBlocked}
-          />
-        )}
-        {workflow === undefined ? null : (
-          <InputCasesAction
+          <HubSecondaryActions
             key={`${userId}:${workspace.id}:${workflowId}`}
             apiClient={apiClient}
             userId={userId}
             workspace={workspace}
             workflow={workflow}
-          />
-        )}
-        {workflow === undefined ? null : (
-          <WorkflowDuplicateAction
-            apiClient={apiClient}
-            userId={userId}
-            workspace={workspace}
-            workflow={workflow}
             blocked={duplicateBlocked}
+            mobileActions={mobileActions}
+            overflowRef={overflowRef}
           />
         )}
         {actions}
       </div>
     </header>
+  );
+}
+
+/** Dialog owners persist outside the popup, including through uncertain commands. */
+function HubSecondaryActions({
+  apiClient,
+  userId,
+  workspace,
+  workflow,
+  blocked,
+  mobileActions,
+  overflowRef,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  workflow: WorkflowSummary;
+  blocked: boolean;
+  mobileActions: ReactNode;
+  overflowRef: RefObject<HTMLButtonElement | null> | undefined;
+}>) {
+  const [dialog, setDialog] = useState<'export' | 'cases' | 'duplicate'>();
+  const localRef = useRef<HTMLButtonElement>(null);
+  const moreRef = overflowRef ?? localRef;
+  function finalFocus() {
+    const trigger = moreRef.current;
+    return trigger !== null && trigger.getClientRects().length > 0
+      ? trigger
+      : true;
+  }
+  const read = workspace.capabilities.includes('workflow:read');
+  const dialogProps = {
+    apiClient,
+    userId,
+    workspace,
+    workflow,
+    finalFocus,
+    triggerClassName: 'hidden sm:inline-flex',
+  };
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          ref={moreRef}
+          aria-label="More workflow actions"
+          className={cn(
+            buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+            'shrink-0 sm:hidden',
+          )}
+        >
+          <EllipsisIcon />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuGroup>
+            {read ? (
+              <>
+                <DropdownMenuItem
+                  disabled={blocked}
+                  onClick={() => {
+                    setDialog('export');
+                  }}
+                >
+                  Export…
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setDialog('cases');
+                  }}
+                >
+                  Input cases
+                </DropdownMenuItem>
+              </>
+            ) : null}
+            {canDuplicateWorkflow(workspace, workflow) ? (
+              <DropdownMenuItem
+                disabled={blocked}
+                onClick={() => {
+                  setDialog('duplicate');
+                }}
+              >
+                Duplicate…
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuGroup>
+          {mobileActions === undefined ? null : (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>{mobileActions}</DropdownMenuGroup>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <WorkflowExportAction
+        {...dialogProps}
+        blocked={blocked}
+        open={dialog === 'export'}
+        onOpenChange={(open) => {
+          setDialog(open ? 'export' : undefined);
+        }}
+      />
+      <InputCasesAction
+        {...dialogProps}
+        open={dialog === 'cases'}
+        onOpenChange={(open) => {
+          setDialog(open ? 'cases' : undefined);
+        }}
+      />
+      <WorkflowDuplicateAction
+        {...dialogProps}
+        blocked={blocked}
+        open={dialog === 'duplicate'}
+        onOpenChange={(open) => {
+          setDialog(open ? 'duplicate' : undefined);
+        }}
+      />
+    </>
   );
 }

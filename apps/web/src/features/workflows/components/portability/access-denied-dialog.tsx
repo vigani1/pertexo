@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,10 +12,12 @@ export function PortabilityAccessDeniedDialog({
   operation,
   open = true,
   onClose,
+  finalFocus,
 }: Readonly<{
   operation: 'import' | 'export';
   open?: boolean;
   onClose: () => void;
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }>) {
   return (
     <Dialog
@@ -23,7 +26,7 @@ export function PortabilityAccessDeniedDialog({
         if (!nextOpen) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <DialogTitle>
           {operation === 'import' ? 'Import workflow' : 'Export workflow'}
         </DialogTitle>

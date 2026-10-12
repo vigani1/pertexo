@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react';
 import type { WorkflowExportRequest } from '@pertexo/contracts';
 import { portableGraphDigest } from '@pertexo/workflow-model';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
@@ -35,6 +41,7 @@ type WorkflowExportDialogProps = Readonly<{
   source: WorkflowExportRequest['source'];
   allowed?: boolean;
   onClose: () => void;
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }>;
 
 export function WorkflowExportDialog(props: WorkflowExportDialogProps) {
@@ -47,6 +54,7 @@ export function WorkflowExportDialog(props: WorkflowExportDialogProps) {
       <PortabilityAccessDeniedDialog
         operation="export"
         onClose={props.onClose}
+        finalFocus={props.finalFocus}
       />
     );
   const sourceKey =
@@ -66,6 +74,7 @@ function WorkflowExportSession({
   workflow,
   source,
   onClose,
+  finalFocus,
 }: WorkflowExportDialogProps) {
   const [review, setReview] = useState<ReviewedSource>();
   const [acknowledgedDigest, setAcknowledgedDigest] = useState<string>();
@@ -193,7 +202,10 @@ function WorkflowExportSession({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent
+        finalFocus={finalFocus}
+        className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"
+      >
         <DialogTitle>Export workflow</DialogTitle>
         <DialogDescription>
           {denied
@@ -282,14 +294,21 @@ export function WorkflowExportAction({
   workspace,
   workflow,
   blocked = false,
+  open,
+  onOpenChange,
+  triggerClassName,
+  finalFocus,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   blocked?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  triggerClassName?: string;
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }>) {
-  const [open, setOpen] = useState(false);
   if (!workspace.capabilities.includes('workflow:read')) return null;
   return (
     <>
@@ -297,13 +316,14 @@ export function WorkflowExportAction({
         variant="ghost"
         size="sm"
         disabled={blocked}
+        className={triggerClassName}
         title={
           blocked
             ? 'Save or resolve unfinished edits and conflicts before exporting the saved draft.'
             : undefined
         }
         onClick={() => {
-          setOpen(true);
+          onOpenChange(true);
         }}
       >
         Export…
@@ -316,9 +336,10 @@ export function WorkflowExportAction({
           workspace={workspace}
           workflow={workflow}
           source={{ kind: 'draft' }}
+          finalFocus={finalFocus}
           allowed={!blocked}
           onClose={() => {
-            setOpen(false);
+            onOpenChange(false);
           }}
         />
       ) : null}

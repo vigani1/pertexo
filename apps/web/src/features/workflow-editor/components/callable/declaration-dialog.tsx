@@ -1,23 +1,25 @@
-import { useState } from 'react';
-import { BracesIcon } from 'lucide-react';
+import { useState, type ReactNode, type ComponentProps } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import { DeclarationForm } from './declaration-form';
 
 export function DeclarationDialog({
   editable,
-}: Readonly<{ editable: boolean }>) {
+  children,
+  finalFocus,
+}: Readonly<{
+  editable: boolean;
+  children: ReactNode;
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+}>) {
   const store = useEditorStoreApi();
-  const scratch = useEditorStore((state) => state.inspectorScratch);
   const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
   const [session, setSession] = useState<Readonly<{
     graph: WorkflowGraphContract;
@@ -41,22 +43,10 @@ export function DeclarationDialog({
         else requestClose();
       }}
     >
-      <DialogTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="sm"
-            className="max-sm:w-7 max-sm:px-0 pointer-coarse:max-sm:w-10"
-          />
-        }
-        disabled={session === null && scratch}
-        aria-label="Workflow contract"
-      >
-        <BracesIcon aria-hidden="true" />
-        <span className="hidden sm:inline">Contract</span>
-      </DialogTrigger>
+      {children}
       <DialogContent
         placement="top"
+        finalFocus={finalFocus}
         className="flex max-w-2xl flex-col overflow-hidden p-0"
       >
         <div className="shrink-0 px-6 pt-6 pb-4">

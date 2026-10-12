@@ -257,7 +257,7 @@ test('ordinary verified viewer can inspect the real editor at four widths but ca
         ).toBeDisabled();
       } else {
         await viewer
-          .getByRole('button', { name: 'More editor actions', exact: true })
+          .getByRole('button', { name: 'More workflow actions', exact: true })
           .click();
         await expect(
           viewer.getByRole('menuitem', { name: /^Undo/u }),

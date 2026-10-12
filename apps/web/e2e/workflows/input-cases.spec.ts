@@ -68,9 +68,15 @@ test('keeps long input-case names bounded and case recovery keyboard accessible 
   });
   await page.goto(editorUrl);
   await page.waitForLoadState('networkidle');
-  const action = page.getByRole('button', { name: 'Input cases', exact: true });
+  const action = page.getByRole('button', {
+    name: 'More workflow actions',
+    exact: true,
+  });
   await action.focus();
   await page.keyboard.press('Enter');
+  await page
+    .getByRole('menuitem', { name: 'Input cases', exact: true })
+    .press('Enter');
   const dialog = page.getByRole('dialog', { name: 'Input cases', exact: true });
   const load = dialog.getByRole('button', {
     name: `Load ${longName}`,
