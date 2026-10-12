@@ -200,3 +200,10 @@ test('storage setup failure resumes the old release only without an unresolved m
     false,
   );
 });
+
+test('an incomplete restore blocks deployment before image pulls or migrations', (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.state, 'restore-fence'), '20261013T030000Z\n');
+  assert.equal(f.run().status, 1);
+  assert.deepEqual(f.commands(), []);
+});

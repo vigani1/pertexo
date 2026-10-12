@@ -104,14 +104,19 @@ The original MinIO image and `mc` choices are replaced: the official
 revising storage rather than deploying their unmaintained legacy binaries.
 
 Use pinned [RustFS 1.0.1](https://github.com/rustfs/rustfs/releases/tag/1.0.1)
-image as the single storage container and pinned
-[rclone](https://rclone.org/s3/#metadata) for backup and restore copies.
-Both publish ARM64 images. Keep the existing S3 adapter and settings; qualify
+image as the single storage container. Use the existing AWS SDK for streaming
+artifact backup and restore copies with exact metadata, and pinned
+[rclone](https://rclone.org/s3/#metadata) for database files, byte verification
+and retention. RustFS and rclone publish ARM64 images. Keep the existing S3 adapter and settings; qualify
 conditional uploads, SHA-256 checks, presigned links, user metadata, workspace
 purging and CORS against the pinned provider in slice 3. Publish only the S3
 endpoint through Caddy; storage administration remains private. A pinned RustFS `rc` client performs
 the idempotent bucket, CORS and application-policy setup; it is an ephemeral
 command, not a serving service. No storage cluster, extra database or provider account is added.
+
+The owner approved the SDK copier after real round trips showed that rclone
+and `rc` add user metadata that the artifact adapter correctly rejects. The
+adapter and its stored format remain unchanged.
 
 Backups preserve user metadata and content type. They do not depend on provider
 version IDs: Pertexo's artifact identities and immutable object keys remain the
@@ -166,7 +171,7 @@ restore drill without the owner's accounts.
 - [x] 1. ADR 071 and this plan.
 - [x] 2. Runtime and web images, proxy scheme, worker settings and ARM publishing.
 - [x] 3. Single-server stack, secrets, deploy command and runbook.
-- [ ] 4. Nightly backups, fresh-stack restore and timer.
+- [x] 4. Nightly backups, fresh-stack restore and timer.
 - [ ] 5. Manual deployment workflow with CI and SSH verification.
 - [ ] 6. Owner-assisted first launch, smoke tests and restore drill; automatic
       deploys only after a stable week. Not part of the current implementation.
@@ -189,6 +194,17 @@ are blocked. Tests cover health rollback and uncertainty across migration retrie
 Production permits logs without an optional OTLP exporter; deployed mail,
 secure-cookie and KMS gates remain enforced. HTTPS sign-in and real provider
 smoke tests still belong to owner-assisted slice 6.
+
+Slice 4 implements matched recovery points, exact-metadata SDK object transfers,
+rclone byte verification, 14-day retention, a nightly systemd timer and a guarded
+fresh-stack restore. Capture pauses API, worker and public ingress under the
+same lock as deploy and operator commands, and resumes the previously running
+services on failure. Hashes, release identity and object count accompany a
+completion marker published last. An incomplete restore blocks serving until a
+fresh recovery succeeds. Local qualification restores the repository schema,
+all workspace rows, grants and forced RLS into a fresh PostgreSQL instance, and
+checks artifact bytes and metadata through the unchanged adapter. The real
+Oracle endpoint, installed timer and owner restore drill remain slice 6.
 
 1. **ADR 071, single-server beta.** Records the topology, what the beta gives
    up, and that AWS remains the paid target.
@@ -213,9 +229,10 @@ smoke tests still belong to owner-assisted slice 6.
      including Ubuntu's iptables rules for 80 and 443, SSH keys only,
      unattended upgrades), first launch, deploy, rollback and `ops` commands.
 4. **Backups.**
-   - `backup.sh`: nightly `pg_dump` (custom format, superuser) and a pinned `rclone`
-     metadata-preserving copy of the bucket to Oracle Object Storage through
-     its S3 API. Each recovery point has its own dated prefix. Pause serving
+   - `backup.sh`: nightly `pg_dump` (custom format, superuser) and an exact-metadata
+     streaming copy of the bucket using the existing AWS SDK to Oracle Object
+     Storage through its S3 API. Pinned rclone uploads database files, compares
+     downloaded bytes and removes expired recovery points. Each recovery point has its own dated prefix. Pause serving
      writers and public storage ingress while capturing the matching database
      and objects, then resume them even if backup fails. Publish a completion
      marker only after both copies succeed; incomplete copies are not restore
