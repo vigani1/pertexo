@@ -8,3 +8,4 @@ coverage/
 .DS_Store
 playwright-report/
 test-results/
+!infrastructure/single-server/.env.production.example

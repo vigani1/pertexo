@@ -64,7 +64,7 @@ published:
 | `ops` | Root image | On demand: `docker compose run --rm ops …` |
 | `postgres` | `postgres:18` (as in `compose.yaml`) | Reuses `infrastructure/postgres/init/10-roles.sh` for the owner, migration, app and maintenance roles |
 | `redis` | Redis (as in `compose.yaml`) | Password, AOF, `noeviction` |
-| `storage` | SeaweedFS (pinned), `weed mini` | One-process S3-compatible file storage; only its S3 port reaches the proxy |
+| `storage` | RustFS 1.0.1 (pinned) | One-process S3-compatible file storage; only its S3 port reaches the proxy |
 
 Health checks and `restart: unless-stopped` follow `infrastructure/ecs/workloads.json`:
 - `api` checks `/health/ready`.
@@ -103,14 +103,15 @@ The original MinIO image and `mc` choices are replaced: the official
 [client repository](https://github.com/minio/mc) are archived. The owner approved
 revising storage rather than deploying their unmaintained legacy binaries.
 
-Use a pinned [SeaweedFS `weed mini`](https://github.com/seaweedfs/seaweedfs/wiki/Quick-Start-with-weed-mini)
+Use pinned [RustFS 1.0.1](https://github.com/rustfs/rustfs/releases/tag/1.0.1)
 image as the single storage container and pinned
 [rclone](https://rclone.org/s3/#metadata) for backup and restore copies.
 Both publish ARM64 images. Keep the existing S3 adapter and settings; qualify
 conditional uploads, SHA-256 checks, presigned links, user metadata, workspace
 purging and CORS against the pinned provider in slice 3. Publish only the S3
-endpoint through Caddy; storage administration, filer and RPC ports remain
-private. No storage cluster, extra database or provider account is added.
+endpoint through Caddy; storage administration remains private. A pinned RustFS `rc` client performs
+the idempotent bucket, CORS and application-policy setup; it is an ephemeral
+command, not a serving service. No storage cluster, extra database or provider account is added.
 
 Backups preserve user metadata and content type. They do not depend on provider
 version IDs: Pertexo's artifact identities and immutable object keys remain the
@@ -163,8 +164,8 @@ their PR records CI and merge. This tracker does not claim a live launch or a
 restore drill without the owner's accounts.
 
 - [x] 1. ADR 071 and this plan.
-- [ ] 2. Runtime and web images, proxy scheme, worker settings and ARM publishing.
-- [ ] 3. Single-server stack, secrets, deploy command and runbook.
+- [x] 2. Runtime and web images, proxy scheme, worker settings and ARM publishing.
+- [x] 3. Single-server stack, secrets, deploy command and runbook.
 - [ ] 4. Nightly backups, fresh-stack restore and timer.
 - [ ] 5. Manual deployment workflow with CI and SSH verification.
 - [ ] 6. Owner-assisted first launch, smoke tests and restore drill; automatic
@@ -172,13 +173,22 @@ restore drill without the owner's accounts.
 
 ### Slice details
 
-Slice 2 implementation is in review: both image targets build locally, runtime
-roles load as UID 10001 on a read-only root, and the real web image passes proxy
-scheme, host/path, SPA-boundary and unbuffered-stream checks as UID 101. The API
-and worker share the invitation token key and version references in the ECS
-manifest. The main-only native ARM publishing job must succeed after merge
-before slice 2 is checked and slice 3 begins. Owner HTTPS sign-in and provider
-smoke evidence still belong to slice 6.
+Slice 2 merged as #260. Main CI and the native ARM publisher passed for
+`f0a1bdd71d578419fb57514d23f448b36e559941`; both commit-tagged GHCR images
+are available. Runtime roles and the real web proxy passed the checks recorded
+in that PR. Owner HTTPS sign-in and provider smoke evidence remain slice 6.
+
+Slice 3 implements the private Compose stack, deployed-parser secret generation,
+serialized deployment and migration-aware recovery. The owner approved replacing
+SeaweedFS after its unconfigured bucket omitted version acknowledgements and
+its suspended bucket retained deleted markers. Pinned RustFS 1.0.1 passes the
+unchanged adapter's uploads, checksums, presigned links, metadata, CORS and
+workspace purge checks with restricted application credentials. A pinned `rc`
+client performs idempotent bucket, CORS and IAM setup; public storage admin paths
+are blocked. Tests cover health rollback and uncertainty across migration retries.
+Production permits logs without an optional OTLP exporter; deployed mail,
+secure-cookie and KMS gates remain enforced. HTTPS sign-in and real provider
+smoke tests still belong to owner-assisted slice 6.
 
 1. **ADR 071, single-server beta.** Records the topology, what the beta gives
    up, and that AWS remains the paid target.
