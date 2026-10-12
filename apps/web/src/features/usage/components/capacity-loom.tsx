@@ -31,7 +31,7 @@ export function CapacityLoom({
   return (
     <figure
       className="my-5"
-      aria-label={`${String(occupied)} of ${String(total)} run slots in use, ${String(queued)} ${queued === 1 ? 'run' : 'runs'} queued`}
+      aria-label={`${String(occupied)} of ${String(total)} runs in progress at once, ${String(queued)} ${queued === 1 ? 'run' : 'runs'} queued`}
     >
       <div aria-hidden="true" className="flex items-center">
         {/* The queue: beads wait in line, the first nearest the rack. */}
@@ -87,8 +87,8 @@ export function CapacityLoom({
         </div>
       </div>
       <figcaption aria-hidden="true" className={SCALE}>
-        <span>Queue</span>
-        <span>Slots</span>
+        <span>Queued</span>
+        <span>In progress</span>
       </figcaption>
     </figure>
   );
@@ -116,8 +116,10 @@ export function StorageSpool({
     >
       <div aria-hidden="true" className={RACK}>
         <div className="relative h-7 min-w-0 flex-1 overflow-hidden rounded-full">
+          {/* The winding stops in a straight edge where the storage ends;
+              only the rack's own rounded ends shape it. */}
           <span
-            className="absolute inset-y-0 left-0 rounded-full bg-[repeating-linear-gradient(90deg,var(--accent-foreground)_0_1.5px,transparent_1.5px_4px)] opacity-75"
+            className="absolute inset-y-0 left-0 bg-[repeating-linear-gradient(90deg,var(--accent-foreground)_0_1.5px,transparent_1.5px_4px)] opacity-75 after:absolute after:inset-y-0 after:right-0 after:w-0.5 after:bg-accent-foreground after:content-['']"
             style={{ width: `${String(wound)}%` }}
           />
         </div>

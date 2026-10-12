@@ -118,7 +118,7 @@ describe('workspace Usage', () => {
     ).toBeVisible();
     expect(current).toHaveTextContent('8 EB');
     expect(current).toHaveTextContent(
-      '1 slot is held for a queued run about to start.',
+      'One more place is held for a queued run about to start.',
     );
     expect(current).toHaveTextContent(
       'Files count from upload until they’re fully deleted',
