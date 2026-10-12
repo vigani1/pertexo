@@ -4,6 +4,15 @@ import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/utils';
 
 const VISIBLE_SLOTS = 12;
+
+/**
+ * Both capacity drawings sit in the same rack: one height, one outline,
+ * with a small scale under it, so the two halves read as a pair.
+ */
+const RACK =
+  'flex h-11 items-center rounded-full border border-border bg-white/[0.02] px-2.5';
+const SCALE =
+  'mt-2 flex justify-between gap-3 font-mono text-[0.6rem] text-subtle-foreground';
 const VISIBLE_QUEUE = 9;
 
 /**
@@ -21,8 +30,7 @@ export function CapacityLoom({
   const beads = Math.min(VISIBLE_QUEUE, queued);
   return (
     <figure
-      // As tall as the storage spool beside it, so the rows below line up.
-      className="my-5 flex h-28 flex-col justify-center"
+      className="my-5"
       aria-label={`${String(occupied)} of ${String(total)} run slots in use, ${String(queued)} ${queued === 1 ? 'run' : 'runs'} queued`}
     >
       <div aria-hidden="true" className="flex items-center">
@@ -48,7 +56,7 @@ export function CapacityLoom({
           ))}
         </div>
         {/* The rack of slots. */}
-        <div className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-white/[0.02] px-2.5 py-2">
+        <div className={cn(RACK, 'shrink-0 gap-2')}>
           {Array.from({ length: shown }, (_, index) => {
             const running = index < execution.activeRuns;
             const held = !running && index < occupied;
@@ -78,10 +86,7 @@ export function CapacityLoom({
           ) : null}
         </div>
       </div>
-      <figcaption
-        aria-hidden="true"
-        className="mt-2 flex justify-between gap-3 font-mono text-[0.6rem] text-subtle-foreground"
-      >
+      <figcaption aria-hidden="true" className={SCALE}>
         <span>Queue</span>
         <span>Slots</span>
       </figcaption>
@@ -89,7 +94,10 @@ export function CapacityLoom({
   );
 }
 
-/** Stored bytes as thread wound on a spool: the winding widens as it fills. */
+/**
+ * Stored bytes as thread wound across the same rack: each wrap a fine line,
+ * filled as far as the storage is used.
+ */
 export function StorageSpool({
   chargedBytes,
   byteLimit,
@@ -99,58 +107,26 @@ export function StorageSpool({
   const filled =
     limit === 0n ? (used > 0n ? 100n : 0n) : (used * 100n + limit / 2n) / limit;
   const percent = Number(filled > 100n ? 100n : filled);
-  // The winding grows from the core (half-width 5) to the flange edge (34).
-  const half = 5 + (29 * percent) / 100;
-  const wraps = percent === 0 ? [] : Array.from({ length: 19 }, (_, i) => i);
+  // Any stored byte shows as at least one wrap.
+  const wound = used > 0n ? Math.max(percent, 1) : 0;
   return (
     <figure
-      className="my-5 flex items-center gap-5"
+      className="my-5"
       aria-label={`${formatByteLength(chargedBytes)} stored of ${formatByteLength(byteLimit)}`}
     >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 110 110"
-        className="h-28 w-28 shrink-0"
-        fill="none"
-        strokeLinecap="round"
-      >
-        {wraps.map((index) => (
-          <path
-            key={index}
-            d={`M${String(50 - half)} ${String(19 + index * 4)}H${String(50 + half)}`}
-            strokeWidth="1.2"
-            className="stroke-accent-foreground"
+      <div aria-hidden="true" className={RACK}>
+        <div className="relative h-7 min-w-0 flex-1 overflow-hidden rounded-full">
+          <span
+            className="absolute inset-y-0 left-0 rounded-full bg-[repeating-linear-gradient(90deg,var(--accent-foreground)_0_1.5px,transparent_1.5px_4px)] opacity-75"
+            style={{ width: `${String(wound)}%` }}
           />
-        ))}
-        <path
-          d="M45 14V96M55 14V96"
-          strokeWidth="1.5"
-          className="stroke-border"
-        />
-        <path
-          d="M14 14H86M14 96H86"
-          strokeWidth="3"
-          className="stroke-border"
-        />
-        <path
-          d={`M${String(50 + half)} 91C${String(64 + half)} 91 80 104 106 104`}
-          strokeWidth="1.5"
-          className="stroke-muted-foreground"
-        />
-      </svg>
-      <figcaption className="min-w-0">
-        <p
-          title={`${chargedBytes} bytes`}
-          className="font-mono text-2xl text-foreground"
-        >
-          {formatByteLength(chargedBytes)}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          of {formatByteLength(byteLimit)}
-        </p>
-        <p className="mt-2 text-xs text-subtle-foreground">
+        </div>
+      </div>
+      <figcaption aria-hidden="true" className={SCALE}>
+        <span>
           {limit === 0n ? 'No storage capacity' : `${String(percent)}% full`}
-        </p>
+        </span>
+        <span>{formatByteLength(byteLimit)}</span>
       </figcaption>
     </figure>
   );

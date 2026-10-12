@@ -61,7 +61,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
   await expect(
     current.getByRole('figure', { name: '11 B stored of 1 GB' }),
   ).toBeVisible();
-  await expect(current).toContainText('of 1 GB');
+  await expect(current).toContainText('/ 1 GB');
   await expect(current).toContainText('1 / 5');
   const oneHour = workflowRunStatisticsResponseSchema.parse(
     await (await oneHourResponse).json(),
