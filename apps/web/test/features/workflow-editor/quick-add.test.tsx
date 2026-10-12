@@ -2,7 +2,7 @@ import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
-import type { FinalConnectionState } from '@xyflow/react';
+import { Position, type FinalConnectionState } from '@xyflow/react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -64,18 +64,18 @@ function dropState(
       nodeId: 'target',
       x: 0,
       y: 0,
-      position: 'right',
+      position: Position.Right,
       width: 8,
       height: 8,
     },
-    fromPosition: 'right',
+    fromPosition: Position.Right,
     fromNode: {} as never,
     to: { x: 0, y: 0 },
     toHandle: null,
     toPosition: null,
     toNode: toNode === 'step' ? ({} as never) : null,
     pointer: { x: 0, y: 0 },
-  } as FinalConnectionState;
+  };
 }
 
 describe('quick add graph commands', () => {

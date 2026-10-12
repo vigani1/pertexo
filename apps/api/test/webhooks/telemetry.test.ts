@@ -5,7 +5,7 @@ import {
   type Context,
   type Span,
 } from '@opentelemetry/api';
-import { NodeSDK } from '@opentelemetry/sdk-node';
+import { core, NodeSDK } from '@opentelemetry/sdk-node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWebhookIngressTelemetry } from '../../src/webhooks/telemetry.js';
@@ -37,7 +37,7 @@ describe('webhook ingress telemetry', () => {
       traceExporter: {
         export(batch, callback) {
           spans.push(...(batch as ExportedSpan[]));
-          callback({ code: 0 });
+          callback({ code: core.ExportResultCode.SUCCESS });
         },
         forceFlush: () => Promise.resolve(),
         shutdown: () => Promise.resolve(),
