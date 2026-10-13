@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import {
   mkdtempSync,
   mkdirSync,
@@ -132,13 +132,12 @@ try {
                 'node',
                 '--input-type=module',
                 '--eval',
-                "import assert from 'node:assert/strict'; import {createHash} from 'node:crypto'; assert.equal(createHash('sha256').update(process.env.SYSTEM_MAIL_SMTP_PASSWORD).digest('hex')," +
-                  JSON.stringify(
-                    createHash('sha256')
-                      .update(env.SYSTEM_MAIL_SMTP_PASSWORD)
-                      .digest('hex'),
-                  ) +
-                  "); assert.equal(process.env.SYSTEM_MAIL_TRANSPORT,'smtp');",
+                // Compose interpolates commands too; $$ represents a literal $.
+                (
+                  "import assert from 'node:assert/strict'; assert.equal(process.env.SYSTEM_MAIL_SMTP_PASSWORD," +
+                  JSON.stringify(env.SYSTEM_MAIL_SMTP_PASSWORD) +
+                  "); assert.equal(process.env.SYSTEM_MAIL_TRANSPORT,'smtp');"
+                ).replaceAll('$', () => '$$'),
               ],
             },
           },
