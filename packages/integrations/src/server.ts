@@ -113,5 +113,5 @@ export {
 export type {
   ConnectionEnvelopeEncryptionConfig,
   ConnectionEnvelopeEncryptionRuntime,
-  LocalConnectionEncryptionConfig,
+  SelfManagedConnectionEncryptionConfig,
 } from './credentials/runtime.js';

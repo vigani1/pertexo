@@ -1,7 +1,7 @@
 import { isIP } from 'node:net';
 import {
   parseConnectionEncryptionConfig,
-  type LocalConnectionEncryptionConfig,
+  type SelfManagedConnectionEncryptionConfig,
 } from '@pertexo/integrations/server';
 
 import { z } from 'zod';
@@ -92,7 +92,7 @@ export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 export type ApiConfig = Readonly<{
   artifacts?: ArtifactStoreConfig;
   connections?:
-    | LocalConnectionEncryptionConfig
+    | SelfManagedConnectionEncryptionConfig
     | Readonly<{
         kmsKeyReference: string;
         region: string;
