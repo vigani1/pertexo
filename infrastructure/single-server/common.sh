@@ -61,6 +61,14 @@ prepare_configuration() {
     "ghcr.io/vigani1/pertexo:$parser_version" node --env-file=/run/pertexo.env infrastructure/single-server/storage/prepare.mjs /prepared /selected-release/infrastructure/single-server/encryption/verify.mjs
 }
 
+validate_rollback_configuration() (
+  # Interim images can ship a verifier while still refusing production self-managed keys.
+  prepared=$(mktemp -d "$BETA_STATE_DIR/.rollback-configuration.XXXXXX")
+  trap 'rm -rf "$prepared"' EXIT
+  prepare_configuration "$prepared" "$release" "$SERVICE_VERSION"
+  compose config --quiet
+)
+
 prepare_release() {
   commit=$1
   repository="$beta_root/repository"

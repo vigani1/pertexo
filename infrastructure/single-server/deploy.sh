@@ -18,6 +18,7 @@ if ! docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
   --entrypoint /bin/sh rustfs/rc:v0.1.36@sha256:ab024bfebee49a750ce886b4c70963ccd9ddaa03f491704a90710641d7a26699 /bootstrap.sh; then
   if [[ -n "$previous" && ! -f "$BETA_STATE_DIR/migration-fence" ]]; then
     select_release "$previous"
+    validate_rollback_configuration
     verify_encryption
     compose up -d --no-deps --wait --wait-timeout 180 api worker web proxy
   fi
@@ -43,6 +44,7 @@ if ! compose up -d --no-deps --wait --wait-timeout 180 api worker web proxy; the
   compose stop api worker web proxy
   if [[ $no_migration == true && -n "$previous" && "$previous" != "$commit" ]]; then
     select_release "$previous"
+    validate_rollback_configuration
     verify_encryption
     compose up -d --no-deps --wait --wait-timeout 180 api worker web proxy
     echo "Unhealthy release returned to $previous" >&2
