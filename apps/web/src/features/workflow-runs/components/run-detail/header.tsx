@@ -1,18 +1,17 @@
+import { RunDetailActions } from '../run-actions/detail-actions';
 import type {
   AccessibleWorkspace,
   WorkflowRunReadSummary,
 } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { OctagonXIcon, RefreshCwIcon, RotateCcwIcon } from 'lucide-react';
+import { RefreshCwIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { CoreOrb } from '@/components/patterns/core/orb';
 import {
-  PageHeaderActions,
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { Button } from '@/components/ui/button';
-import { buttonVariants } from '@/components/ui/button-variants';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatClock, formatDurationMs } from '@/lib/format/time';
@@ -152,87 +151,6 @@ function RunFacts({
 }
 
 /**
- * Replay and Cancel run. On phones they sit in a bar at thumb height above
- * the bottom navigation, with Open workflow beside them when there's room.
- */
-function RunActions({
-  compact,
-  workspaceId,
-  workflowId,
-  canReplay,
-  canCancel,
-  canOpenWorkflow,
-  onReplay,
-  onCancel,
-}: Readonly<{
-  compact: boolean;
-  workspaceId: string;
-  workflowId: string;
-  canReplay: boolean;
-  canCancel: boolean;
-  canOpenWorkflow: boolean;
-  onReplay: () => void;
-  onCancel: () => void;
-}>) {
-  // The actions share a phone's width: each takes its own width and the
-  // rest is shared.
-  const grow = compact ? 'flex-auto px-3' : undefined;
-  // Replay, Cancel run and Open workflow don't all fit a phone's width. The
-  // workflow's name at the top of the page links there too, so Open
-  // workflow is the one that makes way.
-  const roomToOpenWorkflow = !(canReplay && canCancel);
-  const buttons = (
-    <>
-      {canReplay ? (
-        <Button
-          type="button"
-          variant={compact ? 'default' : 'outline'}
-          className={grow}
-          onClick={onReplay}
-        >
-          <RotateCcwIcon aria-hidden="true" />
-          Replay
-        </Button>
-      ) : null}
-      {canCancel ? (
-        <Button
-          type="button"
-          variant="destructive"
-          className={grow}
-          onClick={onCancel}
-        >
-          <OctagonXIcon aria-hidden="true" />
-          {/* The same words at every size. */}
-          Cancel run
-        </Button>
-      ) : null}
-    </>
-  );
-  if (!compact)
-    return (
-      <PageHeaderActions className="md:self-start">{buttons}</PageHeaderActions>
-    );
-  return (
-    <div
-      role="group"
-      aria-label="Run actions"
-      className="lens fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-30 flex gap-2 rounded-2xl p-2"
-    >
-      {buttons}
-      {canOpenWorkflow && roomToOpenWorkflow ? (
-        <Link
-          to="/w/$workspaceId/workflows/$workflowId"
-          params={{ workspaceId, workflowId }}
-          className={buttonVariants({ variant: 'outline', className: grow })}
-        >
-          Open workflow
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-/**
  * The run's Core, a sentence that says where the run is, the facts in mono
  * and the two things you can do: replay it, or stop it while it runs.
  */
@@ -326,7 +244,7 @@ export function RunHeader({
           className="mt-3 text-sm text-muted-foreground"
         />
       </div>
-      <RunActions
+      <RunDetailActions
         compact={compact}
         workspaceId={workspace.id}
         workflowId={run.workflowId}
