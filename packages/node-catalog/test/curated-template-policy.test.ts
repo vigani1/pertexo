@@ -311,7 +311,7 @@ describe('browser template setup versus registered server policy', () => {
     expect(
       validateRegisteredCuratedTemplateSetup(descriptor.manifest, {
         ...origin,
-        templateVersion: 2,
+        templateVersion: descriptor.templateVersion + 1,
       }),
     ).toBe(false);
   });
