@@ -61,6 +61,17 @@ full replay, automatic retry
 executing that step there. _Avoid_: A new successful attempt, provider retry,
 execution cache
 
+**Failure link**: A workflow link that selects an alternative path after an
+eligible definite failure finishes its automatic retries. _Avoid_: Workflow
+connection, failure alert, finally block
+
+**Failure handler**: The alternative path owned by one failure link, executed
+within the same run. _Avoid_: Child run, automatic retry, full replay
+
+**Handled failure**: A failed step whose selected failure handler completed
+successfully. The step remains failed; handling does not prove that its original
+business operation succeeded. _Avoid_: Successful attempt, ignored failure
+
 **Callable workflow**: A reusable workflow that declares the input it accepts
 and the result it returns. It can run on its own. _Avoid_: A loop body, a
 different trigger kind

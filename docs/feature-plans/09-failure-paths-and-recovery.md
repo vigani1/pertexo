@@ -1,7 +1,7 @@
 # F09 — Workflow failure paths and recovery from a failed step
 
 Status: approved for implementation on 2026-10-13; slice 0 merged in PR #273.
-Dispatcher latency correction merged in PR #274. Slice 2 runtime/API merged in PR #275; slice 3 recovery UI is locally qualified, pending PR CI/merge.
+Dispatcher latency correction merged in PR #274. Slice 2 runtime/API merged in PR #275; slice 3 recovery UI merged green in PR #276. Slice 4 failure routing is in progress.
 Failure routes remain open. The
 owner authorized the revised scope and decisions, including explicit manual
 effects acknowledgement, Condition/leaf Stop run and recovery-first delivery.
@@ -788,7 +788,7 @@ remain evidence gates in the code slices.
       2026-10-13, authorizing implementation in order.
 - [x] ADR 072 records accepted recovery decisions; recovery glossary/roadmap
       reconciled.
-- [ ] Routing ADR and glossary land before the failure-route runtime slice.
+- [x] ADR 073 and routing glossary record the approved semantics before runtime implementation.
 - [x] Slice 1: no demonstrated existing recovery-clarity gap; retain current UI.
       Full web units and four mocked run-history browser cases passed.
 - [x] Slice 0: per-step latency measured before F09 engine changes.
@@ -796,7 +796,7 @@ remain evidence gates in the code slices.
       postmerge checks passed before recovery runtime.
 - [x] Slice 2: PR #275 merged green; recovery runtime/API qualified with choices, acknowledgement,
       races/retention and baseline comparison.
-- [ ] Slice 3: real recovery UI/Condition/Stop run journey qualified.
+- [x] Slice 3: PR #276 merged green; real HTTP/Condition/Stop run recovery, response loss and reused history qualified.
 - [ ] Slice 4: failure-route runtime independently verified.
 - [ ] Slice 5: authoring/handled history and combined qualification.
 - [ ] Scoped PRs merged and natural postmerge checks inspected.
@@ -1050,7 +1050,7 @@ Review images use synthetic mocked data: [desktop confirmation](../media/recover
 [desktop reused history](../media/recovery-reused-desktop.png) and
 [phone reused history](../media/recovery-reused-phone.png).
 The existing CI browser job now runs both existing live scenarios; no CI job was
-added. Slice 3 stays unmarked until its PR is green and merged.
+added. PR #276 merged after all required CI passed.
 
 
 PR #276's first CI run exposed an existing JSONata test assertion: total
@@ -1060,4 +1060,4 @@ message, with a separate 5 s startup policy. The test now observes actual worker
 exit and capacity reuse; a controlled-clock case checks the exact evaluation
 deadline after delayed startup and refuses capacity until termination settles.
 No production deadline, test timeout or evaluator behavior changed. The fix
-lands as a new commit; slice 3 still awaits green CI and merge.
+lands as a new commit; all required CI passed on the new commit before merging PR #276.
