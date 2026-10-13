@@ -104,8 +104,7 @@ export async function createOwnedMaintenanceRuntime(
         envelope: invitationFactories.envelope(
           invitationConfig.tokenEncryption,
         ),
-        email: invitationFactories.email(invitationFactories.httpClient()),
-        apiKey: invitationConfig.apiKey,
+        email: invitationFactories.email(invitationConfig.delivery),
         fromEmail: invitationConfig.fromEmail,
         webOrigin: invitationConfig.webOrigin,
         timeoutMillis: invitationConfig.timeoutMillis,

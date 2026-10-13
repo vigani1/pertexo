@@ -17,8 +17,10 @@ const image = process.argv[2];
 if (!image) throw new Error('usage: verify-runtime.mjs <runtime-image>');
 const directory = mkdtempSync(join(tmpdir(), 'pertexo-runtime-helpers-'));
 try {
-  for (const mode of ['kms', 'self-managed']) {
-    const prepared = join(directory, mode);
+  for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
+    ['resend', 'smtp'].map((transport) => ({ mode, transport })),
+  )) {
+    const prepared = join(directory, mode + '-' + transport);
     mkdirSync(prepared, { mode: 0o700 });
     const env = {
       ...parseEnv(
@@ -40,9 +42,19 @@ try {
       ARTIFACT_STORE_BUCKET: 'artifacts',
       ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
       AUTH_MAIL_FROM: 'security@example.test',
-      AUTH_MAIL_EMAIL_API_KEY: 'fixture-mail',
+      SYSTEM_MAIL_TRANSPORT: transport,
+      ...(transport === 'smtp'
+        ? {
+            SYSTEM_MAIL_SMTP_HOST: 'smtp.example.test',
+            SYSTEM_MAIL_SMTP_TLS: 'starttls',
+            SYSTEM_MAIL_SMTP_USER: 'fixture-user',
+            SYSTEM_MAIL_SMTP_PASSWORD: 'fixture-password',
+          }
+        : {
+            AUTH_MAIL_EMAIL_API_KEY: 'fixture-mail',
+            INVITATION_EMAIL_API_KEY: 'fixture-mail',
+          }),
       INVITATION_EMAIL_FROM: 'invites@example.test',
-      INVITATION_EMAIL_API_KEY: 'fixture-mail',
       ...(mode === 'kms'
         ? {
             CONNECTION_KMS_KEY_REFERENCE: 'alias/fixture',
@@ -60,7 +72,7 @@ try {
       BACKUP_STORE_ACCESS_KEY_ID: 'fixture-backup',
       BACKUP_STORE_SECRET_ACCESS_KEY: 'fixture-backup-secret',
     };
-    const config = join(directory, mode + '.env');
+    const config = join(directory, mode + '-' + transport + '.env');
     writeFileSync(
       config,
       Object.entries(env)
@@ -98,6 +110,23 @@ try {
     };
     run(['infrastructure/single-server/storage/prepare.mjs', '/prepared']);
     run(['infrastructure/single-server/backup/prepare.mjs', '/prepared']);
+    run([
+      '--input-type=module',
+      '--eval',
+      [
+        "import assert from 'node:assert/strict';",
+        "import {parseWorkerConfig} from './apps/worker/dist/config/worker.js';",
+        "import {createSystemMailClient} from './packages/integrations/dist/server.js';",
+        "const config=parseWorkerConfig({...process.env,WORKER_INSTANCE_ID:'fixture'});",
+        'for(const delivery of [config.authenticationMailDelivery,config.invitationDelivery]) {',
+        ' assert.equal(delivery.delivery.mode,process.env.SYSTEM_MAIL_TRANSPORT);',
+        ' const client=createSystemMailClient(delivery.delivery);',
+        " assert.equal(client.deduplicates,process.env.SYSTEM_MAIL_TRANSPORT==='resend');",
+        " const result=await client.sendNotification({fromEmail:'a@example.test',toEmail:'b@example.test',subject:'test',text:'test',idempotencyKey:'fixture',timeoutMillis:100,signal:AbortSignal.abort(),beforeDispatch:async()=>{throw new Error('Unexpected dispatch');}});",
+        " assert.equal(result.kind,'retryable');",
+        '}',
+      ].join(''),
+    ]);
     run([
       '--input-type=module',
       '--eval',

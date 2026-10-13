@@ -51,7 +51,7 @@ describe('parseWorkerConfig', () => {
         AUTH_MAIL_KEY_VERSION: 'mail-v1',
       }).authenticationMailDelivery,
     ).toMatchObject({
-      apiKey: 'provider-key',
+      delivery: { mode: 'resend', apiKey: 'provider-key' },
       timeoutMillis: 5_000,
       pollIntervalMillis: 1_000,
       workerId: 'auth-mail:mail-worker-1',

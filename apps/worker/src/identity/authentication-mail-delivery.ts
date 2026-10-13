@@ -5,8 +5,8 @@ import type {
 } from '@pertexo/database/tenant-access';
 import type {
   ApplicationSecretEnvelope,
-  ResendApiResult,
-  ResendClient,
+  SystemMailResult,
+  SystemMailClient,
 } from '@pertexo/integrations/server';
 
 const payload = z
@@ -26,8 +26,7 @@ export function createAuthenticationMailDeliveryHandler(
   dependencies: Readonly<{
     store: AuthenticationMailDeliveryStore;
     envelope: Pick<ApplicationSecretEnvelope, 'open'>;
-    email: Pick<ResendClient, 'sendNotification'>;
-    apiKey: string;
+    email: SystemMailClient;
     timeoutMillis: number;
     workerId: string;
     now?: () => Date;
@@ -58,6 +57,14 @@ async function deliverClaim(
   random: () => number,
   signal?: AbortSignal,
 ): Promise<void> {
+  if (claim.recoveredUnknown && !dependencies.email.deduplicates) {
+    await dependencies.store.settle({
+      ...claimIdentity(claim),
+      outcome: 'reconciliation_required',
+      failureCode: 'delivery.recovered_unknown',
+    });
+    return;
+  }
   if (now().getTime() >= claim.expiresAt.getTime()) {
     await dependencies.store.settle({
       ...claimIdentity(claim),
@@ -72,10 +79,9 @@ async function deliverClaim(
       dependencies.envelope.open(claim.sealedPayload, associatedData),
     ) as unknown,
   );
-  let result: ResendApiResult;
+  let result: SystemMailResult;
   try {
     result = await dependencies.email.sendNotification({
-      apiKey: dependencies.apiKey,
       fromEmail: message.fromEmail,
       toEmail: message.toEmail,
       subject: message.subject,
@@ -86,6 +92,14 @@ async function deliverClaim(
       ...(signal === undefined ? {} : { signal }),
     });
   } catch {
+    if (!dependencies.email.deduplicates) {
+      await dependencies.store.settle({
+        ...claimIdentity(claim),
+        outcome: 'reconciliation_required',
+        failureCode: 'delivery.transport',
+      });
+      return;
+    }
     await settleRetry(
       dependencies.store,
       claim,
@@ -95,25 +109,27 @@ async function deliverClaim(
     );
     return;
   }
-  if (result.kind === 'succeeded') {
+  if (result.kind === 'submitted') {
     await dependencies.store.settle({
       ...claimIdentity(claim),
       outcome: 'submitted',
-      providerReference: result.emailId,
+      providerReference: result.reference,
     });
     return;
   }
-  if (
-    result.kind === 'rejected' &&
-    result.status >= 400 &&
-    result.status < 500 &&
-    ![408, 409, 425, 429].includes(result.status) &&
-    result.error !== 'concurrent_idempotent_requests'
-  ) {
+  if (result.kind === 'failed') {
     await dependencies.store.settle({
       ...claimIdentity(claim),
       outcome: 'failed',
       failureCode: 'delivery.provider_rejected',
+    });
+    return;
+  }
+  if (result.kind === 'unknown') {
+    await dependencies.store.settle({
+      ...claimIdentity(claim),
+      outcome: 'reconciliation_required',
+      failureCode: 'delivery.outcome_unknown',
     });
     return;
   }

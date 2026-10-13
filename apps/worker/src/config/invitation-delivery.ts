@@ -2,12 +2,14 @@ import { z } from 'zod';
 
 import {
   applicationKeyVersionSchema,
+  parseSystemMailConfig,
+  type SystemMailConfig,
   parseApplicationPreviousKeys,
   type ApplicationKeyRing,
 } from '@pertexo/integrations/server';
 
 export type InvitationDeliveryConfig = Readonly<{
-  apiKey: string;
+  delivery: SystemMailConfig;
   fromEmail: string;
   webOrigin: string;
   timeoutMillis: number;
@@ -17,6 +19,7 @@ export type InvitationDeliveryConfig = Readonly<{
 // PUBLIC_WEB_ORIGIN is shared with the API's sign-in, so it alone does not
 // mean invitation delivery is configured; delivery still requires it.
 const invitationDeliveryVariableNames = [
+  'SYSTEM_MAIL_TRANSPORT',
   'INVITATION_EMAIL_API_KEY',
   'INVITATION_EMAIL_FROM',
   'INVITATION_TOKEN_KEY',
@@ -39,7 +42,6 @@ export function parseInvitationDeliveryConfig(
     return undefined;
   const parsed = z
     .object({
-      apiKey: z.string().min(1).max(512),
       fromEmail: z.email().max(320),
       webOrigin: z.url(),
       timeoutMillis: z.coerce
@@ -54,7 +56,6 @@ export function parseInvitationDeliveryConfig(
     })
     .strict()
     .parse({
-      apiKey: environment.INVITATION_EMAIL_API_KEY,
       fromEmail: environment.INVITATION_EMAIL_FROM,
       webOrigin: environment.PUBLIC_WEB_ORIGIN,
       timeoutMillis: environment.INVITATION_EMAIL_TIMEOUT_MILLIS,
@@ -69,7 +70,11 @@ export function parseInvitationDeliveryConfig(
     throw new Error('HTTPS public web origin is required when deployed');
   const previous = parseApplicationPreviousKeys(parsed.previous);
   return Object.freeze({
-    apiKey: parsed.apiKey,
+    delivery: parseSystemMailConfig(
+      environment,
+      'INVITATION_EMAIL_API_KEY',
+      deployed,
+    ),
     fromEmail: parsed.fromEmail,
     webOrigin: url.origin,
     timeoutMillis: parsed.timeoutMillis,

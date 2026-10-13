@@ -179,3 +179,12 @@ Pertexo is available under the
 [PolyForm Noncommercial License 1.0.0](./LICENSE.md). You may read, run, change
 and share it for any noncommercial purpose, such as learning, personal projects
 or research. Commercial use needs separate permission from the author.
+
+System account and invitation mail can use Resend (default) or an existing SMTP
+submission server with verified STARTTLS or implicit TLS. Set
+`SYSTEM_MAIL_TRANSPORT=smtp` and the worker's `SYSTEM_MAIL_SMTP_*` settings;
+keep the existing mail senders and encryption keys. SMTP does not require Resend
+credentials. See
+[system mail operations](docs/operations/single-server.md#system-mail-resend-or-smtp)
+for configuration, delivery uncertainty and switching providers safely. Workflow
+Email steps and workspace Alerts still use their workspace Resend connections.

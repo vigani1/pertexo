@@ -11,8 +11,7 @@ import { createAuthenticationMailDeliveryStore } from '@pertexo/database/tenant-
 import { createWorkspaceInboxFoldStore } from '@pertexo/database/notifications';
 import {
   createApplicationSecretEnvelope,
-  createNodeSecureHttpClient,
-  createResendClient,
+  createSystemMailClient,
 } from '@pertexo/integrations/server';
 import {
   RedisWorkspaceInboxHintPublisher,
@@ -131,8 +130,7 @@ export class WorkerModule {
             const handler = createAuthenticationMailDeliveryHandler({
               store,
               envelope: createApplicationSecretEnvelope(mail.encryption),
-              email: createResendClient(createNodeSecureHttpClient()),
-              apiKey: mail.apiKey,
+              email: createSystemMailClient(mail.delivery),
               timeoutMillis: mail.timeoutMillis,
               workerId: mail.workerId,
             });

@@ -37,8 +37,12 @@ Implementation can start before these exist; the first launch can't.
    - The VCN security list open for 22, 80 and 443.
 2. **An address.** A DuckDNS name works for a private test (`<name>.duckdns.org`
    with `files.<name>.duckdns.org`). Emailing anyone but the owner needs a real
-   domain (about €10 a year), because Resend has to verify DNS records.
-3. **Resend.** An account, a verified sending domain and one API key.
+   domain (about €10 a year), because the selected mail provider needs authorized sending-domain DNS.
+3. **System mail.** Resend remains the default: an account, a verified sending
+   domain and one API key. The completed SMTP portability feature also permits
+   an existing authenticated TLS submission server; see
+   [SMTP system mail](smtp-delivery.md) and its operator instructions. Provider
+   accounts, DNS and real receipt checks remain owner slice 6.
 4. **AWS, when choosing KMS encryption.**
    - One symmetric customer-managed key in `eu-central-1` (about $1 a month;
      calls fit the free request allowance).

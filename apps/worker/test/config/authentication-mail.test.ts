@@ -21,7 +21,7 @@ describe('parseAuthenticationMailDeliveryConfig', () => {
     );
 
     expect(config).toEqual({
-      apiKey: 'provider-key',
+      delivery: { mode: 'resend', apiKey: 'provider-key' },
       timeoutMillis: 5_000,
       pollIntervalMillis: 1_000,
       workerId: 'auth-mail:worker-local',

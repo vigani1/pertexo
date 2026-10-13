@@ -13,7 +13,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   createApplicationSecretEnvelope,
   type ApplicationSecretEnvelope,
-  type ResendClient,
+  type SystemMailClient,
 } from '@pertexo/integrations/server';
 import {
   parseQueueJob,
@@ -164,8 +164,7 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
         dependencies: Readonly<{
           store: WorkspaceInvitationDeliveryStore;
           envelope: Pick<ApplicationSecretEnvelope, 'open'>;
-          email: Pick<ResendClient, 'sendNotification'>;
-          apiKey: string;
+          email: SystemMailClient;
           fromEmail: string;
           webOrigin: string;
           timeoutMillis: number;
@@ -198,6 +197,7 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
         store: deliveryStore,
         envelope: createApplicationSecretEnvelope(invitationKeys),
         email: {
+          deduplicates: true,
           sendNotification: async (input) => {
             await input.beforeDispatch();
             const link = input.text
@@ -208,10 +208,9 @@ describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
             if (link === undefined)
               throw new Error('Canonical invitation mail link unavailable');
             deliveredMail.set(input.toEmail, link);
-            return { kind: 'succeeded', emailId: crypto.randomUUID() };
+            return { kind: 'submitted', reference: crypto.randomUUID() };
           },
         },
-        apiKey: 'owned-local-capture',
         fromEmail: 'invites@integration.test',
         webOrigin,
         timeoutMillis: 5000,

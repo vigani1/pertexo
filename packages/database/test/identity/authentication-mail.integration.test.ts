@@ -79,6 +79,7 @@ describe('durable authentication mail', () => {
       expect([...first, ...competing]).toHaveLength(1);
       const claim = [...first, ...competing][0];
       if (claim === undefined) throw new Error('Mail claim was not returned');
+      expect(claim.recoveredUnknown).toBe(false);
       expect(claim.sealedPayload.ciphertext).toBe(
         'sealed-without-recipient-or-url',
       );
@@ -218,4 +219,53 @@ describe('durable authentication mail', () => {
       await Promise.all([owner.end(), retention.close(), worker.close()]);
     }
   });
+});
+
+it('exposes a crashed unknown claim without changing its immutable command', async () => {
+  const api = createAuthenticationMailEnqueueStore(
+    databaseConfig(database.databaseUrl(apiBaseUrl)),
+  );
+  const worker = createAuthenticationMailDeliveryStore(
+    databaseConfig(database.databaseUrl(workerBaseUrl)),
+  );
+  const owner = new Pool({
+    connectionString: database.databaseUrl(adminUrl),
+    max: 1,
+  });
+  const id = randomUUID();
+  try {
+    await api.enqueue({
+      id,
+      purpose: 'verification',
+      expiresAt: new Date(Date.now() + 60000),
+      sealedPayload: {
+        ciphertext: 'crash-proof',
+        nonce: 'nonce',
+        tag: 'tag',
+        keyVersion: 'v1',
+      },
+    });
+    const [first] = await worker.claim({ workerId: 'mail:first', limit: 1 });
+    expect(first?.recoveredUnknown).toBe(false);
+    await owner.query(
+      "update app.authentication_mail_deliveries set lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
+      [id],
+    );
+    const [recovered] = await worker.claim({
+      workerId: 'mail:recovery',
+      limit: 1,
+    });
+    expect(recovered).toMatchObject({
+      id,
+      recoveredUnknown: true,
+      sealedPayload: first?.sealedPayload,
+    });
+    if (!recovered) throw new Error('Missing recovered mail');
+    expect(
+      await worker.settle({ ...recovered, outcome: 'reconciliation_required' }),
+    ).toBe(true);
+    expect(await worker.claim({ workerId: 'mail:next', limit: 1 })).toEqual([]);
+  } finally {
+    await Promise.all([api.close(), worker.close(), owner.end()]);
+  }
 });

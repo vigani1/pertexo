@@ -26,6 +26,12 @@
     "@aws-sdk/client-kms": "3.1148.0",
     "@pertexo/node-sdk": "workspace:*",
     "@smithy/node-http-handler": "4.11.2",
+    "nodemailer": "10.1.0",
     "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "8.0.2",
+    "@types/smtp-server": "3.5.13",
+    "smtp-server": "3.19.21"
   }
 }

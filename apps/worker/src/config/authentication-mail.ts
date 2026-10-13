@@ -2,12 +2,14 @@ import { z } from 'zod';
 
 import {
   applicationKeyVersionSchema,
+  parseSystemMailConfig,
+  type SystemMailConfig,
   parseApplicationPreviousKeys,
   type ApplicationKeyRing,
 } from '@pertexo/integrations/server';
 
 export type AuthenticationMailDeliveryConfig = Readonly<{
-  apiKey: string;
+  delivery: SystemMailConfig;
   timeoutMillis: number;
   pollIntervalMillis: number;
   workerId: string;
@@ -15,6 +17,7 @@ export type AuthenticationMailDeliveryConfig = Readonly<{
 }>;
 
 const credentialNames = [
+  'SYSTEM_MAIL_TRANSPORT',
   'AUTH_MAIL_EMAIL_API_KEY',
   'AUTH_MAIL_KEY',
   'AUTH_MAIL_KEY_VERSION',
@@ -22,7 +25,6 @@ const credentialNames = [
 
 const authenticationMailSchema = z
   .object({
-    apiKey: z.string().min(1).max(512),
     key: z.string().min(1),
     version: applicationKeyVersionSchema,
     previous: z.string().optional(),
@@ -51,7 +53,6 @@ export function parseAuthenticationMailDeliveryConfig(
     return undefined;
   }
   const parsed = authenticationMailSchema.parse({
-    apiKey: environment.AUTH_MAIL_EMAIL_API_KEY,
     key: environment.AUTH_MAIL_KEY,
     version: environment.AUTH_MAIL_KEY_VERSION,
     previous: environment.AUTH_MAIL_PREVIOUS_KEYS,
@@ -60,7 +61,11 @@ export function parseAuthenticationMailDeliveryConfig(
     workerId: `auth-mail:${environment.WORKER_INSTANCE_ID ?? 'worker-local'}`,
   });
   return Object.freeze({
-    apiKey: parsed.apiKey,
+    delivery: parseSystemMailConfig(
+      environment,
+      'AUTH_MAIL_EMAIL_API_KEY',
+      deployed,
+    ),
     timeoutMillis: parsed.timeoutMillis,
     pollIntervalMillis: parsed.pollIntervalMillis,
     workerId: parsed.workerId,
