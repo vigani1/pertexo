@@ -36,9 +36,9 @@ function freezeJson<T>(value: T): T {
 const templates: CuratedWorkflowTemplate[] = [
   {
     templateId: 'webhook-validation-routing',
-    templateVersion: 1,
+    templateVersion: 2,
     baseManifestDigest:
-      '96ff14b3d2c702b8917787616d0899ca55f815cfbdc6507d27245be4659e10cf',
+      '61c486c65452bfa093ae9cf2c6464848c42415f0298ab23100a885e4226a9115',
     title: 'Validate and route a webhook',
     description:
       'Check a request type and route valid and invalid inputs to explicit outcomes.',
@@ -53,9 +53,9 @@ const templates: CuratedWorkflowTemplate[] = [
   },
   {
     templateId: 'schedule-bounded-batch',
-    templateVersion: 1,
+    templateVersion: 2,
     baseManifestDigest:
-      '1a6afcae87a3f5060809111ad204b6ab5e9262537023a2c6efb80dfdf459f8c3',
+      '025cc93c5a99a3601e7099a3b12cb438d6e4dedb383d5bcfcad0d17050bd3683',
     title: 'Schedule a bounded example batch',
     description: 'Process two fixed instructional items in a sequential loop.',
     inputSummary:
@@ -69,9 +69,9 @@ const templates: CuratedWorkflowTemplate[] = [
   },
   {
     templateId: 'controlled-http-notification',
-    templateVersion: 1,
+    templateVersion: 2,
     baseManifestDigest:
-      'ec1d7ba93f3f2b2af9931fa59299088539655ab9619f5a37e3c7020ecf128ef3',
+      'd1c649a2706e36de15f4101a775a531188eb66f318bf2e047e96648e24ea8b95',
     title: 'Check an endpoint and notify Slack',
     description:
       'Request an explicitly configured HTTPS endpoint and notify an explicitly configured channel only for status 200.',
