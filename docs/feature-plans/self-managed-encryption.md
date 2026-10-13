@@ -1,8 +1,8 @@
 # Self-managed encryption keys
 
 Status: accepted by the owner for implementation, 2026-10-13. Implementation
-is in progress; production rollout is not claimed. ADR 071 still requires KMS in production
-until its proposed amendment lands with the complete deployment gate.
+is in progress; production rollout is not claimed. ADR 071 is amended with the
+complete deployment gate to permit private self-managed keys.
 
 ## Outcome and scope
 
@@ -234,7 +234,9 @@ raw records, keys, ciphertext or unsanitized nested crypto/parser exceptions.
 
 1. **Deploy:** after migrations succeed and while API, worker and public ingress
    are stopped, run the selected release's verifier in the existing ops
-   container. Only then start serving and record a healthy release. Use the
+   container. A KMS rollback to a pre-verifier target uses the currently installed
+   compatible verifier/image, keeping retained-key checks in place. Only then
+   start serving and record a healthy release. Use the
    same prepared encryption configuration as API and worker. Preserve current
    migration-fence and rollback rules. A key verification failure keeps serving
    stopped for an operator configuration fix; do not resume an old image with
@@ -344,7 +346,7 @@ The ADR amendment lands with the complete deployment gate.
   wrapper. Cover all retained rows, cancellation, cleanup, safe errors and real
   RLS authority. Consume each new export in this PR; keep production policy
   closed. Update existing dependency-entry checks for the new script if needed.
-- [ ] 3. Enable the complete deployment path. Add generator selection,
+- [x] 3. Enable the complete deployment path. Add generator selection,
   canonical examples, provider-specific prepared env files, deploy/restore
   preflight while preserving independent API/worker startup; then permit
   canonical self-managed mode
@@ -445,3 +447,15 @@ Six real PostgreSQL inventory/preflight tests cover 754 retained rows, snapshot
 consistency, RLS, early exit, wire cancellation and safe CLI diagnostics. The
 existing 30 operational-helper tests passed. Production self-managed mode is
 still refused; API/worker startup remains independent.
+
+
+Slice 3 local evidence: production configuration and Compose were checked in
+both provider modes, including previous-key delivery, private env permissions,
+API authority separation and refusal of an older self-managed target. Deploy
+and restore command tests cover gate ordering, stopped serving on failure,
+retained restore fences and compatible verification of older KMS rollback.
+
+Verification also passed lint, TypeScript, formatting, architecture and unused-export
+checks; integrations (470), API (1961), worker (707) unit tests and all 38
+operational helper tests passed. The unchanged real recovery drill passed against
+cached pinned storage/PostgreSQL images before extending it in slice 4.

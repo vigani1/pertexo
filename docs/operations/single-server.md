@@ -37,10 +37,44 @@ Copy `infrastructure/single-server/.env.production.example` to
 `/opt/pertexo/.env.production`, mode 600. Use Node 24 to run the generator on a
 trusted machine, or run it with the pinned runtime image and a read-only bind
 mount of the source file. Append its output once, without displaying it in
-shared terminals or logs. Fill the owner-supplied public origins, Resend and
-AWS KMS credentials. Keep the real environment outside Git and in secure owner
-custody for recovery. Regenerating encryption keys makes retained tokens
-unreadable; recovery also needs the original managed KMS key.
+shared terminals or logs. Choose encryption explicitly:
+
+- `node infrastructure/single-server/generate-secrets.mjs --encryption=kms`
+  (the default): supply the KMS reference and region; use the AWS credential
+  chain, with an IAM role or privately supplied credentials.
+- `node infrastructure/single-server/generate-secrets.mjs --encryption=self-managed`:
+  generate a private 32-byte master key and version `1`, with no AWS encryption
+  credentials. Save the key and its version in your password manager.
+
+Fill the owner-supplied public origins and Resend credentials. Keep the real
+environment outside Git. Never rerun the generator over installed keys.
+Regenerating keys makes retained credentials unreadable. Public development
+keys are refused in production, including in previous keys.
+
+To rotate self-managed keys, save a new random key with a new version, move the
+old current pair into `CONNECTION_SELF_MANAGED_PREVIOUS_KEYS` (JSON
+`[{"version":"1","key":"<old key>"}]`), then use the normal deployment procedure.
+Deployment stops writers and verifies retained wrapped data keys before
+restarting both processes with the same ring. Keep all versions needed by live
+rows and by retained backups; the ring allows at most eight previous keys.
+Rewrapping, retirement and provider migration are deferred. Switching providers
+with retained secrets fails verification.
+
+Prepared `api.env` and `worker.env` contain the same selected encryption fields.
+The private `encryption.env` adds maintenance authority for read-only preflight;
+the API never receives that URL. Docker Compose must support
+`run --env-from-file`. Deployment verifies after migrations; restoration
+verifies before clearing its fence. The worker checks on every startup before
+background work. The API checks configuration independently and does not wait
+for worker health. A plain Compose boot is not an installation-wide key-value
+check; operators must use the supported deploy/restore sequence.
+
+Self-managed configuration requires a release with the verifier. Older KMS-only
+targets are refused before stopping serving with self-managed settings. For
+KMS rollback, a currently installed compatible verifier checks retained data
+even when the target predates verification; failed checks keep serving stopped.
+KMS verification checks provider compatibility, not IAM access or remote
+decryptability; retain the existing provider smoke test.
 
 `PUBLIC_WEB_ORIGIN` and `ARTIFACT_STORE_ENDPOINT` must be distinct HTTPS origins
 on port 443. Point both DNS names at the server before launch. Caddy obtains
@@ -150,7 +184,7 @@ an existing prefix. Retention deletes known dated prefixes older than 14 days,
 including incomplete attempts, using the point date rather than artifact mtime.
 An empty artifact catalog is valid. Backup files are private, not encrypted by
 these scripts: keep the bucket private and enable the provider's at-rest
-protection. Preserve the original production environment and KMS key separately;
+protection. Preserve the production environment and required encryption keys separately;
 the database and object copy alone cannot recover encrypted credentials.
 
 Install the repository's units under their operational names:
@@ -171,7 +205,8 @@ are visible in the journal. This plan adds no uptime or backup alert service.
 
 Use a fresh disposable Docker host or a replacement server with no serving
 containers, no recorded current release, an empty database and an empty artifact
-bucket. Prepare the original mode-600 environment, repository and Docker as
+bucket. Supply the original key ring separately from your password manager (or
+access to the original KMS key), then prepare the mode-600 environment, repository and Docker as
 above. The Compose project and volume names are stable: a second drill on the
 same live host would share its data, so do not do that. Do not delete production
 volumes to create a drill target.
@@ -186,7 +221,11 @@ Restore verifies the completion marker, fixed-file SHA-256 hashes and matching
 release before writing. It bootstraps roles and storage permissions, restores
 PostgreSQL in one transaction before any application migration, copies artifact
 bytes and metadata, checks the object count and compares downloaded bytes. It
-leaves serving stopped so a drill cannot send mail or repeat provider effects.
+authenticates all retained self-managed wrapped data keys before clearing the
+restore fence. Wrong key bytes or a missing historical version keep the fence
+and serving stopped. Master keys and the production env file are never copied
+into the recovery point. It leaves serving stopped so a drill cannot send mail
+or repeat provider effects.
 Verify ownership, workspace isolation, expected run history and artifacts with
 read-only tools. Then deploy the matching commit to resume serving and perform
 the HTTPS smoke checks. Keep the old server stopped during replacement; two

@@ -1,7 +1,20 @@
 import { randomBytes } from 'node:crypto';
 
+const option = process.argv[2] ?? '--encryption=kms';
+if (
+  process.argv.length > 3 ||
+  !['--encryption=kms', '--encryption=self-managed'].includes(option)
+)
+  throw new Error(
+    'usage: generate-secrets.mjs [--encryption=kms|--encryption=self-managed]',
+  );
+const mode = option.slice('--encryption='.length);
+process.stderr.write(
+  'Generate only for a fresh installation. Never overwrite installed keys. Save encryption keys and their versions separately in your password manager.\n',
+);
 const hex = () => randomBytes(32).toString('hex');
 const values = {
+  CONNECTION_ENCRYPTION_MODE: mode,
   BETTER_AUTH_SECRET: hex(),
   AUTH_MAIL_KEY: randomBytes(32).toString('base64'),
   AUTH_MAIL_KEY_VERSION: '1',
@@ -17,6 +30,10 @@ const values = {
   ARTIFACT_STORE_ACCESS_KEY_ID: hex(),
   ARTIFACT_STORE_SECRET_ACCESS_KEY: hex(),
 };
+if (mode === 'self-managed') {
+  values.CONNECTION_SELF_MANAGED_KEY = randomBytes(32).toString('base64');
+  values.CONNECTION_SELF_MANAGED_KEY_VERSION = '1';
+}
 for (const [variable, role] of [
   ['DATABASE_MIGRATION_URL', 'MIGRATION'],
   ['DATABASE_URL', 'APP'],

@@ -34,6 +34,8 @@ function fixture(t, restore = false) {
   );
   mkdirSync(release, { recursive: true });
   writeFileSync(join(release, 'compose.yaml'), 'services: {}');
+  mkdirSync(join(release, 'encryption'));
+  writeFileSync(join(release, 'encryption/verify.mjs'), 'fixture');
   const log = join(root, 'commands.jsonl');
   writeFileSync(join(bin, 'git'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   writeFileSync(join(bin, 'date'), `#!/bin/sh\nprintf '${point}\\n'\n`, {
@@ -48,7 +50,9 @@ args=sys.argv[1:]
 root=Path(os.environ['PERTEXO_BETA_ROOT'])
 with open(os.environ['FIXTURE_LOG'],'a') as log: log.write(json.dumps(args)+'\\n')
 fail=os.environ.get('FAIL_AT','')
-if fail and any(fail in arg for arg in args): sys.exit(1)
+if fail=='encryption/verify.mjs':
+ if 'infrastructure/single-server/encryption/verify.mjs' in args: sys.exit(1)
+elif fail and any(fail in arg for arg in args): sys.exit(1)
 if args[0]=='image': print('arm64 ${commit}')
 if 'infrastructure/single-server/backup/prepare.mjs' in args:
  (root/'state/source-bucket').write_text('artifacts')
@@ -232,4 +236,24 @@ test('partial restore and missing objects retain the restore fence', (t) => {
       point,
     );
   }
+});
+
+test('restored keys are verified after data and objects; failure retains the restore fence', (t) => {
+  const f = fixture(t, true);
+  const result = f.run({ FAIL_AT: 'encryption/verify.mjs' });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /restore fence remains/u);
+  assert.ok(existsSync(join(f.state, 'restore-fence')));
+  assert.equal(resumed(f.commands()), false);
+  const commands = f.commands();
+  const check = commands.findIndex((args) =>
+    args.includes('infrastructure/single-server/encryption/verify.mjs'),
+  );
+  assert.ok(
+    check >
+      commands.findIndex((args) =>
+        args.some((arg) => arg.includes('pg_restore')),
+      ),
+  );
+  assert.ok(check > commands.findIndex((args) => args.includes('restore')));
 });

@@ -39,6 +39,10 @@ function fixture(t) {
     );
     mkdirSync(release, { recursive: true });
     writeFileSync(join(release, 'compose.yaml'), 'services: {}');
+    if (commit === newCommit) {
+      mkdirSync(join(release, 'encryption'));
+      writeFileSync(join(release, 'encryption/verify.mjs'), 'fixture');
+    }
   }
   const log = join(directory, 'commands.jsonl');
   writeFileSync(join(bin, 'git'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
@@ -51,6 +55,7 @@ with open(os.environ['FIXTURE_LOG'],'a') as log:
  log.write(json.dumps({'args':args,'commit':os.environ.get('SERVICE_VERSION')})+'\\n')
 if args[-1]=='/bootstrap.sh' and os.environ.get('FIXTURE_SETUP_FAIL')=='true': sys.exit(1)
 if args[0]=='image': print(('amd64' if os.environ.get('FIXTURE_REVISION_BAD')=='true' else 'arm64')+' '+os.environ['SERVICE_VERSION'])
+if 'infrastructure/single-server/encryption/verify.mjs' in args and os.environ.get('FIXTURE_ENCRYPTION_FAIL')=='true': sys.exit(1)
 if 'logs' in args: print(os.environ['FIXTURE_MIGRATION_LOG'])
 if '--exit-code-from' in args and os.environ.get('FIXTURE_MIGRATION_FAIL')=='true': sys.exit(1)
 if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION')=='${newCommit}' and os.environ.get('FIXTURE_UNHEALTHY')=='true': sys.exit(1)
@@ -206,4 +211,63 @@ test('an incomplete restore blocks deployment before image pulls or migrations',
   writeFileSync(join(f.state, 'restore-fence'), '20261013T030000Z\n');
   assert.equal(f.run().status, 1);
   assert.deepEqual(f.commands(), []);
+});
+
+test('failed key verification never resumes serving or records the attempted release', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_ENCRYPTION_FAIL: 'true' });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Encryption verification failed/u);
+  assert.equal(
+    f
+      .commands()
+      .some((c) => c.args.includes('--wait') && c.args.includes('api')),
+    false,
+  );
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    oldCommit,
+  );
+  const commands = f.commands();
+  assert.ok(
+    commands.findIndex((c) => c.args.includes('--exit-code-from')) <
+      commands.findIndex((c) =>
+        c.args.includes('infrastructure/single-server/encryption/verify.mjs'),
+      ),
+  );
+});
+test('older KMS rollback checks with the currently installed compatible verifier', (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.state, 'current'), newCommit);
+  const result = f.run({}, oldCommit);
+  assert.equal(result.status, 0, result.stderr);
+  const checks = f
+    .commands()
+    .filter((c) =>
+      c.args.includes('infrastructure/single-server/encryption/verify.mjs'),
+    );
+  assert.equal(checks.length, 1);
+  assert.equal(checks[0].commit, newCommit);
+  assert.ok(checks[0].args.includes('--env-from-file'));
+  assert.ok(
+    f
+      .commands()
+      .some(
+        (c) =>
+          c.commit === oldCommit &&
+          c.args.includes('--wait') &&
+          c.args.includes('api'),
+      ),
+  );
+});
+test('older KMS target cannot bypass an incompatible retained key check', (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.state, 'current'), newCommit);
+  assert.equal(f.run({ FIXTURE_ENCRYPTION_FAIL: 'true' }, oldCommit).status, 1);
+  assert.equal(
+    f
+      .commands()
+      .some((c) => c.args.includes('--wait') && c.args.includes('api')),
+    false,
+  );
 });

@@ -51,5 +51,8 @@ copied=$(copy_objects restore "$point")
 if [[ "$copied" != 0 ]]; then
   rclone check --download "backup:$backup_bucket/$prefix/objects" "source:$source_bucket"
 fi
+if ! verify_encryption; then
+  echo 'Restored keys could not be verified; restore fence remains in place' >&2; exit 1
+fi
 rm "$BETA_STATE_DIR/restore-fence"
 printf 'Restored %s. Verify data, then deploy %s to resume serving.\n' "$point" "$SERVICE_VERSION"
