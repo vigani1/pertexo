@@ -8,7 +8,7 @@ import type {
 const KEY_REFERENCE = 'local:development';
 
 /** Wraps data keys locally; the deployment gate belongs to startup configuration. */
-export class LocalEnvelopeKeyProvider<
+export class SelfManagedEnvelopeKeyProvider<
   Context,
 > implements EnvelopeKeyProviderCore<Context> {
   private readonly envelope;

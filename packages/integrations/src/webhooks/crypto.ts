@@ -2,7 +2,7 @@ import type { KMSClient } from '@aws-sdk/client-kms';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { createBoundedKmsClient } from '../credentials/kms-client.js';
-import { LocalEnvelopeKeyProvider } from '../credentials/local-key-provider.js';
+import { SelfManagedEnvelopeKeyProvider } from '../credentials/self-managed-key-provider.js';
 import type { ConnectionEnvelopeEncryptionConfig } from '../credentials/runtime.js';
 import {
   AwsKmsEnvelopeKeyProviderCore,
@@ -169,7 +169,7 @@ export function createWebhookTriggerEnvelopeEncryption(
     });
   return Object.freeze({
     encryption: new WebhookTriggerEnvelopeEncryption(
-      new LocalEnvelopeKeyProvider(
+      new SelfManagedEnvelopeKeyProvider(
         config.key,
         webhookTriggerSecretAssociatedData,
         failure,

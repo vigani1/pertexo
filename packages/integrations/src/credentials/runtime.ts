@@ -9,14 +9,14 @@ import {
   ConnectionSecretEncryptionError,
   connectionSecretAssociatedData,
 } from './envelope-encryption.js';
-import { LocalEnvelopeKeyProvider } from './local-key-provider.js';
+import { SelfManagedEnvelopeKeyProvider } from './self-managed-key-provider.js';
 
-export type LocalConnectionEncryptionConfig = Readonly<{
+export type SelfManagedConnectionEncryptionConfig = Readonly<{
   mode: 'local';
   key: string;
 }>;
 export type ConnectionEnvelopeEncryptionConfig =
-  AwsConnectionEnvelopeEncryptionConfig | LocalConnectionEncryptionConfig;
+  AwsConnectionEnvelopeEncryptionConfig | SelfManagedConnectionEncryptionConfig;
 export type ConnectionEnvelopeEncryptionRuntime =
   AwsConnectionEnvelopeEncryptionRuntime;
 
@@ -91,7 +91,7 @@ export function parseConnectionEncryptionConfig(
 }
 
 function localKeys(key: string) {
-  return new LocalEnvelopeKeyProvider(
+  return new SelfManagedEnvelopeKeyProvider(
     key,
     connectionSecretAssociatedData,
     () => new ConnectionSecretEncryptionError(),
