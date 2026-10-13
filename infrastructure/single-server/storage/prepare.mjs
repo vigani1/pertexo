@@ -1,4 +1,5 @@
-import { writeFile } from 'node:fs/promises';
+import { writeFile, chmod } from 'node:fs/promises';
+import { requireCompatibleRelease } from '../encryption/require-compatible-release.mjs';
 import { parseApiConfig } from '../../../apps/api/dist/platform/config/api.js';
 import { parseWorkerConfig } from '../../../apps/worker/dist/config/worker.js';
 import { parseMigrationConfig } from '../../../packages/database/dist/config.js';
@@ -8,7 +9,7 @@ const environment = {
   ...process.env,
   WORKER_INSTANCE_ID: 'deployment-validation',
 };
-parseApiConfig(environment);
+const apiConfig = parseApiConfig(environment);
 parseWorkerConfig(environment);
 parseMigrationConfig(environment);
 if (
@@ -46,10 +47,51 @@ for (const name of [
 ]) {
   if (!environment[name]) throw new Error(`${name} is required`);
 }
+const connectionEncryption = apiConfig.connections;
+requireCompatibleRelease(connectionEncryption, process.argv[3]);
+const encryptionEnvironment =
+  'mode' in connectionEncryption
+    ? {
+        CONNECTION_ENCRYPTION_MODE: connectionEncryption.mode,
+        CONNECTION_SELF_MANAGED_KEY:
+          connectionEncryption.encryption.current.key,
+        CONNECTION_SELF_MANAGED_KEY_VERSION:
+          connectionEncryption.encryption.current.version,
+        ...(connectionEncryption.encryption.previous.length
+          ? {
+              CONNECTION_SELF_MANAGED_PREVIOUS_KEYS: JSON.stringify(
+                connectionEncryption.encryption.previous,
+              ),
+            }
+          : {}),
+      }
+    : {
+        CONNECTION_ENCRYPTION_MODE: 'kms',
+        CONNECTION_KMS_KEY_REFERENCE: connectionEncryption.kmsKeyReference,
+        CONNECTION_KMS_REGION: connectionEncryption.region,
+        ...(connectionEncryption.endpoint === undefined
+          ? {}
+          : { CONNECTION_KMS_ENDPOINT: connectionEncryption.endpoint }),
+        ...Object.fromEntries(
+          [
+            'AWS_ACCESS_KEY_ID',
+            'AWS_SECRET_ACCESS_KEY',
+            'AWS_SESSION_TOKEN',
+            'AWS_PROFILE',
+            'AWS_SHARED_CREDENTIALS_FILE',
+            'AWS_CONFIG_FILE',
+          ]
+            .filter((name) => environment[name])
+            .map((name) => [name, environment[name]]),
+        ),
+      };
 const directory = process.argv[2];
 if (!directory) throw new Error('A private output directory is required');
-const output = (name, value) =>
-  writeFile(`${directory}/${name}`, value, { mode: 0o600 });
+const output = async (name, value) => {
+  const path = directory + '/' + name;
+  await writeFile(path, value, { mode: 0o600 });
+  await chmod(path, 0o600);
+};
 const admin = new URL('http://storage:9000');
 admin.username = environment.STORAGE_ADMIN_ACCESS_KEY_ID;
 admin.password = environment.STORAGE_ADMIN_SECRET_ACCESS_KEY;
@@ -112,17 +154,25 @@ await output(
 );
 await output('hosts.env', `APP_HOST=${app}\nFILES_HOST=${files}\n`);
 
-function optionalValues(names) {
+function optionalValues(names, source = environment) {
   return names
-    .filter((name) => environment[name])
+    .filter((name) => source[name])
     .map((name) => {
-      const value = environment[name];
+      const value = source[name];
       if (/[\r\n]/u.test(value))
         throw new Error(`${name} must fit on one line`);
       return `${name}='${value.replaceAll("'", "\\'")}'\n`;
     })
     .join('');
 }
+const encryptionLines = optionalValues(
+  Object.keys(encryptionEnvironment),
+  encryptionEnvironment,
+);
+await output(
+  'encryption.env',
+  encryptionLines + optionalValues(['NODE_ENV', 'DATABASE_MAINTENANCE_URL']),
+);
 const previous = ['AUTH_MAIL_PREVIOUS_KEYS', 'INVITATION_TOKEN_PREVIOUS_KEYS'];
 const providers = ['GOOGLE', 'GITHUB', 'MICROSOFT', 'APPLE'].flatMap(
   (provider) => [
@@ -132,6 +182,7 @@ const providers = ['GOOGLE', 'GITHUB', 'MICROSOFT', 'APPLE'].flatMap(
 );
 await output(
   'api.env',
-  optionalValues([...previous, ...providers, 'AUTH_MICROSOFT_TENANT_ID']),
+  optionalValues([...previous, ...providers, 'AUTH_MICROSOFT_TENANT_ID']) +
+    encryptionLines,
 );
-await output('worker.env', optionalValues(previous));
+await output('worker.env', optionalValues(previous) + encryptionLines);

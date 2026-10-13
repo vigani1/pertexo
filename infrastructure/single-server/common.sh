@@ -4,6 +4,7 @@ umask 077
 beta_root=${PERTEXO_BETA_ROOT:-/opt/pertexo}
 export BETA_STATE_DIR="$beta_root/state"
 mkdir -p "$BETA_STATE_DIR" "$beta_root/releases"
+chmod 700 "$BETA_STATE_DIR"
 config="$beta_root/.env.production"
 if [[ ! -f "$config" || $(stat -c %a "$config") != 600 ]]; then
   echo 'A mode-600 .env.production is required' >&2; exit 1
@@ -27,6 +28,31 @@ operation_lock() {
   flock -n 9 || { echo 'Another operation is running' >&2; exit 1; }
 }
 
+select_encryption_release() {
+  encryption_release="$release"
+  encryption_version="$SERVICE_VERSION"
+  if [[ ! -f "$release/infrastructure/single-server/encryption/verify.mjs" && -f "$BETA_STATE_DIR/current" ]]; then
+    current_encryption_version=$(cat "$BETA_STATE_DIR/current")
+    check_commit "$current_encryption_version"
+    current_encryption_release="$beta_root/releases/$current_encryption_version"
+    [[ -f "$current_encryption_release/infrastructure/single-server/compose.yaml" ]] || { echo 'Current release sources missing' >&2; exit 1; }
+    if [[ -f "$current_encryption_release/infrastructure/single-server/encryption/verify.mjs" ]]; then
+      encryption_release="$current_encryption_release"
+      encryption_version="$current_encryption_version"
+    fi
+  fi
+}
+verify_encryption() (
+  # Pre-feature KMS installations cannot have produced self-managed secrets.
+  [[ -f "$encryption_release/infrastructure/single-server/encryption/verify.mjs" ]] || return 0
+  target_release="$release"
+  select_release "$encryption_version"
+  compose --profile ops run --rm --no-deps --env-from-file "$BETA_STATE_DIR/encryption.env" \
+    -v "$encryption_release/infrastructure/single-server/encryption:/workspace/infrastructure/single-server/encryption:ro" \
+    -v "$target_release:/selected-release:ro" \
+    ops node infrastructure/single-server/encryption/verify.mjs /selected-release/infrastructure/single-server/encryption/verify.mjs
+)
+
 prepare_release() {
   commit=$1
   repository="$beta_root/repository"
@@ -45,11 +71,12 @@ prepare_release() {
     docker pull "$reference"
     [[ $(docker image inspect --format '{{.Architecture}} {{index .Config.Labels "org.opencontainers.image.revision"}}' "$reference") == "arm64 $commit" ]] || { echo 'Image architecture/revision mismatch' >&2; exit 1; }
   done
-  # Run the selected image's compiled parsers without printing credentials.
+  select_encryption_release
+  # An installed verifier keeps older KMS rollbacks from bypassing retained-key checks.
   docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
     -v "$config:/run/pertexo.env:ro" -e SERVICE_VERSION="$commit" \
-    -v "$BETA_STATE_DIR:/prepared" -v "$release/infrastructure/single-server/storage/prepare.mjs:/workspace/infrastructure/single-server/storage/prepare.mjs:ro" \
-    "ghcr.io/vigani1/pertexo:$commit" node --env-file=/run/pertexo.env infrastructure/single-server/storage/prepare.mjs /prepared
+    -v "$BETA_STATE_DIR:/prepared" -v "$release:/selected-release:ro" -v "$encryption_release/infrastructure/single-server:/workspace/infrastructure/single-server:ro" \
+    "ghcr.io/vigani1/pertexo:$encryption_version" node --env-file=/run/pertexo.env infrastructure/single-server/storage/prepare.mjs /prepared /selected-release/infrastructure/single-server/encryption/verify.mjs
   compose config --quiet
 }
 

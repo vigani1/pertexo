@@ -160,14 +160,44 @@ describe('self-managed connection encryption', () => {
     ).toThrow('requires local encryption mode');
   });
 
-  it('parses versioned keys but keeps production closed until the serving gate exists', () => {
+  it('accepts private deployed keys after deployment verification is available', () => {
     expect(parseConnectionEncryptionConfig(environment, false)).toEqual(
       config(),
     );
-    expect(() => parseConnectionEncryptionConfig(environment, true)).toThrow(
-      'forbidden when deployed',
+    expect(parseConnectionEncryptionConfig(environment, true)).toEqual(
+      config(),
     );
   });
+
+  it.each(['base64', 'base64url'] as const)(
+    'refuses the decoded public development key in every deployed ring position (%s)',
+    (encoding) => {
+      const publicKey = Buffer.from(
+        Array.from({ length: 32 }, (_, index) => index),
+      ).toString(encoding);
+      for (const override of [
+        { CONNECTION_SELF_MANAGED_KEY: publicKey },
+        {
+          CONNECTION_SELF_MANAGED_PREVIOUS_KEYS: JSON.stringify([
+            { version: '0', key: publicKey },
+          ]),
+        },
+      ]) {
+        expect(() =>
+          parseConnectionEncryptionConfig(
+            { ...environment, ...override },
+            true,
+          ),
+        ).toThrow('Public development master keys');
+        expect(() =>
+          parseConnectionEncryptionConfig(
+            { ...environment, ...override },
+            false,
+          ),
+        ).not.toThrow();
+      }
+    },
+  );
 
   it.each([
     { CONNECTION_SELF_MANAGED_KEY: undefined },

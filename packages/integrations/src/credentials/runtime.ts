@@ -98,10 +98,6 @@ export function parseConnectionEncryptionConfig(
   if (config.CONNECTION_LOCAL_KEY !== undefined)
     throw new Error('CONNECTION_LOCAL_KEY requires local encryption mode');
   if (config.CONNECTION_ENCRYPTION_MODE === 'self-managed') {
-    if (deployed)
-      throw new Error(
-        'Self-managed connection encryption is forbidden when deployed until deployment verification is available',
-      );
     if (kmsConfigured)
       throw new Error(
         'Self-managed and KMS connection encryption cannot be mixed',
@@ -126,6 +122,15 @@ export function parseConnectionEncryptionConfig(
     for (const entry of [encryption.current, ...encryption.previous]) {
       const bytes = decodeApplicationKey(entry.key);
       try {
+        if (
+          deployed &&
+          bytes.equals(
+            Buffer.from(Array.from({ length: 32 }, (_, index) => index)),
+          )
+        )
+          throw new Error(
+            'Public development master keys are forbidden when deployed',
+          );
         const value = bytes.toString('base64url');
         if (values.has(value))
           throw new Error(

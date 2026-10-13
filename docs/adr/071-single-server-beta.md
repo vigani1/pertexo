@@ -14,7 +14,7 @@ published. The web image serves the existing frontend and proxies the API;
 separate API, worker, migration and on-demand ops containers share a private
 network with PostgreSQL, Redis and RustFS. Reuse the existing database roles,
 migrations, artifact-store interface and health contracts. Deployed encryption
-continues to use AWS KMS; local encryption is not a beta production option.
+uses AWS KMS or private self-managed master keys, as amended below.
 
 Use immutable commit-tagged ARM images. Migrations complete before serving
 processes start. An unhealthy release without a migration can return to the
@@ -48,7 +48,25 @@ The beta accepts these trade-offs:
   chosen; `OTEL_EXPORTER_OTLP_ENDPOINT` remains the seam. Uptime alerts are
   outside this plan.
 
-The owner supplies cloud accounts, DNS, mail, KMS and deployment credentials.
+The owner supplies cloud accounts, DNS, mail and deployment credentials, plus
+KMS access when selecting that encryption provider.
 Repository implementation can proceed without them. The first HTTPS launch,
 provider smoke tests and live restore drill remain owner-assisted slice 6;
 configuration and CI alone do not establish that those checks passed.
+
+
+## Amendment: self-managed encryption, 2026-10-13
+
+The owner accepted [self-managed encryption](../feature-plans/self-managed-encryption.md)
+to make credential encryption independent of an AWS account. Reuse the existing
+AES-GCM envelope and current/previous-key pattern for connections and webhooks;
+KMS remains recommended for hosted Pertexo. Production refuses the public
+development key. Owners choosing self-managed keys must generate them securely
+and preserve all required versions separately from database/object backups.
+
+Installation-wide verification runs after migrations before serving and after
+restore before clearing the restore fence. The worker also verifies before
+constructing its background runtimes. API startup remains independent with its
+existing app-role authority; extra Compose ordering is deferred. Retained secrets
+prevent switching providers without a later migration procedure. Rewrapping and
+key retirement are deferred; previous-key support allows rotation without them.

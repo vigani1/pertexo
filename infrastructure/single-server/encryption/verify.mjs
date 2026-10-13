@@ -7,6 +7,7 @@ import {
   verifyStoredEncryptionKeys,
   StoredKeyVerificationError,
 } from '../../../packages/integrations/dist/server.js';
+import { requireCompatibleRelease } from './require-compatible-release.mjs';
 
 const controller = new AbortController();
 const stop = () => controller.abort();
@@ -21,6 +22,7 @@ try {
   );
   if (config === undefined)
     throw new Error('Encryption configuration is required');
+  requireCompatibleRelease(config, process.argv[2]);
   repository = createEncryptionKeyRepository(
     parseMaintenanceDatabaseConfig(environment),
   );
