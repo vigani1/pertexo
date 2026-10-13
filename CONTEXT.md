@@ -52,6 +52,15 @@ _Avoid_: Workflow restoration, rollback of execution history
 input, linked to a source run whose history remains unchanged. _Avoid_: Queue
 redelivery, retry
 
+**Recovery run**: A new execution of a failed run's same immutable version and
+input that reuses its eligible completed prefix and runs from the failed step
+onward. Its source history stays unchanged. _Avoid_: Resuming the source run,
+full replay, automatic retry
+
+**Reused step**: A step's retained result copied into a recovery run without
+executing that step there. _Avoid_: A new successful attempt, provider retry,
+execution cache
+
 **Callable workflow**: A reusable workflow that declares the input it accepts
 and the result it returns. It can run on its own. _Avoid_: A loop body, a
 different trigger kind
