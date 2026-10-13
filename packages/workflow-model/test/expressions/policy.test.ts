@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { Worker } from 'node:worker_threads';
 import jsonata from 'jsonata';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { canonicalJson, type JsonValue } from '../../src/json/canonical.js';
 import { JsonataEvaluator } from '../../src/expressions/evaluator.js';
 import {
@@ -497,10 +497,18 @@ describe('restricted JSONata policy v1', () => {
     );
   });
   it('hard-terminates expensive work, rejects overflow, and serves the next evaluation', async () => {
-    const evaluator = new JsonataEvaluator({ maxActive: 1, maxQueued: 0 });
+    const exits: number[] = [];
+    const evaluator = new JsonataEvaluator({
+      maxActive: 1,
+      maxQueued: 0,
+      workerFactory: (runtimeUrl, options) => {
+        const worker = new Worker(runtimeUrl, options);
+        worker.once('exit', (code) => exits.push(code));
+        return worker;
+      },
+    });
     evaluators.push(evaluator);
     const context = { runInput: null, nodeOutputs: {} };
-    const started = performance.now();
     const expensive = evaluator.evaluate({
       expression: '$distinct([1..50000])',
       context,
@@ -511,12 +519,52 @@ describe('restricted JSONata policy v1', () => {
     expect(await expensive).toEqual(
       expect.objectContaining({ kind: 'error', code: 'timed_out' }),
     );
-    expect(performance.now() - started).toBeLessThan(250);
+    expect(exits).toEqual([1]);
     expect(await evaluator.evaluate({ expression: '2', context })).toEqual({
       kind: 'value',
       value: 2,
       canonicalBytes: 1,
     });
+    expect(exits).toHaveLength(2);
+    expect(evaluator.diagnostics()).toMatchObject({
+      workerCreations: 2,
+      peakWorkers: 1,
+    });
+  });
+  it('starts the evaluation deadline after startup and retains capacity until timeout termination finishes', async () => {
+    vi.useFakeTimers();
+    const worker = new ControlledWorker();
+    const evaluator = new JsonataEvaluator({
+      maxActive: 1,
+      maxQueued: 0,
+      workerFactory: () => worker.asWorker(),
+    });
+    evaluators.push(evaluator);
+    try {
+      const context = { runInput: null, nodeOutputs: {} };
+      const evaluation = evaluator.evaluate({ expression: '1', context });
+      // Startup has its own policy; scheduler delay is not evaluation time.
+      await vi.advanceTimersByTimeAsync(250);
+      worker.emit('message', { ready: true });
+      worker.emit('message', { started: true });
+      await vi.advanceTimersByTimeAsync(EXPRESSION_POLICY.timeoutMs - 1);
+      expect(worker.terminateCalls).toBe(0);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(worker.terminateCalls).toBe(1);
+      expect(
+        await evaluator.evaluate({ expression: '2', context }),
+      ).toMatchObject({ kind: 'error', limit: 'pool_capacity' });
+      worker.emit('message', { ok: true, value: 99 });
+      worker.termination.resolve(1);
+      expect(await evaluation).toMatchObject({
+        kind: 'error',
+        code: 'timed_out',
+      });
+    } finally {
+      worker.termination.resolve(1);
+      await evaluator.shutdown();
+      vi.useRealTimers();
+    }
   });
   it('cancels queued and active evaluation without exposing a late value', async () => {
     const evaluator = new JsonataEvaluator({ maxActive: 1, maxQueued: 1 });

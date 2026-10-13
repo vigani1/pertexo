@@ -1051,3 +1051,13 @@ Review images use synthetic mocked data: [desktop confirmation](../media/recover
 [phone reused history](../media/recovery-reused-phone.png).
 The existing CI browser job now runs both existing live scenarios; no CI job was
 added. Slice 3 stays unmarked until its PR is green and merged.
+
+
+PR #276's first CI run exposed an existing JSONata test assertion: total
+admission/startup/evaluation/termination took 251.7 ms against an arbitrary
+250 ms limit. The evaluator's 100 ms evaluation deadline begins at its started
+message, with a separate 5 s startup policy. The test now observes actual worker
+exit and capacity reuse; a controlled-clock case checks the exact evaluation
+deadline after delayed startup and refuses capacity until termination settles.
+No production deadline, test timeout or evaluator behavior changed. The fix
+lands as a new commit; slice 3 still awaits green CI and merge.
