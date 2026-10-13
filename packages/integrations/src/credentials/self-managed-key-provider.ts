@@ -9,6 +9,10 @@ import type {
 const KEY_REFERENCE = 'self-managed';
 const LEGACY_REFERENCE = 'local:development';
 
+export function isSelfManagedKeyReference(reference: string): boolean {
+  return reference === KEY_REFERENCE || reference === LEGACY_REFERENCE;
+}
+
 /** Wraps data keys locally; the deployment gate belongs to startup configuration. */
 export class SelfManagedEnvelopeKeyProvider<
   Context,
@@ -54,7 +58,7 @@ export class SelfManagedEnvelopeKeyProvider<
     signal?.throwIfAborted();
     try {
       if (
-        (keyReference !== KEY_REFERENCE && keyReference !== LEGACY_REFERENCE) ||
+        !isSelfManagedKeyReference(keyReference) ||
         encryptedDataKey.byteLength > 1_024
       )
         throw this.failure();

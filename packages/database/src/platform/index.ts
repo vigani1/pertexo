@@ -18,3 +18,6 @@ export {
 } from './stored-execution-value.js';
 export { createWorkspaceDatabase } from '../database.js';
 export type { WorkspaceDatabase } from '../database.js';
+
+export { createEncryptionKeyRepository } from './encryption/keys.repository.js';
+export type { EncryptionKeyRepository } from './encryption/keys.repository.js';

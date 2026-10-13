@@ -339,7 +339,7 @@ The ADR amendment lands with the complete deployment gate.
   key validation, reject duplicates, rename the provider separately, add
   versioned wrapping and legacy-byte tests, update API/worker consumers. Keep
   the deployed self-managed gate closed until the full serving gate exists.
-- [ ] 2. Read-only stored-key verification. Add the maintenance repository,
+- [x] 2. Read-only stored-key verification. Add the maintenance repository,
   crypto verifier, worker check before context creation and release preflight
   wrapper. Cover all retained rows, cancellation, cleanup, safe errors and real
   RLS authority. Consume each new export in this PR; keep production policy
@@ -438,3 +438,10 @@ and the deferred migrations. Checked slices have passed local verification; thei
 Slice 1 local evidence: lint and TypeScript passed; integrations (459), API
 (1,961) and worker (704) unit tests passed. Architecture/import checks and
 unused-export checks passed. Production self-managed mode remains refused.
+
+Slice 2 local evidence: lint, TypeScript, architecture and unused-export checks
+passed; integrations (468), database (528) and worker (707) unit tests passed.
+Six real PostgreSQL inventory/preflight tests cover 754 retained rows, snapshot
+consistency, RLS, early exit, wire cancellation and safe CLI diagnostics. The
+existing 30 operational-helper tests passed. Production self-managed mode is
+still refused; API/worker startup remains independent.

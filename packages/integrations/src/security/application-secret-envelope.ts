@@ -1,13 +1,16 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { validateApplicationKeyRing } from './key-ring.js';
+import {
+  applicationKeyVersionSchema,
+  validateApplicationKeyRing,
+} from './key-ring.js';
 
 const sealedSchema = z
   .object({
     ciphertext: z.string().min(1).max(16_384),
     nonce: z.string().min(1).max(128),
     tag: z.string().min(1).max(256),
-    keyVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u),
+    keyVersion: applicationKeyVersionSchema,
   })
   .strict();
 
