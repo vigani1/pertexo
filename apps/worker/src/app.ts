@@ -1,3 +1,4 @@
+import { verifyWorkerEncryption } from './runtime/startup/verify-encryption.js';
 import type {
   DynamicModule,
   INestApplicationContext,
@@ -6,6 +7,7 @@ import type {
 import { NestFactory } from '@nestjs/core';
 import {
   createDatabaseRuntime,
+  type createEncryptionKeyRepository,
   type DatabaseRuntime,
   type WorkspaceDatabase,
 } from '@pertexo/database/platform';
@@ -32,6 +34,7 @@ export type WorkerApplicationCompositionFactories = Readonly<{
     options: Readonly<{ abortOnError: false; logger: LoggerService }>,
   ): Promise<INestApplicationContext>;
   databaseRuntime: typeof createDatabaseRuntime;
+  encryptionKeysRepository?: typeof createEncryptionKeyRepository;
 }>;
 
 const productionFactories: WorkerApplicationCompositionFactories = {
@@ -49,6 +52,7 @@ export async function createWorkerApplication(
   let dispatcherDatabaseRuntime: DatabaseRuntime | undefined;
   let application: INestApplicationContext;
   try {
+    await verifyWorkerEncryption(config, factories.encryptionKeysRepository);
     databaseRuntime =
       dependencies.databaseRuntime ??
       (dependencies.database === undefined

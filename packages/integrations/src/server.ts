@@ -121,3 +121,8 @@ export {
   parseApplicationPreviousKeys,
 } from './security/key-ring.js';
 export type { ApplicationKeyRing } from './security/key-ring.js';
+
+export {
+  verifyStoredEncryptionKeys,
+  StoredKeyVerificationError,
+} from './credentials/verify-stored-keys.js';
