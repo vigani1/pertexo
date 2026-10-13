@@ -53,6 +53,14 @@ verify_encryption() (
     ops node infrastructure/single-server/encryption/verify.mjs /selected-release/infrastructure/single-server/encryption/verify.mjs
 )
 
+prepare_configuration() {
+  local prepared_directory=$1 parser_release=$2 parser_version=$3
+  docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
+    -v "$config:/run/pertexo.env:ro" -e SERVICE_VERSION="$SERVICE_VERSION" \
+    -v "$prepared_directory:/prepared" -v "$release:/selected-release:ro" -v "$parser_release/infrastructure/single-server:/workspace/infrastructure/single-server:ro" \
+    "ghcr.io/vigani1/pertexo:$parser_version" node --env-file=/run/pertexo.env infrastructure/single-server/storage/prepare.mjs /prepared /selected-release/infrastructure/single-server/encryption/verify.mjs
+}
+
 prepare_release() {
   commit=$1
   repository="$beta_root/repository"
@@ -73,10 +81,7 @@ prepare_release() {
   done
   select_encryption_release
   # An installed verifier keeps older KMS rollbacks from bypassing retained-key checks.
-  docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
-    -v "$config:/run/pertexo.env:ro" -e SERVICE_VERSION="$commit" \
-    -v "$BETA_STATE_DIR:/prepared" -v "$release:/selected-release:ro" -v "$encryption_release/infrastructure/single-server:/workspace/infrastructure/single-server:ro" \
-    "ghcr.io/vigani1/pertexo:$encryption_version" node --env-file=/run/pertexo.env infrastructure/single-server/storage/prepare.mjs /prepared /selected-release/infrastructure/single-server/encryption/verify.mjs
+  prepare_configuration "$BETA_STATE_DIR" "$encryption_release" "$encryption_version"
   compose config --quiet
 }
 
