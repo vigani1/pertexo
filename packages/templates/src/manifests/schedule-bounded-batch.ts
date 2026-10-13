@@ -31,7 +31,7 @@ export const SCHEDULE_BOUNDED_BATCH_MANIFEST: WorkflowPortableManifest = {
           version: 1,
         },
         position: {
-          x: 0,
+          x: 300,
           y: 0,
         },
         configVersion: 1,
@@ -99,7 +99,7 @@ export const SCHEDULE_BOUNDED_BATCH_MANIFEST: WorkflowPortableManifest = {
           version: 1,
         },
         position: {
-          x: 0,
+          x: 760,
           y: 0,
         },
         configVersion: 1,

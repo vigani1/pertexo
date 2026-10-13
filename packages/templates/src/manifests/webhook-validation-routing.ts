@@ -13,7 +13,7 @@ export const WEBHOOK_VALIDATION_ROUTING_MANIFEST: WorkflowPortableManifest = {
         },
         position: {
           x: 0,
-          y: 0,
+          y: 90,
         },
         configVersion: 1,
         config: {},
@@ -27,8 +27,8 @@ export const WEBHOOK_VALIDATION_ROUTING_MANIFEST: WorkflowPortableManifest = {
           version: 1,
         },
         position: {
-          x: 0,
-          y: 0,
+          x: 300,
+          y: 90,
         },
         configVersion: 1,
         config: {
@@ -57,8 +57,8 @@ export const WEBHOOK_VALIDATION_ROUTING_MANIFEST: WorkflowPortableManifest = {
           version: 1,
         },
         position: {
-          x: 0,
-          y: 0,
+          x: 600,
+          y: 90,
         },
         configVersion: 1,
         config: {},
@@ -78,7 +78,7 @@ export const WEBHOOK_VALIDATION_ROUTING_MANIFEST: WorkflowPortableManifest = {
           version: 1,
         },
         position: {
-          x: 0,
+          x: 920,
           y: 0,
         },
         configVersion: 1,
@@ -98,8 +98,8 @@ export const WEBHOOK_VALIDATION_ROUTING_MANIFEST: WorkflowPortableManifest = {
           version: 1,
         },
         position: {
-          x: 0,
-          y: 0,
+          x: 920,
+          y: 180,
         },
         configVersion: 1,
         config: {},
