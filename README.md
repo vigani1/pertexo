@@ -37,18 +37,7 @@ monorepo with its own execution engine, API, worker and web app.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  people([People]) --> web[Web app]
-  web -->|/v1 and live updates| api[API]
-  systems([Other systems]) -->|signed webhooks| api
-  api --> pg[(PostgreSQL)]
-  worker[Worker] --> pg
-  worker <--> redis[(Redis and BullMQ)]
-  worker --> outside([HTTP, Slack, email])
-  web -.->|presigned links| files[(S3-compatible storage)]
-  worker --> files
-```
+![Pertexo architecture: people use the web app, which calls the API; other systems send signed webhooks to the API; the API and the worker keep runs in PostgreSQL; the worker takes jobs from Redis and BullMQ, calls HTTP, Slack and email, and stores files in S3-compatible storage that browsers reach through presigned links](docs/media/architecture.svg)
 
 PostgreSQL is authoritative for workflows, runs, waits, and execution state.
 Redis and BullMQ provide immediate transport and coordination but are treated as
