@@ -12,6 +12,7 @@ import {
   canonicalWorkflowPortableJson,
   portableManifestDigest,
   workflowPortableManifestSchema,
+  type WorkflowGraph,
 } from '@pertexo/workflow-model';
 
 function required<T>(value: T | undefined): T {
@@ -42,28 +43,23 @@ function setPath(
 
 describe('reviewed browser-safe curated templates', () => {
   it('opens every example with its steps spread out, not stacked', () => {
-    type Graph = Readonly<{
-      nodes: readonly Readonly<{
-        position: Readonly<{ x: number; y: number }>;
-        structured?: Readonly<{ body?: Graph }>;
-      }>[];
-    }>;
-    const spread = (graph: Graph): boolean => {
-      const spots = graph.nodes.map(
+    const spread = (nodes: WorkflowGraph['nodes']): boolean => {
+      const spots = nodes.map(
         ({ position }) => `${String(position.x)},${String(position.y)}`,
       );
       return (
         new Set(spots).size === spots.length &&
-        graph.nodes.every(
+        nodes.every(
           ({ structured }) =>
-            structured?.body === undefined || spread(structured.body),
+            structured?.body === undefined || spread(structured.body.nodes),
         )
       );
     };
     for (const descriptor of CURATED_WORKFLOW_TEMPLATES)
-      expect(spread(descriptor.manifest.graph), descriptor.templateId).toBe(
-        true,
-      );
+      expect(
+        spread(descriptor.manifest.graph.nodes),
+        descriptor.templateId,
+      ).toBe(true);
   });
 
   it('pins all three complete strict manifests and canonical digests', async () => {
