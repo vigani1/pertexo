@@ -8,6 +8,19 @@ import { test } from 'node:test';
 import { parseApiConfig } from '../../../apps/api/dist/platform/config/api.js';
 import { parseWorkerConfig } from '../../../apps/worker/dist/config/worker.js';
 
+test('both public hosts keep browsers on HTTPS', () => {
+  const caddyfile = readFileSync(
+    'infrastructure/single-server/Caddyfile',
+    'utf8',
+  );
+  for (const host of ['{$APP_HOST}', '{$FILES_HOST}'])
+    assert.match(
+      caddyfile.slice(caddyfile.indexOf(`${host} {`)),
+      /^\S+ \{\n\timport https_only\n/u,
+    );
+  assert.match(caddyfile, /Strict-Transport-Security "max-age=31536000"/u);
+});
+
 test('resolved Compose gives each role valid deployed configuration and publishes only the proxy', (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'pertexo-compose-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
