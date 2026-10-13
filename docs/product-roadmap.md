@@ -145,11 +145,11 @@ the then-current code. Do not spend weeks finalizing far-future schemas.
 | 0 — Close current work | F00/F01 (merged) → F03 inbox (delivered) | Trusted foundation and the first operational feedback loop |
 | 1 — Run safely at scale | F26 auto-pause → F12 usage and limits → F29 per-workflow concurrency → F30 connection health | Before usage grows: stop runaway failures, measure and bound consumption, stop runs overlapping themselves, catch broken credentials early |
 | 2 — Daily usability | F05 duplicate workflow (first slice) → F02 test cases → rest of F05 portability → F06 templates; F27 notification preferences; F07 organization | Safe iteration, reuse and a quieter, personal inbox |
-| 3 — Reusable reliable automation | F08 subworkflows → F09 failure routes and retry from the failed step; F24 transforms; F21's generic OAuth2 connections for HTTP Request; F04 files once a file workflow is chosen | Expand what workflows can do while keeping behavior inspectable; OAuth2 widens API reach without bespoke connectors |
+| 3 — Reusable reliable automation | F08 subworkflows → F09 failure routes and retry from the failed step; F24 transforms; F04 files once a file workflow is chosen | Expand what workflows can do while keeping behavior inspectable |
 | 4 — Human workflows | F10 approvals → F11 forms/resume input; F13 configuration | Durable human actions and reusable configuration |
 | 5 — Team and enterprise platform | F16 machine tokens → F17 environments; F18 governance; F28 single sign-on and provisioning; F19 comments/presence | Operational control for larger organizations; multiplayer remains its own later milestone |
 | 6 — Optional power features | F14 data tables; F15 sync responses; F20 sandbox; F25 coordination | High cost/security/semantics; promote by demand, not to fill a checklist |
-| 7 — Ecosystem expansion | F21 selected providers/polling (after its OAuth2 slice) → F22 AI, starting with a bounded model step before agents; F23 only after business approval | Breadth after the core product is complete, by product choice |
+| 7 — Ecosystem expansion | F21 generic OAuth2 connections for HTTP Request → F21 selected providers/polling → F22 AI, starting with a bounded model step before agents; F23 only after business approval | Breadth after the core product is complete, by product choice: the owner placed integrations and AI last on 2026-10-12 |
 
 Waves express priority, not a requirement to finish every optional row before
 moving on. The first complete core path is F00/F01 → F03 → F26/F12 → F02 →
