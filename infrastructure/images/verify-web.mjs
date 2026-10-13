@@ -137,7 +137,7 @@ try {
   for (const [path, type] of [
     ['/favicon.ico', /^image\/(?:x-icon|vnd\.microsoft\.icon)/u],
     ['/apple-touch-icon.png', /^image\/png/u],
-    ['/site.webmanifest', /^application\/manifest\+json/u],
+    ['/manifest.json', /^application\/json/u],
   ]) {
     const response = await fetch(`${origin}${path}`);
     assert.equal(response.status, 200, path);
