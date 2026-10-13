@@ -8,9 +8,8 @@ correctness constraints are clear. Security reports must follow
 ## Development contract
 
 - Use Node.js 24 and pnpm 11.
-- Follow [`AGENTS.md`](./AGENTS.md), the
-  [architecture reset plan](./docs/architecture-reset-plan.md) and the ADRs that
-  are not superseded.
+- Follow [`AGENTS.md`](./AGENTS.md), the ADRs that are not superseded and the
+  feature plan in [`docs/feature-plans`](./docs/feature-plans) for the work.
 - Add an ADR only for a hard-to-reverse decision.
 - Preserve tenant isolation, idempotency, fencing, bounded work, explicit
   unknown outcomes, and secret-safe observability.

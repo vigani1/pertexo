@@ -29,23 +29,24 @@ number after that reviewed decision, despite its absence from this main baseline
   preserves IDs and dynamic JSONata; it did not introduce a remapper. Import
   creates a different workflow, so preserving IDs avoids breaking dynamic
   `$lookup(nodeOutputs, runInput.stepId)` references without runtime aliases.
-- [Graph contract](../../packages/workflow-model/src/graph-contract.ts),
+- [Graph contract](../../packages/workflow-model/src/graph/contract.ts),
   [draft preflight](../../packages/workflow-model/src/graph/validation/preflight.ts) and
   [placement](../../packages/workflow-model/src/graph/definition-placement.ts)
   own bounded graph parsing and new-placement semantics. Import compares with
   the empty destination, never with the source's grandfathered definitions.
-- [Catalog resolution](../../packages/node-catalog/src/definition-resolution.ts)
+- [Catalog resolution](../../packages/node-catalog/src/catalog.ts)
   owns registered schemas and connection requirements. Neither it nor generic
   graph config/literal records declares arbitrary text secret-safe. HTTP config
   already rejects credential-bearing headers and query names in
   [validation](../../packages/integrations/src/http-request/validation.ts).
 - [Authoring draft store](../../packages/database/src/authoring/workflows/commands/drafts.ts)
-  and [duplication migration](../../packages/database/migrations/0129_workflow_duplication.sql)
+  and the duplication migration (now part of the
+  [reset baseline](../../packages/database/migrations/0000_baseline.sql))
   supply creation/receipt patterns, not an import command to call in a second
   transaction. Current authoring creation has no workflow-count entitlement;
   execution/artifact quotas are different policies, not import limits.
 - Existing HTTP owner is
-  [workflow-authoring contracts](../../packages/contracts/src/workflow-authoring.ts)
+  [workflow-authoring contracts](../../packages/contracts/src/schemas/workflows/authoring.ts)
   and [application persistence interface](../../apps/api/src/workflow-authoring/ports.ts).
   Web owners are workflows dialogs/commands, editor draft authority and version
   history; no new package, global store or portability framework is needed.

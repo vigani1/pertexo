@@ -2,12 +2,11 @@
 
 ## Source of truth
 
-- During the architecture reset, `docs/architecture-reset-plan.md` is the plan
-  and the only progress log. Update its tracker in every reset PR; never mark a
-  step done while its work remains.
-- Otherwise use the user's request, `CONTEXT.md` (glossary), the ADRs that are
-  not superseded, and the current code. [ADR 069](docs/adr/069-architecture-reset.md)
+- Use the user's request, `CONTEXT.md` (glossary), the ADRs that are not
+  superseded, and the current code. [ADR 069](docs/adr/069-architecture-reset.md)
   overrides older ADRs where they conflict.
+- The architecture reset is complete. `docs/architecture-reset-plan.md` is its
+  history, not a tracker to update.
 - Feature work follows a short plan in `docs/feature-plans/`. Update a plan only
   when the work changes what it claims.
 
