@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {
   mkdtempSync,
   mkdirSync,
@@ -48,7 +48,7 @@ try {
             SYSTEM_MAIL_SMTP_HOST: 'smtp.example.test',
             SYSTEM_MAIL_SMTP_TLS: 'starttls',
             SYSTEM_MAIL_SMTP_USER: 'fixture-user',
-            SYSTEM_MAIL_SMTP_PASSWORD: 'fixture-password',
+            SYSTEM_MAIL_SMTP_PASSWORD: " pa'ss\\wo$rd# ",
           }
         : {
             AUTH_MAIL_EMAIL_API_KEY: 'fixture-mail',
@@ -76,6 +76,7 @@ try {
     writeFileSync(
       config,
       Object.entries(env)
+        .filter(([key]) => key !== 'SYSTEM_MAIL_SMTP_PASSWORD')
         .map(([key, value]) => key + "='" + value + "'\n")
         .join(''),
       { mode: 0o600 },
@@ -98,6 +99,12 @@ try {
           '-v',
           resolve('infrastructure/single-server') +
             ':/workspace/infrastructure/single-server:ro',
+          ...(transport === 'smtp'
+            ? [
+                '--env',
+                'SYSTEM_MAIL_SMTP_PASSWORD=' + env.SYSTEM_MAIL_SMTP_PASSWORD,
+              ]
+            : []),
           image,
           'node',
           '--env-file=/run/pertexo.env',
@@ -109,6 +116,57 @@ try {
       return result;
     };
     run(['infrastructure/single-server/storage/prepare.mjs', '/prepared']);
+    if (transport === 'smtp') {
+      // Rendered Compose config escapes dollar signs; assert the actual process value.
+      const manifest = join(prepared, 'mail.compose.json');
+      writeFileSync(
+        manifest,
+        JSON.stringify({
+          services: {
+            fixture: {
+              image,
+              network_mode: 'none',
+              read_only: true,
+              env_file: [join(prepared, 'worker.env')],
+              command: [
+                'node',
+                '--input-type=module',
+                '--eval',
+                "import assert from 'node:assert/strict'; import {createHash} from 'node:crypto'; assert.equal(createHash('sha256').update(process.env.SYSTEM_MAIL_SMTP_PASSWORD).digest('hex')," +
+                  JSON.stringify(
+                    createHash('sha256')
+                      .update(env.SYSTEM_MAIL_SMTP_PASSWORD)
+                      .digest('hex'),
+                  ) +
+                  "); assert.equal(process.env.SYSTEM_MAIL_TRANSPORT,'smtp');",
+              ],
+            },
+          },
+        }),
+        { mode: 0o600 },
+      );
+      const actual = spawnSync(
+        'docker',
+        [
+          'compose',
+          '--env-file',
+          '/dev/null',
+          '-p',
+          `pertexo-smtp-qualification-${process.pid}-${mode}`,
+          '-f',
+          manifest,
+          'run',
+          '--rm',
+          '--no-deps',
+          '--pull',
+          'never',
+          'fixture',
+        ],
+        { encoding: 'utf8', timeout: 30000 },
+      );
+      assert.equal(actual.status, 0, actual.stderr);
+    }
+
     run(['infrastructure/single-server/backup/prepare.mjs', '/prepared']);
     run([
       '--input-type=module',

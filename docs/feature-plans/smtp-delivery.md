@@ -164,7 +164,9 @@ Run real SMTP sessions against an in-process loopback test server with public
 test certificates, including STARTTLS and implicit TLS; no Docker mail image or
 new CI service is needed. Verify deployment-prepared role files for both modes
 and packaged runtime module resolution through the existing runtime image
-qualification path. Keep real SMTP credentials and launch checks in owner slice 6.
+qualification path. Test a password containing quotes, backslashes, dollar signs
+and surrounding spaces in the actual Compose-launched process; rendered config
+is escaped for reuse and cannot substitute for that assertion. Keep real SMTP credentials and launch checks in owner slice 6.
 
 Use coherent verified commits, keeping any moves separate. Open a small feature
 PR with Moved/Removed/Lines accounting and an updated tracker, preserve the
