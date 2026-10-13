@@ -12,6 +12,7 @@ import {
   canonicalWorkflowPortableJson,
   portableManifestDigest,
   workflowPortableManifestSchema,
+  type WorkflowGraph,
 } from '@pertexo/workflow-model';
 
 function required<T>(value: T | undefined): T {
@@ -41,6 +42,26 @@ function setPath(
 }
 
 describe('reviewed browser-safe curated templates', () => {
+  it('opens every example with its steps spread out, not stacked', () => {
+    const spread = (nodes: WorkflowGraph['nodes']): boolean => {
+      const spots = nodes.map(
+        ({ position }) => `${String(position.x)},${String(position.y)}`,
+      );
+      return (
+        new Set(spots).size === spots.length &&
+        nodes.every(
+          ({ structured }) =>
+            structured?.body === undefined || spread(structured.body.nodes),
+        )
+      );
+    };
+    for (const descriptor of CURATED_WORKFLOW_TEMPLATES)
+      expect(
+        spread(descriptor.manifest.graph.nodes),
+        descriptor.templateId,
+      ).toBe(true);
+  });
+
   it('pins all three complete strict manifests and canonical digests', async () => {
     expect(CURATED_WORKFLOW_TEMPLATES.map((item) => item.templateId)).toEqual([
       'webhook-validation-routing',
@@ -252,7 +273,12 @@ describe('reviewed browser-safe curated templates', () => {
     const descriptor = required(CURATED_WORKFLOW_TEMPLATES[0]);
     for (const request of [
       null,
-      { ...origin(descriptor), templateVersion: 2 },
+      {
+        ...origin(descriptor),
+        templateVersion: descriptor.templateVersion + 1,
+      },
+      // Version 1 stacked every step at one point; it is retired.
+      { ...origin(descriptor), templateVersion: 1 },
       { ...origin(descriptor), baseManifestDigest: '0'.repeat(64) },
     ])
       expect(
