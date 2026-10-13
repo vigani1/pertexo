@@ -239,6 +239,16 @@ Never remove the fence to serve partial data. A successful restore clears it.
 Record the point, commit, checks and recovery duration in the owner-assisted
 slice 6 drill; repository CI alone does not complete that drill.
 
+The repository recovery qualification downloads the matched dump from storage
+and restores it into fresh PostgreSQL targets. It checks retained connection
+and webhook secrets under current/previous keys, wrong and missing keys,
+webhook-only inventory, schema ownership, RLS and artifact bytes/metadata. It
+also verifies that only the fixed recovery files and object tree were uploaded.
+The existing production-image check exercises both encryption configurations.
+These isolated fixtures verify repository behavior; the remote drill above
+remains necessary for the owner's actual backup provider and server.
+
+
 
 ## Manual GitHub deployment (configure in slice 6)
 

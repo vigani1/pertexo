@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { S3Client } from '@aws-sdk/client-s3';
 import { copyObjectTree } from './copy-objects.mjs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { seedEncryptedRecoveryFixture } from './encryption.fixture.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -32,6 +33,7 @@ const postgres =
 let networkCreated = false;
 let store;
 const clients = [];
+const databaseEnvironments = new Map();
 let failure;
 function create(args) {
   const id = docker(['create', ...args]).trim();
@@ -188,6 +190,14 @@ async function database(alias, migrate) {
     ]),
   );
   const port = docker(['port', id, '5432/tcp']).trim().split(':').at(-1);
+  databaseEnvironments.set(id, {
+    DATABASE_MAINTENANCE_URL:
+      'postgresql://pertexo_maintenance:' +
+      secret.POSTGRES_MAINTENANCE_PASSWORD +
+      '@127.0.0.1:' +
+      port +
+      '/pertexo',
+  });
   if (migrate)
     await waitFor(() =>
       execFileSync(process.execPath, ['packages/database/dist/migrate.js'], {
@@ -228,6 +238,7 @@ try {
   const backup = await storage('destination', 'pertexo-backups');
   const sourceDb = await database('source-db', true);
   const targetDb = await database('target-db', false);
+  const encryption = await seedEncryptedRecoveryFixture(sql, sourceDb);
   const body = Buffer.from('matched workflow artifact — UTF-8');
   const artifacts = [0, 1].map(() => ({
     artifactId: randomUUID(),
@@ -337,7 +348,35 @@ try {
     prefix: 'pertexo-beta/20261013T030000Z/objects/',
   };
   const point = 'backup:pertexo-backups/pertexo-beta/20261013T030000Z';
-  rclone(['copyto', '/backup/database.dump', `${point}/database.dump`]);
+  const fixedFiles = [
+    'database.dump',
+    'release.txt',
+    'objects.count',
+    'SHA256SUMS',
+    'COMPLETE',
+  ];
+  writeFileSync(
+    join(directory, 'release.txt'),
+    execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }),
+  );
+  writeFileSync(
+    join(directory, 'objects.count'),
+    String(artifacts.length) + '\n',
+  );
+  const checksums = ['database.dump', 'release.txt', 'objects.count']
+    .map(
+      (file) =>
+        createHash('sha256')
+          .update(readFileSync(join(directory, file)))
+          .digest('hex') +
+        '  ' +
+        file +
+        '\n',
+    )
+    .join('');
+  writeFileSync(join(directory, 'SHA256SUMS'), checksums);
+  for (const file of fixedFiles.filter((file) => file !== 'COMPLETE'))
+    rclone(['copyto', '/backup/' + file, point + '/' + file]);
   assert.equal(await copyObjectTree(saved, original), 0);
   assert.equal(await copyObjectTree(original, saved), artifacts.length);
   rclone([
@@ -346,6 +385,26 @@ try {
     'source:pertexo-artifacts',
     `${point}/objects`,
   ]);
+  writeFileSync(join(directory, 'COMPLETE'), 'complete\n');
+  rclone(['copyto', '/backup/COMPLETE', point + '/COMPLETE']);
+  const files = rclone(['lsf', '--recursive', '--files-only', point])
+    .trim()
+    .split('\n');
+  assert.deepEqual(
+    files.filter((file) => !file.startsWith('objects/')).sort(),
+    fixedFiles.sort(),
+  );
+  assert.equal(
+    files.filter((file) => file.startsWith('objects/')).length,
+    artifacts.length,
+  );
+  rclone(['copyto', point + '/database.dump', '/backup/restored.dump']);
+  const restoredDump = readFileSync(join(directory, 'restored.dump'));
+  assert.deepEqual(restoredDump, dump);
+  for (const key of encryption.masterKeys) {
+    assert.ok(!restoredDump.includes(Buffer.from(key)));
+    assert.ok(!restoredDump.includes(Buffer.from(key, 'base64')));
+  }
   for (const artifact of artifacts) {
     let completed = false;
     for (let page = 0; page < 5 && !completed; page++)
@@ -366,24 +425,31 @@ try {
     for await (const chunk of download.body) chunks.push(chunk);
     assert.deepEqual(Buffer.concat(chunks), body);
   }
-  // Only bootstrap roles exist in the fresh target; pg_restore supplies the schema.
-  docker(
-    [
-      'exec',
-      '-i',
-      targetDb,
-      'pg_restore',
-      '-U',
-      'postgres',
-      '-d',
-      'pertexo',
-      '--clean',
-      '--if-exists',
-      '--single-transaction',
-      '--exit-on-error',
-    ],
-    { input: dump },
-  );
+  const restoredTargets = [
+    targetDb,
+    await database('missing-key-db', false),
+    await database('wrong-key-db', false),
+    await database('webhook-only-db', false),
+  ];
+  // Each target starts with bootstrap roles only, and receives the same matched point.
+  for (const target of restoredTargets)
+    docker(
+      [
+        'exec',
+        '-i',
+        target,
+        'pg_restore',
+        '-U',
+        'postgres',
+        '-d',
+        'pertexo',
+        '--clean',
+        '--if-exists',
+        '--single-transaction',
+        '--exit-on-error',
+      ],
+      { input: restoredDump },
+    );
   assert.equal(
     sql(targetDb, 'SELECT count(*) FROM public.recovery_fixture;').trim(),
     '2',
@@ -399,6 +465,54 @@ try {
       "SELECT relforcerowsecurity FROM pg_class WHERE oid='public.recovery_fixture'::regclass;",
     ).trim(),
     't',
+  );
+  const preflight = (target, configuration, status = 0) => {
+    const result = spawnSync(
+      process.execPath,
+      ['infrastructure/single-server/encryption/verify.mjs'],
+      {
+        env: { ...configuration, ...databaseEnvironments.get(target) },
+        encoding: 'utf8',
+        timeout: 15000,
+      },
+    );
+    assert.equal(result.status, status, result.stderr);
+    for (const key of encryption.masterKeys)
+      assert.ok(!result.stderr.includes(key));
+    return JSON.parse(status === 0 ? result.stdout : result.stderr);
+  };
+  assert.deepEqual(preflight(targetDb, encryption.environment), {
+    event: 'encryption.verified',
+    mode: 'self-managed',
+    connectionKeys: 2,
+    webhookKeys: 2,
+  });
+  await encryption.openRestored(targetDb);
+  for (const [index, configuration] of encryption.unavailable.entries()) {
+    const failure = preflight(restoredTargets[index + 1], configuration, 1);
+    assert.equal(failure.code, 'unavailable_key_material');
+    assert.match(failure.detail, /current and previous master keys/u);
+  }
+  const kms = {
+    NODE_ENV: 'production',
+    CONNECTION_ENCRYPTION_MODE: 'kms',
+    CONNECTION_KMS_KEY_REFERENCE: 'alias/fixture',
+    CONNECTION_KMS_REGION: 'eu-central-1',
+  };
+  assert.equal(preflight(targetDb, kms, 1).code, 'incompatible_provider');
+  encryption.keepWebhooksOnly(restoredTargets[3]);
+  assert.deepEqual(preflight(restoredTargets[3], encryption.environment), {
+    event: 'encryption.verified',
+    mode: 'self-managed',
+    connectionKeys: 0,
+    webhookKeys: 2,
+  });
+  assert.equal(
+    preflight(restoredTargets[3], encryption.unavailable[0], 1).code,
+    'unavailable_key_material',
+  );
+  console.log(
+    'Encrypted recovery: both key versions opened, wrong/missing keys and provider switches refused, webhook-only verification passed; no master keys in recovery files',
   );
   console.log(
     'Real recovery: repository schema, all RLS rows, ownership/grants, artifact bytes/metadata passed',
