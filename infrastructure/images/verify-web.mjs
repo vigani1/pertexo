@@ -133,6 +133,17 @@ try {
     page.headers.get('content-security-policy'),
     /frame-ancestors 'none'/u,
   );
+  // Browsers ask for these at the root; the app's fallback page must not answer.
+  for (const [path, type] of [
+    ['/favicon.ico', /^image\/(?:x-icon|vnd\.microsoft\.icon)/u],
+    ['/apple-touch-icon.png', /^image\/png/u],
+    ['/manifest.json', /^application\/json/u],
+  ]) {
+    const response = await fetch(`${origin}${path}`);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers.get('content-type') ?? '', type, path);
+    await response.body?.cancel();
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 1_500);
@@ -157,7 +168,7 @@ try {
     controller.abort();
   }
   console.log(
-    'Web image: non-root, read-only, proxy schemes, SPA boundary and unbuffered SSE passed.',
+    'Web image: non-root, read-only, proxy schemes, SPA boundary, icons and unbuffered SSE passed.',
   );
 } catch (error) {
   failure = error;
