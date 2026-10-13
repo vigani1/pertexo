@@ -9,7 +9,7 @@ import { createWorkspaceDatabase } from '../../../src/database.js';
 import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/database.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { generatePersistedId } from '../../../src/platform/persisted-id.js';
-import { lockManualStartCommand } from '../../../src/runs/commands/manual-start.js';
+import { lockRunAcceptanceCommand } from '../../../src/runs/commands/manual-start.js';
 import {
   idempotencyRecords,
   outboxEvents,
@@ -119,7 +119,7 @@ export function acceptanceInput(
 export async function lockManualFixtureStart(
   transaction: WorkspaceTransaction,
 ): Promise<void> {
-  await lockManualStartCommand(transaction, {
+  await lockRunAcceptanceCommand(transaction, {
     scope: `workflow:${workflowId}:manual`,
     idempotencyKeyHash: keyHash,
   });

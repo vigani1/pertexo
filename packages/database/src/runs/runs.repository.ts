@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { DatabaseConfig } from '../config.js';
 import { readWorkflowRunAcceptanceReplay } from './commands/acceptance.js';
 import {
-  lockManualStartCommand,
+  lockRunAcceptanceCommand,
   readManualStartRejection,
   recordManualStartRejection,
   type ManualStartRejection,
@@ -22,7 +22,22 @@ import {
   type PublishedWorkflow,
 } from './published-workflow.js';
 import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
-import { withWorkspaceTransaction } from '../tenant-access/transactions.js';
+import {
+  withWorkspaceTransaction,
+  withWorkspaceReadTransaction,
+} from '../tenant-access/transactions.js';
+import {
+  recoverWorkflowRunInTransaction,
+  allocateRecoveryIdentity,
+} from './commands/recover.js';
+import {
+  readRecoveryMetadata,
+  readRecoveryValues,
+} from './queries/recovery.js';
+import type {
+  WorkflowRecoveryPreparation,
+  WorkflowRecoveryPreview,
+} from './recovery.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { requestWorkflowRunCancellation } from './commands/cancel.js';
 import {
@@ -153,6 +168,34 @@ const cancelInputSchema = z
   })
   .strict();
 
+const recoveryPreviewInputSchema = z
+  .object({
+    workspaceId: z.uuid(),
+    runId: z.uuid(),
+    signal: z.instanceof(AbortSignal).optional(),
+    prepareRecovery: z.custom<WorkflowRecoveryPreparation>(
+      (value) => typeof value === 'function',
+    ),
+  })
+  .strict();
+const recoveryInputSchema = replayInputSchema
+  .omit({ input: true, checkpointFactory: true })
+  .extend({
+    scope: z.string().regex(/^workflow:[0-9a-f-]{36}:recover$/u),
+    nodeRunId: z.uuid(),
+    acknowledgePossibleEffects: z.literal(true).optional(),
+    prepareRecovery: z.custom<WorkflowRecoveryPreparation>(
+      (value) => typeof value === 'function',
+    ),
+  })
+  .strict();
+export type WorkflowRecoveryPreviewInput = Readonly<
+  z.input<typeof recoveryPreviewInputSchema>
+>;
+export type RecoverPublishedWorkflowRunInput = Readonly<
+  z.input<typeof recoveryInputSchema>
+>;
+
 export type StartPublishedWorkflowRunInput = Readonly<
   z.input<typeof startInputSchema>
 >;
@@ -163,6 +206,12 @@ export type CancelWorkflowRunInput = Readonly<
   z.input<typeof cancelInputSchema>
 >;
 export interface WorkflowRunDatabase {
+  recovery(
+    input: WorkflowRecoveryPreviewInput,
+  ): Promise<WorkflowRecoveryPreview>;
+  recover(
+    input: RecoverPublishedWorkflowRunInput,
+  ): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>>;
   usageCapacity(
     input: WorkspaceUsageCapacityInput,
   ): Promise<WorkspaceUsageCapacityRecord>;
@@ -215,6 +264,45 @@ export function createWorkflowRunDatabase(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
+    recovery: async (input: WorkflowRecoveryPreviewInput) => {
+      const parsed = recoveryPreviewInputSchema.parse(input);
+      return withWorkspaceReadTransaction(
+        pool,
+        parsed.workspaceId,
+        async (transaction) => {
+          const metadata = await readRecoveryMetadata(
+            transaction,
+            parsed.runId,
+            'snapshot',
+          );
+          if ('kind' in metadata) return metadata;
+          const candidate = parsed.prepareRecovery(metadata);
+          if (candidate.kind === 'refused') return candidate;
+          const values = await readRecoveryValues(
+            transaction,
+            parsed.runId,
+            candidate.nodeRunIds,
+          );
+          if ('kind' in values) return values;
+          const prepared = candidate.complete(values);
+          if (prepared.kind === 'refused') return prepared;
+          const seed = prepared.seed(
+            allocateRecoveryIdentity(candidate.nodeRunIds),
+          );
+          return seed.kind === 'refused' ? seed : prepared.preview;
+        },
+        parsed.signal === undefined ? {} : { signal: parsed.signal },
+      );
+    },
+    recover: async (input: RecoverPublishedWorkflowRunInput) => {
+      const parsed = recoveryInputSchema.parse(input);
+      return withWorkspaceTransaction(
+        pool,
+        parsed.workspaceId,
+        (transaction) => recoverWorkflowRunInTransaction(transaction, parsed),
+        parsed.signal === undefined ? {} : { signal: parsed.signal },
+      );
+    },
     start: async (input: StartPublishedWorkflowRunInput) => {
       const parsed = startInputSchema.parse(input);
       const result = await withWorkspaceTransaction(
@@ -276,7 +364,7 @@ async function startInTransaction(
 ): Promise<
   Readonly<{ run: WorkflowRunRecord; replayed: boolean }> | ManualStartRejection
 > {
-  await lockManualStartCommand(transaction, input);
+  await lockRunAcceptanceCommand(transaction, input);
   const identity = {
     keyHash: input.idempotencyKeyHash,
     operation: 'workflow.run.accept' as const,

@@ -184,13 +184,13 @@ export const heartbeatSchema = ownedLeaseSchema
   .extend({ leaseDurationSeconds: z.number().int().min(1).max(300) })
   .strict();
 const safeErrorCodeSchema = z.string().regex(SAFE_EXECUTOR_ERROR_CODE_PATTERN);
-const executorFailureKindSchema = z.enum([
+export const executorFailureKindSchema = z.enum([
   'failed',
   'canceled',
   'retry',
   'outcome_unknown',
 ]);
-const executorErrorKindSchema = z.enum([
+export const executorErrorKindSchema = z.enum([
   'authentication',
   'canceled',
   'configuration',

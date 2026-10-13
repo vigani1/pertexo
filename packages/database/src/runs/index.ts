@@ -96,3 +96,15 @@ export type { ArtifactCapacityObservation } from '../artifacts/store.js';
 export { createWorkflowCallStore } from './calls/store.js';
 export { WorkflowCallRefusedError } from './calls/contract.js';
 export type { WorkflowCallStore } from './calls/contract.js';
+export type {
+  WorkflowRecoveryPreview,
+  WorkflowRecoveryMetadata,
+  WorkflowRecoveryPreparation,
+  PreparedWorkflowRecovery,
+} from './recovery.js';
+export { WorkflowRecoveryUnavailableError } from './recovery.js';
+export type { WorkflowRecoverySummary } from './recovery.js';
+export type {
+  WorkflowRecoveryPreviewInput,
+  RecoverPublishedWorkflowRunInput,
+} from './runs.repository.js';

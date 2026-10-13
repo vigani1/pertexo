@@ -11,5 +11,7 @@ export function sameOutputReference(
     return left.artifactId === right.artifactId;
   if (left.kind === 'call' && right.kind === 'call')
     return left.callId === right.callId;
+  if (left.kind === 'reused' && right.kind === 'reused')
+    return left.nodeRunId === right.nodeRunId;
   return false;
 }

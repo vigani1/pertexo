@@ -1,5 +1,16 @@
 // Safe anywhere, including the browser. Node-only parts are in ./server.ts.
 export { assertNever } from './assert-never.js';
+export { WORKFLOW_FAILURE_PORT } from './failure-routing/contract.js';
+export {
+  inspectWorkflowDecisionTree,
+  type WorkflowDecisionTree,
+} from './failure-routing/decision-tree.js';
+export {
+  WORKFLOW_RECOVERY_LIMITS,
+  WORKFLOW_RECOVERY_REFUSALS,
+  type WorkflowRecoveryEffectRisk,
+  type WorkflowRecoveryRefusal,
+} from './recovery/contract.js';
 export {
   workflowCallPinSchema,
   workflowCallConfigSchema,

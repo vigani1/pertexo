@@ -47,3 +47,15 @@ export type {
 } from './compilation/foundation.js';
 export { invocationKey } from './transition/scheduling/loops.js';
 export type * from './types.js';
+export { selectRecoveryPrefix } from './recovery/select-prefix.js';
+export { planRecovery } from './recovery/plan.js';
+export { seedRecovery, type RecoveryCopy } from './recovery/seed.js';
+export type {
+  RecoveryAttempt,
+  RecoveryNode,
+  RecoverySource,
+  RecoveryRefused,
+  RecoveryCandidate,
+  RecoveryValues,
+  RecoveryPlan,
+} from './recovery/contract.js';

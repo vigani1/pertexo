@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   workflowRunCancelRequestSchema,
+  workflowRecoveryRequestSchema,
+  workflowNodeRunSummarySchema,
   workflowRunListQuerySchema,
   workflowRunReplayRequestSchema,
   workflowRunListResponseSchema,
@@ -64,6 +66,8 @@ describe('workflow-run public contracts', () => {
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/steps/{nodeId}/runs',
       '/v1/workspaces/{workspaceId}/runs/{runId}/events',
       '/v1/workspaces/{workspaceId}/runs/{runId}/cancel',
+      '/v1/workspaces/{workspaceId}/runs/{runId}/recovery',
+      '/v1/workspaces/{workspaceId}/runs/{runId}/recover',
       '/v1/workspaces/{workspaceId}/runs/{runId}/replay',
     ]);
     const start =
@@ -246,5 +250,53 @@ describe('workflow-run public contracts', () => {
       expect(workflowRunStatisticsResponseSchema.safeParse(value).success).toBe(
         false,
       );
+  });
+});
+
+describe('failed-step recovery transport', () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  it('accepts only exact source identities and a literal acknowledgement, never changed input or internal seed state', () => {
+    const body = { workflowVersionId: id, nodeRunId: id };
+    expect(workflowRecoveryRequestSchema.safeParse(body).success).toBe(true);
+    expect(
+      workflowRecoveryRequestSchema.safeParse({
+        ...body,
+        acknowledgePossibleEffects: true,
+      }).success,
+    ).toBe(true);
+    for (const field of [
+      { input: {} },
+      { initialCheckpoint: {} },
+      { reusedCount: 2 },
+      { acknowledgePossibleEffects: false },
+    ])
+      expect(
+        workflowRecoveryRequestSchema.safeParse({ ...body, ...field }).success,
+      ).toBe(false);
+  });
+  it('represents owned output provenance with no fabricated attempt or timestamps', () => {
+    expect(
+      workflowNodeRunSummarySchema.parse({
+        id,
+        nodeId: 'manual',
+        invocationKey: 'manual:0',
+        status: 'succeeded',
+        currentAttemptNumber: 0,
+        startedAt: null,
+        completedAt: null,
+        resumeAt: null,
+        safeErrorCode: null,
+        reused: {
+          sourceRunId: id,
+          sourceNodeRunId: id,
+          sourceCompletedAt: '2026-10-13T00:00:00Z',
+        },
+      }),
+    ).toMatchObject({
+      currentAttemptNumber: 0,
+      startedAt: null,
+      completedAt: null,
+      reused: { sourceRunId: id },
+    });
   });
 });

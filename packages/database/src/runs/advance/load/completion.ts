@@ -25,7 +25,11 @@ export async function readRunCompletionValues(
           output_ref: unknown;
         }>(
           `select node.node_id, node.invocation_key,
-            case when call.id is not null then call.result_ref
+            case when node.reused_source_run_id is not null
+                   and node.reused_source_node_run_id is not null and node.reused_source_completed_at is not null
+                   and node.current_attempt_id is null and node.current_attempt_number is null
+                   and node.status='succeeded' then node.output_ref
+                 when call.id is not null then call.result_ref
                  else coalesce(attempt.output_ref, node.output_ref) end output_ref
        from app.node_runs node
        left join app.node_attempts attempt

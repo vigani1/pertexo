@@ -1,3 +1,8 @@
+import {
+  GetRunRecoveryUseCase,
+  RecoverRunUseCase,
+} from './recovery/use-cases.js';
+import { RunRecoveryController } from './recovery/controller.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
@@ -77,6 +82,20 @@ export class WorkflowRunsModule {
       },
       WorkflowRunStartGuard,
       WorkflowRunReplayGuard,
+      {
+        provide: GetRunRecoveryUseCase,
+        useValue: new GetRunRecoveryUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
+        provide: RecoverRunUseCase,
+        useValue: new RecoverRunUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
       WorkflowRunCancelGuard,
       {
         provide: StartWorkflowRunUseCase,
@@ -169,6 +188,7 @@ export class WorkflowRunsModule {
       imports: [ApiLifecycleModule, identityModule],
       controllers: [
         WorkflowRunsController,
+        RunRecoveryController,
         WorkflowRunDataController,
         UsageCapacityController,
       ],

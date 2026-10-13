@@ -1,7 +1,9 @@
 # F09 — Workflow failure paths and recovery from a failed step
 
 Status: approved for implementation on 2026-10-13; slice 0 merged in PR #273.
-Dispatcher latency correction is locally qualified before recovery runtime. The
+Dispatcher latency correction merged in PR #274. Slice 2 runtime/API is being
+qualified on `feat/f09-recovery-runtime`; recovery UI and failure routes remain
+open. The
 owner authorized the revised scope and decisions, including explicit manual
 effects acknowledgement, Condition/leaf Stop run and recovery-first delivery.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md). Baseline
@@ -791,8 +793,8 @@ remain evidence gates in the code slices.
 - [x] Slice 1: no demonstrated existing recovery-clarity gap; retain current UI.
       Full web units and four mocked run-history browser cases passed.
 - [x] Slice 0: per-step latency measured before F09 engine changes.
-- [ ] Diagnosed dispatcher polling delay: local fix qualified; merge its PR
-      before recovery runtime.
+- [x] Diagnosed dispatcher polling delay: PR #274 merged; all CI and natural
+      postmerge checks passed before recovery runtime.
 - [ ] Slice 2: recovery runtime/API qualified with choices, acknowledgement,
       races/retention and baseline comparison.
 - [ ] Slice 3: real recovery UI/Condition/Stop run journey qualified.
@@ -923,3 +925,66 @@ Measured median gap improved about 91%, with unchanged checkpoint size and
 unchanged scheduling semantics. Idle polling remains bounded at the original
 configured rate; these measurements cover this local workload, not provider
 latency or an arbitrary graph throughput guarantee.
+
+### Slice 2 implementation refinements
+
+Exact accepted-command recovery uses the existing retained idempotency record
+window (24 hours). It can outlive source value retirement within that window;
+it is not an indefinite receipt. The UI must stop offering an uncertain
+same-request retry after that window. No new receipt store or TTL is added.
+
+Disabled Condition steps are refused in this first recovery scope because they
+have no saved selected-port proof. Ordinary disabled actions remain supported;
+existing execution semantics for disabled steps are unchanged.
+
+
+## Slice 2 runtime qualification (2026-10-13)
+
+The runtime branch implements the shared pure decision-tree/prefix policy,
+metadata-first bounded storage reads, exact source-input validation, owned
+inline copies, atomic ordinary run admission and the guarded preview/recover
+endpoints. The recovery target executes through the existing coordinator and
+node-attempt queue. Reused rows have no attempts or execution timestamps; their
+source provenance is separate. Step health and execution history exclude those
+copies. The source run is unchanged.
+
+The isolated compiled-worker fixture uses the real PostgreSQL roles and forced
+row security, Redis, BullMQ and outbox dispatcher. It proves frozen Condition
+choices, a callable result selected from a copied prefix, suffix-only execution,
+concurrent exact-key acceptance, request conflicts, quota rollback without a
+receipt, and exact accepted retries after source details retire. Scripted
+registry failures also prove server-enforced acknowledgement for definite
+dispatched `http.request` failures, audit/summary risk and unknown-outcome
+refusal. These scripts make no external HTTP calls; the real provider/browser
+journey remains a slice 3 gate.
+
+Pure tests cover leaf Stop run targets, both Condition ports, unsupported
+controls/topology, missing/corrupt evidence, previous reused prefixes, original
+input/callable validation, nested artifact references, aggregate bounds, fresh
+identities/checkpoints and provider keys. HTTP stack tests exercise current
+capabilities, CSRF, strict bodies and safe refusal reasons. The timeline reader
+does not manufacture spans or attempts for copies. No recovery control is
+exposed in the product until slice 3.
+
+### Ordinary execution comparison
+
+Repeat the existing slice 0 measurement with the configured 250 ms polling
+interval and the same compiled fixtures/pools. A temporary clean main checkout
+at `bf1a93a05cc529967a9aa65d4a25f967b7fe4187` supplies the fresh control. Both
+measurements run alone, with 30 sequential runs after five warmups, ten Condition
+runs and five concurrent runs.
+
+| Sample | Sequential run median | Sequential gap median | Condition gap median | Concurrent gap median | Ordinary checkpoint |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fresh main control | 1,668.630 ms | 42.422 ms | 43.133 ms | 273.384 ms | 6,281 bytes |
+| Recovery runtime repeat | 1,734.392 ms | 42.043 ms | 41.038 ms | 273.288 ms | 6,281 bytes |
+
+An initial runtime sample was slower (2,696.559 ms sequential run and 86.235 ms
+gap). The fresh paired repeat shows no repeatable regression; it does not erase
+that sample or establish a production latency guarantee. Condition checkpoints
+stay 1,667 bytes. The fixture's existing shared-process memory and completion
+sampling limitations still apply. Local raw reports are retained outside Git at
+`/tmp/pertexo-f09-latency-recovery-runtime.json`,
+`/tmp/pertexo-f09-latency-main-control.json` and
+`/tmp/pertexo-f09-latency-recovery-repeat.json`. The temporary control checkout
+was archived after measurement.

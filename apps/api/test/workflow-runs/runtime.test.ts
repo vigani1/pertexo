@@ -34,6 +34,8 @@ const identityRuntime = {
 } as unknown as ApiIdentityRuntime;
 const persistence = {
   start: () => Promise.reject(new Error('not exercised')),
+  recovery: () => Promise.reject(new Error('not exercised')),
+  recover: () => Promise.reject(new Error('not exercised')),
   replay: () => Promise.reject(new Error('not exercised')),
   get: () => Promise.resolve(undefined),
   list: () => Promise.resolve({ items: [] }),

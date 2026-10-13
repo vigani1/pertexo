@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0003_workflow_call_runtime.sql';
+export const EXPECTED_MIGRATION_HEAD = '0004_failed_step_recovery.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

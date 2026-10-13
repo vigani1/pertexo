@@ -1,3 +1,5 @@
+import { applicationError } from '../../src/platform/http/index.js';
+import { throwWorkflowRunError } from '../../src/workflow-runs/errors.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import type { WorkflowRunPersistence } from '../../src/workflow-runs/ports.js';
 import {
@@ -51,6 +53,8 @@ function identityRuntime(
 function persistenceFixture() {
   const start = vi.fn<WorkflowRunPersistence['start']>();
   const replay = vi.fn<WorkflowRunPersistence['replay']>();
+  const recovery = vi.fn<WorkflowRunPersistence['recovery']>();
+  const recover = vi.fn<WorkflowRunPersistence['recover']>();
   const get = vi.fn<WorkflowRunPersistence['get']>();
   const list = vi.fn<WorkflowRunPersistence['list']>();
   const statistics = vi.fn<WorkflowRunPersistence['statistics']>();
@@ -66,6 +70,8 @@ function persistenceFixture() {
     persistence: {
       start,
       replay,
+      recovery,
+      recover,
       get,
       list,
       statistics,
@@ -79,6 +85,8 @@ function persistenceFixture() {
     } satisfies WorkflowRunPersistence,
     start,
     replay,
+    recovery,
+    recover,
     get,
     list,
     statistics,
@@ -135,6 +143,100 @@ describe('workflow runs real Nest HTTP stack', () => {
   afterEach(async () => {
     await application?.close();
     application = undefined;
+  });
+
+  it('protects recovery preview and acceptance with current capabilities and CSRF', async () => {
+    const { application, fixture } = await start('viewer');
+    for (const method of ['GET', 'POST'] as const) {
+      const response = await application.inject({
+        method,
+        url: `/v1/workspaces/${workspaceId}/runs/${runId}/${method === 'GET' ? 'recovery' : 'recover'}`,
+        headers: method === 'GET' ? authHeaders : mutationHeaders,
+        ...(method === 'GET'
+          ? {}
+          : { payload: { workflowVersionId, nodeRunId: runId } }),
+      });
+      expect(response.statusCode).toBe(404);
+    }
+    expect(fixture.recovery).not.toHaveBeenCalled();
+    expect(fixture.recover).not.toHaveBeenCalled();
+  });
+
+  it('returns a safe preview, rejects changed input and missing CSRF, and preserves refusal reasons', async () => {
+    const { application, fixture } = await start();
+    fixture.recovery.mockResolvedValue({
+      kind: 'eligible',
+      workflowVersionId,
+      versionNumber: 1,
+      nodeRunId: runId,
+      nodeId: 'http',
+      nodeLabel: 'Send request',
+      reusedCount: 2,
+      sourceCompletedAt: '2026-10-13T00:00:00.000Z',
+      effectRisk: 'possible_effects',
+    });
+    const preview = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/recovery`,
+      headers: authHeaders,
+    });
+    expect(preview.statusCode).toBe(200);
+    expect(preview.json()).toMatchObject({
+      effectRisk: 'possible_effects',
+      reusedCount: 2,
+    });
+    expect(fixture.recovery).toHaveBeenCalledWith({ workspaceId, runId });
+    for (const body of [
+      { workflowVersionId, nodeRunId: runId, input: {} },
+      {
+        workflowVersionId,
+        nodeRunId: runId,
+        acknowledgePossibleEffects: false,
+      },
+    ]) {
+      const response = await application.inject({
+        method: 'POST',
+        url: `/v1/workspaces/${workspaceId}/runs/${runId}/recover`,
+        headers: mutationHeaders,
+        payload: body,
+      });
+      expect(response.statusCode).toBe(400);
+    }
+    const noCsrf = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/recover`,
+      headers: authHeaders,
+      payload: { workflowVersionId, nodeRunId: runId },
+    });
+    expect(noCsrf.statusCode).toBe(403);
+    expect(fixture.recover).not.toHaveBeenCalled();
+    fixture.recover.mockImplementation(() =>
+      throwWorkflowRunError(
+        applicationError('run.recovery_unavailable', {
+          details: { reason: 'effects_acknowledgement_required' },
+        }),
+      ),
+    );
+    const rejected = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/recover`,
+      headers: mutationHeaders,
+      payload: { workflowVersionId, nodeRunId: runId },
+    });
+    expect(rejected.statusCode).toBe(409);
+    expect(rejected.json()).toMatchObject({
+      code: 'run.recovery_unavailable',
+      reason: 'effects_acknowledgement_required',
+    });
+    expect(fixture.recover).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceRunId: runId,
+        nodeRunId: runId,
+        workflowVersionId,
+        scope: `workflow:${runId}:recover`,
+        actorId,
+      }),
+    );
   });
 
   it('runs authentication and authorization guards before workflow persistence', async () => {

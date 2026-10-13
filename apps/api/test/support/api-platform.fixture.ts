@@ -118,6 +118,8 @@ export function createStubApiWorkflowRuntime(
       authorization,
       persistence: {
         start: () => Promise.reject(new Error('not used')),
+        recovery: () => Promise.reject(new Error('not exercised')),
+        recover: () => Promise.reject(new Error('not exercised')),
         replay: () => Promise.reject(new Error('not used')),
         get: () => Promise.resolve(undefined),
         list: () => Promise.resolve({ items: [] }),

@@ -15,6 +15,13 @@ import {
 } from '../platform/stored-execution-value.js';
 
 type UpstreamOutputRow = Readonly<{
+  node_run_id: string;
+  current_attempt_id: string | null;
+  current_attempt_number: number | null;
+  reused_source_run_id: string | null;
+  reused_source_node_run_id: string | null;
+  reused_source_completed_at: Date | null;
+  attempt_status: string | null;
   invocation_key: string;
   node_id: string;
   node_output_ref: unknown;
@@ -37,13 +44,29 @@ function reconcileCompletedNodeOutputs(
   return Object.freeze(
     expectedOutputs.map((expected) => {
       const output = outputsByInvocationKey.get(expected.invocationKey);
-      if (
-        output?.node_id !== expected.nodeId ||
+      if (output?.node_id !== expected.nodeId)
+        throw new NodeAttemptStateCorruptError();
+      const reused = output.reused_source_run_id !== null;
+      if (reused) {
+        if (
+          output.reused_source_node_run_id === null ||
+          output.reused_source_completed_at === null ||
+          output.current_attempt_id !== null ||
+          output.current_attempt_number !== null ||
+          output.attempt_status !== null
+        )
+          throw new NodeAttemptStateCorruptError();
+      } else if (
+        output.attempt_status !== 'succeeded' ||
+        output.reused_source_node_run_id !== null ||
+        output.reused_source_completed_at !== null ||
         serializeStoredExecutionJsonValue(output.node_output_ref) !==
           serializeStoredExecutionJsonValue(output.attempt_output_ref)
       )
         throw new NodeAttemptStateCorruptError();
-      const stored = parseStoredExecutionValue(output.attempt_output_ref);
+      const stored = parseStoredExecutionValue(
+        reused ? output.node_output_ref : output.attempt_output_ref,
+      );
       if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
       return Object.freeze({
         invocationKey: output.invocation_key,
@@ -146,26 +169,24 @@ export async function loadNodeAttemptInputs(
       let completedNodeOutputs: NodeAttemptStoredInputs['completedNodeOutputs'] =
         Object.freeze([]);
       if (input.upstreamNodeOutputs.length > 0) {
-        const outputs = await client.query<{
-          invocation_key: string;
-          node_id: string;
-          node_output_ref: unknown;
-          attempt_output_ref: unknown;
-        }>(
-          `select node.invocation_key,node.node_id,
+        const outputs = await client.query<UpstreamOutputRow>(
+          `select node.id as node_run_id,node.invocation_key,node.node_id,
+                  node.current_attempt_id,node.current_attempt_number,
+                  node.reused_source_run_id,node.reused_source_node_run_id,node.reused_source_completed_at,
+                  attempt.status as attempt_status,
                   node.output_ref as node_output_ref,
                   case when call.id is not null then call.result_ref else attempt.output_ref end as attempt_output_ref
            from app.node_runs node
-           join app.node_attempts attempt
+           left join app.node_attempts attempt
              on attempt.workspace_id=node.workspace_id
             and attempt.id=node.current_attempt_id
+            and attempt.node_run_id=node.id
            left join app.workflow_calls call
              on call.workspace_id=node.workspace_id and call.parent_run_id=node.workflow_run_id
             and call.invocation_key=node.invocation_key and call.status='succeeded'
             where node.workspace_id=$1 and node.workflow_run_id=$2
               and node.invocation_key=any($3::varchar[])
-              and node.status='succeeded' and attempt.status='succeeded'
-              and attempt.node_run_id=node.id`,
+              and node.status='succeeded'`,
           [
             input.lease.workspaceId,
             input.lease.runId,

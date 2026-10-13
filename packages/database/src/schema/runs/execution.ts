@@ -32,6 +32,11 @@ export const workflowRuns = appSchema.table(
     workflowVersionId: uuid('workflow_version_id').notNull(),
     replaySourceRunId: uuid('replay_source_run_id'),
     replayCommandId: uuid('replay_command_id'),
+    recoveryTargetNodeRunId: uuid('recovery_target_node_run_id'),
+    recoveryTargetNodeId: varchar('recovery_target_node_id', { length: 128 }),
+    recoveryReusedCount: integer('recovery_reused_count'),
+    recoveryEffectRisk: varchar('recovery_effect_risk', { length: 32 }),
+    recoveryEffectsAcknowledged: boolean('recovery_effects_acknowledged'),
     triggerType: varchar('trigger_type', { length: 32 }).notNull(),
     failureNotificationDestinationId: uuid(
       'failure_notification_destination_id',
@@ -127,6 +132,10 @@ export const workflowRuns = appSchema.table(
     check(
       'workflow_runs_replay_lineage_valid',
       sql`(((trigger_type)::text = 'replay'::text) = ((replay_source_run_id IS NOT NULL) AND (replay_command_id IS NOT NULL)))`,
+    ),
+    check(
+      'workflow_runs_recovery_summary_complete',
+      sql`(((recovery_target_node_run_id IS NULL) AND (recovery_target_node_id IS NULL) AND (recovery_reused_count IS NULL) AND (recovery_effect_risk IS NULL) AND (recovery_effects_acknowledged IS NULL)) OR ((trigger_type = 'replay') AND (recovery_target_node_run_id IS NOT NULL) AND (recovery_target_node_id IS NOT NULL) AND (recovery_reused_count IS NOT NULL) AND (recovery_reused_count >= 0) AND (recovery_reused_count <= 200) AND (recovery_effect_risk IN ('ordinary', 'possible_effects')) AND (recovery_effects_acknowledged IS NOT NULL))) IS TRUE`,
     ),
     check(
       'workflow_runs_status_valid',
@@ -254,7 +263,7 @@ export const runEvents = appSchema.table(
     check('run_events_sequence_positive', sql`(sequence > 0)`),
     check(
       'run_events_type_catalog',
-      sql`((type)::text = ANY (ARRAY[('run.queued'::character varying)::text, ('run.started'::character varying)::text, ('run.waiting'::character varying)::text, ('run.cancel_requested'::character varying)::text, ('run.succeeded'::character varying)::text, ('run.failed'::character varying)::text, ('run.canceled'::character varying)::text, ('run.timed_out'::character varying)::text, ('run.outcome_unknown'::character varying)::text, ('node.ready'::character varying)::text, ('node.started'::character varying)::text, ('node.progress'::character varying)::text, ('node.waiting'::character varying)::text, ('node.retry_scheduled'::character varying)::text, ('node.succeeded'::character varying)::text, ('node.failed'::character varying)::text, ('node.skipped'::character varying)::text, ('node.canceled'::character varying)::text, ('node.timed_out'::character varying)::text, ('node.outcome_unknown'::character varying)::text]))`,
+      sql`((type)::text = ANY (ARRAY[('run.queued'::character varying)::text, ('run.started'::character varying)::text, ('run.waiting'::character varying)::text, ('run.cancel_requested'::character varying)::text, ('run.succeeded'::character varying)::text, ('run.failed'::character varying)::text, ('run.canceled'::character varying)::text, ('run.timed_out'::character varying)::text, ('run.outcome_unknown'::character varying)::text, ('node.ready'::character varying)::text, ('node.reused'::character varying)::text, ('node.started'::character varying)::text, ('node.progress'::character varying)::text, ('node.waiting'::character varying)::text, ('node.retry_scheduled'::character varying)::text, ('node.succeeded'::character varying)::text, ('node.failed'::character varying)::text, ('node.skipped'::character varying)::text, ('node.canceled'::character varying)::text, ('node.timed_out'::character varying)::text, ('node.outcome_unknown'::character varying)::text]))`,
     ),
     primaryKey({
       name: 'run_events_pkey',
@@ -348,6 +357,13 @@ export const nodeRuns = appSchema.table(
     outputRef: jsonb('output_ref'),
     currentAttemptId: uuid('current_attempt_id'),
     currentAttemptNumber: integer('current_attempt_number'),
+    // No source-node FK: copied values outlive independently retired source details.
+    reusedSourceRunId: uuid('reused_source_run_id'),
+    reusedSourceNodeRunId: uuid('reused_source_node_run_id'),
+    reusedSourceCompletedAt: timestamp('reused_source_completed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     resumeAt: timestamp('resume_at', { withTimezone: true, mode: 'date' }),
     retryDueAt: timestamp('retry_due_at', {
       withTimezone: true,
@@ -376,6 +392,10 @@ export const nodeRuns = appSchema.table(
     check(
       'node_runs_attempt_pointer_complete',
       sql`(((current_attempt_id IS NULL) AND (current_attempt_number IS NULL)) OR ((current_attempt_id IS NOT NULL) AND (current_attempt_number IS NOT NULL) AND (current_attempt_number > 0)))`,
+    ),
+    check(
+      'node_runs_reuse_provenance_complete',
+      sql`(((reused_source_run_id IS NULL) AND (reused_source_node_run_id IS NULL) AND (reused_source_completed_at IS NULL)) OR ((reused_source_run_id IS NOT NULL) AND (reused_source_node_run_id IS NOT NULL) AND (reused_source_completed_at IS NOT NULL) AND (status = 'succeeded') AND (output_ref IS NOT NULL) AND (current_attempt_id IS NULL) AND (current_attempt_number IS NULL) AND (started_at IS NULL) AND (completed_at IS NULL) AND (control_kind IS NULL) AND (provider_dispatch_binding IS NULL) AND (input_ref IS NULL))) IS TRUE`,
     ),
     check(
       'node_runs_branch_context_bounded',

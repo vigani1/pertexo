@@ -9,7 +9,7 @@ import {
   appendRunEvent,
   createIdentityWorkspaceDatabase,
   createWorkspaceDatabase,
-  lockManualStartCommand,
+  lockRunAcceptanceCommand,
   parseDatabaseConfig,
   type WorkspaceDatabase,
 } from '@pertexo/database/testing';
@@ -209,7 +209,7 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
       workspaceId,
       async (transaction) => {
         // Stream fixtures serialize the same command key as the HTTP start.
-        await lockManualStartCommand(transaction, {
+        await lockRunAcceptanceCommand(transaction, {
           scope,
           idempotencyKeyHash: keyHash,
         });

@@ -27,7 +27,7 @@ const getInputSchema = z
   .strict();
 export type GetWorkflowRunInput = Readonly<z.input<typeof getInputSchema>>;
 
-const nodeStatusSchema = z.enum([
+export const nodeStatusSchema = z.enum([
   'pending',
   'ready',
   'running',
@@ -50,6 +50,9 @@ const nodeRowSchema = z
     completed_at: z.coerce.date().nullable(),
     resume_at: z.coerce.date().nullable(),
     safe_error_code: z.string().min(1).max(128).nullable(),
+    reused_source_run_id: z.uuid().nullable(),
+    reused_source_node_run_id: z.uuid().nullable(),
+    reused_source_completed_at: z.coerce.date().nullable(),
   })
   .strict();
 
@@ -59,6 +62,11 @@ export type WorkflowNodeRunRecord = Readonly<{
   invocationKey: string;
   status: z.output<typeof nodeStatusSchema>;
   currentAttemptNumber: number;
+  reused?: Readonly<{
+    sourceRunId: string;
+    sourceNodeRunId: string;
+    sourceCompletedAt: string;
+  }>;
   startedAt: Date | null;
   completedAt: Date | null;
   resumeAt: Date | null;
@@ -108,7 +116,8 @@ async function readRunModel(
       started_at,
       completed_at,
       coalesce(retry_due_at, resume_at) as resume_at,
-      safe_error_code
+      safe_error_code,
+      reused_source_run_id, reused_source_node_run_id, reused_source_completed_at
     from app.node_runs
     where workspace_id = ${transaction.workspaceId}
       and workflow_run_id = ${runId}
@@ -135,5 +144,16 @@ function toNodeRecord(value: unknown): WorkflowNodeRunRecord {
     completedAt: row.completed_at,
     resumeAt: row.resume_at,
     safeErrorCode: row.safe_error_code,
+    ...(row.reused_source_run_id === null ||
+    row.reused_source_node_run_id === null ||
+    row.reused_source_completed_at === null
+      ? {}
+      : {
+          reused: {
+            sourceRunId: row.reused_source_run_id,
+            sourceNodeRunId: row.reused_source_node_run_id,
+            sourceCompletedAt: row.reused_source_completed_at.toISOString(),
+          },
+        }),
   });
 }

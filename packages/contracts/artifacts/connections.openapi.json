@@ -1422,6 +1422,7 @@
               "workflow.activation_failed",
               "run.not_cancelable",
               "run.outcome_unknown",
+              "run.recovery_unavailable",
               "connection.not_configured",
               "webhook.not_configured",
               "connection.conflict",

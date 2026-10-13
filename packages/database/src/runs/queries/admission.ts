@@ -66,6 +66,11 @@ export function workflowRunReadQuery(
         deadline_at: workflowRuns.deadlineAt,
         cancel_requested_at: workflowRuns.cancelRequestedAt,
         replay_source_run_id: workflowRuns.replaySourceRunId,
+        recovery_target_node_run_id: workflowRuns.recoveryTargetNodeRunId,
+        recovery_target_node_id: workflowRuns.recoveryTargetNodeId,
+        recovery_reused_count: workflowRuns.recoveryReusedCount,
+        recovery_effect_risk: workflowRuns.recoveryEffectRisk,
+        recovery_effects_acknowledged: workflowRuns.recoveryEffectsAcknowledged,
       },
       workflowName: includeWorkflowName
         ? workflows.name

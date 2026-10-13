@@ -1,3 +1,4 @@
+import type { WorkflowRecoverySummary } from '../recovery.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
 import {
   workflowRunReadQuery,
@@ -61,6 +62,11 @@ const runReadRowSchema = runRowSchema.extend({
     .optional(),
   workflow_name: z.string().min(1).max(128).nullable(),
   replay_source_run_id: z.uuid().nullable(),
+  recovery_target_node_run_id: z.uuid().nullable(),
+  recovery_target_node_id: z.string().nullable(),
+  recovery_reused_count: z.number().int().nonnegative().nullable(),
+  recovery_effect_risk: z.enum(['ordinary', 'possible_effects']).nullable(),
+  recovery_effects_acknowledged: z.boolean().nullable(),
 });
 
 export type WorkflowRunRecord = Readonly<{
@@ -82,6 +88,7 @@ export type WorkflowRunReadRecord = WorkflowRunRecord &
   Readonly<{
     workflowName?: string | null;
     replaySourceRunId: string | null;
+    recovery?: WorkflowRecoverySummary;
     admissionBlockers?: Readonly<{
       asOf: string;
       reasons: readonly (
@@ -219,12 +226,32 @@ export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
     workflow_name: workflowName,
     replay_source_run_id: replaySourceRunId,
     admission_blockers: admissionBlockers,
+    recovery_target_node_run_id: targetNodeRunId,
+    recovery_target_node_id: targetNodeId,
+    recovery_reused_count: reusedCount,
+    recovery_effect_risk: effectRisk,
+    recovery_effects_acknowledged: effectsAcknowledged,
     ...runRow
   } = row;
   return Object.freeze({
     ...toWorkflowRunRecord(runRow),
     workflowName,
     replaySourceRunId,
+    ...(targetNodeRunId === null ||
+    targetNodeId === null ||
+    reusedCount === null ||
+    effectRisk === null ||
+    effectsAcknowledged === null
+      ? {}
+      : {
+          recovery: {
+            targetNodeRunId,
+            targetNodeId,
+            reusedCount,
+            effectRisk,
+            effectsAcknowledged,
+          },
+        }),
     ...(admissionBlockers == null ? {} : { admissionBlockers }),
   });
 }

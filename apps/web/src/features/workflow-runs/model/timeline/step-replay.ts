@@ -298,7 +298,7 @@ class StepReplayBuilder {
     outputRef: WorkflowRunEvent['payload']['outputRef'],
     attemptNumber: number | undefined,
   ): void {
-    if (outputRef === undefined) return;
+    if (outputRef === undefined || outputRef.kind === 'reused') return;
     const attempt = attemptNumber === undefined ? {} : { attemptNumber };
     this.outputs.push(
       outputRef.kind === 'call'
@@ -353,6 +353,15 @@ export function replayStep(
   summary: WorkflowNodeRunSummary | undefined,
   runEndMs: number | null,
 ): StepReplay {
+  if (summary?.reused !== undefined)
+    return {
+      segments: [],
+      story: [],
+      outputs: [],
+      attempts: 0,
+      status: summary.status,
+      nodeRunId: summary.id,
+    };
   const builder = new StepReplayBuilder();
   for (const event of events) builder.apply(event);
   const openDueAt = builder.open?.dueAt;
@@ -385,6 +394,7 @@ export function replayFromSummary(
   runStartMs: number,
   runEndMs: number | null,
 ): StepReplay {
+  if (summary.reused !== undefined) return replayStep([], summary, runEndMs);
   const { tone } = describeNodeStatus(summary.status);
   const startMs =
     summary.startedAt === null ? runStartMs : Date.parse(summary.startedAt);

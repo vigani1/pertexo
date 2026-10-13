@@ -73,7 +73,7 @@ export async function replayWorkflowRunInTransaction(
   });
 }
 
-async function lockReplaySource(
+export async function lockReplaySource(
   transaction: WorkspaceTransaction,
   sourceRunId: string,
 ): Promise<Readonly<{ workflowId: string }>> {
@@ -93,7 +93,7 @@ async function lockReplaySource(
   return Object.freeze({ workflowId: z.uuid().parse(source.workflow_id) });
 }
 
-async function lockReplayVersion(
+export async function lockReplayVersion(
   transaction: WorkspaceTransaction,
   workflowId: string,
   workflowVersionId: string,
