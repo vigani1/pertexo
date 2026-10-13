@@ -44,6 +44,7 @@ export type OutboxDispatcherOptions = Readonly<{
   leaseOwner: string;
   maxAttempts: number;
   operationTimeoutMillis?: number;
+  /** Maximum interval while idle; publication shortens subsequent polling. */
   pollIntervalMillis?: number;
   retryDelayMillis: number;
 }>;
@@ -81,6 +82,7 @@ class OutboxDispatcherClosedError extends Error {
 const WORKSPACE_CAPACITY_SAMPLE_INTERVAL_MILLIS = 5 * 60_000;
 const MAX_TRACKED_WORKSPACE_CAPACITY_SAMPLES = 1_000;
 const MAX_PENDING_WORKSPACE_CAPACITY_SAMPLES = 100;
+const ACTIVE_POLL_INTERVAL_MILLIS = 25;
 
 function transportJobName(jobName: string): TransportJob | undefined {
   return Object.values<string>(JOB_NAME).includes(jobName)
@@ -423,12 +425,28 @@ export class OutboxDispatcher {
   }
 
   private async runLoop(): Promise<void> {
+    let pollIntervalMillis = this.options.pollIntervalMillis;
     while (this.isRunning() && this.drainState.canAcceptWork()) {
       try {
-        await this.dispatchOnce();
+        const result = await this.dispatchOnce();
+        // Successive steps need successive publications. Keep those rounds
+        // close together without imposing busy polling on an idle workspace.
+        pollIntervalMillis =
+          result.published > 0 || result.outcomeUnknown > 0
+            ? Math.min(
+                ACTIVE_POLL_INTERVAL_MILLIS,
+                this.options.pollIntervalMillis,
+              )
+            : result.failed > 0
+              ? this.options.pollIntervalMillis
+              : Math.min(
+                  pollIntervalMillis * 2,
+                  this.options.pollIntervalMillis,
+                );
       } catch {
         // Readiness surfaces boundary health. The loop stays alive so a
         // transient PostgreSQL/Redis failure cannot permanently stop dispatch.
+        pollIntervalMillis = this.options.pollIntervalMillis;
       }
       if (!this.isRunning() || !this.drainState.canAcceptWork()) break;
       await new Promise<void>((resolve) => {
@@ -437,7 +455,7 @@ export class OutboxDispatcher {
           return;
         }
         let settled = false;
-        const timer = setTimeout(resolve, this.options.pollIntervalMillis);
+        const timer = setTimeout(resolve, pollIntervalMillis);
         const wake = () => {
           if (settled) return;
           settled = true;

@@ -1,6 +1,7 @@
 # F09 — Workflow failure paths and recovery from a failed step
 
-Status: approved for implementation on 2026-10-13; slice 0 is in progress. The
+Status: approved for implementation on 2026-10-13; slice 0 merged in PR #273.
+Dispatcher latency correction is locally qualified before recovery runtime. The
 owner authorized the revised scope and decisions, including explicit manual
 effects acknowledgement, Condition/leaf Stop run and recovery-first delivery.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md). Baseline
@@ -787,9 +788,11 @@ remain evidence gates in the code slices.
 - [x] ADR 072 records accepted recovery decisions; recovery glossary/roadmap
       reconciled.
 - [ ] Routing ADR and glossary land before the failure-route runtime slice.
-- [ ] Slice 1: demonstrated existing recovery gaps fixed, or no-gap result.
+- [x] Slice 1: no demonstrated existing recovery-clarity gap; retain current UI.
+      Full web units and four mocked run-history browser cases passed.
 - [x] Slice 0: per-step latency measured before F09 engine changes.
-- [ ] Diagnosed dispatcher polling delay resolved through its own verified PR.
+- [ ] Diagnosed dispatcher polling delay: local fix qualified; merge its PR
+      before recovery runtime.
 - [ ] Slice 2: recovery runtime/API qualified with choices, acknowledgement,
       races/retention and baseline comparison.
 - [ ] Slice 3: real recovery UI/Condition/Stop run journey qualified.
@@ -863,3 +866,60 @@ work and back off to the configured interval while idle. Preserve fair claims,
 leases, transactions, automatic retry safety and configured idle load. Prove
 poll scheduling with fake timers, rerun this real baseline, and record results;
 no new configuration, daemon, production hook or CI job is needed.
+
+## Slice 1 existing recovery clarity (2026-10-13)
+
+No code PR needed. Existing `OutcomeUnknownCard` explicitly tells the person to
+check the remote service before replaying because the action may repeat.
+`ReplayRunDialog` names the exact version, starts from the source input while it
+is retained, explains input expiry and warns that other-service steps run again.
+`useRunReplay` preserves the same request and key after an unconfirmed response.
+The timeline distinguishes a scheduled automatic retry from its attempts and
+shows the backoff countdown.
+
+Full workspace unit gates passed, including run replay and timeline behavior.
+All four `e2e/run-history.spec.ts` Chromium mocked-API cases passed, including
+exact displayed version/input replay and bounded mobile history. This verifies
+the existing journey; it does not qualify the new suffix-recovery feature or
+replace its real-stack browser gate.
+
+## Dispatcher latency correction qualification (2026-10-13)
+
+Existing dispatcher loop now uses 25 ms after a successful or possibly completed
+publication, capped by the configured interval. Empty rounds double the delay
+back to that interval; failed claims/publications restore the full interval.
+Initial idle behavior, fair one-row-per-workspace claiming, publication fencing,
+retry deadlines and prompt shutdown are preserved. No new setting or service.
+
+Three new fake-timer behavior tests failed on the original loop, then passed
+with the scheduling change. Additional cases cover initial idle behavior,
+publication failure/unknown acknowledgement and shutdown without leftover
+timers. The existing dispatcher suite continues to exercise lease ownership,
+late settlement, drain and retry behavior.
+
+Repeat the slice 0 command on base `191f38b196ca41d2ad8eaf62356a61065f523714`
+plus the scheduling change, retaining a configured 250 ms interval. Same
+machine, compiled runtime, pools, 30 sequential runs after five warmups, ten
+Condition runs and five concurrent runs; no other build/test gate running
+concurrently. Raw samples: `/tmp/pertexo-f09-latency-adaptive.json`, outside
+Git. All runs and owned-runtime cleanup passed.
+
+| Sample                      | Gap median / p95 / max (ms) | Run median / p95 / max (ms)    | Checkpoint bytes |
+| --------------------------- | --------------------------- | ------------------------------ | ---------------- |
+| Manual + 20 Set + Stop run  | 45.65 / 139.67 / 205.47     | 1,995.22 / 2,728.38 / 2,913.54 | 6,281            |
+| Condition selected path     | 46.24 / 96.82 / 148.42      | 297.20 / 422.09 / 422.09       | 1,667            |
+| Five concurrent linear runs | 277.06 / 287.07 / 294.87    | 6,605.25 / 6,651.67 / 6,651.67 | 6,281            |
+
+Readiness: 22.25 ms; cold run: 2,757.75 ms. Sequential started-to-completed
+median/p95: 19.73/30.53 ms; outbox created-to-published: 25.37/62.53 ms.
+Monotonic claimBatch median/p95: 2.29/4.24 ms; queue publication: 0.50/0.94 ms.
+There were 2,370 claim calls and 1,915 publications (baseline 1,916/1,915). Warm
+measurement process user/system CPU: 16.07/2.16 s; RSS before/after:
+398.89/622.70 MiB. RSS includes Vitest, retained samples and GC variation; it is
+not a production memory improvement or sizing claim. The fixture's 25 ms
+completion reads also make long baseline runs perform more observation queries.
+
+Measured median gap improved about 91%, with unchanged checkpoint size and
+unchanged scheduling semantics. Idle polling remains bounded at the original
+configured rate; these measurements cover this local workload, not provider
+latency or an arbitrary graph throughput guarantee.
