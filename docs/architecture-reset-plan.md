@@ -1,8 +1,9 @@
 # Architecture reset plan
 
-Status: **accepted** — 2026-10-08. Decision record: [ADR 069](adr/069-architecture-reset.md).
-This file is the single plan and the single progress log for the reset. Every
-reset PR updates the tracker below. Nothing else tracks this work.
+Status: **completed** 2026-10-11; accepted 2026-10-08. Decision record:
+[ADR 069](adr/069-architecture-reset.md). This file is the history of the reset:
+its plan and the tracker every reset PR updated. New work follows the plans in
+[feature-plans](feature-plans).
 
 ## Why
 
