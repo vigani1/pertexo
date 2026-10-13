@@ -124,6 +124,7 @@ function createDispatcher(
   drainState = new WorkerDrainState(),
   metrics = transportMetrics(),
   operationTimeoutMillis = 5_000,
+  pollIntervalMillis = 10,
 ): OutboxDispatcher {
   return new OutboxDispatcher(
     selected.database,
@@ -139,7 +140,7 @@ function createDispatcher(
       leaseOwner: 'worker-a',
       maxAttempts: 3,
       operationTimeoutMillis,
-      pollIntervalMillis: 10,
+      pollIntervalMillis,
       retryDelayMillis: 1_000,
     },
     metrics,
@@ -1053,6 +1054,156 @@ describe('outbox dispatcher', () => {
     await expect(dispatcher.close()).resolves.toBeUndefined();
     expect(selected.database.claimBatch).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('dispatches follow-up work promptly after a publication', async () => {
+    vi.useFakeTimers();
+    const selected = boundaries([]);
+    vi.mocked(selected.database.claimBatch)
+      .mockResolvedValueOnce({ events: [event()], exhaustedCount: 0 })
+      .mockResolvedValueOnce({ events: [indexedEvent(2)], exhaustedCount: 0 });
+    const dispatcher = createDispatcher(
+      selected,
+      new WorkerDrainState(),
+      transportMetrics(),
+      5_000,
+      250,
+    );
+    try {
+      dispatcher.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(selected.producer.publish).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(24);
+      expect(selected.database.claimBatch).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(selected.producer.publish).toHaveBeenCalledTimes(2);
+    } finally {
+      await dispatcher.close();
+    }
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('backs off empty rounds to the configured idle interval after work', async () => {
+    vi.useFakeTimers();
+    const selected = boundaries([]);
+    vi.mocked(selected.database.claimBatch).mockResolvedValueOnce({
+      events: [event()],
+      exhaustedCount: 0,
+    });
+    const dispatcher = createDispatcher(
+      selected,
+      new WorkerDrainState(),
+      transportMetrics(),
+      5_000,
+      250,
+    );
+    try {
+      dispatcher.start();
+      await vi.advanceTimersByTimeAsync(0);
+      let claims = 1;
+      for (const interval of [25, 50, 100, 200, 250, 250]) {
+        await vi.advanceTimersByTimeAsync(interval - 1);
+        expect(selected.database.claimBatch).toHaveBeenCalledTimes(claims);
+        await vi.advanceTimersByTimeAsync(1);
+        claims += 1;
+        expect(selected.database.claimBatch).toHaveBeenCalledTimes(claims);
+      }
+    } finally {
+      await dispatcher.close();
+    }
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps the configured interval when initially idle', async () => {
+    vi.useFakeTimers();
+    const selected = boundaries([]);
+    const dispatcher = createDispatcher(
+      selected,
+      new WorkerDrainState(),
+      transportMetrics(),
+      5_000,
+      250,
+    );
+    try {
+      dispatcher.start();
+      await vi.advanceTimersByTimeAsync(249);
+      expect(selected.database.claimBatch).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(selected.database.claimBatch).toHaveBeenCalledTimes(2);
+    } finally {
+      await dispatcher.close();
+    }
+  });
+
+  it.each([
+    { outcome: 'failed', interval: 250 },
+    { outcome: 'outcome_unknown', interval: 25 },
+  ] as const)(
+    'polls after $interval ms when publication is $outcome',
+    async ({ outcome, interval }) => {
+      vi.useFakeTimers();
+      const selected = boundaries([]);
+      vi.mocked(selected.database.claimBatch).mockResolvedValueOnce({
+        events: [event()],
+        exhaustedCount: 0,
+      });
+      if (outcome === 'failed') {
+        vi.mocked(selected.producer.publish).mockRejectedValueOnce(
+          new Error('redis unavailable'),
+        );
+      } else {
+        vi.mocked(selected.producer.publish).mockResolvedValueOnce({
+          jobId: `outbox-${EVENT_ID}`,
+          jobName: JOB_NAME.advanceWorkflowRun,
+          outcome: 'outcome_unknown',
+          queueName: 'workflow-coordinator',
+          settlement: Promise.resolve('published'),
+        });
+      }
+      const dispatcher = createDispatcher(
+        selected,
+        new WorkerDrainState(),
+        transportMetrics(),
+        5_000,
+        250,
+      );
+      try {
+        dispatcher.start();
+        await vi.advanceTimersByTimeAsync(interval - 1);
+        expect(selected.database.claimBatch).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(selected.database.claimBatch).toHaveBeenCalledTimes(2);
+      } finally {
+        await dispatcher.close();
+      }
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
+  it('restores the idle interval after a failed claim during activity', async () => {
+    vi.useFakeTimers();
+    const selected = boundaries([]);
+    vi.mocked(selected.database.claimBatch)
+      .mockResolvedValueOnce({ events: [event()], exhaustedCount: 0 })
+      .mockRejectedValueOnce(new Error('postgres restarted'));
+    const dispatcher = createDispatcher(
+      selected,
+      new WorkerDrainState(),
+      transportMetrics(),
+      5_000,
+      250,
+    );
+    try {
+      dispatcher.start();
+      await vi.advanceTimersByTimeAsync(25);
+      expect(selected.database.claimBatch).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(249);
+      expect(selected.database.claimBatch).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(selected.database.claimBatch).toHaveBeenCalledTimes(3);
+    } finally {
+      await dispatcher.close();
+    }
   });
 
   it('waits for a late unknown publication and marks with the original token', async () => {
