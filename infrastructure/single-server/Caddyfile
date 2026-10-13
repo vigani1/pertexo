@@ -2,13 +2,20 @@
 	admin off
 }
 
+# Browsers keep to HTTPS for a year after their first visit.
+(https_only) {
+	header Strict-Transport-Security "max-age=31536000"
+}
+
 {$APP_HOST} {
+	import https_only
 	reverse_proxy web:8080 {
 		flush_interval -1
 	}
 }
 
 {$FILES_HOST} {
+	import https_only
 	@administration path /rustfs/admin /rustfs/admin/* /minio/admin /minio/admin/*
 	respond @administration 404
 	reverse_proxy storage:9000
