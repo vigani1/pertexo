@@ -40,7 +40,7 @@ import { parseCheckpoint } from './checkpoint/create-and-parse.js';
 import type { SchedulerState } from './transition/scheduling/readiness.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './observation/persisted.js';
-import { providerIdempotencyKey } from './attempt/retries.js';
+import { nodeProviderIdempotencyKey } from './attempt/derive-provider-key.js';
 import { prepareNodeAttemptInput } from './attempt/input.js';
 import type {
   ExecuteNodeAttemptInput,
@@ -268,31 +268,26 @@ export async function advanceWorkflow(
     hasExecutionSlot: input.hasExecutionSlot ?? true,
   });
   assertNotAborted(input.signal);
-  const providerKey = (
-    nodeId: string,
-    invocationKey: string,
-  ): string | undefined => {
-    const node = nodesById.get(nodeId);
-    if (node?.sideEffectClass !== 'idempotent_with_key') return undefined;
-    return providerIdempotencyKey({
-      invocationKey,
-      namespace: 'pertexo.node-attempt',
-      operationIdentity: `${node.definition.key}@${String(node.definition.version)}`,
-      runId: input.runId,
-    });
-  };
   return Object.freeze({
     ...plan,
     ...(calls.intents.length === 0 ? {} : { callIntents: calls.intents }),
     attempts: plan.attempts.map((attempt) => {
-      const key = providerKey(attempt.nodeId, attempt.invocationKey);
+      const key = nodeProviderIdempotencyKey(
+        nodesById.get(attempt.nodeId),
+        input.runId,
+        attempt.invocationKey,
+      );
       return Object.freeze({
         ...attempt,
         ...(key === undefined ? {} : { providerIdempotencyKey: key }),
       });
     }),
     nodeRunAdmissions: plan.nodeRunAdmissions.map((admission) => {
-      const key = providerKey(admission.nodeId, admission.invocationKey);
+      const key = nodeProviderIdempotencyKey(
+        nodesById.get(admission.nodeId),
+        input.runId,
+        admission.invocationKey,
+      );
       return Object.freeze({
         ...admission,
         ...(key === undefined ? {} : { providerIdempotencyKey: key }),
