@@ -4,7 +4,7 @@ import {
   applicationKeyVersionSchema,
   parseApplicationPreviousKeys,
   type ApplicationKeyRing,
-} from './application-key-ring.js';
+} from '@pertexo/integrations/server';
 
 export type AuthenticationMailDeliveryConfig = Readonly<{
   apiKey: string;

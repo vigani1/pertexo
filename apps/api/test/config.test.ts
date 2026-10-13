@@ -38,7 +38,7 @@ describe('parseApiConfig', () => {
       CONNECTION_LOCAL_KEY: Buffer.alloc(32, 4).toString('base64'),
     });
     expect(config.webhooks).toEqual(config.connections);
-    expect(config.webhooks).toMatchObject({ mode: 'local' });
+    expect(config.webhooks).toMatchObject({ mode: 'self-managed' });
   });
 
   it.each(['staging', 'production'] as const)(
@@ -617,8 +617,8 @@ describe('parseApiConfig identity boundary', () => {
       mailMode: 'local',
       printLocalMailLinks: true,
     });
-    expect(config.connections).toMatchObject({ mode: 'local' });
-    expect(config.webhooks).toMatchObject({ mode: 'local' });
+    expect(config.connections).toMatchObject({ mode: 'self-managed' });
+    expect(config.webhooks).toMatchObject({ mode: 'self-managed' });
     expect(config.artifacts?.bucket).toBeDefined();
   });
 });

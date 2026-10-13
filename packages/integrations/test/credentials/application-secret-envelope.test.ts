@@ -3,6 +3,27 @@ import { describe, expect, it } from 'vitest';
 import { createApplicationSecretEnvelope } from '../../src/security/application-secret-envelope.js';
 
 describe('application secret envelope', () => {
+  it('rejects duplicate versions instead of replacing key material', () => {
+    const key = Buffer.alloc(32, 1).toString('base64');
+    expect(() =>
+      createApplicationSecretEnvelope({
+        current: { version: '1', key },
+        previous: [
+          { version: '1', key: Buffer.alloc(32, 2).toString('base64') },
+        ],
+      }),
+    ).toThrow('Application key versions must be unique');
+    expect(() =>
+      createApplicationSecretEnvelope({
+        current: { version: '2', key },
+        previous: [
+          { version: '1', key },
+          { version: '1', key },
+        ],
+      }),
+    ).toThrow('Application key versions must be unique');
+  });
+
   it('rejects malformed keys and bounded inputs', () => {
     expect(() =>
       createApplicationSecretEnvelope({

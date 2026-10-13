@@ -1,11 +1,13 @@
 import { randomBytes } from 'node:crypto';
+import type { ApplicationKeyRing } from '../security/key-ring.js';
 import { createApplicationSecretEnvelope } from '../security/application-secret-envelope.js';
 import type {
   EnvelopeKeyProviderCore,
   EnvelopeKeyMaterial,
 } from '../crypto/envelope-cipher.js';
 
-const KEY_REFERENCE = 'local:development';
+const KEY_REFERENCE = 'self-managed';
+const LEGACY_REFERENCE = 'local:development';
 
 /** Wraps data keys locally; the deployment gate belongs to startup configuration. */
 export class SelfManagedEnvelopeKeyProvider<
@@ -14,13 +16,11 @@ export class SelfManagedEnvelopeKeyProvider<
   private readonly envelope;
 
   public constructor(
-    key: string,
+    encryption: ApplicationKeyRing,
     private readonly associatedData: (context: Context) => Uint8Array,
     private readonly failure: () => Error,
   ) {
-    this.envelope = createApplicationSecretEnvelope({
-      current: { version: KEY_REFERENCE, key },
-    });
+    this.envelope = createApplicationSecretEnvelope(encryption);
   }
 
   public generateDataKey(
@@ -53,11 +53,22 @@ export class SelfManagedEnvelopeKeyProvider<
   ): Promise<Uint8Array> {
     signal?.throwIfAborted();
     try {
-      if (keyReference !== KEY_REFERENCE || encryptedDataKey.byteLength > 1_024)
+      if (
+        (keyReference !== KEY_REFERENCE && keyReference !== LEGACY_REFERENCE) ||
+        encryptedDataKey.byteLength > 1_024
+      )
         throw this.failure();
       const sealed: unknown = JSON.parse(
         Buffer.from(encryptedDataKey).toString('utf8'),
       );
+      if (
+        keyReference === LEGACY_REFERENCE &&
+        (typeof sealed !== 'object' ||
+          sealed === null ||
+          !('keyVersion' in sealed) ||
+          sealed.keyVersion !== LEGACY_REFERENCE)
+      )
+        throw this.failure();
       // The envelope validates its opaque stored representation at this boundary.
       const encoded = this.envelope.open(
         sealed,
