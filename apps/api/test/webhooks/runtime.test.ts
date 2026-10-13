@@ -35,7 +35,16 @@ describe('API webhook runtime ownership', () => {
   it('composes the real local envelope without creating an AWS client', async () => {
     const databaseClose = vi.fn();
     const runtime = await createApiWebhookRuntime(
-      { mode: 'local', key: Buffer.alloc(32, 4).toString('base64') },
+      {
+        mode: 'self-managed',
+        encryption: {
+          current: {
+            version: '1',
+            key: Buffer.alloc(32, 4).toString('base64'),
+          },
+          previous: [],
+        },
+      },
       databaseConfig,
       database(databaseClose),
     );

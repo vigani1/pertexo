@@ -115,3 +115,9 @@ export type {
   ConnectionEnvelopeEncryptionRuntime,
   SelfManagedConnectionEncryptionConfig,
 } from './credentials/runtime.js';
+
+export {
+  applicationKeyVersionSchema,
+  parseApplicationPreviousKeys,
+} from './security/key-ring.js';
+export type { ApplicationKeyRing } from './security/key-ring.js';

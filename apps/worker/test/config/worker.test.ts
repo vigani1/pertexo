@@ -28,7 +28,7 @@ describe('parseWorkerConfig', () => {
       CONNECTION_LOCAL_KEY: Buffer.alloc(32).toString('base64'),
     };
     expect(parseWorkerConfig(local).connectionEncryption).toMatchObject({
-      mode: 'local',
+      mode: 'self-managed',
     });
     for (const NODE_ENV of ['staging', 'production']) {
       expect(() =>

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { parseApplicationPreviousKeys } from '@pertexo/integrations/server';
 
 import type { ApiIdentityConfig, IdentityEnvironment } from './identity.js';
 
@@ -29,7 +29,9 @@ export function parseDurableAuthenticationMail(
         key: requiredIdentityValue(environment.AUTH_MAIL_KEY),
         version: requiredIdentityValue(environment.AUTH_MAIL_KEY_VERSION),
       }),
-      previous: parsePreviousKeys(environment.AUTH_MAIL_PREVIOUS_KEYS),
+      previous: parseApplicationPreviousKeys(
+        environment.AUTH_MAIL_PREVIOUS_KEYS,
+      ),
     }),
   });
 }
@@ -90,27 +92,4 @@ function requiredIdentityValue(value: string | undefined): string {
     throw new Error('Identity configuration is incomplete');
   }
   return value;
-}
-
-export function parsePreviousKeys(
-  input: string | undefined,
-): readonly Readonly<{ version: string; key: string }>[] {
-  if (input === undefined) return Object.freeze([]);
-  const schema = z
-    .array(
-      z
-        .object({
-          version: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u),
-          key: z.string().min(1),
-        })
-        .strict(),
-    )
-    .max(8);
-  return Object.freeze(
-    schema
-      .parse(JSON.parse(input) as unknown)
-      .map((entry) =>
-        Object.freeze({ version: entry.version, key: entry.key }),
-      ),
-  );
 }

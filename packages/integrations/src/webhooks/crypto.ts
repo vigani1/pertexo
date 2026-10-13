@@ -170,7 +170,7 @@ export function createWebhookTriggerEnvelopeEncryption(
   return Object.freeze({
     encryption: new WebhookTriggerEnvelopeEncryption(
       new SelfManagedEnvelopeKeyProvider(
-        config.key,
+        config.encryption,
         webhookTriggerSecretAssociatedData,
         failure,
       ),

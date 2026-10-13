@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { validateApplicationKeyRing } from './key-ring.js';
 
 const sealedSchema = z
   .object({
@@ -22,22 +23,13 @@ export function createApplicationSecretEnvelope(
     previous?: readonly Readonly<{ version: string; key: string }>[];
   }>,
 ): ApplicationSecretEnvelope {
-  const entries = [config.current, ...(config.previous ?? [])];
+  const ring = validateApplicationKeyRing(config);
   const keys = new Map(
-    entries.map((entry) => {
-      const base64url = entry.key
-        .replaceAll('+', '-')
-        .replaceAll('/', '_')
-        .replace(/=+$/u, '');
-      const key = Buffer.from(base64url, 'base64url');
-      if (key.byteLength !== 32 || key.toString('base64url') !== base64url)
-        throw new TypeError(
-          'Application secret key must encode exactly 32 bytes',
-        );
-      return [entry.version, key] as const;
-    }),
+    [ring.current, ...ring.previous].map(
+      (entry) => [entry.version, Buffer.from(entry.key, 'base64')] as const,
+    ),
   );
-  const currentKey = keys.get(config.current.version);
+  const currentKey = keys.get(ring.current.version);
   if (currentKey === undefined)
     throw new TypeError('Current application secret key is missing');
 
@@ -58,7 +50,7 @@ export function createApplicationSecretEnvelope(
           ciphertext: ciphertext.toString('base64url'),
           nonce: nonce.toString('base64url'),
           tag: cipher.getAuthTag().toString('base64url'),
-          keyVersion: config.current.version,
+          keyVersion: ring.current.version,
         });
       } finally {
         input.fill(0);

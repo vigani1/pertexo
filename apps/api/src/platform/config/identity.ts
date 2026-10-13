@@ -1,9 +1,9 @@
+import { parseApplicationPreviousKeys } from '@pertexo/integrations/server';
 import { z } from 'zod';
 
 import {
   parseAuthenticationProviders,
   parseDurableAuthenticationMail,
-  parsePreviousKeys,
 } from './identity-credentials.js';
 
 /** Environment variables owned by browser identity and authentication. */
@@ -200,7 +200,9 @@ function invitationTokenEncryption(
   return {
     invitationTokenEncryption: Object.freeze({
       current: Object.freeze({ version, key }),
-      previous: parsePreviousKeys(environment.INVITATION_TOKEN_PREVIOUS_KEYS),
+      previous: parseApplicationPreviousKeys(
+        environment.INVITATION_TOKEN_PREVIOUS_KEYS,
+      ),
     }),
   };
 }

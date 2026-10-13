@@ -26,15 +26,18 @@ const context = {
 describe('webhook trigger crypto', () => {
   it('reopens local secrets across runtimes with the same stable key and binds every context field', async () => {
     const config = {
-      mode: 'local',
-      key: Buffer.alloc(32, 4).toString('base64'),
+      mode: 'self-managed',
+      encryption: {
+        current: { version: '1', key: Buffer.alloc(32, 4).toString('base64') },
+        previous: [],
+      },
     } as const;
     const first = createWebhookTriggerEnvelopeEncryption(config);
     const second = createWebhookTriggerEnvelopeEncryption(config);
     const secret = new Uint8Array(32).fill(9);
     const sealed = await first.encryption.seal(secret, context);
     expect(secret).toEqual(new Uint8Array(32));
-    expect(sealed.kmsKeyReference).toBe('local:development');
+    expect(sealed.kmsKeyReference).toBe('self-managed');
     const opened = await second.encryption.open(sealed, context);
     expect(opened).toEqual(new Uint8Array(32).fill(9));
     opened.fill(0);
@@ -50,8 +53,11 @@ describe('webhook trigger crypto', () => {
         }),
       ).rejects.toBeInstanceOf(WebhookTriggerSecretEncryptionError);
     const wrongKey = createWebhookTriggerEnvelopeEncryption({
-      mode: 'local',
-      key: Buffer.alloc(32, 5).toString('base64'),
+      mode: 'self-managed',
+      encryption: {
+        current: { version: '1', key: Buffer.alloc(32, 5).toString('base64') },
+        previous: [],
+      },
     });
     await expect(
       wrongKey.encryption.open(sealed, context),
