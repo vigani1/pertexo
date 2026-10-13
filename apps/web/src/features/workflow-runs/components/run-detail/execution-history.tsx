@@ -1,0 +1,112 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { Link } from '@tanstack/react-router';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { StatusGlyph } from '@/components/ui/status';
+import { describeStepError } from '../../model/step-inspection/step-error-copy';
+import {
+  storyEntryMeta,
+  storyEntryReason,
+  storyEntryTitle,
+} from '../../model/step-inspection/step-copy';
+import type { StepStoryEntry } from '../../model/timeline/step-replay';
+import type { RunTimelineRow } from '../../model/timeline/runs';
+
+/** A step's error code as a sentence, what to do, and the code for support. */
+export function StepError({
+  code,
+  workspace,
+}: Readonly<{ code: string; workspace: AccessibleWorkspace }>) {
+  const copy = describeStepError(code);
+  const canOpenConnections = workspace.capabilities.includes('connection:read');
+  return (
+    <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/[0.05] p-3 text-[0.8rem] leading-relaxed">
+      <p className="text-foreground">{copy.sentence}</p>
+      <p className="mt-1 text-muted-foreground">{copy.advice}</p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <code className="font-mono text-[0.7rem] text-destructive/90">
+          {code}
+        </code>
+        {copy.fix !== undefined && canOpenConnections ? (
+          <Link
+            to="/w/$workspaceId/connections"
+            params={{ workspaceId: workspace.id }}
+            className={buttonVariants({ size: 'xs', variant: 'default' })}
+          >
+            {copy.fix === 'reconnect' ? 'Reconnect' : 'Check connections'}
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function StoryEntry({
+  entry,
+  nowMs,
+  workspace,
+}: Readonly<{
+  entry: StepStoryEntry;
+  nowMs: number;
+  workspace: AccessibleWorkspace;
+}>) {
+  const reason = storyEntryReason(entry);
+  return (
+    <li className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2.5 border-t border-white/6 py-2.5 text-[0.82rem]">
+      <StatusGlyph tone={entry.tone} className="mt-0.5" />
+      <div className="min-w-0">
+        <p className="font-semibold">{storyEntryTitle(entry)}</p>
+        <p className="mt-0.5 font-mono text-[0.7rem] text-subtle-foreground">
+          {storyEntryMeta(entry, nowMs)}
+        </p>
+        {entry.kind === 'retry' ? (
+          <p className="mt-1.5 text-muted-foreground">
+            Pertexo retries this step on its own.
+          </p>
+        ) : null}
+        {reason === undefined ? null : (
+          <p className="mt-1.5 text-muted-foreground">{reason}</p>
+        )}
+        {entry.safeErrorCode === undefined ? null : (
+          <StepError code={entry.safeErrorCode} workspace={workspace} />
+        )}
+      </div>
+    </li>
+  );
+}
+
+export function StepExecutionHistory({
+  row,
+  nowMs,
+  workspace,
+}: Readonly<{
+  row: RunTimelineRow;
+  nowMs: number;
+  workspace: AccessibleWorkspace;
+}>) {
+  return (
+    <>
+      {row.story.length === 0 ? (
+        <p className="text-[0.8rem] text-muted-foreground">
+          {row.status === 'not_started'
+            ? 'This step hasn’t started in this run.'
+            : 'Nothing recorded yet.'}
+        </p>
+      ) : (
+        <ol className="flex flex-col">
+          {row.story.map((entry) => (
+            <StoryEntry
+              key={entry.id}
+              entry={entry}
+              nowMs={nowMs}
+              workspace={workspace}
+            />
+          ))}
+        </ol>
+      )}
+      {row.safeErrorCode !== undefined &&
+      !row.story.some((entry) => entry.safeErrorCode !== undefined) ? (
+        <StepError code={row.safeErrorCode} workspace={workspace} />
+      ) : null}
+    </>
+  );
+}
