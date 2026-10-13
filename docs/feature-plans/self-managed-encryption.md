@@ -1,8 +1,8 @@
 # Self-managed encryption keys
 
-Status: accepted by the owner for implementation, 2026-10-13. Implementation
-is in progress; production rollout is not claimed. ADR 071 is amended with the
-complete deployment gate to permit private self-managed keys.
+Status: implementation complete and locally verified, 2026-10-13. Existing CI
+gates each slice before merge; actual production rollout is not claimed. ADR
+071 permits private self-managed keys with the complete deployment gate.
 
 ## Outcome and scope
 
@@ -354,7 +354,7 @@ The ADR amendment lands with the complete deployment gate.
   Amend ADR 071 in place with a dated decision and link this plan; update the
   beta plan's KMS-only claims and owner prerequisites without marking slice 6
   done. Publish configure/rotate/recovery instructions in the existing runbook.
-- [ ] 4. Recovery qualification and final documentation. Extend the real matched
+- [x] 4. Recovery qualification and final documentation. Extend the real matched
   backup/restore drill and packaged-runtime check for both configurations;
   finish examples and operational failure instructions. Preserve KMS regression
   coverage and record evidence and remaining owner-only checks honestly.
@@ -399,6 +399,12 @@ pnpm test:integration
 pnpm test:e2e
 ```
 
+For service integration, use the flags and owned-fixture manifest from the
+existing CI workflow. Keep database and service groups on separate disposable
+Compose projects: service tests deliberately restart PostgreSQL and Redis.
+Local integration checks used a 30-second test-runner timeout for the large
+fixtures, without changing application timeouts or behavior assertions.
+
 Run the existing storage/recovery qualification and packaged-runtime checks for
 slices 3–4 with the existing pinned images. Request owner permission before a
 missing Docker image download. Do not call real AWS, send mail, deploy to the
@@ -409,8 +415,7 @@ owner's server or perform beta slice 6 as part of local verification.
 The checked design has one crypto implementation, one key-ring shape and one
 provider parser. Database code only reads metadata; integrations owns the key
 rules; worker/deployment owns ordering and cleanup. Every introduced module has
-a concrete caller. These are the implementation review checks, not a promise
-that code which has not been written is already correct.
+a concrete caller. These responsibility checks were verified during implementation.
 
 The main trade-off is complete self-managed verification at boot: work grows
 with retained wrapped-key rows and can hold a read snapshot for up to two
@@ -439,14 +444,14 @@ and the deferred migrations. Checked slices have passed local verification; thei
 
 Slice 1 local evidence: lint and TypeScript passed; integrations (459), API
 (1,961) and worker (704) unit tests passed. Architecture/import checks and
-unused-export checks passed. Production self-managed mode remains refused.
+unused-export checks passed. Production self-managed mode remained refused in that slice.
 
 Slice 2 local evidence: lint, TypeScript, architecture and unused-export checks
 passed; integrations (468), database (528) and worker (707) unit tests passed.
 Six real PostgreSQL inventory/preflight tests cover 754 retained rows, snapshot
 consistency, RLS, early exit, wire cancellation and safe CLI diagnostics. The
 existing 30 operational-helper tests passed. Production self-managed mode is
-still refused; API/worker startup remains independent.
+still refused in that slice; API/worker startup remained independent.
 
 
 Slice 3 local evidence: production configuration and Compose were checked in
@@ -459,3 +464,27 @@ Verification also passed lint, TypeScript, formatting, architecture and unused-e
 checks; integrations (470), API (1961), worker (707) unit tests and all 38
 operational helper tests passed. The unchanged real recovery drill passed against
 cached pinned storage/PostgreSQL images before extending it in slice 4.
+
+
+Slice 4 local evidence: all retained connection and webhook secrets under two
+private master-key versions survived the matched database/object recovery
+point and opened through the existing cipher. Four fresh PostgreSQL targets
+used the downloaded dump: the correct ring passed, a missing previous key and
+wrong current bytes failed clearly, and webhook-only verification caught a
+missing historical key. Provider switches were refused. The backup listing
+contained only the existing fixed files and object tree, with neither encoded
+nor decoded master-key bytes in the downloaded dump.
+
+Both provider modes passed the packaged-helper rehearsal on a cached runtime
+with the current compiled packages, including historical connection/webhook
+crypto and safe preflight failure with networking disabled. The existing image
+CI job runs the same helper against a complete production build. No images
+were downloaded locally and no CI job, stored format, role or service was added.
+
+Final regression evidence: full build, lint, TypeScript, formatting, unused-export,
+architecture, schema and generated-contract checks passed; 8,557 unit tests, 788
+database integration tests, 198 service integration tests, 144 mocked browser
+tests and 38 operational-helper tests passed. Real KMS access, owner HTTPS
+launch, remote backups and the measured owner restore drill remain beta slice 6.
+API startup still does not wait for worker health; rewrap, provider migration,
+key retirement and mounted-file key configuration remain deferred as agreed.

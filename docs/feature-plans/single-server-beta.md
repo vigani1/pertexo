@@ -207,7 +207,11 @@ services on failure. Hashes, release identity and object count accompany a
 completion marker published last. An incomplete restore blocks serving until a
 fresh recovery succeeds. Local qualification restores the repository schema,
 all workspace rows, grants and forced RLS into a fresh PostgreSQL instance, and
-checks artifact bytes and metadata through the unchanged adapter. The real
+checks artifact bytes and metadata through the unchanged adapter. The later
+self-managed encryption qualification restores retained connection/webhook
+secrets under two private key versions, verifies separately supplied keys and
+rejects wrong/missing keys before serving. Recovery payloads contain no master
+keys or private env files. The real
 Oracle endpoint, installed timer and owner restore drill remain slice 6.
 
 Slice 5 adds manual-only main dispatch with a full commit SHA, verifies the latest
