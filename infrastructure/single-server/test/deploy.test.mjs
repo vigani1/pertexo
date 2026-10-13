@@ -5,6 +5,7 @@ import {
   mkdirSync,
   writeFileSync,
   readFileSync,
+  readdirSync,
   existsSync,
   rmSync,
 } from 'node:fs';
@@ -56,6 +57,7 @@ with open(os.environ['FIXTURE_LOG'],'a') as log:
 if args[-1]=='/bootstrap.sh' and os.environ.get('FIXTURE_SETUP_FAIL')=='true': sys.exit(1)
 if args[0]=='image': print(('amd64' if os.environ.get('FIXTURE_REVISION_BAD')=='true' else 'arm64')+' '+os.environ['SERVICE_VERSION'])
 if 'infrastructure/single-server/encryption/verify.mjs' in args and os.environ.get('FIXTURE_ENCRYPTION_FAIL')=='true': sys.exit(1)
+if 'infrastructure/single-server/storage/prepare.mjs' in args and 'ghcr.io/vigani1/pertexo:${oldCommit}' in args and os.environ.get('FIXTURE_OLD_CONFIG_REJECTED')=='true': sys.exit(1)
 if 'logs' in args: print(os.environ['FIXTURE_MIGRATION_LOG'])
 if '--exit-code-from' in args and os.environ.get('FIXTURE_MIGRATION_FAIL')=='true': sys.exit(1)
 if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION')=='${newCommit}' and os.environ.get('FIXTURE_UNHEALTHY')=='true': sys.exit(1)
@@ -95,7 +97,7 @@ if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION'
           .split('\n')
           .map((line) => JSON.parse(line))
       : [];
-  return { run, commands, state };
+  return { run, commands, state, directory };
 }
 
 test('records a healthy release only after migration and serving health', (t) => {
@@ -269,5 +271,76 @@ test('older KMS target cannot bypass an incompatible retained key check', (t) =>
       .commands()
       .some((c) => c.args.includes('--wait') && c.args.includes('api')),
     false,
+  );
+});
+
+test('rollback checks the target compiled policy even when its verifier file exists', (t) => {
+  for (const failure of [
+    { FIXTURE_UNHEALTHY: 'true' },
+    { FIXTURE_SETUP_FAIL: 'true' },
+  ]) {
+    const f = fixture(t);
+    const encryption = join(
+      f.directory,
+      'releases',
+      oldCommit,
+      'infrastructure/single-server/encryption',
+    );
+    mkdirSync(encryption);
+    writeFileSync(
+      join(encryption, 'verify.mjs'),
+      'interim verifier, production self-managed still disabled',
+    );
+    const result = f.run({ ...failure, FIXTURE_OLD_CONFIG_REJECTED: 'true' });
+    assert.equal(result.status, 1);
+    const commands = f.commands();
+    assert.ok(
+      commands.some(
+        (c) =>
+          c.args.includes('infrastructure/single-server/storage/prepare.mjs') &&
+          c.args.includes('ghcr.io/vigani1/pertexo:' + oldCommit),
+      ),
+    );
+    assert.equal(
+      commands.some(
+        (c) =>
+          c.commit === oldCommit &&
+          c.args.includes('--wait') &&
+          c.args.includes('api'),
+      ),
+      false,
+    );
+    assert.equal(
+      readFileSync(join(f.state, 'current'), 'utf8').trim(),
+      oldCommit,
+    );
+    assert.ok(
+      !readdirSync(f.state).some((name) =>
+        name.startsWith('.rollback-configuration.'),
+      ),
+    );
+  }
+});
+test('compatible rollback validates its own configuration before restarting', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_UNHEALTHY: 'true' });
+  assert.equal(result.status, 1);
+  const commands = f.commands();
+  const validation = commands.findIndex(
+    (c) =>
+      c.args.includes('infrastructure/single-server/storage/prepare.mjs') &&
+      c.args.includes('ghcr.io/vigani1/pertexo:' + oldCommit),
+  );
+  const restart = commands.findIndex(
+    (c) =>
+      c.commit === oldCommit &&
+      c.args.includes('--wait') &&
+      c.args.includes('api'),
+  );
+  assert.ok(validation >= 0 && restart > validation);
+  assert.ok(
+    !readdirSync(f.state).some((name) =>
+      name.startsWith('.rollback-configuration.'),
+    ),
   );
 });

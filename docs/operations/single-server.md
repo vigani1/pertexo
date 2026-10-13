@@ -72,7 +72,11 @@ check; operators must use the supported deploy/restore sequence.
 Self-managed configuration requires a release with the verifier. Older KMS-only
 targets are refused before stopping serving with self-managed settings. For
 KMS rollback, a currently installed compatible verifier checks retained data
-even when the target predates verification; failed checks keep serving stopped.
+even when the target predates verification. Automatic rollback first runs the
+target image's own compiled configuration parsers in a private temporary
+directory; this also refuses interim images whose verifier exists but whose
+production policy still disallows self-managed keys. Failed checks keep serving
+stopped.
 KMS verification checks provider compatibility, not IAM access or remote
 decryptability; retain the existing provider smoke test.
 

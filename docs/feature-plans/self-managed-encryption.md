@@ -277,7 +277,10 @@ and do not regenerate keys to make an old image start. Test a rejected older
 release and retained serving-stop behavior; document fix-forward for this
 configuration transition. The trusted installed deploy control script must
 refuse a selected release without the verifier when self-managed is selected,
-before restarting anything. Keep the existing KMS rollback behavior for releases
+before restarting anything. Automatic rollback also validates the target image
+with its own compiled API/worker parsers through the existing preparation
+script. An interim image may contain a verifier while still refusing production
+self-managed mode, so file presence alone is insufficient. Keep the existing KMS rollback behavior for releases
 which never selected self-managed encryption.
 
 ## Generation and deployment configuration
@@ -484,7 +487,13 @@ were downloaded locally and no CI job, stored format, role or service was added.
 Final regression evidence: full build, lint, TypeScript, formatting, unused-export,
 architecture, schema and generated-contract checks passed; 8,557 unit tests, 788
 database integration tests, 198 service integration tests, 144 mocked browser
-tests and 38 operational-helper tests passed. Real KMS access, owner HTTPS
+tests and 40 operational-helper tests passed. Real KMS access, owner HTTPS
 launch, remote backups and the measured owner restore drill remain beta slice 6.
 API startup still does not wait for worker health; rewrap, provider migration,
 key retirement and mounted-file key configuration remain deferred as agreed.
+
+The final rollback check also passed against a cached older runtime: its own
+compiled parser accepted KMS and refused self-managed configuration despite
+verifier-file presence. Automatic rollback validates that policy in a private
+temporary directory, cleans it on success/failure, and keeps the current
+retained-key check before any restart. No configuration result marker is added.
