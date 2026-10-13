@@ -1,14 +1,23 @@
 # Repository governance
 
-The policy authority is [Repository Governance](../repository-governance.md),
-including its dated solo-maintainer zero-approval and signing exception. This
-runbook defines the operational procedure; it does not by itself prove current
-GitHub collaborator, approval, signing, or protection settings.
+The policy for `main` and the procedure around it. The collaborator and
+protection observations below were recorded on 2026-09-02; they do not by
+themselves prove the current GitHub settings, which need the external evidence
+described under Verification.
+
+## Main-branch policy
 
 `main` is a protected release branch. Normal changes arrive through an
 up-to-date pull request after every required CI and CodeQL check succeeds.
-Force pushes and branch deletion are disabled, and stale approvals are
-dismissed when the reviewed commit changes.
+Protection uses strict required checks, administrator enforcement, linear
+history and resolved-conversation enforcement. Force pushes and branch deletion
+are disabled, and stale approvals are dismissed when the reviewed commit
+changes. The CI check, unit, integration, e2e, image and security jobs and
+CodeQL are required.
+
+Critical paths have explicit owners in `.github/CODEOWNERS`. Dependency
+automation follows the grouping, triage and deferral policy in
+[Dependency update operations](./dependency-updates.md).
 
 ## Required checks
 
@@ -16,6 +25,29 @@ The protected checks are the named jobs emitted by `.github/workflows/ci.yml`
 and `.github/workflows/codeql.yml`. A workflow-file change must preserve the
 protected context names or update branch protection in the same reviewed
 change. A skipped, cancelled, missing, or stale check is not success.
+
+## Solo-maintainer review exception
+
+- Owner: repository administrator (`vigani1`)
+- Next review: 2026-12-01, or immediately when a second maintainer receives
+  review permission or signing is provisioned for every merge identity
+
+GitHub currently reports one repository collaborator: `vigani1`. GitHub does
+not allow a pull-request author to satisfy their own required approval. A
+one-approval or required-code-owner rule would therefore make every change
+unmergeable rather than adding independent review.
+
+The repository intentionally retains zero required approvals while it has one
+maintainer. Changes still use protected PR checks, resolved conversations,
+incremental reviewable commits, and branch comparison before merge. When a
+second maintainer with review permission is added, enable one approval and
+required code-owner review before treating independent human review as
+enforced.
+
+Verified commits are not currently required because signing is not provisioned
+for every local and automation identity. Reconsider this with the same
+multi-maintainer transition; never enable it by silently breaking established
+automation.
 
 ## Emergency access
 
