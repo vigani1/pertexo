@@ -2,7 +2,7 @@
 export * from './authoring/testing.js';
 export * from './authoring/settings/auto-pause.js';
 export * from './connections/testing.js';
-export { lockManualStartCommand } from './runs/commands/manual-start.js';
+export { lockRunAcceptanceCommand } from './runs/commands/manual-start.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,

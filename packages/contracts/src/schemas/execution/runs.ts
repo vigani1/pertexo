@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { workflowNameSchema } from '../workflows/authoring.js';
+import {
+  workflowRecoverySummarySchema,
+  workflowNodeReuseSchema,
+} from './recovery.js';
 
 export * from './step-history.js';
+export * from './recovery.js';
 
 export const workflowRunIdentifierSchema = z.uuid();
 export const workflowRunParamsSchema = z
@@ -121,6 +126,7 @@ export const workflowRunSummarySchema = z
     completedAt: z.iso.datetime({ offset: true }).nullable(),
     deadlineAt: z.iso.datetime({ offset: true }).nullable(),
     cancelRequestedAt: z.iso.datetime({ offset: true }).nullable(),
+    recovery: workflowRecoverySummarySchema.optional(),
   })
   .strict();
 
@@ -321,6 +327,7 @@ export const workflowNodeRunSummarySchema = z
     invocationKey: z.string().min(1).max(1_024),
     status: workflowNodeRunStatusSchema,
     currentAttemptNumber: z.number().int().nonnegative(),
+    reused: workflowNodeReuseSchema.optional(),
     startedAt: z.iso.datetime({ offset: true }).nullable(),
     completedAt: z.iso.datetime({ offset: true }).nullable(),
     resumeAt: z.iso.datetime({ offset: true }).nullable(),
@@ -422,6 +429,7 @@ const workflowRunEventTypeSchema = z.enum([
   'node.waiting',
   'node.retry_scheduled',
   'node.succeeded',
+  'node.reused',
   'node.failed',
   'node.skipped',
   'node.canceled',
@@ -429,6 +437,7 @@ const workflowRunEventTypeSchema = z.enum([
   'node.outcome_unknown',
 ]);
 const workflowRunOutputReferenceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('reused'), nodeRunId: z.uuid() }).strict(),
   z.object({ kind: z.literal('call'), callId: z.uuid() }).strict(),
   z.object({ kind: z.literal('inline'), attemptId: z.uuid() }).strict(),
   z.object({ kind: z.literal('artifact'), artifactId: z.uuid() }).strict(),
@@ -439,6 +448,9 @@ export const workflowRunEventPayloadSchema = z
     nodeId: z.string().min(1).max(256).optional(),
     nodeRunId: z.uuid().optional(),
     attemptId: z.uuid().optional(),
+    sourceRunId: z.uuid().optional(),
+    sourceNodeRunId: z.uuid().optional(),
+    sourceCompletedAt: z.iso.datetime({ offset: true }).optional(),
     attemptNumber: z.number().int().nonnegative().optional(),
     dueAt: z.iso.datetime({ offset: true }).optional(),
     safeErrorCode: z.string().min(1).max(128).optional(),

@@ -3,7 +3,7 @@ import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { workflowManualStartRejections } from '../../schema/runs/manual-start.js';
 import { IdempotencyRequestConflictError } from './acceptance.js';
 
-export { lockManualStartCommand } from './lock-acceptance.js';
+export { lockRunAcceptanceCommand } from './lock-acceptance.js';
 
 export type ManualStartIdentity = Readonly<{
   workflowId: string;

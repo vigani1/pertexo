@@ -125,7 +125,7 @@ export async function readWorkflowNodeRunOutput(
   );
 }
 
-async function runInputInTransaction(
+export async function runInputInTransaction(
   transaction: WorkspaceTransaction,
   runId: string,
 ): Promise<WorkflowRunData | undefined> {

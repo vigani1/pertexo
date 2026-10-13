@@ -35,6 +35,7 @@ export type BranchDisposition =
 export type OutputReference =
   | Readonly<{ readonly kind: 'inline'; readonly attemptId: string }>
   | Readonly<{ readonly kind: 'artifact'; readonly artifactId: string }>
+  | Readonly<{ readonly kind: 'reused'; readonly nodeRunId: string }>
   | Readonly<{ readonly kind: 'call'; readonly callId: string }>;
 
 export interface BranchScopePart {

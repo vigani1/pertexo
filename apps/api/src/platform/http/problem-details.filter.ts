@@ -8,6 +8,8 @@ import {
 import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts';
 import {
   strongEtagSchema,
+  workflowRecoveryUnavailableProblemSchema,
+  workflowRecoveryRefusalSchema,
   workflowRevisionConflictProblemSchema,
   workflowLifecycleConflictProblemSchema,
   workflowNameConflictProblemSchema,
@@ -98,6 +100,9 @@ type NormalizedProblem = Readonly<{
   currentNameRevision?: number;
   autoPauseConflict?: AutoPauseConflictRevision;
   concurrencyConflict?: ConcurrencyConflict;
+  recoveryReason?: ReturnType<
+    typeof workflowRecoveryRefusalSchema.parse
+  >['reason'];
   cause?: unknown;
 }>;
 
@@ -219,6 +224,15 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
       retryAfterSeconds <= 300
       ? { ...base, retryAfterSeconds }
       : base;
+  }
+  if (error.code === 'run.recovery_unavailable') {
+    const refusal = workflowRecoveryRefusalSchema.safeParse({
+      kind: 'refused',
+      reason: error.details?.reason,
+    });
+    return refusal.success
+      ? { ...base, recoveryReason: refusal.data.reason }
+      : unexpectedProblem(error);
   }
   const autoPauseConflict = normalizeAutoPauseConflict(error);
   if (autoPauseConflict !== undefined) return { ...base, autoPauseConflict };
@@ -383,6 +397,11 @@ function problemDetails(
   normalized: NormalizedProblem,
   baseProblem: ApiProblem,
 ): ProblemDetails {
+  if (normalized.recoveryReason !== undefined)
+    return workflowRecoveryUnavailableProblemSchema.parse({
+      ...baseProblem,
+      reason: normalized.recoveryReason,
+    });
   if (normalized.concurrencyConflict !== undefined)
     return projectConcurrencyConflict(
       baseProblem,

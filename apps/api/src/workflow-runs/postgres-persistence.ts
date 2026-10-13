@@ -1,5 +1,6 @@
 import {
   ExecutionStateConflictError,
+  WorkflowRecoveryUnavailableError,
   IdempotencyRequestConflictError,
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
@@ -15,7 +16,10 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { initialCheckpointFactory } from '@pertexo/execution';
+import {
+  recoveryPreparation,
+  initialCheckpointFactory,
+} from '@pertexo/execution';
 import {
   composeExecutableCatalog,
   WorkflowEngineError,
@@ -51,6 +55,37 @@ export function createPostgresWorkflowRunPersistence(
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const database = databaseInput ?? createWorkflowRunDatabase(config, runtime);
   const persistence: WorkflowRunPersistence = Object.freeze({
+    recovery: async (
+      input: Parameters<WorkflowRunPersistence['recovery']>[0],
+    ) => {
+      try {
+        return await database.recovery({
+          ...input,
+          prepareRecovery: recoveryPreparation({ catalog }),
+        });
+      } catch (error: unknown) {
+        return mapPersistenceError(error);
+      }
+    },
+    recover: async (
+      input: Parameters<WorkflowRunPersistence['recover']>[0],
+    ) => {
+      try {
+        const result = await database.recover({
+          ...input,
+          prepareRecovery: recoveryPreparation({ catalog }),
+        });
+        if (!result.replayed)
+          await publishHint(notifications, {
+            workspaceId: result.run.workspaceId,
+            runId: result.run.id,
+            sequence: 1,
+          });
+        return result;
+      } catch (error: unknown) {
+        return mapPersistenceError(error);
+      }
+    },
     usageCapacity: async (
       input: Parameters<WorkflowRunPersistence['usageCapacity']>[0],
     ) => {
@@ -205,6 +240,14 @@ async function publishHint(
 }
 
 function mapPersistenceError(error: unknown): never {
+  if (error instanceof WorkflowRecoveryUnavailableError)
+    return throwWorkflowRunError(
+      applicationError('run.recovery_unavailable', {
+        safeDetail: 'The source run no longer qualifies for recovery.',
+        details: { reason: error.reason },
+      }),
+    );
+
   if (error instanceof WorkflowPublishedVersionConflictError)
     return throwWorkflowRunError(
       applicationError('workflow.published_version_conflict', {

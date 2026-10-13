@@ -100,6 +100,8 @@ function persistence() {
     store: {
       start,
       replay,
+      recovery: vi.fn<WorkflowRunPersistence['recovery']>(),
+      recover: vi.fn<WorkflowRunPersistence['recover']>(),
       get,
       list,
       statistics,

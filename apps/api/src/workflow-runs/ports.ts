@@ -1,6 +1,9 @@
 import type {
   UsageCapacityResponse,
   WorkflowCallSummary,
+  WorkflowRecoveryPreview,
+  WorkflowRecoverySummary,
+  WorkflowNodeReuse,
   WorkflowParentCall,
   WorkflowRunAdmissionBlockers,
 } from '@pertexo/contracts';
@@ -38,6 +41,7 @@ export type WorkflowRunReadRecord = WorkflowRunRecord &
     workflowName?: string | null;
     replaySourceRunId?: string | null;
     admissionBlockers?: WorkflowRunAdmissionBlockers;
+    recovery?: WorkflowRecoverySummary;
   }>;
 
 /** The step that explains an unsuccessful listed run (ADR 050). */
@@ -102,6 +106,7 @@ export type WorkflowNodeRunRecord = Readonly<{
     | 'timed_out'
     | 'outcome_unknown';
   currentAttemptNumber: number;
+  reused?: WorkflowNodeReuse;
   startedAt: Date | null;
   completedAt: Date | null;
   resumeAt: Date | null;
@@ -197,6 +202,15 @@ export type ReplayWorkflowRunCommand = Readonly<{
   traceparent?: string;
 }>;
 
+export type RecoverWorkflowRunCommand = Omit<
+  ReplayWorkflowRunCommand,
+  'input'
+> &
+  Readonly<{
+    nodeRunId: string;
+    acknowledgePossibleEffects?: true;
+  }>;
+
 export type CancelWorkflowRunCommand = Readonly<{
   actorId: string;
   workspaceId: string;
@@ -208,6 +222,13 @@ export type CancelWorkflowRunCommand = Readonly<{
 }>;
 
 export interface WorkflowRunPersistence {
+  recovery(
+    input: Readonly<{ workspaceId: string; runId: string }>,
+  ): Promise<WorkflowRecoveryPreview>;
+  recover(
+    input: RecoverWorkflowRunCommand,
+  ): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>>;
+
   usageCapacity(
     input: Readonly<{ workspaceId: string; signal?: AbortSignal }>,
   ): Promise<UsageCapacityResponse>;

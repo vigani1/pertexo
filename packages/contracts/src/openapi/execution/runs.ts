@@ -26,6 +26,9 @@ import {
   workflowRunEventSchema,
   workflowRunResponseSchema,
   workflowRunReplayRequestSchema,
+  workflowRecoveryRequestSchema,
+  workflowRecoveryPreviewSchema,
+  workflowRecoveryUnavailableProblemSchema,
   workflowRunStartRequestSchema,
   workflowRunStartParamsSchema,
   workflowRunStartResponseSchema,
@@ -45,6 +48,12 @@ import {
 } from '../../schemas/execution/runs.js';
 
 const schemas = Object.freeze({
+  WorkflowRecoveryRequest: jsonSchema(workflowRecoveryRequestSchema, 'input'),
+  WorkflowRecoveryPreview: jsonSchema(workflowRecoveryPreviewSchema, 'output'),
+  WorkflowRecoveryUnavailableProblem: jsonSchema(
+    workflowRecoveryUnavailableProblemSchema,
+    'output',
+  ),
   UsageCapacityResponse: jsonSchema(usageCapacityResponseSchema, 'output'),
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WorkflowRunStartRequest: jsonSchema(workflowRunStartRequestSchema, 'input'),
@@ -398,6 +407,67 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '409': responseReference('Conflict'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/runs/{runId}/recovery': {
+      get: {
+        operationId: 'getWorkflowRunRecovery',
+        security: [{ cookieSession: [] }],
+        description:
+          'Requires run:replay in an active workspace. Bounded metadata preview; acceptance rechecks eligibility. No stored values are disclosed.',
+        parameters: [workspaceParameter, runParameter],
+        responses: {
+          '200': jsonResponse(
+            'Current recovery eligibility',
+            'WorkflowRecoveryPreview',
+          ),
+          '401': responseReference('Unauthenticated'),
+          '404': responseReference('NotFound'),
+          '409': responseReference('Conflict'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/runs/{runId}/recover': {
+      post: {
+        operationId: 'recoverWorkflowRun',
+        security: [{ cookieSession: [] }],
+        description:
+          'New run of the exact source version and input; completed steps are owned copies with no attempts. Possible effects require explicit acknowledgement. Unknown outcomes are refused. Exact retries use the retained 24-hour command key and current authority.',
+        parameters: [
+          workspaceParameter,
+          runParameter,
+          csrfParameter,
+          idempotencyParameter,
+        ],
+        requestBody: jsonRequest('WorkflowRecoveryRequest'),
+        responses: {
+          '202': jsonResponse(
+            'Recovery run accepted',
+            'WorkflowRunStartResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '409': {
+            description: 'Recovery unavailable or command conflict',
+            content: {
+              'application/problem+json': {
+                schema: {
+                  oneOf: [
+                    {
+                      $ref: '#/components/schemas/WorkflowRecoveryUnavailableProblem',
+                    },
+                    { $ref: '#/components/schemas/ApiProblem' },
+                  ],
+                },
+              },
+            },
+          },
+          '429': problemResponse('Rate or queued-run limit reached'),
           '500': responseReference('Unexpected'),
         },
       },

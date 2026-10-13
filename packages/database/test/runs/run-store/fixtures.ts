@@ -23,7 +23,7 @@ import {
   NodeAttemptStateCorruptError,
   parseDatabaseConfig,
   databaseSchema,
-  lockManualStartCommand,
+  lockRunAcceptanceCommand,
 } from '../../../src/testing.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import {
@@ -532,7 +532,7 @@ async function insertRun(input: {
   const workflowVersionId = input.workflowVersionId ?? versionA;
   await asRuntime(apiBaseUrl, workspaceId, async (client) => {
     if ((input.triggerType ?? 'manual') === 'manual') {
-      await lockManualStartCommand(
+      await lockRunAcceptanceCommand(
         {
           db: drizzle(client, { schema: databaseSchema }),
           workspaceId: parseWorkspaceId(workspaceId),

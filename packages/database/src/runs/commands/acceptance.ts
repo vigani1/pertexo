@@ -18,6 +18,7 @@ import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/po
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema as sha256Schema } from '../../platform/persisted-primitives.js';
 import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';
+import type { WorkflowRecoverySummary } from '../recovery.js';
 const traceparentSchema = z
   .string()
   .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
@@ -275,6 +276,8 @@ export async function readWorkflowRunAcceptanceReplay(
 }
 
 export type PreparedWorkflowRunAcceptance = Readonly<{
+  runId?: string;
+  recovery?: WorkflowRecoverySummary;
   failureNotificationPolicy: Awaited<
     ReturnType<typeof resolveWorkflowFailureNotificationPolicy>
   >;
@@ -326,11 +329,12 @@ export async function acceptWorkflowRun(
     storedRunInputJson === null ? 0 : Buffer.byteLength(storedRunInputJson),
   );
 
-  const { failureNotificationPolicy } =
+  const prepared =
     preparation ??
     (await prepareWorkflowRunAcceptance(transaction, parsed.workflowId));
+  const { failureNotificationPolicy } = prepared;
   const idempotencyRecordId = generatePersistedId();
-  const runId = generatePersistedId();
+  const runId = prepared.runId ?? generatePersistedId();
   const outboxEventId = generatePersistedId();
   const resultRef = {
     outboxEventId,
@@ -378,6 +382,16 @@ export async function acceptWorkflowRun(
         workspaceId: transaction.workspaceId,
         workflowId: parsed.workflowId,
         workflowVersionId: parsed.workflowVersionId,
+        ...(prepared.recovery === undefined
+          ? {}
+          : {
+              recoveryTargetNodeRunId: prepared.recovery.targetNodeRunId,
+              recoveryTargetNodeId: prepared.recovery.targetNodeId,
+              recoveryReusedCount: prepared.recovery.reusedCount,
+              recoveryEffectRisk: prepared.recovery.effectRisk,
+              recoveryEffectsAcknowledged:
+                prepared.recovery.effectsAcknowledged,
+            }),
         ...(parsed.replayCommandId === undefined
           ? {}
           : {

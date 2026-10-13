@@ -549,3 +549,41 @@ describe('a Wait step', () => {
     });
   });
 });
+
+describe('reused prefix history', () => {
+  it('does not turn owned copies into attempts or duration segments, with or without retained events', () => {
+    const summary = node('copied', 'succeeded', {
+      currentAttemptNumber: 0,
+      startedAt: null,
+      completedAt: null,
+      reused: {
+        sourceRunId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        sourceNodeRunId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        sourceCompletedAt: at(-60),
+      },
+    });
+    const reused: WorkflowRunEvent = {
+      sequence: 2,
+      type: 'node.reused',
+      createdAt: at(0),
+      payload: {
+        nodeId: summary.nodeId,
+        invocationKey: summary.invocationKey,
+        nodeRunId: summary.id,
+        outputRef: { kind: 'reused', nodeRunId: summary.id },
+        ...summary.reused,
+      },
+    };
+    for (const events of [[], [reused]])
+      expect(replayStep(events, summary, start + 1000)).toMatchObject({
+        segments: [],
+        story: [],
+        attempts: 0,
+        status: 'succeeded',
+      });
+    expect(describeRunEvent(reused, start, () => 'Copied')).toMatchObject({
+      sentence: 'reused · not executed again',
+      tone: 'success',
+    });
+  });
+});

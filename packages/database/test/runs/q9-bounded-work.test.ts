@@ -215,6 +215,13 @@ describe('Q9 bounded-work probes', () => {
           return {
             invocation_key: invocationKey,
             node_id: nodeId,
+            node_run_id: randomUUID(),
+            current_attempt_id: randomUUID(),
+            current_attempt_number: 1,
+            reused_source_run_id: null,
+            reused_source_node_run_id: null,
+            reused_source_completed_at: null,
+            attempt_status: 'succeeded',
             node_output_ref: stored,
             attempt_output_ref: stored,
           };

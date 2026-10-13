@@ -25,7 +25,8 @@ use one pure engine planner over typed stored facts. Preview is not a
 reservation: acceptance locks source/version and necessary node/attempt rows
 against retention, rechecks the facts and atomically creates values, run,
 checkpoint, lineage, audit, events and outbox. SQL stores and locks; it does not
-implement a second eligibility policy. Exact command retries return known
+implement a second eligibility policy. Within the existing retained 24-hour
+idempotency window, exact command retries return known
 acceptance before checking expired source data, under current authorization.
 
 A definite failed operation may have partially taken effect. Manual recovery of

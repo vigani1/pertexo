@@ -284,6 +284,14 @@ export function parseOutputReference(
     );
     return { kind: value.kind, callId: value.callId };
   }
+  if (value.kind === 'reused') {
+    assertExactKeys(value, ['kind', 'nodeRunId']);
+    assertCheckpoint(
+      typeof value.nodeRunId === 'string' && UUID_PATTERN.test(value.nodeRunId),
+      `${label} nodeRunId must be a canonical UUID`,
+    );
+    return { kind: value.kind, nodeRunId: value.nodeRunId };
+  }
   if (value.kind === 'artifact') {
     assertExactKeys(value, ['kind', 'artifactId']);
     assertCheckpoint(
@@ -338,6 +346,14 @@ function parseInvocation(value: unknown): InvocationState {
     value.output === undefined
       ? undefined
       : parseOutputReference(value.output, 'invocation output');
+  assertCheckpoint(
+    output?.kind !== 'reused' ||
+      (value.status === 'succeeded' &&
+        value.attemptNumber === 0 &&
+        value.waitKind === undefined &&
+        resumeAt === undefined),
+    'reused output must belong to a completed invocation without attempts',
+  );
   return {
     invocationKey: value.invocationKey,
     nodeId: value.nodeId,

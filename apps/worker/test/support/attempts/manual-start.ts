@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 import {
   acceptWorkflowRun,
   databaseSchema,
-  lockManualStartCommand,
+  lockRunAcceptanceCommand,
   parseWorkspaceId,
   type AcceptWorkflowRunInput,
   type WorkspaceTransaction,
@@ -21,7 +21,7 @@ export async function acceptManualFixtureRun(
     throw new Error(
       'Manual fixture command identity must match the canonical scope',
     );
-  await lockManualStartCommand(transaction, {
+  await lockRunAcceptanceCommand(transaction, {
     scope,
     idempotencyKeyHash: input.keyHash,
   });
@@ -35,7 +35,7 @@ export async function lockManualFixtureClient(
   workflowId: string,
   keyHash: string,
 ): Promise<void> {
-  await lockManualStartCommand(
+  await lockRunAcceptanceCommand(
     {
       db: drizzle(client, { schema: databaseSchema }),
       workspaceId: parseWorkspaceId(workspaceId),

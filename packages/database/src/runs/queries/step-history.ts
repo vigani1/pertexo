@@ -199,6 +199,7 @@ export async function readWorkflowStepHealth(
         join app.node_runs node
           on node.workspace_id = ${transaction.workspaceId}
          and node.workflow_run_id = recent.id
+        where node.reused_source_run_id is null
         group by node.node_id
         order by node.node_id
       `);
@@ -263,6 +264,7 @@ export async function readWorkflowStepRuns(
           on node.workspace_id = ${transaction.workspaceId}
          and node.workflow_run_id = recent.id
          and node.node_id = ${parsed.nodeId}
+        where node.reused_source_run_id is null
         order by recent.created_at desc, recent.id desc,
                  node.created_at desc, node.id desc
         limit ${parsed.limit}

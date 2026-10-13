@@ -1,3 +1,4 @@
+import { RunRecoveryController } from '../../src/workflow-runs/recovery/controller.js';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -13,6 +14,8 @@ import {
 const dependencies = {
   persistence: {
     start: () => Promise.reject(new Error('not exercised')),
+    recovery: () => Promise.reject(new Error('not exercised')),
+    recover: () => Promise.reject(new Error('not exercised')),
     replay: () => Promise.reject(new Error('not exercised')),
     get: () => Promise.resolve(undefined),
     list: () => Promise.resolve({ items: [] }),
@@ -52,6 +55,7 @@ describe('workflow runs Nest module', () => {
     );
     expect(dynamic.controllers).toEqual([
       WorkflowRunsController,
+      RunRecoveryController,
       WorkflowRunDataController,
       UsageCapacityController,
     ]);

@@ -64,6 +64,7 @@ export const API_PROBLEM_CODES = [
   'workflow.activation_failed',
   'run.not_cancelable',
   'run.outcome_unknown',
+  'run.recovery_unavailable',
   'connection.not_configured',
   'webhook.not_configured',
   'connection.conflict',
@@ -371,6 +372,12 @@ const apiProblemDetails = {
     status: 409,
     title: 'Run outcome is unknown',
     severity: 'warn',
+    exposeDetail: true,
+  },
+  'run.recovery_unavailable': {
+    status: 409,
+    title: 'Recovery unavailable',
+    severity: 'info',
     exposeDetail: true,
   },
   'connection.not_configured': {
