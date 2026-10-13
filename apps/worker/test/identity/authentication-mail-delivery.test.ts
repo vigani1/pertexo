@@ -1,7 +1,7 @@
 import type { AuthenticationMailDeliveryStore } from '@pertexo/database/tenant-access';
 import {
   createApplicationSecretEnvelope,
-  createResendClient,
+  createSystemMailClient,
 } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +12,7 @@ const claim = {
   purpose: 'password_reset' as const,
   expiresAt: new Date('2026-09-23T01:00:00.000Z'),
   attemptCount: 2,
+  recoveredUnknown: false,
   leaseGeneration: 3,
   leaseToken: '22222222-2222-4222-8222-222222222222',
   sealedPayload: {
@@ -48,8 +49,8 @@ function dependencies(result: unknown) {
           }),
         ),
       },
-      email: { sendNotification },
-      apiKey: 'provider-key',
+      email: { sendNotification, deduplicates: true },
+
       timeoutMillis: 5_000,
       workerId: 'auth-mail:test',
       now: () => new Date('2026-09-23T00:00:00.000Z'),
@@ -60,7 +61,7 @@ function dependencies(result: unknown) {
 
 describe('authentication mail delivery', () => {
   it('submits the immutable encrypted command with a stable provider key', async () => {
-    const fixture = dependencies({ kind: 'succeeded', emailId: 'email-1' });
+    const fixture = dependencies({ kind: 'submitted', reference: 'email-1' });
     await expect(fixture.handler.runOnce()).resolves.toBe(1);
     expect(fixture.deliveryStore.claim).toHaveBeenCalledWith({
       workerId: 'auth-mail:test',
@@ -86,11 +87,7 @@ describe('authentication mail delivery', () => {
   });
 
   it('treats structured 5xx as outcome unknown and retries the exact claim', async () => {
-    const fixture = dependencies({
-      kind: 'rejected',
-      status: 503,
-      error: 'provider_unavailable',
-    });
+    const fixture = dependencies({ kind: 'retryable' });
     await fixture.handler.runOnce();
     expect(fixture.deliveryStore.settle).toHaveBeenCalledWith({
       id: claim.id,
@@ -103,11 +100,7 @@ describe('authentication mail delivery', () => {
   });
 
   it('settles terminal provider rejection without retrying', async () => {
-    const fixture = dependencies({
-      kind: 'rejected',
-      status: 400,
-      error: 'invalid_recipient',
-    });
+    const fixture = dependencies({ kind: 'failed' });
     await fixture.handler.runOnce();
     expect(fixture.deliveryStore.settle).toHaveBeenCalledWith({
       id: claim.id,
@@ -119,11 +112,7 @@ describe('authentication mail delivery', () => {
   });
 
   it('retains the exact command after provider rate limiting', async () => {
-    const fixture = dependencies({
-      kind: 'rejected',
-      status: 429,
-      error: 'rate_limited',
-    });
+    const fixture = dependencies({ kind: 'retryable' });
     await fixture.handler.runOnce();
     expect(fixture.deliveryStore.settle).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -135,7 +124,7 @@ describe('authentication mail delivery', () => {
   });
 
   it('does not dispatch a link that expired after it was claimed', async () => {
-    const fixture = dependencies({ kind: 'succeeded', emailId: 'email-1' });
+    const fixture = dependencies({ kind: 'submitted', reference: 'email-1' });
     const expired = {
       ...claim,
       expiresAt: new Date('2026-09-22T23:59:59.000Z'),
@@ -154,29 +143,32 @@ describe('authentication mail delivery', () => {
 
   it('reuses exact provider request bytes and idempotency key after an uncertain result', async () => {
     const requests: { key: string; body: string }[] = [];
-    const provider = createResendClient({
-      execute: async (request) => {
-        requests.push({
-          key: request.headers?.['idempotency-key'] ?? '',
-          body: new TextDecoder().decode(request.body),
-        });
-        await request.beforeDispatch();
-        return {
-          status: requests.length === 1 ? 503 : 200,
-          headers: {},
-          body: new TextEncoder().encode(
-            JSON.stringify(
-              requests.length === 1
-                ? { name: 'internal_server_error' }
-                : { id: '55555555-5555-4555-8555-555555555555' },
+    const provider = createSystemMailClient(
+      { mode: 'resend', apiKey: 'provider-key' },
+      {
+        execute: async (request) => {
+          requests.push({
+            key: request.headers?.['idempotency-key'] ?? '',
+            body: new TextDecoder().decode(request.body),
+          });
+          await request.beforeDispatch();
+          return {
+            status: requests.length === 1 ? 503 : 200,
+            headers: {},
+            body: new TextEncoder().encode(
+              JSON.stringify(
+                requests.length === 1
+                  ? { name: 'internal_server_error' }
+                  : { id: '55555555-5555-4555-8555-555555555555' },
+              ),
             ),
-          ),
-          bodyEncoding: 'utf8' as const,
-          finalUrl: request.url,
-          redirectCount: 0,
-        };
+            bodyEncoding: 'utf8' as const,
+            finalUrl: request.url,
+            redirectCount: 0,
+          };
+        },
       },
-    });
+    );
     const deliveryStore = store();
     const envelope = createApplicationSecretEnvelope({
       current: {
@@ -210,11 +202,9 @@ describe('authentication mail delivery', () => {
     };
     await createAuthenticationMailDeliveryHandler({
       ...common,
-      apiKey: 'provider-key-v1',
     }).runOnce();
     await createAuthenticationMailDeliveryHandler({
       ...common,
-      apiKey: 'provider-key-v2',
     }).runOnce();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
@@ -225,6 +215,65 @@ describe('authentication mail delivery', () => {
     expect(deliveryStore.settle).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ outcome: 'submitted' }),
+    );
+  });
+});
+
+describe('non-idempotent SMTP recovery', () => {
+  it('never repeats a recovered unknown command', async () => {
+    const fixture = dependencies({
+      kind: 'submitted',
+      reference: 'unexpected',
+    });
+    vi.mocked(fixture.deliveryStore.claim).mockResolvedValue([
+      { ...claim, recoveredUnknown: true },
+    ]);
+    const handler = createAuthenticationMailDeliveryHandler({
+      store: fixture.deliveryStore,
+      envelope: { open: vi.fn() },
+      email: {
+        deduplicates: false,
+        sendNotification: fixture.sendNotification,
+      },
+      timeoutMillis: 5000,
+      workerId: 'smtp:test',
+    });
+    await handler.runOnce();
+    expect(fixture.sendNotification).not.toHaveBeenCalled();
+    expect(fixture.deliveryStore.settle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: 'reconciliation_required',
+        failureCode: 'delivery.recovered_unknown',
+      }),
+    );
+  });
+  it('settles an unknown SMTP result without scheduling a retry', async () => {
+    const fixture = dependencies({ kind: 'unknown' });
+    const handler = createAuthenticationMailDeliveryHandler({
+      store: fixture.deliveryStore,
+      envelope: {
+        open: () =>
+          JSON.stringify({
+            fromEmail: 'a@example.test',
+            toEmail: 'b@example.test',
+            subject: 'Test',
+            text: 'Test',
+          }),
+      },
+      email: {
+        deduplicates: false,
+        sendNotification: fixture.sendNotification,
+      },
+      timeoutMillis: 5000,
+      workerId: 'smtp:test',
+      now: () => new Date('2026-09-23T00:00:00Z'),
+    });
+    await handler.runOnce();
+    expect(fixture.deliveryStore.settle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: 'reconciliation_required',
+        failureCode: 'delivery.outcome_unknown',
+      }),
     );
   });
 });

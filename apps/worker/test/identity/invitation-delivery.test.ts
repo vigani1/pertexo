@@ -1,7 +1,7 @@
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
 import {
-  createResendClient,
-  type ResendClient,
+  createSystemMailClient,
+  type SystemMailClient,
 } from '@pertexo/integrations/server';
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
@@ -28,7 +28,9 @@ const delivery = {
   transport: { attemptsMade: 0, jobId: `outbox-${OUTBOX_ID}` },
 } as const;
 
-function setup(result: Awaited<ReturnType<ResendClient['sendNotification']>>) {
+function setup(
+  result: Awaited<ReturnType<SystemMailClient['sendNotification']>>,
+) {
   const store: WorkspaceInvitationDeliveryStore = {
     claim: vi.fn().mockResolvedValue({
       kind: 'ready',
@@ -43,11 +45,12 @@ function setup(result: Awaited<ReturnType<ResendClient['sendNotification']>>) {
         keyVersion: 'invite-v1',
       },
     }),
+    retry: vi.fn().mockResolvedValue(true),
     markDispatching: vi.fn().mockResolvedValue(true),
     complete: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   };
-  const sendNotification = vi.fn<ResendClient['sendNotification']>(
+  const sendNotification = vi.fn<SystemMailClient['sendNotification']>(
     async (input) => {
       await input.beforeDispatch();
       return result;
@@ -56,8 +59,8 @@ function setup(result: Awaited<ReturnType<ResendClient['sendNotification']>>) {
   const handler = createWorkspaceInvitationDeliveryHandler({
     store,
     envelope: { open: vi.fn().mockReturnValue('wi1.secret-token') },
-    email: { sendNotification },
-    apiKey: 're_system',
+    email: { sendNotification, deduplicates: true },
+
     fromEmail: 'invites@example.test',
     webOrigin: 'https://app.example.test',
     timeoutMillis: 5_000,
@@ -68,15 +71,14 @@ function setup(result: Awaited<ReturnType<ResendClient['sendNotification']>>) {
 describe('workspace invitation delivery', () => {
   it('sends the fixed application-owned template and clears a submitted secret', async () => {
     const test = setup({
-      kind: 'succeeded',
-      emailId: '55555555-5555-4555-8555-555555555555',
+      kind: 'submitted',
+      reference: '55555555-5555-4555-8555-555555555555',
     });
 
     await test.handler.handle(delivery, context);
 
     expect(test.sendNotification).toHaveBeenCalledWith(
       expect.objectContaining({
-        apiKey: 're_system',
         fromEmail: 'invites@example.test',
         toEmail: 'recipient@example.test',
         idempotencyKey: `workspace-invitation:${ATTEMPT_ID}`,
@@ -95,10 +97,10 @@ describe('workspace invitation delivery', () => {
   });
 
   it('retains the exact attempt for retryable and uncertain provider outcomes', async () => {
-    const test = setup({ kind: 'http_failure', status: 503 });
+    const test = setup({ kind: 'retryable' });
 
     await expect(test.handler.handle(delivery, context)).rejects.toThrow(
-      'requires reconciliation',
+      'requires retry',
     );
 
     expect(test.store.markDispatching).toHaveBeenCalledOnce();
@@ -106,11 +108,7 @@ describe('workspace invitation delivery', () => {
   });
 
   it('records a definite rejection and clears its sealed delivery material', async () => {
-    const test = setup({
-      kind: 'rejected',
-      error: 'validation_error',
-      status: 422,
-    });
+    const test = setup({ kind: 'failed' });
 
     await test.handler.handle(delivery, context);
 
@@ -123,34 +121,37 @@ describe('workspace invitation delivery', () => {
   });
 
   it('retains the attempt when the real client parses a provider 5xx body', async () => {
-    const test = setup({ kind: 'invalid_response' });
-    const realClient = createResendClient({
-      execute: async (request) => {
-        await request.beforeDispatch();
-        return {
-          status: 500,
-          headers: {},
-          body: new TextEncoder().encode(
-            JSON.stringify({ name: 'internal_server_error' }),
-          ),
-          bodyEncoding: 'utf8' as const,
-          finalUrl: request.url,
-          redirectCount: 0,
-        };
+    const test = setup({ kind: 'retryable' });
+    const realClient = createSystemMailClient(
+      { mode: 'resend', apiKey: 'provider-key' },
+      {
+        execute: async (request) => {
+          await request.beforeDispatch();
+          return {
+            status: 500,
+            headers: {},
+            body: new TextEncoder().encode(
+              JSON.stringify({ name: 'internal_server_error' }),
+            ),
+            bodyEncoding: 'utf8' as const,
+            finalUrl: request.url,
+            redirectCount: 0,
+          };
+        },
       },
-    });
+    );
     const handler = createWorkspaceInvitationDeliveryHandler({
       store: test.store,
       envelope: { open: vi.fn().mockReturnValue('wi1.secret-token') },
       email: realClient,
-      apiKey: 're_system',
+
       fromEmail: 'invites@example.test',
       webOrigin: 'https://app.example.test',
       timeoutMillis: 5_000,
     });
 
     await expect(handler.handle(delivery, context)).rejects.toThrow(
-      'requires reconciliation',
+      'requires retry',
     );
     expect(test.store.markDispatching).toHaveBeenCalledOnce();
     expect(test.store.complete).not.toHaveBeenCalled();
@@ -178,30 +179,33 @@ describe('workspace invitation delivery', () => {
   ])(
     'classifies real client $label responses at the worker seam',
     async (testCase) => {
-      const test = setup({ kind: 'invalid_response' });
+      const test = setup({ kind: 'retryable' });
       const requests: { key: string; body: string }[] = [];
-      const realClient = createResendClient({
-        execute: async (request) => {
-          requests.push({
-            key: request.headers?.['idempotency-key'] ?? '',
-            body: new TextDecoder().decode(request.body),
-          });
-          await request.beforeDispatch();
-          return {
-            status: testCase.status,
-            headers: {},
-            body: new TextEncoder().encode(JSON.stringify(testCase.body)),
-            bodyEncoding: 'utf8' as const,
-            finalUrl: request.url,
-            redirectCount: 0,
-          };
+      const realClient = createSystemMailClient(
+        { mode: 'resend', apiKey: 'provider-key' },
+        {
+          execute: async (request) => {
+            requests.push({
+              key: request.headers?.['idempotency-key'] ?? '',
+              body: new TextDecoder().decode(request.body),
+            });
+            await request.beforeDispatch();
+            return {
+              status: testCase.status,
+              headers: {},
+              body: new TextEncoder().encode(JSON.stringify(testCase.body)),
+              bodyEncoding: 'utf8' as const,
+              finalUrl: request.url,
+              redirectCount: 0,
+            };
+          },
         },
-      });
+      );
       const handler = createWorkspaceInvitationDeliveryHandler({
         store: test.store,
         envelope: { open: vi.fn().mockReturnValue('wi1.secret-token') },
         email: realClient,
-        apiKey: 're_system',
+
         fromEmail: 'invites@example.test',
         webOrigin: 'https://app.example.test',
         timeoutMillis: 5_000,
@@ -209,7 +213,7 @@ describe('workspace invitation delivery', () => {
 
       if (testCase.outcome === 'retry')
         await expect(handler.handle(delivery, context)).rejects.toThrow(
-          'requires reconciliation',
+          'requires retry',
         );
       else await handler.handle(delivery, context);
       expect(requests).toHaveLength(1);
@@ -223,7 +227,7 @@ describe('workspace invitation delivery', () => {
   );
 
   it('renders identical provider commands when an uncertain attempt is redelivered', async () => {
-    const test = setup({ kind: 'http_failure', status: 503 });
+    const test = setup({ kind: 'retryable' });
     await expect(test.handler.handle(delivery, context)).rejects.toThrow();
     await expect(test.handler.handle(delivery, context)).rejects.toThrow();
     const [first, second] = test.sendNotification.mock.calls.map(([input]) => ({
@@ -232,5 +236,66 @@ describe('workspace invitation delivery', () => {
       subject: input.subject,
     }));
     expect(second).toEqual(first);
+  });
+});
+
+describe('SMTP invitation recovery', () => {
+  function smtp(
+    result: Awaited<ReturnType<SystemMailClient['sendNotification']>>,
+  ) {
+    const fixture = setup(result);
+    const handler = createWorkspaceInvitationDeliveryHandler({
+      store: fixture.store,
+      envelope: { open: () => 'wi1.token' },
+      email: {
+        deduplicates: false,
+        sendNotification: fixture.sendNotification,
+      },
+      fromEmail: 'invites@example.test',
+      webOrigin: 'https://app.example.test',
+      timeoutMillis: 5000,
+    });
+    return { ...fixture, handler };
+  }
+  it('acknowledges an unknown result without completing or retrying the attempt', async () => {
+    const fixture = smtp({ kind: 'unknown' });
+    await fixture.handler.handle(delivery, context);
+    expect(fixture.store.retry).not.toHaveBeenCalled();
+    expect(fixture.store.complete).not.toHaveBeenCalled();
+  });
+  it('does not repeat an attempt recovered after a crash', async () => {
+    const fixture = smtp({ kind: 'submitted', reference: 'unexpected' });
+    vi.mocked(fixture.store.claim).mockResolvedValue({
+      kind: 'ready',
+      recoveredUnknown: true,
+      email: 'a@example.test',
+      workspaceName: 'Acme',
+      role: 'builder',
+      expiresAt: new Date(),
+      sealedToken: {
+        ciphertext: 'ciphertext',
+        nonce: 'nonce',
+        tag: 'tag',
+        keyVersion: 'v1',
+      },
+    });
+    await fixture.handler.handle(delivery, context);
+    expect(fixture.sendNotification).not.toHaveBeenCalled();
+    expect(fixture.store.retry).not.toHaveBeenCalled();
+  });
+  it('requeues the same command after known nonacceptance', async () => {
+    const fixture = smtp({ kind: 'retryable' });
+    await expect(fixture.handler.handle(delivery, context)).rejects.toThrow(
+      'requires retry',
+    );
+    expect(fixture.store.retry).toHaveBeenCalledWith(
+      expect.objectContaining({ deliveryAttemptId: ATTEMPT_ID }),
+    );
+  });
+  it('does not retry an invitation superseded while the relay rejected it', async () => {
+    const fixture = smtp({ kind: 'retryable' });
+    vi.mocked(fixture.store.retry).mockResolvedValue(false);
+    await fixture.handler.handle(delivery, context);
+    expect(fixture.store.complete).not.toHaveBeenCalled();
   });
 });

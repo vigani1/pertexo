@@ -24,6 +24,7 @@ export type WorkspaceInvitationDeliveryClaim =
   | Readonly<{ kind: 'terminal' }>
   | Readonly<{
       kind: 'ready';
+      recoveredUnknown: boolean;
       email: string;
       workspaceName: string;
       role: string;
@@ -42,6 +43,14 @@ export interface WorkspaceInvitationDeliveryStore {
     }>,
   ): Promise<WorkspaceInvitationDeliveryClaim>;
   markDispatching(
+    input: Readonly<{
+      workspaceId: string;
+      invitationId: string;
+      deliveryAttemptId: string;
+      signal?: AbortSignal;
+    }>,
+  ): Promise<boolean>;
+  retry(
     input: Readonly<{
       workspaceId: string;
       invitationId: string;
@@ -209,6 +218,7 @@ export function createWorkspaceInvitationDeliveryStore(
           throw new Error('Workspace invitation delivery state is invalid');
         return Object.freeze({
           kind: 'ready' as const,
+          recoveredUnknown: row.attempt_status === 'unknown',
           email: z.email().max(320).parse(row.recipient_email),
           workspaceName: z.string().min(1).max(256).parse(row.workspace_name),
           role: z
@@ -242,6 +252,34 @@ export function createWorkspaceInvitationDeliveryStore(
               set status='unknown',updated_at=clock_timestamp()
             where workspace_id=$1 and invitation_id=$2 and id=$3
               and status in ('queued','unknown')`,
+          [workspaceId, invitationId, deliveryAttemptId],
+        );
+        return result.rowCount === 1;
+      });
+    },
+    retry: async (
+      raw: Parameters<WorkspaceInvitationDeliveryStore['retry']>[0],
+    ) => {
+      const workspaceId = id.parse(raw.workspaceId);
+      const invitationId = id.parse(raw.invitationId);
+      const deliveryAttemptId = id.parse(raw.deliveryAttemptId);
+      return transaction(workspaceId, raw.signal, async (client) => {
+        await lockDeliveryScope(
+          client,
+          workspaceId,
+          invitationId,
+          deliveryAttemptId,
+        );
+        const result = await client.query(
+          `update app.workspace_invitation_delivery_attempts attempt
+           set status='queued', updated_at=clock_timestamp()
+           from app.workspace_invitations invitation, app.workspaces workspace
+           where attempt.workspace_id=$1 and attempt.invitation_id=$2 and attempt.id=$3
+             and attempt.status in ('queued','unknown') and attempt.token_ciphertext is not null
+             and invitation.workspace_id=attempt.workspace_id and invitation.id=attempt.invitation_id
+             and invitation.status='pending' and invitation.expires_at>clock_timestamp()
+             and invitation.revision=attempt.invitation_revision
+             and workspace.id=attempt.workspace_id and workspace.status='active'`,
           [workspaceId, invitationId, deliveryAttemptId],
         );
         return result.rowCount === 1;

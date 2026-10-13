@@ -44,7 +44,7 @@ describe('parseInvitationDeliveryConfig', () => {
     );
 
     expect(config).toEqual({
-      apiKey: 're_test',
+      delivery: { mode: 'resend', apiKey: 're_test' },
       fromEmail: 'invites@example.test',
       webOrigin: 'https://app.example.test',
       timeoutMillis: 5_000,

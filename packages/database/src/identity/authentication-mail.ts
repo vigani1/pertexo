@@ -38,6 +38,7 @@ export type AuthenticationMailDeliveryClaim = Readonly<{
   purpose: AuthenticationMailPurpose;
   expiresAt: Date;
   attemptCount: number;
+  recoveredUnknown: boolean;
   leaseGeneration: number;
   leaseToken: string;
   sealedPayload: SealedAuthenticationMailPayload;
@@ -111,6 +112,7 @@ export function createAuthenticationMailDeliveryStore(
       const leaseToken = randomUUID();
       const result = await lease.pool.query<{
         id: string;
+        recovered_unknown: boolean;
         purpose: string;
         expires_at: Date;
         attempt_count: number;
@@ -124,7 +126,7 @@ export function createAuthenticationMailDeliveryStore(
         // A delivery is tried at most 12 times within 24 hours and before
         // its link expires; a claim holds it for 60 seconds.
         `with candidates as (
-           select id from app.authentication_mail_deliveries
+           select id, status from app.authentication_mail_deliveries
            where status in ('queued', 'outcome_unknown', 'retry')
              and expires_at > clock_timestamp()
              and created_at + interval '24 hours' > clock_timestamp()
@@ -146,7 +148,7 @@ export function createAuthenticationMailDeliveryStore(
            delivery.attempt_count, delivery.lease_generation,
            delivery.payload_ciphertext, delivery.payload_nonce,
            delivery.payload_tag, delivery.payload_key_version,
-           delivery.next_attempt_at`,
+           delivery.next_attempt_at, candidates.status = 'outcome_unknown' recovered_unknown`,
         [
           z
             .string()
@@ -179,6 +181,7 @@ export function createAuthenticationMailDeliveryStore(
               .positive()
               .parse(row.lease_generation),
             leaseToken,
+            recoveredUnknown: row.recovered_unknown,
             sealedPayload: sealedPayload.parse({
               ciphertext: row.payload_ciphertext,
               nonce: row.payload_nonce,

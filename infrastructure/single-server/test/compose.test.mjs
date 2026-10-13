@@ -21,8 +21,10 @@ test('both public hosts keep browsers on HTTPS', () => {
   assert.match(caddyfile, /Strict-Transport-Security "max-age=31536000"/u);
 });
 
-for (const mode of ['kms', 'self-managed'])
-  test('resolved Compose isolates credentials and supports ' + mode, (t) => {
+for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
+  ['resend', 'smtp'].map((transport) => ({ mode, transport })),
+))
+  test(`resolved Compose isolates credentials for ${mode} and ${transport}`, (t) => {
     const directory = mkdtempSync(join(tmpdir(), 'pertexo-compose-'));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
     const generated = parseEnv(
@@ -47,9 +49,19 @@ for (const mode of ['kms', 'self-managed'])
       PUBLIC_WEB_ORIGIN: 'https://app.example.test',
       ARTIFACT_STORE_ENDPOINT: 'https://files.example.test',
       AUTH_MAIL_FROM: 'security@example.test',
-      AUTH_MAIL_EMAIL_API_KEY: 'fixture-mail',
+      SYSTEM_MAIL_TRANSPORT: transport,
+      ...(transport === 'smtp'
+        ? {
+            SYSTEM_MAIL_SMTP_HOST: 'smtp.example.test',
+            SYSTEM_MAIL_SMTP_TLS: 'starttls',
+            SYSTEM_MAIL_SMTP_USER: 'fixture-smtp-user',
+            SYSTEM_MAIL_SMTP_PASSWORD: 'fixture-smtp-password',
+          }
+        : {
+            AUTH_MAIL_EMAIL_API_KEY: 'fixture-mail',
+            INVITATION_EMAIL_API_KEY: 'fixture-mail',
+          }),
       INVITATION_EMAIL_FROM: 'invites@example.test',
-      INVITATION_EMAIL_API_KEY: 'fixture-mail',
       ...(mode === 'kms'
         ? {
             CONNECTION_KMS_KEY_REFERENCE: 'alias/fixture',
@@ -94,6 +106,32 @@ for (const mode of ['kms', 'self-managed'])
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
     });
+    assert.equal(worker.authenticationMailDelivery.delivery.mode, transport);
+    assert.equal(worker.invitationDelivery.delivery.mode, transport);
+    for (const name of ['api', 'ops', 'migration']) {
+      assert.equal(
+        config.services[name].environment.SYSTEM_MAIL_SMTP_PASSWORD,
+        undefined,
+      );
+      assert.equal(
+        config.services[name].environment.AUTH_MAIL_EMAIL_API_KEY,
+        undefined,
+      );
+    }
+    if (transport === 'smtp') {
+      assert.equal(
+        config.services.worker.environment.AUTH_MAIL_EMAIL_API_KEY,
+        undefined,
+      );
+      assert.equal(
+        config.services.worker.environment.INVITATION_EMAIL_API_KEY,
+        undefined,
+      );
+      assert.equal(
+        worker.authenticationMailDelivery.delivery.auth.pass,
+        'fixture-smtp-password',
+      );
+    }
     if (mode === 'self-managed')
       assert.deepEqual(api.connections, worker.connectionEncryption);
     else {

@@ -126,3 +126,12 @@ export {
   verifyStoredEncryptionKeys,
   StoredKeyVerificationError,
 } from './credentials/verify-stored-keys.js';
+
+export { createSystemMailClient } from './system-mail/client.js';
+export { parseSystemMailConfig } from './system-mail/config.js';
+export type {
+  SystemMailClient,
+  SystemMailConfig,
+  SystemMailMessage,
+  SystemMailResult,
+} from './system-mail/contracts.js';

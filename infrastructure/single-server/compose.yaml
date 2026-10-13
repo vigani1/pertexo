@@ -95,8 +95,6 @@ services:
     environment:
       <<: *environment
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
-      AUTH_MAIL_EMAIL_API_KEY: ${AUTH_MAIL_EMAIL_API_KEY:?}
-      INVITATION_EMAIL_API_KEY: ${INVITATION_EMAIL_API_KEY:?}
       INVITATION_EMAIL_FROM: ${INVITATION_EMAIL_FROM:?}
     depends_on:
       migration: { condition: service_completed_successfully }

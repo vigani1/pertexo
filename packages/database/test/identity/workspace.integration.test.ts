@@ -2914,6 +2914,28 @@ describe('identity/workspace persistence', () => {
         workspaceName: 'Original delivery name',
       });
       expect(retried).toMatchObject(first);
+      const identity = {
+        workspaceId: invitationWorkspace.id,
+        invitationId: created.invitation.id,
+        deliveryAttemptId,
+      };
+      expect(first).toMatchObject({ recoveredUnknown: false });
+      await deliveryStore.markDispatching(identity);
+      expect(
+        await deliveryStore.claim({ ...identity, outboxEventId }),
+      ).toMatchObject({ kind: 'ready', recoveredUnknown: true });
+      expect(await deliveryStore.retry(identity)).toBe(true);
+      expect(
+        await deliveryStore.claim({ ...identity, outboxEventId }),
+      ).toMatchObject({ kind: 'ready', recoveredUnknown: false });
+      await identityDatabase.revokeWorkspaceInvitation({
+        workspaceId: invitationWorkspace.id,
+        actorUserId: ownerUserId,
+        invitationId: created.invitation.id,
+        expectedRevision: 1,
+        idempotencyKey: randomUUID(),
+      });
+      expect(await deliveryStore.retry(identity)).toBe(false);
     } finally {
       await deliveryStore.close();
     }

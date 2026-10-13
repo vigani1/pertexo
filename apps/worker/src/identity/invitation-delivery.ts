@@ -2,20 +2,18 @@ import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-
 import { createWorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
 import {
   createApplicationSecretEnvelope,
-  createNodeSecureHttpClient,
-  createResendClient,
+  createSystemMailClient,
 } from '@pertexo/integrations/server';
 import type {
   ApplicationSecretEnvelope,
-  ResendApiResult,
-  ResendClient,
+  SystemMailResult,
+  SystemMailClient,
 } from '@pertexo/integrations/server';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 export const workspaceInvitationDeliveryFactories = Object.freeze({
   store: createWorkspaceInvitationDeliveryStore,
   envelope: createApplicationSecretEnvelope,
-  httpClient: createNodeSecureHttpClient,
-  email: createResendClient,
+  email: createSystemMailClient,
   create: createWorkspaceInvitationDeliveryHandler,
 });
 
@@ -32,8 +30,7 @@ export function createWorkspaceInvitationDeliveryHandler(
   dependencies: Readonly<{
     store: WorkspaceInvitationDeliveryStore;
     envelope: Pick<ApplicationSecretEnvelope, 'open'>;
-    email: Pick<ResendClient, 'sendNotification'>;
-    apiKey: string;
+    email: SystemMailClient;
     fromEmail: string;
     webOrigin: string;
     timeoutMillis: number;
@@ -57,6 +54,7 @@ export function createWorkspaceInvitationDeliveryHandler(
         signal: context.signal,
       });
       if (claim.kind === 'terminal' || context.signal.aborted) return;
+      if (claim.recoveredUnknown && !dependencies.email.deduplicates) return;
       const associatedData = `pertexo/workspace-invitation/${identity.workspaceId}/${identity.invitationId}/${identity.deliveryAttemptId}`;
       const token = dependencies.envelope.open(
         claim.sealedToken,
@@ -65,7 +63,6 @@ export function createWorkspaceInvitationDeliveryHandler(
       const invitationUrl = new URL('/invitations/accept', origin);
       invitationUrl.hash = `token=${encodeURIComponent(token)}`;
       const result = await dependencies.email.sendNotification({
-        apiKey: dependencies.apiKey,
         fromEmail: dependencies.fromEmail,
         toEmail: claim.email,
         subject: `Join ${claim.workspaceName} on Pertexo`,
@@ -89,6 +86,16 @@ export function createWorkspaceInvitationDeliveryHandler(
             );
         },
       });
+      if (!dependencies.email.deduplicates) {
+        if (result.kind === 'unknown') return;
+        if (result.kind === 'retryable') {
+          const queued = await dependencies.store.retry({
+            ...identity,
+            signal: context.signal,
+          });
+          if (!queued) return;
+        }
+      }
       await settleResult(dependencies.store, identity, result, context.signal);
     },
   });
@@ -120,23 +127,19 @@ async function settleResult(
     invitationId: string;
     deliveryAttemptId: string;
   }>,
-  result: ResendApiResult,
+  result: SystemMailResult,
   signal: AbortSignal,
 ): Promise<void> {
-  if (result.kind === 'succeeded') {
+  if (result.kind === 'submitted') {
     await store.complete({
       ...identity,
       status: 'submitted',
-      providerReference: result.emailId,
+      providerReference: result.reference,
       signal,
     });
     return;
   }
-  if (
-    result.kind === 'rejected' &&
-    result.status < 500 &&
-    result.error !== 'concurrent_idempotent_requests'
-  ) {
+  if (result.kind === 'failed') {
     await store.complete({
       ...identity,
       status: 'failed',
@@ -145,7 +148,7 @@ async function settleResult(
     });
     return;
   }
-  // Preserve the sealed attempt and throw so transport redelivery repeats the
-  // same provider-idempotent command instead of minting another link.
-  throw new Error('Workspace invitation delivery requires reconciliation');
+  // SMTP reaches this point only after definite nonacceptance; Resend can
+  // repeat its provider-idempotent command after an uncertain response.
+  throw new Error('Workspace invitation delivery requires retry');
 }

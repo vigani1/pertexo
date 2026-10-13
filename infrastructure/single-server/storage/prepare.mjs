@@ -10,7 +10,7 @@ const environment = {
   WORKER_INSTANCE_ID: 'deployment-validation',
 };
 const apiConfig = parseApiConfig(environment);
-parseWorkerConfig(environment);
+const workerConfig = parseWorkerConfig(environment);
 parseMigrationConfig(environment);
 if (
   environment.NODE_ENV !== 'production' ||
@@ -185,4 +185,22 @@ await output(
   optionalValues([...previous, ...providers, 'AUTH_MICROSOFT_TENANT_ID']) +
     encryptionLines,
 );
-await output('worker.env', optionalValues(previous) + encryptionLines);
+const mailMode =
+  workerConfig.authenticationMailDelivery.delivery?.mode ?? 'resend';
+if (environment.SYSTEM_MAIL_TRANSPORT === 'smtp' && mailMode !== 'smtp')
+  throw new Error('The selected release does not support SMTP system mail');
+const mailNames =
+  mailMode === 'smtp'
+    ? [
+        'SYSTEM_MAIL_SMTP_HOST',
+        'SYSTEM_MAIL_SMTP_PORT',
+        'SYSTEM_MAIL_SMTP_TLS',
+        'SYSTEM_MAIL_SMTP_USER',
+        'SYSTEM_MAIL_SMTP_PASSWORD',
+      ]
+    : ['AUTH_MAIL_EMAIL_API_KEY', 'INVITATION_EMAIL_API_KEY'];
+await output(
+  'worker.env',
+  optionalValues([...previous, 'SYSTEM_MAIL_TRANSPORT', ...mailNames]) +
+    encryptionLines,
+);
