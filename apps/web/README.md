@@ -36,6 +36,27 @@ Calls wait for the child’s validated result, and run detail links both
 directions while distinguishing expired child history. Archive confirmation
 lists published parents that pin the child before stopping fresh Calls.
 
+On a failed run, **Retry from this step** checks whether saved results can be
+reused. It starts a new run of the original version and input: completed steps
+and earlier Condition choices are copied; the failed step and its successors run
+again with current connections. Reused steps show their source and saved output,
+with no execution time or attempt. The copy remains available through the new
+run's normal retention window even when source details expire.
+
+A definite failure that reached a service requires an unchecked acknowledgement
+before **Retry anyway**. Unknown outcomes cannot use step recovery; check the
+service before a full replay, which starts from the beginning and can repeat
+effects. Initial recovery supports a root decision tree with Condition and leaf
+Stop run. It explains refusal for joins, loops, Wait, Calls, failure links,
+missing evidence, expired values, stored files and size limits. Changing the
+input requires the separate Replay action.
+
+If acceptance cannot be confirmed, **Retry same request** retains the exact
+request and key while this run page stays open. It checks the original request
+within its 24-hour receipt window. Leaving or reloading loses that in-memory
+intent, so check run history first. After the window, the same-request control
+stops rather than risk accepting another run.
+
 Read [Frontend architecture](ARCHITECTURE.md) for folder ownership, shared
 contracts, state, forms, saving conflicts, auth, SSE, Weft and verification.
 [The repository architecture map](../../docs/architecture.md) describes backend
@@ -75,10 +96,13 @@ Use the script rather than a direct Playwright invocation when those package
 artifacts have not been built.
 
 CI runs mocked browser journeys and the existing owned browser/application
-fixtures. Live fixtures are declared in `apps/api/test/owned/` and run by the
-API owned-fixture command with isolated PostgreSQL/Redis/service configuration.
-Use the fixture's ownership requirements; mocked journeys do not qualify live
-provider credentials or production deployment.
+fixtures. Editor live fixtures run through
+`apps/api/test/browser/editor.integration.test.ts`, with
+`EDITOR_BROWSER_INTEGRATION`, `EDITOR_BROWSER_CASE` and an explicit owned
+PostgreSQL/Redis manifest. The existing CI browser job runs recovery and the
+controlled HTTP journey alongside authoring cases. Use the fixture's ownership
+requirements; mocked journeys do not qualify live provider credentials or
+production deployment.
 
 Root build/typecheck/lint/test commands include this workspace. CI runs both its
 unit tests and the authenticated Chromium journeys. The production output is

@@ -1,5 +1,6 @@
 import type {
   WorkflowGraphContract,
+  WorkflowNodeReuse,
   WorkflowNodeRunSummary,
   WorkflowRunEvent,
   WorkflowRunSummary,
@@ -39,6 +40,7 @@ export type RunTimelineRow = Readonly<{
   tone: StatusTone;
   statusLabel: string;
   attempts: number;
+  reused?: WorkflowNodeReuse;
   /**
    * The node run's current attempt as the run snapshot has it, counting wait
    * resumes: data recorded per attempt is read again when it changes.
@@ -214,7 +216,11 @@ function rowFor(
     ...label,
     status,
     tone: look.tone,
-    statusLabel: look.label,
+    statusLabel:
+      invocation.summary?.reused === undefined ? look.label : 'Reused',
+    ...(invocation.summary?.reused === undefined
+      ? {}
+      : { reused: invocation.summary.reused }),
     attempts: replay.attempts,
     ...(invocation.summary === undefined
       ? {}

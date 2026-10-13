@@ -23,6 +23,7 @@ export function createEditorControlledHttpTarget(
   const bodies: string[] = [];
   const sockets = new Set<Socket>();
   let requests = 0;
+  let recoveryRejected = false;
   let stopped = false;
   let port: number | undefined;
   let startup: Promise<void> | undefined;
@@ -69,11 +70,24 @@ export function createEditorControlledHttpTarget(
           outgoing.writeHead(400).end();
           return;
         }
+        // Deliberate service outcomes for the owned recovery browser journey.
+        if (
+          'marker' in body &&
+          body.marker === 'recovery-once' &&
+          !recoveryRejected
+        ) {
+          recoveryRejected = true;
+          outgoing.writeHead(401).end();
+          return;
+        }
         bodies.push(text); // Test payload only; never retain request headers.
         onEffect();
         await beforeResponse();
         if (responseDisposed()) return;
-        outgoing.writeHead(200, { 'content-type': 'application/json' });
+        outgoing.writeHead(
+          'marker' in body && body.marker === 'recovery-unknown' ? 503 : 200,
+          { 'content-type': 'application/json' },
+        );
         outgoing.end(JSON.stringify({ accepted: true, body }));
       } catch {
         if (!outgoing.destroyed) outgoing.writeHead(400).end();

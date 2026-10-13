@@ -34,6 +34,13 @@ it('failed qualification retains only submitted IDs without a verified success o
     mapId: 'map',
     conditionId: 'condition',
     httpId: 'http',
+    stopId: 'stop',
+    recovery: {
+      failedRunId: randomUUID(),
+      recoveryRunId: randomUUID(),
+      unknownRunId: randomUUID(),
+      recoveryKey: randomUUID(),
+    },
     authorization: secret,
     requestBody: secret,
   };

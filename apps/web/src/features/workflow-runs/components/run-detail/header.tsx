@@ -1,3 +1,4 @@
+import { RunRecoveryAction } from '../recovery/action';
 import { RunDetailActions } from '../run-actions/detail-actions';
 import type {
   AccessibleWorkspace,
@@ -135,7 +136,7 @@ function RunFacts({
       )}
       {run.replaySourceRunId == null ? null : (
         <MetaFact>
-          replay of{' '}
+          {run.recovery === undefined ? 'replay of' : 'recovered from'}{' '}
           <Link
             to="/w/$workspaceId/runs/$runId"
             params={{ workspaceId, runId: run.replaySourceRunId }}
@@ -143,6 +144,12 @@ function RunFacts({
           >
             {shortRunId(run.replaySourceRunId)}
           </Link>
+        </MetaFact>
+      )}
+      {run.recovery === undefined ? null : (
+        <MetaFact>
+          {String(run.recovery.reusedCount)} earlier{' '}
+          {run.recovery.reusedCount === 1 ? 'step' : 'steps'} reused
         </MetaFact>
       )}
       <StatusGuide sections={RUN_PAGE_GUIDE} className="-my-1 -ml-2" />
@@ -248,6 +255,25 @@ export function RunHeader({
         compact={compact}
         workspaceId={workspace.id}
         workflowId={run.workflowId}
+        recoveryAction={
+          can('run:replay') &&
+          run.status === 'failed' &&
+          workspace.status === 'active' ? (
+            <RunRecoveryAction
+              key={`${userId}:${workspace.id}:${run.id}`}
+              apiClient={apiClient}
+              userId={userId}
+              workspaceId={workspace.id}
+              runId={run.id}
+              workflowVersionId={run.workflowVersionId}
+              compact={compact}
+              onRunAccepted={onRunAccepted}
+              onReplay={() => {
+                onReplayOpenChange(true);
+              }}
+            />
+          ) : undefined
+        }
         canReplay={can('run:replay')}
         canCancel={canCancel}
         canOpenWorkflow={can('workflow:read')}

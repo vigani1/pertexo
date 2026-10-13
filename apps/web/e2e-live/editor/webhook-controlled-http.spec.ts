@@ -18,6 +18,7 @@ import {
   waitForRun,
 } from '../support/authoring/single-step';
 import { authorWebhookHttpGraph } from '../support/authoring/webhook-http';
+import { recoverOwnedHttp } from '../support/authoring/recover-http';
 import {
   fillOwnedHttpCredential,
   invokeOwnedWebhook,
@@ -130,7 +131,12 @@ test('signed acceptance replay produces two immutable runs and one actual contro
     )
       manual.push(outgoing);
   });
-  const authored = await authorWebhookHttpGraph(page, workflowPath);
+  const authored = await authorWebhookHttpGraph(
+    page,
+    workflowPath,
+    readEditorDraft,
+    true,
+  );
   await page.reload();
   expect((await readEditorDraft(page, workflowPath)).graph).toEqual(
     authored.graph,
@@ -275,6 +281,12 @@ test('signed acceptance replay produces two immutable runs and one actual contro
     );
   }
   expect(manual).toHaveLength(0);
+  const recovery = await recoverOwnedHttp(
+    page,
+    workspaceId,
+    receipt.trueRunId,
+    authored.httpId,
+  );
   const evidence = await request.post(`${controlOrigin}/evidence/http`, {
     data: {
       ...scope,
@@ -290,6 +302,8 @@ test('signed acceptance replay produces two immutable runs and one actual contro
       mapId: authored.mapId,
       conditionId: authored.conditionId,
       httpId: authored.httpId,
+      stopId: authored.stopId,
+      recovery,
     },
   });
   expect(evidence.status()).toBe(204);

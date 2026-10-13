@@ -16,10 +16,24 @@ function originalInputText(data: WorkflowRunData | undefined) {
     : undefined;
 }
 
+/** Copy follows whether the original input is still available, not query timing. */
+function replayDescription(
+  data: WorkflowRunData | undefined,
+  text: string | undefined,
+  versionLabel: string | undefined,
+): string {
+  const version = versionLabel ?? 'the same version';
+  if (text !== undefined)
+    return `Pertexo starts a new run of ${version} with this run’s input. Change it first if you need to: steps that call other services run again.`;
+  if (data?.kind === 'expired')
+    return `Pertexo starts a new run of ${version}. This run’s input is no longer kept, so enter the input to use. Steps that call other services run again.`;
+  return `Pertexo starts a new run of ${version} with the input you enter here. Steps that call other services run again, so check it before you continue.`;
+}
+
 /**
  * Replay starts a new run of this run's exact version. It opens with the
  * input the run used while Pertexo still keeps it (ADR 050), and an uncertain
- * result can be retried with the same command so it never runs twice.
+ * result retains the same command within the acceptance receipt's 24-hour window.
  */
 export function ReplayRunDialog({
   apiClient,
@@ -48,17 +62,6 @@ export function ReplayRunDialog({
   const original = useQuery(
     workflowRunInputQueryOptions(apiClient, userId, workspaceId, sourceRunId),
   );
-  const originalText = originalInputText(original.data);
-  // Each time it opens, the field starts from the run's own input, and an
-  // input that loads after opening fills a field nobody has typed in yet.
-  const [seen, setSeen] = useState({ open, text: originalText });
-  if (open !== seen.open || originalText !== seen.text) {
-    const opening = open && !seen.open;
-    const arrived =
-      open && seen.open && seen.text === undefined && runInput.input === '{}';
-    setSeen({ open, text: originalText });
-    if (opening || arrived) runInput.reset(originalText);
-  }
   const replay = useRunReplay({
     apiClient,
     userId,
@@ -73,6 +76,18 @@ export function ReplayRunDialog({
       onRunAccepted(runId);
     },
   });
+  const originalText = originalInputText(original.data);
+  // Each time it opens, the field starts from the run's own input, and an
+  // input that loads after opening fills a field nobody has typed in yet.
+  const [seen, setSeen] = useState({ open, text: originalText });
+  if (open !== seen.open || originalText !== seen.text) {
+    const opening = open && !seen.open;
+    const arrived =
+      open && seen.open && seen.text === undefined && runInput.input === '{}';
+    setSeen({ open, text: originalText });
+    if ((opening || arrived) && !replay.unconfirmed)
+      runInput.reset(originalText);
+  }
 
   async function submit() {
     const intent = runInput.read();
@@ -87,17 +102,15 @@ export function ReplayRunDialog({
     onOpenChange(nextOpen);
     if (!nextOpen) {
       replay.dismiss();
-      runInput.reset();
+      if (!replay.unconfirmed) runInput.reset();
     }
   }
 
-  const version = versionLabel ?? 'the same version';
-  const description =
-    originalText === undefined
-      ? original.data?.kind === 'expired'
-        ? `Pertexo starts a new run of ${version}. This run’s input is no longer kept, so enter the input to use. Steps that call other services run again.`
-        : `Pertexo starts a new run of ${version} with the input you enter here. Steps that call other services run again, so check it before you continue.`
-      : `Pertexo starts a new run of ${version} with this run’s input. Change it first if you need to: steps that call other services run again.`;
+  const description = replayDescription(
+    original.data,
+    originalText,
+    versionLabel,
+  );
   return (
     <ConfirmDialog
       open={open}
@@ -107,6 +120,7 @@ export function ReplayRunDialog({
       confirmLabel={replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
       pendingLabel="Replaying…"
       pending={replay.pending}
+      confirmDisabled={replay.expired}
       error={replay.error}
       errorTone={replay.retryAvailable ? 'warning' : 'destructive'}
       onConfirm={submit}
@@ -115,8 +129,7 @@ export function ReplayRunDialog({
         idPrefix="replay-run"
         inputLabel="Replay input (JSON)"
         runInput={runInput}
-        disabled={replay.pending}
-        autoFocus
+        disabled={replay.pending || replay.unconfirmed}
       />
     </ConfirmDialog>
   );

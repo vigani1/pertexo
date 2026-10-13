@@ -23,6 +23,7 @@ function lastAttempt(row: RunTimelineRow): StepStoryEntry | undefined {
 
 /** The short note beside a step's thread: "attempt 2", "retry in 24 s". */
 export function stepTag(row: RunTimelineRow, nowMs: number): string {
+  if (row.reused !== undefined) return 'saved result · no execution';
   const retrying = row.story.at(-1)?.kind === 'retry';
   switch (row.status) {
     case 'running': {

@@ -6,6 +6,7 @@ export async function authorWebhookHttpGraph(
   page: Page,
   workflowPath: string,
   readDraft: typeof readEditorDraft = readEditorDraft,
+  terminalStop = false,
 ) {
   const webhookId = await add(/Webhook/u, 'Signed input');
   async function add(kind: RegExp, label: string) {
@@ -119,7 +120,14 @@ export async function authorWebhookHttpGraph(
   await expect
     .poll(async () => (await readDraft(page, workflowPath)).graph.edges.length)
     .toBe(4);
+  const stopId = terminalStop
+    ? await add(/^Stop run\b/u, 'Finished action')
+    : undefined;
+  if (stopId !== undefined) await connect('Owned HTTP effect');
+  await expect
+    .poll(async () => (await readDraft(page, workflowPath)).graph.edges.length)
+    .toBe(terminalStop ? 5 : 4);
   const graph = (await readDraft(page, workflowPath)).graph;
-  expect(graph.nodes).toHaveLength(5);
-  return { webhookId, validateId, mapId, conditionId, httpId, graph };
+  expect(graph.nodes).toHaveLength(terminalStop ? 6 : 5);
+  return { webhookId, validateId, mapId, conditionId, httpId, stopId, graph };
 }
