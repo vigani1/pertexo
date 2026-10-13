@@ -1,7 +1,9 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { workflowManualStartRejections } from '../../schema/runs/manual-start.js';
 import { IdempotencyRequestConflictError } from './acceptance.js';
+
+export { lockManualStartCommand } from './lock-acceptance.js';
 
 export type ManualStartIdentity = Readonly<{
   workflowId: string;
@@ -14,17 +16,6 @@ export type ManualStartRejection = Readonly<{
   expectedPublishedVersionId: string;
   observedPublishedVersionId: string;
 }>;
-
-/** The HTTP command checks authority before serializing this workspace's key. */
-export async function lockManualStartCommand(
-  transaction: WorkspaceTransaction,
-  identity: Pick<ManualStartIdentity, 'scope' | 'idempotencyKeyHash'>,
-): Promise<void> {
-  const key = `pertexo.manual-start:${transaction.workspaceId}:workflow.run.accept:${identity.scope}:${identity.idempotencyKeyHash}`;
-  await transaction.db.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${key}, 1934781131))`,
-  );
-}
 
 /** Caller has already resolved successful acceptance under the same command lock. */
 export async function readManualStartRejection(
