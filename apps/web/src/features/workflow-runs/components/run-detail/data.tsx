@@ -210,11 +210,13 @@ export function StepRunOutput({
   status,
   scope,
   title,
+  emptyText,
 }: Readonly<{
   nodeRunId: string | undefined;
   status: RunTimelineRow['status'];
   scope: RunDataScope;
   title: string;
+  emptyText?: string;
 }>) {
   const query = useQuery({
     ...nodeRunOutputQueryOptions(
@@ -242,9 +244,10 @@ export function StepRunOutput({
       query={query}
       title={title}
       emptyText={
-        status === 'succeeded'
+        emptyText ??
+        (status === 'succeeded'
           ? 'This step finished without returning anything.'
-          : 'This step didn’t return anything.'
+          : 'This step didn’t return anything.')
       }
       scope={scope}
     />
@@ -263,6 +266,9 @@ export function StepOutputData({
       status={row.status}
       scope={scope}
       title={title}
+      {...(row.reused === undefined
+        ? {}
+        : { emptyText: 'The saved output is empty.' })}
     />
   );
 }

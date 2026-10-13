@@ -29,6 +29,13 @@ export const httpEvidenceSchema = httpScopeSchema.extend({
   mapId: z.string().min(1).max(256),
   conditionId: z.string().min(1).max(256),
   httpId: z.string().min(1).max(256),
+  stopId: z.string().min(1).max(256),
+  recovery: z.strictObject({
+    failedRunId: z.uuid(),
+    recoveryRunId: z.uuid(),
+    unknownRunId: z.uuid(),
+    recoveryKey: z.uuid(),
+  }),
 });
 export const httpEffectsSchema = z.strictObject({
   phase: z.literal('controlled-http-effects'),
@@ -125,9 +132,13 @@ export async function verifyHttpEvidence(
 ) {
   expect(effects).toEqual({
     phase: 'controlled-http-effects',
-    requests: 1,
-    effects: 1,
-    bodyHashes: [hash(httpActionBody)],
+    requests: 4,
+    effects: 3,
+    bodyHashes: [
+      hash(httpActionBody),
+      hash(JSON.stringify({ marker: 'recovery-once' })),
+      hash(JSON.stringify({ marker: 'recovery-unknown' })),
+    ],
   });
   expect(evidence.trueRunId).not.toBe(evidence.falseRunId);
   const versions = await database.query<{
@@ -152,6 +163,7 @@ export async function verifyHttpEvidence(
   expect(graph.nodes.map(({ definition }) => definition.key).sort()).toEqual([
     'core.condition',
     'core.set',
+    'core.terminate',
     'core.validate',
     'core.webhook',
     'http.request',
@@ -167,7 +179,7 @@ export async function verifyHttpEvidence(
       body: { kind: 'run_input', path: '$.body' },
     },
   });
-  expect(graph.edges).toHaveLength(4);
+  expect(graph.edges).toHaveLength(5);
   expect(
     graph.edges.find(({ target }) => target.nodeId === evidence.httpId),
   ).toMatchObject({ source: { nodeId: evidence.conditionId, port: 'true' } });
@@ -178,8 +190,12 @@ export async function verifyHttpEvidence(
   expect(drafts.rows).toHaveLength(1);
   expect(workflowGraphSchema.parse(drafts.rows[0]?.graph_json)).toEqual(graph);
   const runs = await database.query(
-    'select id,status,trigger_type,workflow_version_id from app.workflow_runs where workspace_id=$1 and workflow_id=$2 order by id',
-    [evidence.workspaceId, evidence.workflowId],
+    'select id,status,trigger_type,workflow_version_id from app.workflow_runs where workspace_id=$1 and workflow_id=$2 and id=any($3::uuid[]) order by id',
+    [
+      evidence.workspaceId,
+      evidence.workflowId,
+      [evidence.trueRunId, evidence.falseRunId],
+    ],
   );
   expect(runs.rows).toEqual(
     [evidence.trueRunId, evidence.falseRunId].sort().map((id) => ({
@@ -254,10 +270,16 @@ export async function verifyHttpEvidence(
       .map((workflow_run_id) => ({ workflow_run_id, dedupe_kind: 'keyed' })),
   );
   const receipts = await database.query(
-    'select operation,status,key_hash,resource_id from app.idempotency_records where workspace_id=$1 and operation=any($2::text[]) order by operation,key_hash',
+    'select operation,status,key_hash,resource_id from app.idempotency_records where workspace_id=$1 and operation=any($2::text[]) and resource_id=any($3::uuid[]) order by operation,key_hash',
     [
       evidence.workspaceId,
       ['workflow.publish', 'workflow.run.accept', 'webhook.trigger.provision'],
+      [
+        evidence.workflowId,
+        evidence.triggerId,
+        evidence.trueRunId,
+        evidence.falseRunId,
+      ],
     ],
   );
   const accepted = deliveries.rows.filter(
@@ -289,7 +311,7 @@ export async function verifyHttpEvidence(
     'select node_id,status from app.node_runs where workspace_id=$1 and workflow_run_id=$2',
     [evidence.workspaceId, evidence.trueRunId],
   );
-  expect(nodes.rows).toHaveLength(5);
+  expect(nodes.rows).toHaveLength(6);
   expect(nodes.rows.every(({ status }) => status === 'succeeded')).toBe(true);
   const attempts = await database.query(
     'select attempt.attempt_number,attempt.status,attempt.side_effect_class,attempt.dispatch_marked_at is not null dispatched,node.provider_dispatch_binding is not null binding from app.node_attempts attempt join app.node_runs node on node.id=attempt.node_run_id and node.workspace_id=attempt.workspace_id where node.workspace_id=$1 and node.workflow_run_id=any($2::uuid[]) and node.node_id=$3',
@@ -318,4 +340,109 @@ export async function verifyHttpEvidence(
     [evidence.workspaceId, evidence.workflowId],
   );
   expect(reconciliation.rows).toEqual([{ events: 1, completed: 1 }]);
+  await verifyFailedStepRecovery(database, evidence);
+}
+
+async function verifyFailedStepRecovery(
+  database: Pool,
+  evidence: z.infer<typeof httpEvidenceSchema>,
+) {
+  const { failedRunId, recoveryRunId, unknownRunId, recoveryKey } =
+    evidence.recovery;
+  const runs = await database.query(
+    `select id,status,replay_source_run_id,recovery_reused_count,recovery_effects_acknowledged
+    from app.workflow_runs where workspace_id=$1 and workflow_id=$2`,
+    [evidence.workspaceId, evidence.workflowId],
+  );
+  expect(runs.rows).toHaveLength(5);
+  expect(runs.rows.find(({ id }) => id === failedRunId)).toMatchObject({
+    status: 'failed',
+    recovery_reused_count: null,
+  });
+  expect(runs.rows.find(({ id }) => id === unknownRunId)).toMatchObject({
+    status: 'outcome_unknown',
+    recovery_reused_count: null,
+  });
+  expect(runs.rows.find(({ id }) => id === recoveryRunId)).toMatchObject({
+    status: 'succeeded',
+    replay_source_run_id: failedRunId,
+    recovery_reused_count: 4,
+    recovery_effects_acknowledged: true,
+  });
+  const copies = await database.query(
+    `select node.id,node.node_id,node.current_attempt_number,node.started_at,node.completed_at,node.reused_source_run_id,
+    (select count(*)::int from app.node_attempts attempt where attempt.workspace_id=node.workspace_id and attempt.node_run_id=node.id) attempts
+    from app.node_runs node where node.workspace_id=$1 and node.workflow_run_id=$2 and node.reused_source_run_id is not null`,
+    [evidence.workspaceId, recoveryRunId],
+  );
+  expect(copies.rows).toHaveLength(4);
+  for (const copy of copies.rows)
+    expect(copy).toMatchObject({
+      current_attempt_number: null,
+      started_at: null,
+      completed_at: null,
+      reused_source_run_id: failedRunId,
+      attempts: 0,
+    });
+  const target = await database.query<{
+    id: string;
+    workflow_run_id: string;
+    provider_dispatch_binding: unknown;
+  }>(
+    `select node.id,node.workflow_run_id,attempt.status,attempt.side_effect_class,attempt.dispatch_marked_at is not null dispatched,attempt.executor_failure_kind,
+    node.provider_dispatch_binding from app.node_runs node join app.node_attempts attempt on attempt.workspace_id=node.workspace_id and attempt.node_run_id=node.id
+    where node.workspace_id=$1 and node.node_id=$2 and node.workflow_run_id=any($3::uuid[])`,
+    [
+      evidence.workspaceId,
+      evidence.httpId,
+      [failedRunId, recoveryRunId, unknownRunId],
+    ],
+  );
+  expect(target.rows).toHaveLength(3);
+  expect(
+    target.rows.find(({ workflow_run_id }) => workflow_run_id === failedRunId),
+  ).toMatchObject({
+    status: 'failed',
+    side_effect_class: 'unsafe',
+    dispatched: true,
+    executor_failure_kind: 'failed',
+  });
+  expect(
+    target.rows.find(
+      ({ workflow_run_id }) => workflow_run_id === recoveryRunId,
+    ),
+  ).toMatchObject({
+    status: 'succeeded',
+    side_effect_class: 'unsafe',
+    dispatched: true,
+    executor_failure_kind: null,
+  });
+  expect(
+    target.rows.find(({ workflow_run_id }) => workflow_run_id === unknownRunId),
+  ).toMatchObject({
+    status: 'failed',
+    dispatched: true,
+    executor_failure_kind: 'outcome_unknown',
+  });
+  expect(
+    target.rows.find(({ workflow_run_id }) => workflow_run_id === recoveryRunId)
+      ?.provider_dispatch_binding,
+  ).toEqual(
+    target.rows.find(({ workflow_run_id }) => workflow_run_id === failedRunId)
+      ?.provider_dispatch_binding,
+  );
+  expect(
+    target.rows.find(({ workflow_run_id }) => workflow_run_id === recoveryRunId)
+      ?.id,
+  ).not.toBe(
+    target.rows.find(({ workflow_run_id }) => workflow_run_id === failedRunId)
+      ?.id,
+  );
+  const receipt = await database.query(
+    `select resource_id,status from app.idempotency_records where workspace_id=$1 and operation='workflow.run.accept' and key_hash=$2`,
+    [evidence.workspaceId, hash(recoveryKey)],
+  );
+  expect(receipt.rows).toEqual([
+    { resource_id: recoveryRunId, status: 'completed' },
+  ]);
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { OctagonXIcon, RotateCcwIcon } from 'lucide-react';
 import { PageHeaderActions } from '@/components/patterns/page-header';
@@ -15,10 +16,12 @@ export function RunDetailActions({
   canReplay,
   canCancel,
   canOpenWorkflow,
+  recoveryAction,
   onReplay,
   onCancel,
 }: Readonly<{
   compact: boolean;
+  recoveryAction?: ReactNode;
   workspaceId: string;
   workflowId: string;
   canReplay: boolean;
@@ -33,9 +36,11 @@ export function RunDetailActions({
   // Replay, Cancel run and Open workflow don't all fit a phone's width. The
   // workflow's name at the top of the page links there too, so Open
   // workflow is the one that makes way.
-  const roomToOpenWorkflow = !(canReplay && canCancel);
+  const roomToOpenWorkflow =
+    !(canReplay && canCancel) && recoveryAction === undefined;
   const buttons = (
     <>
+      {recoveryAction}
       {canReplay ? (
         <Button
           type="button"

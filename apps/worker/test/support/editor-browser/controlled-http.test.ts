@@ -145,4 +145,26 @@ describe('owned controlled HTTP transport', () => {
     await expect(owned.start()).rejects.toThrow('Owned HTTP server disposed');
     expect(owned.observe().requests).toBe(0);
   });
+  it('rejects a recovery request once, then accepts it, and preserves a service error after an effect', async () => {
+    const owned = target();
+    await owned.start();
+    async function invoke(marker: string) {
+      const response = await owned.httpClient.execute({
+        url: controlledActionUrl,
+        method: 'POST',
+        headers: material().headers,
+        body: Buffer.from(JSON.stringify({ marker })),
+        timeoutMillis: 1_000,
+        maxResponseBytes: 4_096,
+        maxRedirects: 0,
+        beforeDispatch: () => Promise.resolve(),
+      });
+      return response.status;
+    }
+    expect(await invoke('recovery-once')).toBe(401);
+    expect(owned.observe().effects).toBe(0);
+    expect(await invoke('recovery-once')).toBe(200);
+    expect(await invoke('recovery-unknown')).toBe(503);
+    expect(owned.observe()).toMatchObject({ requests: 3, effects: 2 });
+  });
 });

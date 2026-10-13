@@ -1,3 +1,5 @@
+import { formatDateTime } from '@/lib/format/time';
+import { shortRunId } from '../../model/list/runs';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -83,6 +85,30 @@ export function StepExecutionHistory({
   nowMs: number;
   workspace: AccessibleWorkspace;
 }>) {
+  if (row.reused !== undefined)
+    return (
+      <div className="text-[0.8rem] text-muted-foreground">
+        <p>
+          This step was not executed here. Its saved output belongs to this run
+          and remains available when the source history expires.
+        </p>
+        <p className="mt-2">
+          Originally finished {formatDateTime(row.reused.sourceCompletedAt)}.
+          Reused from{' '}
+          <Link
+            to="/w/$workspaceId/runs/$runId"
+            params={{
+              workspaceId: workspace.id,
+              runId: row.reused.sourceRunId,
+            }}
+            className="text-foreground underline underline-offset-4"
+          >
+            run {shortRunId(row.reused.sourceRunId)}
+          </Link>
+          .
+        </p>
+      </div>
+    );
   return (
     <>
       {row.story.length === 0 ? (

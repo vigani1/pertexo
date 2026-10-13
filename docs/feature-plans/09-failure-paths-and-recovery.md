@@ -1,9 +1,8 @@
 # F09 — Workflow failure paths and recovery from a failed step
 
 Status: approved for implementation on 2026-10-13; slice 0 merged in PR #273.
-Dispatcher latency correction merged in PR #274. Slice 2 runtime/API is being
-qualified on `feat/f09-recovery-runtime`; recovery UI and failure routes remain
-open. The
+Dispatcher latency correction merged in PR #274. Slice 2 runtime/API merged in PR #275; slice 3 recovery UI is locally qualified, pending PR CI/merge.
+Failure routes remain open. The
 owner authorized the revised scope and decisions, including explicit manual
 effects acknowledgement, Condition/leaf Stop run and recovery-first delivery.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md). Baseline
@@ -795,7 +794,7 @@ remain evidence gates in the code slices.
 - [x] Slice 0: per-step latency measured before F09 engine changes.
 - [x] Diagnosed dispatcher polling delay: PR #274 merged; all CI and natural
       postmerge checks passed before recovery runtime.
-- [ ] Slice 2: recovery runtime/API qualified with choices, acknowledgement,
+- [x] Slice 2: PR #275 merged green; recovery runtime/API qualified with choices, acknowledgement,
       races/retention and baseline comparison.
 - [ ] Slice 3: real recovery UI/Condition/Stop run journey qualified.
 - [ ] Slice 4: failure-route runtime independently verified.
@@ -988,3 +987,67 @@ sampling limitations still apply. Local raw reports are retained outside Git at
 `/tmp/pertexo-f09-latency-main-control.json` and
 `/tmp/pertexo-f09-latency-recovery-repeat.json`. The temporary control checkout
 was archived after measurement.
+
+
+## Slice 3 recovery product qualification (2026-10-14)
+
+The failed run's action loads the authoritative preview only when opened. It
+explains unsupported or expired results and offers separately confirmed full
+replay. Eligible confirmation names the exact version/step, copied prefix count
+and original completion time; original input cannot be edited. Definite
+possibly dispatched failures require an unchecked effects acknowledgement.
+
+Recovery and full replay share one feature-local retained-command hook. It
+fences same-tick duplicates, retains exact reviewed values/key on network,
+protocol, timeout or server failure, suppresses late actor/scope results and
+stops retries after the existing 24-hour receipt window. Closing confirmation
+keeps an uncertain request in memory; leaving/reloading loses it, as the UI
+explains. There is no storage, global command manager or per-history-row preview.
+
+History labels copied rows Reused, links source provenance and reads the new
+run's owned output without fetching source values or inventing input, attempts
+or duration. Source details can expire independently. Empty saved outputs are
+named as saved outputs, rather than suggesting new execution.
+
+The existing owned webhook/HTTP browser fixture now authors a root graph with
+Validate, Set fields, Condition, HTTP and a leaf Stop run through ordinary
+editor controls. Real encrypted connection resolution, API, PostgreSQL with
+forced RLS, Redis, BullMQ and worker execution remain in the path. The private
+loopback target first returns a definite HTTP 401, then succeeds on recovery.
+At 375 × 768 with reduced motion the person acknowledges effects, loses the
+actual committed acceptance response, closes/reopens confirmation and retries
+the same key/body. Exactly one recovery run succeeds, all four prefix copies
+have no attempts/timestamps, the original Condition choice is reused, and only
+HTTP/Stop execute freshly. Source node facts remain unchanged.
+
+A separate controlled HTTP 503 after an effect remains outcome_unknown, has no
+step-recovery control and is refused by the preview. The actual attempt row is
+failed with executor_failure_kind=outcome_unknown; the logical run is unknown.
+The test also verifies the original signed-ingress deduplication journey. Exact
+request material keeps the same HTTP dispatch binding (a request fingerprint);
+the target node/attempt identity is new. It does not claim a new provider
+idempotency key for unsafe HTTP, which has none.
+
+The real journey and durable verifier passed locally in the existing owned
+integration containers, using disposable UUID databases and Redis namespace 11;
+no owner database, credentials, external provider or image download was used.
+Controlled mocked browser screenshots cover 1280 × 768 and 375 × 768, keyboard
+acknowledgement and reachable actions. Authenticated live screenshots/traces
+remain disabled; the review images use synthetic identities and mock data.
+Failure routing remains slices 4/5. This qualification does not complete the
+broader deferred loop/join/Call/artifact scope.
+
+
+Local gates: full `pnpm check`, 1,114 web units, 1,965 API units, 720 worker
+units, all 146 mocked browser cases and both owned recovery/HTTP browser
+journeys passed. React Doctor changed-scope score is 100/100; no rule suppression
+or configuration change. Three existing editor tests timed out when all app
+suites ran alongside builds; the full web suite passed independently with four
+workers. No test timeout or production behavior was changed for those failures.
+
+Review images use synthetic mocked data: [desktop confirmation](../media/recovery-confirmation-desktop.png),
+[phone confirmation](../media/recovery-confirmation-phone.png),
+[desktop reused history](../media/recovery-reused-desktop.png) and
+[phone reused history](../media/recovery-reused-phone.png).
+The existing CI browser job now runs both existing live scenarios; no CI job was
+added. Slice 3 stays unmarked until its PR is green and merged.

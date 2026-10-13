@@ -94,7 +94,7 @@ export async function waitForRun(
   page: Page,
   workspaceId: string,
   runId: string,
-  status: 'succeeded' | 'failed' | 'waiting' | 'canceled',
+  status: 'succeeded' | 'failed' | 'waiting' | 'canceled' | 'outcome_unknown',
 ) {
   const path = `/v1/workspaces/${workspaceId}/runs/${runId}`;
   async function read() {

@@ -94,12 +94,18 @@ export function RunStepDetails({
           </>
         }
       >
-        <StepInputData
-          row={row}
-          rows={rows}
-          upstream={upstream}
-          scope={scope}
-        />
+        {row.reused === undefined ? (
+          <StepInputData
+            row={row}
+            rows={rows}
+            upstream={upstream}
+            scope={scope}
+          />
+        ) : (
+          <p className="text-[0.8rem] text-muted-foreground">
+            No input was sent: this step used its saved output.
+          </p>
+        )}
       </StepDetailsSection>
       <StepDetailsSection
         title="Data out"
@@ -121,7 +127,7 @@ export function RunStepDetails({
           Details
           <ChevronDownIcon
             aria-hidden="true"
-            className="size-3.5 transition-transform group-open:rotate-180"
+            className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
           />
         </summary>
         <dl className="mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
