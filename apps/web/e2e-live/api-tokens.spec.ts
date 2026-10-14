@@ -5,6 +5,7 @@ import {
   userProfileResponseSchema,
 } from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
+import { verifyAutomationCliBuild } from './support/automation/cli';
 import { qualifyAutomationCli } from './support/automation/journey';
 import { withOwnedCredential } from './support/automation/credential-action';
 import {
@@ -16,6 +17,7 @@ test('issues a personal token through Settings, authenticates without cookies, r
   page,
   request,
 }) => {
+  await verifyAutomationCliBuild();
   const mailOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
   if (mailOrigin === undefined)
     throw new Error('Owned mail fixture is required');

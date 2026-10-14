@@ -6,6 +6,7 @@ import { createInitialCheckpoint } from '@pertexo/execution';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createCoordinatorRecoveryHarness } from '../../support/coordinator/recovery-harness.js';
 import {
   accept,
   childGraph,
@@ -188,15 +189,32 @@ describeIntegration('Workflow Call execution through real transport', () => {
       }),
     );
     try {
-      await workers.until(async () => {
-        expect(
-          await fixture.workerQuery(
-            'select status from app.workflow_calls where parent_run_id=$1',
-            [accepted.runId],
-          ),
-        ).toEqual([{ status: 'pending' }]);
-      });
       await workers.pause();
+      // Deliver one transition at a time so action redelivery starts from a stable intent.
+      const preparation = await createCoordinatorRecoveryHarness({
+        accepted,
+        database: parseDatabaseConfig({
+          connectionString: fixture.databaseUrl(fixture.workerUrl),
+          max: 6,
+        }),
+        runtimeCapabilities: {},
+        workerIdPrefix: 'call-intent',
+      });
+      try {
+        await preparation.publishCoordinator(accepted.outboxEventId, 1);
+        await preparation.executeNext('manual');
+        await preparation.continueAfter(2);
+        await preparation.executeNext('call');
+        await preparation.continueAfter(3);
+      } finally {
+        await preparation.close();
+      }
+      expect(
+        await fixture.workerQuery(
+          'select status from app.workflow_calls where parent_run_id=$1',
+          [accepted.runId],
+        ),
+      ).toEqual([{ status: 'pending' }]);
       const id = randomUUID();
       const payload = {
         workspaceId: fixture.workspaceId,

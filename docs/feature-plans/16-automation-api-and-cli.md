@@ -283,7 +283,8 @@ These inform transport/authorization/redaction, not an OAuth subsystem.
   `66aea767517041397cef6796b541b3448d4e5893`, CI 38554451783 (including ARM)
   and CodeQL 38554451846 succeeded.
 - [x] Slice 3 CLI/API/worker qualification and user guide implemented and locally
-  verified. Delivery PR records required CI, merge and natural main qualification.
+  verified. [Delivery PR #286](https://github.com/vigani1/pertexo/pull/286) records
+  required CI, merge and natural main qualification.
 
 Release acceptance remains green required CI and CodeQL, rebase merge, then
 inspection of natural main CI/CodeQL/ARM. Record those run IDs on the delivery PR
@@ -424,3 +425,14 @@ privacy hardening. The [automation guide](../automation.md) documents all comman
 curl equivalents, scoped ownership/expiry/replacement, safe environment storage,
 reviewed digest/ETag/body preparation, paging, cancellation and exact retry rules.
 PR and natural main checks remain the release gate recorded on the delivery PR.
+
+
+The existing browser CI build step includes the compiled ops app and its dependency
+closure; the live fixture verifies that binary without credentials before issuance.
+Its missing-build regression fails plainly before opening a receipt. CI also exposed
+an older Call recovery test polling a transient pending state while live workers
+could finish it. That fixture now uses the existing queue recovery harness to
+complete Manual and Call preparation and persist the intent before action redelivery.
+It retains real stores/workers, identity/receipt-expiry assertions and original
+timeouts, with no production hooks or added retries. Local Call integration and
+browser/CLI qualifications pass after these fixes.
