@@ -1,4 +1,9 @@
 import {
+  collectionEvidenceSchema,
+  dateEvidenceSchema,
+  verifyTransformEvidence,
+} from './editor/evidence/transforms/qualification.js';
+import {
   failureRoutingEvidenceSchema,
   verifyFailureRoutingEvidence,
 } from './editor/evidence/failure-routing.js';
@@ -97,6 +102,7 @@ const scenario = z
     'schedule',
     'webhook-controlled-http',
     'failure-routing',
+    'transforms',
     'duplication',
     'portability',
     'input-cases',
@@ -130,6 +136,8 @@ function ownChild<T extends ChildProcess>(
   );
   return owner.acquire(name, child, closeChild);
 }
+let collectionEvidence: z.infer<typeof collectionEvidenceSchema> | undefined;
+let dateEvidence: z.infer<typeof dateEvidenceSchema> | undefined;
 let worker: ChildProcess;
 const controlledHttpScenario =
   scenario === 'webhook-controlled-http' || scenario === 'failure-routing';
@@ -720,7 +728,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       }
       if (
         request.method === 'POST' &&
-        (url.pathname === '/evidence' ||
+        (url.pathname === '/evidence/transforms' ||
+          url.pathname === '/evidence/transform-date' ||
+          url.pathname === '/evidence' ||
           url.pathname === '/evidence/receipts' ||
           url.pathname === '/evidence/run-recovery' ||
           url.pathname === '/evidence/failure-routing' ||
@@ -743,6 +753,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           try {
             const value: unknown = JSON.parse(body);
             if (
+              url.pathname === '/evidence/transforms' &&
+              scenario === 'transforms'
+            )
+              collectionEvidence = collectionEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/evidence/transform-date' &&
+              scenario === 'transforms'
+            )
+              dateEvidence = dateEvidenceSchema.parse(value);
+            else if (
               url.pathname === '/evidence/callable' &&
               scenario === 'callable'
             )
@@ -939,7 +959,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
                                   ? 'editor/schedule.spec.ts'
                                   : scenario === 'failure-routing'
                                     ? 'editor/failure-routing.spec.ts'
-                                    : 'editor/webhook-controlled-http.spec.ts',
+                                    : scenario === 'transforms'
+                                      ? 'editor/transforms.spec.ts'
+                                      : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1036,6 +1058,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       );
       process.stdout.write(
         `Live browser workflow duplication evidence ${JSON.stringify(duplicationEvidence)}\n`,
+      );
+      return;
+    }
+    if (scenario === 'transforms') {
+      if (collectionEvidence === undefined || dateEvidence === undefined)
+        throw new Error('Transform browser evidence missing');
+      await verifyTransformEvidence(
+        api.database(),
+        collectionEvidence,
+        dateEvidence,
       );
       return;
     }

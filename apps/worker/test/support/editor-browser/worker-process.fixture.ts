@@ -1,3 +1,4 @@
+import { createEditorPreview } from './previews.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
@@ -67,6 +68,7 @@ const namespace = createRedisTestNamespace(
   },
 );
 const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
+const transformCase = process.env.EDITOR_BROWSER_CASE === 'transforms';
 const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
   process.env.EDITOR_BROWSER_CASE === 'failure-routing';
@@ -363,6 +365,9 @@ async function constructRuntimes(
       leaseDurationSeconds: 10,
       redisUrl: namespace.redisUrl,
       workerId: `editor-browser-${randomUUID()}`,
+      ...(transformCase
+        ? { preview: await createEditorPreview(database) }
+        : {}),
     },
     {
       // These fail closed if a supposedly pure graph tries to use a provider.
@@ -464,6 +469,7 @@ async function constructRuntimes(
       jobNames: [
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.executeNodeAttempt,
+        ...(transformCase ? [JOB_NAME.executePreviewAttempt] : []),
         ...(triggers.length === 0 ? [] : [JOB_NAME.reconcileWorkflowTriggers]),
       ],
       batchSize: 25,

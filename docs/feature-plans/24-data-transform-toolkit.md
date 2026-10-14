@@ -267,11 +267,41 @@ restricted profile or define its identity/persistence contracts.
 - [x] Current baseline, inventory, decisions and module placement reconciled.
 - [x] Plan reviewed; boundaries and deferred file dependency made explicit.
 - [x] Slice 0: PR #279 merged after all required CI passed.
-- [ ] Slice 1: runtime implemented; local semantic and durable-worker qualification
-  passed. Full verification and PR merge remain required.
-- [ ] Slice 2 frontend and real integrated qualification verified/merged.
+- [x] Slice 1: PR #280 merged after all required CI passed.
+- [ ] Slice 2: frontend and real browser/independent database qualification
+  implemented and locally verified; final gates and PR merge remain required.
 - [ ] Final CI/postmerge evidence recorded on each slice PR.
 - [ ] F04 file consumer/conversion separately planned and authorized.
+
+### Slice 2 qualification
+
+The browser authors Manual → Filter → Sort → Unique → Summarize → Stop through
+ordinary forms, reloads, tests the Filter, publishes and runs the workflow,
+exports its reviewed source, imports it and runs the copy. Independent database
+checks verify both immutable executables, saved config, step outputs and preview
+parity. A second browser journey authors Date with the editable Number example
+and verifies the same UTC value in its preview and durable run. Slice 1 separately
+executes all five transforms in actual For each body invocations.
+
+The existing browser worker fixture now configures the production preview ports
+and dispatches their existing job kind on its shared attempt consumer. Its
+original pure-provider fences and ownership/drain rules remain. No production
+runtime or queue protocol is added. The existing CI browser case loop includes
+these journeys; there is no new CI job.
+
+Post-merge runtime CI exposed an existing HTTP authoring test race: its snapshot
+could precede the final Stop label save. The helper waits for that final saved
+label, retaining all graph/reload assertions. It does not wait after every edit,
+raise timeouts, retry the test or weaken the expected graph.
+
+The editor uses schema fields, explicit new-step defaults and private display
+words. Examples fill editable source in the existing input row. Keyboard,
+375 × 768 reduced-motion scrolling and read-only behavior are checked in mocked
+browser journeys. Changed-code React Doctor is 100/100 with no diagnostics or
+suppressions. [User guide](../data-transforms.md) records semantics and limits.
+Synthetic-fixture screenshots: [desktop](../media/data-transforms/editor-desktop.png)
+and [375 px phone](../media/data-transforms/expressions-phone.png).
+Live authentication traces/screenshots remain disabled.
 
 ### Slice 1 local evidence
 

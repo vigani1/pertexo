@@ -57,6 +57,9 @@ within its 24-hour receipt window. Leaving or reloading loses that in-memory
 intent, so check run history first. After the window, the same-request control
 stops rather than risk accepting another run.
 
+For bounded collection preparation, UTC date conversion and editable expression
+examples, read [Prepare data in a workflow](../../docs/data-transforms.md).
+
 Read [Frontend architecture](ARCHITECTURE.md) for folder ownership, shared
 contracts, state, forms, saving conflicts, auth, SSE, Weft and verification.
 [The repository architecture map](../../docs/architecture.md) describes backend

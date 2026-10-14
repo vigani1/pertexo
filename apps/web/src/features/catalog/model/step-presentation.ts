@@ -3,6 +3,10 @@ import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   BoxIcon,
   BracesIcon,
+  ArrowDownWideNarrowIcon,
+  CopyMinusIcon,
+  FilterIcon,
+  SigmaIcon,
   CalendarClockIcon,
   GitBranchIcon,
   GitForkIcon,
@@ -41,6 +45,36 @@ type RegistryEntry = Omit<StepPresentation, 'family'> &
   Readonly<{ family: StepFamily }>;
 
 const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
+  'core.filter': {
+    name: 'Filter items',
+    description: 'Keep items that match a field or value',
+    icon: FilterIcon,
+    family: 'transform',
+  },
+  'core.sort': {
+    name: 'Sort items',
+    description: 'Order items by a number or text field',
+    icon: ArrowDownWideNarrowIcon,
+    family: 'transform',
+  },
+  'core.unique': {
+    name: 'Remove duplicates',
+    description: 'Keep the first item for each distinct value',
+    icon: CopyMinusIcon,
+    family: 'transform',
+  },
+  'core.summarize': {
+    name: 'Summarize items',
+    description: 'Count and total numbers, optionally by group',
+    icon: SigmaIcon,
+    family: 'transform',
+  },
+  'core.date': {
+    name: 'Convert date',
+    description: 'Convert an explicit-offset timestamp or UTC milliseconds',
+    icon: CalendarClockIcon,
+    family: 'transform',
+  },
   'core.webhook': {
     name: 'Webhook',
     description: 'Start when another app sends a request',
