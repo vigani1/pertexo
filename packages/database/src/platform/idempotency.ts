@@ -1,3 +1,4 @@
+import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 
 import type { PoolClient } from 'pg';
@@ -45,6 +46,16 @@ const requestDigest = (command: CommandRequest): string =>
 
 function conflict(command: CommandLookup): Error {
   return command.conflict?.() ?? new IdempotencyConflictError();
+}
+
+/** An explicit credential namespace cannot be imitated by a caller-selected key. */
+export function credentialCommandScope(
+  scope: string,
+  credentialId?: string,
+): string {
+  return credentialId === undefined
+    ? scope
+    : `api_token:${sha256(canonicalJson({ credentialId, scope }))}`;
 }
 
 /**

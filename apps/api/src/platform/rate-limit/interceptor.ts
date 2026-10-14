@@ -6,42 +6,25 @@ import type {
 import { Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Observable } from 'rxjs';
-import {
-  AbuseRateLimitPolicy,
-  type DistributedRateLimitResult,
-  type RateLimitEndpointClass,
-  type RateLimitFailureMode,
-  type RateLimitDimensionKind,
-  type RateLimitSubject,
+import type {
+  RateLimitEndpointClass,
+  RateLimitSubject,
 } from '@pertexo/rate-limit';
+import { HttpRateLimitAdmission } from './admission.js';
 
 import { RATE_LIMIT_EXEMPT, RATE_LIMIT_METADATA } from './metadata.js';
-import {
-  applicationError,
-  throwApplicationError,
-} from '../http/application-error.js';
 import { firstRequestHeader } from '../http/request-headers.js';
 
-export type RateLimitConsumer = Readonly<{
-  consume(
-    decision: ReturnType<AbuseRateLimitPolicy['evaluate']>,
-  ): Promise<DistributedRateLimitResult>;
-}>;
-
-export type RateLimitMetricRecorder = Readonly<{
-  record(event: {
-    endpointClass: RateLimitEndpointClass;
-    failureMode: RateLimitFailureMode;
-    outcome: 'allowed' | 'limited' | 'backend_error';
-    limitedDimension?: RateLimitDimensionKind;
-  }): void;
-}>;
-
+export type {
+  RateLimitConsumer,
+  RateLimitMetricRecorder,
+} from './admission.js';
 type RateLimitRequest = Readonly<{
   ip?: string;
   headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
   params?: unknown;
   identitySession?: Readonly<{ userId?: string }>;
+  apiTokenActor?: Readonly<{ actorId: string; tokenId: string }>;
   authorizedWorkspace?: unknown;
 }>;
 
@@ -70,34 +53,25 @@ function subject(request: RateLimitRequest): RateLimitSubject {
     objectString(request.authorizedWorkspace, 'workspaceId') ??
     objectString(request.params, 'workspaceId');
   const connectionId = objectString(request.params, 'connectionId');
-  const actorId = request.identitySession?.userId;
+  const actorId =
+    request.apiTokenActor?.actorId ?? request.identitySession?.userId;
   return {
     ...(request.ip === undefined ? {} : { clientAddress: request.ip }),
     origin: origin(request),
     ...(actorId === undefined ? {} : { actorId }),
+    ...(request.apiTokenActor === undefined
+      ? {}
+      : { tokenId: request.apiTokenActor.tokenId }),
     ...(workspaceId === undefined ? {} : { workspaceId }),
     ...(connectionId === undefined ? {} : { connectionId }),
   };
-}
-
-function recordMetric(
-  recorder: RateLimitMetricRecorder,
-  event: Parameters<RateLimitMetricRecorder['record']>[0],
-): void {
-  try {
-    recorder.record(event);
-  } catch {
-    // Diagnostic recording cannot change request-admission authority.
-  }
 }
 
 @Injectable()
 export class RateLimitInterceptor implements NestInterceptor {
   public constructor(
     private readonly reflector: Reflector,
-    private readonly consumer: RateLimitConsumer,
-    private readonly metrics: RateLimitMetricRecorder,
-    private readonly policy = new AbuseRateLimitPolicy(),
+    private readonly admission: HttpRateLimitAdmission,
   ) {}
 
   public async intercept(
@@ -111,44 +85,10 @@ export class RateLimitInterceptor implements NestInterceptor {
     if (metadata === undefined) {
       throw new Error('HTTP route is missing rate-limit classification');
     }
-    const decision = this.policy.evaluate(
+    await this.admission.admit(
       metadata,
       subject(context.switchToHttp().getRequest<RateLimitRequest>()),
     );
-    let result: DistributedRateLimitResult;
-    try {
-      result = await this.consumer.consume(decision);
-    } catch {
-      recordMetric(this.metrics, {
-        endpointClass: metadata,
-        failureMode: decision.failureMode,
-        outcome: 'backend_error',
-      });
-      if (decision.failureMode === 'open') return next.handle();
-      return throwApplicationError(
-        applicationError('request.rate_limit_unavailable', {
-          details: { retryAfterSeconds: 1 },
-        }),
-      );
-    }
-    if (!result.allowed) {
-      recordMetric(this.metrics, {
-        endpointClass: metadata,
-        failureMode: decision.failureMode,
-        outcome: 'limited',
-        limitedDimension: result.limitedDimension,
-      });
-      return throwApplicationError(
-        applicationError('request.rate_limited', {
-          details: { retryAfterSeconds: result.retryAfterSeconds },
-        }),
-      );
-    }
-    recordMetric(this.metrics, {
-      endpointClass: metadata,
-      failureMode: decision.failureMode,
-      outcome: 'allowed',
-    });
     return next.handle();
   }
 }

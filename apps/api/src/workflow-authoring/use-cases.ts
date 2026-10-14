@@ -5,6 +5,7 @@ import { EMPTY_WORKFLOW_GRAPH, parseWorkflowGraphDraft } from './graph.js';
 
 import {
   authorizeWorkspaceOperation,
+  commandCredential,
   type AuthorizationCapability,
   type WorkspaceAuthorizationSource,
 } from '../authorization/index.js';
@@ -361,6 +362,7 @@ export class PublishWorkflowUseCase {
           representationTag: input.representationTag,
           requestHash: publishRequestHash(input),
           idempotencyKey: input.idempotencyKey,
+          ...commandCredential(input.actor),
           ...(input.signal === undefined ? {} : { signal: input.signal }),
           ...(input.requestId === undefined
             ? {}

@@ -14,3 +14,4 @@ export * from './schemas/workflows/authoring.js';
 export * from './schemas/workflows/portability.js';
 export * from './schemas/execution/runs.js';
 export * from './schemas/identity/inbox.js';
+export * from './schemas/identity/api-tokens.js';

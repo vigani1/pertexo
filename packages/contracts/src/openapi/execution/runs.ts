@@ -1,5 +1,7 @@
 import {
   authenticatedComponents,
+  automationSecurity,
+  automationCsrfHeaderParameter,
   csrfHeaderParameter,
   idempotencyHeaderParameter,
   jsonRequest,
@@ -181,7 +183,8 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/runs': {
       get: {
         operationId: 'listWorkflowRuns',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['run:read'],
+        security: automationSecurity,
         parameters: [
           workspaceParameter,
           queryParameter('limit', workflowRunPageLimitSchema),
@@ -199,6 +202,9 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           queryParameter('createdAtBefore', workflowRunCreatedAtSchema),
         ],
         responses: {
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
           '200': jsonResponse('Workflow runs', 'WorkflowRunListResponse'),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
@@ -233,15 +239,19 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs': {
       post: {
         operationId: 'startWorkflowRun',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['run:start'],
+        security: automationSecurity,
         parameters: [
           workspaceParameter,
           workflowParameter,
-          csrfParameter,
+          automationCsrfHeaderParameter(),
           idempotencyParameter,
         ],
         requestBody: jsonRequest('WorkflowRunStartRequest'),
         responses: {
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
           '202': jsonResponse(
             'Workflow run accepted',
             'WorkflowRunStartResponse',
@@ -259,9 +269,13 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/runs/{runId}': {
       get: {
         operationId: 'getWorkflowRun',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['run:read'],
+        security: automationSecurity,
         parameters: [workspaceParameter, runParameter],
         responses: {
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
           '200': jsonResponse('Workflow run', 'WorkflowRunResponse'),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
@@ -394,10 +408,18 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/runs/{runId}/cancel': {
       post: {
         operationId: 'cancelWorkflowRun',
-        security: [{ cookieSession: [] }],
-        parameters: [workspaceParameter, runParameter, csrfParameter],
+        'x-pertexo-api-token-scopes': ['run:cancel'],
+        security: automationSecurity,
+        parameters: [
+          workspaceParameter,
+          runParameter,
+          automationCsrfHeaderParameter(),
+        ],
         requestBody: jsonRequest('WorkflowRunCancelRequest'),
         responses: {
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
           '200': jsonResponse(
             'Workflow run cancellation requested',
             'WorkflowRunCancelResponse',
@@ -502,5 +524,6 @@ export const workflowRunsOpenApiDocument = Object.freeze({
   components: authenticatedComponents(
     { ...schemas, ...runDataSchemas('openapi') },
     problemResponses,
+    true,
   ),
 });

@@ -1,3 +1,4 @@
+import { hasAuthorizationHeader } from '../../authentication/automation/headers.js';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
@@ -10,6 +11,7 @@ import {
 import { firstRequestHeader } from '../../platform/http/request-headers.js';
 import {
   authorizeWorkspace,
+  assertAuthorizedWorkspaceContext,
   createActorContext,
   isCanonicalUuid,
   type AuthorizationCapability,
@@ -42,6 +44,8 @@ export class SessionAuthenticationGuard implements CanActivate {
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = requestFrom(context);
+    if (hasAuthorizationHeader(request.headers))
+      return throwApplicationError(applicationError('auth.unauthenticated'));
     const rawToken = readCookie(request, SESSION_COOKIE_NAME);
     if (rawToken === undefined) {
       return throwApplicationError(applicationError('auth.unauthenticated'));
@@ -69,6 +73,19 @@ export class CsrfProtectionGuard implements CanActivate {
 
   public canActivate(context: ExecutionContext): boolean {
     const request = requestFrom(context);
+    const authorization = request.authorizedWorkspace;
+    if (
+      authorization?.actor.kind === 'api_key' &&
+      request.apiTokenActor !== undefined
+    ) {
+      assertAuthorizedWorkspaceContext({
+        context: authorization,
+        actor: request.apiTokenActor,
+        routeWorkspaceId: authorization.workspaceId,
+        capability: authorization.capability,
+      });
+      return true;
+    }
     try {
       this.csrf.assertMutationAllowed({
         method: request.method ?? 'GET',
@@ -101,17 +118,19 @@ export class WorkspaceCapabilityGuard implements CanActivate {
     const request = requestFrom(context);
     const session = request.identitySession;
     const routeWorkspaceId = routeWorkspace(request);
-    if (session === undefined) {
+    if (session === undefined && request.apiTokenActor === undefined) {
       return throwApplicationError(applicationError('auth.unauthenticated'));
     }
     try {
-      const actor = createActorContext({
-        actorId: session.userId,
-        workspaceId: routeWorkspaceId,
-        sessionId: session.sessionId,
-        requestId: requestIdentifier(request),
-        ...traceFields(traceIdentifier(request)),
-      });
+      const actor =
+        request.apiTokenActor ??
+        createActorContext({
+          actorId: authenticatedSession(request).userId,
+          workspaceId: routeWorkspaceId,
+          sessionId: authenticatedSession(request).sessionId,
+          requestId: requestIdentifier(request),
+          ...traceFields(traceIdentifier(request)),
+        });
       const authorizedWorkspace = await authorizeWorkspace({
         actor,
         routeWorkspaceId,

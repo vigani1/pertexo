@@ -1,3 +1,4 @@
+import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import { requestIdempotencyKey } from '../../platform/http/index.js';
 import {
   Body,
@@ -9,10 +10,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
+import { CsrfProtectionGuard } from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
@@ -44,7 +42,11 @@ export class WorkflowPortabilityController {
   @Post(':workflowId/export')
   @HttpCode(200)
   @RateLimit('workflow_compile')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    AutomationAuthenticationGuard,
+    WorkflowReadGuard,
+    CsrfProtectionGuard,
+  )
   public async export(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -82,7 +84,7 @@ export class WorkflowPortabilityController {
   @HttpCode(200)
   @RateLimit('workflow_compile')
   @UseGuards(
-    SessionAuthenticationGuard,
+    AutomationAuthenticationGuard,
     WorkflowCreateGuard,
     CsrfProtectionGuard,
   )
@@ -108,7 +110,7 @@ export class WorkflowPortabilityController {
   @HttpCode(201)
   @RateLimit('workflow_compile')
   @UseGuards(
-    SessionAuthenticationGuard,
+    AutomationAuthenticationGuard,
     WorkflowCreateGuard,
     CsrfProtectionGuard,
   )

@@ -1,3 +1,4 @@
+import type { ApiTokenScope } from '@pertexo/contracts';
 import {
   AUTHORIZATION_CAPABILITIES,
   ROLES,
@@ -28,14 +29,21 @@ export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number];
 
 export type WorkspaceId = string;
 
-export type ActorContext = Readonly<{
+type ActorIdentity = Readonly<{
   actorId: string;
-  kind: 'user';
   workspaceId: WorkspaceId;
-  sessionId: string;
   requestId: string;
   traceId?: string;
 }>;
+export type UserActorContext = ActorIdentity &
+  Readonly<{ kind: 'user'; sessionId: string }>;
+export type ApiTokenActorContext = ActorIdentity &
+  Readonly<{
+    kind: 'api_key';
+    tokenId: string;
+    scopes: readonly ApiTokenScope[];
+  }>;
+export type ActorContext = UserActorContext | ApiTokenActorContext;
 
 export type WorkspaceAccess = Readonly<{
   actorId: string;

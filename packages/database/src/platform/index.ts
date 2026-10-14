@@ -9,7 +9,10 @@ export type {
   DatabaseRuntimeOptions,
 } from './pool/runtime.js';
 export { generatePersistedId } from './persisted-id.js';
-export { IdempotencyConflictError } from './idempotency.js';
+export {
+  IdempotencyConflictError,
+  credentialCommandScope,
+} from './idempotency.js';
 export type { DatabaseReadiness } from './readiness.js';
 export {
   prepareStoredExecutionValue,

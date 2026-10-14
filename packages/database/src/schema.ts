@@ -1,3 +1,4 @@
+import { apiTokens } from './schema/identity/api-tokens.js';
 import {
   authAccounts,
   authSessions,
@@ -165,6 +166,7 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  apiTokens,
   workflowVersionDependencies,
   workflowCalls,
   workflowFolders,

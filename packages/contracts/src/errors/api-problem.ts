@@ -14,6 +14,8 @@ import {
 import { workflowConcurrencyProblems } from './workflow-concurrency.js';
 
 export const API_PROBLEM_CODES = [
+  'api_token.unavailable',
+  'api_token.limit',
   'auth.unauthenticated',
   'auth.forbidden',
   'auth.email_not_verified',
@@ -123,6 +125,18 @@ export type ApiProblemCode = z.output<typeof apiProblemCodeSchema>;
 export type ApiProblemIssue = z.output<typeof apiProblemIssueSchema>;
 export type ApiProblem = z.output<typeof apiProblemSchema>;
 const apiProblemDetails = {
+  'api_token.unavailable': {
+    status: 503,
+    title: 'Automation tokens unavailable',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'api_token.limit': {
+    status: 409,
+    title: 'Active token limit reached',
+    severity: 'info',
+    exposeDetail: true,
+  },
   'auth.unauthenticated': {
     status: 401,
     title: 'Authentication required',

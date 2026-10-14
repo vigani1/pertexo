@@ -12,6 +12,9 @@
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -42,13 +45,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "If-Match",
@@ -137,6 +141,9 @@
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -155,13 +162,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           }
         ],
         "requestBody": {
@@ -231,6 +239,9 @@
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -249,13 +260,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -372,6 +384,8 @@
           "code": {
             "type": "string",
             "enum": [
+              "api_token.unavailable",
+              "api_token.limit",
               "auth.unauthenticated",
               "auth.forbidden",
               "auth.email_not_verified",
@@ -3467,7 +3481,7 @@
         }
       },
       "Unavailable": {
-        "description": "Import writer unavailable",
+        "description": "Automation token authentication, limiter or import writer unavailable",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -3508,6 +3522,11 @@
       }
     },
     "securitySchemes": {
+      "apiToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "ptx_1 opaque personal token"
+      },
       "cookieSession": {
         "type": "apiKey",
         "in": "cookie",

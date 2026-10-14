@@ -205,3 +205,35 @@ describe('abuse rate-limit policy', () => {
     ]);
   });
 });
+
+describe('automation credential admission', () => {
+  const policy = new AbuseRateLimitPolicy();
+  it('protects credential lookups by client address before an actor is trusted', () => {
+    const decision = policy.evaluate('automation_authentication', {
+      clientAddress: '203.0.113.8',
+    });
+    expect(decision.failureMode).toBe('closed');
+    expect(decision.dimensions).toEqual([
+      { kind: 'client_address', identifier: '203.0.113.8', limit: 600 },
+    ]);
+  });
+  it('adds token budgets while retaining shared owner and workspace budgets', () => {
+    const first = policy.evaluate('run_admission', {
+      actorId,
+      workspaceId,
+      tokenId: 'first-token',
+    });
+    const second = policy.evaluate('run_admission', {
+      actorId,
+      workspaceId,
+      tokenId: 'second-token',
+    });
+    expect(first.dimensions).toEqual([
+      { kind: 'actor', identifier: actorId, limit: 60 },
+      { kind: 'workspace', identifier: workspaceId, limit: 120 },
+      { kind: 'token', identifier: 'first-token', limit: 60 },
+    ]);
+    expect(second.dimensions.slice(0, 2)).toEqual(first.dimensions.slice(0, 2));
+    expect(second.dimensions.at(-1)?.identifier).toBe('second-token');
+  });
+});

@@ -1,3 +1,4 @@
+import { AutomationAuthenticationGuard } from '../../../../src/authentication/automation/guard.js';
 import 'reflect-metadata';
 import type { ExecutionContext } from '@nestjs/common';
 import {
@@ -220,7 +221,7 @@ async function setup() {
       { provide: WorkflowOrganizationReadsUseCase, useValue: {} },
     ],
   });
-  builder.overrideGuard(SessionAuthenticationGuard).useValue({
+  const controlledAuthentication = {
     canActivate(context: ExecutionContext) {
       const request = context
         .switchToHttp()
@@ -237,7 +238,13 @@ async function setup() {
       });
       return true;
     },
-  });
+  };
+  builder
+    .overrideGuard(SessionAuthenticationGuard)
+    .useValue(controlledAuthentication);
+  builder
+    .overrideGuard(AutomationAuthenticationGuard)
+    .useValue(controlledAuthentication);
   builder
     .overrideGuard(CsrfProtectionGuard)
     .useValue(new CsrfProtectionGuard(new DoubleSubmitCsrfPolicy()));

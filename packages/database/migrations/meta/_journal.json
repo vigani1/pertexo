@@ -43,6 +43,13 @@
       "when": 1791934688478,
       "tag": "0005_workflow_failure_routing",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791963366889,
+      "tag": "0006_personal_automation_tokens",
+      "breakpoints": true
     }
   ]
 }

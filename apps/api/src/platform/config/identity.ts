@@ -8,6 +8,10 @@ import {
 
 /** Environment variables owned by browser identity and authentication. */
 export const identityEnvironmentShape = {
+  AUTOMATION_TOKENS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   INVITATION_TOKEN_KEY: z.string().optional(),
   INVITATION_TOKEN_KEY_VERSION: z.string().optional(),
   INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),
@@ -50,6 +54,7 @@ type EncryptionKeys = Readonly<{
 }>;
 
 export type ApiIdentityConfig = Readonly<{
+  automationTokensEnabled?: boolean;
   publicWebOrigin: string;
   invitationTokenEncryption?: EncryptionKeys;
   session: Readonly<{
@@ -108,6 +113,7 @@ export function parseIdentityConfig(
   try {
     return Object.freeze({
       publicWebOrigin,
+      automationTokensEnabled: environment.AUTOMATION_TOKENS_ENABLED,
       ...invitationTokenEncryption(environment),
       session,
       betterAuth: betterAuthConfig(environment, secret),
@@ -132,6 +138,8 @@ function identityScope(
         name.startsWith('SESSION_') ||
         name.startsWith('AUTH_') ||
         name === 'BETTER_AUTH_SECRET' ||
+        (name === 'AUTOMATION_TOKENS_ENABLED' &&
+          environment.AUTOMATION_TOKENS_ENABLED) ||
         name === 'PUBLIC_WEB_ORIGIN' ||
         name.startsWith('INVITATION_TOKEN_'),
     ),

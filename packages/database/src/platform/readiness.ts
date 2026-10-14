@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0005_workflow_failure_routing.sql';
+export const EXPECTED_MIGRATION_HEAD = '0006_personal_automation_tokens.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

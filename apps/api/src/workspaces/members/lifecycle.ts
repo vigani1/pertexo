@@ -1,4 +1,5 @@
-import { IdentityError, type IdentityClock } from '../../identity/index.js';
+import { assertRecentSignIn } from '../../identity/recent-sign-in.js';
+import type { IdentityClock } from '../../identity/index.js';
 import type { IdentityWorkspacePersistence } from '../ports.js';
 import {
   memberCommandFields,
@@ -31,9 +32,6 @@ type MembershipLifecyclePersistence = Required<
     | 'transferWorkspaceOwnership'
   >
 >;
-
-/** The same five-minute bound as ADR 043 invitation proof. */
-const FRESH_SIGN_IN_MILLIS = 5 * 60_000;
 
 /**
  * ADR 047: leaving a workspace, suspending and reactivating members, and
@@ -99,11 +97,7 @@ export class WorkspaceMembershipLifecycleUseCase {
         const request = workspaceOwnershipTransferRequestSchema.parse(
           input.request,
         );
-        if (
-          this.clock.now().getTime() - input.signedInAt.getTime() >
-          FRESH_SIGN_IN_MILLIS
-        )
-          throw new IdentityError('identity.session_not_fresh');
+        assertRecentSignIn(input.signedInAt, this.clock.now());
         const result = await this.persistence.transferWorkspaceOwnership({
           ...memberCommandFields(input),
           expectedRoleRevision: request.expectedRoleRevision,

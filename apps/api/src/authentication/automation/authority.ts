@@ -1,0 +1,39 @@
+import {
+  applicationError,
+  throwApplicationError,
+} from '../../platform/http/index.js';
+import type {
+  ApiTokenDatabase,
+  VerifiedApiToken,
+} from '@pertexo/database/tenant-access';
+import type { RequestHeaders } from '../../platform/http/request-headers.js';
+import type { HttpRateLimitAdmission } from '../../platform/rate-limit/admission.js';
+import { bearerCredential } from './headers.js';
+
+export class ApiTokenAuthentication {
+  public constructor(
+    private readonly database: ApiTokenDatabase,
+    private readonly enabled: boolean,
+    private readonly admission: HttpRateLimitAdmission,
+  ) {}
+  public async authenticate(
+    input: Readonly<{
+      headers: RequestHeaders;
+      clientAddress: string;
+      hasSession: boolean;
+    }>,
+  ): Promise<VerifiedApiToken | undefined> {
+    await this.admission.admit('automation_authentication', {
+      clientAddress: input.clientAddress,
+    });
+    const credential = bearerCredential(input.headers);
+    if (credential === undefined || input.hasSession) return undefined;
+    if (!this.enabled)
+      return throwApplicationError(
+        applicationError('api_token.unavailable', {
+          safeDetail: 'Automation tokens are disabled on this server.',
+        }),
+      );
+    return this.database.authenticate(credential);
+  }
+}

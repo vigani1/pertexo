@@ -34,7 +34,7 @@ export const workflowManualStartRejections = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'workflow_manual_start_rejections_check',
-      sql`((scope)::text = (('workflow:'::text || (workflow_id)::text) || ':manual'::text))`,
+      sql`((scope)::text = (('workflow:'::text || (workflow_id)::text) || ':manual'::text) OR (scope)::text ~ '^api_token:[0-9a-f]{64}$'::text)`,
     ),
     check(
       'workflow_manual_start_rejections_check1',

@@ -20,7 +20,11 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
 
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import {
+  claimCommand,
+  completeCommand,
+  credentialCommandScope,
+} from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
 import type {
@@ -70,6 +74,7 @@ const importInput = previewInput
       .string()
       .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),
     idempotencyKey: z.string(),
+    commandCredentialId: z.uuid().optional(),
   })
   .strict();
 const importResultSchema = z.object({ workflowId: z.uuid() }).strict();
@@ -346,7 +351,7 @@ function importPortableWorkflow(
       const command = {
         workspaceId: input.workspaceId,
         operation: 'workflow.import',
-        scope: input.actorId,
+        scope: credentialCommandScope(input.actorId, input.commandCredentialId),
         idempotencyKey: input.idempotencyKey,
       };
       const stored = await claimCommand(client, {

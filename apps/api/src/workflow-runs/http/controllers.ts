@@ -1,3 +1,4 @@
+import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import {
   Body,
   Controller,
@@ -91,7 +92,7 @@ export class WorkflowRunsController {
   @RateLimit('run_admission')
   @HttpCode(202)
   @UseGuards(
-    SessionAuthenticationGuard,
+    AutomationAuthenticationGuard,
     WorkflowRunStartGuard,
     CsrfProtectionGuard,
   )
@@ -152,7 +153,7 @@ export class WorkflowRunsController {
   }
 
   @Get('runs/:runId')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowRunReadGuard)
   public async getRun(
     @Req() request: WorkflowRunsRequest,
     @Param() params: unknown,
@@ -167,7 +168,7 @@ export class WorkflowRunsController {
   }
 
   @Get('runs')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowRunReadGuard)
   public async listRuns(
     @Req() request: WorkflowRunsRequest,
     @Param() params: unknown,
@@ -272,7 +273,7 @@ export class WorkflowRunsController {
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
   @UseGuards(
-    SessionAuthenticationGuard,
+    AutomationAuthenticationGuard,
     WorkflowRunCancelGuard,
     CsrfProtectionGuard,
   )

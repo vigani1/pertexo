@@ -45,6 +45,8 @@ import {
 } from './revision-commands.js';
 import {
   authenticatedComponents,
+  automationSecurity,
+  automationCsrfHeaderParameter,
   csrfHeaderParameter,
   idempotencyHeaderParameter,
   jsonRequest,
@@ -306,7 +308,8 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/workflows': {
       get: {
         operationId: 'listWorkflows',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['workflow:read'],
+        security: automationSecurity,
         parameters: [
           ...pathParameters,
           ...workflowOrganizationListReadContract.parameters,
@@ -316,7 +319,9 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
-          '503': problemResponse('Workflow organization unavailable'),
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
           '500': responseReference('Unexpected'),
         },
       },
@@ -342,9 +347,10 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}': {
       get: {
         operationId: 'getWorkflow',
+        'x-pertexo-api-token-scopes': ['workflow:read'],
         description:
           'Default metadata retains its strict shape. include is exactly templateOrigin, organization, or templateOrigin,organization. Unsupported projection is unavailable, never inferred null or empty.',
-        security: [{ cookieSession: [] }],
+        security: automationSecurity,
         parameters: [
           ...workflowParameters,
           workflowOrganizationGetReadContract.parameter,
@@ -356,16 +362,22 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '500': responseReference('Unexpected'),
-          '503': responseReference('Unavailable'),
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
         },
       },
     },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft': {
       get: {
         operationId: 'getWorkflowDraft',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['workflow:read'],
+        security: automationSecurity,
         parameters: workflowParameters,
         responses: {
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
           '200': jsonResponseWithHeaders(
             'Workflow draft',
             'WorkflowDraftResponse',
@@ -420,10 +432,11 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/publish': {
       post: {
         operationId: 'publishWorkflow',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['workflow:publish'],
+        security: automationSecurity,
         parameters: [
           ...workflowParameters,
-          csrfParameter,
+          automationCsrfHeaderParameter(),
           etagParameter,
           idempotencyParameter,
         ],
@@ -438,14 +451,17 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           '428': responseReference('PreconditionRequired'),
           '422': responseReference('UnprocessableEntity'),
           '500': responseReference('Unexpected'),
-          '503': responseReference('ValidationUnavailable'),
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
         },
       },
     },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions': {
       get: {
         operationId: 'listWorkflowVersions',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['workflow:read'],
+        security: automationSecurity,
         parameters: [
           ...workflowParameters,
           queryParameter('limit', workflowVersionsQuerySchema.shape.limit),
@@ -456,6 +472,9 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           ),
         ],
         responses: {
+          '503': problemResponse(
+            'Automation token authentication, limiter or operation dependencies unavailable',
+          ),
           '200': jsonResponse(
             'Immutable workflow versions',
             'WorkflowVersionsResponse',
@@ -472,7 +491,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     ...workflowInputCaseContractPaths,
     ...workflowOrganizationContractPaths,
   },
-  components: authenticatedComponents(openApiSchemas, problemResponses),
+  components: authenticatedComponents(openApiSchemas, problemResponses, true),
 });
 
 type SchemaName = keyof typeof openApiSchemas;

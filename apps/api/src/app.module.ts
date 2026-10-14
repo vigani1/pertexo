@@ -119,10 +119,17 @@ export class AppModule {
       },
     });
 
+    const admissionModule = RateLimitModule.register(
+      config.redisUrl,
+      dependencies.rateLimitConsumer,
+    );
     const identityModule =
       dependencies.identityRuntime === undefined
         ? undefined
-        : IdentityRuntimeModule.register(dependencies.identityRuntime);
+        : IdentityRuntimeModule.register(
+            dependencies.identityRuntime,
+            admissionModule,
+          );
     const webhookRuntime = dependencies.webhookRuntime;
     const scheduleRuntime = dependencies.scheduleRuntime;
     const workflowRuntime = dependencies.workflowRuntime;
@@ -161,10 +168,7 @@ export class AppModule {
           dependencies.telemetry,
         ),
         HttpPlatformModule.register(httpErrorLogger, APPLICATION_ERROR_MAPPERS),
-        RateLimitModule.register(
-          config.redisUrl,
-          dependencies.rateLimitConsumer,
-        ),
+        admissionModule,
       ],
       controllers: [LiveController, ReadyController],
       providers: [

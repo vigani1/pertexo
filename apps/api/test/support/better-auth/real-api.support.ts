@@ -121,6 +121,7 @@ export function useBetterAuthRealApi(
   suite: string,
   options: Readonly<{
     publicWebOrigin?: string;
+    automationTokens?: boolean;
     /** F07-owned qualification namespace, never a shared database selection. */
     databaseNamespace?: 'f07_organization';
     redisUrl?: string;
@@ -206,7 +207,11 @@ export function useBetterAuthRealApi(
     await options.afterMigration?.(databaseUrl);
     const defaults = apiConfig(databaseConfig);
     if (defaults.identity === undefined) throw new Error('Identity is missing');
-    const identity = { ...defaults.identity, publicWebOrigin: fixtureOrigin };
+    const identity = {
+      ...defaults.identity,
+      publicWebOrigin: fixtureOrigin,
+      automationTokensEnabled: options.automationTokens ?? false,
+    };
     const config: ApiConfig = {
       ...defaults,
       identity,

@@ -1,3 +1,7 @@
+import {
+  apiTokenContractPaths,
+  apiTokenContractSchemas,
+} from './api-tokens.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
   authenticationContractPaths,
@@ -46,6 +50,7 @@ import {
 } from '../../schemas/identity/workspaces.js';
 
 const schemas = Object.freeze({
+  ...apiTokenContractSchemas,
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WorkspaceCreateRequest: jsonSchema(workspaceCreateRequestSchema, 'input'),
   WorkspaceRenameRequest: jsonSchema(workspaceRenameRequestSchema, 'input'),
@@ -129,6 +134,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
     version: '1.0.0',
   },
   paths: {
+    ...apiTokenContractPaths,
     ...authenticationContractPaths,
     '/v1/workspaces': {
       get: {

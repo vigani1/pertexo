@@ -1,3 +1,10 @@
+import {
+  apiTokenCreateRequestSchema,
+  apiTokenCreateResponseSchema,
+  apiTokenListResponseSchema,
+  apiTokenRevokeRequestSchema,
+  apiTokenRevokeResponseSchema,
+} from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { apiProblemSchema } from '@pertexo/contracts';
@@ -55,6 +62,17 @@ describe('identity/workspace generated contracts', () => {
   it('projects every client schema mechanically from the owning Zod contract', () => {
     expect(identityWorkspaceClientContract).toEqual({
       schemas: {
+        ApiTokenCreateRequest: generated(apiTokenCreateRequestSchema, 'input'),
+        ApiTokenCreateResponse: generated(
+          apiTokenCreateResponseSchema,
+          'output',
+        ),
+        ApiTokenListResponse: generated(apiTokenListResponseSchema, 'output'),
+        ApiTokenRevokeRequest: generated(apiTokenRevokeRequestSchema, 'input'),
+        ApiTokenRevokeResponse: generated(
+          apiTokenRevokeResponseSchema,
+          'output',
+        ),
         AccessibleWorkspacesResponse: generated(
           accessibleWorkspacesResponseSchema,
           'output',
@@ -230,6 +248,8 @@ describe('identity/workspace generated contracts', () => {
   it('documents all public route templates and their request/response schemas', () => {
     expect(identityWorkspaceOpenApiDocument.openapi).toBe('3.1.0');
     expect(Object.keys(identityWorkspaceOpenApiDocument.paths)).toEqual([
+      '/v1/workspaces/{workspaceId}/api-tokens',
+      '/v1/workspaces/{workspaceId}/api-tokens/{tokenId}/revoke',
       '/v1/auth/capabilities',
       '/v1/users/me',
       '/v1/auth/account-security/sessions',

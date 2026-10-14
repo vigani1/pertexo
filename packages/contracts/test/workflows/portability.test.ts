@@ -125,12 +125,21 @@ describe('portable workflow public HTTP contract', () => {
       }).templateOrigin?.derivation,
     ).toBe('inherited');
   });
-  it('owns authenticated CSRF export and preview plus an idempotent creation command', () => {
+  it('documents cookie CSRF and scoped bearer portability with idempotent creation', () => {
     const paths = workflowPortabilityOpenApiDocument.paths;
     for (const path of Object.values(paths)) {
-      expect(path.post.security).toEqual([{ cookieSession: [] }]);
+      expect(path.post.security).toEqual([
+        { cookieSession: [] },
+        { apiToken: [] },
+      ]);
       expect(path.post.parameters).toContainEqual(
-        expect.objectContaining({ name: 'x-csrf-token', in: 'header' }),
+        expect.objectContaining({
+          name: 'x-csrf-token',
+          in: 'header',
+          required: false,
+          description:
+            'Required with cookie sessions. Bearer API tokens do not use CSRF.',
+        }),
       );
     }
     const create = paths['/v1/workspaces/{workspaceId}/workflows/import'].post;

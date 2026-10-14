@@ -103,6 +103,20 @@ export function csrfHeaderParameter(name = 'x-csrf-token') {
   } as const;
 }
 
+export const automationSecurity = [
+  { cookieSession: [] },
+  { apiToken: [] },
+] as const;
+
+export function automationCsrfHeaderParameter() {
+  return {
+    ...csrfHeaderParameter(),
+    required: false,
+    description:
+      'Required with cookie sessions. Bearer API tokens do not use CSRF.',
+  } as const;
+}
+
 export function idempotencyHeaderParameter(required = true) {
   return {
     name: 'Idempotency-Key',
@@ -124,11 +138,20 @@ export function webhookContentTypeHeaderParameter() {
 export function authenticatedComponents<
   Schemas extends Readonly<Record<string, unknown>>,
   Responses extends Readonly<Record<string, unknown>>,
->(schemas: Schemas, responses: Responses) {
+>(schemas: Schemas, responses: Responses, automation = false) {
   return {
     schemas,
     responses,
     securitySchemes: {
+      ...(automation
+        ? {
+            apiToken: {
+              type: 'http' as const,
+              scheme: 'bearer',
+              bearerFormat: 'ptx_1 opaque personal token',
+            },
+          }
+        : {}),
       cookieSession: {
         type: 'apiKey',
         in: 'cookie',

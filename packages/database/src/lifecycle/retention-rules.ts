@@ -1,3 +1,4 @@
+import { API_TOKEN_RETENTION_RULE } from './identity/api-tokens.js';
 import { reapInvitationReplacementClaims } from './invitation-claims.js';
 import {
   CALL_CHILD_REFERENCES_RETENTION_RULE,
@@ -14,6 +15,7 @@ import {
  * the deleted row, so a row changed while the delete waited for it is kept.
  */
 export const RETENTION_RULES = Object.freeze([
+  API_TOKEN_RETENTION_RULE,
   {
     // A run's input is kept until the expiry recorded with it.
     name: 'run_inputs',

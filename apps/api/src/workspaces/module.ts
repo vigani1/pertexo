@@ -217,6 +217,7 @@ export class IdentityWorkspaceModule {
       ],
       providers,
       exports: [
+        WORKSPACE_AUTHORIZATION,
         SESSION_AUTHORITY,
         CSRF_POLICY,
         DoubleSubmitCsrfPolicy,

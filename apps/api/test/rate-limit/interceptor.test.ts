@@ -1,3 +1,4 @@
+import { HttpRateLimitAdmission } from '../../src/platform/rate-limit/admission.js';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { firstValueFrom, of } from 'rxjs';
@@ -86,8 +87,7 @@ describe('rate-limit interceptor', () => {
     const next: CallHandler = { handle };
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      consumer,
-      metrics(),
+      new HttpRateLimitAdmission(consumer, metrics()),
     );
 
     await expect(
@@ -119,8 +119,7 @@ describe('rate-limit interceptor', () => {
     const recorder = metrics();
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      consumer,
-      recorder,
+      new HttpRateLimitAdmission(consumer, recorder),
     );
 
     await expect(
@@ -141,8 +140,7 @@ describe('rate-limit interceptor', () => {
     const recorder = metrics();
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      { consume },
-      recorder,
+      new HttpRateLimitAdmission({ consume }, recorder),
     );
 
     await expect(
@@ -165,8 +163,7 @@ describe('rate-limit interceptor', () => {
     const handle = vi.fn(() => of('called'));
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      { consume },
-      recorder,
+      new HttpRateLimitAdmission({ consume }, recorder),
     );
 
     await expect(
@@ -185,12 +182,14 @@ describe('rate-limit interceptor', () => {
     const handle = vi.fn(() => of('called'));
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      { consume: vi.fn().mockResolvedValue({ allowed: true }) },
-      {
-        record: () => {
-          throw new Error('metrics unavailable');
+      new HttpRateLimitAdmission(
+        { consume: vi.fn().mockResolvedValue({ allowed: true }) },
+        {
+          record: () => {
+            throw new Error('metrics unavailable');
+          },
         },
-      },
+      ),
     );
 
     await expect(
@@ -205,18 +204,20 @@ describe('rate-limit interceptor', () => {
     const handle = vi.fn(() => of('called'));
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      {
-        consume: vi.fn().mockResolvedValue({
-          allowed: false,
-          retryAfterSeconds: 7,
-          limitedDimension: 'connection',
-        }),
-      },
-      {
-        record: () => {
-          throw new Error('metrics unavailable');
+      new HttpRateLimitAdmission(
+        {
+          consume: vi.fn().mockResolvedValue({
+            allowed: false,
+            retryAfterSeconds: 7,
+            limitedDimension: 'connection',
+          }),
         },
-      },
+        {
+          record: () => {
+            throw new Error('metrics unavailable');
+          },
+        },
+      ),
     );
 
     await expect(
@@ -237,14 +238,16 @@ describe('rate-limit interceptor', () => {
       const handle = vi.fn(() => of('called'));
       const interceptor = new RateLimitInterceptor(
         new Reflector(),
-        {
-          consume: vi.fn().mockRejectedValue(new Error('redis unavailable')),
-        },
-        {
-          record: () => {
-            throw new Error('metrics unavailable');
+        new HttpRateLimitAdmission(
+          {
+            consume: vi.fn().mockRejectedValue(new Error('redis unavailable')),
           },
-        },
+          {
+            record: () => {
+              throw new Error('metrics unavailable');
+            },
+          },
+        ),
       );
 
       const result = interceptor.intercept(context(handler), { handle });
@@ -264,8 +267,7 @@ describe('rate-limit interceptor', () => {
     const recorder = metrics();
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      { consume },
-      recorder,
+      new HttpRateLimitAdmission({ consume }, recorder),
     );
 
     await expect(
@@ -293,8 +295,7 @@ describe('rate-limit interceptor', () => {
       const consume = vi.fn().mockResolvedValue({ allowed: true });
       const interceptor = new RateLimitInterceptor(
         new Reflector(),
-        { consume },
-        metrics(),
+        new HttpRateLimitAdmission({ consume }, metrics()),
       );
 
       await interceptor.intercept(
@@ -321,8 +322,7 @@ describe('rate-limit interceptor', () => {
     const consume = vi.fn().mockResolvedValue({ allowed: true });
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      { consume },
-      metrics(),
+      new HttpRateLimitAdmission({ consume }, metrics()),
     );
 
     await interceptor.intercept(
@@ -352,8 +352,7 @@ describe('rate-limit interceptor', () => {
     const consume = vi.fn().mockResolvedValue({ allowed: true });
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
-      { consume },
-      metrics(),
+      new HttpRateLimitAdmission({ consume }, metrics()),
     );
 
     await interceptor.intercept(

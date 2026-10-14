@@ -372,6 +372,9 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
+      '@pertexo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../nodes-core

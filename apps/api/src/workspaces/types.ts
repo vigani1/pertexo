@@ -1,3 +1,4 @@
+import type { ApiTokenActorContext } from '../authorization/types.js';
 export {
   accessibleWorkspacesQuerySchema,
   accessibleWorkspacesResponseSchema,
@@ -73,6 +74,8 @@ export interface CookieResponse {
 }
 
 export interface IdentityWorkspaceRequest {
+  ip?: string;
+  apiTokenActor?: ApiTokenActorContext;
   method?: string;
   headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
   cookies?: Readonly<Record<string, string | undefined>>;
