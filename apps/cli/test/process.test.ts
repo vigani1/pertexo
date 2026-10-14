@@ -4,9 +4,7 @@ import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
-const entrypoint = fileURLToPath(
-  new URL('../../dist/main.js', import.meta.url),
-);
+const entrypoint = fileURLToPath(new URL('../dist/main.js', import.meta.url));
 const workspace = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const credential = `ptx_1.${workspace}.bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.${'A'.repeat(43)}`;
 const execute = promisify(execFile);

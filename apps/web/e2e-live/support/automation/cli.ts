@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 const execute = promisify(execFile);
 const entrypoint = fileURLToPath(
-  new URL('../../../../ops/dist/main.js', import.meta.url),
+  new URL('../../../../cli/dist/main.js', import.meta.url),
 );
 
 /** Check the compiled dependency closure before opening any live credential receipt. */
@@ -18,7 +18,7 @@ export async function verifyAutomationCliBuild() {
       throw new Error('Invalid CLI build');
   } catch {
     throw new Error(
-      'Build apps/ops and its dependencies before the owned automation browser journey.',
+      'Build apps/cli and its dependencies before the owned automation browser journey.',
     );
   }
 }

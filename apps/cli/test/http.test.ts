@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createAutomationHttpClient } from '../../src/automation/http.js';
+import { createAutomationHttpClient } from '../src/http.js';
 const workspace = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const credential = `ptx_1.${workspace}.bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.${'A'.repeat(43)}`;
 const input = {

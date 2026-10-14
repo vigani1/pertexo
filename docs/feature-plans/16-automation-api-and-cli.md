@@ -163,7 +163,7 @@ source references or preconditions.
 | existing API HTTP owners | Method-specific opt-in and command identity; shared use cases |
 | web/src/features/api-tokens/ | Local data/form/page/list/one-time receipt and deliberate public entry |
 | web/src/routes/workspace/ | Lazy Settings composition/navigation |
-| ops/src/automation/ | Argument parser, HTTP transport/commands; dispatch before operator config |
+| cli/src/ | Argument parser, HTTP transport/commands; independent of operator config |
 
 Use current owners when inventory names differ and record corrections. No empty
 folders/facades, duplicated types, consumer barrels or browser database imports.
@@ -436,3 +436,29 @@ complete Manual and Call preparation and persist the intent before action redeli
 It retains real stores/workers, identity/receipt-expiry assertions and original
 timeouts, with no production hooks or added retries. Local Call integration and
 browser/CLI qualifications pass after these fixes.
+
+
+## Owner-approved CLI separation — 2026-10-14
+
+Move the seven HTTP CLI files from ops into `apps/cli/src/`, with their four
+behavior-test files in `apps/cli/test/`. Relocate its existing compiled bootstrap
+and dependency/build/test/image references in a move-only commit. Keep the
+existing automation argument prefix in that intermediate commit so the relocated
+compiled-process tests retain identical invocation behavior. No app-to-app imports
+or temporary dependency exceptions. Ops retains only its operator bootstrap and
+maintenance-database/observability dependencies.
+
+A separate wiring commit will expose the dedicated CLI entry point/root script,
+update the guide and ADR 074, and enable the existing automation switch in the
+beta production example. Commands, flags and output contracts stay the same;
+only their launcher changes. The CLI has contracts/model/zod dependencies and no
+database, maintenance or telemetry configuration. Prepare its private package's
+bin/files/Node engine shape, without npm publication, a new service or CI job.
+Existing CI app tests/browser build and the existing image carry the moved app.
+
+- [x] Move HTTP CLI source, tests and bootstrap; update dependency/build ownership.
+- [ ] Wire standalone entry/root script, private package shape and beta switch.
+- [ ] Update guide/ADR and qualify compiled CLI plus existing operator commands.
+- Merge only after the existing required checks pass; record release evidence on
+  the delivery PR. Historical slice 3 evidence above describes its original ops
+  location and is superseded by this follow-up for current ownership.
