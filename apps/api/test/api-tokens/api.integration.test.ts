@@ -407,7 +407,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const receiptScopes = await api
         .database()
         .query<{ scope: string }>(
-          "select scope from app.idempotency_records where workspace_id=$1 and operation in ('workflow.publish','workflow.import','workflow.manual_start')",
+          "select scope from app.idempotency_records where workspace_id=$1 and operation in ('workflow.publish','workflow.import','workflow.run.accept')",
           [workspaceId],
         );
       expect(

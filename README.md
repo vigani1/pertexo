@@ -188,3 +188,5 @@ credentials. See
 [system mail operations](docs/operations/single-server.md#system-mail-resend-or-smtp)
 for configuration, delivery uncertainty and switching providers safely. Workflow
 Email steps and workspace Alerts still use their workspace Resend connections.
+
+Personal API tokens and the HTTP CLI: [automation guide](docs/automation.md).

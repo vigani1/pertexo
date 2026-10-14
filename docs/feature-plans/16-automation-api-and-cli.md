@@ -19,8 +19,8 @@ team administration, editor mutations, recovery/replay, triggers, streaming even
 and internal operator commands.
 
 No service accounts, OAuth server, JWTs, SDK package, CLI profile format, new role,
-service, dependency or CI job. Keep seams for later requirements rather than
-building speculative infrastructure: these additions fail the two-question test.
+service, external dependency or CI job. Keep seams for later requirements
+rather than building speculative infrastructure: these additions fail the two-question test.
 
 ## Reconciled foundations
 
@@ -194,7 +194,8 @@ API returns directly to component state; refresh metadata only. Lost outcomes
 show refresh/revoke/replacement, not automatic recreation. Disabled config explains
 availability rather than claiming the member lost access.
 
-CLI uses native fetch and current contract parsers in apps/ops. `automation`
+CLI uses native fetch and current contract parsers in apps/ops, through direct
+references to the existing contracts/workflow-model workspace packages. `automation`
 arguments dispatch before operator env/DB imports. Use PERTEXO_API_URL,
 PERTEXO_API_TOKEN and explicit workspace/IDs, no token argument or saved profiles.
 Bound files/requests/responses/timeouts; refuse unsafe remote HTTP and redirects.
@@ -278,9 +279,15 @@ These inform transport/authorization/redaction, not an OAuth subsystem.
 - [x] Slice 1: PR #283 merged; natural main
   `b8f9d1b38e6e24241a941f80dfce49988a351383`, CI 38543579563 (including ARM)
   and CodeQL 38543579596 succeeded.
-- [ ] Slice 2 Settings and live browser/mobile evidence merged.
-- [ ] Slice 3 CLI/API/worker qualification and user guide merged.
-- [ ] Final natural main CI, CodeQL and ARM publication inspected.
+- [x] Slice 2: PR #285 merged; natural main
+  `66aea767517041397cef6796b541b3448d4e5893`, CI 38554451783 (including ARM)
+  and CodeQL 38554451846 succeeded.
+- [x] Slice 3 CLI/API/worker qualification and user guide implemented and locally
+  verified. Delivery PR records required CI, merge and natural main qualification.
+
+Release acceptance remains green required CI and CodeQL, rebase merge, then
+inspection of natural main CI/CodeQL/ARM. Record those run IDs on the delivery PR
+so this source snapshot does not claim future checks already passed.
 
 ### Slice 1 qualification
 
@@ -333,7 +340,7 @@ worker execution remains explicitly required in slice 3. All required PR and
 natural main checks passed, including the final CodeQL security gate and ARM
 publication. Settings and the CLI remain the next slices.
 
-### Slice 2 local evidence (merge pending)
+### Slice 2 qualification
 
 Settings uses a lazy feature-owned page, scoped metadata queries, one-time local
 secret state and the existing Weft/accessible primitives. Recent sign-in returns
@@ -369,5 +376,51 @@ includes the new case. React Doctor after the ownership/composition fixes is
 passed (web 1,152, API 1,982, worker 720, database 536); all 157 mocked browser
 cases passed. The final owned live journey passed after original-header
 hardening. Three synthetic review images were inspected at desktop and phone
-widths. Green PR/main qualification remains required before marking this slice
-complete.
+widths. All required PR and natural main checks passed, including CodeQL and ARM
+publication. CLI and completed-worker qualification remain the final slice.
+
+
+### Slice 3 qualification
+
+The existing ops app dispatches `automation` before loading operator configuration,
+database clients or telemetry. Its feature directory owns named argument decoding,
+bounded file/HTTP transport, shared-contract command mapping and safe process output.
+It reuses the existing contracts/model workspace packages, with matching project
+references; no external dependency or profile/storage format is added.
+
+All twelve commands preserve the caller’s reviewed files, original command keys,
+compatibility fingerprint and opaque ETag. Draft CLI output adds its validated HTTP
+ETag as command metadata. Native HTTP refuses redirects/cookies/unsafe remote HTTP,
+bounds regular UTF-8 JSON files/requests at 2 MiB, responses at 16 MiB and requests
+at 30 seconds. Invalid/lost write responses report unknown outcome without retry.
+Export/import preview remain reads despite using POST; cancellation keeps its
+existing state-idempotent contract. Credential material in bodies or response ETags
+is refused before output; raw exceptions/headers are never diagnostics.
+
+The ops suite passes 119 cases, including all 55 existing operator cases. New
+behavior checks cover twelve command mappings, validation/preconditions, exact
+headers/bodies, URLs, duplicate/irrelevant flags, files/FIFOs/size/UTF-8, bounded
+response streams, invalid JSON/problems/credential echoes, deadlines and interruption.
+A native server proves redirects are never followed. Compiled child processes run
+with only URL/token environment and handle failures/SIGTERM without database or
+telemetry prerequisites. Both documented JSON preparation commands ran successfully
+with disposable files.
+
+The existing owned browser/API/worker scenario retains desktop and 375px reduced
+motion token journeys, and adds ordinary UI issuance → compiled CLI export →
+preview → import/retry → review unpublished copy → publish/retry → start/retry →
+succeeded run → UI revoke → CLI 401. Independent SQL checks identical source/copy
+graphs, one immutable copy version, one run, its actual step output, exact original
+command-key hashes and credential-scoped receipts. Completed-run cancellation is
+correctly refused. Evidence contains only public identifiers; live traces/screenshots
+remain disabled and transient credentials stay local to the owned journey.
+The receipt verifier now uses the actual `workflow.run.accept` operation name.
+All three real token API cases pass with their integration flag explicitly enabled.
+
+Repository-wide format/build/lint/types/dependency/contracts/schema/architecture
+checks pass. Sequential unit suites pass, including web 1,152, API 1,982, worker
+720, database 536 and ops 119. The final owned live journey passed after transport
+privacy hardening. The [automation guide](../automation.md) documents all commands,
+curl equivalents, scoped ownership/expiry/replacement, safe environment storage,
+reviewed digest/ETag/body preparation, paging, cancellation and exact retry rules.
+PR and natural main checks remain the release gate recorded on the delivery PR.
