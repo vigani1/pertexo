@@ -62,6 +62,12 @@ run wording/status under `model/presentation/`. Existing list, timeline, loom
 and step-inspection owners remain separate; live-update reconciliation stays
 beside these owners. Public feature interfaces and rendered UI stay unchanged.
 
+Database run recovery owns its contract, acceptance and reads under
+`runs/recovery/`. Run events and published-workflow reads live in `runs/queries/`;
+the initial checkpoint interface belongs to `runs/commands/`. The existing
+repository and `/runs` public entry retain their interfaces, with no persistence
+or execution change.
+
 ## Execution and persistence
 
 PostgreSQL owns durable state. Redis/BullMQ transports identifiers and provides

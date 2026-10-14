@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from './initial-checkpoint.js';
+import type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { sql } from 'drizzle-orm';
@@ -20,7 +20,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   parsePublishedWorkflowRow,
   type PublishedWorkflow,
-} from './published-workflow.js';
+} from './queries/published-workflow.js';
 import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
 import {
   withWorkspaceTransaction,
@@ -29,15 +29,15 @@ import {
 import {
   recoverWorkflowRunInTransaction,
   allocateRecoveryIdentity,
-} from './commands/recover.js';
+} from './recovery/accept.js';
 import {
   readRecoveryMetadata,
   readRecoveryValues,
-} from './queries/recovery.js';
+} from './recovery/queries.js';
 import type {
   WorkflowRecoveryPreparation,
   WorkflowRecoveryPreview,
-} from './recovery.js';
+} from './recovery/contract.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { requestWorkflowRunCancellation } from './commands/cancel.js';
 import {

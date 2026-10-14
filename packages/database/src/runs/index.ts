@@ -1,5 +1,5 @@
 export { ExecutionStateConflictError } from './state-errors.js';
-export { readRunEventsAfter } from './events.js';
+export { readRunEventsAfter } from './queries/events.js';
 export {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
@@ -8,8 +8,8 @@ export {
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
-} from './published-workflow.js';
-export type { InitialCheckpointFactory } from './initial-checkpoint.js';
+} from './queries/published-workflow.js';
+export type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
 export {
   createWorkflowRunDatabase,
   WorkflowPublishedVersionConflictError,
@@ -47,7 +47,7 @@ export { createDeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
 export type { DeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
 export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
 export type { DueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
-export { createPublishedWorkflowReader } from './published-workflow.js';
+export { createPublishedWorkflowReader } from './queries/published-workflow.js';
 
 export {
   createOperatorRunReplayStore,
@@ -101,9 +101,9 @@ export type {
   WorkflowRecoveryMetadata,
   WorkflowRecoveryPreparation,
   PreparedWorkflowRecovery,
-} from './recovery.js';
-export { WorkflowRecoveryUnavailableError } from './recovery.js';
-export type { WorkflowRecoverySummary } from './recovery.js';
+} from './recovery/contract.js';
+export { WorkflowRecoveryUnavailableError } from './recovery/contract.js';
+export type { WorkflowRecoverySummary } from './recovery/contract.js';
 export type {
   WorkflowRecoveryPreviewInput,
   RecoverPublishedWorkflowRunInput,

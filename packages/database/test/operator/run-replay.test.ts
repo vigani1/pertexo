@@ -19,7 +19,7 @@ vi.mock('../../src/outbox/receipts.js', () => ({
 vi.mock('../../src/runs/commands/acceptance.js', () => ({
   acceptWorkflowRun: mocks.acceptWorkflowRun,
 }));
-vi.mock('../../src/runs/published-workflow.js', () => ({
+vi.mock('../../src/runs/queries/published-workflow.js', () => ({
   parsePublishedWorkflowRow: mocks.parsePublishedWorkflowRow,
 }));
 

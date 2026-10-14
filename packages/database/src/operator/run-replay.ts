@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from '../runs/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../runs/commands/initial-checkpoint.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { sha256HexSchema } from '../platform/persisted-primitives.js';
@@ -10,7 +10,7 @@ import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { consumeInboxMessage } from '../outbox/receipts.js';
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
-import { parsePublishedWorkflowRow } from '../runs/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../runs/queries/published-workflow.js';
 
 const inputSchema = z
   .object({

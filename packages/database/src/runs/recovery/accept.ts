@@ -3,18 +3,18 @@ import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { prepareStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { nodeRuns, runEvents } from '../../schema/runs/execution.js';
-import {
-  readRecoveryMetadata,
-  readRecoveryValues,
-} from '../queries/recovery.js';
-import { WorkflowRecoveryUnavailableError } from '../recovery.js';
+import { readRecoveryMetadata, readRecoveryValues } from './queries.js';
+import { WorkflowRecoveryUnavailableError } from './contract.js';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
   readWorkflowRunAcceptanceReplay,
-} from './acceptance.js';
-import { insertWorkflowRunAudit, requireWorkflowRunRecord } from './records.js';
-import { lockRunAcceptanceCommand } from './lock-acceptance.js';
+} from '../commands/acceptance.js';
+import {
+  insertWorkflowRunAudit,
+  requireWorkflowRunRecord,
+} from '../commands/records.js';
+import { lockRunAcceptanceCommand } from '../commands/lock-acceptance.js';
 import type { RecoverPublishedWorkflowRunInput } from '../runs.repository.js';
 
 export type RecoverWorkflowRunInput = RecoverPublishedWorkflowRunInput;

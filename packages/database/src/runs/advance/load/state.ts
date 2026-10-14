@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
-import { parsePublishedWorkflowRow } from '../../published-workflow.js';
+import { parsePublishedWorkflowRow } from '../../queries/published-workflow.js';
 import {
   CoordinatorRunStateCorruptError,
   type RunAdvanceState,
