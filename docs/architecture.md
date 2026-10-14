@@ -48,6 +48,15 @@ SDK definitions and executors; browser code gets live catalog metadata from the
 API and imports only browser-safe packages. `pnpm architecture:check` verifies
 workspace dependencies, TypeScript references and source import cycles.
 
+## Built-in node layout
+
+`nodes-core/src/triggers/` owns start steps; `flow/` owns control steps;
+`data/` owns Date, Set and Validate, with the seven list steps and their private
+semantics under `data/lists/`. Each step retains its own definition, validation,
+executor and index. Public index/server and definition/executor registrations
+remain at the package root. Folder grouping does not change node identities,
+versions or runtime behavior.
+
 ## Execution and persistence
 
 PostgreSQL owns durable state. Redis/BullMQ transports identifiers and provides

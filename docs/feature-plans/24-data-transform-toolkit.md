@@ -37,8 +37,8 @@ this release. This does not mark those deferred capabilities done.
 
 | Need | Existing foundation | Increment |
 | --- | --- | --- |
-| Build an object/map fields | `nodes-core/src/set/`, ordinary input mappings | Keep Set and mapping semantics |
-| Validate records | `nodes-core/src/validate/` with fixed issue output | Keep Validate; transforms fail on invalid input rather than emit validation reports |
+| Build an object/map fields | `nodes-core/src/data/set/`, ordinary input mappings | Keep Set and mapping semantics |
+| Validate records | `nodes-core/src/data/validate/` with fixed issue output | Keep Validate; transforms fail on invalid input rather than emit validation reports |
 | Filter a collection | JSONata path filters | Add discoverable scalar comparison controls; no second expression evaluator |
 | Sort | Restricted profile lacks `$sort` and rejects unsupported AST constructs | Dedicated stable numeric/code-unit sort; do not relax ADR 009 |
 | Unique values | `$distinct`, already allowed | A visible keyed/whole-value step with explicit missing-key behavior and counts |
@@ -47,9 +47,9 @@ this release. This does not mark those deferred capabilities done.
 | Date conversion | No clock/date built-ins in the restricted evaluator | Strict explicit-offset instant ↔ epoch milliseconds, always UTC output |
 | Batch work | Existing For each, maximum 1,000 items | Operate once on a bounded collection; no new scheduler/streaming claims |
 
-Canonical paths are `packages/nodes-core/src/<area>/` with
+Canonical paths are `packages/nodes-core/src/{triggers,flow,data}/<step>/` with
 `definition.ts`, `validation.ts`, `executor.ts`, `index.ts`; pure collection
-semantics shared by the four new executors live in private `src/collections/`
+list steps live in `src/data/lists/<step>/`; shared collection semantics live in private `src/data/lists/semantics/`
 files by responsibility. Definition registration remains in `definitions.ts`,
 executor registration in `registrations.ts`, catalog composition in
 `node-catalog`. No new package or consumer-named entry point.

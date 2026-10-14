@@ -3,49 +3,49 @@ import {
   CORE_CONCAT_INPUT_SCHEMA,
   CORE_CONCAT_MANIFEST,
   CORE_CONCAT_OUTPUT_SCHEMA,
-} from './concat/index.js';
+} from './data/lists/concat/index.js';
 import {
   CORE_TAKE_CONFIG_SCHEMA,
   CORE_TAKE_INPUT_SCHEMA,
   CORE_TAKE_MANIFEST,
   CORE_TAKE_OUTPUT_SCHEMA,
-} from './take/index.js';
+} from './data/lists/take/index.js';
 import {
   CORE_BATCH_CONFIG_SCHEMA,
   CORE_BATCH_INPUT_SCHEMA,
   CORE_BATCH_MANIFEST,
   CORE_BATCH_OUTPUT_SCHEMA,
-} from './batch/index.js';
+} from './data/lists/batch/index.js';
 import {
   CORE_FILTER_CONFIG_SCHEMA,
   CORE_FILTER_INPUT_SCHEMA,
   CORE_FILTER_MANIFEST,
   CORE_FILTER_OUTPUT_SCHEMA,
-} from './filter/index.js';
+} from './data/lists/filter/index.js';
 import {
   CORE_SORT_CONFIG_SCHEMA,
   CORE_SORT_INPUT_SCHEMA,
   CORE_SORT_MANIFEST,
   CORE_SORT_OUTPUT_SCHEMA,
-} from './sort/index.js';
+} from './data/lists/sort/index.js';
 import {
   CORE_UNIQUE_CONFIG_SCHEMA,
   CORE_UNIQUE_INPUT_SCHEMA,
   CORE_UNIQUE_MANIFEST,
   CORE_UNIQUE_OUTPUT_SCHEMA,
-} from './unique/index.js';
+} from './data/lists/unique/index.js';
 import {
   CORE_SUMMARIZE_CONFIG_SCHEMA,
   CORE_SUMMARIZE_INPUT_SCHEMA,
   CORE_SUMMARIZE_MANIFEST,
   CORE_SUMMARIZE_OUTPUT_SCHEMA,
-} from './summarize/index.js';
+} from './data/lists/summarize/index.js';
 import {
   CORE_DATE_CONFIG_SCHEMA,
   CORE_DATE_INPUT_SCHEMA,
   CORE_DATE_MANIFEST,
   CORE_DATE_OUTPUT_SCHEMA,
-} from './date/index.js';
+} from './data/date/index.js';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 
 import {
@@ -53,80 +53,80 @@ import {
   CORE_CALL_INPUT_SCHEMA,
   CORE_CALL_MANIFEST,
   CORE_CALL_OUTPUT_SCHEMA,
-} from './call/index.js';
+} from './flow/call/index.js';
 
 import {
   CORE_CONDITION_CONFIG_SCHEMA,
   CORE_CONDITION_INPUT_SCHEMA,
   CORE_CONDITION_MANIFEST,
   CORE_CONDITION_OUTPUT_SCHEMA,
-} from './condition/index.js';
+} from './flow/condition/index.js';
 import {
   CORE_FOR_EACH_CONFIG_SCHEMA,
   CORE_FOR_EACH_INPUT_SCHEMA,
   CORE_FOR_EACH_MANIFEST,
   CORE_FOR_EACH_OUTPUT_SCHEMA,
-} from './for-each/index.js';
+} from './flow/for-each/index.js';
 import {
   CORE_MANUAL_CONFIG_SCHEMA,
   CORE_MANUAL_INPUT_SCHEMA,
   CORE_MANUAL_MANIFEST,
   CORE_MANUAL_OUTPUT_SCHEMA,
-} from './manual/index.js';
+} from './triggers/manual/index.js';
 import {
   CORE_MERGE_CONFIG_SCHEMA,
   CORE_MERGE_INPUT_SCHEMA,
   CORE_MERGE_MANIFEST,
   CORE_MERGE_OUTPUT_SCHEMA,
-} from './merge/index.js';
+} from './flow/merge/index.js';
 import {
   CORE_PARALLEL_CONFIG_SCHEMA,
   CORE_PARALLEL_INPUT_SCHEMA,
   CORE_PARALLEL_MANIFEST,
   CORE_PARALLEL_OUTPUT_SCHEMA,
-} from './parallel/index.js';
+} from './flow/parallel/index.js';
 import {
   CORE_SCHEDULE_CONFIG_SCHEMA,
   CORE_SCHEDULE_INPUT_SCHEMA,
   CORE_SCHEDULE_MANIFEST,
   CORE_SCHEDULE_OUTPUT_SCHEMA,
-} from './schedule/index.js';
+} from './triggers/schedule/index.js';
 import {
   CORE_SET_CONFIG_SCHEMA,
   CORE_SET_INPUT_SCHEMA,
   CORE_SET_MANIFEST,
   CORE_SET_OUTPUT_SCHEMA,
-} from './set/index.js';
+} from './data/set/index.js';
 import {
   CORE_SWITCH_CONFIG_SCHEMA,
   CORE_SWITCH_INPUT_SCHEMA,
   CORE_SWITCH_MANIFEST,
   CORE_SWITCH_OUTPUT_SCHEMA,
-} from './switch/index.js';
+} from './flow/switch/index.js';
 import {
   CORE_TERMINATE_CONFIG_SCHEMA,
   CORE_TERMINATE_INPUT_SCHEMA,
   CORE_TERMINATE_MANIFEST,
   CORE_TERMINATE_OUTPUT_SCHEMA,
-} from './terminate/index.js';
+} from './flow/terminate/index.js';
 import {
   CORE_VALIDATE_CONFIG_SCHEMA,
   CORE_VALIDATE_INPUT_SCHEMA,
   CORE_VALIDATE_MANIFEST,
   CORE_VALIDATE_OUTPUT_SCHEMA,
-} from './validate/index.js';
+} from './data/validate/index.js';
 import {
   CORE_WAIT_CONFIG_SCHEMA,
   CORE_WAIT_INPUT_SCHEMA,
   CORE_WAIT_MANIFEST,
   CORE_WAIT_OUTPUT_SCHEMA,
-} from './wait/index.js';
+} from './flow/wait/index.js';
 import {
   CORE_WEBHOOK_CONFIG_SCHEMA,
   CORE_WEBHOOK_INPUT_SCHEMA,
   CORE_WEBHOOK_MANIFEST,
   CORE_WEBHOOK_OUTPUT_SCHEMA,
-} from './webhook/index.js';
+} from './triggers/webhook/index.js';
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
