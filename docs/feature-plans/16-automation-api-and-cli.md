@@ -484,3 +484,21 @@ immutable source/copy, output and credential-scoped receipts. CLI secrets stay i
 process environment, never arguments/evidence. The production example already
 contains `AUTOMATION_TOKENS_ENABLED=true` on main; no redundant config change is
 needed. Existing CI includes the moved app in its app unit/build/image owners.
+
+
+CI's repository job exceeded its existing timeout during typed lint after adding
+the standalone workspace. The global project search could open unrelated apps
+before finding a file's owning program. Existing ESLint configuration now selects
+each workspace's existing source/test project explicitly; shared infrastructure
+declarations retain their original fallback. Web's own config and every rule,
+file scope, type check, job and timeout remain unchanged. This is a validation
+ownership correction for the relocated app, not a new lint subsystem or gate.
+
+One local SDK file lint dropped from 5.54s to 1.33s; the full repository check
+then passed in 128.78s (Node 24.15/arm64; observations, not timing assertions).
+Resolved CLI rules before/after are identical. Temporary source and test probes
+in CLI and SDK still reject unsafe floating promises with type-aware diagnostics;
+all probes were removed. CLI 64 and operator 55 cases pass after this change.
+Reference: [typed-linting project selection](https://typescript-eslint.io/troubleshooting/typed-linting/monorepos/).
+A separate correction commit preserves the move/wiring history; required CI must
+pass on that final commit before merge.
