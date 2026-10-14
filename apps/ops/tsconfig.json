@@ -16,6 +16,12 @@
     },
     {
       "path": "../../packages/observability/tsconfig.json"
+    },
+    {
+      "path": "../../packages/contracts/tsconfig.json"
+    },
+    {
+      "path": "../../packages/workflow-model/tsconfig.json"
     }
   ]
 }

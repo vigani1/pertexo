@@ -4,16 +4,10 @@ import type { OperatorCommandDatabase } from '@pertexo/database/runs';
 import type * as OperatorDatabaseModule from '@pertexo/database/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 import type * as LoggingModule from '@pertexo/observability';
-import {
-  createTelemetryLifecycle,
-  classifyProcessError,
-} from '@pertexo/observability/startup';
+import type { createTelemetryLifecycle } from '@pertexo/observability/startup';
 
 import type * as OperatorRunModule from './run.js';
-import {
-  parseOperatorCommandConfig,
-  type OperatorCommandConfig,
-} from './config.js';
+import type { OperatorCommandConfig } from './config.js';
 
 type ShutdownSignal = 'SIGINT' | 'SIGTERM';
 
@@ -59,9 +53,12 @@ function reportDiagnostic(report: (() => void) | undefined): void {
 export async function bootstrapOperatorCommand(
   dependencies: OperatorCommandBootstrapDependencies = {},
 ): Promise<void> {
-  const config = dependencies.config ?? parseOperatorCommandConfig();
+  const config =
+    dependencies.config ??
+    (await import('./config.js')).parseOperatorCommandConfig();
+  const startup = await import('@pertexo/observability/startup');
   const telemetry = (
-    dependencies.createTelemetryLifecycle ?? createTelemetryLifecycle
+    dependencies.createTelemetryLifecycle ?? startup.createTelemetryLifecycle
   )(config.observability);
   const shutdown = new AbortController();
   const stop = (): void => {
@@ -99,7 +96,7 @@ export async function bootstrapOperatorCommand(
     reportDiagnostic(() =>
       logger?.fatal(
         'operator_command.bootstrap_failed',
-        { errorType: classifyProcessError(error) },
+        { errorType: startup.classifyProcessError(error) },
         error,
       ),
     );
@@ -130,14 +127,26 @@ function isMainModule(): boolean {
 }
 
 if (isMainModule()) {
-  void bootstrapOperatorCommand().catch((error: unknown) => {
-    process.stderr.write(
-      `${JSON.stringify({
-        errorType: classifyProcessError(error),
-        event: 'operator_command.process_failed',
-        level: 'fatal',
-      })}\n`,
-    );
-    process.exitCode = 1;
-  });
+  if (process.argv[2] === 'automation') {
+    void import('./automation/run.js')
+      .then(({ runAutomationCli }) => runAutomationCli(process.argv.slice(3)))
+      .catch(() => {
+        process.stderr.write(
+          `${JSON.stringify({ code: 'cli.bootstrap_failed', detail: 'The automation CLI could not be started.' })}\n`,
+        );
+        process.exitCode = 1;
+      });
+  } else
+    void bootstrapOperatorCommand().catch(async (error: unknown) => {
+      const { classifyProcessError } =
+        await import('@pertexo/observability/startup');
+      process.stderr.write(
+        `${JSON.stringify({
+          errorType: classifyProcessError(error),
+          event: 'operator_command.process_failed',
+          level: 'fatal',
+        })}\n`,
+      );
+      process.exitCode = 1;
+    });
 }

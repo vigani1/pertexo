@@ -203,7 +203,7 @@ only after its gate is resolved.
 | [F13](feature-plans/13-configuration-and-variables.md) | Workspace variables and reusable non-secret configuration | New version-aware configuration | L | Proposed |
 | [F14](feature-plans/14-data-tables.md) | Workflow-owned lookup tables and durable records | New optional storage product | XL | Proposed |
 | [F15](feature-plans/15-synchronous-webhook-responses.md) | Bounded synchronous webhook responses | New opt-in trigger mode | XL | Proposed |
-| [F16](feature-plans/16-automation-api-and-cli.md) | Scoped automation tokens, public API and CLI | Backend security product + developer UX | L–XL | Owner authorized after completed F09/F24; detailed personal-token/API/CLI plan reviewed, implementation pending |
+| [F16](feature-plans/16-automation-api-and-cli.md) | Scoped automation tokens, public API and CLI | Backend security product + developer UX | L–XL | Personal scoped tokens, supported HTTP methods, one-time Settings and CLI implemented after F09/F24; owned browser/CLI/worker/SQL qualification passed; final delivery PR carries release CI evidence |
 | [F17](feature-plans/17-environments-and-promotion.md) | Development/production environments and safe promotion | New enterprise-oriented lifecycle | XL | Proposed |
 | [F18](feature-plans/18-governance-and-audit.md) | Audit visibility, publishing approval and advanced access | Existing tenancy foundation + new governance UX | XL | Proposed |
 | [F19](feature-plans/19-collaboration.md) | Comments and editing presence, then multiplayer | New frontend + coordination backend | XL | Proposed |

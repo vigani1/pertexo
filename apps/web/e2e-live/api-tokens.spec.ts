@@ -5,13 +5,14 @@ import {
   userProfileResponseSchema,
 } from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
+import { qualifyAutomationCli } from './support/automation/journey';
 import { withOwnedCredential } from './support/automation/credential-action';
 import {
   registerEditorUser,
   createEditorWorkspace,
 } from './support/ordinary-editor-session';
 
-test('issues a personal token through Settings, authenticates without cookies, and revokes at desktop and phone widths', async ({
+test('issues a personal token through Settings, authenticates without cookies, revokes at desktop and phone widths, and completes a CLI run', async ({
   page,
   request,
 }) => {
@@ -23,6 +24,7 @@ test('issues a personal token through Settings, authenticates without cookies, a
     ownerUserId: string;
     tokenId: string;
   }[] = [];
+  let cli: Awaited<ReturnType<typeof qualifyAutomationCli>> | undefined;
   for (const width of [1280, 375]) {
     await page.setViewportSize({ width, height: 768 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -131,13 +133,17 @@ test('issues a personal token through Settings, authenticates without cookies, a
       return { workspaceId, ownerUserId, tokenId };
     });
     owners.push(owner);
+    if (width === 1280)
+      cli = await withOwnedCredential(() =>
+        qualifyAutomationCli(page, workspaceId),
+      );
     await page.goto('/logout');
     await expect(
       page.getByRole('heading', { name: 'Sign in to continue', exact: true }),
     ).toBeVisible();
   }
   const evidence = await request.post(`${mailOrigin}/evidence/api-tokens`, {
-    data: { owners },
+    data: { owners, cli },
   });
   expect(evidence.status()).toBe(204);
 });
