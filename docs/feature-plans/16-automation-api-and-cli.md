@@ -1,100 +1,280 @@
 # F16 — Scoped automation tokens, public API and CLI
 
-Status: proposed plan; not implementation-authorized by this document.
-Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
-Scope: Backend security product + developer UX. Relative size: **L–XL**, not a calendar estimate.
+Status: owner authorized planning, review and implementation on 2026-10-14,
+after F09 and F24. Parent: [product roadmap](../product-roadmap.md).
+Decision: [ADR 074](../adr/074-personal-automation-tokens.md).
 
-## Outcome
+## Outcome and scope
 
-Users manage approved workflow operations programmatically without scripting browser sessions.
+A workspace member creates an expiring personal API token in Settings, saves its
+secret once, and uses documented workflow/run operations from a script or the
+existing CLI. It grants an explicit subset of that member's current permissions
+in exactly one workspace. Browser sessions retain their existing behavior.
 
-## Current implementation and evidence
+Include token creation/list/revocation, workflow list/read/draft/version listing,
+run start/list/read/cancel, portable export/import preview/apply, publication,
+and an HTTP CLI for those operations. Imports retain F05's exact reviewed-source,
+connection-binding, checksum and precondition rules. Exclude credential/account/
+team administration, editor mutations, recovery/replay, triggers, streaming events
+and internal operator commands.
 
-HTTP contracts/OpenAPI exist. API-key entities were deferred; cookie-session routes do not constitute a supported external automation token product.
+No service accounts, OAuth server, JWTs, SDK package, CLI profile format, new role,
+service, dependency or CI job. Keep seams for later requirements rather than
+building speculative infrastructure: these additions fail the two-question test.
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
+## Reconciled foundations
 
-- [Reset tracker](../architecture-reset-plan.md)
-- [packages/contracts/src/openapi/generated-artifacts.ts](../../packages/contracts/src/openapi/generated-artifacts.ts)
-- [apps/api/src/workspaces](../../apps/api/src/workspaces)
+Baseline main: `cea7772e3154b23f164e95a38cad71256c759d1f`, after F24 #281.
+Natural main CI, CodeQL and ARM publication succeeded. F09 #273–#278 and F24
+#279–#281 are complete; F24 file conversion remains separately gated on F04.
 
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+- `api/src/workspaces/http/guards.ts` owns cookie authentication, CSRF and
+  capability guards. Tokens need a distinct credential adapter, never fake sessions.
+- `api/src/authorization/` shares role checks and issues guard proofs. Scope
+  intersection belongs here, including capabilities requested inside import.
+- `database/src/tenant-access/` owns identity/membership. Existing membership
+  `role_revision` advances on role/status, leave/removal and ownership changes.
+- Current authoring, publication, portability and run use cases own operations.
+  Extend their authentication adapters rather than duplicate business rules.
+- Existing receipts, forced workspace RLS, three database roles, reader fences,
+  audit facts, retention and purge remain the infrastructure owners.
+- `apps/ops` currently requires privileged operator/database configuration. Its
+  new HTTP command path must dispatch before operator configuration and imports.
 
-## Dependencies and planning gate
+Paths above abbreviate `apps/` and `packages/`; implementation uses their current
+owners, not new parallel facades.
 
-05 for portable workflows; existing public schemas; separate from browser sessions.
+## Accepted product and security choices
 
-ADR for machine identity/authentication; personal tokens versus workspace service accounts; avoid expanding rights on membership changes.
+### Personal ownership and scopes
 
-Recommendations are not accepted ADRs. Resolve consequential choices before code;
-use the next free ADR number when required. Do not create ADRs for routine fixes.
+Active members manage only their own tokens. Available scopes are limited to
+capabilities currently held. No administrator impersonation or new token role.
+Reuse capability names: `workflow:read`, `workflow:create`, `workflow:publish`,
+`run:read`, `run:start`, `run:cancel`, `connection:read`. The last only permits
+explicit import binding resolution; it does not expose connection routes/secrets.
+Starting a published workflow retains its existing authority to execute pinned
+connections. Scopes do not imply each other; examples state prerequisites and
+shared use cases enforce each capability they need. Run response action flags must
+reflect the credential's supported scopes; token readers are not offered replay/
+recovery controls merely because their owner has them.
 
-## Ownership and structure
+Store membership revision at issuance. Every authentication checks digest,
+expiry/revocation, active owner, active membership, equal revision and active
+workspace. Current role checks still apply. Role upgrades cannot expand an old
+grant; suspension/reactivation, removal/rejoining or transfer cannot revive it.
+Metadata explains membership invalidation. Logout/password changes do not rotate
+API tokens; document their independent lifecycle and explicit revocation.
 
-Identity/machine-auth adapter and shared authorization use cases; database token lifecycle; contracts; web token settings; optional CLI consumer.
+Default expiry: 30 days; choices 1–365 days, no unlimited expiry. Bounded plain
+names; at most 10 usable tokens per owner/workspace under the membership lock.
+Expired/revoked/invalid tokens do not count. Paginate metadata. Rotation means
+create replacement, update script, revoke old token; no mutable secret subsystem.
 
-Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
-These are responsibility owners, not a mandate to create empty folders/packages.
-Reuse the post-cleanup canonical owners; do not restore old duplicated paths.
+Creation requires existing recent-sign-in evidence within the current five-minute
+bound. Management stays cookie-only,
+with current CSRF and ownership checks. Creation/revocation use stable command
+keys and identifier-only receipts. Revoke is idempotent. Lost creation responses
+are recovered through metadata and explicit revoke/replacement, not secret replay.
 
-## Frontend work
+### Credential and transport
 
-Create/revoke scoped token, one-time secret display, expiry/last-used metadata, examples and safe audit views.
+Issue 32 cryptographically random secret bytes in:
+`ptx_1.<workspace UUID>.<token UUID>.<base64url secret>`.
+Public IDs permit workspace-scoped lookup but confer no authority. Parse its
+exact bounded shape once at authentication, SHA-256 the complete credential,
+compare fixed-length digests in constant time. Store only hash and metadata;
+no encryption master key, pepper, raw secret in receipts/audits or recovery API.
 
-## Backend work
+First creation returns the raw secret with `Cache-Control: private, no-store`.
+Command replay returns metadata and explicit secret-unavailable outcome, never
+regeneration. List/restore cannot retrieve it. Auth errors never reveal whether
+an owner/token exists.
 
-Hashed high-entropy credentials, explicit actor/workspace scopes, rotation/revocation, rate limits and audit; shared use cases enforce capabilities for both browser and token adapters. Versioned SDK/CLI commands use the existing contract source.
+Accept exactly one Authorization Bearer header only on explicitly enabled
+methods. Reject malformed/repeated headers and mixed session/bearer credentials;
+never cookie fallback after bearer failure. All other methods stay cookie-only
+and reject bearer attempts. No body/query/URL credentials. CSRF exemption requires
+successfully verified machine authority on an enabled method, never header presence.
+Actor/proof types bind credential kind, owner, token ID/scopes, workspace and
+request; session IDs and token IDs are distinct.
 
-## Delivery slices
+Invalid/revoked/expired tokens return generic 401 plus Bearer challenge. Scope
+failures follow current 403/404 disclosure policy. Validation, response schemas,
+problem contracts, preconditions and cancellation remain shared.
 
-1. Define permitted scopes, ownership, expiry and separation from cookie/CSRF flows.
-2. Ship minimal token management plus list/read/run commands and generated examples.
-3. Add import/export automation after 05; packaging/CLI only for documented operations.
+Each request checks PostgreSQL; no auth cache. Verification is the revocation
+linearization point: previously verified requests may finish; verification after
+revocation commits fails. Accepted runs continue under durable execution authority.
+Do not add request-wide transactions or automatic run cancellation.
 
-Each slice ends in a usable, tested behavior; do not ship enabled placeholder
-controls backed by invented responses.
+Reuse distributed rate limiting: retain IP, owner and workspace budgets and add
+verified token identity as a subject dimension. Multiple tokens cannot bypass the
+owner budget. The bearer guard consumes a dedicated `automation_authentication` IP budget
+(600 attempts/minute, closed on limiter failure) before credential lookup,
+using the existing distributed limiter; the interceptor runs too late for denials. No untrusted token IDs
+in trusted actor buckets or high-cardinality metric labels. Last-used is approximate
+successful authentication, written at most once/minute/token using the database
+clock, without an authority cache.
 
-## Acceptance evidence
+Remote access requires HTTPS; HTTP only for loopback development. Never log/trace
+Authorization values, secrets, hashes or secret-bearing creation bodies. Problems,
+audits, CLI diagnostics and screenshots remain sanitized.
 
-Revocation/expiry, scope escalation, cross-tenant IDs, one-time secret display, rate limits, retries and redacted diagnostics.
+### Supported HTTP methods and command identity
 
-Apply the shared completion checklist: contract/authorization tests, real
-persistence and restart/race tests when relevant, real browser/backend flow for
-visible behavior, and exact reviewed source/CI evidence. Mocks alone cannot close
-the live gate. Record unsupported environments explicitly.
+Existing paths under `/v1/workspaces/:workspaceId`, existing contracts:
 
-## Non-goals
+| Methods | Scope | Owner |
+| --- | --- | --- |
+| GET workflows, workflow, draft, versions | workflow:read | workflow-authoring/http |
+| POST workflow/export | workflow:read | workflow-authoring/portability |
+| POST workflows/import/preview, import | workflow:create; connection:read with bindings | workflow-authoring/portability |
+| POST workflow/publish | workflow:publish | workflow-authoring/http |
+| POST workflow/runs | run:start | workflow-runs/http |
+| GET runs, run | run:read | workflow-runs/http |
+| POST run/cancel | run:cancel | workflow-runs/http |
 
-Admin bypass tokens, storing raw keys, browser localStorage credentials, exposing every internal operator command.
+Add browser-only GET/POST `api-tokens` and POST `api-tokens/:tokenId/revoke`.
+Sanitized public schemas cover metadata/status, scopes and creation outcomes.
+OpenAPI advertises cookie/bearer alternatives only on supported methods and
+management's real cookie/CSRF requirements, headers and errors.
 
-## Rollout and rollback
+Preserve caller Idempotency-Key, reviewed import digest and opaque If-Match.
+Namespace automation command identity by verified token ID through one shared
+helper at the authorized use-case boundary, using a fixed-length canonical hash. Session command identity stays
+unchanged. Same token/key/payload replays; changed intent conflicts. Another token
+or session cannot discover/reuse that receipt. Retries do not rewrite bindings,
+source references or preconditions.
 
-Revoke new credentials and disable token authentication without affecting existing browser sessions.
+## Structure and storage
 
-No production rollout, paid provisioning or real external calls are authorized by
-this plan. New persistent behavior requires additive reader/writer rollout and
-retention/membership-deletion handling before enablement.
+| Owner | Responsibility |
+| --- | --- |
+| contracts/src/schemas/identity/ | Browser-safe schemas/scope source; OpenAPI registration |
+| database/src/schema/api-tokens.ts | Single table definition: owner/workspace, digest, scopes, membership revision, expiry/revocation/last-use |
+| database/src/tenant-access/tokens/ | Typed lifecycle/lookup policy and credential helpers through existing tenant-access entry point |
+| database/migrations/ | Next additive migration/snapshot, forced RLS, least grants, unchanged three roles |
+| database/src/lifecycle/ | Bounded retention and purge before memberships; safe receipt cleanup |
+| api/src/authentication/automation/ | Bearer parsing/authority/guard, separate from Better Auth |
+| api/src/authorization/ | Discriminated credential actor, scope intersection/proof binding |
+| api/src/api-tokens/ | Management module/controller/use cases/errors |
+| existing API HTTP owners | Method-specific opt-in and command identity; shared use cases |
+| web/src/features/api-tokens/ | Local data/form/page/list/one-time receipt and deliberate public entry |
+| web/src/routes/workspace/ | Lazy Settings composition/navigation |
+| ops/src/automation/ | Argument parser, HTTP transport/commands; dispatch before operator config |
 
-## Competitor context
+Use current owners when inventory names differ and record corrections. No empty
+folders/facades, duplicated types, consumer barrels or browser database imports.
+Keep directories near ten files; names describe responsibilities. Pure moves need
+separate buildable commits.
 
-Programmatic workflow operations are a mature-platform capability; protocol and scopes should follow our contracts, not competitor endpoints. Sources: [n8n source control and environments](https://docs.n8n.io/administer/use-source-control-and-environments).
+Creation locks workspace → user → membership in existing order, checks authority/
+limit and writes token/audit/receipt atomically. Revoke checks the owning authority
+and token. Runtime lookup sets workspace from the validated credential, retaining
+forced RLS and current roles. Composite tenant identities/constraints prevent
+cross-workspace ownership. TypeScript owns permission rules; SQL owns isolation,
+constraints, atomic writes/locks and timestamps, not permission functions/triggers.
 
-Research checked 2026-09-28; product editions and availability can change.
-This context informs the outcome, not Pertexo's implementation or billing policy.
+Clean expired/revoked/inactivated metadata after 30 days using the existing bounded
+retention coordinator; do not introduce a legal-hold subsystem. Purge tokens before memberships; existing
+audit scrubbing remains. Restart/restore proves hashes authenticate and revoked/
+expired credentials stay unusable. Only disposable databases receive migrations.
 
-## Delivery tracker
+## Web and CLI behavior
 
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
-- [ ] Contracts and failure/security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+Keep Weft, semantic Status, plain forms and existing accessible dialogs. Settings
+API tokens belongs to the selected workspace/person. Show name/scopes/expiry/
+approximate last use and active/expired/revoked/membership-changed status. Creation
+has permitted scope checkboxes, expiry, recent-sign-in handling and one-time Copy/
+Done receipt. Warn to save before closing; closing clears component-local secret.
+Never put it in query/global mutation cache, localStorage or URLs: feature-local
+API returns directly to component state; refresh metadata only. Lost outcomes
+show refresh/revoke/replacement, not automatic recreation. Disabled config explains
+availability rather than claiming the member lost access.
 
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+CLI uses native fetch and current contract parsers in apps/ops. `automation`
+arguments dispatch before operator env/DB imports. Use PERTEXO_API_URL,
+PERTEXO_API_TOKEN and explicit workspace/IDs, no token argument or saved profiles.
+Bound files/requests/responses/timeouts; refuse unsafe remote HTTP and redirects.
+No arbitrary raw endpoint passthrough, cookies, secret output or hidden DB env.
+Output contract-validated JSON; safe errors include code/request ID/detail only.
+Document workflow list/get/draft/versions, run start/get/list/cancel, export,
+import-preview/import and publish, with curl equivalents. Where the existing endpoint requires a command key, mutations require a stable
+explicit key; cancellation retains its existing state-idempotent contract.
+Uncertain writes never retry with new keys. Import/publish
+preserve reviewed source and ETag. Examples explain secure storage and replacement.
+
+## Ordered delivery and acceptance
+
+0. **Plan PR:** accepted ADR 074, glossary, this manually reviewed plan and F24
+   completion evidence. Required repository lint/types/unit gates before commit.
+1. **Token/API PR:** additive schema/lifecycle, contracts, management, actual
+   bearer verification, shared scopes, selected methods, rate limits/idempotency
+   and OpenAPI. Usable HTTP behavior; no placeholder web controls. Real isolated
+   PostgreSQL/Redis API/worker qualification plus schema/contract/architecture
+   checks and existing cookie regression cases.
+2. **Settings PR:** one-time creation, metadata, revoke/replacement. Build/lint/
+   types/unit, full mocked e2e, changed-code React Doctor, real owned-fixture
+   browser/API/database journey at desktop and 375px reduced motion. Synthetic
+   screenshots only; live credential/auth traces/screenshots disabled.
+3. **CLI/docs PR:** real HTTP commands and user guide. Against owned API/worker:
+   export → preview → import → reviewed publish → start → completed run; separate
+   SQL checks immutable source, receipts and outputs. Token denial and existing
+   operator regressions. Real Settings create → CLI use → revoke → CLI denial.
+
+Each slice: one PR, green required CI/rebase merge before next; inspect natural
+main CI/CodeQL/ARM. Track actual evidence, not code availability.
+
+Required cases across slices:
+
+- Malformed/repeated/mixed headers, cross-workspace/hash/expiry/revocation,
+  unsupported methods, cookie fallback and CSRF. Exact scopes on every allowed
+  method, including import's additional capability and forged/swapped proofs.
+- Owner/member/workspace current state; upgrade/downgrade, suspend/reactivate,
+  removal/rejoin and transfer never revive/escalate. Concurrent token cap, ordered
+  issuance/revoke/membership races and denial after committed revocation.
+- Secret once; lost response/creation replay and wrong-owner listing safe.
+  No secret/hash in receipts/audit/logs. Persistence/restart, bounded last-use,
+  retention/purge, forced RLS and three-role grants. Rates retain owner budgets.
+- Command identity across tokens/sessions, changed-intent conflicts, reviewed
+  source/ETag retries and existing session behavior preserved.
+- Mobile keyboard/focus/copy/close and uncertain outcomes. CLI bad URL/redirect,
+  oversize/timeout/non-JSON/malformed responses fail safely without DB prerequisites.
+
+## Rollout, rollback and plan review
+
+AUTOMATION_TOKENS_ENABLED follows existing configuration patterns. Explicitly
+enable in development/beta examples after migration. Disabled state stops issuance/
+bearer auth but preserves metadata/revocation and browser auth. No new flag service.
+
+Respect reader-head fences: hold traffic, existing backup, additive migration,
+matching API/worker readers/writers, then enable. Old binaries may refuse the new
+head; rollback disables tokens and retains compatible readers, not a destructive
+schema downgrade. Backup preserves hashes, cannot recover raw secrets; scripts
+keep their credential separately. No deployment/accounts/provider calls here.
+
+Manual review: personal ownership, revision reuse and shared roles avoid new
+identity machinery; method opt-in prevents accidental administration access;
+identifier-only receipts make one-time disclosure honest; the existing CLI avoids
+a new app/package. Revocation allows already accepted work, last-used is approximate,
+and membership changes deliberately require replacement. These are supported
+semantics. No independent requirement justifies service accounts, caches or SDKs.
+
+Primary references checked 2026-10-14:
+[RFC 6750 bearer usage](https://www.rfc-editor.org/rfc/rfc6750),
+[OWASP REST security](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html),
+[OWASP logging](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html).
+These inform transport/authorization/redaction, not an OAuth subsystem.
+
+## Tracker
+
+- [x] Owner authorized F16 after completed F09/F24.
+- [x] Baseline/current owners/membership epoch reconciled; plan manually reviewed.
+- [ ] Slice 0 plan/ADR/glossary PR merged with required checks.
+- [ ] Slice 1 backend/API and independent persistence/concurrency evidence merged.
+- [ ] Slice 2 Settings and live browser/mobile evidence merged.
+- [ ] Slice 3 CLI/API/worker qualification and user guide merged.
+- [ ] Final natural main CI, CodeQL and ARM publication inspected.
+
+Implementation evidence: none yet. Inventory/planning are not implementation.

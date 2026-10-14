@@ -96,6 +96,11 @@ _Avoid_: Replay, preview, mock, pinned sample
 memberships, independent of which sign-in method they use. _Avoid_: Workspace,
 provider account
 
+**API token**: A personal credential for approved workflow and run operations in
+one workspace. Its scopes limit the owner's current permissions; membership
+changes invalidate it. It is shown once and expires or can be revoked. _Avoid_:
+Workflow connection, sign-in method, master key, service account
+
 **Sign-in method**: A credential or external identity used to authenticate a
 Pertexo account; it grants no workflow-service access by itself. _Avoid_:
 Workflow connection
