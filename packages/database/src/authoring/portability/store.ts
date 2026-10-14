@@ -1,3 +1,4 @@
+import { lockArtifactReferences } from '../../artifacts/references.js';
 import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
@@ -391,6 +392,7 @@ function importPortableWorkflow(
       } catch (error) {
         portableFailure(error);
       }
+      await lockArtifactReferences(client, input.workspaceId, graph);
       await client.query(
         `insert into app.workflows
            (id, workspace_id, name, lifecycle_status, activation_status, created_by)

@@ -234,12 +234,33 @@ artifact-aware F09 prefix recovery. No production rollout is included.
 
 - [x] Baseline reconciled against current code and accepted decisions.
 - [x] Owner accepts consumer, budget, opaque-file policy and reference lifetime.
-- [ ] ADR 075 accepted; decision PR merged green.
-- [ ] Contracts and complete writer/cleanup race model implemented.
-- [ ] Consumer independently qualified with real database/storage.
+- [x] ADR 075 accepted; decision PR [#291](https://github.com/vigani1/pertexo/pull/291) merged green.
+- [x] Consumer contracts and writer/cleanup race model implemented locally.
+- [x] Consumer independently qualified with real database/storage and owned HTTP destination.
 - [ ] Frontend implemented and inspected at desktop/phone widths.
 - [ ] Integrated acceptance and rollback evidence recorded.
 - [ ] Implementation PRs merged; natural main checks inspected.
 
-Evidence: source reconciliation only on 2026-10-14. No F04 code, passing-test,
-merge or production claim yet.
+Evidence (2026-10-14): the accepted decision merged in #291 at main
+`375f35650e8826238c595f3ec495379e3939834b`; PR CI 38627247775 and CodeQL
+38627247795 passed. Consumer/lifecycle work is in progress. Eight real PostgreSQL
+owner/race/preview/isolation cases pass; the existing real-store worker fixture
+writes, verifies and sends 70,000-byte and 1,048,576-byte files to an owned HTTP
+server, independently checking received length/hash/type. The final instrumented local read-and-native-byte-comparison observations were
+approximately 21 ms for 70,000 bytes and 96 ms for 1 MiB. The latter retained
+about 6.3 MB of array buffers at that observation; the test-process lifetime RSS
+maximum includes the runner, imports, migrations and assertions, not just the
+read. These are not service guarantees. S3Mock
+alone does not qualify real provider signatures. Full `pnpm check`, the complete unit suites run sequentially, 161 mocked browser
+journeys, eight PostgreSQL owner/race cases, three real storage/HTTP cases and
+22 authenticated artifact-API regressions passed. The consumer PR and browser
+upload/signature evidence remain pending. Storage-off routes now retain normal
+auth/role/CSRF checks and return a clear `artifact.unavailable` response without
+creating upload reservations.
+
+Natural main CI 38629983430 after the decision-only PR failed in the existing
+owned automation-token browser journey; CodeQL 38629982957 passed. The exact
+journey passed twice locally. Its credential-safe diagnostics now retain only
+allowlisted operation names/public problem codes; redaction regressions pass.
+The intermittent failure has not been reproduced or claimed fixed. Consumer
+CI and its natural postmerge result must be inspected independently. See [file behavior](../files.md).

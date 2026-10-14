@@ -1,3 +1,4 @@
+import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   WorkflowInputCaseRevisionConflictError,
@@ -61,6 +62,11 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof ArtifactMetadataNotFoundError)
+    return applicationError('request.invalid', {
+      safeDetail:
+        'An attached file is unavailable or its metadata does not match. Upload the file again before saving or running.',
+    });
   const organization = mapWorkflowOrganizationError(error);
   if (organization !== undefined) return organization;
   const portability = mapWorkflowPortabilityError(error);

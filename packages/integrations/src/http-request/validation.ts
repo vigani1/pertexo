@@ -1,9 +1,13 @@
 import { z } from 'zod';
+import {
+  ARTIFACT_INPUT_MAX_BYTES,
+  nodeArtifactReferenceSchema,
+} from '@pertexo/node-sdk';
 
 import { isSerializableHttpHeaderValue } from '../http/header-value.js';
 
 const MAX_URL_BYTES = 2_048;
-const MAX_REQUEST_BODY_BYTES = 1_048_576;
+const MAX_REQUEST_BODY_BYTES = ARTIFACT_INPUT_MAX_BYTES;
 const MAX_RESPONSE_BYTES = 10_485_760;
 const MAX_INLINE_RESPONSE_BYTES = 262_144;
 const MAX_HEADER_BYTES = 32_768;
@@ -187,12 +191,24 @@ export const httpRequestConfigSchema = z
 export const httpRequestInputSchema = z
   .object({
     body: z
-      .object({
-        encoding: z.enum(['base64', 'utf8']),
-        value: z.string().max(Math.ceil((MAX_REQUEST_BODY_BYTES * 4) / 3) + 4),
-      })
-      .strict()
-      .readonly()
+      .union([
+        z
+          .object({
+            encoding: z.enum(['base64', 'utf8']),
+            value: z
+              .string()
+              .max(Math.ceil((MAX_REQUEST_BODY_BYTES * 4) / 3) + 4),
+          })
+          .strict()
+          .readonly(),
+        nodeArtifactReferenceSchema
+          .unwrap()
+          .extend({
+            kind: z.literal('artifact'),
+            byteLength: z.number().int().min(0).max(MAX_REQUEST_BODY_BYTES),
+          })
+          .readonly(),
+      ])
       .optional(),
   })
   .strict()
@@ -207,13 +223,11 @@ const inlineBodySchema = z
   })
   .strict()
   .readonly();
-const artifactBodySchema = z
-  .object({
+const artifactBodySchema = nodeArtifactReferenceSchema
+  .unwrap()
+  .extend({
     kind: z.literal('artifact'),
-    artifactId: z.uuid(),
     byteLength: z.number().int().min(0).max(MAX_RESPONSE_BYTES),
-    mediaType: z.string().min(3).max(255),
-    sha256: z.string().regex(/^[a-f0-9]{64}$/u),
   })
   .strict()
   .readonly();

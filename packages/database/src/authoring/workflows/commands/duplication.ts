@@ -1,3 +1,4 @@
+import { lockArtifactReferences } from '../../../artifacts/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -181,6 +182,7 @@ export function createWorkflowDuplicationStore(
             placementDefinitionCatalog ?? definitionCatalog,
           );
           await requireOwnedConnections(client, input.workspaceId, graph);
+          await lockArtifactReferences(client, input.workspaceId, graph);
           await client.query(
             `insert into app.workflows
                (id, workspace_id, name, lifecycle_status, activation_status, created_by)

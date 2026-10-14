@@ -395,6 +395,81 @@ describe('connections real Nest HTTP stack', () => {
     }
   });
 
+  it('reports disabled file storage after session, workspace, upload-role and CSRF checks', async () => {
+    application = await createApiApplication(config, {
+      database,
+      identityRuntime: identityRuntime(),
+      logger,
+      rateLimitConsumer,
+      telemetry,
+    });
+    await application.init();
+    for (const [method, suffix] of [
+      ['GET', destinationId],
+      ['GET', `${destinationId}/download`],
+      ['POST', 'uploads'],
+      ['POST', `${destinationId}/finalize`],
+    ] as const) {
+      const url = `/v1/workspaces/${workspaceId}/artifacts/${suffix}`;
+      const payload = method === 'POST' ? {} : undefined;
+      expect(
+        (
+          await application.inject({
+            method,
+            url,
+            ...(payload ? { payload } : {}),
+          })
+        ).statusCode,
+      ).toBe(401);
+      const result = await application.inject({
+        method,
+        url,
+        headers: authenticatedHeaders,
+        ...(payload ? { payload } : {}),
+      });
+      expect(result.statusCode).toBe(503);
+      expect(result.json()).toMatchObject({
+        code: 'artifact.unavailable',
+      });
+      expect(result.body).toContain('ARTIFACT_STORE_*');
+      expect(
+        (
+          await application.inject({
+            method,
+            url: `/v1/workspaces/11111111-1111-4111-8111-111111111111/artifacts/${suffix}`,
+            headers: authenticatedHeaders,
+            ...(payload ? { payload } : {}),
+          })
+        ).statusCode,
+      ).toBe(404);
+    }
+    const noCsrf = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/artifacts/uploads`,
+      headers: { cookie: authenticatedHeaders.cookie },
+      payload: {},
+    });
+    expect(noCsrf.statusCode).toBe(403);
+  });
+
+  it('keeps disabled-storage upload routes denied to viewers', async () => {
+    application = await createApiApplication(config, {
+      database,
+      identityRuntime: identityRuntime('viewer'),
+      logger,
+      rateLimitConsumer,
+      telemetry,
+    });
+    await application.init();
+    const result = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/artifacts/uploads`,
+      headers: authenticatedHeaders,
+      payload: {},
+    });
+    expect(result.statusCode).toBe(404);
+  });
+
   it('reports unavailable webhooks only after authentication and workspace authorization', async () => {
     application = await createApiApplication(config, {
       database,

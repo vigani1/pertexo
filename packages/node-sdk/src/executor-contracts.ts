@@ -1,3 +1,5 @@
+import type { NodeArtifactReference } from './artifacts.js';
+export type { NodeArtifactReference } from './artifacts.js';
 import type { ZodType } from 'zod';
 
 import type {
@@ -64,14 +66,14 @@ export interface NodeConnectionRuntime {
   ) => Promise<void>;
 }
 
-export type NodeArtifactReference = Readonly<{
-  artifactId: string;
-  byteLength: number;
-  mediaType: string;
-  sha256: string;
-}>;
-
 export interface NodeArtifactRuntime {
+  read?(
+    input: Readonly<{
+      reference: NodeArtifactReference;
+      maxBytes: number;
+      signal: AbortSignal;
+    }>,
+  ): Promise<Uint8Array>;
   write(
     input: Readonly<{
       body: AsyncIterable<Uint8Array>;

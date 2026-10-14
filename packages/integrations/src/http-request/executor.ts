@@ -32,11 +32,8 @@ import {
   type HttpRequestOutput,
 } from './validation.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
-import {
-  decodeCredential,
-  mergeHeaders,
-  requestBody,
-} from './request-material.js';
+import { decodeCredential, mergeHeaders } from './request-material.js';
+import { readRequestBody, artifactContentType } from './read-body.js';
 
 export class HttpRequestExecutorError extends NodeExecutorFailure {
   public override readonly name = 'HttpRequestExecutorError';
@@ -129,7 +126,23 @@ async function executeHttpRequest(
   if (connectionId === undefined) throw failedConfiguration();
   const target = new URL(config.url);
   if (target.protocol !== 'https:') throw failedConfiguration();
-  const body = requestBody(input, config.method, failedConfiguration);
+  let body: Uint8Array | undefined;
+  try {
+    body = await readRequestBody(
+      input,
+      config.method,
+      runtime.artifacts,
+      invocation.signal,
+      failedConfiguration,
+    );
+  } catch (error) {
+    if (runtime.providerDispatchUnresolved === true)
+      throw new HttpRequestExecutorError(
+        Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
+        true,
+      );
+    throw error;
+  }
 
   let resolved;
   try {
@@ -196,10 +209,13 @@ async function executeHttpRequest(
         {
           url: config.url,
           method: config.method,
-          headers: mergeHeaders(
-            config.headers,
-            credential.headers,
-            failedConfiguration,
+          headers: artifactContentType(
+            input,
+            mergeHeaders(
+              config.headers,
+              credential.headers,
+              failedConfiguration,
+            ),
           ),
           ...(body === undefined ? {} : { body }),
           timeoutMillis: config.timeoutMillis,

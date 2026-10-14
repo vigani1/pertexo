@@ -1,3 +1,4 @@
+import { lockArtifactReferences } from '../artifacts/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { canonicalJson, inspectJsonValue } from '@pertexo/workflow-model';
@@ -333,6 +334,7 @@ export function createWorkflowInputCaseDatabase(
           if (!version.rows[0])
             throw new WorkflowNotFoundError('Workflow version is not visible');
           await quota(client, input, json.bytes, true);
+          await lockArtifactReferences(client, input.workspaceId, input.input);
           await client.query(
             'insert into app.workflow_input_cases(id,workspace_id,workflow_id,workflow_version_id,version_checksum,name) values($1,$2,$3,$4,$5,$6)',
             [
@@ -369,6 +371,7 @@ export function createWorkflowInputCaseDatabase(
         async (client) => {
           const item = await lockedCase(client, input);
           await quota(client, input, json.bytes, false);
+          await lockArtifactReferences(client, input.workspaceId, input.input);
           const revision = item.revision + 1;
           await client.query(
             'insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes) values($1,$2,$3,$4,$5)',

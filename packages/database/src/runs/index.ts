@@ -92,6 +92,8 @@ export {
   readExecutionStorageCapacity,
 } from '../artifacts/store.js';
 export type { ArtifactCapacityObservation } from '../artifacts/store.js';
+export { requireNodeArtifactReference } from '../artifacts/references.js';
+export { ArtifactMetadataNotFoundError } from '../artifacts/store.js';
 
 export { createWorkflowCallStore } from './calls/store.js';
 export { WorkflowCallRefusedError } from './calls/contract.js';

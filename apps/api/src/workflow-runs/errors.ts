@@ -1,3 +1,4 @@
+import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import { z } from 'zod';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 
@@ -23,6 +24,11 @@ export class WorkflowRunIdempotencyConflictError extends Error {
 }
 
 export function mapWorkflowRunError(error: unknown): ApplicationError {
+  if (error instanceof ArtifactMetadataNotFoundError)
+    return applicationError('request.invalid', {
+      safeDetail:
+        'An attached file is unavailable or its metadata does not match. Upload the file again before saving or running.',
+    });
   if (isApplicationError(error)) return error;
   if (error instanceof AuthorizationError)
     return applicationError(error.code, { safeDetail: error.message });

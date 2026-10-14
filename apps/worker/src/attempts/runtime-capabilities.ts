@@ -11,6 +11,7 @@ import {
   createPendingArtifact,
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
+  requireNodeArtifactReference,
 } from '@pertexo/database/runs';
 import {
   createWorkspaceDatabase,
@@ -60,7 +61,7 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   connectionEncryption?: Pick<ConnectionEnvelopeEncryption, 'open'>;
   artifactPersistence?: WorkerArtifactPersistence;
   artifactStore?: Pick<ArtifactStore, 'put'> &
-    Partial<Pick<ArtifactStore, 'checkReadiness'>>;
+    Partial<Pick<ArtifactStore, 'checkReadiness' | 'getStream'>>;
   artifactId?: () => string;
   now?: () => Date;
   spoolDirectory?: string;
@@ -78,6 +79,22 @@ function artifactPersistence(
   database: WorkspaceDatabase,
 ): WorkerArtifactPersistence {
   return Object.freeze({
+    requireReadable: async (
+      input: Parameters<
+        NonNullable<WorkerArtifactPersistence['requireReadable']>
+      >[0],
+    ) => {
+      await database.withWorkspace(
+        input.workspaceId,
+        (transaction) =>
+          requireNodeArtifactReference(
+            transaction,
+            input.reference,
+            input.previewRunId,
+          ),
+        { signal: input.signal },
+      );
+    },
     createPending: async (
       input: Parameters<WorkerArtifactPersistence['createPending']>[0],
     ): Promise<void> => {

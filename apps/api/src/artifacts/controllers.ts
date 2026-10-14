@@ -26,6 +26,8 @@ import { RateLimit } from '../platform/rate-limit/metadata.js';
 import {
   requestIdempotencyKey,
   withRequestOperationSignal,
+  applicationError,
+  throwApplicationError,
 } from '../platform/http/index.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
@@ -139,6 +141,38 @@ export class ArtifactsController {
       }),
     );
   }
+}
+
+@Controller('v1/workspaces/:workspaceId/artifacts')
+export class UnconfiguredArtifactsController {
+  @Post(['uploads', ':artifactId/finalize'])
+  @RateLimit('ordinary_mutation')
+  @UseGuards(
+    SessionAuthenticationGuard,
+    ArtifactUploadGuard,
+    CsrfProtectionGuard,
+  )
+  @Header('Cache-Control', 'no-store')
+  public upload(): never {
+    return unavailableStorage();
+  }
+
+  @Get([':artifactId', ':artifactId/download'])
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, ArtifactReadGuard)
+  @Header('Cache-Control', 'no-store')
+  public read(): never {
+    return unavailableStorage();
+  }
+}
+
+function unavailableStorage(): never {
+  return throwApplicationError(
+    applicationError('artifact.unavailable', {
+      safeDetail:
+        'File storage is disabled on this server. Configure ARTIFACT_STORE_* to enable uploads and downloads.',
+    }),
+  );
 }
 
 function actorFrom(request: ArtifactRequest, workspaceId: string) {

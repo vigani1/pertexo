@@ -1,4 +1,8 @@
-import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
+import {
+  ARTIFACT_INPUT_CAPABILITY,
+  generateSchemaDocument,
+  type NodeManifest,
+} from '@pertexo/node-sdk';
 
 import {
   httpRequestConfigSchema,
@@ -46,6 +50,7 @@ export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
   capabilities: Object.freeze([
     'external_http',
     'artifact_output',
+    ARTIFACT_INPUT_CAPABILITY,
     'side_effect_disclosure',
   ]),
   executor: HTTP_REQUEST_EXECUTOR,

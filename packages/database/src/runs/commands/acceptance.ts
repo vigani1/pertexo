@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
+import { lockExecutionArtifactReferences } from '../../artifacts/references.js';
 import { z } from 'zod';
 
 import {
@@ -374,6 +375,7 @@ export async function acceptWorkflowRun(
   }
 
   let insertedRuns;
+  await lockExecutionArtifactReferences(transaction, parsed.runInput);
   try {
     insertedRuns = await transaction.db
       .insert(workflowRuns)

@@ -79,7 +79,18 @@ const DUE_ARTIFACT = `
 
 /** Run inputs, outputs, events and checkpoints that still name the artifact. */
 const REFERENCED = `
-  select exists (select 1 from app.workflow_runs run
+  select exists (select 1 from app.workflow_drafts draft
+      where draft.workspace_id = $1 and app.jsonb_references_artifact(draft.graph_json, $2))
+    or exists (select 1 from app.workflow_versions version
+      where version.workspace_id = $1 and app.jsonb_references_artifact(version.graph_json, $2))
+    or exists (select 1 from app.workflow_input_case_payloads payload
+      where payload.workspace_id=$1
+        and app.jsonb_references_artifact(payload.input::jsonb, $2))
+    or exists (select 1 from app.preview_runs preview
+      where preview.workspace_id=$1 and preview.expires_at > clock_timestamp()
+        and (app.jsonb_references_artifact(preview.input_ref, $2)
+          or app.jsonb_references_artifact(preview.executable_node_json, $2)))
+    or exists (select 1 from app.workflow_runs run
       where run.workspace_id = $1
         and (app.jsonb_references_artifact(run.input_ref, $2)
           or app.jsonb_references_artifact(run.output_ref, $2)))
