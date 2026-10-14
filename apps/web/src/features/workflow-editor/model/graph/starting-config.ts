@@ -7,6 +7,16 @@ type NodeConfig = WorkflowNode['config'];
 // has no defaults, and a definition's schema can't change in place: ADR
 // 010), so a new step reads as ready where it can be.
 const STARTING: Readonly<Record<string, NodeConfig>> = {
+  'core.filter': { path: '$', operator: 'equals' },
+  'core.sort': {
+    path: '$',
+    valueType: 'number',
+    direction: 'ascending',
+    missing: 'last',
+  },
+  'core.unique': { path: '$', missing: 'error' },
+  'core.summarize': { valuePath: '$', missing: 'error' },
+  'core.date': { operation: 'to_iso' },
   // Two branches, both at once.
   'core.parallel': {
     branches: [{ id: 'branch-01' }, { id: 'branch-02' }],

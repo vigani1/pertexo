@@ -10,6 +10,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import { schemaFields } from '../../../model/inspector/draft';
+import { describeTransformFields } from '../../../model/inspector/transforms/fields';
 import { stepTitle } from '../../../model/graph/adapter';
 import {
   readParallelBranches,
@@ -77,7 +78,15 @@ function CatalogSetupTab({
   onOpenInputs,
 }: SetupTabProps) {
   const fields = useMemo(
-    () => withStepChoices(schemaFields(definition?.configSchema), node, graph),
+    () =>
+      withStepChoices(
+        describeTransformFields(
+          schemaFields(definition?.configSchema),
+          node.definition.key,
+        ),
+        node,
+        graph,
+      ),
     [definition?.configSchema, node, graph],
   );
   const scheduleSchema = useMemo(

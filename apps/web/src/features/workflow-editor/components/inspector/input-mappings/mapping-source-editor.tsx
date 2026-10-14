@@ -15,6 +15,7 @@ import {
 } from '../../../model/inspector/input-mappings';
 import { ChoiceSelect } from '../fields/choice-select';
 import { LiteralEditor } from './literal-editor';
+import { ExpressionExamples } from './expression-examples';
 
 /**
  * The editor for a row's source: a value, a path, a step's output, code, or
@@ -93,6 +94,12 @@ export function MappingSourceEditor({
           {error === undefined ? null : (
             <FieldError id={errorId}>{error}</FieldError>
           )}
+          <ExpressionExamples
+            disabled={disabled}
+            onChoose={(expression) => {
+              onChange({ ...row, expression });
+            }}
+          />
         </Field>
       );
     case 'structured_input':
