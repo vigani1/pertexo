@@ -175,7 +175,7 @@ including missing/null/wrong-type behavior; no alternative evaluator in web.
 ## Frontend placement and behavior
 
 Existing catalog presentation owns the five names/icons/descriptions and
-schema-driven Setup owns fields. Prefer standard title/description/default/enum
+schema-driven Setup owns fields. Prefer standard title/description/enum
 metadata and existing SchemaField controls; add a focused node builder only when
 conditional presentation cannot preserve valid settings through those controls.
 The Inputs tab uses existing suggestions/data picker and human labels for items,
@@ -186,7 +186,9 @@ Keep feature-local pure recipe descriptions under editor `model/inspector/` and
 recipe UI under `components/inspector/input-mappings/`; compose it into the
 existing expression field. No global recipe store, new feature shell or Query
 request for static examples. Keep authored source in the scoped draft and
-serialized ETag save flow. Preserve undo/redo, raw JSON editing, import/export,
+serialized ETag save flow. New-step defaults use existing `model/graph/starting-config.ts`; require exact
+config in the server schema instead of applying Zod defaults during admission.
+Preserve undo/redo, raw JSON editing, import/export,
 read-only roles, conflicts and invalid values with messages rather than dropping
 them during presentation changes.
 
@@ -244,8 +246,8 @@ portable config equality and editor state ownership before implementation.
   per-item JSONata workers, per-item SQL, streaming claim or speculative cache.
 - Removed ambiguous natural-date/DST inference; a strict explicit offset and UTC
   milliseconds provide deterministic useful conversion without a timezone service.
-- Resolved portable imports: generated config defaults are materialized by normal
-  authoring; publication/export keep exact saved config. Do not rely on schema
+- Resolved portable imports: new-step defaults are materialized by existing
+  `starting-config.ts` during authoring; publication/export keep exact saved config. Do not rely on schema
   defaults to silently alter imported or retained config.
 - File parsing remains explicitly dependent on F04. F16 starts only after this
   supported release is verified/merged and gets a separate identity/auth review.
