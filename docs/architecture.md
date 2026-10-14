@@ -1,6 +1,6 @@
 # Architecture
 
-Pertexo is a pnpm monorepo with four applications and shared TypeScript
+Pertexo is a pnpm monorepo with five applications and shared TypeScript
 packages. [ADR 069](adr/069-architecture-reset.md) records the reset decisions;
 [CONTEXT.md](../CONTEXT.md) defines the product vocabulary. Historical ADRs
 remain in `docs/adr/`, with supersession noted where their decisions changed.
@@ -13,6 +13,7 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 | `apps/worker` | Run advancement, node attempts, previews, provider dispatch, triggers and maintenance loops          |
 | `apps/web`    | React/Vite product UI, TanStack Router/Query, scoped Zustand editor state and React Flow rendering   |
 | `apps/ops`    | Audited operator commands using the maintenance database role                                        |
+| `apps/cli`    | Personal-token HTTP workflow/run commands; no database or telemetry configuration                    |
 
 | Package           | Responsibility                                                                                                     |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------ |

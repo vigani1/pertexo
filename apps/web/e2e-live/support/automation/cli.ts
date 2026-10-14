@@ -9,11 +9,11 @@ const entrypoint = fileURLToPath(
 /** Check the compiled dependency closure before opening any live credential receipt. */
 export async function verifyAutomationCliBuild() {
   try {
-    const result = await execute(
-      process.execPath,
-      [entrypoint, 'automation', '--help'],
-      { env: {}, timeout: 5_000, maxBuffer: 64 * 1024 },
-    );
+    const result = await execute(process.execPath, [entrypoint, '--help'], {
+      env: {},
+      timeout: 5_000,
+      maxBuffer: 64 * 1024,
+    });
     if (!result.stdout.startsWith('Pertexo automation') || result.stderr !== '')
       throw new Error('Invalid CLI build');
   } catch {
@@ -30,15 +30,11 @@ export async function automationCli(
   args: string[],
 ) {
   try {
-    const result = await execute(
-      process.execPath,
-      [entrypoint, 'automation', ...args],
-      {
-        env: { PERTEXO_API_URL: origin, PERTEXO_API_TOKEN: credential },
-        timeout: 35_000,
-        maxBuffer: 16 * 1024 * 1024,
-      },
-    );
+    const result = await execute(process.execPath, [entrypoint, ...args], {
+      env: { PERTEXO_API_URL: origin, PERTEXO_API_TOKEN: credential },
+      timeout: 35_000,
+      maxBuffer: 16 * 1024 * 1024,
+    });
     if (result.stderr !== '')
       throw new Error('Unexpected automation diagnostic');
     return { code: 0, body: JSON.parse(result.stdout) as unknown };

@@ -46,5 +46,15 @@ role weakens workspace isolation.
 Existing membership revisions avoid revocation hooks in every lifecycle command
 and prevent grants expanding on upgrades. Any membership change deliberately
 requires a new token. Secrets are saved separately and cannot be recovered from
-backup/retried creation; lost responses use metadata/replacement. The existing
-apps/ops gains a thin HTTP path separate from privileged operator commands.
+backup/retried creation; lost responses use metadata/replacement. The standalone
+apps/cli owns a thin HTTP path; apps/ops owns privileged operator commands.
+
+
+## Owner amendment — 2026-10-14
+
+The owner requested moving the HTTP CLI out of the operator app into `apps/cli`.
+Use its own executable and root `cli` script, keeping native HTTP commands,
+flags, output, bounds and token ownership unchanged. Ops returns to operator
+commands only. The CLI has no database, maintenance or telemetry configuration;
+its private package is ready for a later publication but is not published now.
+This changes application ownership only, not the token/authentication decision.

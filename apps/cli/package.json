@@ -13,5 +13,16 @@
     "@pertexo/contracts": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "zod": "4.6.5"
+  },
+  "description": "Workflow and run automation over the Pertexo HTTP API",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "bin": {
+    "pertexo": "./dist/main.js"
+  },
+  "files": [
+    "dist/**/*.js"
+  ],
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
   }
 }
