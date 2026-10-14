@@ -6,6 +6,23 @@ const entrypoint = fileURLToPath(
   new URL('../../../../ops/dist/main.js', import.meta.url),
 );
 
+/** Check the compiled dependency closure before opening any live credential receipt. */
+export async function verifyAutomationCliBuild() {
+  try {
+    const result = await execute(
+      process.execPath,
+      [entrypoint, 'automation', '--help'],
+      { env: {}, timeout: 5_000, maxBuffer: 64 * 1024 },
+    );
+    if (!result.stdout.startsWith('Pertexo automation') || result.stderr !== '')
+      throw new Error('Invalid CLI build');
+  } catch {
+    throw new Error(
+      'Build apps/ops and its dependencies before the owned automation browser journey.',
+    );
+  }
+}
+
 /** Environment-only credential; neither subprocess command nor failure includes it. */
 export async function automationCli(
   origin: string,

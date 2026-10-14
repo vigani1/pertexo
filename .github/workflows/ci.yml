@@ -217,8 +217,10 @@ jobs:
         run: pnpm --filter @pertexo/web exec playwright install --with-deps
       - name: Browser tests against the mocked API
         run: pnpm --filter @pertexo/web test:e2e
-      - name: Build API and worker
-        run: pnpm --filter @pertexo/api... --filter @pertexo/worker... build
+      - name: Build API, worker and CLI
+        run:
+          pnpm --filter @pertexo/api... --filter @pertexo/worker... --filter
+          @pertexo/ops... build
       - name: Start services
         run: docker compose up -d --wait postgres redis
       - name: Browser journeys against the real stack
