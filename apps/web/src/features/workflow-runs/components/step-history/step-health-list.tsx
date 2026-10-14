@@ -8,7 +8,7 @@ import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
-import { describeNodeStatus } from '../../model/run-status';
+import { describeNodeStatus } from '../../model/presentation/run-status';
 import { stepHealthQueryOptions } from '../../data/workflow-runs.queries';
 
 /** The steps that fail most come first, then the slowest. */

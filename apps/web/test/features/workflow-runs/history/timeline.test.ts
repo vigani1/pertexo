@@ -6,7 +6,7 @@ import type {
 } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { describeRunEvent } from '@/features/workflow-runs/model/timeline/event-copy';
-import { describeRunSentence } from '@/features/workflow-runs/model/run-sentence';
+import { describeRunSentence } from '@/features/workflow-runs/model/presentation/run-sentence';
 import { describeStepError } from '@/features/workflow-runs/model/step-inspection/step-error-copy';
 import {
   stepTag,

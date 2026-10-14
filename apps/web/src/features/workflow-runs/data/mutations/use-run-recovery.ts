@@ -4,7 +4,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { recoverRun } from '../recovery.api';
 import { recoveryQueryOptions } from '../recovery.queries';
 import { workflowRunKeys } from '../workflow-runs.queries';
-import { recoveryError } from '../../model/recovery';
+import { recoveryError } from '../../model/commands/recovery';
 import { useRetainedSubmission } from './use-retained-submission';
 export function useRunRecovery({
   apiClient,

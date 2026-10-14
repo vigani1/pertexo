@@ -48,9 +48,9 @@ this release. This does not mark those deferred capabilities done.
 | Batch work | Existing For each, maximum 1,000 items | Operate once on a bounded collection; no new scheduler/streaming claims |
 
 Canonical paths are `packages/nodes-core/src/{triggers,flow,data}/<step>/` with
-`definition.ts`, `validation.ts`, `executor.ts`, `index.ts`; pure collection
-list steps live in `src/data/lists/<step>/`; shared collection semantics live in private `src/data/lists/semantics/`
-files by responsibility. Definition registration remains in `definitions.ts`,
+`definition.ts`, `validation.ts`, `executor.ts`, `index.ts`. List steps live in
+`src/data/lists/<step>/`; shared collection semantics live in private
+`src/data/lists/semantics/` files by responsibility. Definition registration remains in `definitions.ts`,
 executor registration in `registrations.ts`, catalog composition in
 `node-catalog`. No new package or consumer-named entry point.
 

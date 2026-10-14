@@ -15,7 +15,7 @@ import {
   type LoomModel,
   type LoomRun,
 } from '../../model/loom/model';
-import { describeRunStatus } from '../../model/run-status';
+import { describeRunStatus } from '../../model/presentation/run-status';
 
 /** Native links share the renderer's geometry, including overlapping runs. */
 export function LoomThreadLinks({

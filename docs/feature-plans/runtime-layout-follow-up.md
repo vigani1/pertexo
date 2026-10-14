@@ -13,7 +13,7 @@ Each group is its own buildable move commit; one delivery PR after all groups.
 | database/src/runs | Recovery contract/acceptance/reads in `recovery/`; publication/event reads in `queries/`; initial checkpoint interface in `commands/`; retain `/runs` public door |
 
 - [x] Group core node folders; update imports and current F24 ownership docs.
-- [ ] Group web run models; update imports without UI/logic changes.
+- [x] Group web run models; update imports without UI/logic changes.
 - [ ] Group database run files; update imports without persistence/logic changes.
 - [ ] Complete local behavioral verification and existing green CI before merge.
 

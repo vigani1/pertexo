@@ -1,5 +1,5 @@
 import type { StatusTone } from '@/components/ui/status';
-import type { NodeStatus } from '../run-status';
+import type { NodeStatus } from '../presentation/run-status';
 
 // The shapes a step's story is told in: its thread segments, its entries
 // and its outputs. `step-replay.ts` builds them from events.

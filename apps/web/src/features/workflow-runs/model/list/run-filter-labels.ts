@@ -1,6 +1,6 @@
 import { formatDate, formatDateTime } from '@/lib/format/time';
 import type { RunPresetRange, RunSearch } from './run-search';
-import { describeRunStatus, describeTrigger } from '../run-status';
+import { describeRunStatus, describeTrigger } from '../presentation/run-status';
 
 type RunFilterChipKey =
   'workflowId' | 'workflowNamePrefix' | 'status' | 'time' | 'trigger';

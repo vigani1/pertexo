@@ -8,7 +8,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { describeReadError } from '@/lib/api/error-copy';
 import { recoveryQueryOptions } from '../../data/recovery.queries';
 import { useRunRecovery } from '../../data/mutations/use-run-recovery';
-import { recoveryRefusal } from '../../model/recovery';
+import { recoveryRefusal } from '../../model/commands/recovery';
 import { RecoveryConfirmation } from './confirmation';
 export function RunRecoveryAction({
   apiClient,

@@ -4,5 +4,5 @@ export {
   describeListedFailure,
   describeRunFailure,
   type RunFailure,
-} from './model/run-failure';
+} from './model/presentation/run-failure';
 export { shortStepError } from './model/step-inspection/step-error-copy';

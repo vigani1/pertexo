@@ -6,7 +6,7 @@ import { ApiError } from '@/lib/api/error';
 import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
 import { useWorkflowRunSubmission } from '@/features/workflow-publish/data/mutations/use-workflow-run-submission';
-import { normalizeRunIntent } from '@/features/workflow-runs/model/run-intent';
+import { normalizeRunIntent } from '@/features/workflow-runs/model/commands/run-intent';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

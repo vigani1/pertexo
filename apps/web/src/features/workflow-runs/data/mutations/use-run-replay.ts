@@ -2,8 +2,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { isUnconfirmedRunCommand } from '../../model/run-command';
-import { normalizeRunIntent, type RunIntent } from '../../model/run-intent';
+import { isUnconfirmedRunCommand } from '../../model/commands/run-command';
+import {
+  normalizeRunIntent,
+  type RunIntent,
+} from '../../model/commands/run-intent';
 import { replayWorkflowRun } from '../workflow-runs.api';
 import { workflowRunKeys } from '../workflow-runs.queries';
 import { useRetainedSubmission } from './use-retained-submission';

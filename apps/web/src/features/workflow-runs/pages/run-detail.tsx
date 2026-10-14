@@ -21,8 +21,8 @@ import {
   StepError,
   RunStepDetails,
 } from '../components/run-detail/step-details';
-import { describeRunSentence } from '../model/run-sentence';
-import { isActiveRunStatus } from '../model/run-status';
+import { describeRunSentence } from '../model/presentation/run-sentence';
+import { isActiveRunStatus } from '../model/presentation/run-status';
 import { upstreamSteps } from '../model/step-inspection/step-inputs';
 import { buildRunTimeline, type RunTimelineRow } from '../model/timeline/runs';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
