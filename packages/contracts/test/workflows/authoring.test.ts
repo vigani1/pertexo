@@ -81,7 +81,13 @@ describe('workflow-authoring public contracts', () => {
       workflowAuthoringOpenApiDocument.paths[
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/publish'
       ].post;
-    expect(publish.responses['503']).toEqual(validate.responses['503']);
+    expect(publish.responses['503']).toEqual({
+      $ref: '#/components/responses/PublicationUnavailable',
+    });
+    expect(
+      workflowAuthoringOpenApiDocument.components.responses
+        .PublicationUnavailable.headers['Retry-After'],
+    ).toMatchObject({ required: false, schema: { const: 1 } });
     expect(
       workflowAuthoringOpenApiDocument.components.responses
         .ValidationUnavailable.headers['Retry-After'].schema.const,

@@ -183,6 +183,19 @@ const problemResponses = Object.freeze({
       },
     },
   },
+  PublicationUnavailable: {
+    ...problemResponse(
+      'Workflow validation, automation token authentication or limiter unavailable',
+    ),
+    headers: {
+      'Retry-After': {
+        description:
+          'One-second explicit retry delay for validation or limiter unavailability; absent when automation tokens are disabled',
+        required: false,
+        schema: { type: 'integer', const: 1 },
+      },
+    },
+  },
   PreconditionRequired: problemResponse('Precondition required'),
   PreconditionFailed: {
     description: 'The draft representation is no longer current',
@@ -451,9 +464,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           '428': responseReference('PreconditionRequired'),
           '422': responseReference('UnprocessableEntity'),
           '500': responseReference('Unexpected'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
+          '503': responseReference('PublicationUnavailable'),
         },
       },
     },
