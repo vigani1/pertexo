@@ -130,8 +130,29 @@ test('browser-authored failure link handles a definite error but never an unknow
     'skipped',
   );
   await expect(
-    page.getByRole('button', { name: 'Retry from this step', exact: true }),
-  ).toHaveCount(0);
+    page.getByRole('region', { name: /Pertexo can’t tell/u }),
+  ).toBeVisible();
+  const preview = await page.request.get(
+    `/v1/workspaces/${workspaceId}/runs/${unknownRunId}/recovery`,
+  );
+  expect(preview.status()).toBe(200);
+  expect(await preview.json()).toEqual({
+    kind: 'refused',
+    reason: 'unsupported_graph',
+  });
+  await page
+    .getByRole('button', { name: 'Retry from this step', exact: true })
+    .click();
+  const refused = page.getByRole('dialog', {
+    name: 'Retry from this step',
+    exact: true,
+  });
+  await expect(refused).toContainText('does not yet support');
+  await expect(refused.getByRole('checkbox')).toHaveCount(0);
+  await expect(
+    refused.getByRole('button', { name: 'Use full replay…', exact: true }),
+  ).toBeVisible();
+  await refused.getByRole('button', { name: 'Cancel', exact: true }).click();
   const evidence = await request.post(
     `${controlOrigin}/evidence/failure-routing`,
     {
