@@ -75,6 +75,35 @@ export function useEditorActions({
     EditorFocusTarget & Readonly<{ requestId: number }>
   >();
 
+  const removeSelection = useCallback(
+    (action: Extract<EditorAction, { kind: 'delete' }>) => {
+      const state = store.getState();
+      const result = removeWorkflowElements(state.graph, action);
+      if (result.graph === state.graph) return;
+      state.transact(result.graph);
+      const generation = store.getState().generation;
+      const toast = notifications.undo({
+        title: removalTitle(result.removed),
+        onUndo: () => {
+          const latest = store.getState();
+          if (latest.generation === generation) latest.undo();
+          else
+            latest.transact(
+              restoreWorkflowElements(latest.graph, result.removed),
+            );
+        },
+      });
+      // Undone another way (⌘Z): the toast's offer no longer applies.
+      const stop = store.subscribe((latest) => {
+        if (!isRestored(latest.graph, result.removed)) return;
+        notifications.dismiss(toast);
+        stop();
+      });
+      window.setTimeout(stop, UNDO_WATCH_MS);
+    },
+    [notifications, store],
+  );
+
   const perform = useCallback(
     (action: EditorAction) => {
       const state = store.getState();
@@ -104,33 +133,12 @@ export function useEditorActions({
           return;
         }
         case 'delete': {
-          const result = removeWorkflowElements(state.graph, action);
-          if (result.graph === state.graph) return;
-          state.transact(result.graph);
-          const generation = store.getState().generation;
-          const toast = notifications.undo({
-            title: removalTitle(result.removed),
-            onUndo: () => {
-              const latest = store.getState();
-              if (latest.generation === generation) latest.undo();
-              else
-                latest.transact(
-                  restoreWorkflowElements(latest.graph, result.removed),
-                );
-            },
-          });
-          // Undone another way (⌘Z): the toast's offer no longer applies.
-          const stop = store.subscribe((latest) => {
-            if (!isRestored(latest.graph, result.removed)) return;
-            notifications.dismiss(toast);
-            stop();
-          });
-          window.setTimeout(stop, UNDO_WATCH_MS);
+          removeSelection(action);
           return;
         }
       }
     },
-    [focusStep, notifications, store],
+    [focusStep, removeSelection, store],
   );
 
   const request = useCallback(
