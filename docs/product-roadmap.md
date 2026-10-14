@@ -151,6 +151,9 @@ the then-current code. Do not spend weeks finalizing far-future schemas.
 | 6 — Optional power features | F14 data tables; F15 sync responses; F20 sandbox; F25 coordination | High cost/security/semantics; promote by demand, not to fill a checklist |
 | 7 — Ecosystem expansion | F21 generic OAuth2 connections for HTTP Request → F21 selected providers/polling → F22 AI, starting with a bounded model step before agents; F23 only after business approval | Breadth after the core product is complete, by product choice: the owner placed integrations and AI last on 2026-10-12 |
 
+Owner update 2026-10-14: implement and verify F24 next, then separately plan,
+review and implement F16.
+
 Waves express priority, not a requirement to finish every optional row before
 moving on. The first complete core path is F00/F01 → F03 → F26/F12 → F02 →
 F05/F06 → F08. Integrations stay late on purpose: the core product and its
@@ -208,7 +211,7 @@ only after its gate is resolved.
 | [F21](feature-plans/21-integrations-and-polling.md) | Provider expansion and durable polling/subscriptions | Later integration program | XL per provider family | Proposed |
 | [F22](feature-plans/22-ai-assistance-and-ai-nodes.md) | AI authoring assistance, model nodes and controlled tools | Later optional capability | XL | Proposed |
 | [F23](feature-plans/23-billing-and-commercialization.md) | Billing and commercial entitlements | Explicitly deferred optional business slice | XL | Proposed |
-| [F24](feature-plans/24-data-transform-toolkit.md) | Discoverable data transforms and batch tools | New node UX over existing mapping/JSONata foundations | L | Proposed |
+| [F24](feature-plans/24-data-transform-toolkit.md) | Discoverable data transforms and batch tools | New node UX over existing mapping/JSONata foundations | L | Owner authorized 2026-10-14 after F09 and before F16; detailed bounded collection/date and expression-recipe plan reviewed, implementation pending; file conversion stays gated on F04 |
 | [F25](feature-plans/25-event-coordination.md) | Business-event deduplication, debounce and throttling | Optional durable coordination beyond queue reliability | XL | Proposed |
 | F26 | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Released: workflow auto-pause controls (#135) and worker failure streaks; always on since the reset (ADR 069) |
 | [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
