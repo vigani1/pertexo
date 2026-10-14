@@ -1,26 +1,26 @@
-import { coreConcatExecutor } from './concat/executor.js';
-import { coreTakeExecutor } from './take/executor.js';
-import { coreBatchExecutor } from './batch/executor.js';
-import { coreFilterExecutor } from './filter/executor.js';
-import { coreSortExecutor } from './sort/executor.js';
-import { coreUniqueExecutor } from './unique/executor.js';
-import { coreSummarizeExecutor } from './summarize/executor.js';
-import { coreDateExecutor } from './date/executor.js';
+import { coreConcatExecutor } from './data/lists/concat/executor.js';
+import { coreTakeExecutor } from './data/lists/take/executor.js';
+import { coreBatchExecutor } from './data/lists/batch/executor.js';
+import { coreFilterExecutor } from './data/lists/filter/executor.js';
+import { coreSortExecutor } from './data/lists/sort/executor.js';
+import { coreUniqueExecutor } from './data/lists/unique/executor.js';
+import { coreSummarizeExecutor } from './data/lists/summarize/executor.js';
+import { coreDateExecutor } from './data/date/executor.js';
 import type { NodeExecutorRegistration } from '@pertexo/node-sdk/server';
 
-import { coreCallExecutor } from './call/executor.js';
-import { coreConditionExecutor } from './condition/executor.js';
-import { coreForEachExecutor } from './for-each/executor.js';
-import { coreManualExecutor } from './manual/executor.js';
-import { coreMergeExecutor } from './merge/executor.js';
-import { coreParallelExecutor } from './parallel/executor.js';
-import { coreScheduleExecutor } from './schedule/executor.js';
-import { coreSetExecutor } from './set/executor.js';
-import { coreSwitchExecutor } from './switch/executor.js';
-import { coreTerminateExecutor } from './terminate/executor.js';
-import { coreValidateExecutor } from './validate/executor.js';
-import { coreWaitExecutor } from './wait/executor.js';
-import { coreWebhookExecutor } from './webhook/executor.js';
+import { coreCallExecutor } from './flow/call/executor.js';
+import { coreConditionExecutor } from './flow/condition/executor.js';
+import { coreForEachExecutor } from './flow/for-each/executor.js';
+import { coreManualExecutor } from './triggers/manual/executor.js';
+import { coreMergeExecutor } from './flow/merge/executor.js';
+import { coreParallelExecutor } from './flow/parallel/executor.js';
+import { coreScheduleExecutor } from './triggers/schedule/executor.js';
+import { coreSetExecutor } from './data/set/executor.js';
+import { coreSwitchExecutor } from './flow/switch/executor.js';
+import { coreTerminateExecutor } from './flow/terminate/executor.js';
+import { coreValidateExecutor } from './data/validate/executor.js';
+import { coreWaitExecutor } from './flow/wait/executor.js';
+import { coreWebhookExecutor } from './triggers/webhook/executor.js';
 
 /** One implementation per core executor, in definition order. */
 export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration[] =
