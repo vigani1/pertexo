@@ -268,9 +268,11 @@ restricted profile or define its identity/persistence contracts.
 - [x] Plan reviewed; boundaries and deferred file dependency made explicit.
 - [x] Slice 0: PR #279 merged after all required CI passed.
 - [x] Slice 1: PR #280 merged after all required CI passed.
-- [ ] Slice 2: frontend and real browser/independent database qualification
-  implemented and locally verified; final gates and PR merge remain required.
-- [ ] Final CI/postmerge evidence recorded on each slice PR.
+- [x] Slice 2: frontend and real browser/independent database qualification
+  merged in PR #281 after all required checks passed.
+- [x] Final CI/postmerge evidence recorded on each slice PR. Final main
+  `cea7772e3154b23f164e95a38cad71256c759d1f`: CI 38515856478, CodeQL
+  38515856521 and ARM image publication succeeded.
 - [ ] F04 file consumer/conversion separately planned and authorized.
 
 ### Slice 2 qualification

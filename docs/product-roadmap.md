@@ -203,7 +203,7 @@ only after its gate is resolved.
 | [F13](feature-plans/13-configuration-and-variables.md) | Workspace variables and reusable non-secret configuration | New version-aware configuration | L | Proposed |
 | [F14](feature-plans/14-data-tables.md) | Workflow-owned lookup tables and durable records | New optional storage product | XL | Proposed |
 | [F15](feature-plans/15-synchronous-webhook-responses.md) | Bounded synchronous webhook responses | New opt-in trigger mode | XL | Proposed |
-| [F16](feature-plans/16-automation-api-and-cli.md) | Scoped automation tokens, public API and CLI | Backend security product + developer UX | L–XL | Proposed |
+| [F16](feature-plans/16-automation-api-and-cli.md) | Scoped automation tokens, public API and CLI | Backend security product + developer UX | L–XL | Owner authorized after completed F09/F24; detailed personal-token/API/CLI plan reviewed, implementation pending |
 | [F17](feature-plans/17-environments-and-promotion.md) | Development/production environments and safe promotion | New enterprise-oriented lifecycle | XL | Proposed |
 | [F18](feature-plans/18-governance-and-audit.md) | Audit visibility, publishing approval and advanced access | Existing tenancy foundation + new governance UX | XL | Proposed |
 | [F19](feature-plans/19-collaboration.md) | Comments and editing presence, then multiplayer | New frontend + coordination backend | XL | Proposed |
@@ -211,7 +211,7 @@ only after its gate is resolved.
 | [F21](feature-plans/21-integrations-and-polling.md) | Provider expansion and durable polling/subscriptions | Later integration program | XL per provider family | Proposed |
 | [F22](feature-plans/22-ai-assistance-and-ai-nodes.md) | AI authoring assistance, model nodes and controlled tools | Later optional capability | XL | Proposed |
 | [F23](feature-plans/23-billing-and-commercialization.md) | Billing and commercial entitlements | Explicitly deferred optional business slice | XL | Proposed |
-| [F24](feature-plans/24-data-transform-toolkit.md) | Discoverable data transforms and batch tools | New node UX over existing mapping/JSONata foundations | L | Owner authorized 2026-10-14 after F09 and before F16; detailed bounded collection/date and expression-recipe plan reviewed, implementation pending; file conversion stays gated on F04 |
+| [F24](feature-plans/24-data-transform-toolkit.md) | Discoverable data transforms and batch tools | New node UX over existing mapping/JSONata foundations | L | Bounded collection/date transforms and expression recipes complete in #279–#281; natural main CI/ARM verified; file conversion stays gated on F04 |
 | [F25](feature-plans/25-event-coordination.md) | Business-event deduplication, debounce and throttling | Optional durable coordination beyond queue reliability | XL | Proposed |
 | F26 | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Released: workflow auto-pause controls (#135) and worker failure streaks; always on since the reset (ADR 069) |
 | [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
