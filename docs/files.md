@@ -5,9 +5,38 @@ body. Files are limited to **1 MiB (1,048,576 bytes)** for this consumer. Generi
 storage uploads and HTTP response limits are separate; storing a larger file
 does not make it usable as a request body.
 
-The consumer/lifetime slice supplies the backend path. Input-local browser upload
-controls follow in the next slice; the instructions below describe the existing
-API and mapping contract, not an already shipped upload button.
+In the editor, choose an HTTP Request using POST, PUT, PATCH or DELETE, open
+**Inputs**, then **Upload body file**. Choose the file and wait for **File ready**.
+**Use file as body** (or **Replace body with file**) inserts one undoable mapping.
+Save before relying on retention. Remove that body mapping or undo to clear it;
+replacing it does not erase workspace files.
+
+For a different file on each run, choose **Run → Run with input… → Upload file**.
+Pick a top-level input property (`file` by default). Existing JSON properties are
+preserved; replacing a property requires its checkbox. Input must be an object,
+and the inserted value must fit the exact published callable contract, if any.
+Map the HTTP body from run input `$.file`.
+
+The live thread shows checking, upload and verification phases. It does not
+invent a percentage. Cancel or leaving the current workflow/person/workspace
+aborts local work and prevents late attachment. **Check and retry same file**
+first reconciles the existing reservation/finalization, retaining its exact key
+and metadata. Expired uploads need a fresh selection. Reloading abandons the
+local selection: signed links and File objects are never persisted.
+
+Uploads use the configured object store directly, with application credentials
+omitted and browser-owned Content-Length. The server needs ARTIFACT_STORE_*
+configuration and the bucket must allow the web origin's PUT CORS requests.
+Unavailable storage is reported as configuration, not a changed role.
+
+### Browser evidence
+
+Desktop and 375px phone flows use the existing Weft lens and Status thread.
+See [editor before attachment](images/f04/editor-before.png),
+[ready file on desktop](images/f04/editor-upload-desktop.png),
+[ready file on phone](images/f04/editor-upload-phone.png) and
+[manual-input upload on phone](images/f04/manual-upload-phone.png).
+These are synthetic local fixtures, not production accounts.
 
 ## Upload and finalize
 

@@ -128,6 +128,7 @@ export function EditorInspector({
       connections={connections}
       channelLookup={channelLookup}
       callScope={{ apiClient, userId, workspaceId, workflowId }}
+      fileScope={{ apiClient, userId, workspaceId }}
       editable={editable}
       scratchVersion={actions.scratchVersion}
       tab={tab}

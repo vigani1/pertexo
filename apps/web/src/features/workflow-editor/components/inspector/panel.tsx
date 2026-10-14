@@ -1,3 +1,4 @@
+import type { FileUploadScope } from '@/features/artifacts/public';
 import type { CallTargetScope } from '../../data/call-targets.queries';
 import type {
   NodeDefinitionCatalogItem,
@@ -31,6 +32,7 @@ export function InspectorPanel({
   connections,
   channelLookup,
   callScope,
+  fileScope,
   editable,
   scratchVersion,
   tab,
@@ -45,6 +47,7 @@ export function InspectorPanel({
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
   callScope?: CallTargetScope;
+  fileScope?: FileUploadScope;
   editable: boolean;
   scratchVersion: number;
   tab: InspectorTab;
@@ -78,6 +81,7 @@ export function InspectorPanel({
         definitions={definitions}
         connections={connections}
         channelLookup={channelLookup}
+        {...(fileScope === undefined ? {} : { fileScope })}
         {...(callScope === undefined ? {} : { callScope })}
         editable={editable}
         tab={tab}

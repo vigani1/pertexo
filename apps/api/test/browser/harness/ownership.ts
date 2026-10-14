@@ -8,6 +8,7 @@ const manifestSchema = z.strictObject({
   project: z.string().regex(/^pertexo-[a-z0-9-]+$/u),
   postgres: service,
   redis: service,
+  artifactStore: service.optional(),
 });
 const inspectedSchema = z
   .array(
@@ -63,6 +64,43 @@ export async function verifyEditorBrowserOwnership(
     redis.port !== String(manifest.redis.port)
   )
     throw new Error('Redis URL must match the approved owned manifest');
+  if (
+    env.EDITOR_BROWSER_CASE === 'artifact-inputs' &&
+    manifest.artifactStore === undefined
+  )
+    throw new Error(
+      'File browser qualification requires an attested object store',
+    );
+  if (manifest.artifactStore !== undefined) {
+    const owned = manifest.artifactStore;
+    const endpoint = new URL(env.ARTIFACT_STORE_ENDPOINT ?? '');
+    if (
+      endpoint.protocol !== 'http:' ||
+      endpoint.hostname !== '127.0.0.1' ||
+      endpoint.port !== String(owned.port)
+    )
+      throw new Error(
+        'Object-store URL must match the approved owned manifest',
+      );
+    const inspected = inspectedSchema.parse(
+      JSON.parse(await inspect(owned.id)),
+    )[0];
+    const bindings = Object.entries(inspected?.NetworkSettings.Ports ?? {})
+      .filter(([port]) => ['9000/tcp', '9090/tcp'].includes(port))
+      .flatMap(([, values]) => values ?? []);
+    if (
+      inspected?.Id !== owned.id ||
+      !inspected.State.Running ||
+      (inspected.Config.Labels['com.docker.compose.project'] !==
+        manifest.project &&
+        inspected.Config.Labels['pertexo.fixture.owner'] !==
+          manifest.project) ||
+      bindings.length !== 1 ||
+      bindings[0]?.HostIp !== '127.0.0.1' ||
+      bindings[0].HostPort !== String(owned.port)
+    )
+      throw new Error('Owned object-store preflight failed');
+  }
   for (const [owned, port] of [
     [manifest.postgres, '5432/tcp'],
     [manifest.redis, '6379/tcp'],

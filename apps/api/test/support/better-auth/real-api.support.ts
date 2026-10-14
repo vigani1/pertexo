@@ -122,6 +122,7 @@ export function useBetterAuthRealApi(
   options: Readonly<{
     publicWebOrigin?: string;
     automationTokens?: boolean;
+    artifacts?: ApiConfig['artifacts'];
     /** F07-owned qualification namespace, never a shared database selection. */
     databaseNamespace?: 'f07_organization';
     redisUrl?: string;
@@ -216,6 +217,9 @@ export function useBetterAuthRealApi(
       ...defaults,
       identity,
       redisUrl: options.redisUrl ?? redisUrl,
+      ...(options.artifacts === undefined
+        ? {}
+        : { artifacts: options.artifacts }),
       ...(options.connections === undefined
         ? {}
         : { connections: options.connections.config }),

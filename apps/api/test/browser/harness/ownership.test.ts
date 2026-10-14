@@ -115,3 +115,53 @@ describe('editor browser fixture preflight', () => {
     },
   );
 });
+
+it('refuses file qualification without a specifically attested object store', async () => {
+  const { env, inspect } = fixture();
+  env.EDITOR_BROWSER_CASE = 'artifact-inputs';
+  await expect(verifyEditorBrowserOwnership(env, inspect)).rejects.toThrow(
+    'attested object store',
+  );
+  expect(inspect).not.toHaveBeenCalled();
+});
+
+it.each([false, true])(
+  'checks the exact owned object-store port before acquisition (mismatch=%s)',
+  async (mismatch) => {
+    const { env, inspect } = fixture();
+    const artifactStore = { id: 'c'.repeat(64), port: 59090 };
+    env.EDITOR_BROWSER_CASE = 'artifact-inputs';
+    env.EDITOR_BROWSER_OWNERSHIP_MANIFEST = JSON.stringify({
+      ...manifest,
+      artifactStore,
+    });
+    env.ARTIFACT_STORE_ENDPOINT = `http://127.0.0.1:${mismatch ? '9090' : '59090'}`;
+    const original = inspect.getMockImplementation();
+    inspect.mockImplementation((id) =>
+      id === artifactStore.id
+        ? Promise.resolve(
+            JSON.stringify([
+              {
+                Id: id,
+                State: { Running: true },
+                Config: {
+                  Labels: { 'com.docker.compose.project': manifest.project },
+                },
+                NetworkSettings: {
+                  Ports: {
+                    '9090/tcp': [{ HostIp: '127.0.0.1', HostPort: '59090' }],
+                  },
+                },
+              },
+            ]),
+          )
+        : (original?.(id) ?? Promise.reject(new Error('Unknown owner'))),
+    );
+    if (mismatch) {
+      await expect(verifyEditorBrowserOwnership(env, inspect)).rejects.toThrow(
+        'Object-store URL',
+      );
+      expect(inspect).not.toHaveBeenCalled();
+    } else await verifyEditorBrowserOwnership(env, inspect);
+  },
+);

@@ -1,4 +1,8 @@
 import {
+  createArtifactStore,
+  parseArtifactStoreConfig,
+} from '@pertexo/artifact-store';
+import {
   collectionEvidenceSchema,
   dateEvidenceSchema,
   verifyTransformEvidence,
@@ -12,7 +16,7 @@ import {
   verifyFailureRoutingEvidence,
 } from './editor/evidence/failure-routing.js';
 import { fork, spawn, type ChildProcess } from 'node:child_process';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
 import { createServer as createTcpServer } from 'node:net';
@@ -107,6 +111,7 @@ const scenario = z
     'webhook-controlled-http',
     'failure-routing',
     'transforms',
+    'artifact-inputs',
     'api-tokens',
     'duplication',
     'portability',
@@ -146,7 +151,9 @@ let dateEvidence: z.infer<typeof dateEvidenceSchema> | undefined;
 let apiTokensEvidence: z.infer<typeof apiTokensEvidenceSchema> | undefined;
 let worker: ChildProcess;
 const controlledHttpScenario =
-  scenario === 'webhook-controlled-http' || scenario === 'failure-routing';
+  scenario === 'webhook-controlled-http' ||
+  scenario === 'failure-routing' ||
+  scenario === 'artifact-inputs';
 let failureRoutingEvidence:
   z.infer<typeof failureRoutingEvidenceSchema> | undefined;
 const httpMaster =
@@ -154,7 +161,9 @@ const httpMaster =
     ? randomBytes(32)
     : undefined;
 const httpAuthorization = controlledHttpScenario
-  ? `Bearer ${randomUUID()}`
+  ? scenario === 'artifact-inputs'
+    ? 'Bearer owned-artifact-destination'
+    : `Bearer ${randomUUID()}`
   : undefined;
 let httpControl: ReturnType<typeof createEditorHttpControl> | undefined;
 let httpEffects: z.infer<typeof httpEffectsSchema> | undefined;
@@ -378,6 +387,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   const api = useBetterAuthRealApi('editor_browser', {
     publicWebOrigin: webOrigin,
     automationTokens: scenario === 'api-tokens',
+    ...(scenario === 'artifact-inputs'
+      ? { artifacts: parseArtifactStoreConfig() }
+      : {}),
     schedules: scenario === 'schedule' || scenario === 'curated-templates',
     ...(httpMaster === undefined
       ? {}
@@ -485,6 +497,23 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       // Stop before worker/lease cleanup if a browser descendant is unconfirmed.
       for (const child of browserChildren.toReversed()) await closeChild(child);
       await owner.close();
+      if (scenario === 'artifact-inputs') {
+        const rows = await api
+          .database()
+          .query<{ workspace_id: string; id: string }>(
+            'select workspace_id,id from app.artifacts',
+          );
+        const store = createArtifactStore(parseArtifactStoreConfig());
+        try {
+          for (const artifact of rows.rows)
+            await store.delete({
+              workspaceId: artifact.workspace_id,
+              artifactId: artifact.id,
+            });
+        } finally {
+          store.close();
+        }
+      }
     },
     beforeDrop: recheckOwnership,
   });
@@ -948,35 +977,37 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'api-tokens'
-              ? 'api-tokens.spec.ts'
-              : scenario === 'callable'
-                ? 'editor/callable.spec.ts'
-                : scenario === 'curated-templates'
-                  ? 'curated-templates.spec.ts'
-                  : scenario === 'portability'
-                    ? 'workflow-portability.spec.ts'
-                    : scenario === 'input-cases'
-                      ? 'workflow-input-cases.spec.ts'
-                      : scenario === 'duplication'
-                        ? 'workflow-duplication.spec.ts'
-                        : scenario === 'nested-conflict'
-                          ? 'editor/execution.spec.ts'
-                          : scenario === 'receipts'
-                            ? 'editor/receipts.spec.ts'
-                            : scenario === 'run-recovery'
-                              ? 'editor/run-recovery.spec.ts'
-                              : scenario === 'expression-admission'
-                                ? 'editor/expression-admission.spec.ts'
-                                : scenario === 'readonly'
-                                  ? 'editor/readonly.spec.ts'
-                                  : scenario === 'schedule'
-                                    ? 'editor/schedule.spec.ts'
-                                    : scenario === 'failure-routing'
-                                      ? 'editor/failure-routing.spec.ts'
-                                      : scenario === 'transforms'
-                                        ? 'editor/transforms.spec.ts'
-                                        : 'editor/webhook-controlled-http.spec.ts',
+            scenario === 'artifact-inputs'
+              ? 'editor/files/inputs.spec.ts'
+              : scenario === 'api-tokens'
+                ? 'api-tokens.spec.ts'
+                : scenario === 'callable'
+                  ? 'editor/callable.spec.ts'
+                  : scenario === 'curated-templates'
+                    ? 'curated-templates.spec.ts'
+                    : scenario === 'portability'
+                      ? 'workflow-portability.spec.ts'
+                      : scenario === 'input-cases'
+                        ? 'workflow-input-cases.spec.ts'
+                        : scenario === 'duplication'
+                          ? 'workflow-duplication.spec.ts'
+                          : scenario === 'nested-conflict'
+                            ? 'editor/execution.spec.ts'
+                            : scenario === 'receipts'
+                              ? 'editor/receipts.spec.ts'
+                              : scenario === 'run-recovery'
+                                ? 'editor/run-recovery.spec.ts'
+                                : scenario === 'expression-admission'
+                                  ? 'editor/expression-admission.spec.ts'
+                                  : scenario === 'readonly'
+                                    ? 'editor/readonly.spec.ts'
+                                    : scenario === 'schedule'
+                                      ? 'editor/schedule.spec.ts'
+                                      : scenario === 'failure-routing'
+                                        ? 'editor/failure-routing.spec.ts'
+                                        : scenario === 'transforms'
+                                          ? 'editor/transforms.spec.ts'
+                                          : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1099,6 +1130,27 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         api.database(),
         failureRoutingEvidence,
         httpEffects,
+      );
+      return;
+    }
+    if (scenario === 'artifact-inputs') {
+      if (httpEffects === undefined)
+        throw new Error('Owned artifact HTTP effects missing');
+      expect(httpEffects.requests).toBe(4);
+      expect(httpEffects.effects).toBe(4);
+      const binary = Buffer.alloc(1048576);
+      for (let index = 0; index < binary.length; index++)
+        binary[index] = index % 256;
+      const hash = (value: Buffer | string) =>
+        createHash('sha256').update(value).digest('hex');
+      expect(httpEffects.bodyHashes).toEqual([
+        hash(binary),
+        hash('{}'),
+        hash(''),
+        hash('{}'),
+      ]);
+      process.stdout.write(
+        `Live artifact input destination hashes ${JSON.stringify(httpEffects.bodyHashes)}\n`,
       );
       return;
     }

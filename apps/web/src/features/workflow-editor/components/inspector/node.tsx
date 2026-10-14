@@ -1,3 +1,4 @@
+import type { FileUploadScope } from '@/features/artifacts/public';
 import type { CallTargetScope } from '../../data/call-targets.queries';
 import type {
   NodeDefinitionCatalogItem,
@@ -62,6 +63,7 @@ export function NodeInspector({
   connections,
   channelLookup,
   callScope,
+  fileScope,
   editable,
   tab,
   onTabChange,
@@ -81,6 +83,7 @@ export function NodeInspector({
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
   callScope?: CallTargetScope;
+  fileScope?: FileUploadScope;
   editable: boolean;
   tab: InspectorTab;
   onTabChange: (tab: InspectorTab) => void;
@@ -202,6 +205,7 @@ export function NodeInspector({
           </TabsContent>
           <TabsContent value="inputs" keepMounted>
             <InputsTab
+              {...(fileScope === undefined ? {} : { fileScope })}
               node={node}
               graph={graph}
               loopPorts={loopPorts}

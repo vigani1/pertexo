@@ -1,11 +1,12 @@
 # F04 — File inputs and artifact lifecycle
 
-Status: approved for implementation on 2026-10-14. The owner accepted the
-recommended HTTP consumer, 1 MiB budget, opaque-file policy and reference lifetime.
+Status: consumer merged; upload UI implemented and locally qualified on 2026-10-15.
+The owner accepted the HTTP consumer, 1 MiB budget, opaque-file policy and reference
+lifetime on 2026-10-14. UI delivery/CI status is tracked below.
 Created: 2026-09-28. Reconciled against main
 `9c095bd258306c2a0fd0b618ceb0a584850e3baf` on 2026-10-14.
 Parent: [product roadmap](../product-roadmap.md).
-Decision: [proposed ADR 075](../adr/075-workflow-artifact-inputs.md).
+Decision: [ADR 075](../adr/075-workflow-artifact-inputs.md).
 
 ## Outcome and scope
 
@@ -140,7 +141,7 @@ existing tables and row locks, stop for the owner rather than introduce it.
 | Database `authoring/`, `runs/`, `lifecycle/` | Owner writes and retention reachability | Duplicate artifact rules |
 | Web `features/artifacts/` | Upload adapters, local lifecycle, focused control | Editor commands/global file store |
 | Web `features/workflow-editor/` | Body-source composition, one undoable edit | Signed URLs in graph |
-| Web `features/workflow-runs/` | Manual-input upload composition | Stored browser File objects |
+| Web `features/workflow-publish/` (current run-dialog owner) | Manual-input upload composition | Stored browser File objects |
 
 Keep roughly ten files per directory. Necessary moves get separate buildable
 commits. Cross-feature consumers use the artifacts public interface; adapters
@@ -162,8 +163,11 @@ The artifacts feature owns selected, hashing, reserving, uploading, finalizing,
 available, canceled and uncertain states. Hash before begin; retries retain exact
 metadata/key. Signed PUT uses returned headers with browser-owned Content-Length
 supplied by the browser. Never send the session cookie/application token to S3.
-Byte progress belongs in a feature-local direct-transfer adapter, not a second
-application HTTP client. PUT success leads to finalize, not attachment.
+The feature-local transfer adapter uses Fetch with credentials omitted and no
+redirects. Show real transfer phases, not simulated byte progress: Fetch provides
+no portable upload-progress events, while XHR cannot omit same-origin cookies.
+At this 1 MiB bound, an indeterminate live thread avoids a second transport or
+restricting storage to another origin. PUT success leads to finalize, not attachment.
 
 Cancellation aborts owned work but cannot undo committed finalization. On uncertain
 finalize, read metadata or repeat finalize for the same identity. On uncertain PUT,
@@ -237,13 +241,14 @@ artifact-aware F09 prefix recovery. No production rollout is included.
 - [x] ADR 075 accepted; decision PR [#291](https://github.com/vigani1/pertexo/pull/291) merged green.
 - [x] Consumer contracts and writer/cleanup race model implemented locally.
 - [x] Consumer independently qualified with real database/storage and owned HTTP destination.
-- [ ] Frontend implemented and inspected at desktop/phone widths.
-- [ ] Integrated acceptance and rollback evidence recorded.
-- [ ] Implementation PRs merged; natural main checks inspected.
+- [x] Frontend implemented and inspected at desktop/phone widths.
+- [x] Local integrated acceptance and retention-safe rollback behavior recorded.
+- [x] Consumer PR merged; natural main checks inspected.
+- [ ] Upload UI PR merged; natural main checks inspected.
 
 Evidence (2026-10-14): the accepted decision merged in #291 at main
 `375f35650e8826238c595f3ec495379e3939834b`; PR CI 38627247775 and CodeQL
-38627247795 passed. Consumer/lifecycle work is in progress. Eight real PostgreSQL
+38627247795 passed. Consumer/lifecycle work is qualified and merged in #292. Eight real PostgreSQL
 owner/race/preview/isolation cases pass; the existing real-store worker fixture
 writes, verifies and sends 70,000-byte and 1,048,576-byte files to an owned HTTP
 server, independently checking received length/hash/type. The final instrumented local read-and-native-byte-comparison observations were
@@ -253,8 +258,7 @@ maximum includes the runner, imports, migrations and assertions, not just the
 read. These are not service guarantees. S3Mock
 alone does not qualify real provider signatures. Full `pnpm check`, the complete unit suites run sequentially, 161 mocked browser
 journeys, eight PostgreSQL owner/race cases, three real storage/HTTP cases and
-22 authenticated artifact-API regressions passed. The consumer PR and browser
-upload/signature evidence remain pending. Storage-off routes now retain normal
+22 authenticated artifact-API regressions passed. The consumer PR merged; browser upload/signature evidence is recorded below. Storage-off routes now retain normal
 auth/role/CSRF checks and return a clear `artifact.unavailable` response without
 creating upload reservations.
 
@@ -264,3 +268,31 @@ journey passed twice locally. Its credential-safe diagnostics now retain only
 allowlisted operation names/public problem codes; redaction regressions pass.
 The intermittent failure has not been reproduced or claimed fixed. Consumer
 CI and its natural postmerge result must be inspected independently. See [file behavior](../files.md).
+
+Upload UI evidence (2026-10-14): consumer/lifecycle PR [#292](https://github.com/vigani1/pertexo/pull/292)
+merged green at `d6ca647cfba69f269179f9094336c7d165a63aa8`. Both ordinary-browser
+entry points pass against an owned cached RustFS 1.0.1, including signed PUT/CORS,
+forged-signature refusal, 1 MiB invalid-UTF-8 binary data, an empty file, default
+MIME type, finalization, save/reload/publication, undo/redo and actual worker HTTP
+consumption. Each workflow also sends the first response artifact into a second
+HTTP request. The independent target's four hashes match the binary, `{}`, empty
+bytes and `{}`. The same journeys pass with the existing CI S3Mock service;
+S3Mock does not qualify signature validation. The existing e2e job now runs them,
+with exact object-store container/port attestation; no CI job or service definition was added.
+
+Observed 1 MiB browser select-to-ready time was roughly 0.13–0.25 s locally. One
+CDP observation increased backing storage from about 1.9 MB to 5.4 MB, while the
+whole editor heap was changing too. This includes browser/crypto/network copies,
+is not peak allocation or an SLA, and is not a zero-copy claim. Phone dialogs
+scroll within the viewport; keyboard controls and reduced-motion rendering are
+qualified. React Doctor's changed scan reports 100/100 with no findings. Full `pnpm check`, 1,990 API / 733 worker / 1,172 web unit tests, 161 mocked
+browser journeys and both real browser cases pass. The final web build/lint/types
+and changed React Doctor scan also pass after the keyboard/lifecycle fixes.
+Backend natural main CI 38641937383 (including ARM publication) and CodeQL
+38641937323 pass. Upload UI PR merge and its natural main checks remain pending. Screenshots and
+usage examples are in [the file guide](../files.md).
+
+The upload dialog keeps its opener mounted while target changes close/cancel
+the local session. Desktop and phone keyboard insertion/focus return are checked
+through the ordinary editor panels. Destination fields and replacement consent
+remain locked during the exact-version contract read; cancel fences late insertion.
