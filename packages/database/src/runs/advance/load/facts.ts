@@ -6,6 +6,7 @@ import { CoordinatorRunStateCorruptError } from '../contract.js';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionJsonValue,
+  storedExecutionValuesEqual,
 } from '../../../platform/stored-execution-value.js';
 import {
   attachPhysicalAttempts,
@@ -310,8 +311,10 @@ export function mapEvent(row: EventRow): unknown {
       row.attempt_status !==
         (row.type === 'node.waiting' ? 'succeeded' : 'failed') ||
       row.node_status !== 'waiting' ||
-      serializeStoredExecutionJsonValue(row.attempt_output_ref) !==
-        serializeStoredExecutionJsonValue(row.node_output_ref) ||
+      !storedExecutionValuesEqual(
+        row.attempt_output_ref,
+        row.node_output_ref,
+      ) ||
       persistedDueAt?.toISOString() !== resumeAt
     )
       throw new CoordinatorRunStateCorruptError();
@@ -334,8 +337,7 @@ export function mapEvent(row: EventRow): unknown {
   if (
     row.attempt_status !== status ||
     row.node_status !== status ||
-    serializeStoredExecutionJsonValue(row.attempt_output_ref) !==
-      serializeStoredExecutionJsonValue(row.node_output_ref)
+    !storedExecutionValuesEqual(row.attempt_output_ref, row.node_output_ref)
   )
     throw new CoordinatorRunStateCorruptError();
   let output: unknown;

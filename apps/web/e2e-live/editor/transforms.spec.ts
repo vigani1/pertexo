@@ -68,7 +68,7 @@ async function testStep(
       nodeTestRequestSchema.safeParse(response.request().postDataJSON()).data
         ?.mode === 'test_execute',
   );
-  await page.getByRole('button', { name: 'Run test', exact: true }).click();
+  await page.getByRole('button', { name: /^Run (?:another )?test$/u }).click();
   const accepted = nodeTestExecuteAcceptedResponseSchema.parse(
     await (await pending).json(),
   );
@@ -272,19 +272,92 @@ test('authors a date conversion using an editable number example and verifies pr
       expression: '$number(runInput.text)',
     });
   const input = { text: '1767225600000' };
-  const preview = await testStep(
+  const initialPreview = await testStep(
     page,
     workspaceId,
     workflowPath,
     dateId,
     input,
   );
-  expect(preview.output).toEqual({
+  expect(initialPreview.output).toEqual({
     kind: 'inline',
     value: { value: '2026-01-01T00:00:00.000Z' },
   });
+  async function operation(label: string) {
+    await page.getByRole('tab', { name: 'Setup', exact: true }).click();
+    await page.getByLabel('Date operation', { exact: true }).click();
+    await page.getByRole('option', { name: label, exact: true }).click();
+  }
+  await operation('Format timestamp');
+  await page.getByLabel('Time zone', { exact: true }).fill('Europe/Paris');
+  await page.keyboard.press('Tab');
+  const formatPreview = await testStep(
+    page,
+    workspaceId,
+    workflowPath,
+    dateId,
+    input,
+  );
+  expect(formatPreview.output).toEqual({
+    kind: 'inline',
+    value: { value: '2026-01-01' },
+  });
+  await operation('Add or subtract duration');
+  await page.getByLabel('Duration unit', { exact: true }).click();
+  await page
+    .getByRole('option', { name: 'Calendar months (UTC)', exact: true })
+    .click();
+  await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
+  await page.getByRole('button', { name: 'Add input', exact: true }).click();
+  const amountRow = page
+    .getByRole('region', { name: 'Inputs', exact: true })
+    .locator('ol > li')
+    .last();
+  await amountRow.getByLabel('Field', { exact: true }).fill('amount');
+  await amountRow
+    .getByRole('button', { name: 'Run input', exact: true })
+    .click();
+  await amountRow
+    .getByLabel('Run input path', { exact: true })
+    .fill('$.amount');
+  await page.keyboard.press('Tab');
+  const durationInput = { ...input, amount: 1 };
+  const durationPreview = await testStep(
+    page,
+    workspaceId,
+    workflowPath,
+    dateId,
+    durationInput,
+  );
+  expect(durationPreview.output).toEqual({
+    kind: 'inline',
+    value: { value: '2026-02-01T00:00:00.000Z' },
+  });
+  await operation('Convert time zone');
+  await page.getByLabel('Time zone', { exact: true }).fill('Europe/Paris');
+  await page.keyboard.press('Tab');
+  await expect
+    .poll(
+      async () =>
+        (await readEditorDraft(page, workflowPath)).graph.nodes[0]?.config,
+    )
+    .toEqual({ operation: 'convert_timezone', timeZone: 'Europe/Paris' });
+  const saved = (await readEditorDraft(page, workflowPath)).graph;
+  await page.reload();
+  expect((await readEditorDraft(page, workflowPath)).graph).toEqual(saved);
+  const preview = await testStep(
+    page,
+    workspaceId,
+    workflowPath,
+    dateId,
+    durationInput,
+  );
+  expect(preview.output).toEqual({
+    kind: 'inline',
+    value: { value: '2026-01-01T01:00:00.000+01:00' },
+  });
   const version = await publishSingleStep(page, workflowPath);
-  const runId = await startSingleStep(page, input);
+  const runId = await startSingleStep(page, durationInput);
   const dateRun = await waitForRun(page, workspaceId, runId, 'succeeded');
   const dateNodeRun = dateRun.nodes.find((node) => node.nodeId === dateId);
   if (dateNodeRun === undefined) throw new Error('Date node run missing');
@@ -299,6 +372,9 @@ test('authors a date conversion using an editable number example and verifies pr
       runId,
       dateId,
       previewId: preview.id,
+      initialPreviewId: initialPreview.id,
+      formatPreviewId: formatPreview.id,
+      durationPreviewId: durationPreview.id,
     },
   });
   expect(proof.status()).toBe(204);

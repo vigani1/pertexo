@@ -1,4 +1,22 @@
 import {
+  CORE_CONCAT_CONFIG_SCHEMA,
+  CORE_CONCAT_INPUT_SCHEMA,
+  CORE_CONCAT_MANIFEST,
+  CORE_CONCAT_OUTPUT_SCHEMA,
+} from './concat/index.js';
+import {
+  CORE_TAKE_CONFIG_SCHEMA,
+  CORE_TAKE_INPUT_SCHEMA,
+  CORE_TAKE_MANIFEST,
+  CORE_TAKE_OUTPUT_SCHEMA,
+} from './take/index.js';
+import {
+  CORE_BATCH_CONFIG_SCHEMA,
+  CORE_BATCH_INPUT_SCHEMA,
+  CORE_BATCH_MANIFEST,
+  CORE_BATCH_OUTPUT_SCHEMA,
+} from './batch/index.js';
+import {
   CORE_FILTER_CONFIG_SCHEMA,
   CORE_FILTER_INPUT_SCHEMA,
   CORE_FILTER_MANIFEST,
@@ -112,6 +130,24 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_CONCAT_MANIFEST,
+      configSchema: CORE_CONCAT_CONFIG_SCHEMA,
+      inputSchema: CORE_CONCAT_INPUT_SCHEMA,
+      outputSchema: CORE_CONCAT_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_TAKE_MANIFEST,
+      configSchema: CORE_TAKE_CONFIG_SCHEMA,
+      inputSchema: CORE_TAKE_INPUT_SCHEMA,
+      outputSchema: CORE_TAKE_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_BATCH_MANIFEST,
+      configSchema: CORE_BATCH_CONFIG_SCHEMA,
+      inputSchema: CORE_BATCH_INPUT_SCHEMA,
+      outputSchema: CORE_BATCH_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_FILTER_MANIFEST,
       configSchema: CORE_FILTER_CONFIG_SCHEMA,

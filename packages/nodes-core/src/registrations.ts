@@ -1,3 +1,6 @@
+import { coreConcatExecutor } from './concat/executor.js';
+import { coreTakeExecutor } from './take/executor.js';
+import { coreBatchExecutor } from './batch/executor.js';
 import { coreFilterExecutor } from './filter/executor.js';
 import { coreSortExecutor } from './sort/executor.js';
 import { coreUniqueExecutor } from './unique/executor.js';
@@ -22,6 +25,9 @@ import { coreWebhookExecutor } from './webhook/executor.js';
 /** One implementation per core executor, in definition order. */
 export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration[] =
   Object.freeze([
+    coreConcatExecutor,
+    coreTakeExecutor,
+    coreBatchExecutor,
     coreFilterExecutor,
     coreSortExecutor,
     coreUniqueExecutor,

@@ -4,9 +4,12 @@ type NodeConfig = WorkflowNode['config'];
 
 // How a new step starts, for the steps whose setup would otherwise begin
 // empty and invalid. Values sit inside each schema's bounds (the catalog
-// has no defaults, and a definition's schema can't change in place: ADR
-// 010), so a new step reads as ready where it can be.
+// has no defaults). Authoring materializes these settings under ADR 069's
+// current pre-launch contract.
 const STARTING: Readonly<Record<string, NodeConfig>> = {
+  'core.batch': { size: 100 },
+  'core.take': { count: 100 },
+  'core.concat': {},
   'core.filter': { path: '$', operator: 'equals' },
   'core.sort': {
     path: '$',
@@ -60,4 +63,21 @@ export function startingConfig(
     };
   }
   return structuredClone(STARTING[definitionKey] ?? {});
+}
+
+/** Changing Date operation replaces its exact variant in one undoable edit. */
+export function dateOperationConfig(operation: string): NodeConfig | undefined {
+  switch (operation) {
+    case 'to_iso':
+    case 'to_epoch_millis':
+      return { operation };
+    case 'format':
+      return { operation, format: 'date_only', timeZone: 'UTC' };
+    case 'convert_timezone':
+      return { operation, timeZone: 'UTC' };
+    case 'add_duration':
+      return { operation, unit: 'days' };
+    default:
+      return undefined;
+  }
 }

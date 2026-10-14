@@ -48,6 +48,9 @@ describe('core node catalog', () => {
           `${manifest.definition.key}@${String(manifest.definition.version)}`,
       ),
     ).toEqual([
+      'core.concat@1',
+      'core.take@1',
+      'core.batch@1',
       'core.filter@1',
       'core.sort@1',
       'core.unique@1',

@@ -3,6 +3,7 @@ import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-
 import {
   nodeDefinitionListResponseSchema,
   workflowDraftResponseSchema,
+  workflowGraphSchema,
 } from '@pertexo/contracts';
 import { authorCollectionGraph } from '../../e2e-live/support/authoring/transforms';
 import {
@@ -39,6 +40,8 @@ test('authors the collection chain with real schemas, words and exact saved valu
   page,
   context,
 }) => {
+  // Nine steps and their ordinary debounced saves share the live journey's budget.
+  test.setTimeout(60_000);
   await addCsrfCookie(context);
   await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
   const remote = remoteDraft();
@@ -195,3 +198,120 @@ for (const editable of [true, false]) {
     ).toBe(true);
   });
 }
+
+for (const width of [1280, 375])
+  test(`keeps Date variants exact, undoable and usable at ${String(width)}px`, async ({
+    page,
+    context,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await addCsrfCookie(context);
+    await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
+    const base = workflowGraphSchema.parse(mappingGraph());
+    const remote = remoteDraft({
+      ...base,
+      settings: { ...base.settings },
+      nodes: base.nodes.map((node) =>
+        node.id === 'target'
+          ? {
+              ...node,
+              definition: { key: 'core.date', version: 1 },
+              config: { operation: 'to_iso' },
+            }
+          : node,
+      ),
+    });
+    await installEditorRoutes(page, remote, { definitions });
+    await page.goto(editorUrl);
+    await page.getByTestId('rf__node-target').click();
+    if (width === 375)
+      await page
+        .getByRole('navigation', { name: 'Editor panels' })
+        .getByRole('button', { name: 'Step', exact: true })
+        .click();
+    const change = async (label: string) => {
+      await page.getByLabel('Date operation', { exact: true }).click();
+      await page.getByRole('option', { name: label, exact: true }).click();
+    };
+    await change('Format timestamp');
+    await page.getByLabel('Time zone', { exact: true }).fill('Europe/Paris');
+    await page.keyboard.press('Tab');
+    await expect
+      .poll(
+        () =>
+          workflowGraphSchema
+            .parse(remote.graph)
+            .nodes.find((node) => node.id === 'target')?.config,
+      )
+      .toEqual({
+        operation: 'format',
+        format: 'date_only',
+        timeZone: 'Europe/Paris',
+      });
+    await change('Add or subtract duration');
+    await expect(page.getByLabel('Time zone', { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByLabel('Duration unit', { exact: true }),
+    ).toBeVisible();
+    await page.getByRole('tab', { name: 'Setup', exact: true }).focus();
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect
+      .poll(
+        () =>
+          workflowGraphSchema
+            .parse(remote.graph)
+            .nodes.find((node) => node.id === 'target')?.config,
+      )
+      .toEqual({
+        operation: 'format',
+        format: 'date_only',
+        timeZone: 'Europe/Paris',
+      });
+    await page.keyboard.press('ControlOrMeta+Shift+z');
+    await expect
+      .poll(
+        () =>
+          workflowGraphSchema
+            .parse(remote.graph)
+            .nodes.find((node) => node.id === 'target')?.config,
+      )
+      .toEqual({ operation: 'add_duration', unit: 'days' });
+    await change('Convert time zone');
+    await page
+      .getByLabel('Time zone', { exact: true })
+      .fill('America/New_York');
+    await page.keyboard.press('Tab');
+    await expect
+      .poll(
+        () =>
+          workflowGraphSchema
+            .parse(remote.graph)
+            .nodes.find((node) => node.id === 'target')?.config,
+      )
+      .toEqual({ operation: 'convert_timezone', timeZone: 'America/New_York' });
+    await page.reload();
+    await page.getByTestId('rf__node-target').click();
+    if (width === 375)
+      await page
+        .getByRole('navigation', { name: 'Editor panels' })
+        .getByRole('button', { name: 'Step', exact: true })
+        .click();
+    await expect(page.getByLabel('Time zone', { exact: true })).toHaveValue(
+      'America/New_York',
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await testInfo.attach(`date-setup-${String(width)}`, {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
+    if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+      await page.screenshot({
+        path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/date-setup-${String(width)}.png`,
+        fullPage: true,
+      });
+  });

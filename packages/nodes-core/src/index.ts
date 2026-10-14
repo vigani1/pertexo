@@ -21,3 +21,6 @@ export * from './sort/index.js';
 export * from './unique/index.js';
 export * from './summarize/index.js';
 export * from './date/index.js';
+export * from './batch/index.js';
+export * from './take/index.js';
+export * from './concat/index.js';

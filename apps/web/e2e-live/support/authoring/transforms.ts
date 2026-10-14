@@ -86,10 +86,19 @@ export async function authorCollectionGraph(
   const uniqueId = await add('Remove duplicates', 'One invoice per ID', sortId);
   await setup('Compare by', '$.id');
   await map('items', 'Amount order', '$.items');
-  const summaryId = await add('Summarize items', 'Currency totals', uniqueId);
+  const takeId = await add('Take first items', 'First invoices', uniqueId);
+  await setup('Items to keep', '100');
+  await map('items', 'One invoice per ID', '$.items');
+  const concatId = await add('Concatenate lists', 'Combined invoices', takeId);
+  await map('items', 'First invoices', '$.items');
+  await map('otherItems', 'Run input', '$.extra');
+  const batchId = await add('Batch items', 'Invoice batch', concatId);
+  await setup('Items per batch', '100');
+  await map('items', 'Combined invoices', '$.items');
+  const summaryId = await add('Summarize items', 'Currency totals', batchId);
   await setup('Numeric value', '$.amount');
   await setup('Group by', '$.currency');
-  await map('items', 'One invoice per ID', '$.items');
+  await map('items', 'Invoice batch', '$.batches[0]');
   const stopId = await add('Stop run', 'Return totals', summaryId);
   await map('result', 'Currency totals', '$.groups');
   await expect
@@ -103,12 +112,24 @@ export async function authorCollectionGraph(
       result: { kind: 'node_output', nodeId: summaryId, path: '$.groups' },
     });
   const graph = (await readDraft(page, workflowPath)).graph;
-  expect(graph.edges).toHaveLength(5);
-  return { graph, manualId, filterId, sortId, uniqueId, summaryId, stopId };
+  expect(graph.edges).toHaveLength(8);
+  return {
+    graph,
+    manualId,
+    filterId,
+    sortId,
+    uniqueId,
+    takeId,
+    concatId,
+    batchId,
+    summaryId,
+    stopId,
+  };
 }
 
 export const invoiceInput = {
   paid: true,
+  extra: [],
   invoices: [
     { id: 'a', amount: 30, currency: 'EUR', paid: true },
     { id: 'b', amount: 10, currency: 'EUR', paid: true },

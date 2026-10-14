@@ -26,6 +26,9 @@ export const dateEvidenceSchema = z.strictObject({
   runId: z.uuid(),
   dateId: z.string(),
   previewId: z.uuid(),
+  initialPreviewId: z.uuid(),
+  formatPreviewId: z.uuid(),
+  durationPreviewId: z.uuid(),
 });
 async function readVersion(
   database: Pool,
@@ -74,10 +77,13 @@ export async function verifyTransformEvidence(
   );
   expect(imported).toEqual(original);
   expect(original.nodes.map((node) => node.definition.key).sort()).toEqual([
+    'core.batch',
+    'core.concat',
     'core.filter',
     'core.manual',
     'core.sort',
     'core.summarize',
+    'core.take',
     'core.terminate',
     'core.unique',
   ]);
@@ -178,7 +184,7 @@ export async function verifyTransformEvidence(
   expect(dateGraph.nodes[0]).toMatchObject({
     id: date.dateId,
     definition: { key: 'core.date', version: 1 },
-    config: { operation: 'to_iso' },
+    config: { operation: 'convert_timezone', timeZone: 'Europe/Paris' },
     inputMappings: {
       value: {
         kind: 'expression',
@@ -199,10 +205,10 @@ export async function verifyTransformEvidence(
   ).rows[0];
   expect(dateRun).toEqual({
     status: 'succeeded',
-    input_ref: { kind: 'inline', value: { value: 1767225600000 } },
+    input_ref: { kind: 'inline', value: { value: 1767225600000, amount: 1 } },
     output_ref: {
       kind: 'inline',
-      value: { value: '2026-01-01T00:00:00.000Z' },
+      value: { value: '2026-01-01T01:00:00.000+01:00' },
     },
   });
   const datePreview = (
@@ -215,4 +221,17 @@ export async function verifyTransformEvidence(
     status: 'succeeded',
     output_ref: dateRun?.output_ref,
   });
+  for (const [previewId, value] of [
+    [date.initialPreviewId, '2026-01-01T00:00:00.000Z'],
+    [date.formatPreviewId, '2026-01-01'],
+    [date.durationPreviewId, '2026-02-01T00:00:00.000Z'],
+  ]) {
+    const result = await database.query(
+      'select status,output_ref from app.preview_runs where workspace_id=$1 and id=$2',
+      [date.workspaceId, previewId],
+    );
+    expect(result.rows).toEqual([
+      { status: 'succeeded', output_ref: { kind: 'inline', value: { value } } },
+    ]);
+  }
 }

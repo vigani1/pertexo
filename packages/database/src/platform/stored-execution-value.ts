@@ -358,3 +358,14 @@ export function serializeStoredExecutionJsonValue(value: unknown): string {
   if (parsed.kind !== 'inline') invalid();
   return canonicalJson(parsed.value);
 }
+
+/** Descriptor fields do not consume the inline value's byte/member budget. */
+export function storedExecutionValuesEqual(
+  left: unknown,
+  right: unknown,
+): boolean {
+  if (left === null || right === null) return left === right;
+  return (
+    serializeStoredExecutionValue(left) === serializeStoredExecutionValue(right)
+  );
+}
