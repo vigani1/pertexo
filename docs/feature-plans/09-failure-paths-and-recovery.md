@@ -28,8 +28,8 @@ that choose a path ending in Stop run. If Fetch record on the selected path ends
 in a definite failure, recovery creates a new run of the exact source
 version/input, reuses completed steps and earlier recorded branch choices, and
 executes the failed step onward. Repeating a possibly dispatched definite
-failure requires explicit effects acknowledgement. Unknown outcomes cannot use
-this command. Earlier steps are shown as reused, never newly executed.
+failure requires explicit effects acknowledgement. Verified unknown targets require a separate stronger acknowledgement. Unknown
+outcomes elsewhere cannot use this command. Earlier steps are shown as reused, never newly executed.
 
 **The first release stays bounded but includes ordinary branching.** Support one
 acyclic root decision tree: sequential segments, Conditions with at most one
@@ -122,7 +122,7 @@ ADRs for routine placement.
 | Return to main path    | None initially; ordinary and failure suffixes cannot converge                                         | Generic fallback/resume and Merge reuse need separate semantics            |
 | Retry controls         | Existing policy stays                                                                                 | Adjustable attempts/backoff would broaden this feature                     |
 | Recovery input/version | Exact source version and original input; newer publication irrelevant                                 | Changed input/version can invalidate reused computation                    |
-| Target safety          | Definite failure; possible effects need explicit person acknowledgement; unknown refused              | Automatic retries unchanged; record deliberate new-run risk                |
+| Target safety          | Definite failure needs effects acknowledgement when dispatched; unknown target needs separate stronger acknowledgement              | Automatic retries unchanged; record deliberate new-run risk                |
 | Copied values          | Inline JSON, bounded aggregate, owned by new node rows                                                | No aliases into expiring history, artifact pinning or synthetic attempts   |
 | Refused recovery       | Explain and offer separately confirmed full replay                                                    | Never silently execute the entire workflow instead                         |
 
@@ -258,11 +258,11 @@ not a reservation. Acceptance reloads source facts under locks and checks again.
 | Required fact                                                                                          | Refusal if missing                                           |
 | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
 | Existing `run:replay` authority, active workspace/workflow and tenant-matching source/version          | Existing authorization/not-found/lifecycle behavior          |
-| Terminal failed source with exactly one failed invocation on its selected root path                    | `source_not_failed`, `multiple_failures`                     |
+| Terminal failed or outcome_unknown source with exactly one matching target on its selected root path                    | `source_not_failed`, `multiple_failures`                     |
 | Source's exact verified immutable executable                                                           | `version_unavailable`; a newer live version is not a refusal |
 | Supported decision tree with Condition/leaf Stop run, no handlers or excluded controls                 | `unsupported_graph`                                          |
-| Complete successful selected prefix; other paths provably skipped; no unknown effect anywhere          | `prefix_incomplete`, `unknown_effect`                        |
-| Definite failure with complete evidence; possible effects explicitly acknowledged when needed          | `effects_acknowledgement_required`, `evidence_unavailable`   |
+| Complete successful selected prefix; other paths provably skipped; no unknown effect outside the target          | `prefix_incomplete`, `unknown_effect`                        |
+| Complete target evidence; corresponding possible-effects or unknown-outcome acknowledgement when needed          | `effects_acknowledgement_required`, `evidence_unavailable`   |
 | No successful invocation or possible effect after target                                               | `suffix_already_executed`                                    |
 | Original input and every prefix value needed by ordinary input loading retained as inline JSON         | `values_expired`, `values_missing`, `artifact_value`         |
 | No artifact references nested inside those inline values                                               | `artifact_value`; JSON wrapping must not bypass the rule     |
@@ -294,11 +294,15 @@ Separate automatic execution safety from a person's deliberate recovery:
   acknowledgement: “This step reached the service and may have partly taken
   effect. Retrying it can repeat that effect.” Confirm with “Retry anyway”. This
   is a new run chosen by the person, never an automatic retry-policy change.
-- Unknown outcome anywhere stays ineligible for step recovery regardless of
-  acknowledgement. Missing/corrupt classification evidence is also refused. Full
-  replay retains its existing separate authority and effects warning.
+- A verified unknown target is eligible with `effectRisk: 'unknown_outcome'`.
+  Require separate unchecked acknowledgement: “We don't know whether this step
+  reached the service. Retrying can repeat its effect.” Confirm with “Retry
+  anyway”. Unknown outcomes outside the target and missing/corrupt evidence
+  remain refused; full replay keeps its separate warning.
 
-Preview reports one `effectRisk` discriminant, `ordinary` or `possible_effects`.
+Preview reports one `effectRisk`: `ordinary`, `possible_effects` or
+`unknown_outcome`. The last requires literal-true `acknowledgeUnknownOutcome`,
+which the possible-effects acknowledgement cannot substitute for.
 The command accepts optional literal-true `acknowledgePossibleEffects`,
 mandatory when the planner reports possible effects. Bind it into request
 hashing and record actor, target, risk and acknowledgement in existing audit and
@@ -313,8 +317,8 @@ classification, not method/status alone, is authoritative:
 | ------------------------------------------------------- | ----------------------------------- | ----------------------------------------------- |
 | 401/403 or other ordinary definite non-success response | Definite failed                     | Explicit effects acknowledgement after dispatch |
 | 429 or 408/425 on unsafe HTTP                           | Definite failed; no automatic retry | Explicit effects acknowledgement after dispatch |
-| Unsafe HTTP 5xx                                         | `outcome_unknown`                   | Refuse step recovery                            |
-| Ambiguous post-dispatch network/timeout                 | `outcome_unknown`                   | Refuse step recovery                            |
+| Unsafe HTTP 5xx                                         | `outcome_unknown`                   | Separate unknown-outcome acknowledgement                            |
+| Ambiguous post-dispatch network/timeout                 | `outcome_unknown`                   | Separate unknown-outcome acknowledgement                            |
 | Definite pre-dispatch refusal/failure                   | Failed with no dispatch             | Ordinary recovery confirmation                  |
 
 An error response does not prove absence of effects: a service can write then
@@ -325,8 +329,7 @@ changes remain separate decisions. Source:
 
 Full replay retains its own authority/eligibility and effects warning. Refused
 recovery offers that separate action. Changed input/version means full replay;
-never a silent fallback. No recovery of canceled/timed-out/unknown/succeeded
-runs.
+never a silent fallback. No recovery of canceled/timed-out/succeeded runs.
 
 ### Condition and terminal Stop run
 
@@ -376,7 +379,7 @@ Within the existing workflow-runs module add:
   reservation.
 - `POST /v1/workspaces/:workspaceId/runs/:runId/recover`: session, CSRF,
   `Idempotency-Key`, strict `{ workflowVersionId, nodeRunId }`, optional normal
-  validated `deadlineAt` and optional literal-true `acknowledgePossibleEffects`.
+  validated `deadlineAt` and optional literal-true `acknowledgePossibleEffects` / `acknowledgeUnknownOutcome`.
   No replacement input, client values/eligibility or supplied checkpoint.
 
 Return 202 with ordinary accepted-run/deduplication response. Acceptance refusal
@@ -634,7 +637,7 @@ feature-cohort framework. Backend contracts must already settle their behavior.
 | 0. Plan/decisions and baseline         | Reviewed proposal; recovery ADR first; latency measured before engine work; routing ADR before its slice        | Docs/existing fixtures                           | Baseline command/data and branch/provenance/acknowledgement scope reviewed                                                                                              |
 | 1. Existing recovery clarity           | Close demonstrated retry/unknown/full-replay presentation gaps only                                             | Run UI/contracts if needed                       | Wait/retry story, source replay and unknown warning; skip code PR if no real gap                                                                                        |
 | 2. Recovery runtime/API                | Preview, atomic new run/copies, preserved prefix choices, effects acknowledgement and ordinary suffix execution | Engine/execution/database/API/worker/contracts   | Prefix never runs; no off-path effects; source unchanged; fresh keys; exact deduplication; retention/capacity/risk tests; baseline comparison                           |
-| 3. Recovery product/qualification      | Confirmation, refusal/full replay, Condition/Stop run example, reused history and user docs                     | Run UI/existing integrated suites                | Real definite HTTP failure with explicit acknowledgement; unknown refusal; response loss; desktop/phone screenshots; independently useful recovery                      |
+| 3. Recovery product/qualification      | Confirmation, refusal/full replay, Condition/Stop run example, reused history and user docs                     | Run UI/existing integrated suites                | Real definite HTTP failure with explicit acknowledgement; strongly acknowledged unknown target; response loss; desktop/phone screenshots; independently useful recovery                      |
 | 4. Failure-route runtime               | Model/mapping/compiler, selected-branch routing/completion and atomic handler execution                         | Model/engine/execution/database/worker/contracts | Backoff before route; one handler after restart; source still failed; off-path handlers skipped; pending prevents settlement; final notices/health; baseline comparison |
 | 5. Failure-route product/qualification | Author/save/publish and inspect handled history; complete supported-scope qualification                         | Editor/run UI and existing browser suites        | Browser/API/database/queue/worker journey; Condition scope and leaf Stop run; reload/undo/import/export; keyboard/mobile/reduced motion                                 |
 
@@ -657,14 +660,14 @@ hook or external provisioning.
 | Model/compiler       | Ordinary graph unchanged; reserved collision, invalid handler ownership/target/cycle/convergence/disabled/control/nested shape and mapping rejected; portable/duplicate round-trip                               |
 | Retry/route engine   | Backoff before route; one selection; source failed; normal suffix skips; pending handler blocks premature completion; failed handler and unknown/cancel/deadline precedence                                      |
 | Persistence          | Envelope/selection/disposition/CAS/events/outbox atomic; duplicate/stale facts, CAS rollback, tenant IDs, safe producer allowlist                                                                                |
-| Recovery planner     | Exact source version/input; selected prefix and verified Condition choices/skips; complete dispatch evidence; explicit possible-effects acknowledgement; unknown refused; artifact/bounds                        |
+| Recovery planner     | Exact source version/input; selected prefix and verified Condition choices/skips; complete dispatch evidence; distinct possible-effects/unknown-outcome acknowledgements; unknown outside target refused; artifact/bounds                        |
 | Recovery transaction | Concurrent same key one run, conflicts, lost response, exact retry after source expiry, preview race, node retention/archive/membership/purge races, complete rollback/capacity                                  |
 | Worker/restart       | Kill before/after commits; ordinary redelivery; one execution per acknowledged recovery intent, no unrequested repeat; prefix has no attempts; suffix leases/fences/retries                                      |
 | Controls regression  | Existing loop/join/Call execution, pruning, borrowed slots, cancel and histories unchanged; unsupported route/recovery refused clearly                                                                           |
 | Notices/usage        | Handled success no failure notice/pause increment; failed handler one final failure; connection-health observation preserved; recovery one run/new attempts only                                                 |
 | Retention            | Source detail expiry after copy, new copy readable until its expiry, expired source label, retained handled count, complete workspace purge                                                                      |
 | HTTP/security        | Session/CSRF/roles/RLS/lifecycle/disclosure; strict requests; server-enforced acknowledgement; hash/audit binding; replay capability; preview no payload; exact deduplication                                    |
-| Browser              | Definite HTTP failure with unchecked acknowledgement; unknown refusal; Condition/Stop run/frozen earlier choices; lost response; source/new navigation; handled/reused truth; responsive keyboard/reduced motion |
+| Browser              | Definite HTTP failure with unchecked acknowledgement; stronger unknown target acknowledgement; Condition/Stop run/frozen earlier choices; lost response; source/new navigation; handled/reused truth; responsive keyboard/reduced motion |
 | Bounds/performance   | Maximum graph/IDs/value caps; bounded query plans/copies; ordinary path no payload cost; no per-row eligibility requests                                                                                         |
 
 Existing test homes: engine compilation/transition/checkpoint tests;
@@ -709,8 +712,7 @@ does not authorize production deployment.
 
 - No arbitrary step execution/rewind, original-run repair, automatic recovery,
   cross-workspace reuse or declaring an uncertain provider operation failed.
-- No changed-version/input reuse, canceled/timed-out/unknown/successful
-  recovery, mixed worker versions, adjustable retry policy or operator recovery
+- No changed-version/input reuse, canceled/timed-out/successful recovery, mixed worker versions, adjustable retry policy or operator recovery
   console.
 - No fallback-output/resume node, cross-branch Merge, loop item
   skip/aggregation, child-family clone/retry or new error-workflow trigger. Each
@@ -759,7 +761,7 @@ interfaces contain the rules above; implementation still has to prove them.
 
 | Scenario                                                         | Required conclusion                                                                                                        |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Ambiguous unsafe post-dispatch timeout                           | Unknown stays blocked from routing/step recovery even with acknowledgement; existing full replay remains separately warned |
+| Ambiguous unsafe post-dispatch timeout                           | Unknown stays blocked from automatic retry/routing; explicit target recovery requires separate stronger acknowledgement |
 | Handler waits in retry backoff while its source is failed        | Pending handling keeps run nonterminal; only handler settlement permits final status                                       |
 | Source input expires between preview and command                 | Recheck under locks; refuse before admission or copy, with full replay separate                                            |
 | Acceptance committed, response lost, source later expires        | Exact request retry returns accepted new run before source eligibility is re-evaluated                                     |
@@ -768,7 +770,7 @@ interfaces contain the rules above; implementation still has to prove them.
 | Output is inline JSON containing an HTTP artifact body           | Reject recognized nested artifact descriptor; do not assume inline means self-contained                                    |
 | New live version exists after source failure                     | Recover exact source version; do not read mutable latest to decide or seed                                                 |
 | Definite dispatched HTTP failure selected for manual recovery    | Eligible only after explicit effects acknowledgement; new provider identity, unchanged automatic retry safety              |
-| Unsafe HTTP 500 response                                         | Current adapter calls it unknown; response receipt does not unlock step recovery                                           |
+| Unsafe HTTP 500 response                                         | Current adapter calls it unknown; only separately acknowledged manual target recovery is allowed                                           |
 | Completed Condition preceded failed HTTP step                    | Reuse exact saved choice; skip sibling; never re-evaluate earlier decision                                                 |
 | Condition is after failed step                                   | Execute it freshly when reached; do not freeze an unexecuted source decision                                               |
 | Supported path ends in Stop run                                  | Preserve terminal-success leaf behavior; no invented global-stop meaning                                                   |
@@ -1188,3 +1190,41 @@ existing signed-webhook/recovery browser scenarios pass separately against the
 owned real stack. Before/after editor and handled-history review images are in
 `docs/media/failure-routing/`. Required PR CI and natural postmerge results are
 recorded in the slice PR; the merge gate above still applies.
+
+
+## Follow-up — owner decision 2026-10-14
+
+The owner approved manual recovery of a verified unknown-outcome target as an
+amendment to ADR 072. Keep exact source input/version and reused prefix, original
+unknown attention card and all existing graph/value/admission limits. No unknown
+automatic retry or failure routing. A distinct `acknowledgeUnknownOutcome` is
+checked in the acceptance transaction and bound to request identity; the run
+summary and audit record its risk and acknowledgement. Existing commands without
+the new field keep their hash.
+
+- [x] Implement and qualify unsafe HTTP 5xx and post-dispatch network-loss
+  recovery, refusal without the stronger acknowledgement (including with only
+  `acknowledgePossibleEffects`), source preservation, prefix reuse, exact
+  version/input, no automatic retry and phone keyboard confirmation.
+- Later work only: per-step “safe to repeat” for idempotent requests. No setting
+  or altered HTTP classification is included here.
+
+Storage: extend the existing summary risk discriminator and its Drizzle SQL
+constraint in additive migration 0007; no new table, role, format or subsystem.
+Qualification uses the existing owned HTTP browser/worker/SQL fixture, with a
+service effect followed by a 503 or deliberately lost socket response and an
+explicit later successful manual retry. Local owner data/services are untouched.
+
+
+Local follow-up qualification: the existing owned browser/API/worker/SQL case
+passed with exactly seven controlled HTTP requests and six effects. The 5xx and
+lost-response source each have five original attempts; their recovery each has
+four attempt-free copies and only two new attempts (HTTP and terminal Stop).
+Both refused missing or weaker acknowledgement with 409 before creating a run;
+SQL verified the total run count, exact input/version, stronger-risk summary and
+one acknowledged audit per recovery. Original source rows remain unchanged.
+Phone keyboard confirmation uses 375 × 768 with reduced motion. Mocked desktop
+and phone examples are [desktop](../media/unknown-recovery/confirmation-desktop.png)
+and [phone](../media/unknown-recovery/confirmation-phone.png). React Doctor's
+changed-code scan is 100/100 without suppressions. Full gate and required
+CI/postmerge results belong to the delivery PR; merge is still gated on green CI.

@@ -11,6 +11,7 @@ import {
   identityHandlers,
   sseEvents,
   coldStart,
+  statisticsHandler,
 } from '../../support/fixtures/run';
 const workspaceId = fixtureIds.workspace,
   sourceRunId = fixtureIds.firstRun,
@@ -33,6 +34,7 @@ function acceptedRun() {
 function install(capabilities = ['workspace:read', 'run:read', 'run:replay']) {
   mockServer.use(
     ...identityHandlers(capabilities),
+    statisticsHandler(),
     http.get(`${apiBase}/runs/:runId`, ({ params }) =>
       HttpResponse.json({
         run: fixtureRun(String(params.runId), 'failed'),
@@ -108,6 +110,59 @@ describe('failed-step recovery confirmation', () => {
         acknowledgePossibleEffects: true,
       },
     ]);
+  });
+  it('requires the stronger acknowledgement for unknown outcomes and preserves the attention card', async () => {
+    install();
+    const bodies: unknown[] = [];
+    mockServer.use(
+      http.get(`${apiBase}/runs/${sourceRunId}`, () =>
+        HttpResponse.json({
+          run: fixtureRun(sourceRunId, 'outcome_unknown'),
+          nodes: [],
+        }),
+      ),
+      http.get(`${apiBase}/runs/${sourceRunId}/recovery`, () =>
+        HttpResponse.json({
+          ...preview,
+          effectRisk: 'unknown_outcome',
+        }),
+      ),
+      http.post(
+        `${apiBase}/runs/${sourceRunId}/recover`,
+        async ({ request }) => {
+          bodies.push(await request.json());
+          return HttpResponse.json(
+            { run: acceptedRun(), replayed: false },
+            { status: 202 },
+          );
+        },
+      ),
+    );
+    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await screen.findByRole(
+      'region',
+      { name: /Pertexo can’t tell/u },
+      coldStart,
+    );
+    const dialog = await open();
+    expect(dialog).toHaveTextContent(
+      "We don't know whether this step reached the service. Retrying can repeat its effect.",
+    );
+    const retry = within(dialog).getByRole('button', { name: 'Retry anyway' });
+    expect(retry).toBeDisabled();
+    const checkbox = within(dialog).getByRole('checkbox');
+    expect(checkbox).not.toBeChecked();
+    await userEvent.setup().click(checkbox);
+    await userEvent.setup().click(retry);
+    await waitFor(() => {
+      expect(bodies).toEqual([
+        {
+          workflowVersionId: fixtureIds.version,
+          nodeRunId: sourceRunId,
+          acknowledgeUnknownOutcome: true,
+        },
+      ]);
+    });
   });
   it('retains a lost acceptance response across close and exact retry even when source preview retires', async () => {
     install();

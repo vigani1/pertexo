@@ -23,6 +23,7 @@ describe('recovery command identity', () => {
       { nodeRunId: input.runId },
       { deadlineAt: '2026-10-13T23:59:59Z' },
       { acknowledgePossibleEffects: true as const },
+      { acknowledgeUnknownOutcome: true as const },
       { actor: { ...input.actor, actorId: input.runId } },
       { routeWorkspaceId: input.runId },
     ])

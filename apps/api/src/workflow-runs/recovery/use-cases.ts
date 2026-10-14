@@ -64,6 +64,9 @@ export function recoveryRequestHash(input: RecoverRunInput): string {
       workflowVersionId: input.workflowVersionId,
       nodeRunId: input.nodeRunId,
       acknowledgePossibleEffects: input.acknowledgePossibleEffects === true,
+      ...(input.acknowledgeUnknownOutcome === true
+        ? { acknowledgeUnknownOutcome: true }
+        : {}),
       ...(input.deadlineAt === undefined
         ? {}
         : { deadlineAt: input.deadlineAt }),
@@ -90,6 +93,9 @@ export class RecoverRunUseCase {
       ...(input.acknowledgePossibleEffects === undefined
         ? {}
         : { acknowledgePossibleEffects: input.acknowledgePossibleEffects }),
+      ...(input.acknowledgeUnknownOutcome === undefined
+        ? {}
+        : { acknowledgeUnknownOutcome: input.acknowledgeUnknownOutcome }),
       ...(input.deadlineAt === undefined
         ? {}
         : { deadlineAt: new Date(input.deadlineAt) }),

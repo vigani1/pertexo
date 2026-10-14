@@ -457,7 +457,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
         operationId: 'recoverWorkflowRun',
         security: [{ cookieSession: [] }],
         description:
-          'New run of the exact source version and input; completed steps are owned copies with no attempts. Possible effects require explicit acknowledgement. Unknown outcomes are refused. Exact retries use the retained 24-hour command key and current authority.',
+          'New run of the exact source version and input; completed steps are owned copies with no attempts. Possible effects require explicit acknowledgement. An unknown target requires separate acknowledgeUnknownOutcome; possible-effects acknowledgement alone is refused. Unknown outcomes outside the target remain refused. Exact retries use the retained 24-hour command key and current authority.',
         parameters: [
           workspaceParameter,
           runParameter,

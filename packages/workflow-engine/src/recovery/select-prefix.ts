@@ -26,13 +26,15 @@ import type { CompiledWorkflowExecutable } from '../compilation/foundation.js';
 function completeFailure(
   attempt: RecoveryAttempt,
 ): attempt is RecoveryAttempt & {
-  failureKind: 'failed' | 'retry';
+  failureKind: 'failed' | 'retry' | 'outcome_unknown';
   errorKind: NonNullable<RecoveryAttempt['errorKind']>;
   possiblyDispatched: boolean;
 } {
   return (
-    attempt.status === 'failed' &&
-    (attempt.failureKind === 'failed' || attempt.failureKind === 'retry') &&
+    (attempt.status === 'failed' || attempt.status === 'outcome_unknown') &&
+    (attempt.failureKind === 'failed' ||
+      attempt.failureKind === 'retry' ||
+      attempt.failureKind === 'outcome_unknown') &&
     attempt.errorKind !== null &&
     attempt.possiblyDispatched !== null
   );
@@ -49,13 +51,17 @@ function completeAttempts(node: RecoveryNode): boolean {
     if (attempt.number !== index + 1) return false;
     if (
       index < node.attempts.length - 1 &&
-      (!completeFailure(attempt) || attempt.retryDecision !== 'retry')
+      (!completeFailure(attempt) ||
+        attempt.status !== 'failed' ||
+        attempt.retryDecision !== 'retry')
     )
       return false;
   }
   const current = node.attempts.at(-1);
   return (
-    current?.id === node.currentAttemptId && current.status === node.status
+    current?.id === node.currentAttemptId &&
+    (current.status === node.status ||
+      (node.status === 'outcome_unknown' && current.status === 'failed'))
   );
 }
 
@@ -87,7 +93,7 @@ export function selectRecoveryPrefix(
 ): RecoveryCandidate | RecoveryRefused {
   const { executable, source } = input;
   assertAuthenticExecutableIdentity(executable);
-  if (source.status !== 'failed')
+  if (source.status !== 'failed' && source.status !== 'outcome_unknown')
     return { kind: 'refused', reason: 'source_not_failed' };
   const graph = executable.envelope.graph;
   const tree = inspectWorkflowDecisionTree(graph);
@@ -99,7 +105,7 @@ export function selectRecoveryPrefix(
   if (
     source.completedAt === null ||
     source.workflowVersionId !== source.checkpoint.workflowVersionId ||
-    source.checkpoint.runStatus !== 'failed' ||
+    source.checkpoint.runStatus !== source.status ||
     source.checkpoint.cancelRequested ||
     source.checkpoint.deadlineExpired ||
     source.checkpoint.joins.length > 0 ||
@@ -139,22 +145,26 @@ export function selectRecoveryPrefix(
       (invocation.iterationPath?.length ?? 0) !== 0
     )
       return { kind: 'refused', reason: 'evidence_unavailable' };
-    if (record.status === 'outcome_unknown')
-      return { kind: 'refused', reason: 'unknown_effect' };
     for (const attempt of record.attempts) {
       if (
-        attempt.status === 'outcome_unknown' ||
-        attempt.failureKind === 'outcome_unknown'
+        (attempt.status === 'outcome_unknown' ||
+          attempt.failureKind === 'outcome_unknown') &&
+        record.status !== 'outcome_unknown'
       )
         return { kind: 'refused', reason: 'unknown_effect' };
       const decision = retryOutcome(record, attempt, policy);
-      if (decision?.kind === 'outcome_unknown')
+      if (
+        decision?.kind === 'outcome_unknown' &&
+        record.status !== 'outcome_unknown'
+      )
         return { kind: 'refused', reason: 'unknown_effect' };
       if (attempt.retryDecision === 'retry' && decision?.kind !== 'retry')
         return { kind: 'refused', reason: 'evidence_unavailable' };
     }
   }
-  const failures = source.nodes.filter((node) => node.status === 'failed');
+  const failures = source.nodes.filter(
+    (node) => node.status === 'failed' || node.status === 'outcome_unknown',
+  );
   if (failures.length > 1)
     return { kind: 'refused', reason: 'multiple_failures' };
   const target = failures[0];
@@ -164,9 +174,10 @@ export function selectRecoveryPrefix(
   if (
     final === undefined ||
     !completeFailure(final) ||
-    final.retryDecision !== 'failed' ||
+    target.status !== source.status ||
+    final.retryDecision !== target.status ||
     target.completedAt === null ||
-    retryOutcome(target, final, policy)?.kind !== 'failed'
+    retryOutcome(target, final, policy)?.kind !== target.status
   )
     return { kind: 'refused', reason: 'evidence_unavailable' };
 
@@ -264,12 +275,14 @@ export function selectRecoveryPrefix(
     prefix,
     branchSelections: choices,
     effectRisk:
-      target.sideEffectClass !== 'safe' &&
-      target.attempts.some(
-        (attempt) =>
-          attempt.possiblyDispatched === true || attempt.dispatchMarked,
-      )
-        ? 'possible_effects'
-        : 'ordinary',
+      target.status === 'outcome_unknown'
+        ? 'unknown_outcome'
+        : target.sideEffectClass !== 'safe' &&
+            target.attempts.some(
+              (attempt) =>
+                attempt.possiblyDispatched === true || attempt.dispatchMarked,
+            )
+          ? 'possible_effects'
+          : 'ordinary',
   };
 }

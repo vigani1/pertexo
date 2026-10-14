@@ -8,6 +8,7 @@ import {
 const workflowRecoveryEffectRiskSchema = z.enum([
   'ordinary',
   'possible_effects',
+  'unknown_outcome',
 ]);
 export const workflowRecoveryRefusalSchema = z
   .object({
@@ -41,6 +42,7 @@ export const workflowRecoveryRequestSchema = z
     nodeRunId: z.uuid(),
     deadlineAt: z.iso.datetime({ offset: true }).optional(),
     acknowledgePossibleEffects: z.literal(true).optional(),
+    acknowledgeUnknownOutcome: z.literal(true).optional(),
   })
   .strict();
 export const workflowRecoverySummarySchema = z

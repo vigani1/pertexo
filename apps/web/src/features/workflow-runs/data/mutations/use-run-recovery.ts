@@ -34,6 +34,7 @@ export function useRunRecovery({
         nodeRunId: intent.nodeRunId,
         deadlineAt: intent.deadlineAt ?? null,
         acknowledgePossibleEffects: intent.acknowledgePossibleEffects === true,
+        acknowledgeUnknownOutcome: intent.acknowledgeUnknownOutcome === true,
       }),
     send: async (intent, key) => {
       try {

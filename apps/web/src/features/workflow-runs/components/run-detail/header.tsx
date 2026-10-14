@@ -257,7 +257,7 @@ export function RunHeader({
         workflowId={run.workflowId}
         recoveryAction={
           can('run:replay') &&
-          run.status === 'failed' &&
+          (run.status === 'failed' || run.status === 'outcome_unknown') &&
           workspace.status === 'active' ? (
             <RunRecoveryAction
               key={`${userId}:${workspace.id}:${run.id}`}

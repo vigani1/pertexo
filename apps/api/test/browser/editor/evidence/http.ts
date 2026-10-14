@@ -34,6 +34,9 @@ export const httpEvidenceSchema = httpScopeSchema.extend({
     failedRunId: z.uuid(),
     recoveryRunId: z.uuid(),
     unknownRunId: z.uuid(),
+    unknownRecoveryRunId: z.uuid(),
+    networkRunId: z.uuid(),
+    networkRecoveryRunId: z.uuid(),
     recoveryKey: z.uuid(),
   }),
 });
@@ -132,12 +135,15 @@ export async function verifyHttpEvidence(
 ) {
   expect(effects).toEqual({
     phase: 'controlled-http-effects',
-    requests: 4,
-    effects: 3,
+    requests: 7,
+    effects: 6,
     bodyHashes: [
       hash(httpActionBody),
       hash(JSON.stringify({ marker: 'recovery-once' })),
       hash(JSON.stringify({ marker: 'recovery-unknown' })),
+      hash(JSON.stringify({ marker: 'recovery-unknown' })),
+      hash(JSON.stringify({ marker: 'recovery-network-loss' })),
+      hash(JSON.stringify({ marker: 'recovery-network-loss' })),
     ],
   });
   expect(evidence.trueRunId).not.toBe(evidence.falseRunId);
@@ -350,11 +356,11 @@ async function verifyFailedStepRecovery(
   const { failedRunId, recoveryRunId, unknownRunId, recoveryKey } =
     evidence.recovery;
   const runs = await database.query(
-    `select id,status,replay_source_run_id,recovery_reused_count,recovery_effects_acknowledged
+    `select id,status,replay_source_run_id,recovery_reused_count,recovery_effect_risk,recovery_effects_acknowledged
     from app.workflow_runs where workspace_id=$1 and workflow_id=$2`,
     [evidence.workspaceId, evidence.workflowId],
   );
-  expect(runs.rows).toHaveLength(5);
+  expect(runs.rows).toHaveLength(8);
   expect(runs.rows.find(({ id }) => id === failedRunId)).toMatchObject({
     status: 'failed',
     recovery_reused_count: null,
@@ -369,6 +375,46 @@ async function verifyFailedStepRecovery(
     recovery_reused_count: 4,
     recovery_effects_acknowledged: true,
   });
+  for (const [sourceId, recoveredId] of [
+    [evidence.recovery.unknownRunId, evidence.recovery.unknownRecoveryRunId],
+    [evidence.recovery.networkRunId, evidence.recovery.networkRecoveryRunId],
+  ]) {
+    expect(runs.rows.find(({ id }) => id === sourceId)).toMatchObject({
+      status: 'outcome_unknown',
+      recovery_reused_count: null,
+    });
+    expect(runs.rows.find(({ id }) => id === recoveredId)).toMatchObject({
+      status: 'succeeded',
+      replay_source_run_id: sourceId,
+      recovery_reused_count: 4,
+      recovery_effect_risk: 'unknown_outcome',
+      recovery_effects_acknowledged: true,
+    });
+    const proof = await database.query(
+      `select
+      recovered.workflow_version_id=source.workflow_version_id same_version,
+      recovered.input_ref=source.input_ref same_input,
+      (select count(*)::int from app.node_runs node where node.workspace_id=recovered.workspace_id and node.workflow_run_id=recovered.id
+        and node.reused_source_run_id=source.id and node.current_attempt_id is null) copies,
+      (select count(*)::int from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id where node.workspace_id=recovered.workspace_id and node.workflow_run_id=source.id) source_attempts,
+      (select count(*)::int from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id where node.workspace_id=recovered.workspace_id and node.workflow_run_id=recovered.id) new_attempts,
+      (select count(*)::int from app.audit_events audit where audit.workspace_id=recovered.workspace_id and audit.action='workflow.run.recovered'
+        and audit.metadata->>'sourceRunId'=source.id::text and audit.metadata->>'acknowledgeUnknownOutcome'='true') acknowledged_audits
+      from app.workflow_runs recovered join app.workflow_runs source on source.workspace_id=recovered.workspace_id and source.id=$3
+      where recovered.workspace_id=$1 and recovered.id=$2`,
+      [evidence.workspaceId, recoveredId, sourceId],
+    );
+    expect(proof.rows).toEqual([
+      {
+        same_version: true,
+        same_input: true,
+        copies: 4,
+        source_attempts: 5,
+        new_attempts: 2,
+        acknowledged_audits: 1,
+      },
+    ]);
+  }
   const copies = await database.query(
     `select node.id,node.node_id,node.current_attempt_number,node.started_at,node.completed_at,node.reused_source_run_id,
     (select count(*)::int from app.node_attempts attempt where attempt.workspace_id=node.workspace_id and attempt.node_run_id=node.id) attempts

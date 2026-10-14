@@ -24,6 +24,8 @@ export function RecoveryConfirmation({
   const [acknowledged, setAcknowledged] = useState(false);
   const validation = useFieldValidation<'deadline'>();
   const possible = preview.effectRisk === 'possible_effects';
+  const unknown = preview.effectRisk === 'unknown_outcome';
+  const needsAcknowledgement = possible || unknown;
   const locked = command.pending || command.unconfirmed;
   async function confirm() {
     if (command.unconfirmed) {
@@ -40,6 +42,9 @@ export function RecoveryConfirmation({
         : { deadlineAt: new Date(trimmed).toISOString() }),
       ...(possible && acknowledged
         ? { acknowledgePossibleEffects: true as const }
+        : {}),
+      ...(unknown && acknowledged
+        ? { acknowledgeUnknownOutcome: true as const }
         : {}),
     });
     if (accepted) onOpenChange(false);
@@ -59,14 +64,15 @@ export function RecoveryConfirmation({
       confirmLabel={
         command.unconfirmed
           ? 'Retry same request'
-          : possible
+          : needsAcknowledgement
             ? 'Retry anyway'
             : 'Retry from this step'
       }
       pendingLabel="Checking acceptance…"
       pending={command.pending}
       confirmDisabled={
-        command.expired || (!command.unconfirmed && possible && !acknowledged)
+        command.expired ||
+        (!command.unconfirmed && needsAcknowledgement && !acknowledged)
       }
       error={command.error}
       errorTone={command.unconfirmed ? 'warning' : 'destructive'}
@@ -81,7 +87,7 @@ export function RecoveryConfirmation({
           Saved {formatDateTime(preview.sourceCompletedAt)}
         </span>
       </div>
-      {possible ? (
+      {needsAcknowledgement ? (
         <label className="flex items-start gap-3 text-sm">
           <Checkbox
             className="mt-0.5"
@@ -90,8 +96,9 @@ export function RecoveryConfirmation({
             onCheckedChange={setAcknowledged}
           />
           <span>
-            This step reached the service and may have partly taken effect. I
-            want to retry it anyway.
+            {unknown
+              ? "We don't know whether this step reached the service. Retrying can repeat its effect. I want to retry it anyway."
+              : 'This step reached the service and may have partly taken effect. I want to retry it anyway.'}
           </span>
         </label>
       ) : null}

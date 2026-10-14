@@ -66,7 +66,9 @@ const runReadRowSchema = runRowSchema.extend({
   recovery_target_node_run_id: z.uuid().nullable(),
   recovery_target_node_id: z.string().nullable(),
   recovery_reused_count: z.number().int().nonnegative().nullable(),
-  recovery_effect_risk: z.enum(['ordinary', 'possible_effects']).nullable(),
+  recovery_effect_risk: z
+    .enum(['ordinary', 'possible_effects', 'unknown_outcome'])
+    .nullable(),
   recovery_effects_acknowledged: z.boolean().nullable(),
 });
 

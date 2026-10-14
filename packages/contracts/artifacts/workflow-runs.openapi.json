@@ -1160,7 +1160,7 @@
             "cookieSession": []
           }
         ],
-        "description": "New run of the exact source version and input; completed steps are owned copies with no attempts. Possible effects require explicit acknowledgement. Unknown outcomes are refused. Exact retries use the retained 24-hour command key and current authority.",
+        "description": "New run of the exact source version and input; completed steps are owned copies with no attempts. Possible effects require explicit acknowledgement. An unknown target requires separate acknowledgeUnknownOutcome; possible-effects acknowledgement alone is refused. Unknown outcomes outside the target remain refused. Exact retries use the retained 24-hour command key and current authority.",
         "parameters": [
           {
             "name": "workspaceId",
@@ -1403,6 +1403,10 @@
           "acknowledgePossibleEffects": {
             "type": "boolean",
             "const": true
+          },
+          "acknowledgeUnknownOutcome": {
+            "type": "boolean",
+            "const": true
           }
         },
         "required": [
@@ -1431,6 +1435,7 @@
                   "prefix_incomplete",
                   "unknown_effect",
                   "effects_acknowledgement_required",
+                  "unknown_outcome_acknowledgement_required",
                   "evidence_unavailable",
                   "suffix_already_executed",
                   "values_expired",
@@ -1499,7 +1504,8 @@
                 "type": "string",
                 "enum": [
                   "ordinary",
-                  "possible_effects"
+                  "possible_effects",
+                  "unknown_outcome"
                 ]
               }
             },
@@ -1599,6 +1605,7 @@
               "prefix_incomplete",
               "unknown_effect",
               "effects_acknowledgement_required",
+              "unknown_outcome_acknowledgement_required",
               "evidence_unavailable",
               "suffix_already_executed",
               "values_expired",
@@ -2099,7 +2106,8 @@
                     "type": "string",
                     "enum": [
                       "ordinary",
-                      "possible_effects"
+                      "possible_effects",
+                      "unknown_outcome"
                     ]
                   },
                   "effectsAcknowledged": {
@@ -2275,7 +2283,8 @@
                 "type": "string",
                 "enum": [
                   "ordinary",
-                  "possible_effects"
+                  "possible_effects",
+                  "unknown_outcome"
                 ]
               },
               "effectsAcknowledged": {
@@ -2441,7 +2450,8 @@
                 "type": "string",
                 "enum": [
                   "ordinary",
-                  "possible_effects"
+                  "possible_effects",
+                  "unknown_outcome"
                 ]
               },
               "effectsAcknowledged": {
@@ -2659,7 +2669,8 @@
                 "type": "string",
                 "enum": [
                   "ordinary",
-                  "possible_effects"
+                  "possible_effects",
+                  "unknown_outcome"
                 ]
               },
               "effectsAcknowledged": {
@@ -2943,7 +2954,8 @@
                       "type": "string",
                       "enum": [
                         "ordinary",
-                        "possible_effects"
+                        "possible_effects",
+                        "unknown_outcome"
                       ]
                     },
                     "effectsAcknowledged": {
@@ -3649,7 +3661,8 @@
                     "type": "string",
                     "enum": [
                       "ordinary",
-                      "possible_effects"
+                      "possible_effects",
+                      "unknown_outcome"
                     ]
                   },
                   "effectsAcknowledged": {
@@ -4166,7 +4179,8 @@
                     "type": "string",
                     "enum": [
                       "ordinary",
-                      "possible_effects"
+                      "possible_effects",
+                      "unknown_outcome"
                     ]
                   },
                   "effectsAcknowledged": {

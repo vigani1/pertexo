@@ -186,6 +186,7 @@ const recoveryInputSchema = replayInputSchema
     scope: z.string().regex(/^workflow:[0-9a-f-]{36}:recover$/u),
     nodeRunId: z.uuid(),
     acknowledgePossibleEffects: z.literal(true).optional(),
+    acknowledgeUnknownOutcome: z.literal(true).optional(),
     prepareRecovery: z.custom<WorkflowRecoveryPreparation>(
       (value) => typeof value === 'function',
     ),

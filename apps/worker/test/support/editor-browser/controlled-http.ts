@@ -24,6 +24,7 @@ export function createEditorControlledHttpTarget(
   const sockets = new Set<Socket>();
   let requests = 0;
   let recoveryRejected = false;
+  const unknownMarkers = new Set<string>();
   let stopped = false;
   let port: number | undefined;
   let startup: Promise<void> | undefined;
@@ -84,10 +85,19 @@ export function createEditorControlledHttpTarget(
         onEffect();
         await beforeResponse();
         if (responseDisposed()) return;
-        outgoing.writeHead(
-          'marker' in body && body.marker === 'recovery-unknown' ? 503 : 200,
-          { 'content-type': 'application/json' },
-        );
+        const marker = 'marker' in body ? body.marker : undefined;
+        const firstUnknown =
+          typeof marker === 'string' &&
+          ['recovery-unknown', 'recovery-network-loss'].includes(marker) &&
+          !unknownMarkers.has(marker);
+        if (firstUnknown) unknownMarkers.add(marker);
+        if (firstUnknown && marker === 'recovery-network-loss') {
+          outgoing.destroy(); // The service took effect, then lost the response.
+          return;
+        }
+        outgoing.writeHead(firstUnknown ? 503 : 200, {
+          'content-type': 'application/json',
+        });
         outgoing.end(JSON.stringify({ accepted: true, body }));
       } catch {
         if (!outgoing.destroyed) outgoing.writeHead(400).end();

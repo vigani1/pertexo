@@ -76,7 +76,7 @@ export async function readRecoveryMetadata(
     if (mode === 'locked') await lockReplaySource(transaction, runId);
     const run = await readWorkflowRunRecord(transaction, runId);
     if (run === undefined) throw new WorkflowRunNotFoundError();
-    if (run.status !== 'failed')
+    if (run.status !== 'failed' && run.status !== 'outcome_unknown')
       return { kind: 'refused', reason: 'source_not_failed' };
     const workflow =
       mode === 'locked'
