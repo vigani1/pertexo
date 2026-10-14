@@ -1,6 +1,6 @@
 import { setup, file, scope, artifactId, bytes } from './upload.fixture';
 import { webcrypto } from 'node:crypto';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { UploadFile } from '@/features/artifacts/public';
@@ -196,5 +196,25 @@ it('cancels a changed mapping target without replacing its keyboard opener', asy
   });
   expect(screen.getByRole('button', { name: 'Upload file' })).toBe(opener);
   expect(calls.keys).toHaveLength(0);
+  expect(onUse).not.toHaveBeenCalled();
+});
+
+it('does not invoke insertion if its target changes before the queued callback starts', async () => {
+  setup();
+  const { event, onUse, view } = await open();
+  await event.upload(screen.getByLabelText('File', { exact: true }), file());
+  await screen.findByText('File ready');
+  fireEvent.click(screen.getByRole('button', { name: 'Use file' }));
+  view.rerender(
+    <UploadFile
+      targetKey="body-2"
+      scope={scope}
+      description="Send exact file bytes."
+      onUse={onUse}
+    />,
+  );
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
   expect(onUse).not.toHaveBeenCalled();
 });
