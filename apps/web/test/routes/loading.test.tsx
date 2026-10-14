@@ -2,7 +2,7 @@ import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
-import { renderApp } from '../support/render-app';
+import { expectSignInPage, renderApp } from '../support/render-app';
 import {
   apiBase,
   coldStart,
@@ -145,13 +145,7 @@ describe('route loading', () => {
       http.get('http://pertexo.test/v1/users/me', unauthenticated),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`);
-    expect(
-      await screen.findByRole(
-        'heading',
-        { name: 'Sign in to continue' },
-        coldStart,
-      ),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(router.state.location.pathname).toBe('/login');
   });
 
@@ -171,13 +165,7 @@ describe('route loading', () => {
       http.get(`${apiBase}/runs`, unauthenticated),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`);
-    expect(
-      await screen.findByRole(
-        'heading',
-        { name: 'Sign in to continue' },
-        coldStart,
-      ),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(router.state.location.pathname).toBe('/login');
   });
 
@@ -318,9 +306,7 @@ describe('route loading', () => {
       }),
     );
     const { router } = renderApp(editorRoute);
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(router.state.location.pathname).toBe('/login');
   });
 
