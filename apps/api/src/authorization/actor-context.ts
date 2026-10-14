@@ -36,11 +36,15 @@ export function createActorContext(
   });
 }
 
-export function createApiTokenActorContext(
+export function createAutomationActorContext(
   input: Omit<ApiTokenActorContext, 'kind'>,
 ): ApiTokenActorContext {
   return Object.freeze({
-    ...input,
+    actorId: input.actorId,
+    workspaceId: input.workspaceId,
+    tokenId: input.tokenId,
+    requestId: input.requestId,
+    ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
     kind: 'api_key',
     scopes: Object.freeze([...input.scopes]),
   });

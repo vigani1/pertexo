@@ -318,10 +318,15 @@ KMS/self-managed plus Resend/SMTP credential-isolation qualifications pass.
 
 Local repository checks pass (format, build, lint, TypeScript, unused exports,
 contracts, schema ownership and source boundaries). Full unit suites pass,
-including API 1,980 and database 536 tests. The broader database integration
+including API 1,981 and database 536 tests. The broader database integration
 suite passes 749 cases (46 environment-gated cases skipped); it includes the
 existing inherited-JSON-hook fence. Token scope persistence reuses the database
 serializer so schema setup and writes do not invoke inherited toJSON hooks.
+CodeQL identified public actor/command metadata as possible password data. The
+automation actor now explicitly projects public identity fields and immutable
+scopes, and operation labels are attached to command metadata at the call site.
+Tests prove secret/digest fields cannot enter that actor. No query is suppressed,
+no algorithm is weakened and existing receipt bytes remain identical.
 The API fixture checks accepted/cancel-requested runs without a worker; completed
 worker execution remains explicitly required in slice 3. Green PR/postmerge
 checks are required before slice 1 can be marked complete. Settings and the CLI

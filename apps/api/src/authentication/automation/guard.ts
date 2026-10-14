@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import { createApiTokenActorContext } from '../../authorization/index.js';
+import { createAutomationActorContext } from '../../authorization/index.js';
 import {
   applicationError,
   throwApplicationError,
@@ -41,7 +41,7 @@ export class AutomationAuthenticationGuard implements CanActivate {
     });
     if (verified === undefined) return this.unauthenticated(context);
     const traceId = traceIdentifier(request);
-    const actor = createApiTokenActorContext({
+    const actor = createAutomationActorContext({
       actorId: verified.ownerUserId,
       workspaceId: verified.workspaceId,
       tokenId: verified.tokenId,

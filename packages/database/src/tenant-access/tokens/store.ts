@@ -31,11 +31,9 @@ import {
 const receipt = z.object({ tokenId: z.uuid() }).strict();
 const commandIdentity = (
   input: ApiTokenCommand,
-  operation: string,
-): CommandIdentity => ({
+): Omit<CommandIdentity, 'operation'> => ({
   workspaceId: input.workspaceId,
   scope: input.ownerUserId,
-  operation,
   idempotencyKey: input.idempotencyKey,
 });
 const sha256 = (input: unknown): string =>
@@ -137,7 +135,10 @@ export function createApiTokenDatabase(
           )
             throw new ApiTokenPolicyError('scope_forbidden');
           const tokenId = generatePersistedId();
-          const identity = commandIdentity(input, 'api.token.create');
+          const identity: CommandIdentity = {
+            ...commandIdentity(input),
+            operation: 'api.token.create',
+          };
           const replay = await claimCommand(client, {
             ...identity,
             requestHash: sha256({
@@ -202,7 +203,10 @@ export function createApiTokenDatabase(
         { workspaceId: input.workspaceId, actorId: input.ownerUserId },
         async (client) => {
           const authority = await tokenOwnerAuthority(client, input, 'revoke');
-          const identity = commandIdentity(input, 'api.token.revoke');
+          const identity: CommandIdentity = {
+            ...commandIdentity(input),
+            operation: 'api.token.revoke',
+          };
           const replay = await claimCommand(client, {
             ...identity,
             request: { tokenId: input.tokenId },

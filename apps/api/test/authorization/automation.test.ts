@@ -4,7 +4,7 @@ import {
   assertAuthorizedWorkspaceContext,
   commandIdempotencyScope,
   createActorContext,
-  createApiTokenActorContext,
+  createAutomationActorContext,
 } from '../../src/authorization/index.js';
 import type { ApiTokenScope } from '@pertexo/contracts';
 
@@ -13,7 +13,7 @@ const workspaceId = '0194a800-0000-7000-8000-000000000002';
 const tokenId = '0194a800-0000-7000-8000-000000000003';
 const requestId = 'token-request';
 const token = (scopes: readonly ApiTokenScope[] = ['run:read']) =>
-  createApiTokenActorContext({
+  createAutomationActorContext({
     actorId,
     workspaceId,
     tokenId,
@@ -30,6 +30,30 @@ const access = () =>
   });
 
 describe('shared token authorization', () => {
+  it('projects only public actor identity and snapshots its granted scopes', () => {
+    const scopes: ApiTokenScope[] = ['run:read'];
+    const input = {
+      actorId,
+      workspaceId,
+      tokenId,
+      requestId,
+      scopes,
+      secret: 'synthetic-extra-secret',
+      digest: 'synthetic-extra-digest',
+    };
+    const actor = createAutomationActorContext(input);
+    scopes.push('run:start');
+    expect(actor).toEqual({
+      actorId,
+      workspaceId,
+      tokenId,
+      requestId,
+      kind: 'api_key',
+      scopes: ['run:read'],
+    });
+    expect(Object.isFrozen(actor)).toBe(true);
+    expect(Object.isFrozen(actor.scopes)).toBe(true);
+  });
   it('requires the scope even when the owner has every role capability', async () => {
     await expect(
       authorizeWorkspace({

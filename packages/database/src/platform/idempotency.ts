@@ -48,14 +48,14 @@ function conflict(command: CommandLookup): Error {
   return command.conflict?.() ?? new IdempotencyConflictError();
 }
 
-/** An explicit credential namespace cannot be imitated by a caller-selected key. */
+/** Namespaces public token IDs, never secrets, outside caller-selected command keys. */
 export function credentialCommandScope(
   scope: string,
-  credentialId?: string,
+  publicTokenId?: string,
 ): string {
-  return credentialId === undefined
+  return publicTokenId === undefined
     ? scope
-    : `api_token:${sha256(canonicalJson({ credentialId, scope }))}`;
+    : `api_token:${sha256(canonicalJson({ credentialId: publicTokenId, scope }))}`;
 }
 
 /**
