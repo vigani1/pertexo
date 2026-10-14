@@ -12,7 +12,6 @@ import {
 import { assertNotAborted, withWorkspaceReadClient } from './transactions.js';
 import {
   parseStoredExecutionValue,
-  serializeStoredExecutionJsonValue,
   storedExecutionValuesEqual,
 } from '../platform/stored-execution-value.js';
 
