@@ -1238,3 +1238,11 @@ both dispatched definite and unknown targets. The scripted registry belongs
 only to this existing integration test; the browser journey above separately
 proves actual 5xx and post-dispatch socket loss. No production behavior is
 changed to satisfy that stale assertion.
+
+
+The existing failure-route browser scenario also expected every unknown run to
+hide the recovery command. It now proves that the unchanged attention card is
+visible and that this graph still refuses recovery as `unsupported_graph`
+because it has failure links. The dialog offers separately confirmed full
+replay and no acknowledgement checkbox; the unknown handler remains skipped.
+The broader graph boundary is not relaxed by the new manual target decision.
