@@ -6,6 +6,7 @@ import {
   BellIcon,
   GaugeIcon,
   HomeIcon,
+  KeyRoundIcon,
   LayoutGridIcon,
   LogOutIcon,
   PlugIcon,
@@ -143,6 +144,17 @@ export function WorkspaceCommandPalette({
       onSelect: () =>
         void navigate({
           to: '/w/$workspaceId/settings',
+          params: { workspaceId },
+        }),
+    },
+    {
+      id: 'api-tokens',
+      label: 'API tokens',
+      keywords: 'scripts automation personal access',
+      icon: <KeyRoundIcon />,
+      onSelect: () =>
+        void navigate({
+          to: '/w/$workspaceId/settings/api-tokens',
           params: { workspaceId },
         }),
     },

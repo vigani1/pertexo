@@ -8,6 +8,7 @@ const AUTHENTICATION_RETURN_PATHS = Object.freeze([
   /^\/invitations\/accept$/u,
   /^\/account\/security$/u,
   /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:account|team)$/u,
+  /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/settings\/api-tokens$/u,
 ]);
 export const authenticationReturnPathSchema = z
   .string()

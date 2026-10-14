@@ -4,6 +4,10 @@ import {
   verifyTransformEvidence,
 } from './editor/evidence/transforms/qualification.js';
 import {
+  apiTokensEvidenceSchema,
+  verifyApiTokensEvidence,
+} from './editor/evidence/api-tokens/qualification.js';
+import {
   failureRoutingEvidenceSchema,
   verifyFailureRoutingEvidence,
 } from './editor/evidence/failure-routing.js';
@@ -103,6 +107,7 @@ const scenario = z
     'webhook-controlled-http',
     'failure-routing',
     'transforms',
+    'api-tokens',
     'duplication',
     'portability',
     'input-cases',
@@ -138,6 +143,7 @@ function ownChild<T extends ChildProcess>(
 }
 let collectionEvidence: z.infer<typeof collectionEvidenceSchema> | undefined;
 let dateEvidence: z.infer<typeof dateEvidenceSchema> | undefined;
+let apiTokensEvidence: z.infer<typeof apiTokensEvidenceSchema> | undefined;
 let worker: ChildProcess;
 const controlledHttpScenario =
   scenario === 'webhook-controlled-http' || scenario === 'failure-routing';
@@ -371,6 +377,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   redis.pathname = '/11';
   const api = useBetterAuthRealApi('editor_browser', {
     publicWebOrigin: webOrigin,
+    automationTokens: scenario === 'api-tokens',
     schedules: scenario === 'schedule' || scenario === 'curated-templates',
     ...(httpMaster === undefined
       ? {}
@@ -728,7 +735,8 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       }
       if (
         request.method === 'POST' &&
-        (url.pathname === '/evidence/transforms' ||
+        (url.pathname === '/evidence/api-tokens' ||
+          url.pathname === '/evidence/transforms' ||
           url.pathname === '/evidence/transform-date' ||
           url.pathname === '/evidence' ||
           url.pathname === '/evidence/receipts' ||
@@ -753,6 +761,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           try {
             const value: unknown = JSON.parse(body);
             if (
+              url.pathname === '/evidence/api-tokens' &&
+              scenario === 'api-tokens'
+            )
+              apiTokensEvidence = apiTokensEvidenceSchema.parse(value);
+            else if (
               url.pathname === '/evidence/transforms' &&
               scenario === 'transforms'
             )
@@ -935,33 +948,35 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'callable'
-              ? 'editor/callable.spec.ts'
-              : scenario === 'curated-templates'
-                ? 'curated-templates.spec.ts'
-                : scenario === 'portability'
-                  ? 'workflow-portability.spec.ts'
-                  : scenario === 'input-cases'
-                    ? 'workflow-input-cases.spec.ts'
-                    : scenario === 'duplication'
-                      ? 'workflow-duplication.spec.ts'
-                      : scenario === 'nested-conflict'
-                        ? 'editor/execution.spec.ts'
-                        : scenario === 'receipts'
-                          ? 'editor/receipts.spec.ts'
-                          : scenario === 'run-recovery'
-                            ? 'editor/run-recovery.spec.ts'
-                            : scenario === 'expression-admission'
-                              ? 'editor/expression-admission.spec.ts'
-                              : scenario === 'readonly'
-                                ? 'editor/readonly.spec.ts'
-                                : scenario === 'schedule'
-                                  ? 'editor/schedule.spec.ts'
-                                  : scenario === 'failure-routing'
-                                    ? 'editor/failure-routing.spec.ts'
-                                    : scenario === 'transforms'
-                                      ? 'editor/transforms.spec.ts'
-                                      : 'editor/webhook-controlled-http.spec.ts',
+            scenario === 'api-tokens'
+              ? 'api-tokens.spec.ts'
+              : scenario === 'callable'
+                ? 'editor/callable.spec.ts'
+                : scenario === 'curated-templates'
+                  ? 'curated-templates.spec.ts'
+                  : scenario === 'portability'
+                    ? 'workflow-portability.spec.ts'
+                    : scenario === 'input-cases'
+                      ? 'workflow-input-cases.spec.ts'
+                      : scenario === 'duplication'
+                        ? 'workflow-duplication.spec.ts'
+                        : scenario === 'nested-conflict'
+                          ? 'editor/execution.spec.ts'
+                          : scenario === 'receipts'
+                            ? 'editor/receipts.spec.ts'
+                            : scenario === 'run-recovery'
+                              ? 'editor/run-recovery.spec.ts'
+                              : scenario === 'expression-admission'
+                                ? 'editor/expression-admission.spec.ts'
+                                : scenario === 'readonly'
+                                  ? 'editor/readonly.spec.ts'
+                                  : scenario === 'schedule'
+                                    ? 'editor/schedule.spec.ts'
+                                    : scenario === 'failure-routing'
+                                      ? 'editor/failure-routing.spec.ts'
+                                      : scenario === 'transforms'
+                                        ? 'editor/transforms.spec.ts'
+                                        : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -981,6 +996,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'api-tokens') {
+      if (apiTokensEvidence === undefined)
+        throw new Error('API token browser evidence missing');
+      await verifyApiTokensEvidence(api.database(), apiTokensEvidence);
+      return;
+    }
     if (scenario === 'callable') {
       if (callableEvidence === undefined)
         throw new Error('Callable browser evidence missing');

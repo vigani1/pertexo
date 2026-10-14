@@ -153,7 +153,7 @@ source references or preconditions.
 | Owner | Responsibility |
 | --- | --- |
 | contracts/src/schemas/identity/ | Browser-safe schemas/scope source; OpenAPI registration |
-| database/src/schema/api-tokens.ts | Single table definition: owner/workspace, digest, scopes, membership revision, expiry/revocation/last-use |
+| database/src/schema/identity/api-tokens.ts | Single table definition: owner/workspace, digest, scopes, membership revision, expiry/revocation/last-use |
 | database/src/tenant-access/tokens/ | Typed lifecycle/lookup policy and credential helpers through existing tenant-access entry point |
 | database/migrations/ | Next additive migration/snapshot, forced RLS, least grants, unchanged three roles |
 | database/src/lifecycle/ | Bounded retention and purge before memberships; safe receipt cleanup |
@@ -275,15 +275,16 @@ These inform transport/authorization/redaction, not an OAuth subsystem.
 - [x] Slice 0: PR #282 merged after all required checks; natural main
   `38509c60e08076b67fa87f7f4d01dac53de16095`, CI 38521325955, CodeQL
   38521325982 and ARM publication succeeded.
-- [ ] Slice 1 backend/API and independent persistence/concurrency evidence merged.
+- [x] Slice 1: PR #283 merged; natural main
+  `b8f9d1b38e6e24241a941f80dfce49988a351383`, CI 38543579563 (including ARM)
+  and CodeQL 38543579596 succeeded.
 - [ ] Slice 2 Settings and live browser/mobile evidence merged.
 - [ ] Slice 3 CLI/API/worker qualification and user guide merged.
 - [ ] Final natural main CI, CodeQL and ARM publication inspected.
 
-### Slice 1 local evidence (merge pending)
+### Slice 1 qualification
 
-Backend implementation is on `feat/f16-automation-api`; it is not yet a merged
-feature. Migration 0006 adds the token table, forced RLS and least grants and
+Backend implementation merged in PR #283. Migration 0006 adds the token table, forced RLS and least grants and
 accepts the planned token receipt namespace in manual-start rejection storage.
 The table sits under `schema/identity/` to keep the schema root from growing
 further. Database reuses the existing contracts package for one schema/scope
@@ -328,6 +329,45 @@ scopes, and operation labels are attached to command metadata at the call site.
 Tests prove secret/digest fields cannot enter that actor. No query is suppressed,
 no algorithm is weakened and existing receipt bytes remain identical.
 The API fixture checks accepted/cancel-requested runs without a worker; completed
-worker execution remains explicitly required in slice 3. Green PR/postmerge
-checks are required before slice 1 can be marked complete. Settings and the CLI
-remain the next slices.
+worker execution remains explicitly required in slice 3. All required PR and
+natural main checks passed, including the final CodeQL security gate and ARM
+publication. Settings and the CLI remain the next slices.
+
+### Slice 2 local evidence (merge pending)
+
+Settings uses a lazy feature-owned page, scoped metadata queries, one-time local
+secret state and the existing Weft/accessible primitives. Recent sign-in returns
+to an explicitly allowlisted token page. Creation never enters a query/mutation
+cache or retries automatically after an uncertain response. Revoke preserves its
+key for exact retry; its metadata mutation owns authoritative cache updates and
+invalidation. Lists retain previous cursor pages and explain membership/expiry,
+disabled servers and replacement.
+
+Nine focused unit cases cover disclosure/cache absence, duplicate submission,
+unmount/abort, lost/replayed creation, recent sign-in, disabled issuance, exact-key
+revoke retry, pagination and redacted credential diagnostics. Four mocked browser
+cases cover desktop and 375 × 768 reduced-motion use, real permitted clipboard
+copy, focus restoration, scrolling, long names and disabled-server revocation.
+The default denied-clipboard run showed the existing manual-selection fallback;
+permitted copy was checked against the synthetic exact value.
+
+A real owned PostgreSQL/Redis/API/worker/browser fixture passes ordinary public
+sign-up/sign-in, UI creation and revocation at both widths, cookie-free bearer
+reads, unsupported management and ungranted import denial, and refusal after
+revoke/reload. Independent SQL checks hashes, ownership, membership revision,
+last use, revoked state and identifier-only receipts/audits. No credential is
+posted as evidence. Transient receipt/request failures are rethrown without
+Playwright call logs or matcher snapshots; live traces/screenshots remain off.
+
+Native HTTP qualification exposed Node discarding repeated Authorization values
+from normalized headers. Authentication now checks the original header count;
+the regression goes from 200 to 401. All three real token API cases pass with
+API_IDENTITY_INTEGRATION explicitly enabled, plus the original header/cookie
+regressions. No schema, role or new CI job is added: the existing browser loop
+includes the new case. React Doctor after the ownership/composition fixes is
+100/100 with no suppressed rules. Full repository gates and sequential units
+passed (web 1,152, API 1,982, worker 720, database 536); all 157 mocked browser
+cases passed. The final owned live journey passed after original-header
+hardening. Three synthetic review images were inspected at desktop and phone
+widths. Green PR/main qualification remains required before marking this slice
+complete.

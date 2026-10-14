@@ -10,8 +10,8 @@ export const API_TOKEN_SCOPES = [
   'run:cancel',
   'connection:read',
 ] as const;
-const API_TOKEN_DEFAULT_LIFETIME_DAYS = 30;
-const API_TOKEN_MAX_LIFETIME_DAYS = 365;
+export const API_TOKEN_DEFAULT_LIFETIME_DAYS = 30;
+export const API_TOKEN_MAX_LIFETIME_DAYS = 365;
 export const API_TOKEN_ACTIVE_LIMIT = 10;
 export const apiTokenScopeSchema = z.enum(API_TOKEN_SCOPES);
 export type ApiTokenScope = z.output<typeof apiTokenScopeSchema>;

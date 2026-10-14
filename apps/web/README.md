@@ -8,11 +8,12 @@ editing, a Home with exact run statistics and the Loom, bounded recent-activity
 Overview, the bounded workflow editor with conflict-safe draft persistence,
 validation, node preview, typed visual input mappings, exact-version publishing,
 run start, live run detail and contract-backed workflow settings/operations,
-including automatic trigger-pause rules, owner-managed workspace defaults and
-explicit Resume controls. The first read-only Usage slice separates current
-execution/artifact capacity from ADR 044 retained run activity, with independent
-snapshots and exact server-window drilldowns (ADR 057). It does not introduce
-billing, an operation meter, warnings, quota editing or calendar reporting.
+including personal API token Settings, automatic trigger-pause rules,
+owner-managed workspace defaults and explicit Resume controls. The first
+read-only Usage slice separates current execution/artifact capacity from ADR 044
+retained run activity, with independent snapshots and exact server-window
+drilldowns (ADR 057). It does not introduce billing, an operation meter,
+warnings, quota editing or calendar reporting.
 
 ADR 058's first workflow concurrency slice adds a current queue-only cap to
 workflow Settings and timestamped queued-run blocker explanations. It preserves
