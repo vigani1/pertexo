@@ -33,4 +33,19 @@ describe('Bearer header boundary', () => {
     expect(hasAuthorizationHeader({ authorization: [] })).toBe(true);
     expect(hasAuthorizationHeader({ Authorization: '' })).toBe(true);
   });
+  it('rejects duplicates that Node discarded from normalized headers', () => {
+    const headers = { authorization: `Bearer ${credential}` };
+    const original = [
+      'Authorization',
+      `Bearer ${credential}`,
+      'AUTHORIZATION',
+      `Bearer ${credential}`,
+    ];
+    expect(hasAuthorizationHeader(undefined, original)).toBe(true);
+    expect(bearerCredential(headers, original)).toBeUndefined();
+    expect(bearerCredential(headers, original.slice(0, 2))).toMatchObject({
+      workspaceId,
+      tokenId,
+    });
+  });
 });

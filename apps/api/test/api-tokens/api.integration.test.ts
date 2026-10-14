@@ -1,4 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
+import { request as httpRequest } from 'node:http';
 import {
   canonicalJson,
   portableGraphDigest,
@@ -71,6 +72,34 @@ describe.runIf(betterAuthIntegrationEnabled)(
             .statusCode,
         ).toBe(200);
       }
+      const origin = await api.listen();
+      const repeatedHeaderStatus = await new Promise<number>(
+        (resolve, reject) => {
+          const call = httpRequest(
+            `${origin}${path}/workflows`,
+            {
+              agent: false,
+              headers: [
+                'Host',
+                new URL(origin).host,
+                'Authorization',
+                `Bearer ${created.secret}`,
+                'AUTHORIZATION',
+                `Bearer ${created.secret}`,
+              ],
+            },
+            (response) => {
+              response.resume();
+              response.once('end', () => {
+                resolve(response.statusCode ?? 0);
+              });
+            },
+          );
+          call.once('error', reject);
+          call.end();
+        },
+      );
+      expect(repeatedHeaderStatus).toBe(401);
       expect(
         (await api.send('GET', `${path}/api-tokens`, { headers: bearer }))
           .statusCode,
