@@ -1,3 +1,7 @@
+import {
+  WORKFLOW_FAILURE_PORT,
+  WORKFLOW_FAILURE_PATHS,
+} from '@pertexo/workflow-model';
 import { isRecord } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { parseJsonPath } from '@pertexo/workflow-model';
@@ -162,6 +166,11 @@ export function validateInputMappingRows(
     predecessors: directPredecessors,
     graph: options.checkGraph ?? true,
     loopPorts: options.loopPorts,
+    failureSource: graph.edges.find(
+      (edge) =>
+        edge.target.nodeId === targetNodeId &&
+        edge.source.port === WORKFLOW_FAILURE_PORT,
+    )?.source.nodeId,
   };
   const inputMappings = Object.create(null) as Record<string, InputMapping>;
   for (const row of rows) {
@@ -190,6 +199,7 @@ export function validateInputMappingRows(
 type SourceCheck = Readonly<{
   predecessors: ReadonlySet<string>;
   graph: boolean;
+  failureSource: string | undefined;
   loopPorts: readonly string[] | undefined;
 }>;
 
@@ -243,6 +253,21 @@ function rowSource(
             },
           };
     case 'node_failure':
+      if (row.nodeId === '')
+        return { error: 'This mapping needs a linked source failure.' };
+      return (check.graph && row.nodeId !== check.failureSource) ||
+        !WORKFLOW_FAILURE_PATHS.includes(row.path)
+        ? {
+            error:
+              'Only this handler entry can read its linked source’s safe failure fields.',
+          }
+        : {
+            mapping: {
+              kind: 'node_failure',
+              nodeId: row.nodeId,
+              path: row.path,
+            },
+          };
     case 'node_output':
       break;
   }
@@ -318,7 +343,10 @@ export function directPredecessorOptions(
 ): readonly PredecessorOption[] {
   const predecessorIds = new Set(
     graph.edges.flatMap((edge) =>
-      edge.target.nodeId === targetNodeId ? [edge.source.nodeId] : [],
+      edge.target.nodeId === targetNodeId &&
+      edge.source.port !== WORKFLOW_FAILURE_PORT
+        ? [edge.source.nodeId]
+        : [],
     ),
   );
   return graph.nodes.flatMap((node) =>
@@ -359,6 +387,7 @@ export function isEditableInputMappingKind(
     value === 'literal' ||
     value === 'run_input' ||
     value === 'node_output' ||
+    value === 'node_failure' ||
     value === 'expression' ||
     value === 'structured_input'
   );

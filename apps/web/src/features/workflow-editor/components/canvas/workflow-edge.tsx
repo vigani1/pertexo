@@ -72,6 +72,8 @@ export function WorkflowEdge({
           data?.intoIssue === true
             ? '!stroke-destructive/70 [stroke-dasharray:4_5]'
             : '!stroke-muted-foreground/35',
+          data?.failure === true &&
+            '!stroke-destructive/70 [stroke-dasharray:1_4_7_4]',
           hovered && '!stroke-accent-foreground/75',
           selected === true && '!stroke-primary !stroke-2',
         )}
@@ -106,6 +108,18 @@ export function WorkflowEdge({
           className="pointer-events-none stroke-accent-foreground [stroke-dasharray:1] [stroke-dashoffset:1] [stroke-width:2.4] drop-shadow-[0_0_6px_var(--primary)] motion-safe:animate-[editor-weave_0.55s_var(--ease-unspool)_var(--weave-delay)_forwards] motion-reduce:hidden"
         />
       )}
+      {data?.failure === true ? (
+        <EdgeLabelRenderer>
+          <span
+            className="pointer-events-none absolute rounded bg-card/90 px-1.5 text-[0.7rem] text-destructive"
+            style={{
+              transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY - 14)}px)`,
+            }}
+          >
+            × Failure
+          </span>
+        </EdgeLabelRenderer>
+      ) : null}
       {editable && (hovered || selected === true) ? (
         <EdgeLabelRenderer>
           <button

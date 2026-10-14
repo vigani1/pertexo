@@ -1,3 +1,4 @@
+import { WORKFLOW_FAILURE_FIELDS } from '@pertexo/workflow-model';
 import {
   Field,
   FieldDescription,
@@ -107,9 +108,34 @@ export function MappingSourceEditor({
       );
     case 'node_failure':
       return (
-        <p className="text-sm text-muted-foreground">
-          Failure field: {row.path}
-        </p>
+        <Field data-invalid={error !== undefined}>
+          <FieldLabel htmlFor={controlId}>Safe failure field</FieldLabel>
+          <ChoiceSelect
+            id={controlId}
+            value={row.path}
+            choices={[
+              { value: '$', label: 'All safe fields' },
+              ...WORKFLOW_FAILURE_FIELDS.map((field) => ({
+                value: `$.${field}`,
+                label: field,
+              })),
+            ]}
+            disabled={disabled}
+            invalid={error !== undefined}
+            describedBy={`${controlId}-hint${error === undefined ? '' : ` ${errorId}`}`}
+            onChange={(path) => {
+              if (path !== null) onChange({ ...row, path });
+            }}
+          />
+          <FieldDescription id={`${controlId}-hint`}>
+            Only the selected source’s ID, invocation, attempt, failure kind and
+            safe code are available. Provider messages and credentials are
+            omitted.
+          </FieldDescription>
+          {error === undefined ? null : (
+            <FieldError id={errorId}>{error}</FieldError>
+          )}
+        </Field>
       );
     case 'node_output':
       return (

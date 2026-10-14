@@ -1,3 +1,5 @@
+import { inspectWorkflowFailureRoutes } from '@pertexo/workflow-model';
+import { useNotifications } from '@/components/ui/use-notifications';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { useReactFlow } from '@xyflow/react';
 import type { RefObject } from 'react';
@@ -48,6 +50,7 @@ export function useStepPlacement({
   onPlaced: (nodeId: string) => void;
 }>) {
   const { screenToFlowPosition, getInternalNode } = useReactFlow();
+  const notifications = useNotifications();
 
   function viewportCentre(): Position {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -82,6 +85,14 @@ export function useStepPlacement({
       next = addStepAfter(graph, definition, at, from, ids);
     else next = addDefinitionNode(graph, definition, at, ids.nodeId);
     if (next === null) return;
+    const failureCheck = inspectWorkflowFailureRoutes(next);
+    if (failureCheck.kind === 'invalid') {
+      notifications.error({
+        title: 'Cannot link this step',
+        description: failureCheck.message,
+      });
+      return;
+    }
     state.transact(next);
     onPlaced(ids.nodeId);
   }

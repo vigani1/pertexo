@@ -1,3 +1,4 @@
+import { inspectWorkflowFailureRoutes } from '@pertexo/workflow-model';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
@@ -420,10 +421,11 @@ export function linkWorkflowNodes(
     source: { nodeId: source, port: sourceHandle },
     target: { nodeId: target, port: targetHandle },
   } satisfies WorkflowEdge;
-  return changeLevel(graph, scope, (level) => ({
+  const next = changeLevel(graph, scope, (level) => ({
     ...level,
     edges: [...level.edges, edge],
   }));
+  return inspectWorkflowFailureRoutes(next).kind === 'invalid' ? null : next;
 }
 
 /** One card width and a gap to the right of `node`, on the same row. */

@@ -313,8 +313,18 @@ function useLinkGestures(
   onPortDrop: (from: PortRef, point: Position) => void,
 ) {
   const isValidConnection = useCallback(
-    (link: Connection | Edge) =>
-      canLinkSteps(store.getState().graph, link.source, link.target),
+    (link: Connection | Edge) => {
+      const graph = store.getState().graph;
+      return (
+        canLinkSteps(graph, link.source, link.target) &&
+        linkWorkflowNodes(graph, {
+          source: link.source,
+          target: link.target,
+          sourceHandle: link.sourceHandle ?? null,
+          targetHandle: link.targetHandle ?? null,
+        }) !== null
+      );
+    },
     [store],
   );
   const onConnect = useCallback(

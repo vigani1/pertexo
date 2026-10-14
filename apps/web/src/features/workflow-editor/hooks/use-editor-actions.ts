@@ -1,3 +1,4 @@
+import { failureRemoval } from '../model/failure-routing/commands';
 import { useCallback, useState } from 'react';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { EditorStore } from '../model/state/store';
@@ -70,6 +71,13 @@ export function useEditorActions({
   const notifications = useNotifications();
   const { focusStep, ...navigation } = useInspectorNavigation();
   const [pendingAction, setPendingAction] = useState<EditorAction>();
+  const [pendingRemoval, setPendingRemoval] = useState<
+    Readonly<{
+      action: Extract<EditorAction, { kind: 'delete' }>;
+      generation: number;
+      labels: readonly string[];
+    }>
+  >();
   const [scratchVersion, setScratchVersion] = useState(0);
   const [focusTarget, setFocusTarget] = useState<
     EditorFocusTarget & Readonly<{ requestId: number }>
@@ -133,12 +141,28 @@ export function useEditorActions({
           return;
         }
         case 'delete': {
+          const removal = failureRemoval(state.graph, action);
+          if (removal.kind === 'blocked') {
+            notifications.error({
+              title: 'Cannot remove this failure path',
+              description: removal.reason,
+            });
+            return;
+          }
+          if (removal.kind === 'handler') {
+            setPendingRemoval({
+              action: { kind: 'delete', ...removal.selection },
+              generation: state.generation,
+              labels: removal.labels,
+            });
+            return;
+          }
           removeSelection(action);
           return;
         }
       }
     },
-    [focusStep, removeSelection, store],
+    [focusStep, notifications, removeSelection, store],
   );
 
   const request = useCallback(
@@ -148,6 +172,11 @@ export function useEditorActions({
       if (action.kind === 'select' && isCurrentSelection(action, state)) {
         if (action.focusTarget !== undefined) perform(action);
         return;
+      }
+      if (action.kind === 'delete') {
+        const removal = failureRemoval(state.graph, action);
+        if (removal.kind === 'handler')
+          action = { kind: 'delete', ...removal.selection };
       }
       if (state.inspectorScratch && replacesInspectedStep(action, state))
         setPendingAction(action);
@@ -174,7 +203,35 @@ export function useEditorActions({
     store.getState().setInspectorScratch(false);
   }, [store]);
 
+  const confirmRemoval = useCallback(() => {
+    if (pendingRemoval === undefined || isPaused()) return;
+    const latest = store.getState();
+    if (latest.generation !== pendingRemoval.generation) {
+      const fresh = failureRemoval(latest.graph, pendingRemoval.action);
+      if (fresh.kind === 'handler')
+        setPendingRemoval({
+          action: { kind: 'delete', ...fresh.selection },
+          generation: latest.generation,
+          labels: fresh.labels,
+        });
+      else {
+        setPendingRemoval(undefined);
+        notifications.info({
+          title: 'The draft changed',
+          description: 'Review the current failure path before removing it.',
+        });
+      }
+      return;
+    }
+    setPendingRemoval(undefined);
+    removeSelection(pendingRemoval.action);
+  }, [pendingRemoval, isPaused, store, notifications, removeSelection]);
   return {
+    pendingRemoval,
+    confirmRemoval,
+    cancelRemoval: () => {
+      setPendingRemoval(undefined);
+    },
     request,
     pendingAction,
     discardAndContinue,

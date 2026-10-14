@@ -1,3 +1,6 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import { canOwnFailureLink } from '../../model/failure-routing/eligibility';
+import { failureLink } from '../../model/failure-routing/commands';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { useReactFlow } from '@xyflow/react';
 import { useState } from 'react';
@@ -161,6 +164,33 @@ export function useQuickAdd({
         };
   }
 
+  function openFailure(nodeId: string, returnFocus: HTMLElement) {
+    const graph = store.getState().graph;
+    if (
+      !canOwnFailureLink(graph, nodeId) ||
+      failureLink(graph, nodeId) !== undefined
+    )
+      return;
+    const step = shownStep(graph, nodeId);
+    if (step === undefined) return;
+    const absolute =
+      getInternalNode(nodeId)?.internals.positionAbsolute ?? step.node.position;
+    setRequest({
+      from: { nodeId, port: WORKFLOW_FAILURE_PORT },
+      outputs: [WORKFLOW_FAILURE_PORT],
+      loopId: undefined,
+      position: {
+        ...positionAfter(step.node, step.width),
+        y: step.node.position.y + step.height + 32,
+      },
+      anchor: flowToScreenPosition({
+        x: absolute.x + step.width,
+        y: absolute.y + step.height,
+      }),
+      returnFocus,
+    });
+  }
+
   function openInBody(loopId: string, returnFocus: HTMLElement) {
     const graph = store.getState().graph;
     const loop = findStep(graph, loopId);
@@ -188,6 +218,7 @@ export function useQuickAdd({
     request,
     openAtDrop,
     openAfter,
+    openFailure,
     openInBody,
     choosePort: (port: string) => {
       setRequest(

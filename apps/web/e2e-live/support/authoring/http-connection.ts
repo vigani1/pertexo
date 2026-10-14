@@ -19,12 +19,11 @@ export async function createOwnedHttpConnection(
     controlOrigin,
     'Controlled HTTP owner',
   );
-  const workspaceId = await createEditorWorkspace(
-    page,
-    'Controlled HTTP workspace',
-  );
   // This private control response is transient test material, not VITE configuration.
-  const material = await request.get(`${controlOrigin}/http-credential`);
+  const [workspaceId, material] = await Promise.all([
+    createEditorWorkspace(page, 'Controlled HTTP workspace'),
+    request.get(`${controlOrigin}/http-credential`),
+  ]);
   if (material.status() !== 200)
     throw new Error('Owned credential unavailable');
   const value: unknown = await material.json();

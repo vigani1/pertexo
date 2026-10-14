@@ -34,15 +34,36 @@ const graph = workflowGraphSchema.parse({
       connectionRefs: {},
       label: 'Private source label',
     },
+    {
+      id: 'handler',
+      definition: { key: 'core.set', version: 1 },
+      position: { x: 300, y: 200 },
+      configVersion: 1,
+      config: {},
+      inputMappings: {
+        failure: { kind: 'node_failure', nodeId: 'sender', path: '$' },
+      },
+      connectionRefs: {},
+      label: 'Handle source failure',
+    },
   ],
-  edges: [],
+  edges: [
+    {
+      id: 'failure',
+      source: { nodeId: 'sender', port: '__failure' },
+      target: { nodeId: 'handler', port: 'in' },
+    },
+  ],
   settings: {},
 });
 const manifest = {
   format: 'pertexo.workflow',
   graph,
   requirements: {
-    definitions: [{ key: 'slack.send_message', version: 1, configVersion: 1 }],
+    definitions: [
+      { key: 'slack.send_message', version: 1, configVersion: 1 },
+      { key: 'core.set', version: 1, configVersion: 1 },
+    ],
   },
   connectionSlots: [
     {
@@ -114,6 +135,8 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
   await expect(source).toContainText('Private literal to review');
   await expect(source).toContainText('$lookup(private)');
   await expect(source).toContainText('Private source label');
+  await expect(source).toContainText('__failure');
+  await expect(source).toContainText('node_failure');
   await expect(
     exporting.getByRole('button', { name: 'Download workflow JSON' }),
   ).toBeDisabled();
@@ -204,6 +227,9 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
   });
   await expect(importing.getByLabel('Complete imported graph')).toContainText(
     'Private literal to review',
+  );
+  await expect(importing.getByLabel('Complete imported graph')).toContainText(
+    'node_failure',
   );
   await importing.getByLabel('New workflow name').fill('Independent import');
   await expect(

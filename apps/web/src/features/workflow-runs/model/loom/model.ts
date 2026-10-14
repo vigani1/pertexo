@@ -16,6 +16,7 @@ export type LoomRun = Readonly<{
   id: string;
   workflowId: string;
   workflowName: string;
+  handledFailureCount?: number;
   status: RunStatus;
   tone: StatusTone;
   startMs: number;
@@ -62,6 +63,9 @@ function toLoomRun(run: WorkflowRunReadSummary): LoomRun {
     startMs: Date.parse(run.startedAt ?? run.createdAt),
     endMs: active ? null : Date.parse(run.completedAt ?? run.updatedAt),
     createdAt: run.createdAt,
+    ...(run.handledFailureCount === undefined
+      ? {}
+      : { handledFailureCount: run.handledFailureCount }),
   };
 }
 

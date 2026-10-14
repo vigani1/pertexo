@@ -1,3 +1,4 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   BoxIcon,
@@ -231,6 +232,7 @@ export function describeRetryBehaviour(
  * `case-01`, "Otherwise" for a Switch's `default`; other ports as named.
  */
 export function portName(port: string): string {
+  if (port === WORKFLOW_FAILURE_PORT) return 'Failure';
   const numbered = /^(branch|case)-0*(\d+)$/u.exec(port);
   if (numbered !== null)
     return `${numbered[1] === 'branch' ? 'Branch' : 'Case'} ${numbered[2] ?? ''}`;

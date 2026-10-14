@@ -37,6 +37,7 @@ export function InspectorPanel({
   onTabChange,
   focusTarget,
   renderTest,
+  renderFailureSetup,
   renderRuns,
   actions,
 }: Readonly<{
@@ -50,6 +51,9 @@ export function InspectorPanel({
   onTabChange: (tab: InspectorTab) => void;
   focusTarget:
     (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
+  renderFailureSetup?: (
+    node: Parameters<typeof NodeInspector>[0]['node'],
+  ) => ReactNode;
   renderTest: (nodeId: string, stepSideEffect: string | undefined) => ReactNode;
   /** A step's record in real runs, when the editor can show one. */
   renderRuns?: (nodeId: string, stepLabel: string) => ReactNode;
@@ -67,6 +71,7 @@ export function InspectorPanel({
       <NodeInspector
         key={`${node.id}:${String(scratchVersion)}`}
         node={node}
+        failureSetup={renderFailureSetup?.(node)}
         graph={step.level}
         loopPorts={step.loopPorts}
         definition={definition}

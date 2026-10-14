@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { findDefinition, stepTitle } from '../../model/graph/adapter';
 import type { GraphLevel, WorkflowNode } from '../../model/graph/scopes';
+import { portName } from '@/features/catalog/presentation.public';
 import { ChoiceSelect } from './fields/choice-select';
 
 /**
@@ -73,7 +74,7 @@ export function IncomingLinks({
                 {titles.get(edge.source.nodeId) ?? 'A missing step'}
                 <span className="font-mono text-xs text-subtle-foreground">
                   {' '}
-                  · {edge.source.port} → {edge.target.port}
+                  · {portName(edge.source.port)} → {portName(edge.target.port)}
                 </span>
               </span>
               {editable ? (

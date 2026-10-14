@@ -1,8 +1,9 @@
 # F09 — Workflow failure paths and recovery from a failed step
 
 Status: approved for implementation on 2026-10-13; slice 0 merged in PR #273.
-Dispatcher latency correction merged in PR #274. Slice 2 runtime/API merged in PR #275; slice 3 recovery UI merged green in PR #276. Slice 4 failure routing is in progress.
-Failure routes remain open. The
+Dispatcher latency correction merged in PR #274. Slice 2 runtime/API merged in PR #275; slice 3 recovery UI merged green in PR #276. Slice 4 failure-route runtime merged green in PR #277. Slice 5 authoring and
+handled history are implemented and locally qualified. Merge status and required
+CI evidence are recorded on each slice PR. The
 owner authorized the revised scope and decisions, including explicit manual
 effects acknowledgement, Condition/leaf Stop run and recovery-first delivery.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md). Baseline
@@ -797,13 +798,15 @@ remain evidence gates in the code slices.
 - [x] Slice 2: PR #275 merged green; recovery runtime/API qualified with choices, acknowledgement,
       races/retention and baseline comparison.
 - [x] Slice 3: PR #276 merged green; real HTTP/Condition/Stop run recovery, response loss and reused history qualified.
-- [ ] Slice 4: failure-route runtime independently verified.
-- [ ] Slice 5: authoring/handled history and combined qualification.
-- [ ] Scoped PRs merged and natural postmerge checks inspected.
+- [x] Slice 4: PR #277 merged green; failure-route runtime independently verified.
+- [x] Slice 5: authoring/handled history and combined qualification complete;
+      browser-authored actual HTTP handling and unknown refusal independently verified.
+- Merge gate: each scoped PR rebase-merges only after green required CI; inspect
+  natural postmerge checks and record their outcome on that PR.
 - [ ] Broader loop/join/Call/artifact scope separately planned and approved.
 
 Planning evidence includes source inspection, scenario analysis and the measured
-existing execution path below. Feature implementation and qualification remain
+existing execution path below. Broader deferred implementation and qualification remain
 unchecked until their slices pass. The broader scope remains separately gated.
 
 ## Slice 0 measured execution baseline (2026-10-13)
@@ -1086,7 +1089,7 @@ existing coordinator transaction. Final run outcome continues to own notices;
 step health retains the original failure. Successful handled sources cannot
 explain an unrelated later run-result failure in the run list.
 
-Local evidence (CI/merge and slice 5 authoring remain pending):
+Local evidence (PR #277 merged green; slice 5 authoring remains pending):
 
 - Model 259 and engine 437 unit tests passed, including handler shape/ownership,
   fixed classification codes, separate failure mappings, retry exhaustion,
@@ -1125,3 +1128,63 @@ Raw samples remain outside the repository in
 `/tmp/pertexo-f09-latency-routing{,-main,-repeat}.json`; the temporary control
 checkout was archived after comparison. The fixture's existing measurement
 limitations still apply.
+
+
+## Slice 5 — failure-path editor and handled history
+
+The editor adds a labeled Failure handle to eligible root actions and an
+“On failure” control on Setup. Choose an existing valid handler or add one
+through the normal step picker. The failure link is the only persisted policy.
+Handlers are separate sequential chains and may end in Stop run; Conditions
+remain supported in the ordinary decision tree. Loops, joins, Wait and Call
+workflow remain outside this release. Invalid shapes use the shared model's
+reason rather than creating a different editor rule.
+
+The handler entry's Insert data picker offers the five safe failure fields or
+the whole safe envelope. It never offers the failed source as a successful
+output. Single-step preview explains that these mappings need real run evidence.
+The canvas uses the existing failure tone, a distinct dashed thread and a
+visible Failure label. Existing save/conflict handling, undo/redo and portable
+files preserve the link and mapping. Copies remap source IDs when the source
+and handler are copied together.
+
+Removing a source, failure link, handler entry or internal handler link asks
+before removing its owned chain. This prevents a detached handler from becoming
+an ordinary starting path. The existing undo restores the exact chain and
+mappings. A changed draft requires reviewing the current removal again.
+Removing only a leaf Stop run keeps the remaining valid handler chain.
+
+Successful handled runs read “Finished — N failures handled” in history and run
+detail. The original source retains its failed status and ×, with a separate
+handling disposition; the handler keeps its own ordinary execution story.
+Stopped handlers are not described as handled. A later run failure is not blamed
+on a source whose failure was already handled. The summary count survives
+retired step details without inventing missing execution evidence.
+
+Local qualification uses the existing owned browser/API/PostgreSQL/Redis/worker
+fixture. The browser creates an encrypted HTTP connection, authors
+Webhook → Validate → Set → Condition → HTTP → Stop run, adds a separate Set
+handler with the safe envelope, saves, reloads and publishes. A definite 401
+selects the handler, skips the normal Stop run and succeeds with one handled
+failure; the source stays failed. A 503 after an actual effect produces unknown
+outcome, never runs the handler and exposes no recovery action. Independent
+SQL checks verify the immutable executable, exact five-field failure value,
+matching handler input/Condition scope, source disposition, one selection and
+handling event, no success inbox notice and actual request/effect counts.
+
+Mocked browser cases cover keyboard authoring/removal/undo on desktop and 375 px
+with reduced motion, export/import of failure links and mappings, and truthful
+handled history. Pure command tests also cover convergence refusal, guarded
+handler ownership, copy remapping and unsafe field rejection. Screenshots use
+synthetic fixtures only; live credentials, auth cookies and traces are not review
+artifacts. The existing browser CI job includes the new scenario, with no new
+job, service, role or runtime test hook.
+
+Two pure extractions precede logic in separate commits: guarded editor removal
+from command dispatch, and owned HTTP connection setup shared by browser cases.
+React Doctor's changed-code scan is 100/100 without suppression. Local checks pass: `pnpm check`, 1,126 web units, 1,965 API units,
+720 worker units and all 150 mocked browser cases. The new failure-routing and
+existing signed-webhook/recovery browser scenarios pass separately against the
+owned real stack. Before/after editor and handled-history review images are in
+`docs/media/failure-routing/`. Required PR CI and natural postmerge results are
+recorded in the slice PR; the merge gate above still applies.

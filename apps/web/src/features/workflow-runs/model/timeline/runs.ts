@@ -41,6 +41,8 @@ export type RunTimelineRow = Readonly<{
   statusLabel: string;
   attempts: number;
   reused?: WorkflowNodeReuse;
+  failureHandling?: NonNullable<WorkflowNodeRunSummary['failureHandling']>;
+  handlingInProgress?: true;
   /**
    * The node run's current attempt as the run snapshot has it, counting wait
    * resumes: data recorded per attempt is read again when it changes.
@@ -217,7 +219,22 @@ function rowFor(
     status,
     tone: look.tone,
     statusLabel:
-      invocation.summary?.reused === undefined ? look.label : 'Reused',
+      invocation.summary?.reused !== undefined
+        ? 'Reused'
+        : invocation.summary?.failureHandling === undefined
+          ? look.label
+          : invocation.summary.failureHandling.disposition === 'handled'
+            ? 'Failed · failure handled'
+            : bounds.endMs === null
+              ? 'Failed · handling failure…'
+              : 'Failed · not handled',
+    ...(invocation.summary?.failureHandling?.disposition === 'pending' &&
+    bounds.endMs === null
+      ? { handlingInProgress: true as const }
+      : {}),
+    ...(invocation.summary?.failureHandling === undefined
+      ? {}
+      : { failureHandling: invocation.summary.failureHandling }),
     ...(invocation.summary?.reused === undefined
       ? {}
       : { reused: invocation.summary.reused }),

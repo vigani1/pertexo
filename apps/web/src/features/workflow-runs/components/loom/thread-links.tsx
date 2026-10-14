@@ -66,7 +66,7 @@ export function LoomThreadLinks({
                       <Link
                         to="/w/$workspaceId/runs/$runId"
                         params={{ workspaceId, runId: run.id }}
-                        aria-label={`${run.workflowName}: ${describeRunStatus(run.status).label}, ${formatDateTime(run.createdAt)}`}
+                        aria-label={`${run.workflowName}: ${describeRunStatus(run.status, run.handledFailureCount).label}, ${formatDateTime(run.createdAt)}`}
                         className="group outline-none"
                       />
                     }
@@ -110,7 +110,7 @@ function LoomRunPreview({
   layout: LoomLayout;
   nowMs: number;
 }>) {
-  const look = describeRunStatus(run.status);
+  const look = describeRunStatus(run.status, run.handledFailureCount);
   const durationMs = (run.endMs ?? nowMs) - run.startMs;
   const span = loomRunSpan(layout, model, nowMs, run);
   const alsoHere = neighbors.filter((other) => {

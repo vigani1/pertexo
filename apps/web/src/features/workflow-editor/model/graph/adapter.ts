@@ -1,3 +1,8 @@
+import {
+  inspectWorkflowFailureRoutes,
+  isWorkflowFailureSource,
+  WORKFLOW_FAILURE_PORT,
+} from '@pertexo/workflow-model';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
@@ -68,6 +73,7 @@ interface WorkflowNodeData extends Record<string, unknown> {
   /** The latest check describes the draft on screen. */
   issueCount: number;
   missingConnections: number;
+  failureEligible?: boolean;
   disabled: boolean;
   unsupported: boolean;
   /** The For each body, or null when the step has none yet. */
@@ -79,6 +85,7 @@ interface WorkflowNodeData extends Record<string, unknown> {
 }
 
 interface WorkflowEdgeData extends Record<string, unknown> {
+  failure?: boolean;
   sourceLabel: string;
   targetLabel: string;
   /** The last successful test ran along this link. */
@@ -149,6 +156,7 @@ export function findDefinition(
 }
 
 type Projection = Readonly<{
+  handlerNodeIds: ReadonlySet<string>;
   definitions: ReadonlyMap<string, NodeDefinitionCatalogItem>;
   selectedNodes: ReadonlySet<string>;
   selectedEdges: ReadonlySet<string>;
@@ -170,7 +178,13 @@ export function projectWorkflowGraph(
   definitions: readonly NodeDefinitionCatalogItem[],
   decorations: CanvasDecorations = noCanvasDecorations,
 ): WorkflowFlowProjection {
+  const failureInspection = inspectWorkflowFailureRoutes(graph);
   const projection: Projection = {
+    handlerNodeIds: new Set(
+      failureInspection.kind === 'routed'
+        ? failureInspection.value.handlerOwners.keys()
+        : [],
+    ),
     definitions: new Map(
       definitions.map((definition) => [
         definitionIdentity(
@@ -289,6 +303,10 @@ function projectNode(
       missingConnections: (definition?.connectionRequirements ?? []).filter(
         (requirement) => node.connectionRefs[requirement] === undefined,
       ).length,
+      failureEligible:
+        parent === undefined &&
+        isWorkflowFailureSource(node.definition) &&
+        !projection.handlerNodeIds.has(node.id),
       disabled: node.disabled === true,
       unsupported: definition === undefined,
       loop: loopSummary(node),
@@ -319,6 +337,7 @@ function projectEdge(
     type: 'workflow',
     selected: projection.selectedEdges.has(edge.id),
     data: {
+      failure: edge.source.port === WORKFLOW_FAILURE_PORT,
       sourceLabel: labels.get(edge.source.nodeId) ?? 'a step',
       targetLabel: labels.get(edge.target.nodeId) ?? 'a step',
       flowing: decorations.flowingEdgeIds.has(edge.id),

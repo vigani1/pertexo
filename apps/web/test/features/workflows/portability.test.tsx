@@ -559,6 +559,37 @@ describe('Portable workflow review and import', () => {
     expect(calls).toBe(2);
   });
 
+  it('round-trips a failure link and its safe source mapping through a portable file', async () => {
+    const graph = graphOf([
+      { id: 'source', key: 'core.set', x: 0 },
+      { id: 'handler', key: 'core.set', x: 300 },
+    ]);
+    const handler = graph.nodes[1];
+    if (handler === undefined) throw new Error('Handler fixture missing');
+    handler.inputMappings = {
+      failure: { kind: 'node_failure', nodeId: 'source', path: '$' },
+    };
+    graph.edges = [
+      {
+        id: 'failure',
+        source: { nodeId: 'source', port: '__failure' },
+        target: { nodeId: 'handler', port: 'in' },
+      },
+    ];
+    const portable = workflowPortableManifestSchema.parse({
+      ...manifest,
+      graph,
+      requirements: {
+        definitions: [{ key: 'core.set', version: 1, configVersion: 1 }],
+      },
+    });
+    await expect(
+      readPortableWorkflowFile(
+        new File([JSON.stringify(portable)], 'failure.json'),
+      ),
+    ).resolves.toEqual(portable);
+  });
+
   it('rejects malformed UTF-8 instead of silently replacing a graph literal', async () => {
     const text = JSON.stringify({
       ...manifest,

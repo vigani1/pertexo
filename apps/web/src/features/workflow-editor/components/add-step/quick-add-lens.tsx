@@ -1,3 +1,8 @@
+import {
+  WORKFLOW_FAILURE_PORT,
+  isWorkflowFailureSource,
+  inspectWorkflowFailureRoutes,
+} from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   useDeferredValue,
@@ -75,6 +80,23 @@ function QuickAddContent({
   onChoose: (definition: NodeDefinitionCatalogItem) => void;
 }>) {
   const searchRef = useRef<HTMLInputElement>(null);
+  const graph = useEditorStore((state) => state.graph);
+  const choices = useMemo(() => {
+    const inspection = inspectWorkflowFailureRoutes(graph);
+    const handler =
+      request.from?.port === WORKFLOW_FAILURE_PORT ||
+      (request.from !== undefined &&
+        inspection.kind === 'routed' &&
+        inspection.value.handlerOwners.has(request.from.nodeId));
+    return handler
+      ? definitions.filter(
+          (d) =>
+            isWorkflowFailureSource(d.definition) ||
+            (d.definition.key === 'core.terminate' &&
+              d.definition.version === 1),
+        )
+      : definitions;
+  }, [graph, request.from, definitions]);
   const portId = useId();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -117,7 +139,7 @@ function QuickAddContent({
         query={query}
         onQueryChange={setQuery}
         onPickFirst={() => {
-          const first = firstStepChoice(followingSteps(definitions), query);
+          const first = firstStepChoice(followingSteps(choices), query);
           if (first !== undefined) onChoose(first.definition);
         }}
         inputRef={searchRef}
@@ -125,7 +147,7 @@ function QuickAddContent({
       />
       <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
         <StepChoiceList
-          definitions={followingSteps(definitions)}
+          definitions={followingSteps(choices)}
           query={deferredQuery}
           onPick={(choice) => {
             onChoose(choice.definition);
