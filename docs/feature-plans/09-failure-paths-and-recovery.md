@@ -1228,3 +1228,13 @@ and phone examples are [desktop](../media/unknown-recovery/confirmation-desktop.
 and [phone](../media/unknown-recovery/confirmation-phone.png). React Doctor's
 changed-code scan is 100/100 without suppressions. Full gate and required
 CI/postmerge results belong to the delivery PR; merge is still gated on green CI.
+
+
+CI qualification follow-up: the existing worker recovery integration still
+asserted the superseded blanket unknown refusal. It now verifies the separate
+unknown risk, absent/weaker acknowledgement refusal with no receipt, explicit
+successful suffix execution, risk-specific audit and exact-request replay for
+both dispatched definite and unknown targets. The scripted registry belongs
+only to this existing integration test; the browser journey above separately
+proves actual 5xx and post-dispatch socket loss. No production behavior is
+changed to satisfy that stale assertion.
