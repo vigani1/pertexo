@@ -1,3 +1,4 @@
+import { selectFailureHandler } from '../failure-routing/selection.js';
 import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { recordBranchDisposition } from './scheduling/loops.js';
@@ -232,6 +233,8 @@ function applyInvocationObservation(
     state.eventDrafts.push(
       event(eventName, occurredAt, completed, observation.reasonCode),
     );
+  if (observation.status === 'failed' && observation.failure !== undefined)
+    selectFailureHandler(state, completed, observation.failure, occurredAt);
 }
 
 function applyControlFacts(

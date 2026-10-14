@@ -105,6 +105,12 @@ export function MappingSourceEditor({
           onChange={onChange}
         />
       );
+    case 'node_failure':
+      return (
+        <p className="text-sm text-muted-foreground">
+          Failure field: {row.path}
+        </p>
+      );
     case 'node_output':
       return (
         <StepOutputSource

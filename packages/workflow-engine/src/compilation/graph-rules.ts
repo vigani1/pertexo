@@ -5,6 +5,10 @@ import type {
   PolicyReference,
   NodeCatalog,
 } from '@pertexo/node-sdk';
+import {
+  WORKFLOW_FAILURE_PORT,
+  isWorkflowFailureSource,
+} from '@pertexo/workflow-model';
 import type {
   WorkflowEdge,
   WorkflowGraph,
@@ -59,12 +63,24 @@ export function assertGraphPorts(
       definitionManifest(catalog, node.definition),
     ]),
   );
+  for (const manifest of manifests.values())
+    if (
+      manifest.ports.inputs.includes(WORKFLOW_FAILURE_PORT) ||
+      manifest.ports.outputs.includes(WORKFLOW_FAILURE_PORT)
+    )
+      fail('node catalog cannot declare the engine-owned failure port');
   for (const edge of graph.edges) {
     const source = manifests.get(edge.source.nodeId);
     const target = manifests.get(edge.target.nodeId);
     if (source === undefined || target === undefined)
       fail('workflow edge references an unavailable node');
-    if (!source.ports.outputs.includes(edge.source.port))
+    if (
+      !source.ports.outputs.includes(edge.source.port) &&
+      !(
+        edge.source.port === WORKFLOW_FAILURE_PORT &&
+        isWorkflowFailureSource(source.definition)
+      )
+    )
       fail('workflow edge source port is unavailable');
     const sourceNode = index.nodesById.get(edge.source.nodeId);
     if (

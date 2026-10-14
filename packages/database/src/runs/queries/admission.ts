@@ -69,6 +69,7 @@ export function workflowRunReadQuery(
         recovery_target_node_run_id: workflowRuns.recoveryTargetNodeRunId,
         recovery_target_node_id: workflowRuns.recoveryTargetNodeId,
         recovery_reused_count: workflowRuns.recoveryReusedCount,
+        handled_failure_count: workflowRuns.handledFailureCount,
         recovery_effect_risk: workflowRuns.recoveryEffectRisk,
         recovery_effects_acknowledged: workflowRuns.recoveryEffectsAcknowledged,
       },

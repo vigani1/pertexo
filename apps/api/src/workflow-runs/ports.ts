@@ -42,6 +42,7 @@ export type WorkflowRunReadRecord = WorkflowRunRecord &
     replaySourceRunId?: string | null;
     admissionBlockers?: WorkflowRunAdmissionBlockers;
     recovery?: WorkflowRecoverySummary;
+    handledFailureCount?: number;
   }>;
 
 /** The step that explains an unsuccessful listed run (ADR 050). */
@@ -106,6 +107,11 @@ export type WorkflowNodeRunRecord = Readonly<{
     | 'timed_out'
     | 'outcome_unknown';
   currentAttemptNumber: number;
+  failureHandling?: Readonly<{
+    entryInvocationKey: string;
+    sinkInvocationKey: string;
+    disposition: 'pending' | 'handled';
+  }>;
   reused?: WorkflowNodeReuse;
   startedAt: Date | null;
   completedAt: Date | null;

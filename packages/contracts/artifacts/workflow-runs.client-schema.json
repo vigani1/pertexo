@@ -731,6 +731,11 @@
                 "effectsAcknowledged"
               ],
               "additionalProperties": false
+            },
+            "handledFailureCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 200
             }
           },
           "required": [
@@ -902,6 +907,11 @@
             "effectsAcknowledged"
           ],
           "additionalProperties": false
+        },
+        "handledFailureCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 200
         }
       },
       "required": [
@@ -1063,6 +1073,11 @@
             "effectsAcknowledged"
           ],
           "additionalProperties": false
+        },
+        "handledFailureCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 200
         },
         "workflowName": {
           "anyOf": [
@@ -1276,6 +1291,11 @@
             "effectsAcknowledged"
           ],
           "additionalProperties": false
+        },
+        "handledFailureCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 200
         },
         "workflowName": {
           "anyOf": [
@@ -1555,6 +1575,11 @@
                   "effectsAcknowledged"
                 ],
                 "additionalProperties": false
+              },
+              "handledFailureCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 200
               },
               "workflowName": {
                 "anyOf": [
@@ -2020,6 +2045,34 @@
           ],
           "additionalProperties": false
         },
+        "failureHandling": {
+          "type": "object",
+          "properties": {
+            "entryInvocationKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "sinkInvocationKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "disposition": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "handled"
+              ]
+            }
+          },
+          "required": [
+            "entryInvocationKey",
+            "sinkInvocationKey",
+            "disposition"
+          ],
+          "additionalProperties": false
+        },
         "startedAt": {
           "anyOf": [
             {
@@ -2229,6 +2282,11 @@
               ],
               "additionalProperties": false
             },
+            "handledFailureCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 200
+            },
             "workflowName": {
               "anyOf": [
                 {
@@ -2362,6 +2420,34 @@
                   "sourceRunId",
                   "sourceNodeRunId",
                   "sourceCompletedAt"
+                ],
+                "additionalProperties": false
+              },
+              "failureHandling": {
+                "type": "object",
+                "properties": {
+                  "entryInvocationKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "sinkInvocationKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "disposition": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "handled"
+                    ]
+                  }
+                },
+                "required": [
+                  "entryInvocationKey",
+                  "sinkInvocationKey",
+                  "disposition"
                 ],
                 "additionalProperties": false
               },
@@ -2712,6 +2798,11 @@
                 "effectsAcknowledged"
               ],
               "additionalProperties": false
+            },
+            "handledFailureCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 200
             }
           },
           "required": [
@@ -2768,6 +2859,8 @@
             "node.retry_scheduled",
             "node.succeeded",
             "node.reused",
+            "node.failure_routed",
+            "node.failure_handled",
             "node.failed",
             "node.skipped",
             "node.canceled",

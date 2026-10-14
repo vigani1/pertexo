@@ -23,6 +23,11 @@ export type ValueSource =
       readonly path: string;
     }
   | {
+      readonly kind: 'node_failure';
+      readonly nodeId: NodeId;
+      readonly path: string;
+    }
+  | {
       readonly kind: 'expression';
       readonly language: 'jsonata';
       readonly expression: string;
@@ -102,6 +107,13 @@ const valueSourceSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('node_output'),
+      nodeId: identifierSchema,
+      path: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('node_failure'),
       nodeId: identifierSchema,
       path: z.string(),
     })

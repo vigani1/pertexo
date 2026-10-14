@@ -8,6 +8,7 @@ import {
   parseWorkflowGraphDraft,
   resolveValueSource,
   type ValueResolution,
+  type WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
@@ -30,6 +31,7 @@ import {
 import { executableNodes } from './compilation/graph.js';
 import {
   assertAuthenticExecutableIdentity,
+  executableFailureRoutes,
   type CompiledWorkflowExecutable,
   type WorkflowExecutableNode,
   type WorkflowExecutableGraph,
@@ -127,7 +129,11 @@ export function projectSchedulerState(
 function schedulerState(
   executable: CompiledWorkflowExecutable,
 ): SchedulerState {
-  return projectSchedulerState(executable.envelope.graph);
+  const routes = executableFailureRoutes(executable);
+  return {
+    ...projectSchedulerState(executable.envelope.graph),
+    ...(routes.length === 0 ? {} : { failureRoutes: routes }),
+  };
 }
 
 export async function advanceWorkflow(
@@ -327,6 +333,7 @@ async function resolveMappedNodeInput(
   signal: AbortSignal,
   expressionEvaluator?: ExpressionEvaluator,
   structuredInputs?: Readonly<Record<string, JsonValue>>,
+  sourceFailure?: WorkflowNodeFailureValue,
 ): Promise<JsonValue> {
   if (isTriggerSourceDefinition(node.definition)) return runInput;
   const mapped = Object.create(null) as Record<string, JsonValue>;
@@ -343,6 +350,14 @@ async function resolveMappedNodeInput(
         'attempt_invalid',
         'mapping upstream output is incomplete',
       );
+    if (
+      source.kind === 'node_failure' &&
+      sourceFailure?.nodeId !== source.nodeId
+    )
+      operationError(
+        'attempt_invalid',
+        'mapping selected source failure is incomplete',
+      );
     let resolution: ValueResolution;
     try {
       resolution = await resolveValueSource(
@@ -350,6 +365,9 @@ async function resolveMappedNodeInput(
         {
           runInput,
           nodeOutputs: completedOutputs,
+          ...(sourceFailure === undefined
+            ? {}
+            : { nodeFailure: sourceFailure }),
           ...(structuredInputs === undefined ? {} : { structuredInputs }),
         },
         expressionEvaluator,
@@ -433,8 +451,14 @@ export async function executeNodeAttempt(
     'attempt_invalid',
   );
   assertNotAborted(input.signal);
-  const { node, runInput, completedOutputs, directUpstream, structuredInputs } =
-    prepareNodeAttemptInput(input);
+  const {
+    node,
+    runInput,
+    completedOutputs,
+    directUpstream,
+    structuredInputs,
+    sourceFailure,
+  } = prepareNodeAttemptInput(input);
   const resolvedInput = await resolveMappedNodeInput(
     isCoreMergeDefinition(node.definition)
       ? { ...node, inputMappings: {} }
@@ -445,6 +469,7 @@ export async function executeNodeAttempt(
     input.signal,
     input.expressionEvaluator,
     structuredInputs,
+    sourceFailure,
   );
   let executionInput = resolvedInput;
   if (isCoreMergeDefinition(node.definition)) {

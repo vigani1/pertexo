@@ -1,4 +1,8 @@
-import type { JsonValue, WorkflowCallPin } from '@pertexo/workflow-model';
+import type {
+  JsonValue,
+  WorkflowCallPin,
+  WorkflowNodeFailureValue,
+} from '@pertexo/workflow-model';
 
 export const RUN_STATUSES = [
   'queued',
@@ -56,6 +60,10 @@ export interface InvocationState {
   readonly resumeAt?: string;
   readonly waitKind?: WaitKind;
   readonly output?: OutputReference;
+  readonly failureHandling?: Readonly<{
+    sinkInvocationKey: string;
+    disposition: 'pending' | 'handled';
+  }>;
   readonly branchPath?: readonly BranchScopePart[];
   readonly iterationPath?: readonly IterationScopePart[];
 }
@@ -100,6 +108,7 @@ export type WorkflowObservation =
       >;
       readonly output?: OutputReference;
       readonly reasonCode?: string;
+      readonly failure?: WorkflowNodeFailureValue;
       readonly coordinatorDerived?: boolean;
     }
   | {
@@ -245,6 +254,8 @@ export type EngineEventName =
   | 'node.waiting'
   | 'node.retry_scheduled'
   | 'node.succeeded'
+  | 'node.failure_routed'
+  | 'node.failure_handled'
   | 'node.failed'
   | 'node.skipped'
   | 'node.canceled'
@@ -306,6 +317,11 @@ export interface WorkflowCallOutcome {
 }
 
 export interface WorkflowTransitionPlan {
+  /** Mandatory selected source evidence, persisted atomically outside the checkpoint. */
+  readonly failureValues?: readonly Readonly<{
+    value: WorkflowNodeFailureValue;
+    entryInvocationKey: string;
+  }>[];
   readonly callIntents?: readonly WorkflowCallIntent[];
   /** A validated callable result for ordinary run storage, never checkpoint data. */
   readonly runResult?: JsonValue;

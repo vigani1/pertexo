@@ -50,6 +50,9 @@ const nodeRowSchema = z
     completed_at: z.coerce.date().nullable(),
     resume_at: z.coerce.date().nullable(),
     safe_error_code: z.string().min(1).max(128).nullable(),
+    failure_handler_entry_key: z.string().min(1).max(256).nullable(),
+    failure_handler_sink_key: z.string().min(1).max(256).nullable(),
+    failure_handling: z.enum(['pending', 'handled']).nullable(),
     reused_source_run_id: z.uuid().nullable(),
     reused_source_node_run_id: z.uuid().nullable(),
     reused_source_completed_at: z.coerce.date().nullable(),
@@ -62,6 +65,11 @@ export type WorkflowNodeRunRecord = Readonly<{
   invocationKey: string;
   status: z.output<typeof nodeStatusSchema>;
   currentAttemptNumber: number;
+  failureHandling?: Readonly<{
+    entryInvocationKey: string;
+    sinkInvocationKey: string;
+    disposition: 'pending' | 'handled';
+  }>;
   reused?: Readonly<{
     sourceRunId: string;
     sourceNodeRunId: string;
@@ -117,6 +125,7 @@ async function readRunModel(
       completed_at,
       coalesce(retry_due_at, resume_at) as resume_at,
       safe_error_code,
+      failure_handler_entry_key, failure_handler_sink_key, failure_handling,
       reused_source_run_id, reused_source_node_run_id, reused_source_completed_at
     from app.node_runs
     where workspace_id = ${transaction.workspaceId}
@@ -144,6 +153,17 @@ function toNodeRecord(value: unknown): WorkflowNodeRunRecord {
     completedAt: row.completed_at,
     resumeAt: row.resume_at,
     safeErrorCode: row.safe_error_code,
+    ...(row.failure_handler_entry_key === null ||
+    row.failure_handler_sink_key === null ||
+    row.failure_handling === null
+      ? {}
+      : {
+          failureHandling: {
+            entryInvocationKey: row.failure_handler_entry_key,
+            sinkInvocationKey: row.failure_handler_sink_key,
+            disposition: row.failure_handling,
+          },
+        }),
     ...(row.reused_source_run_id === null ||
     row.reused_source_node_run_id === null ||
     row.reused_source_completed_at === null

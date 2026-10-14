@@ -25,6 +25,8 @@ export const RUN_EVENT_TYPE = {
   nodeRetryScheduled: 'node.retry_scheduled',
   nodeSucceeded: 'node.succeeded',
   nodeFailed: 'node.failed',
+  nodeFailureRouted: 'node.failure_routed',
+  nodeFailureHandled: 'node.failure_handled',
   nodeSkipped: 'node.skipped',
   nodeCanceled: 'node.canceled',
   nodeTimedOut: 'node.timed_out',

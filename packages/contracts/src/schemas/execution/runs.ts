@@ -127,6 +127,7 @@ export const workflowRunSummarySchema = z
     deadlineAt: z.iso.datetime({ offset: true }).nullable(),
     cancelRequestedAt: z.iso.datetime({ offset: true }).nullable(),
     recovery: workflowRecoverySummarySchema.optional(),
+    handledFailureCount: z.number().int().min(0).max(200).optional(),
   })
   .strict();
 
@@ -328,6 +329,14 @@ export const workflowNodeRunSummarySchema = z
     status: workflowNodeRunStatusSchema,
     currentAttemptNumber: z.number().int().nonnegative(),
     reused: workflowNodeReuseSchema.optional(),
+    failureHandling: z
+      .object({
+        entryInvocationKey: z.string().min(1).max(256),
+        sinkInvocationKey: z.string().min(1).max(256),
+        disposition: z.enum(['pending', 'handled']),
+      })
+      .strict()
+      .optional(),
     startedAt: z.iso.datetime({ offset: true }).nullable(),
     completedAt: z.iso.datetime({ offset: true }).nullable(),
     resumeAt: z.iso.datetime({ offset: true }).nullable(),
@@ -430,6 +439,8 @@ const workflowRunEventTypeSchema = z.enum([
   'node.retry_scheduled',
   'node.succeeded',
   'node.reused',
+  'node.failure_routed',
+  'node.failure_handled',
   'node.failed',
   'node.skipped',
   'node.canceled',

@@ -42,6 +42,7 @@ export interface ExecuteNodeAttemptInput {
   readonly runInput: unknown;
   readonly completedNodeOutputs: unknown;
   readonly coordinatorInput?: unknown;
+  readonly sourceFailure?: unknown;
   readonly registry: NodeExecutionRegistry;
   readonly signal: AbortSignal;
   readonly runtime?: NodeExecutionRuntime;

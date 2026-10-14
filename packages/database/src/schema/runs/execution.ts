@@ -32,6 +32,7 @@ export const workflowRuns = appSchema.table(
     workflowVersionId: uuid('workflow_version_id').notNull(),
     replaySourceRunId: uuid('replay_source_run_id'),
     replayCommandId: uuid('replay_command_id'),
+    handledFailureCount: integer('handled_failure_count').notNull().default(0),
     recoveryTargetNodeRunId: uuid('recovery_target_node_run_id'),
     recoveryTargetNodeId: varchar('recovery_target_node_id', { length: 128 }),
     recoveryReusedCount: integer('recovery_reused_count'),
@@ -93,6 +94,10 @@ export const workflowRuns = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'workflow_runs_handled_failure_count_valid',
+      sql`handled_failure_count >= 0 AND handled_failure_count <= 200`,
+    ),
     check(
       'workflow_runs_admission_ticket_positive',
       sql`(admission_ticket > 0)`,
@@ -263,7 +268,7 @@ export const runEvents = appSchema.table(
     check('run_events_sequence_positive', sql`(sequence > 0)`),
     check(
       'run_events_type_catalog',
-      sql`((type)::text = ANY (ARRAY[('run.queued'::character varying)::text, ('run.started'::character varying)::text, ('run.waiting'::character varying)::text, ('run.cancel_requested'::character varying)::text, ('run.succeeded'::character varying)::text, ('run.failed'::character varying)::text, ('run.canceled'::character varying)::text, ('run.timed_out'::character varying)::text, ('run.outcome_unknown'::character varying)::text, ('node.ready'::character varying)::text, ('node.reused'::character varying)::text, ('node.started'::character varying)::text, ('node.progress'::character varying)::text, ('node.waiting'::character varying)::text, ('node.retry_scheduled'::character varying)::text, ('node.succeeded'::character varying)::text, ('node.failed'::character varying)::text, ('node.skipped'::character varying)::text, ('node.canceled'::character varying)::text, ('node.timed_out'::character varying)::text, ('node.outcome_unknown'::character varying)::text]))`,
+      sql`((type)::text = ANY (ARRAY[('run.queued'::character varying)::text, ('run.started'::character varying)::text, ('run.waiting'::character varying)::text, ('run.cancel_requested'::character varying)::text, ('run.succeeded'::character varying)::text, ('run.failed'::character varying)::text, ('run.canceled'::character varying)::text, ('run.timed_out'::character varying)::text, ('run.outcome_unknown'::character varying)::text, ('node.ready'::character varying)::text, ('node.reused'::character varying)::text, ('node.failure_routed'::character varying)::text, ('node.failure_handled'::character varying)::text, ('node.started'::character varying)::text, ('node.progress'::character varying)::text, ('node.waiting'::character varying)::text, ('node.retry_scheduled'::character varying)::text, ('node.succeeded'::character varying)::text, ('node.failed'::character varying)::text, ('node.skipped'::character varying)::text, ('node.canceled'::character varying)::text, ('node.timed_out'::character varying)::text, ('node.outcome_unknown'::character varying)::text]))`,
     ),
     primaryKey({
       name: 'run_events_pkey',
@@ -355,6 +360,12 @@ export const nodeRuns = appSchema.table(
     }),
     inputRef: jsonb('input_ref'),
     outputRef: jsonb('output_ref'),
+    failureRef: jsonb('failure_ref'),
+    failureHandlerEntryKey: varchar('failure_handler_entry_key', {
+      length: 256,
+    }),
+    failureHandlerSinkKey: varchar('failure_handler_sink_key', { length: 256 }),
+    failureHandling: varchar('failure_handling', { length: 16 }),
     currentAttemptId: uuid('current_attempt_id'),
     currentAttemptNumber: integer('current_attempt_number'),
     // No source-node FK: copied values outlive independently retired source details.
@@ -389,6 +400,14 @@ export const nodeRuns = appSchema.table(
     }),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'node_runs_failure_handling_complete',
+      sql`(((failure_ref IS NULL) AND (failure_handler_entry_key IS NULL) AND (failure_handler_sink_key IS NULL) AND (failure_handling IS NULL)) OR ((failure_ref IS NOT NULL) AND (failure_handler_entry_key IS NOT NULL) AND (failure_handler_sink_key IS NOT NULL) AND (failure_handling IN ('pending', 'handled')) AND (status = 'failed') AND (current_attempt_id IS NOT NULL) AND (current_attempt_number > 0))) IS TRUE`,
+    ),
+    check(
+      'node_runs_failure_ref_bounded',
+      sql`failure_ref IS NULL OR octet_length(failure_ref::text) <= 4096`,
+    ),
     check(
       'node_runs_attempt_pointer_complete',
       sql`(((current_attempt_id IS NULL) AND (current_attempt_number IS NULL)) OR ((current_attempt_id IS NOT NULL) AND (current_attempt_number IS NOT NULL) AND (current_attempt_number > 0)))`,

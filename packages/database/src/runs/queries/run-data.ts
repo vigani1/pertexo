@@ -202,6 +202,7 @@ export async function readWorkflowRunFailedSteps(
     where node.workspace_id = ${transaction.workspaceId}
       and node.workflow_run_id = any(${ids}::uuid[])
       and node.status in ('failed', 'timed_out', 'outcome_unknown')
+      and node.failure_handling is distinct from 'handled'
     order by
       node.workflow_run_id,
       node.completed_at desc nulls last,

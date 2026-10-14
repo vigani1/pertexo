@@ -1,5 +1,6 @@
 import { isRecord, workflowControlOutputKind } from '@pertexo/workflow-model';
 
+import type { ExecutionFailureRoute } from '../../compilation/foundation.js';
 import { invocationKey } from './loops.js';
 import { WorkflowEngineError } from '../../errors.js';
 import { indexSchedulerGraph, type SchedulerGraphIndexes } from './indexes.js';
@@ -16,6 +17,7 @@ import { isCoreParallelDefinition } from '../../core-definition-identities.js';
 
 /** Private execution projection derived only from a verified executable. */
 export interface SchedulerState {
+  readonly failureRoutes?: readonly ExecutionFailureRoute[];
   readonly deriveReadiness: boolean;
   readonly nodes: readonly {
     readonly id: string;
@@ -137,6 +139,7 @@ interface SchedulerIndexes extends SchedulerGraphIndexes {
   readonly invocationByKey: ReadonlyMap<string, InvocationState>;
   readonly invocationByNode: ReadonlyMap<string, InvocationState>;
   readonly localSelections: readonly BranchSelection[];
+  readonly failureEntries: ReadonlyMap<string, string>;
 }
 
 interface SchedulerMarks {
@@ -226,6 +229,12 @@ function indexInvocations(input: DeriveReadyNodesInput): SchedulerIndexes {
     invocationByKey,
     invocationByNode,
     localSelections,
+    failureEntries: new Map(
+      (input.graph.failureRoutes ?? []).map((route) => [
+        route.entryNodeId,
+        route.sourceNodeId,
+      ]),
+    ),
     ...indexSchedulerGraph(input.graph, nodeById),
   };
 }
@@ -363,6 +372,42 @@ function markParallelInvocation(
   );
 }
 
+function markFailureRoutes(
+  input: DeriveReadyNodesInput,
+  indexes: SchedulerIndexes,
+  marks: SchedulerMarks,
+): void {
+  for (const route of input.graph.failureRoutes ?? []) {
+    const source = indexes.invocationByNode.get(route.sourceNodeId);
+    if (source?.failureHandling !== undefined) {
+      for (const nodeId of route.normalSuffixNodeIds) {
+        marks.skipped.add(nodeId);
+        rememberBranchPath(marks, nodeId, source.branchPath ?? []);
+      }
+      for (const nodeId of route.handlerNodeIds) {
+        marks.skipped.delete(nodeId);
+        marks.blocked.delete(nodeId);
+        rememberBranchPath(marks, nodeId, source.branchPath ?? []);
+      }
+    } else if (
+      source !== undefined &&
+      [
+        'succeeded',
+        'skipped',
+        'failed',
+        'canceled',
+        'timed_out',
+        'outcome_unknown',
+      ].includes(source.status)
+    ) {
+      for (const nodeId of route.handlerNodeIds) {
+        marks.skipped.add(nodeId);
+        rememberBranchPath(marks, nodeId, source.branchPath ?? []);
+      }
+    } else for (const nodeId of route.handlerNodeIds) marks.blocked.add(nodeId);
+  }
+}
+
 function isNodeReady(
   node: SchedulerNode,
   indexes: SchedulerIndexes,
@@ -379,7 +424,12 @@ function isNodeReady(
     return false;
   return (indexes.predecessors.get(node.id) ?? []).every((predecessor) => {
     const state = indexes.invocationByNode.get(predecessor)?.status;
-    return state === 'succeeded' || state === 'skipped';
+    const failureEntry =
+      indexes.nodeById.get(node.id) !== undefined &&
+      indexes.invocationByNode.get(predecessor)?.failureHandling !==
+        undefined &&
+      indexes.failureEntries.get(node.id) === predecessor;
+    return failureEntry || state === 'succeeded' || state === 'skipped';
   });
 }
 
@@ -417,6 +467,8 @@ export function deriveReadyNodes(
     branchPathByNode: new Map(),
   };
   markConditionalBranches(input, indexes, marks);
+  if (input.graph.failureRoutes !== undefined)
+    markFailureRoutes(input, indexes, marks);
   for (const parallel of input.graph.nodes.filter(
     (node) => configuredParallelOutputPorts(node) !== undefined,
   )) {

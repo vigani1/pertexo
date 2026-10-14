@@ -30,6 +30,7 @@ export const GRAPH_ISSUE_CODES = [
   'loop_iteration_limit',
   'invalid_structured_body',
   'invalid_mapping',
+  'invalid_failure_route',
   'invalid_expression',
   'expansion_limit',
   'graph_limit',

@@ -258,6 +258,9 @@ export function buildWorkflowTransitionPlan(
     events,
     nodeRunAdmissions,
     attempts,
+    ...(state.failureValues.length === 0
+      ? {}
+      : { failureValues: state.failureValues }),
     ...(pruned.prunedInvocations.length === 0
       ? {}
       : { prunedInvocations: pruned.prunedInvocations }),

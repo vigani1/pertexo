@@ -47,12 +47,21 @@ export function describeMappingSource(
         tone: 'reference',
         label: pathLabel(loopPortWords[row.port] ?? row.port, row.path),
       };
+    case 'node_failure':
     case 'node_output': {
       if (row.nodeId === '') return { tone: 'missing', label: 'Choose a step' };
       const source = graph.nodes.find((node) => node.id === row.nodeId);
       return source === undefined
         ? { tone: 'missing', label: 'A missing step' }
-        : { tone: 'reference', label: pathLabel(stepTitle(source), row.path) };
+        : {
+            tone: 'reference',
+            label: pathLabel(
+              row.kind === 'node_failure'
+                ? `${stepTitle(source)} failure`
+                : stepTitle(source),
+              row.path,
+            ),
+          };
     }
   }
 }

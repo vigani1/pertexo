@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto';
 
-import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
+import {
+  canonicalJson,
+  WORKFLOW_FAILURE_PORT,
+  workflowNodeFailureValueSchema,
+  type WorkflowNodeFailureValue,
+  type JsonValue,
+} from '@pertexo/workflow-model';
 
+import { executableFailureRoutes } from '../compilation/foundation.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import type {
   WorkflowExecutableGraph,
@@ -17,6 +24,7 @@ export type PreparedNodeAttemptInput = Readonly<{
   directUpstream: ReadonlySet<string>;
   node: WorkflowExecutableNode;
   runInput: JsonValue;
+  sourceFailure?: WorkflowNodeFailureValue;
   structuredInputs?: Readonly<Record<string, JsonValue>>;
 }>;
 
@@ -221,9 +229,36 @@ export function prepareNodeAttemptInput(
   }
   const directUpstream = new Set(
     containingGraph.edges
-      .filter(({ target }) => target.nodeId === node.id)
+      .filter(
+        ({ source, target }) =>
+          target.nodeId === node.id && source.port !== WORKFLOW_FAILURE_PORT,
+      )
       .map(({ source }) => source.nodeId),
   );
+  const route = executableFailureRoutes(input.executable).find(
+    ({ entryNodeId }) => entryNodeId === node.id,
+  );
+  let sourceFailure: WorkflowNodeFailureValue | undefined;
+  if (route !== undefined) {
+    const parsed = workflowNodeFailureValueSchema.safeParse(
+      input.sourceFailure,
+    );
+    if (
+      !parsed.success ||
+      parsed.data.nodeId !== route.sourceNodeId ||
+      parsed.data.invocationKey !==
+        expectedInvocationKey(input, route.sourceNodeId)
+    )
+      operationError(
+        'attempt_invalid',
+        'selected source failure evidence is missing or mismatched',
+      );
+    sourceFailure = parsed.data;
+  } else if (input.sourceFailure !== undefined)
+    operationError(
+      'attempt_invalid',
+      'failure evidence belongs only to a handler entry',
+    );
   const structuredInputs = parseStructuredInputs(input);
   return {
     node,
@@ -237,5 +272,6 @@ export function prepareNodeAttemptInput(
       directUpstream,
     ),
     ...(structuredInputs === undefined ? {} : { structuredInputs }),
+    ...(sourceFailure === undefined ? {} : { sourceFailure }),
   };
 }
