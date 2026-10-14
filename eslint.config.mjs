@@ -1,3 +1,6 @@
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
@@ -43,6 +46,35 @@ const workflowModelLayer = {
     'The workflow model is a lower-level deterministic contract and cannot depend on the engine or server infrastructure.',
 };
 
+// Each lint process uses its owner's program instead of opening unrelated apps.
+const workspaceTypeProjects = ['apps', 'packages'].flatMap((area) =>
+  readdirSync(join(import.meta.dirname, area), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      const workspace = `${area}/${entry.name}`;
+      if (!existsSync(join(import.meta.dirname, workspace, 'tsconfig.json')))
+        return [];
+      return [
+        {
+          files: [`${workspace}/**/*.{ts,tsx,mts,cts}`],
+          languageOptions: {
+            parserOptions: { project: [`${workspace}/tsconfig.json`] },
+          },
+        },
+        {
+          files: [
+            `${workspace}/**/scripts/**/*.ts`,
+            `${workspace}/**/test/**/*.ts`,
+            `${workspace}/**/vitest*.config.ts`,
+          ],
+          languageOptions: {
+            parserOptions: { project: [`${workspace}/tsconfig.test.json`] },
+          },
+        },
+      ];
+    }),
+);
+
 export default tseslint.config(
   {
     ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**'],
@@ -86,6 +118,7 @@ export default tseslint.config(
       },
     },
   },
+  ...workspaceTypeProjects,
   {
     files: ['packages/**/*.ts'],
     rules: {
