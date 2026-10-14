@@ -182,6 +182,17 @@ export function createStubIdentityRuntime(
       authorization,
       sessions,
     },
+    automation: {
+      enabled: false,
+      clock: { now: () => new Date() },
+      database: {
+        create: notUsed,
+        list: notUsed,
+        revoke: notUsed,
+        authenticate: notUsed,
+        close: () => Promise.resolve(),
+      },
+    },
     betterAuth: {} as BetterAuthRuntime,
     close: () => Promise.resolve(),
   });

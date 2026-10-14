@@ -15,3 +15,4 @@ export type {
   AuthenticatedSession,
   SignInEvidence,
 } from './ports.js';
+export { assertRecentSignIn } from './recent-sign-in.js';

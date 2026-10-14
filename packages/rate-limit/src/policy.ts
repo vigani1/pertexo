@@ -1,5 +1,6 @@
 export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'identity_start',
+  'automation_authentication',
   'identity_callback',
   'authenticated_read',
   'actor_mutation',
@@ -17,7 +18,7 @@ export type RateLimitEndpointClass =
   (typeof RATE_LIMIT_ENDPOINT_CLASSES)[number];
 export type RateLimitFailureMode = 'open' | 'closed';
 export type RateLimitDimensionKind =
-  'client_address' | 'origin' | 'actor' | 'workspace' | 'connection';
+  'client_address' | 'origin' | 'actor' | 'workspace' | 'connection' | 'token';
 
 export type RateLimitSubject = Readonly<{
   clientAddress?: string;
@@ -25,6 +26,7 @@ export type RateLimitSubject = Readonly<{
   actorId?: string;
   workspaceId?: string;
   connectionId?: string;
+  tokenId?: string;
 }>;
 
 export type RateLimitDimension = Readonly<{
@@ -53,6 +55,12 @@ type EndpointRule = Readonly<{
 }>;
 
 const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
+  automation_authentication: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'client_address', subject: 'clientAddress', limit: 600 },
+    ],
+  },
   identity_start: {
     failureMode: 'closed',
     dimensions: [
@@ -159,6 +167,7 @@ const SUBJECT_LABELS: Readonly<Record<keyof RateLimitSubject, string>> = {
   actorId: 'actor',
   workspaceId: 'workspace',
   connectionId: 'connection',
+  tokenId: 'token',
 };
 
 function requiredSubject(
@@ -178,16 +187,26 @@ export class AbuseRateLimitPolicy {
     subject: RateLimitSubject,
   ): RateLimitDecision {
     const rule = RULES[endpointClass];
+    const dimensions: RateLimitDimension[] = rule.dimensions.flatMap(
+      ({ kind, subject: key, limit, optional }) => {
+        if (optional === true && subject[key] === undefined) return [];
+        return [{ kind, identifier: requiredSubject(subject, key), limit }];
+      },
+    );
+    const actorBudget = dimensions.find(
+      (dimension) => dimension.kind === 'actor',
+    );
+    if (subject.tokenId !== undefined && actorBudget !== undefined)
+      dimensions.push({
+        kind: 'token',
+        identifier: requiredSubject(subject, 'tokenId'),
+        limit: actorBudget.limit,
+      });
     return {
       endpointClass,
       failureMode: rule.failureMode,
       windowSeconds: 60,
-      dimensions: rule.dimensions.flatMap(
-        ({ kind, subject: key, limit, optional }) => {
-          if (optional === true && subject[key] === undefined) return [];
-          return [{ kind, identifier: requiredSubject(subject, key), limit }];
-        },
-      ),
+      dimensions,
     };
   }
 }

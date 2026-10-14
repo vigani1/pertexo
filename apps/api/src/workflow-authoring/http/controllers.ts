@@ -1,3 +1,4 @@
+import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import {
   Body,
   Controller,
@@ -90,7 +91,7 @@ export class WorkflowAuthoringController {
   ) {}
 
   @Get()
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
   public async list(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -155,7 +156,7 @@ export class WorkflowAuthoringController {
   }
 
   @Get(':workflowId')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
   public async get(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -191,7 +192,7 @@ export class WorkflowAuthoringController {
   }
 
   @Get(':workflowId/draft')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
   public async draft(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -264,7 +265,7 @@ export class WorkflowAuthoringController {
   @RateLimit('workflow_compile')
   @HttpCode(200)
   @UseGuards(
-    SessionAuthenticationGuard,
+    AutomationAuthenticationGuard,
     WorkflowPublishGuard,
     CsrfProtectionGuard,
   )
@@ -434,7 +435,7 @@ export class WorkflowAuthoringController {
   }
 
   @Get(':workflowId/versions')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
   public async versions(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,

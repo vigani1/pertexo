@@ -9,7 +9,8 @@ import {
 } from '../../schemas/workflows/portability.js';
 import {
   authenticatedComponents,
-  csrfHeaderParameter,
+  automationCsrfHeaderParameter,
+  automationSecurity,
   idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
@@ -61,7 +62,7 @@ export const workflowPortabilityClientContract = Object.freeze({
   schemas: contractSchemas('client'),
 });
 const workspace = uuidPathParameter('workspaceId', 'Workspace identifier');
-const csrf = csrfHeaderParameter();
+const csrf = automationCsrfHeaderParameter();
 const noStore = {
   'Cache-Control': {
     required: true,
@@ -87,7 +88,7 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
         operationId: 'exportWorkflow',
         description:
           'Export only the explicitly reviewed saved source. Draft source additionally requires a strong If-Match. No credential bytes or automatic redaction.',
-        security: [{ cookieSession: [] }],
+        security: automationSecurity,
         parameters: [
           workspace,
           uuidPathParameter('workflowId', 'Workflow identifier'),
@@ -129,7 +130,7 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
         operationId: 'previewWorkflowImport',
         description:
           'Unpersisted compatibility and explicit destination binding preview. Raw request ceiling is 2097152 UTF-8 bytes; duplicate keys and excessive depth are rejected before schema parsing.',
-        security: [{ cookieSession: [] }],
+        security: automationSecurity,
         parameters: [workspace, csrf],
         requestBody: jsonRequest('WorkflowImportPreviewRequest'),
         responses: {
@@ -150,7 +151,7 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
         operationId: 'importWorkflow',
         description:
           'Atomically create an unpublished revision-1 draft. Exact authorized retries discover the original identifier, including after writer rollback. Never publishes or runs.',
-        security: [{ cookieSession: [] }],
+        security: automationSecurity,
         parameters: [workspace, csrf, idempotencyHeaderParameter()],
         requestBody: jsonRequest('WorkflowImportRequest'),
         responses: {
@@ -167,17 +168,25 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
       },
     },
   },
-  components: authenticatedComponents(contractSchemas('openapi'), {
-    BadRequest: problemResponse('Invalid request'),
-    Unauthenticated: problemResponse('Authentication required'),
-    Forbidden: problemResponse('Forbidden'),
-    NotFound: problemResponse('Resource not found'),
-    Conflict: problemResponse('Source, compatibility or idempotency conflict'),
-    UnprocessableEntity: problemResponse('Unsafe or incompatible workflow'),
-    Unexpected: problemResponse('Unexpected server error'),
-    Unavailable: problemResponse('Import writer unavailable'),
-    PreconditionFailed: problemResponse('Saved draft changed'),
-    PreconditionRequired: problemResponse('Draft If-Match required'),
-    PayloadTooLarge: problemResponse('Request exceeds portable byte ceiling'),
-  }),
+  components: authenticatedComponents(
+    contractSchemas('openapi'),
+    {
+      BadRequest: problemResponse('Invalid request'),
+      Unauthenticated: problemResponse('Authentication required'),
+      Forbidden: problemResponse('Forbidden'),
+      NotFound: problemResponse('Resource not found'),
+      Conflict: problemResponse(
+        'Source, compatibility or idempotency conflict',
+      ),
+      UnprocessableEntity: problemResponse('Unsafe or incompatible workflow'),
+      Unexpected: problemResponse('Unexpected server error'),
+      Unavailable: problemResponse(
+        'Automation token authentication, limiter or import writer unavailable',
+      ),
+      PreconditionFailed: problemResponse('Saved draft changed'),
+      PreconditionRequired: problemResponse('Draft If-Match required'),
+      PayloadTooLarge: problemResponse('Request exceeds portable byte ceiling'),
+    },
+    true,
+  ),
 });

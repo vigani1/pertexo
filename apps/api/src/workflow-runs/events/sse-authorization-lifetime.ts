@@ -94,6 +94,7 @@ export function createStreamAuthorizationLifetime(
     const session = await input.reauthorizeSession(signal);
     signal.throwIfAborted();
     if (
+      input.actor.kind !== 'user' ||
       session.userId !== input.actor.actorId ||
       session.sessionId !== input.actor.sessionId ||
       !Number.isFinite(session.expiresAt.getTime()) ||

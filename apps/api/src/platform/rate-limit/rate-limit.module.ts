@@ -1,3 +1,4 @@
+import { HttpRateLimitAdmission } from './admission.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR, Reflector } from '@nestjs/core';
@@ -24,6 +25,7 @@ export class RateLimitModule {
   ): DynamicModule {
     return {
       module: RateLimitModule,
+      exports: [HttpRateLimitAdmission],
       providers: [
         override === undefined
           ? {
@@ -41,13 +43,20 @@ export class RateLimitModule {
           useFactory: createRateLimitMetricRecorder,
         },
         {
+          provide: HttpRateLimitAdmission,
+          inject: [RATE_LIMIT_CONSUMER, RATE_LIMIT_METRICS],
+          useFactory: (
+            consumer: RateLimitConsumer,
+            metrics: RateLimitMetricRecorder,
+          ) => new HttpRateLimitAdmission(consumer, metrics),
+        },
+        {
           provide: APP_INTERCEPTOR,
-          inject: [Reflector, RATE_LIMIT_CONSUMER, RATE_LIMIT_METRICS],
+          inject: [Reflector, HttpRateLimitAdmission],
           useFactory: (
             reflector: Reflector,
-            consumer: RateLimitConsumer,
-            metricRecorder: RateLimitMetricRecorder,
-          ) => new RateLimitInterceptor(reflector, consumer, metricRecorder),
+            admission: HttpRateLimitAdmission,
+          ) => new RateLimitInterceptor(reflector, admission),
         },
       ],
     };

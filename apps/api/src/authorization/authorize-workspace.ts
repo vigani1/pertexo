@@ -1,3 +1,7 @@
+import {
+  credentialAllowsCapability,
+  sameActorCredential,
+} from './credentials.js';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,
@@ -128,7 +132,10 @@ export async function authorizeWorkspace(
   if (!allowedWorkspaceStatuses.includes(record.workspaceStatus)) {
     throw denied(disclosure, 'workspace lifecycle does not allow this action');
   }
-  if (!hasCapability(record.role, input.capability)) {
+  if (
+    !hasCapability(record.role, input.capability) ||
+    !credentialAllowsCapability(actor, input.capability)
+  ) {
     throw denied(disclosure, 'actor lacks the requested workspace capability');
   }
 
@@ -160,7 +167,7 @@ export function assertAuthorizedWorkspaceContext(
     input.context.capability !== input.capability ||
     authorizedActor.actorId !== input.actor.actorId ||
     authorizedActor.workspaceId !== input.actor.workspaceId ||
-    authorizedActor.sessionId !== input.actor.sessionId ||
+    !sameActorCredential(authorizedActor, input.actor) ||
     authorizedActor.requestId !== input.actor.requestId ||
     authorizedActor.traceId !== input.actor.traceId
   ) {

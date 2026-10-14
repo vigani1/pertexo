@@ -120,7 +120,9 @@ const startInputSchema = z
     workflowId: z.uuid(),
     idempotencyKeyHash: digestSchema,
     requestHash: digestSchema,
-    scope: z.string().regex(/^workflow:[0-9a-f-]{36}:manual$/u),
+    scope: z
+      .string()
+      .regex(/^(?:workflow:[0-9a-f-]{36}:manual|api_token:[0-9a-f]{64})$/u),
     input: z.unknown().optional(),
     expectedPublishedVersionId: z.uuid().optional(),
     deadlineAt: z.date().optional(),

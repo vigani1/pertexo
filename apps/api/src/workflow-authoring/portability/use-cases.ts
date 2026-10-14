@@ -8,6 +8,7 @@ import {
 import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import {
   authorizeWorkspaceOperation,
+  commandCredential,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import {
@@ -142,6 +143,7 @@ export class ImportWorkflowUseCase extends PortabilityAuthority {
           ...portableCommand,
           ...(templateOrigin === undefined ? {} : { templateOrigin }),
           idempotencyKey: input.idempotencyKey,
+          ...commandCredential(input.actor),
         }),
       );
     });

@@ -1,5 +1,9 @@
 import { UUID_PATTERN } from '@pertexo/workflow-model';
-import type { ActorContext, WorkspaceId } from './types.js';
+import type {
+  ApiTokenActorContext,
+  UserActorContext,
+  WorkspaceId,
+} from './types.js';
 
 const uuidPattern = new RegExp(UUID_PATTERN.source, 'iu');
 
@@ -21,7 +25,7 @@ export type CreateActorContextInput = Readonly<{
  */
 export function createActorContext(
   input: CreateActorContextInput,
-): ActorContext {
+): UserActorContext {
   return Object.freeze({
     actorId: input.actorId,
     kind: 'user',
@@ -29,5 +33,15 @@ export function createActorContext(
     sessionId: input.sessionId,
     requestId: input.requestId,
     ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
+  });
+}
+
+export function createApiTokenActorContext(
+  input: Omit<ApiTokenActorContext, 'kind'>,
+): ApiTokenActorContext {
+  return Object.freeze({
+    ...input,
+    kind: 'api_key',
+    scopes: Object.freeze([...input.scopes]),
   });
 }

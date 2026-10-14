@@ -59,6 +59,7 @@ export type ImportWorkflowInput = PreviewWorkflowImportInput &
     name: string;
     expectedCompatibilityFingerprint: string;
     idempotencyKey: string;
+    commandCredentialId?: string;
   }>;
 export type ImportWorkflowResult = Readonly<{ workflowId: string }>;
 
@@ -120,6 +121,7 @@ export type PublishWorkflowInput = Readonly<{
   representationTag: string;
   /** Canonical application request digest, including the original If-Match. */ requestHash: string;
   idempotencyKey: string;
+  commandCredentialId?: string;
   requestId?: string;
   traceId?: string;
   traceparent?: string;

@@ -84,3 +84,14 @@ export {
 export { AccountLinkingCommands } from '../identity/account-linking.js';
 
 export { EmailProofCommands } from '../identity/email-proofs.js';
+
+export { createApiTokenDatabase } from './tokens/store.js';
+export { ApiTokenPolicyError } from './tokens/types.js';
+export type {
+  ApiTokenDatabase,
+  VerifiedApiToken,
+  ApiTokenOwner,
+  ApiTokenCommand,
+} from './tokens/types.js';
+export { parseApiTokenCredential } from './tokens/credential.js';
+export type { ParsedApiTokenCredential } from './tokens/credential.js';

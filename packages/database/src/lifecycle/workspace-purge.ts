@@ -71,6 +71,7 @@ export const PURGE_PRESERVED_TABLES = Object.freeze([
  * one page; a later step runs only once every earlier one has nothing left.
  */
 export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
+  deleteRows('api_tokens'),
   // Workflow organization.
   ...[
     'workflow_favorites',

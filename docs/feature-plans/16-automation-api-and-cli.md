@@ -55,9 +55,9 @@ Reuse capability names: `workflow:read`, `workflow:create`, `workflow:publish`,
 explicit import binding resolution; it does not expose connection routes/secrets.
 Starting a published workflow retains its existing authority to execute pinned
 connections. Scopes do not imply each other; examples state prerequisites and
-shared use cases enforce each capability they need. Run response action flags must
-reflect the credential's supported scopes; token readers are not offered replay/
-recovery controls merely because their owner has them.
+shared use cases enforce each capability they need. Run workflow-name projections also require workflow:read on the token. Current
+run responses have no action flags to extend; replay/recovery endpoints stay
+cookie-only rather than acquiring invented response controls.
 
 Store membership revision at issuance. Every authentication checks digest,
 expiry/revocation, active owner, active membership, equal revision and active
@@ -141,8 +141,9 @@ OpenAPI advertises cookie/bearer alternatives only on supported methods and
 management's real cookie/CSRF requirements, headers and errors.
 
 Preserve caller Idempotency-Key, reviewed import digest and opaque If-Match.
-Namespace automation command identity by verified token ID through one shared
-helper at the authorized use-case boundary, using a fixed-length canonical hash. Session command identity stays
+Namespace the stored receipt scope by verified token ID through one shared
+helper, using a fixed-length canonical hash. Keep the original command key: hashing
+only that key would let a session deliberately imitate its value. Session command identity stays
 unchanged. Same token/key/payload replays; changed intent conflicts. Another token
 or session cannot discover/reuse that receipt. Retries do not rewrite bindings,
 source references or preconditions.
@@ -271,10 +272,57 @@ These inform transport/authorization/redaction, not an OAuth subsystem.
 
 - [x] Owner authorized F16 after completed F09/F24.
 - [x] Baseline/current owners/membership epoch reconciled; plan manually reviewed.
-- [ ] Slice 0 plan/ADR/glossary PR merged with required checks.
+- [x] Slice 0: PR #282 merged after all required checks; natural main
+  `38509c60e08076b67fa87f7f4d01dac53de16095`, CI 38521325955, CodeQL
+  38521325982 and ARM publication succeeded.
 - [ ] Slice 1 backend/API and independent persistence/concurrency evidence merged.
 - [ ] Slice 2 Settings and live browser/mobile evidence merged.
 - [ ] Slice 3 CLI/API/worker qualification and user guide merged.
 - [ ] Final natural main CI, CodeQL and ARM publication inspected.
 
-Implementation evidence: none yet. Inventory/planning are not implementation.
+### Slice 1 local evidence (merge pending)
+
+Backend implementation is on `feat/f16-automation-api`; it is not yet a merged
+feature. Migration 0006 adds the token table, forced RLS and least grants and
+accepts the planned token receipt namespace in manual-start rejection storage.
+The table sits under `schema/identity/` to keep the schema root from growing
+further. Database reuses the existing contracts package for one schema/scope
+source; no external dependency is added.
+
+Eight real disposable-PostgreSQL cases check one-time disclosure, safe receipts/
+audits, restart, bounded last-use, revocation, owner isolation, role changes back,
+12 concurrent creations at the ten-token cap, pagination, expiry, maintenance
+retention, suspension/reactivation, ownership transfer, bounded workspace purge
+before memberships with audit scrubbing, direct forced-RLS reads and denied
+digest mutation through the app role.
+Three real API cases use ordinary sign-up/verification/sign-in and published
+pure Set workflows: eligible reads, publish/retry, start/retry, cancel, reviewed
+export/preview/import/retry, separate token/session receipts, version conflict,
+mixed/invalid credentials, unsupported routes, revoke and plain disabled-server
+availability. Existing real invitation/membership journeys also pass. These
+fixtures own their databases; the owner's application data/services are unchanged.
+
+Shared authorization tests bind scope and credential proofs. Import with explicit
+bindings requires the token's additional connection:read before persistence.
+Authentication admission protects lookup by IP and fails closed; post-authorization
+quotas retain owner/workspace budgets and add token identity. Existing limiter
+failure/metric tests pass. The five-minute sign-in policy is shared with ownership
+transfer. Bootstrap and resource cleanup regression tests pass with the token
+store and shared limiter owned by their existing runtimes.
+
+Contracts/OpenAPI advertise bearer authentication only on enabled methods; cookie
+CSRF remains required while bearer requests do not use it. Disabled authentication
+and issuance answer a plain availability problem; listing/revocation remain.
+The beta Compose configuration forwards the switch only to API, and existing
+KMS/self-managed plus Resend/SMTP credential-isolation qualifications pass.
+
+Local repository checks pass (format, build, lint, TypeScript, unused exports,
+contracts, schema ownership and source boundaries). Full unit suites pass,
+including API 1,980 and database 536 tests. The broader database integration
+suite passes 749 cases (46 environment-gated cases skipped); it includes the
+existing inherited-JSON-hook fence. Token scope persistence reuses the database
+serializer so schema setup and writes do not invoke inherited toJSON hooks.
+The API fixture checks accepted/cancel-requested runs without a worker; completed
+worker execution remains explicitly required in slice 3. Green PR/postmerge
+checks are required before slice 1 can be marked complete. Settings and the CLI
+remain the next slices.

@@ -1,8 +1,13 @@
+import {
+  ApiTokenModule,
+  type ApiTokenDependencies,
+} from '../../api-tokens/module.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
   createIdentityWorkspaceDatabase,
+  createApiTokenDatabase,
   type IdentityWorkspaceDatabase,
 } from '@pertexo/database/tenant-access';
 import type {
@@ -33,6 +38,7 @@ import { composeBetterAuthRuntime } from './better-auth-composition.js';
 export type ApiIdentityRuntime = Readonly<{
   dependencies: IdentityWorkspaceDependencies;
   betterAuth: BetterAuthRuntime;
+  automation: ApiTokenDependencies;
   close(): Promise<void>;
 }>;
 
@@ -75,6 +81,9 @@ export async function createApiIdentityRuntime(
           createIdentityWorkspaceDatabase
         )(databaseConfig, runtime),
     );
+    const tokenDatabase = resources.own(
+      createApiTokenDatabase(databaseConfig, runtime),
+    );
     const persistence = new DatabaseIdentityWorkspaceAdapter(identityDatabase);
     const betterAuth = composeBetterAuthRuntime({
       config,
@@ -95,6 +104,11 @@ export async function createApiIdentityRuntime(
         betterAuth,
       }),
       betterAuth,
+      automation: {
+        database: tokenDatabase,
+        enabled: config.automationTokensEnabled ?? false,
+        clock: overrides.clock ?? { now: () => new Date() },
+      },
       close: (): Promise<void> => (closePromise ??= resources.close()),
     });
   } catch (error: unknown) {
@@ -189,13 +203,20 @@ class IdentityResourceScope {
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class IdentityRuntimeModule {
-  public static register(runtime: ApiIdentityRuntime): DynamicModule {
+  public static register(
+    runtime: ApiIdentityRuntime,
+    admission: DynamicModule,
+  ): DynamicModule {
     const feature = IdentityWorkspaceModule.register(runtime.dependencies);
+    const tokens = ApiTokenModule.register(
+      feature,
+      admission,
+      runtime.automation,
+    );
     return {
       module: IdentityRuntimeModule,
-      controllers: feature.controllers ?? [],
-      providers: feature.providers ?? [],
-      exports: feature.exports ?? [],
+      imports: [feature, tokens],
+      exports: [IdentityWorkspaceModule, ApiTokenModule],
     };
   }
 }

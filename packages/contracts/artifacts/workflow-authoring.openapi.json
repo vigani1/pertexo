@@ -603,9 +603,15 @@
     "/v1/workspaces/{workspaceId}/workflows": {
       "get": {
         "operationId": "listWorkflows",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -780,7 +786,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "description": "Workflow organization unavailable",
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -888,10 +894,16 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}": {
       "get": {
         "operationId": "getWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "description": "Default metadata retains its strict shape. include is exactly templateOrigin, organization, or templateOrigin,organization. Unsupported projection is unavailable, never inferred null or empty.",
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -982,7 +994,14 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -990,9 +1009,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft": {
       "get": {
         "operationId": "getWorkflowDraft",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1054,6 +1079,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       },
@@ -1255,9 +1290,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/publish": {
       "post": {
         "operationId": "publishWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:publish"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1288,13 +1329,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "If-Match",
@@ -1358,7 +1400,14 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ValidationUnavailable"
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -1366,9 +1415,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions": {
       "get": {
         "operationId": "listWorkflowVersions",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1453,6 +1508,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -4517,6 +4582,8 @@
           "code": {
             "type": "string",
             "enum": [
+              "api_token.unavailable",
+              "api_token.limit",
               "auth.unauthenticated",
               "auth.forbidden",
               "auth.email_not_verified",
@@ -14401,6 +14468,11 @@
       }
     },
     "securitySchemes": {
+      "apiToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "ptx_1 opaque personal token"
+      },
       "cookieSession": {
         "type": "apiKey",
         "in": "cookie",

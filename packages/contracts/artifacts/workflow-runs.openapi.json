@@ -59,9 +59,15 @@
     "/v1/workspaces/{workspaceId}/runs": {
       "get": {
         "operationId": "listWorkflowRuns",
+        "x-pertexo-api-token-scopes": [
+          "run:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -256,6 +262,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -341,9 +357,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs": {
       "post": {
         "operationId": "startWorkflowRun",
+        "x-pertexo-api-token-scopes": [
+          "run:start"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -374,13 +396,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -436,6 +459,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -443,9 +476,15 @@
     "/v1/workspaces/{workspaceId}/runs/{runId}": {
       "get": {
         "operationId": "getWorkflowRun",
+        "x-pertexo-api-token-scopes": [
+          "run:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -499,6 +538,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -941,9 +990,15 @@
     "/v1/workspaces/{workspaceId}/runs/{runId}/cancel": {
       "post": {
         "operationId": "cancelWorkflowRun",
+        "x-pertexo-api-token-scopes": [
+          "run:cancel"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -974,13 +1029,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           }
         ],
         "requestBody": {
@@ -1021,6 +1077,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Automation token authentication, limiter or operation dependencies unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -1732,6 +1798,8 @@
           "code": {
             "type": "string",
             "enum": [
+              "api_token.unavailable",
+              "api_token.limit",
               "auth.unauthenticated",
               "auth.forbidden",
               "auth.email_not_verified",
@@ -4985,6 +5053,11 @@
       }
     },
     "securitySchemes": {
+      "apiToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "ptx_1 opaque personal token"
+      },
       "cookieSession": {
         "type": "apiKey",
         "in": "cookie",

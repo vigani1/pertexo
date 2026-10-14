@@ -1,5 +1,6 @@
 import {
   claimCommand,
+  credentialCommandScope,
   completeCommand,
   type CommandIdentity,
 } from '../../platform/idempotency.js';
@@ -111,7 +112,10 @@ async function claimPublication(
   const command: CommandIdentity = {
     workspaceId: input.workspaceId,
     operation: 'workflow.publish',
-    scope: `${input.actorId}:${workflowId}`,
+    scope: credentialCommandScope(
+      `${input.actorId}:${workflowId}`,
+      input.commandCredentialId,
+    ),
     idempotencyKey: input.idempotencyKey,
   };
   const stored = await claimCommand(client, {

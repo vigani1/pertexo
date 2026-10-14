@@ -7,6 +7,7 @@ import {
 import {
   authorizeWorkspace,
   createActorContext,
+  createApiTokenActorContext,
 } from '../../../src/authorization/index.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -354,5 +355,34 @@ describe('workflow portability application authority and exact commands', () => 
       safeDetail: 'The portable workflow request is invalid.',
     });
     expect(f.persistence.previewWorkflowImport).not.toHaveBeenCalled();
+  });
+  it('requires connection read on a token before inspecting explicit import bindings', async () => {
+    const f = fixture();
+    const actor = createApiTokenActorContext({
+      actorId,
+      workspaceId,
+      tokenId: workflowId,
+      scopes: ['workflow:create'],
+      requestId: 'token-portability',
+    });
+    await expect(
+      f.preview.execute({
+        ...context,
+        actor,
+        request: { manifest: boundManifest, bindings },
+      }),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    expect(f.persistence.previewWorkflowImport).not.toHaveBeenCalled();
+    await expect(
+      f.preview.execute({
+        ...context,
+        actor: createApiTokenActorContext({
+          ...actor,
+          scopes: ['workflow:create', 'connection:read'],
+        }),
+        request: { manifest: boundManifest, bindings },
+      }),
+    ).resolves.toMatchObject({ compatible: true });
+    expect(f.persistence.previewWorkflowImport).toHaveBeenCalledOnce();
   });
 });

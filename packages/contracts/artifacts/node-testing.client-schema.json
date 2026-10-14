@@ -33,6 +33,8 @@
         "code": {
           "type": "string",
           "enum": [
+            "api_token.unavailable",
+            "api_token.limit",
             "auth.unauthenticated",
             "auth.forbidden",
             "auth.email_not_verified",

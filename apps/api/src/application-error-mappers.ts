@@ -1,3 +1,4 @@
+import { mapApiTokenError } from './api-tokens/errors.js';
 import { mapConnectionError } from './connections/errors.js';
 import { mapArtifactError } from './artifacts/errors.js';
 import { mapIdentityWorkspaceError } from './workspaces/errors.js';
@@ -26,6 +27,10 @@ function mappedFeatureError(
 }
 
 const ROUTE_ERROR_MAPPERS: readonly RouteErrorMapper[] = Object.freeze([
+  {
+    route: /^\/v1\/workspaces\/[^/]+\/api-tokens(?:\/|$)/u,
+    map: mapApiTokenError,
+  },
   {
     route: /^\/v1\/workspaces\/[^/]+\/artifacts(?:\/|$)/u,
     map: mapArtifactError,

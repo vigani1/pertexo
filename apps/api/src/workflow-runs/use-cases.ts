@@ -12,6 +12,8 @@ import {
 
 import {
   authorizeWorkspaceOperation,
+  commandIdempotencyScope,
+  credentialAllowsCapability,
   hasCapability,
   type AuthorizationCapability,
   type WorkspaceAuthorizationSource,
@@ -139,7 +141,10 @@ export class StartWorkflowRunUseCase {
       workflowId: input.workflowId,
       idempotencyKeyHash: sha256(input.idempotencyKey),
       requestHash: startRequestHash(input),
-      scope: `workflow:${input.workflowId}:manual`,
+      scope: commandIdempotencyScope(
+        input.actor,
+        `workflow:${input.workflowId}:manual`,
+      ),
       ...(input.expectedPublishedVersionId === undefined
         ? {}
         : { expectedPublishedVersionId: input.expectedPublishedVersionId }),
@@ -198,10 +203,9 @@ export class GetWorkflowRunUseCase {
     const result = await this.persistence.get({
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
-      includeWorkflowName: this.capabilityPolicy(
-        authorization.role,
-        'workflow:read',
-      ),
+      includeWorkflowName:
+        credentialAllowsCapability(input.actor, 'workflow:read') &&
+        this.capabilityPolicy(authorization.role, 'workflow:read'),
     });
     if (result === undefined) throw new WorkflowRunNotFoundError();
     return toRunResponse(result);
@@ -225,10 +229,9 @@ export class ListWorkflowRunsUseCase {
       ['active', 'suspended', 'pending_deletion'],
     );
     const context = normalizedCursorContext(input);
-    const includeWorkflowName = this.capabilityPolicy(
-      authorization.role,
-      'workflow:read',
-    );
+    const includeWorkflowName =
+      credentialAllowsCapability(input.actor, 'workflow:read') &&
+      this.capabilityPolicy(authorization.role, 'workflow:read');
     if (context.workflowNamePrefix !== undefined && !includeWorkflowName) {
       throw new WorkflowRunNotFoundError();
     }

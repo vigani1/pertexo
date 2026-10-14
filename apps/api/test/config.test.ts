@@ -578,6 +578,7 @@ describe('parseApiConfig identity boundary', () => {
 
     expect(config.identity).toEqual({
       publicWebOrigin: 'https://app.example.test',
+      automationTokensEnabled: false,
       session: {
         ttlMillis: 24 * 60 * 60_000,
         secureCookie: true,
