@@ -135,6 +135,7 @@ qualified(
       const executed: { runId: string; nodeId: string }[] = [];
       let fail = true;
       let httpFailure = true;
+      let unknownHttpFailure = true;
       const owners: (() => Promise<void>)[] = [() => runs.close()];
       let primary: { error: unknown } | undefined;
       try {
@@ -161,12 +162,17 @@ qualified(
                   throw new Error('Missing real execution scope');
                 if (request.definition.key === 'http.request') {
                   await request.runtime.beforeDispatch();
-                  if (request.runtime.nodeId === 'unknown-http')
+                  if (
+                    request.runtime.nodeId === 'unknown-http' &&
+                    unknownHttpFailure
+                  ) {
+                    unknownHttpFailure = false;
                     throw new NodeExecutorFailure({
                       kind: 'outcome_unknown',
                       errorKind: 'network',
                       possiblyDispatched: true,
                     });
+                  }
                   if (httpFailure) {
                     httpFailure = false;
                     throw new NodeExecutorFailure({
@@ -518,16 +524,9 @@ qualified(
             runId: started.run.id,
             prepareRecovery,
           });
-          if (unknown) {
-            expect(httpPreview).toEqual({
-              kind: 'refused',
-              reason: 'source_not_failed',
-            });
-            continue;
-          }
           expect(httpPreview).toMatchObject({
             kind: 'eligible',
-            effectRisk: 'possible_effects',
+            effectRisk: unknown ? 'unknown_outcome' : 'possible_effects',
             reusedCount: 1,
           });
           if (httpPreview.kind !== 'eligible')
@@ -542,11 +541,30 @@ qualified(
             requestHash: httpKey,
           };
           await expect(runs.recover(httpCommand)).rejects.toMatchObject({
-            reason: 'effects_acknowledgement_required',
+            reason: unknown
+              ? 'unknown_outcome_acknowledgement_required'
+              : 'effects_acknowledgement_required',
           });
+          if (unknown)
+            await expect(
+              runs.recover({
+                ...httpCommand,
+                acknowledgePossibleEffects: true,
+              }),
+            ).rejects.toMatchObject({
+              reason: 'unknown_outcome_acknowledgement_required',
+            });
+          expect(
+            await fixture.workerQuery<{ count: number }>(
+              'select count(*)::int count from app.idempotency_records where scope=$1',
+              [httpCommand.scope],
+            ),
+          ).toEqual([{ count: 0 }]);
           const acknowledged = {
             ...httpCommand,
-            acknowledgePossibleEffects: true as const,
+            ...(unknown
+              ? { acknowledgeUnknownOutcome: true as const }
+              : { acknowledgePossibleEffects: true as const }),
             requestHash: createHash('sha256')
               .update(`${httpKey}:acknowledged`)
               .digest('hex'),
@@ -569,7 +587,7 @@ qualified(
               })
             )?.run.recovery,
           ).toMatchObject({
-            effectRisk: 'possible_effects',
+            effectRisk: unknown ? 'unknown_outcome' : 'possible_effects',
             effectsAcknowledged: true,
           });
           const auditRows = await fixture.workerQuery<{
@@ -582,8 +600,9 @@ qualified(
           expect(auditRows[0]?.metadata).toMatchObject({
             sourceRunId: started.run.id,
             targetNodeRunId: httpPreview.nodeRunId,
-            effectRisk: 'possible_effects',
-            acknowledgePossibleEffects: true,
+            effectRisk: unknown ? 'unknown_outcome' : 'possible_effects',
+            acknowledgePossibleEffects: !unknown,
+            acknowledgeUnknownOutcome: unknown,
           });
           expect(await runs.recover(acknowledged)).toMatchObject({
             run: { id: retried.run.id },
