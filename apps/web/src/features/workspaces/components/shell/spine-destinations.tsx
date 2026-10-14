@@ -5,6 +5,7 @@ import {
   BellIcon,
   GaugeIcon,
   InboxIcon,
+  KeyRoundIcon,
   PlugIcon,
   SlidersHorizontalIcon,
   UsersIcon,
@@ -24,6 +25,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId/alerts'
     | '/w/$workspaceId/settings'
     | '/w/$workspaceId/settings/usage'
+    | '/w/$workspaceId/settings/api-tokens'
   >;
   label: string;
   icon: ReactNode;
@@ -99,6 +101,11 @@ export function spineDestinations(
     label: 'Settings',
     icon: <SlidersHorizontalIcon />,
     exact: true,
+  });
+  administration.push({
+    to: '/w/$workspaceId/settings/api-tokens',
+    label: 'API tokens',
+    icon: <KeyRoundIcon />,
   });
   return { primary, workspace: administration };
 }

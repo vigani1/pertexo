@@ -3,6 +3,7 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts';
 import { useState, type ReactNode } from 'react';
+import { Link } from '@tanstack/react-router';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { CopyButton } from '@/components/ui/copy-button';
 import type { ApiClient } from '@/lib/api/client';
@@ -140,6 +141,19 @@ export function WorkspaceGeneralPage({
           description={`You’re ${withArticle(workspace.role)}. ${ROLE_SUMMARIES[workspace.role]}`}
         >
           <WorkspaceAccess workspace={workspace} />
+        </SettingsSection>
+
+        <SettingsSection
+          title="API tokens"
+          description="Connect your scripts with expiring personal access to this workspace."
+        >
+          <Link
+            to="/w/$workspaceId/settings/api-tokens"
+            params={{ workspaceId: workspace.id }}
+            className="inline-link self-start"
+          >
+            Manage your API tokens
+          </Link>
         </SettingsSection>
 
         <DangerZone>

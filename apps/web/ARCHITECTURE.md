@@ -1066,12 +1066,12 @@ unread.
 - `/w/$workspaceId` resolves the person and workspace once (`beforeLoad`); an
   unavailable workspace renders the full-screen unavailable page. The pathless
   `shell` layout renders the spine (Home Core, Workflows, Runs with live count,
-  Connections · Team, Alerts, Settings · Search, account), the breadcrumb rooted
-  in the workspace switcher, banners and the page. Phones get a bottom bar with
-  a More sheet. ⌘K opens the command palette. The shell route also provides
-  `CommandPaletteContext` (`routes/command-palette-context.ts`); a page route
-  reads `useOpenCommandPalette()` and hands its feature a plain callback (Home's
-  Search), so features never import routes.
+  Connections · Team, Alerts, Settings, API tokens · Search, account), the
+  breadcrumb rooted in the workspace switcher, banners and the page. Phones get
+  a bottom bar with a More sheet. ⌘K opens the command palette. The shell route
+  also provides `CommandPaletteContext` (`routes/command-palette-context.ts`); a
+  page route reads `useOpenCommandPalette()` and hands its feature a plain
+  callback (Home's Search), so features never import routes.
 - `/w/$workspaceId/workflows/$workflowId` is the immersive workflow hub (no
   spine) with Build (index), Runs, Triggers, Versions and Settings tabs. Every
   tab renders `WorkflowHubBar` (from `features/workflows/hub.public.ts`) with
@@ -1471,3 +1471,13 @@ fields and validation, loading/empty/stale/error/forbidden states, dirty-exit
 behavior, keyboard/mobile behavior, and one happy-path plus failure-path test.
 Treat unsupported backend functionality as blocked/deferred UI, not a clickable
 placeholder. This page map does not supersede the detailed protocol rules above.
+
+### Personal automation tokens
+
+The lazy workspace Settings route composes `features/api-tokens/public.ts`. The
+feature owns metadata queries, expiry/scope forms and revoke cache effects in
+its `data/` area. Creation is a direct feature API call because its one-time
+secret must never enter the query or mutation cache. Only the mounted creation
+dialog/receipt holds it; closing or changing person/workspace clears it. Unknown
+creation outcomes refresh metadata and require revoke/replacement. Cookie/CSRF
+and recent-sign-in rules remain server-owned.

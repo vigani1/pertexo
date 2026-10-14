@@ -408,6 +408,16 @@ export const usageRoute = createRoute({
   component: lazyRouteComponent(() => import('./usage'), 'UsageRoute'),
 });
 
+export const apiTokensRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings/api-tokens',
+  staticData: { crumb: 'API tokens' },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('API tokens', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(() => import('./api-tokens'), 'ApiTokensRoute'),
+});
+
 export const workspaceAccountRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'account',
