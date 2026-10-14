@@ -55,6 +55,9 @@
     },
     {
       "path": "./packages/workflow-model/tsconfig.json"
+    },
+    {
+      "path": "./apps/cli/tsconfig.json"
     }
   ]
 }

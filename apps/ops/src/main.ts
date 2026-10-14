@@ -127,26 +127,16 @@ function isMainModule(): boolean {
 }
 
 if (isMainModule()) {
-  if (process.argv[2] === 'automation') {
-    void import('./automation/run.js')
-      .then(({ runAutomationCli }) => runAutomationCli(process.argv.slice(3)))
-      .catch(() => {
-        process.stderr.write(
-          `${JSON.stringify({ code: 'cli.bootstrap_failed', detail: 'The automation CLI could not be started.' })}\n`,
-        );
-        process.exitCode = 1;
-      });
-  } else
-    void bootstrapOperatorCommand().catch(async (error: unknown) => {
-      const { classifyProcessError } =
-        await import('@pertexo/observability/startup');
-      process.stderr.write(
-        `${JSON.stringify({
-          errorType: classifyProcessError(error),
-          event: 'operator_command.process_failed',
-          level: 'fatal',
-        })}\n`,
-      );
-      process.exitCode = 1;
-    });
+  void bootstrapOperatorCommand().catch(async (error: unknown) => {
+    const { classifyProcessError } =
+      await import('@pertexo/observability/startup');
+    process.stderr.write(
+      `${JSON.stringify({
+        errorType: classifyProcessError(error),
+        event: 'operator_command.process_failed',
+        level: 'fatal',
+      })}\n`,
+    );
+    process.exitCode = 1;
+  });
 }

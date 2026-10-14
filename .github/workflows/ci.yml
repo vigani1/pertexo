@@ -105,7 +105,7 @@ jobs:
           - group: apps
             filter: >-
               --filter @pertexo/api --filter @pertexo/worker --filter
-              @pertexo/ops --filter @pertexo/web
+              @pertexo/ops --filter @pertexo/cli --filter @pertexo/web
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -220,7 +220,7 @@ jobs:
       - name: Build API, worker and CLI
         run:
           pnpm --filter @pertexo/api... --filter @pertexo/worker... --filter
-          @pertexo/ops... build
+          @pertexo/ops... --filter @pertexo/cli... build
       - name: Start services
         run: docker compose up -d --wait postgres redis
       - name: Browser journeys against the real stack
