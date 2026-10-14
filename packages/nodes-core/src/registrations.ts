@@ -1,3 +1,8 @@
+import { coreFilterExecutor } from './filter/executor.js';
+import { coreSortExecutor } from './sort/executor.js';
+import { coreUniqueExecutor } from './unique/executor.js';
+import { coreSummarizeExecutor } from './summarize/executor.js';
+import { coreDateExecutor } from './date/executor.js';
 import type { NodeExecutorRegistration } from '@pertexo/node-sdk/server';
 
 import { coreCallExecutor } from './call/executor.js';
@@ -17,6 +22,11 @@ import { coreWebhookExecutor } from './webhook/executor.js';
 /** One implementation per core executor, in definition order. */
 export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration[] =
   Object.freeze([
+    coreFilterExecutor,
+    coreSortExecutor,
+    coreUniqueExecutor,
+    coreSummarizeExecutor,
+    coreDateExecutor,
     coreCallExecutor,
     coreScheduleExecutor,
     coreWebhookExecutor,

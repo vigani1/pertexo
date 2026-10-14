@@ -1,3 +1,33 @@
+import {
+  CORE_FILTER_CONFIG_SCHEMA,
+  CORE_FILTER_INPUT_SCHEMA,
+  CORE_FILTER_MANIFEST,
+  CORE_FILTER_OUTPUT_SCHEMA,
+} from './filter/index.js';
+import {
+  CORE_SORT_CONFIG_SCHEMA,
+  CORE_SORT_INPUT_SCHEMA,
+  CORE_SORT_MANIFEST,
+  CORE_SORT_OUTPUT_SCHEMA,
+} from './sort/index.js';
+import {
+  CORE_UNIQUE_CONFIG_SCHEMA,
+  CORE_UNIQUE_INPUT_SCHEMA,
+  CORE_UNIQUE_MANIFEST,
+  CORE_UNIQUE_OUTPUT_SCHEMA,
+} from './unique/index.js';
+import {
+  CORE_SUMMARIZE_CONFIG_SCHEMA,
+  CORE_SUMMARIZE_INPUT_SCHEMA,
+  CORE_SUMMARIZE_MANIFEST,
+  CORE_SUMMARIZE_OUTPUT_SCHEMA,
+} from './summarize/index.js';
+import {
+  CORE_DATE_CONFIG_SCHEMA,
+  CORE_DATE_INPUT_SCHEMA,
+  CORE_DATE_MANIFEST,
+  CORE_DATE_OUTPUT_SCHEMA,
+} from './date/index.js';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 
 import {
@@ -82,6 +112,36 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_FILTER_MANIFEST,
+      configSchema: CORE_FILTER_CONFIG_SCHEMA,
+      inputSchema: CORE_FILTER_INPUT_SCHEMA,
+      outputSchema: CORE_FILTER_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_SORT_MANIFEST,
+      configSchema: CORE_SORT_CONFIG_SCHEMA,
+      inputSchema: CORE_SORT_INPUT_SCHEMA,
+      outputSchema: CORE_SORT_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_UNIQUE_MANIFEST,
+      configSchema: CORE_UNIQUE_CONFIG_SCHEMA,
+      inputSchema: CORE_UNIQUE_INPUT_SCHEMA,
+      outputSchema: CORE_UNIQUE_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_SUMMARIZE_MANIFEST,
+      configSchema: CORE_SUMMARIZE_CONFIG_SCHEMA,
+      inputSchema: CORE_SUMMARIZE_INPUT_SCHEMA,
+      outputSchema: CORE_SUMMARIZE_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_DATE_MANIFEST,
+      configSchema: CORE_DATE_CONFIG_SCHEMA,
+      inputSchema: CORE_DATE_INPUT_SCHEMA,
+      outputSchema: CORE_DATE_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_CALL_MANIFEST,
       configSchema: CORE_CALL_CONFIG_SCHEMA,

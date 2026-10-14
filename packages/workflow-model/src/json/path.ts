@@ -58,14 +58,22 @@ export function parseJsonPath(
 
 export function resolveJsonPath(
   input: JsonValue,
+  path: readonly JsonPathSegment[],
+): Exclude<JsonPathResolution, { readonly kind: 'error' }>;
+export function resolveJsonPath(
+  input: JsonValue,
   path: string,
+): JsonPathResolution;
+export function resolveJsonPath(
+  input: JsonValue,
+  path: string | readonly JsonPathSegment[],
 ): JsonPathResolution {
-  const segments = parseJsonPath(path);
+  const segments = typeof path === 'string' ? parseJsonPath(path) : path;
   if (!segments)
     return {
       kind: 'error',
       code: 'invalid_path',
-      message: `unsupported JSON path ${path}`,
+      message: `unsupported JSON path ${String(path)}`,
     };
   let value: JsonValue | undefined = input;
   for (const segment of segments) {
