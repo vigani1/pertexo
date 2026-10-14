@@ -123,7 +123,17 @@ export async function authorWebhookHttpGraph(
   const stopId = terminalStop
     ? await add(/^Stop run\b/u, 'Finished action')
     : undefined;
-  if (stopId !== undefined) await connect('Owned HTTP effect');
+  if (stopId !== undefined) {
+    await connect('Owned HTTP effect');
+    await expect
+      .poll(
+        async () =>
+          (await readDraft(page, workflowPath)).graph.nodes.find(
+            (node) => node.id === stopId,
+          )?.label,
+      )
+      .toBe('Finished action');
+  }
   await expect
     .poll(async () => (await readDraft(page, workflowPath)).graph.edges.length)
     .toBe(terminalStop ? 5 : 4);
