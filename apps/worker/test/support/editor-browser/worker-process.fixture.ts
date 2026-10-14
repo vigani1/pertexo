@@ -1,3 +1,5 @@
+import { createArtifactDestination } from '../../attempts/artifacts/http-destination.js';
+import { parseArtifactStoreConfig } from '@pertexo/artifact-store';
 import { createEditorPreview } from './previews.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
@@ -69,31 +71,42 @@ const namespace = createRedisTestNamespace(
 );
 const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
 const transformCase = process.env.EDITOR_BROWSER_CASE === 'transforms';
+const artifactInputs = process.env.EDITOR_BROWSER_CASE === 'artifact-inputs';
+let artifactTarget:
+  Awaited<ReturnType<typeof createArtifactDestination>> | undefined;
 const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
-  process.env.EDITOR_BROWSER_CASE === 'failure-routing';
+  process.env.EDITOR_BROWSER_CASE === 'failure-routing' ||
+  artifactInputs;
 const curatedTemplates =
   process.env.EDITOR_BROWSER_CASE === 'curated-templates';
 let curatedTarget:
   ReturnType<typeof createCuratedTemplateQualificationTransports> | undefined;
 let httpTarget: ReturnType<typeof createEditorControlledHttpTarget> | undefined;
 function sendHttpEffects() {
-  if (!process.connected || httpTarget === undefined) return;
-  const observed = httpTarget.observe();
+  const files = artifactTarget?.observe();
+  const http = httpTarget?.observe();
+  if (!process.connected || (files === undefined && http === undefined)) return;
+  const message =
+    files === undefined
+      ? {
+          phase: 'controlled-http-effects',
+          requests: http?.requests,
+          effects: http?.effects,
+          bodyHashes: http?.bodies.map((body) =>
+            createHash('sha256').update(body).digest('hex'),
+          ),
+        }
+      : {
+          phase: 'controlled-http-effects',
+          requests: files.length,
+          effects: files.length,
+          bodyHashes: files.map((value) => value.sha256),
+        };
   try {
-    process.send?.(
-      {
-        phase: 'controlled-http-effects',
-        requests: observed.requests,
-        effects: observed.effects,
-        bodyHashes: observed.bodies.map((body) =>
-          createHash('sha256').update(body).digest('hex'),
-        ),
-      },
-      (error: Error | null) => {
-        if (error !== null) stop();
-      },
-    );
+    process.send?.(message, (error: Error | null) => {
+      if (error !== null) stop();
+    });
   } catch {
     stop();
   }
@@ -336,6 +349,9 @@ async function constructRuntimes(
     if (curatedTemplates) {
       curatedTarget = createCuratedTemplateQualificationTransports();
       resources.controlledHttp = curatedTarget;
+    } else if (artifactInputs) {
+      artifactTarget = await createArtifactDestination(sendHttpEffects);
+      resources.controlledHttp = artifactTarget;
     } else {
       if (raw.authorizationValue === undefined)
         throw new Error('Owned HTTP authorization missing');
@@ -349,7 +365,13 @@ async function constructRuntimes(
     }
     assertSetupActive();
     controlledCapabilities = await createWorkerNodeRuntimeCapabilities(
-      { database, redisUrl: namespace.redisUrl },
+      {
+        database,
+        redisUrl: namespace.redisUrl,
+        ...(artifactInputs
+          ? { artifactStore: parseArtifactStoreConfig() }
+          : {}),
+      },
       { connectionEncryption: new ConnectionEnvelopeEncryption(keys) },
     );
     resources.capabilities = controlledCapabilities;
@@ -357,7 +379,8 @@ async function constructRuntimes(
     await controlledCapabilities.checkReadiness();
     assertSetupActive();
   }
-  const controlledHttpClient = (curatedTarget ?? httpTarget)?.httpClient;
+  const controlledHttpClient = (artifactTarget ?? curatedTarget ?? httpTarget)
+    ?.httpClient;
   const attempts = await createNodeAttemptRuntime(
     {
       database,
@@ -415,12 +438,16 @@ async function constructRuntimes(
             }),
             runtimeCapabilities: {
               ...controlledCapabilities.factories,
-              artifacts: () => ({
-                write: () =>
-                  Promise.reject(
-                    new Error('Artifacts outside inline HTTP fixture'),
-                  ),
-              }),
+              ...(artifactInputs
+                ? {}
+                : {
+                    artifacts: () => ({
+                      write: () =>
+                        Promise.reject(
+                          new Error('Artifacts outside inline HTTP fixture'),
+                        ),
+                    }),
+                  }),
             },
           }),
     },

@@ -1,3 +1,4 @@
+import { RunInputUpload } from './file-input';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -282,6 +283,15 @@ function RunInputDialogContent({
               />
             )}
           </LabelledField>
+          {open ? (
+            <RunInputUpload
+              scope={caseScope}
+              versionId={expectedVersion}
+              input={runInput.input}
+              disabled={availability.fieldsBlocked || caseEditing}
+              onChange={runInput.changeInput}
+            />
+          ) : null}
           <DeadlineField
             value={runInput.deadline}
             error={runInput.validation.error('deadline')}

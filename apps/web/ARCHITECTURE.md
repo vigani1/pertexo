@@ -1481,3 +1481,10 @@ secret must never enter the query or mutation cache. Only the mounted creation
 dialog/receipt holds it; closing or changing person/workspace clears it. Unknown
 creation outcomes refresh metadata and require revoke/replacement. Cookie/CSRF
 and recent-sign-in rules remain server-owned.
+
+F04 file uploads use one reviewed feature-local direct-transfer adapter in
+`features/artifacts/data/upload.api.ts`: signed PUT only, omitted credentials,
+no redirects or referrer, and browser-owned Content-Length. Application endpoint
+calls still use ApiClient. File objects, bytes and signed capabilities stay
+local to the upload session; only finalized descriptors enter a draft or run
+input.

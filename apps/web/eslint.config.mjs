@@ -102,4 +102,17 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['src/features/artifacts/data/upload.api.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.type='MemberExpression'][callee.property.name='mutate'][arguments.length>1]",
+          message: 'Await mutateAsync() so command feedback survives unmounts.',
+        },
+      ],
+    },
+  },
 );

@@ -222,7 +222,7 @@ jobs:
           pnpm --filter @pertexo/api... --filter @pertexo/worker... --filter
           @pertexo/ops... --filter @pertexo/cli... build
       - name: Start services
-        run: docker compose up -d --wait postgres redis
+        run: docker compose up -d --wait postgres redis artifact-store
       - name: Browser journeys against the real stack
         env:
           WORKFLOW_CONCURRENCY_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
@@ -234,14 +234,15 @@ jobs:
           }
           postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
           redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
+          artifact_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q artifact-store)")
           export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
-            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
-            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
-            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
+            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" --arg artifact "$artifact_id" \
+            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" --argjson artifactPort "$ARTIFACT_STORE_PORT" \
+            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort},artifactStore:{id:$artifact,port:$artifactPort}}')
           USAGE_BROWSER_INTEGRATION=true live test/browser/usage.integration.test.ts
           WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/browser/workflow-concurrency.integration.test.ts
           CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/browser/connection-health.integration.test.ts
-          for browser_case in duplication portability input-cases curated-templates callable run-recovery webhook-controlled-http failure-routing transforms api-tokens; do
+          for browser_case in duplication portability input-cases curated-templates callable run-recovery webhook-controlled-http failure-routing transforms artifact-inputs api-tokens; do
             EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE="$browser_case" EDITOR_BROWSER_OWNED_FIXTURE=true \
               live test/browser/editor.integration.test.ts
           done

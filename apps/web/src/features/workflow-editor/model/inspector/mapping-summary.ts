@@ -1,3 +1,4 @@
+import { formatByteLength } from '@/lib/format/bytes';
 import { stepTitle } from '../graph/adapter';
 import type { GraphLevel } from '../graph/scopes';
 import type { InputMappingDraftRow } from './input-mappings';
@@ -96,6 +97,18 @@ function describeLiteral(json: string): MappingSourceSummary {
       label: `[${String(value.length)} ${value.length === 1 ? 'item' : 'items'}]`,
     };
   if (typeof value === 'object') {
+    if (
+      'kind' in value &&
+      value.kind === 'artifact' &&
+      'byteLength' in value &&
+      typeof value.byteLength === 'number' &&
+      Number.isSafeInteger(value.byteLength) &&
+      value.byteLength >= 0
+    )
+      return {
+        tone: 'value',
+        label: `File · ${formatByteLength(value.byteLength)}`,
+      };
     const count = Object.keys(value).length;
     return {
       tone: 'value',

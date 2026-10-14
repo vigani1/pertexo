@@ -1,3 +1,4 @@
+import { UploadFile, type FileUploadScope } from '@/features/artifacts/public';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { PlusIcon } from 'lucide-react';
@@ -40,6 +41,7 @@ type RowDisclosure = Readonly<{
  */
 export function InputsTab({
   node,
+  fileScope,
   graph,
   loopPorts,
   definition,
@@ -50,6 +52,7 @@ export function InputsTab({
   onRemoveEdge,
 }: Readonly<{
   node: WorkflowNode;
+  fileScope?: FileUploadScope;
   /** The level the step is on: the workflow, or the body it's in. */
   graph: GraphLevel;
   /** The body's inputs when the step is inside a For each; else empty. */
@@ -179,6 +182,35 @@ export function InputsTab({
             ))}
           </ol>
         )}
+        {fileScope !== undefined &&
+        node.definition.key === 'http.request' &&
+        node.config.method !== 'GET' &&
+        node.config.method !== 'HEAD' ? (
+          <UploadFile
+            targetKey={JSON.stringify(node.inputMappings)}
+            scope={fileScope}
+            disabled={!editable || mappings.hasScratch}
+            label="Upload body file"
+            useLabel={
+              node.inputMappings.body === undefined
+                ? 'Use file as body'
+                : 'Replace body with file'
+            }
+            description="Send this file’s exact bytes as the HTTP request body. Using it replaces the current body mapping."
+            onUse={(reference) => {
+              form.commit(
+                (current) => ({
+                  inputMappings: {
+                    ...current.inputMappings,
+                    body: { kind: 'literal', value: reference },
+                  },
+                }),
+                `${node.id}:file:${reference.artifactId}`,
+              );
+              return undefined;
+            }}
+          />
+        ) : null}
         {editable ? (
           <div className="flex flex-wrap gap-2">
             <Button

@@ -13,7 +13,9 @@ const address = '8.8.8.8';
 const authorization = 'Bearer owned-artifact-destination';
 
 /** A real loopback exchange reachable only through this exact test transport. */
-export async function createArtifactDestination() {
+export async function createArtifactDestination(
+  onEffect: () => void = () => undefined,
+) {
   const observations: {
     byteLength: number;
     sha256: string;
@@ -46,6 +48,7 @@ export async function createArtifactDestination() {
         sha256: hash.digest('hex'),
         mediaType: incoming.headers['content-type'],
       });
+      onEffect();
       outgoing.writeHead(200, { 'content-type': 'application/json' }).end('{}');
     })().catch(() => {
       if (!outgoing.destroyed) outgoing.writeHead(400).end();

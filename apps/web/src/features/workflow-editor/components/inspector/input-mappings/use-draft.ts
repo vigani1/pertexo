@@ -106,6 +106,7 @@ export function useInputMappingDraft({
 
   return {
     rows: current.rows,
+    hasScratch: validation.inputMappings === undefined,
     errors,
     changeRow: (row: InputMappingDraftRow) => {
       update(

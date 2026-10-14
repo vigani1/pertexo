@@ -106,3 +106,18 @@ describe('input mapping summaries', () => {
     });
   });
 });
+
+it('names file references with a human byte size while preserving unfinished JSON feedback', () => {
+  const source = (literalJson: string) =>
+    describeMappingSource(
+      { id: 'file-row', destinationKey: 'body', kind: 'literal', literalJson },
+      emptyGraph(),
+    );
+  expect(
+    source(JSON.stringify({ kind: 'artifact', byteLength: 1048576 })).label,
+  ).toBe('File · 1 MB');
+  expect(source('{').label).toBe('Unfinished value');
+  expect(source('{"kind":"artifact","byteLength":1e300}').label).toBe(
+    '{2 fields}',
+  );
+});
