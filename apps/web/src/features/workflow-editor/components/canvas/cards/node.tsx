@@ -1,3 +1,5 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import { StatusGlyph } from '@/components/ui/status';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { CardHeading, IssueBadge, NodeMarks, PortRows } from './parts';
@@ -62,6 +64,22 @@ export function WorkflowNodeCard({
           className={handleClass}
         />
       )}
+      {data.failureEligible === true ? (
+        <>
+          <Handle
+            id={WORKFLOW_FAILURE_PORT}
+            type="source"
+            position={Position.Right}
+            aria-label={`${title}: Failure output`}
+            style={{ top: 'calc(100% - 4px)' }}
+            className="!size-2.5 !border-destructive !bg-background !border-dashed"
+          />
+          <span className="pointer-events-none absolute -bottom-2 right-3 flex items-center gap-1 rounded bg-card px-1 text-[0.65rem] text-destructive">
+            <StatusGlyph tone="failure" className="size-2.5" />
+            Failure
+          </span>
+        </>
+      ) : null}
       <IssueBadge count={data.issueCount} />
     </article>
   );

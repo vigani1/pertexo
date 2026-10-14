@@ -6,7 +6,7 @@ import type { RunTimelineRow, RunTimelineStepStatus } from './timeline/runs';
 
 type StepFacts = Pick<
   RunTimelineRow,
-  'label' | 'status' | 'attempts' | 'story' | 'resumeAt'
+  'label' | 'status' | 'attempts' | 'story' | 'resumeAt' | 'failureHandling'
 >;
 
 function lastWith(
@@ -56,7 +56,10 @@ function failedSentence(
   rows: readonly StepFacts[],
   durationMs: number | undefined,
 ): string {
-  const failed = lastWith(rows, 'failed');
+  const failed = lastWith(
+    rows.filter((row) => row.failureHandling?.disposition !== 'handled'),
+    'failed',
+  );
   if (failed === undefined) return withDuration('Failed', durationMs);
   return failed.attempts > 1
     ? `Failed at ${failed.label} after ${String(failed.attempts)} attempts`
@@ -70,7 +73,12 @@ function failedSentence(
 export function describeRunSentence(
   run: Pick<
     WorkflowRunSummary,
-    'status' | 'startedAt' | 'completedAt' | 'updatedAt' | 'cancelRequestedAt'
+    | 'status'
+    | 'startedAt'
+    | 'completedAt'
+    | 'updatedAt'
+    | 'cancelRequestedAt'
+    | 'handledFailureCount'
   >,
   rows: readonly StepFacts[],
   nowMs: number,
@@ -81,6 +89,8 @@ export function describeRunSentence(
   const durationMs = runDurationMs(run, nowMs);
   switch (run.status) {
     case 'succeeded':
+      if ((run.handledFailureCount ?? 0) > 0)
+        return `Finished — ${String(run.handledFailureCount)} ${run.handledFailureCount === 1 ? 'failure' : 'failures'} handled`;
       return durationMs === undefined
         ? 'Succeeded'
         : `Succeeded in ${formatDurationMs(durationMs)}`;

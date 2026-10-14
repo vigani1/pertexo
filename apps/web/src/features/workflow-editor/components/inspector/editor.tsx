@@ -1,3 +1,5 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import { FailureSetup } from '../failure-routing/setup';
 import type { ReactNode } from 'react';
 import type {
   NodeDefinitionCatalogItem,
@@ -56,6 +58,7 @@ export function EditorInspector({
   onTestPassed,
   onClose,
   onAddStepAfter,
+  onAddFailureHandler,
   onAddToBody,
   onDuplicateSelection,
   onRemoveEdge,
@@ -86,6 +89,7 @@ export function EditorInspector({
   onTestPassed: (nodeId: string, outputBytes: number | undefined) => void;
   onClose: () => void;
   onAddStepAfter: (nodeId: string, returnFocus: HTMLElement | null) => void;
+  onAddFailureHandler: (nodeId: string, opener: HTMLElement) => void;
   onAddToBody: (loopId: string, returnFocus: HTMLElement) => void;
   onDuplicateSelection: () => void;
   onRemoveEdge: (edgeId: string) => void;
@@ -129,6 +133,20 @@ export function EditorInspector({
       tab={tab}
       onTabChange={onTabChange}
       focusTarget={actions.focusTarget}
+      renderFailureSetup={(node) => (
+        <FailureSetup
+          node={node}
+          graph={graph}
+          definitions={definitions}
+          editable={editable}
+          store={store}
+          onAdd={onAddFailureHandler}
+          onRemove={onRemoveEdge}
+          onSelect={(nodeId) => {
+            actions.request({ kind: 'select', nodeIds: [nodeId] });
+          }}
+        />
+      )}
       {...(renderStepRuns === undefined ? {} : { renderRuns: renderStepRuns })}
       actions={{
         onAddAfter: (returnFocus) => {
@@ -165,6 +183,13 @@ export function EditorInspector({
           <p className="p-4 text-sm text-muted-foreground">
             Run this workflow to test the Call with its child. A single-step
             preview cannot return a child result.
+          </p>
+        ) : Object.values(findStep(graph, nodeId)?.inputMappings ?? {}).some(
+            (source) => source.kind === 'node_failure',
+          ) ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            This handler reads an actual failure. Run the workflow to verify its
+            failure path; a single-step preview cannot supply that evidence.
           </p>
         ) : (
           <NodeTestPanel
@@ -213,7 +238,9 @@ function priorTestFor(
   if (passed === undefined) return undefined;
   const wired = levelOf(graph, nodeId)?.edges.some(
     (edge) =>
-      edge.source.nodeId === passed.nodeId && edge.target.nodeId === nodeId,
+      edge.source.nodeId === passed.nodeId &&
+      edge.target.nodeId === nodeId &&
+      edge.source.port !== WORKFLOW_FAILURE_PORT,
   );
   const source = findStep(graph, passed.nodeId);
   return wired === true && source !== undefined

@@ -310,7 +310,7 @@ test('adds a first body step from the container and never connects across the bo
   // A connection from outside the body to a step inside it is refused.
   const from = page
     .getByTestId('rf__node-after')
-    .locator('.react-flow__handle.source');
+    .locator('.react-flow__handle.source[data-handleid="out"]');
   const to = page
     .getByTestId(`rf__node-${inner}`)
     .locator('.react-flow__handle.target');

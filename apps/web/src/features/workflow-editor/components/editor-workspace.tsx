@@ -241,6 +241,7 @@ export function EditorWorkspace({
             request({ kind: 'select', nodeIds: [] });
           }}
           onAddStepAfter={addAfter}
+          onAddFailureHandler={quickAdd.openFailure}
           onAddToBody={addToBody}
           onDuplicateSelection={duplicateSelection}
           onRemoveEdge={removeEdge}

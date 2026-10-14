@@ -130,7 +130,8 @@ function copyStep(
     inputMappings: Object.fromEntries(
       Object.entries(node.inputMappings).map(([key, source]) => [
         key,
-        source.kind === 'node_output' && idMap.has(source.nodeId)
+        (source.kind === 'node_output' || source.kind === 'node_failure') &&
+        idMap.has(source.nodeId)
           ? { ...source, nodeId: idMap.get(source.nodeId) ?? source.nodeId }
           : source,
       ]),

@@ -546,3 +546,81 @@ for (const width of [1280, 375])
       contentType: 'image/png',
     });
   });
+
+for (const width of [1280, 375])
+  test(`keeps handled failures visibly failed in successful history at ${String(width)}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await installRoutes(page);
+    const source = {
+      id: '22222222-2222-4222-8222-222222222222',
+      nodeId: 'source',
+      invocationKey: 'source:0',
+      status: 'failed',
+      currentAttemptNumber: 1,
+      startedAt: timestamp,
+      completedAt: '2026-09-15T10:00:01.000Z',
+      resumeAt: null,
+      safeErrorCode: 'execution.authentication',
+      failureHandling: {
+        entryInvocationKey: 'handler:0',
+        sinkInvocationKey: 'handler:0',
+        disposition: 'handled',
+      },
+    };
+    const handler = {
+      ...source,
+      id: '33333333-3333-4333-8333-333333333333',
+      nodeId: 'handler',
+      invocationKey: 'handler:0',
+      status: 'succeeded',
+      safeErrorCode: null,
+    };
+    const { failureHandling: _, ...ordinaryHandler } = handler;
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
+      (route) =>
+        route.fulfill({
+          json: {
+            run: { ...run(firstRunId, 'succeeded'), handledFailureCount: 1 },
+            nodes: [source, ordinaryHandler],
+          },
+        }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/${firstRunId}/node-runs/*/input`,
+      (route) => route.fulfill({ json: { input: { kind: 'none' } } }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/${firstRunId}/node-runs/*/output`,
+      (route) => route.fulfill({ json: { output: { kind: 'none' } } }),
+    );
+    await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+    await expect(
+      page.getByText('Finished — 1 failure handled', { exact: true }).first(),
+    ).toBeVisible();
+    await page
+      .getByRole('button', { name: /source: Failed · failure handled/u })
+      .click();
+    const details =
+      width < 640 ? page.getByRole('dialog') : page.getByLabel('Step details');
+    await expect(details).toContainText(
+      'The selected handler finished successfully. This source step remains failed.',
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+      await page.screenshot({
+        path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/failure-history-${String(width)}.png`,
+        fullPage: true,
+      });
+    await testInfo.attach(`handled-failure-${String(width)}`, {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
+  });

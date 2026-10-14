@@ -21,7 +21,7 @@ test('drops a connection on empty canvas to add a connected step there, undone i
   await page.goto(editorUrl);
   const output = page
     .getByTestId('rf__node-target')
-    .locator('.react-flow__handle.source');
+    .locator('.react-flow__handle.source[data-handleid="out"]');
   const box = await output.boundingBox();
   if (box === null) throw new Error('The output port is not on screen');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

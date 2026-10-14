@@ -258,3 +258,13 @@ not adopted: the controlled trial increased build work and emitted bundle size
 without establishing a repeatable editor interaction improvement. Existing
 purposeful memoization remains in place; revisit only with representative
 runtime measurements.
+
+Failure paths are available on eligible root actions in the editor's Setup tab.
+Choose **Follow failure link**, then select or add a separate handler. Its first
+step can insert the safe source failure fields. Failure paths support ordinary
+Condition decision trees and final Stop run steps; loops, joins, Wait and Call
+workflow are outside this release. Unknown outcomes and requested stops never
+select a handler. Removing a failure path confirms its owned steps and supports
+undo. Run history keeps the original source failed and records whether the
+handler completed, including “Finished — 1 failure handled” for a successful
+run.

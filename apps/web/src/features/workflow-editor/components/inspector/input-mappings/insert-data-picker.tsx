@@ -1,3 +1,8 @@
+import {
+  WORKFLOW_FAILURE_PORT,
+  WORKFLOW_FAILURE_FIELDS,
+} from '@pertexo/workflow-model';
+import { StatusGlyph } from '@/components/ui/status';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { DatabaseIcon, RepeatIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -19,6 +24,7 @@ import {
 } from '../../../model/inspector/input-mappings';
 
 export type InsertedSource =
+  | Readonly<{ kind: 'node_failure'; nodeId: string; path: string }>
   | Readonly<{ kind: 'node_output'; nodeId: string; path: string }>
   | Readonly<{ kind: 'run_input'; path: string }>
   | Readonly<{ kind: 'structured_input'; port: string; path: string }>;
@@ -57,9 +63,17 @@ export function InsertDataPicker({
   const [open, setOpen] = useState(false);
   const sourceIds = new Set(
     graph.edges.flatMap((edge) =>
-      edge.target.nodeId === nodeId ? [edge.source.nodeId] : [],
+      edge.target.nodeId === nodeId &&
+      edge.source.port !== WORKFLOW_FAILURE_PORT
+        ? [edge.source.nodeId]
+        : [],
     ),
   );
+  const failureSource = graph.edges.find(
+    (edge) =>
+      edge.target.nodeId === nodeId &&
+      edge.source.port === WORKFLOW_FAILURE_PORT,
+  )?.source.nodeId;
   const sources = graph.nodes.filter((node) => sourceIds.has(node.id));
   function pick(source: InsertedSource, fieldName: string) {
     setOpen(false);
@@ -116,6 +130,24 @@ export function InsertDataPicker({
               </ul>
             </li>
           ) : null}
+          {failureSource === undefined ? null : (
+            <li>
+              <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
+                <StatusGlyph tone="failure" />
+                Source failure
+              </p>
+              <FieldList
+                wholeLabel="All safe failure fields"
+                fields={WORKFLOW_FAILURE_FIELDS.map((key) => ({ key }))}
+                onPick={(path, name) => {
+                  pick(
+                    { kind: 'node_failure', nodeId: failureSource, path },
+                    name || 'failure',
+                  );
+                }}
+              />
+            </li>
+          )}
           {sources.map((source) => {
             const definition = findDefinition(definitions, source);
             const step = describeStep(
@@ -151,7 +183,7 @@ export function InsertDataPicker({
             />
           </li>
         </ul>
-        {sources.length === 0 ? (
+        {sources.length === 0 && failureSource === undefined ? (
           <p className="mt-3 text-xs text-subtle-foreground">
             Link a step into this one to use its output here.
           </p>

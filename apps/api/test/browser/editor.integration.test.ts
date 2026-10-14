@@ -1,3 +1,7 @@
+import {
+  failureRoutingEvidenceSchema,
+  verifyFailureRoutingEvidence,
+} from './editor/evidence/failure-routing.js';
 import { fork, spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -92,6 +96,7 @@ const scenario = z
     'readonly',
     'schedule',
     'webhook-controlled-http',
+    'failure-routing',
     'duplication',
     'portability',
     'input-cases',
@@ -126,12 +131,17 @@ function ownChild<T extends ChildProcess>(
   return owner.acquire(name, child, closeChild);
 }
 let worker: ChildProcess;
+const controlledHttpScenario =
+  scenario === 'webhook-controlled-http' || scenario === 'failure-routing';
+let failureRoutingEvidence:
+  z.infer<typeof failureRoutingEvidenceSchema> | undefined;
 const httpMaster =
-  scenario === 'webhook-controlled-http' || scenario === 'curated-templates'
+  controlledHttpScenario || scenario === 'curated-templates'
     ? randomBytes(32)
     : undefined;
-const httpAuthorization =
-  scenario === 'webhook-controlled-http' ? `Bearer ${randomUUID()}` : undefined;
+const httpAuthorization = controlledHttpScenario
+  ? `Bearer ${randomUUID()}`
+  : undefined;
 let httpControl: ReturnType<typeof createEditorHttpControl> | undefined;
 let httpEffects: z.infer<typeof httpEffectsSchema> | undefined;
 let curatedEffects: z.infer<typeof curatedTemplateEffectsSchema> | undefined;
@@ -424,7 +434,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       otlpHeaders: {},
     }),
     afterMigration: async (databaseUrl) => {
-      if (scenario === 'schedule' || scenario === 'webhook-controlled-http') {
+      if (scenario === 'schedule' || controlledHttpScenario) {
         const inspector = new Pool({
           connectionString: databaseUrl(process.env.DATABASE_ADMIN_URL ?? ''),
         });
@@ -713,6 +723,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         (url.pathname === '/evidence' ||
           url.pathname === '/evidence/receipts' ||
           url.pathname === '/evidence/run-recovery' ||
+          url.pathname === '/evidence/failure-routing' ||
           url.pathname === '/evidence/expression-admission' ||
           url.pathname === '/evidence/duplication' ||
           url.pathname === '/evidence/portability' ||
@@ -763,6 +774,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
               scenario === 'receipts'
             )
               receiptEvidence = receiptRecoveryEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/evidence/failure-routing' &&
+              scenario === 'failure-routing'
+            )
+              failureRoutingEvidence =
+                failureRoutingEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/run-recovery' &&
               scenario === 'run-recovery'
@@ -920,7 +937,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
                                 ? 'editor/readonly.spec.ts'
                                 : scenario === 'schedule'
                                   ? 'editor/schedule.spec.ts'
-                                  : 'editor/webhook-controlled-http.spec.ts',
+                                  : scenario === 'failure-routing'
+                                    ? 'editor/failure-routing.spec.ts'
+                                    : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1017,6 +1036,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       );
       process.stdout.write(
         `Live browser workflow duplication evidence ${JSON.stringify(duplicationEvidence)}\n`,
+      );
+      return;
+    }
+    if (scenario === 'failure-routing') {
+      if (failureRoutingEvidence === undefined || httpEffects === undefined)
+        throw new Error('Failure routing browser evidence missing');
+      await verifyFailureRoutingEvidence(
+        api.database(),
+        failureRoutingEvidence,
+        httpEffects,
       );
       return;
     }

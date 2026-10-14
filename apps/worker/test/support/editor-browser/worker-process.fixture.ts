@@ -68,7 +68,8 @@ const namespace = createRedisTestNamespace(
 );
 const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
 const controlledHttp =
-  process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http';
+  process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
+  process.env.EDITOR_BROWSER_CASE === 'failure-routing';
 const curatedTemplates =
   process.env.EDITOR_BROWSER_CASE === 'curated-templates';
 let curatedTarget:

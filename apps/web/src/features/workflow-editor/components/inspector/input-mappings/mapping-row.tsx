@@ -1,3 +1,4 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
@@ -122,6 +123,7 @@ function MappingEditor({
   row,
   suggestions,
   predecessors,
+  graph,
   loopPorts,
   errors,
   disabled,
@@ -133,10 +135,20 @@ function MappingEditor({
   const keyErrorId = `${keyId}-error`;
   const listId = `${keyId}-suggestions`;
   const suggestion = suggestions.find(({ key }) => key === row.destinationKey);
+  const failureSource = graph.edges.find(
+    (edge) =>
+      edge.target.nodeId === nodeId &&
+      edge.source.port === WORKFLOW_FAILURE_PORT,
+  )?.source.nodeId;
+  const failureKind: KindOption = { kind: 'node_failure', label: 'Failure' };
+  const baseKinds =
+    failureSource !== undefined || row.kind === 'node_failure'
+      ? [...kinds, failureKind]
+      : kinds;
   const options =
     loopPorts.length > 0 || row.kind === 'structured_input'
-      ? [...kinds, loopItemKind]
-      : kinds;
+      ? [...baseKinds, loopItemKind]
+      : baseKinds;
   return (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
@@ -200,7 +212,13 @@ function MappingEditor({
         onValueChange={(values) => {
           const kind: unknown = values[0];
           if (!isEditableInputMappingKind(kind)) return;
-          onChange(changeInputMappingKind(row, kind, predecessors[0]?.nodeId));
+          onChange(
+            changeInputMappingKind(
+              row,
+              kind,
+              kind === 'node_failure' ? failureSource : predecessors[0]?.nodeId,
+            ),
+          );
         }}
       >
         {options.map((option) => (

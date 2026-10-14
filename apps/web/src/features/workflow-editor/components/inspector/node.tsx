@@ -68,6 +68,7 @@ export function NodeInspector({
   focusTarget,
   testPanel,
   runsPanel,
+  failureSetup,
   actions,
 }: Readonly<{
   node: WorkflowNode;
@@ -88,6 +89,7 @@ export function NodeInspector({
   testPanel: ReactNode;
   /** The step's record in real runs; absent where there's none to show. */
   runsPanel?: ReactNode;
+  failureSetup?: ReactNode;
   actions: NodeInspectorActions;
 }>) {
   const store = useEditorStoreApi();
@@ -188,6 +190,7 @@ export function NodeInspector({
                   onTabChange('inputs');
                 }}
               />
+              {failureSetup}
               {isSlackStep(node) ? (
                 <SlackChannelField
                   node={node}

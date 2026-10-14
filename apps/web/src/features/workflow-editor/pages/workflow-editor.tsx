@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
@@ -326,6 +327,19 @@ function WorkflowEditorSession({
         <ConflictCompareDialog
           open={compareOpen}
           onOpenChange={setCompareOpen}
+        />
+        <ConfirmDialog
+          open={actions.pendingRemoval !== undefined}
+          onOpenChange={(open) => {
+            if (!open) actions.cancelRemoval();
+          }}
+          title="Remove this failure path?"
+          description="The owned handler steps are removed with the link, so they cannot become ordinary starting steps. The source stops this run on failure again. Undo restores the whole path."
+          consequences={actions.pendingRemoval?.labels ?? []}
+          tone="destructive"
+          confirmLabel="Remove failure path"
+          confirmDisabled={paused}
+          onConfirm={actions.confirmRemoval}
         />
         <UnfinishedEditDialog
           open={actions.pendingAction !== undefined}

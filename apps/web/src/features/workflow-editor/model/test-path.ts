@@ -1,3 +1,4 @@
+import { portName } from '@/features/catalog/presentation.public';
 import { stepTitle } from './graph/adapter';
 import type { GraphLevel } from './graph/scopes';
 
@@ -39,7 +40,7 @@ export function describeTestPath(graph: GraphLevel, nodeId: string): string {
     steps.unshift(
       only.source.port === DEFAULT_PORT
         ? name
-        : `${name} (${only.source.port})`,
+        : `${name} (${portName(only.source.port)})`,
     );
     current = source;
   }

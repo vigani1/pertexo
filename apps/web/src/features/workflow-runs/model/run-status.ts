@@ -68,7 +68,15 @@ export const runStatuses: readonly RunStatus[] = [
 
 const activeRunStatuses = new Set<RunStatus>(['queued', 'running', 'waiting']);
 
-export function describeRunStatus(status: RunStatus): StatusLook {
+export function describeRunStatus(
+  status: RunStatus,
+  handledFailureCount = 0,
+): StatusLook {
+  if (status === 'succeeded' && handledFailureCount > 0)
+    return {
+      tone: 'success',
+      label: `Finished — ${String(handledFailureCount)} ${handledFailureCount === 1 ? 'failure' : 'failures'} handled`,
+    };
   return runStatusLooks[status];
 }
 

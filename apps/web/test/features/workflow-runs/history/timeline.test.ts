@@ -587,3 +587,96 @@ describe('reused prefix history', () => {
     });
   });
 });
+
+describe('handled failure history', () => {
+  it('keeps the failed glyph and handles only recorded completion', () => {
+    const done = runSummary('succeeded', {
+      completedAt: at(5),
+      handledFailureCount: 1,
+    });
+    const source = node('source', 'failed', {
+      failureHandling: {
+        entryInvocationKey: 'handler:0',
+        sinkInvocationKey: 'sink:0',
+        disposition: 'handled',
+      },
+      completedAt: at(2),
+    });
+    const view = buildRunTimeline({
+      run: done,
+      nodes: [source],
+      events: [],
+      nowMs: start + 6_000,
+    });
+    expect(view.rows[0]).toMatchObject({
+      status: 'failed',
+      tone: 'failure',
+      statusLabel: 'Failed · failure handled',
+    });
+    expect(describeRunSentence(done, view.rows, start + 6_000)).toBe(
+      'Finished — 1 failure handled',
+    );
+  });
+  it('does not call an unfinished handler handled after the run stops', () => {
+    const source = node('source', 'failed', {
+      failureHandling: {
+        entryInvocationKey: 'handler:0',
+        sinkInvocationKey: 'sink:0',
+        disposition: 'pending',
+      },
+      completedAt: at(2),
+    });
+    const active = buildRunTimeline({
+      run: runSummary('waiting'),
+      nodes: [source],
+      events: [],
+      nowMs: start + 6_000,
+    });
+    expect(active.rows[0]).toMatchObject({
+      statusLabel: 'Failed · handling failure…',
+      handlingInProgress: true,
+    });
+    const stopped = buildRunTimeline({
+      run: runSummary('canceled', { completedAt: at(5) }),
+      nodes: [source],
+      events: [],
+      nowMs: start + 6_000,
+    });
+    expect(stopped.rows[0]?.statusLabel).toBe('Failed · not handled');
+    expect(stopped.rows[0]?.handlingInProgress).toBeUndefined();
+  });
+  it('does not blame a handled source when the run fails later', () => {
+    const run = runSummary('failed', {
+      completedAt: at(8),
+      handledFailureCount: 1,
+    });
+    const timeline = buildRunTimeline({
+      run,
+      graph,
+      nodes: [
+        node('post-erp', 'failed', {
+          failureHandling: {
+            entryInvocationKey: 'handler:0',
+            sinkInvocationKey: 'handler:0',
+            disposition: 'handled',
+          },
+        }),
+      ],
+      events: [],
+      nowMs: start + 8000,
+    });
+    expect(describeRunSentence(run, timeline.rows, start + 8000)).toBe(
+      'Failed after 8s',
+    );
+  });
+
+  it('retains a handled-success explanation without claiming missing step evidence', () => {
+    const done = runSummary('succeeded', {
+      completedAt: at(5),
+      handledFailureCount: 1,
+    });
+    expect(describeRunSentence(done, [], start + 40_000_000)).toBe(
+      'Finished — 1 failure handled',
+    );
+  });
+});
