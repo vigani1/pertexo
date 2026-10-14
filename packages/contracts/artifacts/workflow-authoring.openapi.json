@@ -1400,14 +1400,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "description": "Automation token authentication, limiter or operation dependencies unavailable",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiProblem"
-                }
-              }
-            }
+            "$ref": "#/components/responses/PublicationUnavailable"
           }
         }
       }
@@ -14368,6 +14361,26 @@
           "Retry-After": {
             "description": "Bounded explicit-retry delay in seconds",
             "required": true,
+            "schema": {
+              "type": "integer",
+              "const": 1
+            }
+          }
+        }
+      },
+      "PublicationUnavailable": {
+        "description": "Workflow validation, automation token authentication or limiter unavailable",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "description": "One-second explicit retry delay for validation or limiter unavailability; absent when automation tokens are disabled",
+            "required": false,
             "schema": {
               "type": "integer",
               "const": 1
