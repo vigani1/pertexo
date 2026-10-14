@@ -7,7 +7,7 @@ import {
 import {
   authorizeWorkspace,
   createActorContext,
-  createApiTokenActorContext,
+  createAutomationActorContext,
 } from '../../../src/authorization/index.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -358,7 +358,7 @@ describe('workflow portability application authority and exact commands', () => 
   });
   it('requires connection read on a token before inspecting explicit import bindings', async () => {
     const f = fixture();
-    const actor = createApiTokenActorContext({
+    const actor = createAutomationActorContext({
       actorId,
       workspaceId,
       tokenId: workflowId,
@@ -376,7 +376,7 @@ describe('workflow portability application authority and exact commands', () => 
     await expect(
       f.preview.execute({
         ...context,
-        actor: createApiTokenActorContext({
+        actor: createAutomationActorContext({
           ...actor,
           scopes: ['workflow:create', 'connection:read'],
         }),
