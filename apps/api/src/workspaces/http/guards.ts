@@ -1,4 +1,5 @@
 import { hasAuthorizationHeader } from '../../authentication/automation/headers.js';
+import type { AuthorizationHeaderSource } from '../../authentication/automation/headers.js';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
@@ -44,7 +45,7 @@ export class SessionAuthenticationGuard implements CanActivate {
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = requestFrom(context);
-    if (hasAuthorizationHeader(request.headers))
+    if (hasAuthorizationHeader(request.headers, request.raw?.rawHeaders))
       return throwApplicationError(applicationError('auth.unauthenticated'));
     const rawToken = readCookie(request, SESSION_COOKIE_NAME);
     if (rawToken === undefined) {
@@ -204,8 +205,12 @@ export class WorkspaceMemberManageGuard extends WorkspaceCapabilityGuard {
   }
 }
 
-function requestFrom(context: ExecutionContext): IdentityWorkspaceRequest {
-  return context.switchToHttp().getRequest<IdentityWorkspaceRequest>();
+function requestFrom(
+  context: ExecutionContext,
+): IdentityWorkspaceRequest & AuthorizationHeaderSource {
+  return context
+    .switchToHttp()
+    .getRequest<IdentityWorkspaceRequest & AuthorizationHeaderSource>();
 }
 
 function routeWorkspace(request: IdentityWorkspaceRequest): string {

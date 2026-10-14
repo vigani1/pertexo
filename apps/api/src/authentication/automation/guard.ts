@@ -19,6 +19,7 @@ import {
 } from '../../workspaces/request/identifiers.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
 import { hasAuthorizationHeader } from './headers.js';
+import type { AuthorizationHeaderSource } from './headers.js';
 import { ApiTokenAuthentication } from './authority.js';
 
 @Injectable()
@@ -31,11 +32,12 @@ export class AutomationAuthenticationGuard implements CanActivate {
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
-      .getRequest<IdentityWorkspaceRequest>();
-    if (!hasAuthorizationHeader(request.headers))
+      .getRequest<IdentityWorkspaceRequest & AuthorizationHeaderSource>();
+    if (!hasAuthorizationHeader(request.headers, request.raw?.rawHeaders))
       return this.sessions.canActivate(context);
     const verified = await this.authentication.authenticate({
       headers: request.headers,
+      rawHeaders: request.raw?.rawHeaders,
       clientAddress: request.ip ?? 'unknown-client',
       hasSession: readCookie(request, SESSION_COOKIE_NAME) !== undefined,
     });

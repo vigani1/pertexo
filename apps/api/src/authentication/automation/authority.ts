@@ -19,6 +19,7 @@ export class ApiTokenAuthentication {
   public async authenticate(
     input: Readonly<{
       headers: RequestHeaders;
+      rawHeaders?: readonly string[] | undefined;
       clientAddress: string;
       hasSession: boolean;
     }>,
@@ -26,7 +27,7 @@ export class ApiTokenAuthentication {
     await this.admission.admit('automation_authentication', {
       clientAddress: input.clientAddress,
     });
-    const credential = bearerCredential(input.headers);
+    const credential = bearerCredential(input.headers, input.rawHeaders);
     if (credential === undefined || input.hasSession) return undefined;
     if (!this.enabled)
       return throwApplicationError(
