@@ -7,7 +7,10 @@ import {
 } from '../outbox/events.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { requestWorkflowRunCancellation } from '../runs/commands/cancel.js';
-import { appendLockedRunEvent, RUN_EVENT_TYPE } from '../runs/queries/events.js';
+import {
+  appendLockedRunEvent,
+  RUN_EVENT_TYPE,
+} from '../runs/queries/events.js';
 import {
   operatorRunReplayRequests,
   operatorUnknownOutcomeEvidence,
