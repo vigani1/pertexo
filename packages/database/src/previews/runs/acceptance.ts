@@ -1,3 +1,4 @@
+import { lockExecutionArtifactReferences } from '../../artifacts/references.js';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
@@ -344,6 +345,16 @@ export async function acceptPreviewRun(
     now,
   );
 
+  await lockExecutionArtifactReferences(
+    transaction,
+    JSON.parse(resolvedInput.stored) as unknown,
+    resolvedInput.priorPreviewRunId ?? undefined,
+  );
+  await lockExecutionArtifactReferences(
+    transaction,
+    parsed.executableNode,
+    resolvedInput.priorPreviewRunId ?? undefined,
+  );
   const idempotencyRecordId = uuidv7();
   const previewRunId = uuidv7();
   const previewAttemptId = uuidv7();

@@ -14,6 +14,7 @@ import type {
 import type { ApiConfig } from './platform/config/api.js';
 import { ConnectionsModule } from './connections/index.js';
 import { CatalogModule } from './catalog/index.js';
+import { ArtifactsModule } from './artifacts/index.js';
 
 import {
   DatabaseModule,
@@ -284,6 +285,10 @@ function registerFeatureModules(
             DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
         },
       ),
+    );
+  else
+    modules.push(
+      ArtifactsModule.registerUnavailable(authorization, identityModule),
     );
   return modules;
 }

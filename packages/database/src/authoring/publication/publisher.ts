@@ -1,3 +1,4 @@
+import { lockArtifactReferences } from '../../artifacts/references.js';
 import {
   claimCommand,
   credentialCommandScope,
@@ -186,6 +187,7 @@ async function lockAndCompilePublication(
     draft.graphJson,
     variant.definitionCatalog,
   );
+  await lockArtifactReferences(client, input.workspaceId, graph);
   const executable = executableSchema.parse(variant.executableCompiler(graph));
   const versionId = generatePersistedId();
   const { calls } = await validatePublicationCalls(

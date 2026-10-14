@@ -1,3 +1,4 @@
+import { lockArtifactReferences } from '../../../artifacts/references.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { z } from 'zod';
@@ -71,6 +72,7 @@ async function createWorkflow(
     if (stored !== null)
       createdId = createdResultSchema.parse(stored).workflowId;
     else {
+      await lockArtifactReferences(client, input.workspaceId, graph);
       await client.query(
         `insert into app.workflows
            (id, workspace_id, name, lifecycle_status, activation_status, created_by)
@@ -155,6 +157,7 @@ async function saveDraft(
       graph,
       placementDefinitionCatalog,
     );
+    await lockArtifactReferences(client, input.workspaceId, graph);
     const result = await client.query<Record<string, unknown>>(
       `update app.workflow_drafts set graph_json = $1::jsonb,
        revision = revision + 1, updated_by = $2, updated_at = transaction_timestamp()

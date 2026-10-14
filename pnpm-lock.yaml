@@ -387,6 +387,9 @@ importers:
       '@pertexo/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@pertexo/node-sdk':
+        specifier: workspace:*
+        version: link:../node-sdk
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../nodes-core

@@ -11,6 +11,7 @@ import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
 
 import type { NodeExecutionCapabilityContext } from '../capabilities.js';
 import { artifactExpiry, assertArtifactByteLimit } from './policy.js';
+import { createArtifactReader } from './read.js';
 
 type ArtifactDescriptor = Readonly<{
   artifactId: string;
@@ -23,6 +24,15 @@ type ArtifactDescriptor = Readonly<{
 }>;
 
 export interface WorkerArtifactPersistence {
+  requireReadable?(
+    input: NodeExecutionCapabilityContext &
+      Readonly<{
+        reference: Parameters<
+          NonNullable<NodeArtifactRuntime['read']>
+        >[0]['reference'];
+        signal: AbortSignal;
+      }>,
+  ): Promise<void>;
   createPending(
     input: ArtifactDescriptor &
       Readonly<{ expiresAt: Date; purpose: string; signal: AbortSignal }>,
@@ -215,7 +225,8 @@ async function spoolArtifactBody(
 export function createNodeArtifactRuntimeFactory(
   input: Readonly<{
     persistence: WorkerArtifactPersistence;
-    store: Pick<ArtifactStore, 'put'>;
+    store: Pick<ArtifactStore, 'put'> &
+      Partial<Pick<ArtifactStore, 'getStream'>>;
     retentionMillis: number;
     artifactId?: () => string;
     now?: () => Date;
@@ -231,8 +242,22 @@ export function createNodeArtifactRuntimeFactory(
     removeDirectory: (directory: string) =>
       rm(directory, { recursive: true, force: true }),
   };
+  const requireReadable = input.persistence.requireReadable?.bind(
+    input.persistence,
+  );
+  const getStream = input.store.getStream?.bind(input.store);
   return (context) =>
     Object.freeze({
+      ...(requireReadable === undefined || getStream === undefined
+        ? {}
+        : {
+            read: createArtifactReader({
+              workspaceId: context.workspaceId,
+              store: { getStream },
+              requireReadable: (reference, signal) =>
+                requireReadable({ ...context, reference, signal }),
+            }),
+          }),
       write: async (
         writeInput: Parameters<NodeArtifactRuntime['write']>[0],
       ) => {

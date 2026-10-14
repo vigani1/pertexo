@@ -225,7 +225,7 @@ const apiProblemDetails = {
     status: 503,
     title: 'Artifact storage unavailable',
     severity: 'warn',
-    exposeDetail: false,
+    exposeDetail: true,
   },
   'workspace.conflict': {
     status: 409,

@@ -1,3 +1,4 @@
+import { lockArtifactReferences } from '../../../artifacts/references.js';
 import { z } from 'zod';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 
@@ -94,6 +95,7 @@ async function restoreWorkflowVersion(
       placementDefinitionCatalog,
     );
 
+    await lockArtifactReferences(client, workspaceId, sourceVersion.graphJson);
     const updatedResult = await client.query<Record<string, unknown>>(
       `update app.workflow_drafts set graph_json=$1::jsonb,
          revision=revision+1,updated_by=$2,

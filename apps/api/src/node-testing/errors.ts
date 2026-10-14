@@ -1,3 +1,4 @@
+import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import { PriorPreviewInputUnavailableError } from '@pertexo/database/previews';
 import {
   WorkflowNotFoundError,
@@ -39,6 +40,11 @@ export class NodeTestInvalidError extends Error {
 }
 
 export function mapNodeTestingError(error: unknown): ApplicationError {
+  if (error instanceof ArtifactMetadataNotFoundError)
+    return applicationError('request.invalid', {
+      safeDetail:
+        'An attached file is unavailable or belongs to an expired preview. Upload the file again.',
+    });
   if (error instanceof InvalidAuthenticatedWorkspaceContextError)
     return applicationError('request.invalid', { safeDetail: error.message });
   if (

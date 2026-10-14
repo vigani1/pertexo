@@ -1,0 +1,142 @@
+import type { PoolClient } from 'pg';
+import { sql } from 'drizzle-orm';
+import {
+  nodeArtifactReferenceSchema,
+  type NodeArtifactReference,
+} from '@pertexo/node-sdk';
+import { isRecord } from '@pertexo/workflow-model';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
+import { artifactMetadataMatches } from './metadata-contract.js';
+import { ArtifactMetadataNotFoundError } from './store.js';
+
+type ArtifactRow = Record<string, unknown> & {
+  id: string;
+  byte_length: number | string;
+  media_type: string;
+  sha256: string;
+  preview_run_id: string | null;
+};
+
+/** JSON is already bounded and validated by its owning persistence boundary. */
+export function collectArtifactReferences(
+  value: unknown,
+): readonly NodeArtifactReference[] {
+  const found: NodeArtifactReference[] = [];
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (Array.isArray(current)) {
+      const children: readonly unknown[] = current;
+      pending.push(...children);
+    } else if (isRecord(current)) {
+      if (
+        current.kind === 'artifact' &&
+        'artifactId' in current &&
+        'byteLength' in current &&
+        'mediaType' in current &&
+        'sha256' in current
+      ) {
+        const { kind: _kind, ...descriptor } = current;
+        found.push(nodeArtifactReferenceSchema.parse(descriptor));
+      } else pending.push(...Object.values(current));
+    }
+  }
+  return found;
+}
+
+function assertRows(
+  references: readonly NodeArtifactReference[],
+  rows: readonly ArtifactRow[],
+  previewRunId?: string,
+): void {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  for (const reference of references) {
+    const row = byId.get(reference.artifactId.toLowerCase());
+    if (
+      row === undefined ||
+      (row.preview_run_id !== null && previewRunId === undefined) ||
+      !artifactMetadataMatches(
+        {
+          byteLength: Number(row.byte_length),
+          mediaType: row.media_type,
+          sha256: row.sha256,
+        },
+        reference,
+      )
+    )
+      throw new ArtifactMetadataNotFoundError();
+  }
+}
+
+export async function lockArtifactReferences(
+  client: PoolClient,
+  workspaceId: string,
+  value: unknown,
+): Promise<void> {
+  const references = collectArtifactReferences(value);
+  if (references.length === 0) return;
+  const ids = [...new Set(references.map((ref) => ref.artifactId))].sort();
+  const result = await client.query<ArtifactRow>(
+    `select artifact.id, artifact.byte_length, artifact.media_type, artifact.sha256,
+      link.owner_id as preview_run_id
+     from app.artifacts artifact
+     left join app.artifact_links link
+       on link.workspace_id=artifact.workspace_id and link.artifact_id=artifact.id
+     where artifact.workspace_id=$1 and artifact.id=any($2::uuid[])
+       and artifact.status='available' and artifact.deleted_at is null
+     order by artifact.id for share of artifact`,
+    [workspaceId, ids],
+  );
+  assertRows(references, result.rows);
+}
+
+export async function requireNodeArtifactReference(
+  transaction: WorkspaceTransaction,
+  reference: NodeArtifactReference,
+  previewRunId?: string,
+): Promise<void> {
+  await lockExecutionReferences(transaction, [reference], previewRunId);
+}
+
+export async function lockExecutionArtifactReferences(
+  transaction: WorkspaceTransaction,
+  value: unknown,
+  previewRunId?: string,
+): Promise<void> {
+  const references = collectArtifactReferences(value);
+  if (references.length === 0) return;
+  await lockExecutionReferences(transaction, references, previewRunId);
+}
+
+async function lockExecutionReferences(
+  transaction: WorkspaceTransaction,
+  references: readonly NodeArtifactReference[],
+  previewRunId?: string,
+): Promise<void> {
+  const ids = [...new Set(references.map((ref) => ref.artifactId))].sort();
+  const result = await transaction.db.execute<ArtifactRow>(sql`
+    select artifact.id, artifact.byte_length, artifact.media_type, artifact.sha256,
+      link.owner_id as preview_run_id
+    from app.artifacts artifact
+    left join app.artifact_links link
+      on link.workspace_id=artifact.workspace_id and link.artifact_id=artifact.id
+    left join app.preview_runs producer
+      on producer.workspace_id=link.workspace_id and producer.id=link.owner_id
+    where artifact.workspace_id=${transaction.workspaceId}
+      and artifact.id in (${sql.join(
+        ids.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )})
+      and artifact.status='available' and artifact.deleted_at is null
+      and (link.owner_id is null or (
+        producer.expires_at > clock_timestamp() and exists (
+          select 1 from app.preview_runs consumer
+          where consumer.workspace_id=${transaction.workspaceId}
+            and consumer.id=${previewRunId ?? null}::uuid
+            and consumer.expires_at > clock_timestamp()
+        )
+      ))
+    order by artifact.id for share of artifact
+  `);
+  assertRows(references, result.rows, previewRunId);
+}

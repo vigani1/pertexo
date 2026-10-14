@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
-import { ArtifactsController } from './controllers.js';
+import {
+  ArtifactsController,
+  UnconfiguredArtifactsController,
+} from './controllers.js';
 import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
 import type { ArtifactDependencies } from './ports.js';
 import { ArtifactService } from './service.js';
@@ -15,6 +18,22 @@ import {
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class ArtifactsModule {
+  public static registerUnavailable(
+    authorization: ArtifactDependencies['authorization'],
+    identityModule: DynamicModule,
+  ): DynamicModule {
+    return {
+      module: ArtifactsModule,
+      imports: [identityModule],
+      controllers: [UnconfiguredArtifactsController],
+      providers: [
+        { provide: ARTIFACT_AUTHORIZATION, useValue: authorization },
+        ArtifactUploadGuard,
+        ArtifactReadGuard,
+      ],
+    };
+  }
+
   public static register(
     dependencies: ArtifactDependencies,
     identityModule: DynamicModule,

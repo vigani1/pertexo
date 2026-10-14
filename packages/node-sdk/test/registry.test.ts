@@ -1330,3 +1330,73 @@ describe('node-sdk exact server registry', () => {
     ).resolves.toEqual({ kind: 'succeeded', output: {} });
   });
 });
+
+describe('artifact read capability grants', () => {
+  it.each([false, true])(
+    'exposes artifact reads only to a consuming manifest (%s)',
+    async (allowed) => {
+      const fixture = dispatchAwareFixture();
+      const selected = {
+        ...manifest,
+        capabilities: allowed ? ['artifact_input'] : [],
+        executorAbi: 2,
+      };
+      const sourceCatalog = createNodeCatalog({
+        definitions: [selected],
+        executors: [
+          {
+            abiVersion: 2,
+            definitions: [definition],
+            executor,
+            policyReferences: [policy],
+          },
+        ],
+        policies: [policy],
+      });
+      const read = vi.fn().mockResolvedValue(new Uint8Array());
+      const write = vi.fn().mockResolvedValue({
+        artifactId: '11111111-1111-4111-8111-111111111111',
+        byteLength: 0,
+        mediaType: 'application/octet-stream',
+        sha256: 'a'.repeat(64),
+      });
+      let actual: unknown;
+      const registry = createNodeRegistry({
+        catalog: sourceCatalog,
+        definitions: [
+          {
+            manifest: selected,
+            configSchema,
+            inputSchema: objectSchema,
+            outputSchema: objectSchema,
+          },
+        ],
+        executors: [
+          {
+            executor,
+            execute: async (invocation) => {
+              actual = await invocation.runtime?.artifacts?.read?.({
+                reference: {
+                  artifactId: '11111111-1111-4111-8111-111111111111',
+                  byteLength: 0,
+                  mediaType: 'application/octet-stream',
+                  sha256: 'a'.repeat(64),
+                },
+                maxBytes: 1,
+                signal: invocation.signal,
+              });
+              await invocation.runtime?.beforeDispatch();
+              return {};
+            },
+          },
+        ],
+      });
+      await registry.execute({
+        ...fixture.request,
+        runtime: { ...fixture.request.runtime, artifacts: { read, write } },
+      });
+      expect(actual).toEqual(allowed ? new Uint8Array() : undefined);
+      expect(read).toHaveBeenCalledTimes(allowed ? 1 : 0);
+    },
+  );
+});

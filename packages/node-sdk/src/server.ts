@@ -1,4 +1,5 @@
 import { z, type ZodType } from 'zod';
+import { ARTIFACT_INPUT_CAPABILITY } from './artifacts.js';
 
 import type {
   NodeDefinitionRegistration,
@@ -363,6 +364,16 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
         ? undefined
         : Object.freeze({
             ...request.runtime,
+            ...(request.runtime.artifacts?.read === undefined ||
+            definition.manifest.capabilities.includes(ARTIFACT_INPUT_CAPABILITY)
+              ? {}
+              : {
+                  artifacts: Object.freeze({
+                    write: request.runtime.artifacts.write.bind(
+                      request.runtime.artifacts,
+                    ),
+                  }),
+                }),
             beforeDispatch: async (
               input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
             ): Promise<void> => {

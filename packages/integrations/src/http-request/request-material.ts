@@ -18,6 +18,7 @@ export function requestBody(
   createFailure: FailureFactory,
 ): Uint8Array | undefined {
   if (input.body === undefined) return undefined;
+  if ('kind' in input.body) throw createFailure();
   if (method === 'GET' || method === 'HEAD') throw createFailure();
   if (input.body.encoding === 'utf8') {
     const bytes = new TextEncoder().encode(input.body.value);
