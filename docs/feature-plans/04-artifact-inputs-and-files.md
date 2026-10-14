@@ -1,8 +1,8 @@
 # F04 — File inputs and artifact lifecycle
 
-Status: consumer merged; upload UI implemented and locally qualified on 2026-10-15.
+Status: complete on 2026-10-15; consumer and upload UI merged and natural main qualified.
 The owner accepted the HTTP consumer, 1 MiB budget, opaque-file policy and reference
-lifetime on 2026-10-14. UI delivery/CI status is tracked below.
+lifetime on 2026-10-14. Delivery and qualification evidence is recorded below.
 Created: 2026-09-28. Reconciled against main
 `9c095bd258306c2a0fd0b618ceb0a584850e3baf` on 2026-10-14.
 Parent: [product roadmap](../product-roadmap.md).
@@ -244,7 +244,7 @@ artifact-aware F09 prefix recovery. No production rollout is included.
 - [x] Frontend implemented and inspected at desktop/phone widths.
 - [x] Local integrated acceptance and retention-safe rollback behavior recorded.
 - [x] Consumer PR merged; natural main checks inspected.
-- [ ] Upload UI PR merged; natural main checks inspected.
+- [x] Upload UI PR merged; natural main checks inspected.
 
 Evidence (2026-10-14): the accepted decision merged in #291 at main
 `375f35650e8826238c595f3ec495379e3939834b`; PR CI 38627247775 and CodeQL
@@ -289,7 +289,7 @@ qualified. React Doctor's changed scan reports 100/100 with no findings. Full `p
 browser journeys and both real browser cases pass. The final web build/lint/types
 and changed React Doctor scan also pass after the keyboard/lifecycle fixes.
 Backend natural main CI 38641937383 (including ARM publication) and CodeQL
-38641937323 pass. Upload UI PR merge and its natural main checks remain pending. Screenshots and
+38641937323 pass. Upload UI PR [#293](https://github.com/vigani1/pertexo/pull/293) merged green at `e9139241f1504a51ba176fde000a5b4310b25fac`. Latest-head PR CI 38649971227 and CodeQL 38649971228 passed. Natural main CI 38652300620 and CodeQL 38652300536 passed. Screenshots and
 usage examples are in [the file guide](../files.md).
 
 The upload dialog keeps its opener mounted while target changes close/cancel
@@ -301,3 +301,5 @@ The queued insertion callback checks its request/target before invoking the
 owner, as well as after awaiting it. A regression reproduces a target change
 between confirmation and the callback: no owner mutation may run with an aborted
 request. This complements cancellation during hashing/transfer/contract reads.
+
+A pre-push route-loading test exposed an existing detached-heading race across the loading-to-sign-in swap. Its three sign-out assertions now use the existing same-pass visibility helper; no production authentication behavior changed. The complete pre-push API, worker and web suites passed afterward.
