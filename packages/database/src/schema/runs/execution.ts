@@ -140,7 +140,7 @@ export const workflowRuns = appSchema.table(
     ),
     check(
       'workflow_runs_recovery_summary_complete',
-      sql`(((recovery_target_node_run_id IS NULL) AND (recovery_target_node_id IS NULL) AND (recovery_reused_count IS NULL) AND (recovery_effect_risk IS NULL) AND (recovery_effects_acknowledged IS NULL)) OR ((trigger_type = 'replay') AND (recovery_target_node_run_id IS NOT NULL) AND (recovery_target_node_id IS NOT NULL) AND (recovery_reused_count IS NOT NULL) AND (recovery_reused_count >= 0) AND (recovery_reused_count <= 200) AND (recovery_effect_risk IN ('ordinary', 'possible_effects')) AND (recovery_effects_acknowledged IS NOT NULL))) IS TRUE`,
+      sql`(((recovery_target_node_run_id IS NULL) AND (recovery_target_node_id IS NULL) AND (recovery_reused_count IS NULL) AND (recovery_effect_risk IS NULL) AND (recovery_effects_acknowledged IS NULL)) OR ((trigger_type = 'replay') AND (recovery_target_node_run_id IS NOT NULL) AND (recovery_target_node_id IS NOT NULL) AND (recovery_reused_count IS NOT NULL) AND (recovery_reused_count >= 0) AND (recovery_reused_count <= 200) AND (recovery_effect_risk IN ('ordinary', 'possible_effects', 'unknown_outcome')) AND (recovery_effects_acknowledged IS NOT NULL))) IS TRUE`,
     ),
     check(
       'workflow_runs_status_valid',

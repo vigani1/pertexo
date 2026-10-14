@@ -1,4 +1,4 @@
-# ADR 072: New-run recovery from a definite failed step
+# ADR 072: New-run recovery from a failed or unknown-outcome step
 
 - **Status:** accepted
 - **Date:** 2026-10-13
@@ -33,8 +33,9 @@ A definite failed operation may have partially taken effect. Manual recovery of
 a possibly dispatched target therefore requires explicit effects
 acknowledgement, bound to the command hash and audit. This exception authorizes
 one deliberate new execution; it changes no automatic retry or redelivery
-policy. Unknown effects anywhere and incomplete/corrupt evidence still refuse
-step recovery. A generic unsafe HTTP 5xx remains unknown under the existing
+policy. Unknown effects outside the target and incomplete/corrupt evidence still refuse
+step recovery. A verified unknown target requires its separate acknowledgement
+as recorded in the amendment below. A generic unsafe HTTP 5xx remains unknown under the existing
 adapter; receiving an error response is not proof of no remote effect. A
 provider's idempotency contract uses a fresh key in the new run and cannot
 deduplicate it against the original run. Full replay stays a separate action
@@ -55,9 +56,32 @@ can extend that snapshot's availability, but does not pin source node details or
 create a retention service. Source history may expire independently; copied
 values stay readable until their own expiry. Workspace purge removes the copies.
 A recovery counts as a new run; reused steps count as no executed attempts.
-Unknown/rejected recovery offers separately confirmed full replay.
+Refused recovery offers separately confirmed full replay.
 
 Use ADR 069's one current format and existing three roles. New persisted
 recovery state requires matching readers/workers; once accepted, downgrade to
 older binaries is unsafe and rollout fixes forward through the current release
 boundary. No feature-cohort machinery, new queue, role or service is introduced.
+
+
+## Owner-approved amendment — 2026-10-14
+
+Allow manual recovery of exactly one selected-path `outcome_unknown` target,
+including unsafe HTTP 5xx and post-dispatch network loss. Preserve the existing
+adapter classification and attention card. Full replay would repeat earlier
+successful effects; this command reuses only the verified completed prefix.
+
+Preview reports `effectRisk: 'unknown_outcome'`. The person must explicitly
+acknowledge: “We don't know whether this step reached the service. Retrying can
+repeat its effect.” Confirm with “Retry anyway”. The request requires separate
+literal-true `acknowledgeUnknownOutcome`; `acknowledgePossibleEffects` cannot
+substitute for it. Acceptance checks the freshly planned risk and acknowledgement
+under the same source/version/details locks and transaction as admission,
+checkpoint, copies, summary, audit, events and outbox. The summary records the
+risk and whether its corresponding acknowledgement was supplied. The command
+hash binds this acknowledgement; existing commands without it retain their hash.
+
+No automatic retry, reclassification, provider-key reuse or new execution format.
+The exact immutable version/input and completed prefix rules remain. Unknown
+outcomes elsewhere, multiple targets and incomplete evidence still refuse.
+A per-step “safe to repeat” setting is deferred to separately reviewed work.

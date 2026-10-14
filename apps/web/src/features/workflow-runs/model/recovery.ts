@@ -12,7 +12,7 @@ export type EligibleRecovery = Extract<
 type Refusal = Extract<WorkflowRecoveryPreview, { kind: 'refused' }>['reason'];
 const explanations: Readonly<Record<Refusal, string>> = {
   source_not_failed:
-    'Only a run with a definite failed step can use saved results. Unknown outcomes need a service check before a full replay.',
+    'Only a failed or unknown-outcome run can use saved results.',
   multiple_failures:
     'More than one step failed. Use a full replay after reviewing its effects.',
   version_unavailable:
@@ -24,6 +24,8 @@ const explanations: Readonly<Record<Refusal, string>> = {
     'An earlier outcome is unknown. Check the service before starting a full replay.',
   effects_acknowledgement_required:
     'Confirm that this step may have partly taken effect before retrying it.',
+  unknown_outcome_acknowledgement_required:
+    'Confirm that this step may already have taken effect, even though its outcome is unknown, before retrying it.',
   evidence_unavailable:
     'This run’s execution evidence is incomplete. Saved results cannot safely be reused.',
   suffix_already_executed:

@@ -108,6 +108,59 @@ describe('recovery prefix selection', () => {
     });
   });
 
+  it('offers a verified unknown target under the stronger risk and refuses incomplete evidence', () => {
+    const fixture = changeTarget(
+      (node) => ({
+        ...node,
+        status: 'outcome_unknown',
+        attempts: node.attempts.map((attempt) => ({
+          ...attempt,
+          failureKind: 'outcome_unknown',
+          errorKind: 'network',
+          possiblyDispatched: true,
+          dispatchMarked: true,
+          retryDecision: 'outcome_unknown',
+        })),
+      }),
+      true,
+    );
+    const retained = {
+      ...fixture.source,
+      status: 'outcome_unknown' as const,
+      checkpoint: {
+        ...fixture.source.checkpoint,
+        runStatus: 'outcome_unknown' as const,
+      },
+    };
+    expect(
+      selectRecoveryPrefix({ ...fixture, source: retained }),
+    ).toMatchObject({
+      kind: 'candidate',
+      effectRisk: 'unknown_outcome',
+      target: { nodeId: 'set' },
+      prefix: [{ source: { nodeId: 'manual' } }],
+    });
+    expect(
+      selectRecoveryPrefix({
+        ...fixture,
+        source: {
+          ...retained,
+          nodes: retained.nodes.map((node) =>
+            node.nodeId !== 'set'
+              ? node
+              : {
+                  ...node,
+                  attempts: node.attempts.map((attempt) => ({
+                    ...attempt,
+                    possiblyDispatched: null,
+                  })),
+                },
+          ),
+        },
+      }),
+    ).toEqual({ kind: 'refused', reason: 'evidence_unavailable' });
+  });
+
   it('refuses an unknown executor outcome even if run history was marked failed', () => {
     const fixture = changeTarget(
       (node) => ({

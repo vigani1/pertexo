@@ -215,6 +215,7 @@ export type RecoverWorkflowRunCommand = Omit<
   Readonly<{
     nodeRunId: string;
     acknowledgePossibleEffects?: true;
+    acknowledgeUnknownOutcome?: true;
   }>;
 
 export type CancelWorkflowRunCommand = Readonly<{

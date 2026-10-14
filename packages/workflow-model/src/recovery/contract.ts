@@ -11,6 +11,7 @@ export const WORKFLOW_RECOVERY_REFUSALS = [
   'prefix_incomplete',
   'unknown_effect',
   'effects_acknowledgement_required',
+  'unknown_outcome_acknowledgement_required',
   'evidence_unavailable',
   'suffix_already_executed',
   'values_expired',
@@ -22,4 +23,5 @@ export const WORKFLOW_RECOVERY_REFUSALS = [
 
 export type WorkflowRecoveryRefusal =
   (typeof WORKFLOW_RECOVERY_REFUSALS)[number];
-export type WorkflowRecoveryEffectRisk = 'ordinary' | 'possible_effects';
+export type WorkflowRecoveryEffectRisk =
+  'ordinary' | 'possible_effects' | 'unknown_outcome';

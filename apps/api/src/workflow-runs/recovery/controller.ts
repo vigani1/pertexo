@@ -76,6 +76,9 @@ export class RunRecoveryController {
       ...(input.acknowledgePossibleEffects === undefined
         ? {}
         : { acknowledgePossibleEffects: input.acknowledgePossibleEffects }),
+      ...(input.acknowledgeUnknownOutcome === undefined
+        ? {}
+        : { acknowledgeUnknownOutcome: input.acknowledgeUnknownOutcome }),
       idempotencyKey: requestIdempotencyKey(request.headers),
       ...authenticatedRequestIdentifiers(request),
       ...(traceparent === undefined ? {} : { traceparent }),
