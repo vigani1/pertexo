@@ -194,9 +194,9 @@ API returns directly to component state; refresh metadata only. Lost outcomes
 show refresh/revoke/replacement, not automatic recreation. Disabled config explains
 availability rather than claiming the member lost access.
 
-CLI uses native fetch and current contract parsers in apps/ops, through direct
-references to the existing contracts/workflow-model workspace packages. `automation`
-arguments dispatch before operator env/DB imports. Use PERTEXO_API_URL,
+CLI uses native fetch and current contract parsers in apps/cli, through direct
+references to the existing contracts/workflow-model workspace packages. Its
+dedicated entry never loads operator env/DB imports. Use PERTEXO_API_URL,
 PERTEXO_API_TOKEN and explicit workspace/IDs, no token argument or saved profiles.
 Bound files/requests/responses/timeouts; refuse unsafe remote HTTP and redirects.
 No arbitrary raw endpoint passthrough, cookies, secret output or hidden DB env.
@@ -258,8 +258,8 @@ keep their credential separately. No deployment/accounts/provider calls here.
 
 Manual review: personal ownership, revision reuse and shared roles avoid new
 identity machinery; method opt-in prevents accidental administration access;
-identifier-only receipts make one-time disclosure honest; the existing CLI avoids
-a new app/package. Revocation allows already accepted work, last-used is approximate,
+identifier-only receipts make one-time disclosure honest; the dedicated CLI owns
+HTTP commands independently of the operator app (owner amendment below). Revocation allows already accepted work, last-used is approximate,
 and membership changes deliberately require replacement. These are supported
 semantics. No independent requirement justifies service accounts, caches or SDKs.
 
@@ -449,7 +449,7 @@ or temporary dependency exceptions. Ops retains only its operator bootstrap and
 maintenance-database/observability dependencies.
 
 A separate wiring commit will expose the dedicated CLI entry point/root script,
-update the guide and ADR 074, and enable the existing automation switch in the
+update the guide and ADR 074, and ensure the existing automation switch is enabled in the
 beta production example. Commands, flags and output contracts stay the same;
 only their launcher changes. The CLI has contracts/model/zod dependencies and no
 database, maintenance or telemetry configuration. Prepare its private package's
@@ -457,8 +457,30 @@ bin/files/Node engine shape, without npm publication, a new service or CI job.
 Existing CI app tests/browser build and the existing image carry the moved app.
 
 - [x] Move HTTP CLI source, tests and bootstrap; update dependency/build ownership.
-- [ ] Wire standalone entry/root script, private package shape and beta switch.
-- [ ] Update guide/ADR and qualify compiled CLI plus existing operator commands.
+- [x] Wire standalone entry/root script and private package shape; verify the
+  beta production example already sets `AUTOMATION_TOKENS_ENABLED=true`.
+- [x] Update guide/ADR and qualify compiled CLI plus existing operator commands.
 - Merge only after the existing required checks pass; record release evidence on
   the delivery PR. Historical slice 3 evidence above describes its original ops
   location and is superseded by this follow-up for current ownership.
+
+
+### Separation qualification
+
+Both commits pass repository TypeScript, scoped lint, unused-dependency and
+architecture checks, 64 compiled/native CLI tests and all 55 operator cases.
+The seven command/transport source files move unchanged. The final executable
+entry takes the same command arguments directly; `pnpm cli --help` succeeds.
+The private package's local archive contains eight compiled JavaScript files,
+its bin/engine metadata and concrete workspace-dependency versions, without
+source/tests/build-info files. An unpacked, symlinked executable returns identical
+help with no database/telemetry environment, using the frozen checkout's existing
+dependency closure. No npm publication or external package installation occurs.
+
+The owned real browser/API/worker journey passes Settings issuance at desktop and
+375px reduced motion → compiled CLI export → preview/import/retry → publish/retry
+→ start/retry → succeeded run → UI revoke → CLI 401. Independent SQL checks
+immutable source/copy, output and credential-scoped receipts. CLI secrets stay in
+process environment, never arguments/evidence. The production example already
+contains `AUTOMATION_TOKENS_ENABLED=true` on main; no redundant config change is
+needed. Existing CI includes the moved app in its app unit/build/image owners.

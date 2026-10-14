@@ -10,11 +10,10 @@ const credential = `ptx_1.${workspace}.bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.${'A
 const execute = promisify(execFile);
 describe('compiled automation process', () => {
   it('shows help with no database, telemetry or automation configuration', async () => {
-    const result = await execute(
-      process.execPath,
-      [entrypoint, 'automation', '--help'],
-      { env: {}, timeout: 5000 },
-    );
+    const result = await execute(process.execPath, [entrypoint, '--help'], {
+      env: {},
+      timeout: 5000,
+    });
     expect(result.stdout).toContain('HTTP; no operator/database configuration');
     expect(result.stderr).toBe('');
   });
@@ -52,14 +51,7 @@ describe('compiled automation process', () => {
         PERTEXO_API_URL: `http://127.0.0.1:${String(address.port)}`,
         PERTEXO_API_TOKEN: credential,
       };
-      const args = [
-        entrypoint,
-        'automation',
-        'workflows',
-        'list',
-        '--workspace',
-        workspace,
-      ];
+      const args = [entrypoint, 'workflows', 'list', '--workspace', workspace];
       const success = await execute(process.execPath, args, {
         env,
         timeout: 5000,
@@ -109,7 +101,6 @@ describe('compiled automation process', () => {
       process.execPath,
       [
         entrypoint,
-        'automation',
         'runs',
         'start',
         '--workspace',

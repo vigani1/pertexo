@@ -29,8 +29,14 @@ Build the existing workspace with the pinned Node 24 and pnpm versions:
 ```sh
 pnpm install
 pnpm build
-pnpm ops automation --help
+pnpm cli --help
 ```
+
+The CLI lives in `apps/cli`; `apps/ops` holds privileged operator commands only.
+The private package includes the `pertexo` executable shape, but is not published
+to npm. In this checkout use `pnpm cli`, or the compiled Node entry below for
+JSON redirection. Command flags and JSON/help/problem output stay unchanged.
+Help/error text retains the existing “automation” name for these HTTP commands.
 
 Supply `PERTEXO_API_URL` and `PERTEXO_API_TOKEN` through your process environment
 or CI secret manager. Do not put a token in command arguments, a tracked file,
@@ -49,7 +55,7 @@ export WORKFLOW_ID=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb
 Use your real workspace and resource IDs. The explicit workspace must match the
 token. Remote origins require HTTPS; plain HTTP is accepted only for
 `localhost`, `127.0.0.1` or `::1`. The origin cannot include credentials, a path,
-query or fragment. Redirects are refused. The automation path needs no database,
+query or fragment. Redirects are refused. The dedicated CLI needs no database,
 maintenance or telemetry environment; privileged operator commands keep their
 existing independent configuration.
 
@@ -67,7 +73,7 @@ Authorization header authenticates supported calls; do not mix cookies with it.
 The server enforces scopes, validation, rate limits and preconditions shared with
 the browser. Request bodies use [the current contracts](../packages/contracts/src/schemas/).
 
-| CLI after `pnpm ops automation` | HTTP | Token scope |
+| CLI after `pnpm cli` | HTTP | Token scope |
 | --- | --- | --- |
 | `workflows list --workspace "$WORKSPACE_ID" [--limit 25 --after CURSOR]` | `GET /workflows?limit=25&after=CURSOR` | `workflow:read` |
 | `workflows get --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID"` | `GET /workflows/$WORKFLOW_ID` | `workflow:read` |
@@ -139,14 +145,14 @@ file hash, a revision or a different JSON serialization. For version export, use
 draft ETag. Draft export requires `--etag`; version export rejects it.
 
 To prepare `export.json` from a reviewed CLI `draft.json`, this command runs in
-the existing ops workspace and uses the public model entry point. Keep the
+the CLI workspace and uses the public model entry point. Keep the
 `etag` from that same draft for `DRAFT_ETAG`:
 
 ```bash
-node apps/ops/dist/main.js automation workflows draft \
+node apps/cli/dist/main.js workflows draft \
   --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" > draft.json
 # Review draft.json before preparing the exact source request.
-pnpm --filter @pertexo/ops exec node --input-type=module - \
+pnpm --filter @pertexo/cli exec node --input-type=module - \
   "$PWD/draft.json" "$PWD/export.json" <<'JS'
 import { readFile, writeFile } from 'node:fs/promises';
 import { portableGraphDigest } from '@pertexo/workflow-model';
@@ -159,7 +165,7 @@ JS
 ```
 
 ```bash
-node apps/ops/dist/main.js automation workflows export --workspace "$WORKSPACE_ID" \
+node apps/cli/dist/main.js workflows export --workspace "$WORKSPACE_ID" \
   --workflow "$WORKFLOW_ID" --body export.json --etag "$DRAFT_ETAG" > manifest.json
 api --request POST --header 'Content-Type: application/json' \
   --header "If-Match: $DRAFT_ETAG" --data-binary @export.json \
@@ -170,11 +176,11 @@ The portable manifest keeps the existing `pertexo.workflow` format. Prepare
 `preview.json` as `{ "manifest": <that manifest object>, "bindings": [] }`.
 Explicit bindings use the existing slot/connection IDs and require
 `connection:read`; credential secrets never enter the manifest. For JSON file
-redirection use `node apps/ops/dist/main.js automation ...`
+redirection use `node apps/cli/dist/main.js ...`
 directly; pnpm may also print script banners.
 
 ```bash
-node apps/ops/dist/main.js automation workflows import-preview \
+node apps/cli/dist/main.js workflows import-preview \
   --workspace "$WORKSPACE_ID" --body preview.json > preview-result.json
 api --request POST --header 'Content-Type: application/json' \
   --data-binary @preview.json "$BASE/workflows/import/preview"
@@ -210,7 +216,7 @@ JS
 ```
 
 ```bash
-pnpm ops automation workflows import --workspace "$WORKSPACE_ID" \
+pnpm cli workflows import --workspace "$WORKSPACE_ID" \
   --body import.json --key deploy-import-1
 api --request POST --header 'Content-Type: application/json' \
   --header 'Idempotency-Key: deploy-import-1' --data-binary @import.json \
@@ -223,7 +229,7 @@ its graph. The response contains the immutable version and `reused` when an
 identical version already existed.
 
 ```bash
-pnpm ops automation workflows publish --workspace "$WORKSPACE_ID" \
+pnpm cli workflows publish --workspace "$WORKSPACE_ID" \
   --workflow "$IMPORTED_WORKFLOW_ID" --etag "$IMPORTED_DRAFT_ETAG" --key deploy-publish-1
 api --request POST --header "If-Match: $IMPORTED_DRAFT_ETAG" \
   --header 'Idempotency-Key: deploy-publish-1' \
@@ -240,7 +246,7 @@ Prepare `run.json` with the returned version ID and explicit input:
 ```
 
 ```bash
-pnpm ops automation runs start --workspace "$WORKSPACE_ID" \
+pnpm cli runs start --workspace "$WORKSPACE_ID" \
   --workflow "$IMPORTED_WORKFLOW_ID" --body run.json --key deploy-run-1
 api --request POST --header 'Content-Type: application/json' \
   --header 'Idempotency-Key: deploy-run-1' --data-binary @run.json \
