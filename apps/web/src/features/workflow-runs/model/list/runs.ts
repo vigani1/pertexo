@@ -4,7 +4,10 @@ import type {
 } from '@pertexo/contracts';
 import { formatDayHeading } from '@/lib/format/time';
 import { localDateValue } from './run-search';
-import { isActiveRunStatus, type RunTriggerType } from '../run-status';
+import {
+  isActiveRunStatus,
+  type RunTriggerType,
+} from '../presentation/run-status';
 
 export type RunDayGroup = Readonly<{
   key: string;

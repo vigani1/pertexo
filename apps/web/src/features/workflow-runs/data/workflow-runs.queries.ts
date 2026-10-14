@@ -12,7 +12,10 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
 import type { RunHistoryFilters } from '../model/list/run-search';
-import { isActiveRunStatus, type RunStatus } from '../model/run-status';
+import {
+  isActiveRunStatus,
+  type RunStatus,
+} from '../model/presentation/run-status';
 import { isApiError } from '@/lib/api/error';
 import {
   getRunsSince,

@@ -21,7 +21,7 @@ import {
   type LiveConnectionStatus,
 } from '../../model/live-updates';
 import { StatusGuide } from '@/components/patterns/guidance/status-guide';
-import { RUN_PAGE_GUIDE } from '../../model/run-guide';
+import { RUN_PAGE_GUIDE } from '../../model/presentation/run-guide';
 import {
   runDurationMs,
   shortRunId,
@@ -31,7 +31,7 @@ import {
   describeTrigger,
   isActiveRunStatus,
   runCoreState,
-} from '../../model/run-status';
+} from '../../model/presentation/run-status';
 import { CopyButton } from '@/components/ui/copy-button';
 import { CancelRunDialog } from '../run-actions/cancel-run-dialog';
 import { ReplayRunDialog } from '../run-actions/replay-run-dialog';

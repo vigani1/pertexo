@@ -23,7 +23,7 @@ import {
   runTriggerTypes,
   type RunStatus,
   type RunTriggerType,
-} from '../../model/run-status';
+} from '../../model/presentation/run-status';
 import { TimeRangeFilter } from './time-range-filter';
 
 const statusItems = [

@@ -6,7 +6,7 @@ import {
   describeRunStatus,
   isActiveRunStatus,
   type RunStatus,
-} from '../run-status';
+} from '../presentation/run-status';
 
 // The Loom: time laid sideways, one lane per workflow. Pure data shaping and
 // geometry shared by the canvas renderer, its hit testing and the list

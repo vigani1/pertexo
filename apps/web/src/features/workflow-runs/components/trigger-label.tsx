@@ -8,7 +8,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { describeTrigger, type RunTriggerType } from '../model/run-status';
+import {
+  describeTrigger,
+  type RunTriggerType,
+} from '../model/presentation/run-status';
 
 const triggerIcons: Readonly<Record<RunTriggerType, LucideIcon>> = {
   api: BracesIcon,

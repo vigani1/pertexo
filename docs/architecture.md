@@ -57,6 +57,11 @@ executor and index. Public index/server and definition/executor registrations
 remain at the package root. Folder grouping does not change node identities,
 versions or runtime behavior.
 
+The web run feature keeps command/recovery intent under `model/commands/` and
+run wording/status under `model/presentation/`. Existing list, timeline, loom
+and step-inspection owners remain separate; live-update reconciliation stays
+beside these owners. Public feature interfaces and rendered UI stay unchanged.
+
 ## Execution and persistence
 
 PostgreSQL owns durable state. Redis/BullMQ transports identifiers and provides

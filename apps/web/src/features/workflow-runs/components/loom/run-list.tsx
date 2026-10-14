@@ -3,7 +3,7 @@ import { ChevronDownIcon } from 'lucide-react';
 import { Status } from '@/components/ui/status';
 import { formatClock, formatDurationMs } from '@/lib/format/time';
 import type { LoomModel } from '../../model/loom/model';
-import { describeRunStatus } from '../../model/run-status';
+import { describeRunStatus } from '../../model/presentation/run-status';
 
 /**
  * The Loom's text alternative: every plotted run, per workflow, as a link.

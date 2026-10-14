@@ -12,7 +12,7 @@ import {
   describeNodeStatus,
   isActiveRunStatus,
   type NodeStatus,
-} from '../run-status';
+} from '../presentation/run-status';
 import {
   replayFromSummary,
   replayStep,

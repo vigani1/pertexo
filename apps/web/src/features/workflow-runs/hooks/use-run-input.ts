@@ -6,7 +6,7 @@ import {
   toRunIntent,
   type RunInputField,
   type RunIntent,
-} from '../model/run-intent';
+} from '../model/commands/run-intent';
 
 /**
  * The input and optional deadline for a new run (from Build or a replay):

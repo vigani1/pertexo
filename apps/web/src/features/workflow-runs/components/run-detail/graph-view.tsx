@@ -24,7 +24,7 @@ import {
   type GraphStepStatus,
 } from '../../model/timeline/run-graph';
 import type { RunTimelineRow } from '../../model/timeline/runs';
-import { toneBorderClass } from '../../model/tone-styles';
+import { toneBorderClass } from '../../model/presentation/tone-styles';
 
 interface RunNodeData extends Record<string, unknown> {
   label: string;

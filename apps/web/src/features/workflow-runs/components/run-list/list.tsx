@@ -8,7 +8,7 @@ import {
   runDurationMs,
   threadBarScale,
 } from '../../model/list/runs';
-import { isActiveRunStatus } from '../../model/run-status';
+import { isActiveRunStatus } from '../../model/presentation/run-status';
 import { useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/utils';
 import { RunRow } from './run-row';

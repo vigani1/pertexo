@@ -4,7 +4,7 @@ import {
   workflowRunTriggerTypeSchema,
   type WorkflowRunListQuery,
 } from '@pertexo/contracts';
-import type { RunTriggerType } from '../run-status';
+import type { RunTriggerType } from '../presentation/run-status';
 
 /** The run-list filters the API applies. */
 export type RunHistoryFilters = Readonly<

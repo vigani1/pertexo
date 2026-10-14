@@ -3,7 +3,10 @@ import type {
   WorkflowRunEvent,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { describeNodeStatus, type NodeStatus } from '../run-status';
+import {
+  describeNodeStatus,
+  type NodeStatus,
+} from '../presentation/run-status';
 
 // Rebuilds one step invocation's story from its events: attempts become
 // segments, failures fray, waits and scheduled retries coil. When events are

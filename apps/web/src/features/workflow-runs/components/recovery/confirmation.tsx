@@ -5,8 +5,8 @@ import { DeadlineField } from '@/components/ui/deadline-field';
 import { Status } from '@/components/ui/status';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { formatDateTime } from '@/lib/format/time';
-import { runDeadlineProblem } from '../../model/run-intent';
-import type { EligibleRecovery } from '../../model/recovery';
+import { runDeadlineProblem } from '../../model/commands/run-intent';
+import type { EligibleRecovery } from '../../model/commands/recovery';
 import type { useRunRecovery } from '../../data/mutations/use-run-recovery';
 type RecoveryCommand = ReturnType<typeof useRunRecovery>;
 export function RecoveryConfirmation({

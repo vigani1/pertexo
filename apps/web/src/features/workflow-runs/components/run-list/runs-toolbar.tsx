@@ -2,7 +2,7 @@ import { ChartGanttIcon, ListIcon } from 'lucide-react';
 import { StatusGuide } from '@/components/patterns/guidance/status-guide';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { RUN_LIST_GUIDE } from '../../model/run-guide';
+import { RUN_LIST_GUIDE } from '../../model/presentation/run-guide';
 
 /**
  * What the statuses mean, the Live switch (10 s polling while visible) and
