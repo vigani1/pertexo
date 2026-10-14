@@ -93,10 +93,31 @@ function graph(): WorkflowGraph {
       { items: output('sort', '$.items') },
     ),
     node(
+      'take',
+      'core.take',
+      { count: 10 },
+      { items: output('unique', '$.items') },
+    ),
+    node(
+      'concat',
+      'core.concat',
+      {},
+      {
+        items: output('take', '$.items'),
+        otherItems: { kind: 'literal', value: [0] },
+      },
+    ),
+    node(
+      'batch',
+      'core.batch',
+      { size: 3 },
+      { items: output('concat', '$.items') },
+    ),
+    node(
       'summary',
       'core.summarize',
       { valuePath: '$', missing: 'error' },
-      { items: output('unique', '$.items') },
+      { items: output('batch', '$.batches[0]') },
     ),
     node('result', 'core.set', {}, { summary: output('summary', '$') }),
   ];
@@ -259,6 +280,9 @@ qualified(
           'unique',
           'summary',
           'date',
+          'take',
+          'concat',
+          'batch',
           'result',
         ])
           expect(facts.filter((f) => f.node_id === id)).toHaveLength(2);
@@ -302,19 +326,125 @@ qualified(
                 groups: [
                   {
                     key: null,
-                    count: 2,
+                    count: 3,
                     sum,
-                    min: i + 1,
+                    min: 0,
                     max: i + 3,
-                    average: sum / 2,
+                    average: sum / 3,
                   },
                 ],
-                inputCount: 2,
+                inputCount: 3,
                 skippedCount: 0,
               },
             },
           })),
         );
+        const maximumId = {
+          workflowId: randomUUID(),
+          workflowVersionId: randomUUID(),
+        };
+        const maximum: WorkflowGraph = {
+          settings: { maxRunDurationMs: 60_000 },
+          nodes: [
+            node('manual', 'core.manual'),
+            node(
+              'take',
+              'core.take',
+              { count: 4998 },
+              {
+                items: {
+                  kind: 'literal',
+                  value: Array.from({ length: 4998 }, (_, i) => i),
+                },
+              },
+            ),
+            node(
+              'concat',
+              'core.concat',
+              {},
+              {
+                items: output('take', '$.items'),
+                otherItems: { kind: 'literal', value: [] },
+              },
+            ),
+            node(
+              'batch',
+              'core.batch',
+              { size: 1 },
+              { items: output('concat', '$.items') },
+            ),
+            node(
+              'stop',
+              'core.terminate',
+              {},
+              { result: output('batch', '$.batches') },
+            ),
+          ],
+          edges: links(['manual', 'take', 'concat', 'batch', 'stop']),
+        };
+        await insertCompiledWorkflow(fixture.ownerQuery, {
+          actorId: fixture.actorId,
+          workspaceId: fixture.workspaceId,
+          identity: maximumId,
+          graph: maximum,
+          name: 'Maximum bounded list proof',
+          catalog: PLATFORM_NODE_CATALOG,
+        });
+        await fixture.ownerQuery(
+          'update app.workflows set published_version_id=$2 where id=$1',
+          [maximumId.workflowId, maximumId.workflowVersionId],
+        );
+        const maximumKey = createHash('sha256')
+          .update(randomUUID())
+          .digest('hex');
+        const maximumRun = await runs.start({
+          actorId: fixture.actorId,
+          workspaceId: fixture.workspaceId,
+          workflowId: maximumId.workflowId,
+          idempotencyKeyHash: maximumKey,
+          requestHash: maximumKey,
+          scope: `workflow:${maximumId.workflowId}:manual`,
+          input: {},
+          checkpointFactory: initialCheckpointFactory({
+            catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
+          }),
+        });
+        const maximumTerminal = await fixture.waitFor(
+          () =>
+            fixture.workerQuery<{ status: string }>(
+              'select status from app.workflow_runs where id=$1',
+              [maximumRun.run.id],
+            ),
+          (rows) =>
+            ['succeeded', 'failed', 'outcome_unknown'].includes(
+              rows[0]?.status ?? '',
+            ),
+          30_000,
+        );
+        expect(maximumTerminal).toEqual([{ status: 'succeeded' }]);
+        const maximumOutput = await fixture.workerQuery<{
+          output_ref: {
+            value: {
+              batches: number[][];
+              inputCount: number;
+              batchCount: number;
+            };
+          };
+        }>(
+          'select output_ref from app.node_runs where workflow_run_id=$1 and node_id=$2',
+          [maximumRun.run.id, 'batch'],
+        );
+        expect(maximumOutput[0]?.output_ref.value).toEqual({
+          batches: Array.from({ length: 4998 }, (_, i) => [i]),
+          inputCount: 4998,
+          batchCount: 4998,
+        });
+        expect(
+          await fixture.workerQuery<{ count: number }>(
+            'select count(*)::int count from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id where node.workflow_run_id=$1',
+            [maximumRun.run.id],
+          ),
+        ).toEqual([{ count: 5 }]);
       } catch (error) {
         errors.push(error);
       } finally {

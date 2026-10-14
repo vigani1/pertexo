@@ -1,3 +1,4 @@
+import { DateSetup } from '../builders/date-setup';
 import { CallTargetField } from '../fields/call-target';
 import type { CallTargetScope } from '../../../data/call-targets.queries';
 import type {
@@ -188,6 +189,8 @@ function SetupControls({
   form: NodeFormApi;
 }>) {
   const { config } = node;
+  if (node.definition.key === 'core.date')
+    return <DateSetup schema={configSchema} config={config} form={form} />;
   if (scheduleSchema !== undefined)
     return (
       <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />

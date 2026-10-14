@@ -1,7 +1,8 @@
 # Prepare data in a workflow
 
-Find **Filter items**, **Sort items**, **Remove duplicates**, **Summarize items**
-and **Convert date** under **Shape data** in the editor. These steps operate on
+Find **Filter items**, **Sort items**, **Remove duplicates**, **Summarize items**,
+**Batch items**, **Take first items**, **Concatenate lists** and **Convert date**
+under **Shape data** in the editor. These steps operate on
 JSON values. They need no connection and do not contact another service.
 
 Use **Setup** to choose the operation, and **Inputs** to map the data it receives.
@@ -90,6 +91,49 @@ The input and output field is `value`. Seconds are not guessed. Timestamps requi
 calendar days, leap seconds, 24:00, natural-language dates and missing offsets
 fail. Instants stay within UTC years 0000–9999; there is no local-timezone inference.
 
+Choose **Format timestamp** with an explicit IANA timezone such as
+`Europe/Paris`. Named formats are **Date only** (`2026-01-01`), **Date and time**
+(`2026-01-01 01:00:00`) and **ISO timestamp**
+(`2026-01-01T01:00:00.000+01:00`) for the instant in the table above.
+**Convert timezone** returns the ISO form in the selected zone. Pass the same
+instant to `America/New_York` to get `2025-12-31T19:00:00.000-05:00`.
+The explicit input offset establishes the original instant; selecting a zone
+changes its representation, not the instant. Intl supplies daylight-saving rules.
+Two occurrences of a repeated local hour retain their distinct ISO offsets.
+There is no free-form pattern language or inference of ambiguous local times.
+
+Choose **Add or subtract duration**, select minutes, hours, days, weeks or months,
+and map a signed integer `amount` in **Inputs**. Positive adds; negative subtracts.
+Minutes/hours/days/weeks are elapsed UTC durations: one day is 24 hours, even
+across daylight-saving changes. Months use the UTC calendar and clamp to the
+last day: `2024-01-31T12:00:00Z` plus one month becomes
+`2024-02-29T12:00:00.000Z`; minus one month becomes
+`2023-12-31T12:00:00.000Z`. Arithmetic returns UTC ISO. Only duration uses `amount`;
+other operations ignore that optional mapping.
+
+UTC is the editor's explicit default. Unknown zones and numeric-offset zone
+selectors fail configuration; choose an IANA name. Local formatted dates must
+also stay within years 0000–9999. Historical offsets containing seconds cannot
+be expressed by the platform's minute-offset ISO contract: choose a display
+format or a different zone instead. No host timezone or clock supplies defaults.
+
+## Batches, prefixes and concatenation
+
+| Step | Setup | Input | Output |
+| --- | --- | --- | --- |
+| Batch items | Batch size `2` | `items: [1, 2, 3, 4, 5]` | `batches: [[1, 2], [3, 4], [5]]`, `inputCount: 5`, `batchCount: 3` |
+| Take first items | Count `3` | `items: [1, 2, 3, 4, 5]` | `items: [1, 2, 3]`, `inputCount: 5`, `removedCount: 2` |
+| Concatenate lists | None | `items: [1, 2]`, `otherItems: [2, 3]` | `items: [1, 2, 2, 3]`, `inputCount: 4` |
+
+Batch keeps order and the final partial batch. Map `$.batches` into **For each**
+to process a batch per iteration; it does not add a scheduler. For each keeps its
+1,000-iteration bound: choose a batch size of at least five for 4,998 items.
+Take permits zero and returns the whole list if the requested count exceeds its
+length. Concatenate preserves duplicates and nested lists; it does not join
+records by key or flatten them. Its combined length must fit the collection cap.
+Empty lists return empty `items`/`batches` and zero counts. A batch size must be
+positive; batch size and take count must be integers within the collection cap.
+
 For trim, uppercase, lowercase, joins and number conversion, choose **Expression**
 on an input row and open **Expression examples**. Choosing an example replaces
 that row's editable source. Review its `runInput` path and use **Test** with your
@@ -98,9 +142,12 @@ Expressions read run input and available predecessor outputs, not another mapped
 field on the same step. A missing path does not invent a value; null or wrong
 function arguments can fail. Number conversion explicitly uses `$number`.
 
-All collection steps accept at most 1,000 items within the existing whole-JSON
+All collection steps accept at most 4,998 items within the existing whole-JSON
 limits: 1 MiB, depth 64 and 10,000 members. A wide collection can hit a whole-JSON
-limit before 1,000 items. Input/output inspection, step testing, saved workflows,
-export/import and For each bodies use the same versioned nodes and limits.
+limit before 4,998 items. Input/output inspection, step testing, saved workflows,
+export/import and For each bodies use the same current nodes and limits.
+One-item batches at the cap use 9,999 members, including their count fields;
+4,999 items would exceed the existing 10,000-member bound. Complex records and
+summary groups may reach the member/byte limit sooner. No global limit is raised.
 CSV/file conversion awaits F04's file-consumer contract; these steps accept JSON,
 not file uploads.

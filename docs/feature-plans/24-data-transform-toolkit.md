@@ -30,7 +30,7 @@ policy or execution. Never imply a recipe previews provider effects.
 File CSV/JSON conversion stays gated on F04's artifact/file consumer contracts.
 There is no file consumer to wire today. Stateful cross-run deduplication,
 streaming, arbitrary comparators, regex, locale sorting, arbitrary date-format
-patterns, named timezone databases and decimal financial arithmetic are outside
+patterns, external timezone databases and decimal financial arithmetic are outside
 this release. This does not mark those deferred capabilities done.
 
 ## Current inventory and why these owners
@@ -62,7 +62,7 @@ safe error projection. Do not move node-specific rules to the engine or database
 ## Exact collection contract
 
 All collection inputs are ordinary objects with an `items` array, maximum
-1,000 elements. Reject a missing array, null, non-array, sparse array, non-JSON
+4,998 elements after the owner-approved follow-up below. Reject a missing array, null, non-array, sparse array, non-JSON
 value or repeated/cyclic reference through the existing SDK boundary. The
 whole input/output still obeys the existing inclusive 1 MiB, depth 64 and
 10,000-member limits. Do not raise global bounds or claim unbounded batches.
@@ -221,7 +221,7 @@ match. Existing engine/queue/checkpoint/capacity/recovery policy stays unchanged
 New ordinary transform definitions can use existing F09 source eligibility,
 subject to all its actual outcome and shape limits.
 
-Test maximum 1,000 items and reject 1,001; keep byte/depth/member bounds, finite
+Test maximum 4,998 items and reject 4,999; keep byte/depth/member bounds, finite
 numbers, Unicode/code-unit ties, null vs missing, hostile paths, mixed types,
 reordered object keys, numeric overflow, cancellation and old manifest pins.
 Record a bounded 1,000-item CPU/memory measurement through registry execution;
@@ -321,3 +321,115 @@ retained growth after GC was 0.02–0.05 MiB. These include admission/output
 validation and are local observations, not per-call allocation or a server SLA.
 
 No production deployment or provider provisioning is part of this work.
+
+
+## Owner-approved real-data follow-up — 2026-10-14
+
+Extend the existing Date step and add Batch items (`core.batch`), Take first
+items (`core.take`) and Concatenate lists (`core.concat`). Concatenation keeps
+both lists' order and duplicates; it is not a join by key. Current contracts
+remain version 1 under ADR 069's pre-launch single-version rule; no compatibility
+cohorts or alternate stored formats. Existing valid conversions keep their
+results. Correct the stale ADR 010 comment in new-step defaults when touched.
+
+Date configuration is an exact discriminated union: existing `to_iso` and
+`to_epoch_millis`; `format` with `date_only`, `date_time` or `iso` and an explicit
+`timeZone`; `convert_timezone` with an explicit `timeZone`; `add_duration` with
+`unit` minutes/hours/days/weeks/months. Input remains an explicit-offset timestamp
+or integer epoch milliseconds, with signed integer `amount` for arithmetic.
+No inferred local wall time or free-form pattern. Date-only is YYYY-MM-DD;
+date/time is YYYY-MM-DD HH:mm:ss; ISO includes milliseconds and the zone's actual
+offset. Conversion preserves the instant; folds are distinguishable by offset.
+Intl supplies IANA rules, with explicit Gregorian/Latin digits/h23 settings.
+Reject unsupported zones, offset-only zone selectors and local dates outside
+0000–9999. Historical sub-minute offsets cannot be represented by the existing
+minute-offset ISO timestamp contract: reject ISO conversion clearly; display
+formats remain available. UTC minutes/hours/days/weeks are elapsed durations
+(24-hour days, 168-hour weeks); months use UTC calendar arithmetic with end-of-
+month clamping. The host timezone and clock never supply defaults.
+
+Date parsing stays in its existing semantics owner; new private `format-instant`
+and `add-duration` helpers own Intl and arithmetic. A focused schema-driven Date
+setup renders the selected variant and materializes its authoring defaults in
+one undoable change. No general schema-variant editor or extra global store.
+New list steps retain the existing four-file shape, registry/catalog entry
+points and CPU/safe/bounded-JSON policies. Pure list work lives in the existing
+private collections area. Batch returns `batches`, `inputCount`, `batchCount`;
+Take returns `items`, `inputCount`, `removedCount`; Concat returns `items`,
+`inputCount`. Batch size is a positive integer; Take permits zero. Combined
+concatenated length cannot exceed the cap. Empty inputs preserve those schemas.
+
+Accepted cap: **4,998 items**, up from 1,000. One-item batches use 2N+3 JSON
+members including count fields: 4,998 fits 9,999 members; 4,999 exceeds the existing
+10,000-member envelope. Complex records and summary groups remain subject to
+whole-input/output limits; this is not a guarantee every 4,998-record shape fits.
+Keep 1 MiB/64-depth/10,000-member SDK bounds, retained-value limits and For each's
+1,000-item limit. Batch size at least five turns 4,998 items into at most 1,000
+batches. Prove the new maximum through registry and ordinary compiled workers;
+record bounded CPU/memory observations before accepting the larger cap.
+
+- [x] Runtime, hostile/invalid/empty/bounds/cancel and calendar/DST/host-TZ tests.
+- [x] Measured maximum and real worker/storage qualification.
+- [x] Editor authoring/preview/save/reload/publish/run, phone/reduced motion.
+- [x] Update data-transforms guide with concrete examples and limits.
+- Merge only after existing CI is green; record postmerge results on this PR.
+
+Primary references: [Intl options](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/DateTimeFormat),
+[formatToParts](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/formatToParts),
+[UTC month arithmetic](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/setUTCMonth).
+These inform the implementation; the explicit arithmetic and formatting choices
+above are Pertexo's bounded contract, not an implied locale/provider convention.
+
+
+The maximum-size real-worker probe exposed a stored-reference comparison bug:
+Batch's valid 9,999-member value persisted, but coordinator/input comparisons
+passed its descriptor to the generic JSON serializer. The two descriptor fields
+then exceeded a limit defined for the value itself. Use the existing typed
+stored-value serializer through one nullable equality helper in the format
+owner, and preserve exact comparison, null semantics and every limit. This is a
+correction to the existing stored-value contract, not a changed format/budget.
+The worker probe must complete through its downstream Stop before the cap is
+accepted; no timeout increase or retry substitutes for this evidence.
+
+
+### Follow-up local qualification
+
+Node 24.15.0 / arm64, 4,998 scalar integers, five warmups then 50 actual registry
+executions per operation, including admission/output validation:
+
+| Operation | Median ms | p95 ms | Output bytes |
+| --- | ---: | ---: | ---: |
+| Filter | 2.15 | 2.68 | 23,926 |
+| Sort | 2.24 | 3.35 | 23,909 |
+| Unique | 2.69 | 3.58 | 23,945 |
+| Summarize (one group) | 1.16 | 1.92 | 124 |
+| Take | 1.88 | 2.03 | 23,926 |
+| Concatenate | 1.86 | 2.00 | 23,909 |
+| Batch (size one) | 7.24 | 9.03 | 33,925 |
+
+Observed peak heap growth over each 50-call batch was 15–68 MiB before GC;
+retained growth after GC ranged from -0.04 to +0.21 MiB. These are local
+observations, not a per-call allocation claim or timing threshold. Repeat the
+maximum-size functional cases in `nodes-core/test/collections/structure.test.ts`.
+The real PostgreSQL/Redis worker fixture finishes Manual → Take → Concat → Batch
+→ Stop with all 4,998 one-item batches persisted and five actual attempts.
+The same fixture executes all eight transforms in two For each body invocations;
+no timeout change or retry was needed. Nullable stored-reference comparison tests
+prove the maximum descriptor works and malformed/oversized values still fail.
+
+
+The ordinary browser journey authors all seven list operations, verifies preview,
+reloads/publishes/runs, exports/imports and runs the exact copy; SQL independently
+checks immutable graphs and outputs. Date previews exercise the original UTC
+operation, Paris date-only, UTC month addition and final Paris timezone conversion,
+then publication/run parity with independent SQL. Desktop/375 × 768 reduced-motion
+mocked cases prove exact variant settings, keyboard Undo/Redo, save/reload and no
+horizontal overflow. Synthetic setup screenshots were inspected:
+[desktop](../media/data-transforms/date-setup-desktop.png) and
+[phone](../media/data-transforms/date-setup-phone.png).
+Changed-code React Doctor is 100/100 without diagnostics or suppressions.
+
+The shared collection browser authoring case now creates nine steps rather than
+six; its mocked case uses the matching live journey's existing 60-second budget
+for ordinary debounced saves plus reload/edit verification. Assertions and
+retry settings stay unchanged. The worker maximum retains its original timeout.

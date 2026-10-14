@@ -15,7 +15,9 @@ export const CORE_DATE_EXECUTOR = Object.freeze({
 });
 const semantics = Object.freeze([
   'Convert only integer epoch milliseconds or valid four-digit-year calendar timestamps with an explicit numeric offset or Z and at most 3 fractional digits.',
-  'UTC instant must stay in years 0000 through 9999; ISO output uses UTC and three fractional digits. Invalid-day rollover, leap seconds and local-time inference are forbidden.',
+  'Named formats and IANA timezone conversion use explicit Gregorian/Latin/h23 Intl parts; ISO offsets have minute precision. No local-time inference or free pattern language.',
+  'Signed durations use elapsed UTC minutes/hours/days/weeks; UTC calendar months clamp at month end.',
+  'UTC instant must stay in years 0000 through 9999; The to_iso operation uses UTC and three fractional digits; zoned ISO preserves the same instant with its actual offset. Invalid-day rollover, leap seconds and local-time inference are forbidden.',
 ] as const);
 export const CORE_DATE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_DATE_DEFINITION,

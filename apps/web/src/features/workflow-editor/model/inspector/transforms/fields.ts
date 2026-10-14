@@ -65,10 +65,29 @@ const words: Readonly<Record<string, Readonly<Record<string, FieldWords>>>> = {
     },
   },
   'core.date': {
+    format: {
+      optionLabels: {
+        date_only: 'Date only (YYYY-MM-DD)',
+        date_time: 'Date and time (YYYY-MM-DD HH:mm:ss)',
+        iso: 'ISO timestamp with offset',
+      },
+    },
+    unit: {
+      optionLabels: {
+        minutes: 'Minutes',
+        hours: 'Hours',
+        days: 'Days (24 hours)',
+        weeks: 'Weeks (168 hours)',
+        months: 'Calendar months (UTC)',
+      },
+    },
     operation: {
       optionLabels: {
         to_iso: 'ISO timestamp (UTC)',
         to_epoch_millis: 'Epoch milliseconds',
+        format: 'Format timestamp',
+        convert_timezone: 'Convert time zone',
+        add_duration: 'Add or subtract duration',
       },
     },
   },

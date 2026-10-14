@@ -1,3 +1,5 @@
+import { addDuration } from './add-duration.js';
+import { formatInstant } from './format-instant.js';
 import { NodeInputValidationError } from '@pertexo/node-sdk/server';
 import type { CoreDateConfig, CoreDateInput } from './validation.js';
 
@@ -43,11 +45,33 @@ function parseInstant(value: string): number {
     return invalidDate();
   return checkInstant(Date.parse(value));
 }
-export function convertDate(config: CoreDateConfig, input: CoreDateInput) {
+export function transformDateValue(
+  config: CoreDateConfig,
+  input: CoreDateInput,
+) {
   if (config.operation === 'to_iso') {
     if (typeof input.value !== 'number') return invalidDate();
     return { value: new Date(checkInstant(input.value)).toISOString() };
   }
-  if (typeof input.value !== 'string') return invalidDate();
-  return { value: parseInstant(input.value) };
+  if (config.operation === 'to_epoch_millis') {
+    if (typeof input.value !== 'string') return invalidDate();
+    return { value: parseInstant(input.value) };
+  }
+  const instant =
+    typeof input.value === 'number'
+      ? checkInstant(input.value)
+      : parseInstant(input.value);
+  if (config.operation === 'format')
+    return { value: formatInstant(instant, config.timeZone, config.format) };
+  if (config.operation === 'convert_timezone')
+    return { value: formatInstant(instant, config.timeZone, 'iso') };
+  if (input.amount === undefined)
+    throw new NodeInputValidationError(
+      'Add duration requires a signed integer amount',
+    );
+  return {
+    value: new Date(
+      checkInstant(addDuration(instant, input.amount, config.unit)),
+    ).toISOString(),
+  };
 }

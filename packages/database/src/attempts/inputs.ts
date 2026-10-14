@@ -13,6 +13,7 @@ import { assertNotAborted, withWorkspaceReadClient } from './transactions.js';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionJsonValue,
+  storedExecutionValuesEqual,
 } from '../platform/stored-execution-value.js';
 
 type UpstreamOutputRow = Readonly<{
@@ -61,8 +62,10 @@ function reconcileCompletedNodeOutputs(
         output.attempt_status !== 'succeeded' ||
         output.reused_source_node_run_id !== null ||
         output.reused_source_completed_at !== null ||
-        serializeStoredExecutionJsonValue(output.node_output_ref) !==
-          serializeStoredExecutionJsonValue(output.attempt_output_ref)
+        !storedExecutionValuesEqual(
+          output.node_output_ref,
+          output.attempt_output_ref,
+        )
       )
         throw new NodeAttemptStateCorruptError();
       const stored = parseStoredExecutionValue(
@@ -296,8 +299,7 @@ export async function readNodeAttemptLoopDeclaration(
       const row = declaration.rows[0];
       if (row === undefined) return undefined;
       if (
-        serializeStoredExecutionJsonValue(row.node_output_ref) !==
-        serializeStoredExecutionJsonValue(row.attempt_output_ref)
+        !storedExecutionValuesEqual(row.node_output_ref, row.attempt_output_ref)
       )
         throw new NodeAttemptStateCorruptError();
       const stored = parseStoredExecutionValue(row.attempt_output_ref);

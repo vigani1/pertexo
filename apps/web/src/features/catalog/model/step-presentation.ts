@@ -45,6 +45,24 @@ type RegistryEntry = Omit<StepPresentation, 'family'> &
   Readonly<{ family: StepFamily }>;
 
 const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
+  'core.batch': {
+    name: 'Batch items',
+    description: 'Split a list into ordered batches',
+    icon: SplitIcon,
+    family: 'transform',
+  },
+  'core.take': {
+    name: 'Take first items',
+    description: 'Keep the first N items in a list',
+    icon: ListChecksIcon,
+    family: 'transform',
+  },
+  'core.concat': {
+    name: 'Concatenate lists',
+    description: 'Append a second list, keeping order and duplicates',
+    icon: GitMergeIcon,
+    family: 'transform',
+  },
   'core.filter': {
     name: 'Filter items',
     description: 'Keep items that match a field or value',
@@ -71,7 +89,7 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
   },
   'core.date': {
     name: 'Convert date',
-    description: 'Convert an explicit-offset timestamp or UTC milliseconds',
+    description: 'Format timestamps, convert time zones or add a duration',
     icon: CalendarClockIcon,
     family: 'transform',
   },

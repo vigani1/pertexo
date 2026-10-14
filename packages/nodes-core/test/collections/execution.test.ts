@@ -309,7 +309,7 @@ describe('bounded collection execution', () => {
       ).rejects.toMatchObject({ code: 'invalid_input' });
   });
   it.each(['filter', 'sort', 'unique', 'summarize'])(
-    'admits exactly 1000 %s items and rejects one over without changing global JSON bounds',
+    'admits exactly 4998 %s items and rejects one over without changing global JSON bounds',
     async (key) => {
       const config =
         key === 'filter'
@@ -319,12 +319,12 @@ describe('bounded collection execution', () => {
             : key === 'unique'
               ? { path: '$', missing: 'error' }
               : { valuePath: '$', missing: 'error' };
-      const items = Array.from({ length: 1000 }, (_, i) => i);
+      const items = Array.from({ length: 4998 }, (_, i) => i);
       expect(await run(key, config, { items })).toMatchObject({
         kind: 'succeeded',
       });
       await expect(
-        run(key, config, { items: [...items, 1000] }),
+        run(key, config, { items: [...items, 4998] }),
       ).rejects.toMatchObject({ code: 'invalid_input' });
       await expect(run(key, config, { items: null })).rejects.toMatchObject({
         code: 'invalid_input',
