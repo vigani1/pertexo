@@ -1,10 +1,10 @@
-import { acquireDatabasePool } from '../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../platform/pool/runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
-import { withWorkspaceTransaction } from '../tenant-access/transactions.js';
+import type { DatabaseConfig } from '../../config.js';
+import { withWorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 const readInputSchema = z
   .object({

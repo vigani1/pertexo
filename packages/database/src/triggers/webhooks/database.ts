@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from '../../runs/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { createHash } from 'node:crypto';
@@ -13,7 +13,7 @@ import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import {
   parsePublishedWorkflowRow,
   type PublishedWorkflow,
-} from '../../runs/published-workflow.js';
+} from '../../runs/queries/published-workflow.js';
 import {
   readHealth,
   refreshWorkflowActivation,

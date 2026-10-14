@@ -14,7 +14,7 @@ Each group is its own buildable move commit; one delivery PR after all groups.
 
 - [x] Group core node folders; update imports and current F24 ownership docs.
 - [x] Group web run models; update imports without UI/logic changes.
-- [ ] Group database run files; update imports without persistence/logic changes.
+- [x] Group database run files; update imports without persistence/logic changes.
 - [ ] Complete local behavioral verification and existing green CI before merge.
 
 Use mechanical file moves and module-path rewrites only. Verify each commit with

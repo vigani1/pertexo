@@ -13,12 +13,12 @@ import {
   workflowRuns,
 } from '../../schema.js';
 import { prepareStoredExecutionValue } from '../../platform/stored-execution-value.js';
-import type { RunInputValidator } from '../initial-checkpoint.js';
+import type { RunInputValidator } from './initial-checkpoint.js';
 import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema as sha256Schema } from '../../platform/persisted-primitives.js';
 import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';
-import type { WorkflowRecoverySummary } from '../recovery.js';
+import type { WorkflowRecoverySummary } from '../recovery/contract.js';
 const traceparentSchema = z
   .string()
   .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)

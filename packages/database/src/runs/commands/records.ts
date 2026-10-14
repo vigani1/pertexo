@@ -1,4 +1,4 @@
-import type { WorkflowRecoverySummary } from '../recovery.js';
+import type { WorkflowRecoverySummary } from '../recovery/contract.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
 import {
   workflowRunReadQuery,

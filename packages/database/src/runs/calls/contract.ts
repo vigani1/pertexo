@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from '../initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import type { RunAdvanceInput } from '../advance/contract.js';
 
 export interface WorkflowCallStore {

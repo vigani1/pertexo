@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parsePublishedWorkflowRow,
   PublishedWorkflowVersionCorruptError,
-} from '../../src/runs/published-workflow.js';
+} from '../../src/runs/queries/published-workflow.js';
 
 describe('published workflow rows', () => {
   const row = {

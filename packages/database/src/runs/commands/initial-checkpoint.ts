@@ -1,4 +1,4 @@
-import type { PublishedWorkflow } from './published-workflow.js';
+import type { PublishedWorkflow } from '../queries/published-workflow.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 
 /** Called after the ordinary storage boundary, before fresh acceptance effects. */

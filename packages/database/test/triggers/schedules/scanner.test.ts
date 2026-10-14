@@ -20,12 +20,15 @@ vi.mock('../../../src/runs/commands/acceptance.js', async (importOriginal) => ({
   acceptWorkflowRun: (...arguments_: unknown[]) =>
     seams.acceptWorkflowRun(...arguments_) as Promise<unknown>,
 }));
-vi.mock('../../../src/runs/published-workflow.js', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  parsePublishedWorkflowRow: () => ({
-    id: '00000000-0000-4000-8000-000000000005',
+vi.mock(
+  '../../../src/runs/queries/published-workflow.js',
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    parsePublishedWorkflowRow: () => ({
+      id: '00000000-0000-4000-8000-000000000005',
+    }),
   }),
-}));
+);
 
 vi.mock('../../../src/platform/pool/runtime.js', () => ({
   acquireDatabasePool: () => {

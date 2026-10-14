@@ -127,12 +127,12 @@ export {
   appendRunEvent,
   readRunEventsAfter,
   RUN_EVENT_TYPE,
-} from './runs/events.js';
+} from './runs/queries/events.js';
 export type {
   PersistedRunEvent,
   RunEventPage,
   RunEventType,
-} from './runs/events.js';
+} from './runs/queries/events.js';
 export {
   ExecutionStateConflictError,
   RunEventGapError,
@@ -141,12 +141,12 @@ export { requestWorkflowRunCancellation } from './runs/commands/cancel.js';
 export {
   createPublishedWorkflowReader,
   PublishedWorkflowVersionCorruptError,
-} from './runs/published-workflow.js';
+} from './runs/queries/published-workflow.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
-} from './runs/published-workflow.js';
+} from './runs/queries/published-workflow.js';
 export { createOutboxDispatcherDatabase } from './outbox/dispatcher/database.js';
 export type {
   ClaimOutboxBatchInput,
@@ -206,7 +206,7 @@ export {
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
 } from './runs/runs.repository.js';
-export type { InitialCheckpointFactory } from './runs/initial-checkpoint.js';
+export type { InitialCheckpointFactory } from './runs/commands/initial-checkpoint.js';
 export type {
   CancelWorkflowRunInput,
   GetWorkflowRunInput,

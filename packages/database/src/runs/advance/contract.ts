@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
-import type { PublishedWorkflow } from '../published-workflow.js';
+import type { PublishedWorkflow } from '../queries/published-workflow.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { RunTransitionPlan } from './plan.js';
 

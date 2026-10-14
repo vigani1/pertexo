@@ -15,7 +15,7 @@ import {
   validateAuthoritativeAdvanceDelivery,
 } from '../advance/receipts.js';
 import { withCoordinatorWriteClient } from '../advance/transactions.js';
-import type { InitialCheckpointFactory } from '../initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import type { WorkflowCallStore } from './contract.js';
 import { acceptPendingCall, type PendingWorkflowCall } from './accept.js';
 import { applyIncomingCallCancellation } from './controls.js';

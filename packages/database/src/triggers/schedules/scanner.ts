@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from '../../runs/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
@@ -14,7 +14,7 @@ import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
 } from '../../runs/commands/acceptance.js';
-import { parsePublishedWorkflowRow } from '../../runs/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../../runs/queries/published-workflow.js';
 import {
   scheduleOccurrenceDisposition,
   type ScheduleOccurrenceDisposition,

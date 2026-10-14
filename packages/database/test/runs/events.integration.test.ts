@@ -9,7 +9,10 @@ import { createWorkspaceDatabase } from '../../src/database.js';
 import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.js';
 import { ExecutionStateConflictError } from '../../src/runs/state-errors.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { appendRunEvent, readRunEventsAfter } from '../../src/runs/events.js';
+import {
+  appendRunEvent,
+  readRunEventsAfter,
+} from '../../src/runs/queries/events.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 
 const adminUrl =
