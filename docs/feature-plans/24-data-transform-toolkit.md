@@ -17,7 +17,8 @@ Deliver four focused collection steps (`core.filter`, `core.sort`,
 `core.unique`, `core.summarize`) and a deterministic date conversion step
 (`core.date`). Each has definition/config/executor version 1, the existing
 `in`/`out` ports, transform family, safe retries, CPU resource class, no
-connection requirements and the existing bounded-JSON policy. These are pinned
+connection requirements, the existing bounded-JSON policy and the existing
+restricted-JSONata policy for ordinary input mappings. These are pinned
 node releases, not a new stored format, expression language or batch subsystem.
 
 Text normalization, case conversion, joins and simple number conversion use
@@ -143,7 +144,7 @@ and min/max/average null. With grouping, empty input returns no groups.
 Missing/null numeric values or a missing group key fail by default. Explicit
 skip excludes them and reports the global skipped count. Wrong non-null types
 fail in either mode; skip does not coerce strings into numbers. Reject non-safe
-integer operands and non-finite intermediate/result arithmetic. Decimal inputs
+integer operands/intermediate results and non-finite arithmetic. Decimal inputs
 use deterministic IEEE-754 arithmetic in input order; no silent rounding or
 promise of exact monetary arithmetic. Zero and negative numbers are valid.
 Cancellation is checked during bounded loops; group count cannot exceed items.
@@ -155,7 +156,9 @@ Cancellation is checked during bounded loops; group count cannot exceed items.
 result type. To ISO requires integer epoch milliseconds within UTC years
 0000–9999. To epoch requires a strict valid calendar timestamp
 `YYYY-MM-DDTHH:mm:ss[.SSS](Z|±HH:mm)`; optional fraction has 1–3 digits.
-Timezone offset is mandatory, leap seconds and 24:00 are rejected, calendar days
+Timezone offset is mandatory; the RFC 3339 `-00:00` marker still denotes a
+known UTC instant and does not supply a local zone. See
+[RFC 3339 §4.3](https://www.rfc-editor.org/info/rfc3339/). leap seconds and 24:00 are rejected, calendar days
 and leap years are checked, and the resulting UTC instant must remain within
 0000–9999. Output ISO is canonical UTC with three millisecond digits.
 
@@ -263,10 +266,26 @@ restricted profile or define its identity/persistence contracts.
 - [x] Owner authorized F24 planning/review/implementation before F16.
 - [x] Current baseline, inventory, decisions and module placement reconciled.
 - [x] Plan reviewed; boundaries and deferred file dependency made explicit.
-- [ ] Slice 0 plan PR verified/merged.
-- [ ] Slice 1 runtime and bounded semantics independently verified/merged.
+- [x] Slice 0: PR #279 merged after all required CI passed.
+- [ ] Slice 1: runtime implemented; local semantic and durable-worker qualification
+  passed. Full verification and PR merge remain required.
 - [ ] Slice 2 frontend and real integrated qualification verified/merged.
 - [ ] Final CI/postmerge evidence recorded on each slice PR.
 - [ ] F04 file consumer/conversion separately planned and authorized.
+
+### Slice 1 local evidence
+
+The real PostgreSQL/Redis fixture compiles an immutable workflow and executes
+all five transforms in two For each body invocations through the compiled
+coordinator, outbox dispatcher and attempt worker. It checks persisted results,
+existing Manual/Set/For each/Stop v1 nodes and a restricted expression mapping.
+It owns a disposable database; no application database or services are reset.
+
+Bounded measurement on Node 24.15.0, arm64: 1,000 three-field records, five warmup
+calls followed by 50 registry executions per operation. Median/p95 milliseconds:
+Filter 3.22/4.12, Sort 3.13/4.06, Unique 2.21/2.73, Summarize 1.42/2.33.
+Observed heap growth over the 50-call batches was 24–37 MiB before GC;
+retained growth after GC was 0.02–0.05 MiB. These include admission/output
+validation and are local observations, not per-call allocation or a server SLA.
 
 No production deployment or provider provisioning is part of this work.
