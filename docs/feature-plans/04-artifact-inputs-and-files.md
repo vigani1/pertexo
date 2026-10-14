@@ -285,7 +285,7 @@ CDP observation increased backing storage from about 1.9 MB to 5.4 MB, while the
 whole editor heap was changing too. This includes browser/crypto/network copies,
 is not peak allocation or an SLA, and is not a zero-copy claim. Phone dialogs
 scroll within the viewport; keyboard controls and reduced-motion rendering are
-qualified. React Doctor's changed scan reports 100/100 with no findings. Full `pnpm check`, 1,990 API / 733 worker / 1,172 web unit tests, 161 mocked
+qualified. React Doctor's changed scan reports 100/100 with no findings. Full `pnpm check`, 1,990 API / 733 worker / 1,173 web unit tests, 161 mocked
 browser journeys and both real browser cases pass. The final web build/lint/types
 and changed React Doctor scan also pass after the keyboard/lifecycle fixes.
 Backend natural main CI 38641937383 (including ARM publication) and CodeQL
@@ -296,3 +296,8 @@ The upload dialog keeps its opener mounted while target changes close/cancel
 the local session. Desktop and phone keyboard insertion/focus return are checked
 through the ordinary editor panels. Destination fields and replacement consent
 remain locked during the exact-version contract read; cancel fences late insertion.
+
+The queued insertion callback checks its request/target before invoking the
+owner, as well as after awaiting it. A regression reproduces a target change
+between confirmation and the callback: no owner mutation may run with an aborted
+request. This complements cancellation during hashing/transfer/contract reads.

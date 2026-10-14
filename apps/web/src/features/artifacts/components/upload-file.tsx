@@ -189,7 +189,10 @@ function UploadSession({
             const reference = upload.state.reference;
             const request = attachment.begin();
             void Promise.resolve()
-              .then(() => onUse(reference, request.signal))
+              .then(() => {
+                if (!request.isCurrent()) return undefined;
+                return onUse(reference, request.signal);
+              })
               .then((error) => {
                 if (!request.isCurrent()) return;
                 setAttachmentError(error);
