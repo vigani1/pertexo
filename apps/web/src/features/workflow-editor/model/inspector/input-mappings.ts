@@ -14,6 +14,7 @@ export type InputMappingDraftRow =
   | (RowBase & Readonly<{ kind: 'literal'; literalJson: string }>)
   | (RowBase & Readonly<{ kind: 'run_input'; path: string }>)
   | (RowBase & Readonly<{ kind: 'node_output'; nodeId: string; path: string }>)
+  | (RowBase & Readonly<{ kind: 'node_failure'; nodeId: string; path: string }>)
   | (RowBase &
       Readonly<{
         kind: 'expression';
@@ -68,11 +69,12 @@ export function inputMappingRowsFor(
           };
         case 'run_input':
           return { id, destinationKey, kind: 'run_input', path: source.path };
+        case 'node_failure':
         case 'node_output':
           return {
             id,
             destinationKey,
-            kind: 'node_output',
+            kind: source.kind,
             nodeId: source.nodeId,
             path: source.path,
           };
@@ -114,6 +116,7 @@ export function changeInputMappingKind(
       return { ...base, kind, literalJson: 'null' };
     case 'run_input':
       return { ...base, kind, path: '$' };
+    case 'node_failure':
     case 'node_output':
       return { ...base, kind, nodeId: firstPredecessorId, path: '$' };
     case 'structured_input':
@@ -212,6 +215,7 @@ function rowSource(
             },
           };
     case 'run_input':
+    case 'node_failure':
     case 'node_output':
     case 'structured_input':
       break;
@@ -238,6 +242,7 @@ function rowSource(
               path: row.path,
             },
           };
+    case 'node_failure':
     case 'node_output':
       break;
   }
@@ -245,7 +250,7 @@ function rowSource(
   if (check.graph && !check.predecessors.has(row.nodeId))
     return { error: 'The source must be a directly linked predecessor.' };
   return {
-    mapping: { kind: 'node_output', nodeId: row.nodeId, path: row.path },
+    mapping: { kind: row.kind, nodeId: row.nodeId, path: row.path },
   };
 }
 

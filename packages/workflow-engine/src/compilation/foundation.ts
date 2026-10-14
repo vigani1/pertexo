@@ -8,6 +8,9 @@ import {
 } from '@pertexo/node-sdk';
 import {
   canonicalJson,
+  inspectWorkflowFailureRoutes,
+  WORKFLOW_FAILURE_PORT,
+  type WorkflowFailureRoute,
   type JsonValue,
   type ValueSource,
   type WorkflowEdge,
@@ -90,12 +93,49 @@ export interface CompiledWorkflowExecutable {
   readonly envelope: VerifiedWorkflowExecutable;
   readonly checksum: `wf:sha256:${string}`;
 }
-const authenticExecutableIdentities = new WeakSet<object>();
+export type ExecutionFailureRoute = WorkflowFailureRoute &
+  Readonly<{ normalSuffixNodeIds: readonly string[] }>;
+const authenticExecutableIdentities = new WeakMap<
+  object,
+  readonly ExecutionFailureRoute[]
+>();
 
 export function registerExecutableIdentity(
   value: CompiledWorkflowExecutable,
 ): CompiledWorkflowExecutable {
-  authenticExecutableIdentities.add(value);
+  const routing = inspectWorkflowFailureRoutes(value.envelope.graph);
+  if (routing.kind === 'invalid') fail(routing.message);
+  const adjacency = new Map<string, string[]>();
+  if (routing.kind === 'routed')
+    for (const { source, target } of value.envelope.graph.edges) {
+      if (
+        source.port === WORKFLOW_FAILURE_PORT ||
+        routing.value.handlerOwners.has(source.nodeId)
+      )
+        continue;
+      const children = adjacency.get(source.nodeId) ?? [];
+      children.push(target.nodeId);
+      adjacency.set(source.nodeId, children);
+    }
+  const routes =
+    routing.kind === 'routed'
+      ? [...routing.value.routes.values()].map((route) => {
+          const suffix = new Set<string>();
+          const pending = [...(adjacency.get(route.sourceNodeId) ?? [])];
+          while (pending.length > 0) {
+            const nodeId = pending.pop();
+            if (nodeId === undefined) break;
+            if (suffix.has(nodeId)) continue;
+            suffix.add(nodeId);
+            pending.push(...(adjacency.get(nodeId) ?? []));
+          }
+          return Object.freeze({
+            ...route,
+            normalSuffixNodeIds: Object.freeze([...suffix]),
+          });
+        })
+      : [];
+  authenticExecutableIdentities.set(value, Object.freeze(routes));
   return value;
 }
 
@@ -104,6 +144,15 @@ export function assertAuthenticExecutableIdentity(
 ): void {
   if (!authenticExecutableIdentities.has(value))
     fail('workflow executable identity was not verified in this process');
+}
+
+export function executableFailureRoutes(
+  value: CompiledWorkflowExecutable,
+): readonly ExecutionFailureRoute[] {
+  const routes = authenticExecutableIdentities.get(value);
+  if (routes === undefined)
+    fail('workflow executable identity was not verified in this process');
+  return routes;
 }
 
 export const token = (

@@ -309,7 +309,7 @@ function parseInvocation(value: unknown): InvocationState {
   assertExactKeys(
     value,
     ['invocationKey', 'nodeId', 'status', 'attemptNumber'],
-    ['resumeAt', 'waitKind', 'output'],
+    ['resumeAt', 'waitKind', 'output', 'failureHandling'],
   );
   assertCheckpoint(
     typeof value.invocationKey === 'string' && value.invocationKey.length > 0,
@@ -354,6 +354,27 @@ function parseInvocation(value: unknown): InvocationState {
         resumeAt === undefined),
     'reused output must belong to a completed invocation without attempts',
   );
+  let failureHandling: InvocationState['failureHandling'];
+  if (value.failureHandling !== undefined) {
+    const handling = value.failureHandling;
+    assertCheckpoint(
+      isRecord(handling) &&
+        value.status === 'failed' &&
+        value.attemptNumber > 0,
+      'handling requires an executed failed source',
+    );
+    assertExactKeys(handling, ['sinkInvocationKey', 'disposition']);
+    assertCheckpoint(
+      typeof handling.sinkInvocationKey === 'string' &&
+        handling.sinkInvocationKey.length > 0 &&
+        ['pending', 'handled'].includes(String(handling.disposition)),
+      'handling identity or disposition is invalid',
+    );
+    failureHandling = {
+      sinkInvocationKey: handling.sinkInvocationKey,
+      disposition: handling.disposition as 'pending' | 'handled',
+    };
+  }
   return {
     invocationKey: value.invocationKey,
     nodeId: value.nodeId,
@@ -362,6 +383,7 @@ function parseInvocation(value: unknown): InvocationState {
     ...(resumeAt === undefined ? {} : { resumeAt }),
     ...(value.waitKind === undefined ? {} : { waitKind: value.waitKind }),
     ...(output === undefined ? {} : { output }),
+    ...(failureHandling === undefined ? {} : { failureHandling }),
   };
 }
 
@@ -443,7 +465,14 @@ export function parseInvocations(
     assertExactKeys(
       item,
       ['invocationKey', 'nodeId', 'status', 'attemptNumber'],
-      ['resumeAt', 'waitKind', 'output', 'branchPath', 'iterationPath'],
+      [
+        'resumeAt',
+        'waitKind',
+        'output',
+        'branchPath',
+        'iterationPath',
+        'failureHandling',
+      ],
     );
     const {
       branchPath: rawBranchPath,

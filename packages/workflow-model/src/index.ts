@@ -1,6 +1,22 @@
 // Safe anywhere, including the browser. Node-only parts are in ./server.ts.
 export { assertNever } from './assert-never.js';
-export { WORKFLOW_FAILURE_PORT } from './failure-routing/contract.js';
+export {
+  WORKFLOW_FAILURE_PORT,
+  WORKFLOW_FAILURE_FIELDS,
+  WORKFLOW_FAILURE_PATHS,
+  isWorkflowFailureSource,
+  type WorkflowFailureRoute,
+} from './failure-routing/contract.js';
+export {
+  inspectWorkflowFailureRoutes,
+  type FailureRoutingGraph,
+  type WorkflowFailureRoutes,
+} from './failure-routing/validation.js';
+export {
+  isRoutableExecutorFailure,
+  workflowNodeFailureValueSchema,
+  type WorkflowNodeFailureValue,
+} from './failure-routing/failure-value.js';
 export {
   inspectWorkflowDecisionTree,
   type WorkflowDecisionTree,

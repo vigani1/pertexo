@@ -1,3 +1,7 @@
+import {
+  isRoutableExecutorFailure,
+  isWorkflowFailureSource,
+} from '@pertexo/workflow-model';
 import type { PolicyReference } from '@pertexo/node-sdk';
 
 import type { WorkflowExecutableNode } from '../compilation/foundation.js';
@@ -100,6 +104,20 @@ export function resolveAttemptFailures(
       status:
         decision.kind === 'outcome_unknown' ? 'outcome_unknown' : 'failed',
       reasonCode: failure.safeErrorCode,
+      ...(decision.kind === 'failed' &&
+      !node.disabled &&
+      isWorkflowFailureSource(node.definition) &&
+      isRoutableExecutorFailure(failure)
+        ? {
+            failure: {
+              nodeId: node.id,
+              invocationKey: failure.invocationKey,
+              attemptNumber: failure.attemptNumber,
+              errorKind: failure.errorKind,
+              safeErrorCode: failure.safeErrorCode,
+            },
+          }
+        : {}),
       coordinatorDerived: true,
     };
   });

@@ -1,3 +1,4 @@
+import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { SAFE_EXECUTOR_ERROR_CODE_PATTERN } from '@pertexo/workflow-model';
@@ -147,6 +148,10 @@ const nodeAttemptLeaseSchema = z
 export const loadInputsSchema = z
   .object({
     lease: nodeAttemptLeaseSchema,
+    sourceFailure: z
+      .object({ nodeId: nodeIdSchema, invocationKey: invocationKeySchema })
+      .strict()
+      .optional(),
     upstreamNodeOutputs: z
       .array(
         z
@@ -263,6 +268,7 @@ export type NodeAttemptStoredInputs = Readonly<{
     nodeId: string;
     value: unknown;
   }>[];
+  sourceFailure?: WorkflowNodeFailureValue;
   resumeOutput?: unknown;
   abortRequested: boolean;
   abortReason?: 'canceled' | 'timed_out';

@@ -1,3 +1,4 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeAttemptLease } from '@pertexo/database/attempts';
 import type { PublishedWorkflow } from '@pertexo/database/runs';
 import type {
@@ -68,7 +69,11 @@ function deriveUpstreamNodeOutputs(
     [
       ...new Map(
         graph.edges
-          .filter(({ target }) => target.nodeId === node.id)
+          .filter(
+            ({ source, target }) =>
+              target.nodeId === node.id &&
+              source.port !== WORKFLOW_FAILURE_PORT,
+          )
           .map((edge) => [edge.source.nodeId, edge]),
       ).values(),
     ]
@@ -112,6 +117,24 @@ function prepareNode(
     throw new TypeError('Node attempt is not in workflow');
   const { graph, node } = located;
   const upstreamNodeOutputs = deriveUpstreamNodeOutputs(graph, node, lease);
+  const failureEdge = graph.edges.find(
+    ({ source, target }) =>
+      source.port === WORKFLOW_FAILURE_PORT && target.nodeId === node.id,
+  );
+  const sourceFailure =
+    failureEdge === undefined
+      ? undefined
+      : {
+          nodeId: failureEdge.source.nodeId,
+          invocationKey: invocationKey({
+            workflowVersionId: lease.workflowVersionId,
+            nodeId: failureEdge.source.nodeId,
+            branchPath: (lease.branchPath ?? []).map(
+              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+            ),
+            iterationPath: lease.iterationPath ?? [],
+          }),
+        };
   // A step that uses a connection sends its input to a provider, and what
   // it sends never enters execution records (ADR 023, 024): only other
   // steps record their input (ADR 052).
@@ -125,6 +148,7 @@ function prepareNode(
         }
       : {}),
     upstreamNodeOutputs,
+    ...(sourceFailure === undefined ? {} : { sourceFailure }),
     execute: async (
       input: Readonly<
         NodeAttemptInputs & {
@@ -153,6 +177,9 @@ function prepareNode(
           : { iterationPath: lease.iterationPath }),
         runInput: input.runInput,
         completedNodeOutputs: input.completedNodeOutputs,
+        ...(input.sourceFailure === undefined
+          ? {}
+          : { sourceFailure: input.sourceFailure }),
         ...(input.structuredCollection === undefined
           ? {}
           : { structuredCollection: input.structuredCollection }),

@@ -14,6 +14,8 @@ export function editResult(result: ValueSource): ResultDraft {
     case 'node_output':
     case 'expression':
       return result;
+    case 'node_failure':
+      throw new Error('A workflow result cannot read failure data.');
     case 'structured_input':
       // The model rejects body ports for a workflow-level result.
       throw new Error('A workflow result cannot read a structured input port.');

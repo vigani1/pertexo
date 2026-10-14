@@ -50,6 +50,7 @@ const runRowSchema = z
   })
   .strict();
 const runReadRowSchema = runRowSchema.extend({
+  handled_failure_count: z.number().int().min(0).max(200),
   admission_blockers: z
     .object({
       asOf: z.iso.datetime({ precision: 6 }),
@@ -89,6 +90,7 @@ export type WorkflowRunReadRecord = WorkflowRunRecord &
     workflowName?: string | null;
     replaySourceRunId: string | null;
     recovery?: WorkflowRecoverySummary;
+    handledFailureCount?: number;
     admissionBlockers?: Readonly<{
       asOf: string;
       reasons: readonly (
@@ -223,6 +225,7 @@ function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
 export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
   const row = runReadRowSchema.parse(value);
   const {
+    handled_failure_count: handledFailureCount,
     workflow_name: workflowName,
     replay_source_run_id: replaySourceRunId,
     admission_blockers: admissionBlockers,
@@ -237,6 +240,7 @@ export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
     ...toWorkflowRunRecord(runRow),
     workflowName,
     replaySourceRunId,
+    ...(handledFailureCount === 0 ? {} : { handledFailureCount }),
     ...(targetNodeRunId === null ||
     targetNodeId === null ||
     reusedCount === null ||

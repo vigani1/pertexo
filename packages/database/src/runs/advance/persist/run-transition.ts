@@ -160,7 +160,7 @@ export async function persistCoordinatorRunTransition(
   )?.reasonCode;
   await client.query(
     `update app.workflow_runs
-       set status=$1,
+       set status=$1, handled_failure_count=$8,
            started_at=coalesce(started_at,$2::timestamptz),
            completed_at=case when $3::timestamptz is null
              then completed_at else $3::timestamptz end,
@@ -178,6 +178,9 @@ export async function persistCoordinatorRunTransition(
         ? null
         : JSON.stringify({ kind: 'inline', value: plan.runResult }),
       runFailure ?? null,
+      plan.checkpoint.invocations.filter(
+        ({ failureHandling }) => failureHandling?.disposition === 'handled',
+      ).length,
     ],
   );
   await persistCallCompletion(client, input);

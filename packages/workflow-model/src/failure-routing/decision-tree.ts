@@ -3,7 +3,7 @@ import type { WorkflowEdge } from '../graph/contract.js';
 export type DecisionTreeNode = Readonly<{
   id: string;
   definition: Readonly<{ key: string; version: number }>;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   forEach?: unknown;
   structured?: unknown;
 }>;

@@ -1061,3 +1061,67 @@ exit and capacity reuse; a controlled-clock case checks the exact evaluation
 deadline after delayed startup and refuses capacity until termination settles.
 No production deadline, test timeout or evaluator behavior changed. The fix
 lands as a new commit; all required CI passed on the new commit before merging PR #276.
+
+## Failure routing runtime qualification (2026-10-14)
+
+Slice 4 implements the accepted ADR 073 contract. The shared model rule owns
+handler shape, source/entry mapping and unsupported scopes. Verified executable
+identities retain derived route ownership, sinks and normal suffixes outside the
+stored executable. Ordinary publication checksums and checkpoints stay unchanged.
+
+Final eligible executor classifications select one handler after retry policy;
+backoff, unknown outcomes, cancellation, deadlines and platform/internal errors
+cannot select it. The source remains failed. The checkpoint stores only its
+selected sink and pending/handled disposition; the five-field safe envelope is
+mandatory source-row inline data. The handler entry reads that envelope separately
+from successful direct-predecessor outputs, under its current workspace/run,
+source invocation and attempt lease. Restored checkpoints reject forged sinks,
+unselected active handlers and incompletely handled chains.
+
+Migration 0005 adds nullable source evidence/handling columns, the retained run
+count and the two route event names. Its narrow app-role column grants preserve
+the existing three roles and forced workspace security. Selection, evidence,
+physical transitions, checkpoint CAS, events and outbox admission share the
+existing coordinator transaction. Final run outcome continues to own notices;
+step health retains the original failure. Successful handled sources cannot
+explain an unrelated later run-result failure in the run list.
+
+Local evidence (CI/merge and slice 5 authoring remain pending):
+
+- Model 259 and engine 437 unit tests passed, including handler shape/ownership,
+  fixed classification codes, separate failure mappings, retry exhaustion,
+  cancellation/deadline precedence and restored-state checks.
+- Database 528, contracts 228, execution 17, API 1,965, worker 720 and web 1,114
+  unit tests passed. All 146 mocked browser tests passed; React Doctor's changed
+  scope remains 100 with no suppressions.
+- The isolated real PostgreSQL/forced-RLS, Redis/BullMQ, outbox and compiled-worker
+  journey passed. It runs a Condition-scoped handler, restarts the coordinator
+  while handling is pending, verifies one logical handler/route event, safe
+  mapped evidence, skipped normal/off-path steps, truthful failed-step health,
+  handler failure and unknown precedence. Handler retry reads the same immutable
+  failure value; an unselected restored choice is refused. A callable with a missing source
+  result still fails after successful handling. Removing node details retains
+  the summary count; successful handling produces no failure-inbox intent.
+- Full `pnpm check` passed: formatting, build, lint, types, dependencies,
+  generated contracts, schema and module boundaries. The walkthrough exposed
+  a missing new-column update grant before any attempt was admitted; the
+  migration now grants only the required app-role columns. The fixture's
+  bounded wait and resource cleanup preserve failures without leaking its
+  isolated database or Redis namespace.
+
+These tests do not establish support for loops, joins, Calls, returning to the
+normal path or artifact recovery. The UI authoring and combined real HTTP/browser
+qualification belong to slice 5.
+
+A fresh ordinary-path comparison used the same isolated services and current
+main (`8106b8e45`). The first routing sample had an 81.410 ms median gap and
+2,081.643 ms median run, so it was investigated rather than treated as a
+regression or silently omitted. Fresh main measured 46.021 ms / 1,967.842 ms;
+the routing repeat measured 43.876 ms / 1,837.918 ms. Condition gaps were
+41.556 / 41.633 ms and concurrent gaps 278.280 / 276.130 ms. Checkpoints remain
+6,281 bytes for the ordinary graph and 1,667 bytes for Condition. This shows no
+repeatable ordinary-path regression under this local fixture, not an SLA.
+Raw samples remain outside the repository in
+`/tmp/pertexo-f09-latency-routing{,-main,-repeat}.json`; the temporary control
+checkout was archived after comparison. The fixture's existing measurement
+limitations still apply.

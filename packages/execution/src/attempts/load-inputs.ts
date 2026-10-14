@@ -86,6 +86,23 @@ export async function loadAttemptInputs(
 ): Promise<NodeAttemptInputs> {
   const { checkpoint: stored, ...inputs } = await store.loadInputs(input);
   const checkpoint = parseCheckpoint(stored);
+  if (inputs.sourceFailure !== undefined) {
+    const source = checkpoint.invocations.find(
+      ({ invocationKey }) =>
+        invocationKey === inputs.sourceFailure?.invocationKey,
+    );
+    const handler = checkpoint.invocations.find(
+      ({ invocationKey }) => invocationKey === input.lease.invocationKey,
+    );
+    if (
+      source?.status !== 'failed' ||
+      source.failureHandling?.disposition !== 'pending' ||
+      source.attemptNumber !== inputs.sourceFailure.attemptNumber ||
+      handler?.status !== 'running' ||
+      handler.attemptNumber !== input.lease.attemptNumber
+    )
+      throw new NodeAttemptStateCorruptError();
+  }
   const join = coordinatorInput(checkpoint, input.lease.invocationKey);
   const innermost = innermostLoop(
     checkpoint,

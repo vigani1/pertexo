@@ -6,6 +6,7 @@ import type {
 } from './expressions/policy.js';
 import type { ValueSource } from './graph/contract.js';
 import { resolveJsonPath } from './json/path.js';
+import type { WorkflowNodeFailureValue } from './failure-routing/failure-value.js';
 
 export type ValueResolution =
   | { readonly kind: 'value'; readonly value: JsonValue }
@@ -18,6 +19,7 @@ export type ValueResolution =
     };
 export interface ValueResolutionContext extends ExpressionContext {
   readonly structuredInputs?: Readonly<Record<string, JsonValue>>;
+  readonly nodeFailure?: WorkflowNodeFailureValue;
 }
 export async function resolveValueSource(
   source: ValueSource,
@@ -34,6 +36,11 @@ export async function resolveValueSource(
     return output === undefined
       ? { kind: 'missing' }
       : resolveJsonPath(output, source.path);
+  }
+  if (source.kind === 'node_failure') {
+    return context.nodeFailure?.nodeId === source.nodeId
+      ? resolveJsonPath(context.nodeFailure, source.path)
+      : { kind: 'missing' };
   }
   if (source.kind === 'structured_input') {
     const input = context.structuredInputs?.[source.port];

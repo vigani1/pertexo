@@ -1,3 +1,4 @@
+import { assertFailureCheckpoint } from '../failure-routing/checkpoint.js';
 import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import type { parseCheckpoint } from './create-and-parse.js';
 import { isCoreMergeDefinition } from '../core-definition-identities.js';
@@ -213,6 +214,7 @@ export function assertCheckpointMatchesExecutable(
 ): void {
   const nodeIds = new Set(allNodes.map(({ id }) => id));
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));
+  assertFailureCheckpoint(checkpoint, executable);
   for (const join of checkpoint.joins)
     assertCheckpointJoinIdentity(join, checkpoint, nodesById);
   const invocationKeys = new Set<string>();

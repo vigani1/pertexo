@@ -13,6 +13,7 @@ import {
   indexTransitionNodes,
   type MutableWorkflowTransition,
 } from './state.js';
+import { settleFailureHandlers } from '../failure-routing/selection.js';
 import { applyWorkflowStops } from './stops.js';
 
 export interface AdvanceWorkflowFromSchedulerStateInput {
@@ -93,6 +94,7 @@ export function advanceWorkflowFromSchedulerState(
     ),
     branchSelections: [...current.branchSelections],
     remainingIterationBudget: current.remainingIterationBudget,
+    failureValues: [],
     eventDrafts: [],
     nodeRunAdmissionKeys: new Set(),
     externalFactsArePersisted,
@@ -110,6 +112,7 @@ export function advanceWorkflowFromSchedulerState(
     observations,
     occurredAt: input.occurredAt,
   });
+  settleFailureHandlers(state, input.occurredAt);
   const coordinatorNodeIds = new Set([
     ...current.joins.map(({ joinId }) => joinId),
     ...current.loops.map(({ loopId }) => loopId),

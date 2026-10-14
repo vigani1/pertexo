@@ -1,6 +1,9 @@
 import { WorkflowEngineError } from '../errors.js';
 import type { SchedulerState } from './scheduling/readiness.js';
-import { compareOrdinal } from '@pertexo/workflow-model';
+import {
+  compareOrdinal,
+  type WorkflowNodeFailureValue,
+} from '@pertexo/workflow-model';
 import { sameOutputReference } from '../output-reference.js';
 import {
   branchPathHasPrefix,
@@ -33,6 +36,10 @@ export interface MutableWorkflowTransition {
   readonly loops: Map<string, LoopState>;
   readonly branchSelections: BranchSelection[];
   remainingIterationBudget: number;
+  readonly failureValues: Readonly<{
+    value: WorkflowNodeFailureValue;
+    entryInvocationKey: string;
+  }>[];
   readonly eventDrafts: Omit<EngineEventPlan, 'sequence'>[];
   readonly nodeRunAdmissionKeys: Set<string>;
   readonly externalFactsArePersisted: boolean;

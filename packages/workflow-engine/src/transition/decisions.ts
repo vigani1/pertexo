@@ -84,13 +84,21 @@ export function deriveTerminalRunStatus(input: {
   if (input.cancelRequested) return 'canceled';
   if (input.deadlineExpired) return 'timed_out';
   if (statuses.has('timed_out')) return 'timed_out';
-  if (statuses.has('failed')) return 'failed';
+  if (
+    input.invocations.some(
+      (invocation) =>
+        invocation.status === 'failed' &&
+        invocation.failureHandling?.disposition !== 'handled',
+    )
+  )
+    return 'failed';
   if (statuses.has('canceled')) return 'canceled';
   if (
     input.invocations.length > 0 &&
     !input.graphIncomplete &&
     [...statuses].every(
-      (status) => status === 'succeeded' || status === 'skipped',
+      (status) =>
+        status === 'succeeded' || status === 'skipped' || status === 'failed',
     )
   )
     return 'succeeded';

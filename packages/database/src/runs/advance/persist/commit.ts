@@ -1,3 +1,4 @@
+import { persistFailureHandling } from './failure-handling.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 
@@ -102,6 +103,7 @@ export async function saveRunTransition(
     ...(traceparent === undefined ? {} : { traceparent }),
     workspaceId,
   });
+  await persistFailureHandling(client, workspaceId, runId, plan);
   await persistConsumedCalls(client, workspaceId, runId, plan);
   const runTransition = await persistCoordinatorRunTransition(client, {
     authoritativeCancellation:

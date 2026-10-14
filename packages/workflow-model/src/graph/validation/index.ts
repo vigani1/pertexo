@@ -1,5 +1,6 @@
 import { inspectJsonValue } from '../../json/canonical.js';
 import { callableDeclarationIssues } from '../../callable/validate-declaration.js';
+import { inspectWorkflowFailureRoutes } from '../../failure-routing/validation.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
@@ -66,6 +67,9 @@ export function validateWorkflowGraph(
     });
     expandedInvocations = totals.expanded;
     worstCaseLoopIterations = totals.iterations;
+    const routing = inspectWorkflowFailureRoutes(graph);
+    if (routing.kind === 'invalid')
+      issue('invalid_failure_route', '$', routing.message);
     for (const candidate of callableDeclarationIssues(graph, allNodeIds))
       issue(candidate.code, candidate.path, candidate.message);
   } catch (error) {
