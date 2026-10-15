@@ -4,6 +4,10 @@
 - **Date:** 2026-09-23
 - **Related:** ADR 039 and the authentication/account-linking implementation plan
 
+> **Amendment (2026-10-15, ADR 079).** The existing queue and settlement
+> owner also deliver bounded personal notice mail. Legacy authentication
+> ciphertext/AAD are preserved, and security mail retains priority.
+
 ## Context
 
 Better Auth issues verification, password-reset and email-change links while an
