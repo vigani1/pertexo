@@ -195,6 +195,7 @@ describe('HTTP body draft', () => {
     }
     for (const parts of [
       [ready(first, 1048576)],
+      [ready(first, 2097152)],
       [ready(first, 600000), ready(second, 600000)],
     ]) {
       const result = validateBodyDraft(

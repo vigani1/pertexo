@@ -4,7 +4,7 @@ import {
   FileInputFailure,
   type NodeArtifactRuntime,
 } from '@pertexo/node-sdk/server';
-import type { HttpRequestInput } from '../validation.js';
+import { HTTP_REQUEST_LIMITS, type HttpRequestInput } from '../validation.js';
 import type { HttpMultipartConfig } from './validation.js';
 import { multipartValues } from './values.js';
 import { collectMultipart } from './collect.js';
@@ -67,7 +67,7 @@ export async function encodeMultipart(
           knownLength: part.bytes.byteLength,
         });
       const length = form.getLengthSync();
-      if (length > ARTIFACT_INPUT_MAX_BYTES)
+      if (length > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
         throw new FileInputFailure({ reason: 'multipart_size' });
       const body = await collectMultipart(form, length, input.signal);
       return { body, contentType: `multipart/form-data; boundary=${boundary}` };

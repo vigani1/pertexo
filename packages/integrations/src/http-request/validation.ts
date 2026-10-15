@@ -226,7 +226,14 @@ const inlineRequestBodySchema = z
 export const httpRequestInputSchema = z
   .object({
     body: z
-      .union([inlineRequestBodySchema, httpMultipartFileSchema.readonly()])
+      .union([
+        inlineRequestBodySchema,
+        httpMultipartFileSchema
+          .extend({
+            byteLength: z.number().int().min(0).max(MAX_REQUEST_BODY_BYTES),
+          })
+          .readonly(),
+      ])
       .optional(),
   })
   .catchall(z.union([httpMultipartValueSchema, inlineRequestBodySchema]))

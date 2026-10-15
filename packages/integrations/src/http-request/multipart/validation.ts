@@ -69,7 +69,6 @@ export const httpMultipartFileSchema = nodeArtifactReferenceSchema
   .unwrap()
   .extend({
     kind: z.literal('artifact'),
-    byteLength: z.number().int().min(0).max(ARTIFACT_INPUT_MAX_BYTES),
   })
   .strict();
 export const httpMultipartValueSchema = z.union([

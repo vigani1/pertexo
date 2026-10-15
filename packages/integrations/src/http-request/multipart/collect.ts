@@ -1,7 +1,7 @@
 import { Writable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import type FormData from 'form-data';
-import { ARTIFACT_INPUT_MAX_BYTES } from '@pertexo/node-sdk';
+import { HTTP_REQUEST_LIMITS } from '../validation.js';
 import { FileInputFailure } from '@pertexo/node-sdk/server';
 
 /** The encoder receives only bounded Buffers; its legacy stream owns MIME framing. */
@@ -11,7 +11,7 @@ export async function collectMultipart(
   signal: AbortSignal,
 ): Promise<Buffer> {
   signal.throwIfAborted();
-  if (length > ARTIFACT_INPUT_MAX_BYTES)
+  if (length > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
     throw new FileInputFailure({ reason: 'multipart_size' });
   const body = Buffer.alloc(length);
   let offset = 0;

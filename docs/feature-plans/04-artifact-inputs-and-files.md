@@ -860,3 +860,25 @@ recovery exception was added; all later work listed above stays deferred, with
 streaming or paging next. CI, merge and the final natural-main/ARM result for
 this closing documentation PR are recorded on that PR, after those events occur.
 This records qualification, not a deployment or external-service rollout.
+
+
+### Multipart size-feedback correction — 2026-10-15
+
+Final boundary qualification found that a valid reference to a file larger than
+1 MiB failed the multipart input schema before the size-specific preflight.
+That gave a generic input error instead of the promised split-file guidance.
+Use the existing descriptor's structural bounds for multipart inputs and let
+the aggregate preflight reject the request with `multipart_size` before any
+file read, credential read or dispatch. Raw-body schema limits stay unchanged.
+The editor's shared schema then gives the same split-file advice for a pasted
+large reference. Request assembly/preflight use the existing HTTP request-budget
+constant; file reads retain the separate artifact-input ceiling. No file-read
+or request budget is raised; the existing descriptor format, roles, services
+and recovery behavior stay unchanged. This narrowly scoped repair
+needs a follow-up PR because Parts 2 and 3 have already merged; history is kept.
+
+
+Qualification: all 45 multipart cases pass, including the real registry boundary
+for a 2 MB reference with zero storage/credential/dispatch calls. The editor model
+rejects that same reference with split-file advice. The full repository check and
+9,060 unit cases pass; normal exact-byte, 64-part and over-framing cases still pass.
