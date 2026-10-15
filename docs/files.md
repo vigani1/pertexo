@@ -1,42 +1,121 @@
-# Files in HTTP steps
+# Files in workflows
 
-F04's first consumer sends a finalized workspace artifact as an HTTP Request
-body. Files are limited to **1 MiB (1,048,576 bytes)** for this consumer. Generic
-storage uploads and HTTP response limits are separate; storing a larger file
-does not make it usable as a request body.
+Upload a file once and use its finalized workspace reference in **Read file**,
+a raw **HTTP Request** body, or an HTTP multipart part. A reference can also come
+from manual run input or an earlier HTTP response. File bytes stay in the
+existing artifact store; the editor does not parse files or save signed URLs.
 
-In the editor, choose an HTTP Request using POST, PUT, PATCH or DELETE, open
-**Inputs**, then **Upload body file**. Choose the file and wait for **File ready**.
-**Use file as body** (or **Replace body with file**) inserts one undoable mapping.
-Save before relying on retention. Remove that body mapping or undo to clear it;
-replacing it does not erase workspace files.
+## Limits before you start
+
+| Operation             | Limit                                                                     | When it is too large                                                 |
+| --------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Read file             | 1 MB of file bytes                                                        | Split the file and upload/run the pieces separately                  |
+| Lists after Read file | About 4,996 narrow CSV rows end to end; fewer for wide rows               | Split by rows or reduce the columns before uploading                 |
+| Raw HTTP file body    | 1 MB of file bytes                                                        | Send a smaller file or separate uploads supported by the destination |
+| Multipart HTTP body   | 1 MB **including every part header and boundary**, up to 64 ordered parts | Use smaller files; a full 1 MB file cannot fit with framing          |
+
+The UI's 1 MB means **1 MiB (1,048,576 bytes)**. Each parsed array accepts up to
+4,998 items; downstream list wrappers leave roughly 4,996 narrow rows.
+Every parsed result must also fit the existing 1 MiB JSON value envelope,
+depth 64 and 10,000-member limit. Wide or expanded records can hit these bounds
+sooner; the row estimate is not an additional quota. A stored file or HTTP
+response larger than these consumer limits cannot be used merely because it
+uploaded successfully.
+
+**Bigger files via streaming or paging are the next planned file improvement.**
+Until then, split files before uploading. Pertexo never silently truncates rows,
+shrinks files or increases request limits.
+
+## Upload from the editor or run input
+
+Read file's **Inputs → Upload file to read** inserts a finalized `file` mapping.
+HTTP's raw mode has **Upload body file**; multipart file parts have **Upload part
+file**. Wait for **File ready**, then explicitly use the file. Inserting it is
+one undoable edit; replacing a mapping does not erase shared bytes. Save before
+relying on retention.
 
 For a different file on each run, choose **Run → Run with input… → Upload file**.
-Pick a top-level input property (`file` by default). Existing JSON properties are
-preserved; replacing a property requires its checkbox. Input must be an object,
-and the inserted value must fit the exact published callable contract, if any.
-Map the HTTP body from run input `$.file`.
+Pick a top-level property (`file` by default). Existing JSON properties stay;
+replacing a property requires its checkbox. Input must be an object and fit any
+published callable input contract. Map the step's file value from **Run input**,
+path `$.file`.
 
-The live thread shows checking, upload and verification phases. It does not
-invent a percentage. Cancel or leaving the current workflow/person/workspace
-aborts local work and prevents late attachment. **Check and retry same file**
-first reconciles the existing reservation/finalization, retaining its exact key
-and metadata. Expired uploads need a fresh selection. Reloading abandons the
-local selection: signed links and File objects are never persisted.
+The live thread shows checking, upload and verification phases without an invented
+percentage. Cancel or leaving the workflow, person or workspace aborts local
+work and prevents late attachment. Changing a multipart part or its value also
+fences pending insertion. **Check and retry same file** reconciles the original
+reservation, key and metadata. Expired reservations need a fresh selection;
+reloading abandons the local selection. Browser File objects stay transient.
 
-Uploads use the configured object store directly, with application credentials
-omitted and browser-owned Content-Length. The server needs ARTIFACT_STORE_*
-configuration and the bucket must allow the web origin's PUT CORS requests.
-Unavailable storage is reported as configuration, not a changed role.
+Uploads go directly to the configured store without application credentials.
+The server needs `ARTIFACT_STORE_*` configuration and bucket PUT CORS for the web
+origin. Unavailable storage is reported as configuration, not a changed role.
 
-### Browser evidence
+## Read JSON or CSV into data
 
-Desktop and 375px phone flows use the existing Weft lens and Status thread.
-See [editor before attachment](images/f04/editor-before.png),
-[ready file on desktop](images/f04/editor-upload-desktop.png),
-[ready file on phone](images/f04/editor-upload-phone.png) and
-[manual-input upload on phone](images/f04/manual-upload-phone.png).
-These are synthetic local fixtures, not production accounts.
+Add **Read file** under the data steps and select JSON or CSV in Setup. Map `file`
+from an uploaded literal reference, run input `$.file`, or a preceding HTTP
+Request's `$.body` when that response is a file. The worker reads the complete
+checked file in the same workspace before parsing it. Neither MIME type nor
+filename chooses the format.
+
+JSON returns the parsed value directly. For `{"orders":[{"amount":12.5}]}`, a
+following list step maps **Step output → Read file → `$.orders`**. For an array
+such as `[{"amount":12.5}]`, map `$`. Parsing rejects malformed JSON, invalid
+UTF-8, non-finite numbers and results over the value bounds; it does not coerce
+JSON strings into numbers. Repeated JSON object keys follow standard JSON
+semantics: the last value wins.
+
+CSV returns an array of objects keyed by the header row. Choose comma, semicolon
+or tab explicitly. UTF-8 and one initial BOM are supported, including quoted
+delimiters, escaped double quotes and multiline quoted cells (RFC 4180 quoting).
+Headers must be nonblank and unique, and every record must have the same number
+of columns. Cells and headers are not trimmed. Completely blank lines outside
+quotes are skipped; empty quoted cells are kept. A whitespace-only line is a
+record, not a blank line.
+
+**Convert numbers and booleans** defaults on. Conversion recognizes exact
+lowercase `true`/`false` and JSON decimal number syntax that yields a finite
+JavaScript number; integral values must be safe integers. For example:
+
+| CSV cell                                              | Output with conversion on |
+| ----------------------------------------------------- | ------------------------- |
+| `12.5`, `-2`, `1e3`                                   | Numbers                   |
+| `true`, `false`                                       | Booleans                  |
+| `00123`, `9007199254740993`, `1e400`                  | Strings                   |
+| Empty cell, `null`, `TRUE`, `" 12 "`, dates/currency text | Strings, unchanged        |
+
+Quoting changes CSV syntax, not conversion: `"12.5"` also becomes a number.
+Turn conversion off to keep every cell as text, such as an export of numeric
+identifiers.
+
+### Example: summarize a CSV export by currency
+
+Upload this UTF-8 export to Read file, leave conversion on, then link:
+
+**Read file → Filter items → Summarize items → Stop run**
+
+```csv
+currency,amount,paid
+EUR,12.5,true
+EUR,7.5,true
+USD,9,true
+EUR,100,false
+```
+
+1. Read file: CSV, comma delimiter, conversion on.
+2. Filter items: map `items` from Read file `$`; path `$.paid`, operator equals,
+   comparison value boolean `true`.
+3. Summarize items: map `items` from Filter items `$.items`; value path
+   `$.amount`, group by `$.currency`, missing values error.
+4. Stop run: map an input such as `totals` from Summarize items `$`.
+
+The summary contains EUR count 2/sum 20 and USD count 1/sum 9. Amounts arrive as
+numbers, so this example needs no conversion expression.
+
+Malformed-file errors tell you what to correct and include a row, column or
+position when available. Size errors tell you to split the file. Run details
+retain this diagnostic after reload without echoing file content.
 
 ## Upload and finalize
 
@@ -61,7 +140,13 @@ If finalization's reply is lost, read metadata or repeat finalization for the sa
 ID. Do not create a second upload merely because a reply was uncertain. Pending
 reservations expire after 15 minutes; retries cannot extend that deadline.
 
-## Map the file body
+## Send a raw file body
+
+In the editor, choose an HTTP Request using POST, PUT, PATCH or DELETE, open
+**Inputs → Raw body → Upload body file**. Choose the file and wait for **File ready**.
+**Use file as body** (or **Replace body with file**) inserts one undoable mapping.
+Save before relying on retention. Remove that body mapping or undo to clear it;
+replacing it does not erase workspace files.
 
 The body value uses the same descriptor that HTTP artifact responses already emit:
 
@@ -84,20 +169,64 @@ input `$.file`. To forward an earlier HTTP response file, map from that step's
 POST, PUT, PATCH and DELETE may carry a body. GET/HEAD reject bodies. The artifact
 MIME type becomes Content-Type unless an explicit permitted header supplies one.
 Existing inline `{ "encoding": "utf8", "value": "..." }` and base64 bodies keep
-their behavior. Multipart/form-data and file parsing are not part of this release.
+their behavior. For a form with several fields, use multipart below; parsing is an explicit Read file step.
 
-## What is checked
+## Send multipart form uploads
 
-The worker resolves the reference in its own workspace, requires available
-metadata and matches ID, length, media type and SHA-256. It consumes and verifies
-all bounded bytes before dispatching the HTTP request. Another workspace's ID,
-forged metadata, corrupt bytes or an oversized file cannot reach the service.
+Choose an HTTP Request using POST, PUT, PATCH or DELETE, then **Inputs → Form
+parts**. Add text and file parts in the order the destination expects. Each
+part has a field name, its usual Value/Run input/Step output/Expression mapping,
+and optional filename and content type. Use **Move part up/down** from the
+keyboard or pointer to reorder without losing its value. Duplicate field names
+are allowed and keep their order.
 
-Files remain opaque. Pertexo does not parse, decompress, render, execute or
-virus-check them. A MIME label is not a safety guarantee. Downloads remain
-attachments; sending a file is an explicit unsafe HTTP operation. HTTP failures
-and unknown outcomes keep the existing retry/recovery acknowledgements. Reading
-files does not enable artifact-aware reused-prefix recovery in F09.
+For an API that expects an invoice and a description:
+
+| Part          | Kind | Value                                                                 | Optional metadata                                                 |
+| ------------- | ---- | --------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `description` | Text | `March invoice` or run input `$.description`                          | Default `text/plain; charset=utf-8`, no filename                  |
+| `document`    | File | Upload part file, run input `$.file`, or prior HTTP response `$.body` | Deliberate filename `invoice.pdf`, content type `application/pdf` |
+
+A file part defaults to filename `file` and its verified media type. A filename
+is also permitted on a text part if the receiving API requires it. Only the
+filename you explicitly enter is saved; the original local filename is not
+copied automatically. Changing content type changes metadata, never the bytes.
+Names/filenames refuse control characters, filenames refuse paths, and content
+types cannot contain header line breaks.
+
+Pertexo generates the random boundary and the outer Content-Type. Remove any
+custom Content-Type from the step **and its connection**; a conflict fails
+clearly before sending. GET/HEAD refuse bodies. Existing raw UTF-8/base64/file
+bodies keep their behavior. Switching body mode or replacing a populated mapping
+asks before discarding it; Cancel keeps it, Undo restores a completed change.
+Incomplete parts prevent save/publish. The known-data estimate excludes form
+headers and dynamically mapped values; the worker checks the exact final body.
+
+All headers, boundaries and closing framing count toward 1 MB. For example, a
+1 MB file cannot be sent as one multipart part even if its stored reference is
+valid. Use a smaller file or split uploads only when the destination supports
+that. Pertexo does not automatically split a multipart request.
+
+## What is checked and what can repeat
+
+Every consumer uses the existing workspace-bound worker read. It requires an
+available artifact and matches ID, byte length, media type and SHA-256, then
+verifies the complete bounded bytes. Foreign, missing, pending, deleting,
+preview-owned or tampered files cannot become permanent authoring references.
+An HTTP step dispatches only after all its file reads and multipart preflight
+succeed.
+
+Files remain opaque until an explicit Read file step. Pertexo does not scan for
+viruses, decompress, render or execute uploads; a MIME label is not a safety
+guarantee. Downloads stay attachments. Read file is safe to repeat and existing
+same-run automatic retries handle temporary storage failures. A malformed file
+needs corrected content in a new run.
+
+HTTP uploads are unsafe external operations: a failed response or lost
+connection may still have taken effect. Existing unknown-outcome attention and
+explicit recovery acknowledgements apply unchanged. This release adds no special
+Read file recovery exception and does not relax F09's artifact/reused-prefix
+restrictions. See [failure paths and recovery](feature-plans/09-failure-paths-and-recovery.md).
 
 ## How long files stay
 
@@ -122,3 +251,18 @@ foreign ID or silently copy the file.
 Save an attachment before relying on its retention. Unsaved browser state is not
 a durable reference. If a file is unavailable, re-upload and attach its finalized
 reference; do not substitute a signed download URL for the descriptor.
+
+## Browser evidence and later work
+
+Synthetic local fixtures exercise the ordinary browser, API, compiled worker and
+signature-validating storage; no real destination service is used. See
+[Read file desktop](images/f04/read-desktop.png),
+[Read file phone](images/f04/read-phone.png),
+[HTTP raw mode](images/f04/multipart-raw.png),
+[multipart desktop](images/f04/multipart-desktop.png) and
+[multipart phone](images/f04/multipart-phone.png).
+
+Later work: larger files via streaming or paging first, then separately planned
+email attachments, webhook file ingestion, Excel/other formats, a file browser,
+file creation, scanning and artifact-aware step recovery. None is supplied by
+this bounded release.

@@ -699,8 +699,8 @@ choice outside this plan returns to the owner for review.
 - [x] Reconcile code seams, constraints and dependency/protocol sources.
 - [x] Owner accepts this follow-up and ADR 075 amendment (2026-10-15).
 - [x] Part 1 merged green in [#296](https://github.com/vigani1/pertexo/pull/296); default-on CSV pipeline, diagnostics, visible limits and automatic retry qualified.
-- [ ] Part 2 merged green; exact multipart bytes and editor journeys qualified.
-- [ ] Part 3 examples/tracker/roadmap merged; natural main evidence recorded.
+- [x] Part 2 merged green in [#297](https://github.com/vigani1/pertexo/pull/297); exact multipart bytes and editor journeys qualified.
+- [x] Part 3 guide, examples, screenshots and roadmap updated. The closing documentation PR records its CI/merge and subsequent natural-main CI/ARM receipt.
 
 Next file improvement: **bigger files via streaming or paging**, separately
 planned after this slice. Other later work: email attachments, webhook file
@@ -837,3 +837,26 @@ followed by two additional C1-control metadata refusals (538 integration-package
 unit cases in total). All 163 mocked browser tests pass, including the existing
 publication save barrier: an unfinished part reports its correction and sends
 no publish request. The separate fresh-worker deadline qualification also passes.
+
+
+### Part 3 — Guide and closure — 2026-10-15
+
+Read file shipped in [#296](https://github.com/vigani1/pertexo/pull/296), and
+multipart shipped in [#297](https://github.com/vigani1/pertexo/pull/297), each
+rebase-merged after all PR checks passed. Part 2's CI is
+[38674995568](https://github.com/vigani1/pertexo/actions/runs/38674995568), with
+[CodeQL 38674995543](https://github.com/vigani1/pertexo/actions/runs/38674995543).
+Its natural main is `410823a652a181014b6274f6e302cc794b4a2cbc`.
+
+`docs/files.md` now documents raw files, Read file JSON/CSV and multipart forms,
+including executable currency-summary and API-upload examples, mapping paths,
+default conversion, blank-line/header rules, budgets and split-file advice.
+The guide retains upload/finalize, access, signature and lifetime instructions.
+Nine synthetic browser images remain together in `docs/images/f04/`; the guide
+links the Read file and multipart desktop/phone captures used in qualification.
+
+The supported follow-up is complete in code and documentation. No file-aware
+recovery exception was added; all later work listed above stays deferred, with
+streaming or paging next. CI, merge and the final natural-main/ARM result for
+this closing documentation PR are recorded on that PR, after those events occur.
+This records qualification, not a deployment or external-service rollout.
