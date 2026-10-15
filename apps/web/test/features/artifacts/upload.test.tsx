@@ -67,7 +67,9 @@ it('rejects one byte over the consumer budget without reading or reserving', asy
   const selected = file(1024 * 1024 + 1);
   const read = vi.spyOn(selected, 'arrayBuffer');
   await event.upload(screen.getByLabelText('File', { exact: true }), selected);
-  await screen.findByText('Choose a file no larger than 1 MB.');
+  await screen.findByText(
+    'Choose a file no larger than 1 MB. Split larger files into smaller files and upload them separately.',
+  );
   expect(read).not.toHaveBeenCalled();
   expect(calls.keys).toHaveLength(0);
   expect(onUse).not.toHaveBeenCalled();

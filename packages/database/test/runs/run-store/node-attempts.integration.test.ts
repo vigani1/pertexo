@@ -771,6 +771,42 @@ describe('Coordinator node-attempt persistence invariants', () => {
     ]);
   });
 
+  it('persists a sanitized file diagnostic and compares it on duplicate completion', async () => {
+    const lease = await claimDispatchAttempt(
+      `file-diagnostic-${randomUUID()}`,
+      { sideEffectClass: 'safe' },
+    );
+    const outcome = {
+      status: 'executor_failure',
+      failureKind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+      safeErrorCode: 'execution.file_input',
+      errorSummary: 'CSV record 3 has 1 column; the header has 2.',
+    } as const;
+    const signal = new AbortController().signal;
+    expect(
+      (await nodeAttemptStore.complete({ lease, outcome, signal })).kind,
+    ).toBe('committed');
+    await expect(
+      nodeAttemptStore.complete({ lease, outcome, signal }),
+    ).resolves.toEqual({ kind: 'duplicate', outboxEventId: null });
+    await expect(
+      nodeAttemptStore.complete({
+        lease,
+        outcome: { ...outcome, errorSummary: 'Different summary' },
+        signal,
+      }),
+    ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
+    const stored = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        'select error_summary from app.node_attempts where workspace_id=$1 and id=$2',
+        [workspaceA, lease.attemptId],
+      ),
+    );
+    expect(stored.rows).toEqual([{ error_summary: outcome.errorSummary }]);
+  });
+
   it('matches executor-failure replay fields before and after coordinator decision', async () => {
     const lease = await claimDispatchAttempt(`executor-replay-${randomUUID()}`);
     const outcome = {

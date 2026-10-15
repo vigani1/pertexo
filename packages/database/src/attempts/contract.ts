@@ -228,8 +228,15 @@ const completionOutcomeSchema = z.discriminatedUnion('status', [
       errorKind: executorErrorKindSchema,
       possiblyDispatched: z.boolean(),
       safeErrorCode: safeErrorCodeSchema,
+      errorSummary: z.string().max(2048).optional(),
     })
-    .strict(),
+    .strict()
+    .refine(
+      (outcome) =>
+        outcome.errorSummary === undefined ||
+        outcome.safeErrorCode === 'execution.file_input',
+      'Only the sanitized file diagnostic can accompany an executor failure',
+    ),
 ]);
 const traceparentSchema = z
   .string()
@@ -298,6 +305,7 @@ export type NodeAttemptCompletion =
       errorKind: z.output<typeof executorErrorKindSchema>;
       possiblyDispatched: boolean;
       safeErrorCode: string;
+      errorSummary?: string;
     }>;
 
 export type CompleteNodeAttemptResult =

@@ -52,6 +52,7 @@ export type RunTimelineRow = Readonly<{
   story: readonly StepStoryEntry[];
   outputs: readonly StepOutput[];
   safeErrorCode?: string;
+  errorSummary?: string;
   resumeAt?: string;
   startedAt?: string;
   completedAt?: string;
@@ -238,6 +239,9 @@ function rowFor(
     ...(invocation.summary?.reused === undefined
       ? {}
       : { reused: invocation.summary.reused }),
+    ...(invocation.summary?.errorSummary == null
+      ? {}
+      : { errorSummary: invocation.summary.errorSummary }),
     attempts: replay.attempts,
     ...(invocation.summary === undefined
       ? {}

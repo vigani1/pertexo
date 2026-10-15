@@ -1,3 +1,4 @@
+import { ReadFileUpload } from '../input-mappings/read-file-upload';
 import { UploadFile, type FileUploadScope } from '@/features/artifacts/public';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
@@ -182,6 +183,14 @@ export function InputsTab({
             ))}
           </ol>
         )}
+        {fileScope !== undefined && node.definition.key === 'core.read_file' ? (
+          <ReadFileUpload
+            scope={fileScope}
+            node={node}
+            form={form}
+            hasScratch={mappings.hasScratch}
+          />
+        ) : null}
         {fileScope !== undefined &&
         node.definition.key === 'http.request' &&
         node.config.method !== 'GET' &&

@@ -1,0 +1,37 @@
+import type { FileInputDiagnostic } from '@pertexo/node-sdk';
+
+const split = 'Split the file into smaller files and run them separately.';
+
+/** Only closed reasons and numeric locations reach stored attempt summaries. */
+export function describeFileInputFailure(
+  diagnostic: FileInputDiagnostic,
+): string {
+  switch (diagnostic.reason) {
+    case 'file_size':
+      return `The file exceeds 1 MB. ${split}`;
+    case 'value_size':
+      return `The parsed file exceeds the step's value limits. Wide rows fit fewer records. ${split}`;
+    case 'item_count':
+      return `The file contains too many items. About 4,996 narrow rows fit an end-to-end list workflow. ${split}`;
+    case 'invalid_utf8':
+      return 'The file is not valid UTF-8. Export it as UTF-8 and upload the corrected file.';
+    case 'json_number':
+      return 'The JSON contains a number outside the supported finite range. Correct it and upload the file again.';
+    case 'json_syntax':
+      return `The JSON is malformed${diagnostic.position === undefined ? '' : ` near position ${String(diagnostic.position)}`}. Correct it and upload the file again.`;
+    case 'csv_empty':
+      return 'The CSV has no header row. Add column names and upload the corrected file.';
+    case 'csv_syntax':
+      return `The CSV quoting is malformed${diagnostic.line === undefined ? '' : ` near line ${String(diagnostic.line)}`}. Check the delimiter and quotes, then upload the corrected file.`;
+    case 'csv_blank_header':
+      return `CSV header column ${String(diagnostic.column)} is blank. Give every column a name and upload the corrected file.`;
+    case 'csv_duplicate_header':
+      return `CSV header column ${String(diagnostic.column)} repeats a column name. Use unique names and upload the corrected file.`;
+    case 'csv_columns':
+      return `CSV record ${String(diagnostic.record)} has ${String(diagnostic.actual)} ${diagnostic.actual === 1 ? 'column' : 'columns'}; the header has ${String(diagnostic.expected)}. Check the delimiter and quoting, then upload the corrected file.`;
+    case 'file_unavailable':
+      return 'The file is unavailable in this workspace. Upload it again and use the new file reference.';
+    case 'file_integrity':
+      return 'The file no longer matches its saved reference. Upload it again and use the new file reference.';
+  }
+}

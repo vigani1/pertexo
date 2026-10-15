@@ -1,3 +1,4 @@
+import { withArtifactReadOutage } from './artifact-read-retry.js';
 import { createArtifactDestination } from '../../attempts/artifacts/http-destination.js';
 import { parseArtifactStoreConfig } from '@pertexo/artifact-store';
 import { createEditorPreview } from './previews.js';
@@ -437,7 +438,9 @@ async function constructRuntimes(
               },
             }),
             runtimeCapabilities: {
-              ...controlledCapabilities.factories,
+              ...(artifactInputs
+                ? withArtifactReadOutage(controlledCapabilities.factories)
+                : controlledCapabilities.factories),
               ...(artifactInputs
                 ? {}
                 : {

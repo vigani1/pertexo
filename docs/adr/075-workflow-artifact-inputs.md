@@ -31,12 +31,11 @@ potentially long retention for referenced files. Larger streaming bodies,
 multipart, parsers, asset discovery and artifact-aware recovery require later
 evidence and scoped plans, not speculative machinery in this first release.
 
-## Proposed amendment — 2026-10-15: Read file and multipart
+## Accepted amendment — 2026-10-15: Read file and multipart
 
-**Amendment status: proposed, awaiting owner review.** The accepted first-release
-decision above is unchanged until this amendment is approved. The linked F04
-follow-up is the detailed contract/placement/qualification plan. No runtime work
-is authorized by this planning PR.
+**Amendment status: accepted by the owner on 2026-10-15.** The linked F04
+follow-up records the approved contract, placement and qualification plan,
+including the owner’s three revisions. Implementation follows one PR per part.
 
 Allow explicit **Read file** (`core.read_file@1`) to turn a finalized file into
 bounded JSON. The step uses the same workspace-bound, full-fingerprint verified

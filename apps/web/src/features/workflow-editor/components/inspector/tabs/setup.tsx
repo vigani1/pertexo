@@ -1,3 +1,4 @@
+import { ReadFileSetup } from '../builders/read-file-setup';
 import { DateSetup } from '../builders/date-setup';
 import { CallTargetField } from '../fields/call-target';
 import type { CallTargetScope } from '../../../data/call-targets.queries';
@@ -189,6 +190,8 @@ function SetupControls({
   form: NodeFormApi;
 }>) {
   const { config } = node;
+  if (node.definition.key === 'core.read_file')
+    return <ReadFileSetup config={config} form={form} />;
   if (node.definition.key === 'core.date')
     return <DateSetup schema={configSchema} config={config} form={form} />;
   if (scheduleSchema !== undefined)

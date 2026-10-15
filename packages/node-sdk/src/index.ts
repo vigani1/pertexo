@@ -5,3 +5,9 @@ export {
   nodeArtifactReferenceSchema,
   type NodeArtifactReference,
 } from './artifacts.js';
+
+export {
+  FILE_INPUT_ERROR_CODE,
+  fileInputDiagnosticSchema,
+  type FileInputDiagnostic,
+} from './artifacts/diagnostic.js';

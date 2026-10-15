@@ -340,6 +340,7 @@ export const workflowNodeRunSummarySchema = z
     startedAt: z.iso.datetime({ offset: true }).nullable(),
     completedAt: z.iso.datetime({ offset: true }).nullable(),
     resumeAt: z.iso.datetime({ offset: true }).nullable(),
+    errorSummary: z.string().max(2048).nullable().optional(),
     safeErrorCode: z.string().min(1).max(128).nullable(),
   })
   .strict();

@@ -24,3 +24,5 @@ export * from './data/date/index.js';
 export * from './data/lists/batch/index.js';
 export * from './data/lists/take/index.js';
 export * from './data/lists/concat/index.js';
+
+export * from './data/read-file/index.js';

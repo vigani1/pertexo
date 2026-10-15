@@ -40,7 +40,9 @@ export async function describeUpload(
   signal: AbortSignal,
 ): Promise<UploadMetadata> {
   if (file.size > MAX_INPUT_FILE_BYTES)
-    throw new UploadValidationError('Choose a file no larger than 1 MB.');
+    throw new UploadValidationError(
+      'Choose a file no larger than 1 MB. Split larger files into smaller files and upload them separately.',
+    );
   signal.throwIfAborted();
   const bytes = await file.arrayBuffer();
   try {

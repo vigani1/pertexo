@@ -6,6 +6,7 @@ import {
 import { ARTIFACT_INPUT_MAX_BYTES } from '@pertexo/node-sdk';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import {
+  FileInputFailure,
   NodeExecutorFailure,
   type NodeArtifactRuntime,
 } from '@pertexo/node-sdk/server';
@@ -90,13 +91,16 @@ export function createArtifactReader(
           errorKind: 'canceled',
           possiblyDispatched: false,
         });
-      const invalid =
+      if (
         error instanceof ArtifactMetadataNotFoundError ||
-        error instanceof ArtifactIntegrityError ||
-        error instanceof ArtifactNotFoundError;
+        error instanceof ArtifactNotFoundError
+      )
+        throw new FileInputFailure({ reason: 'file_unavailable' });
+      if (error instanceof ArtifactIntegrityError)
+        throw new FileInputFailure({ reason: 'file_integrity' });
       throw new NodeExecutorFailure({
-        kind: invalid ? 'failed' : 'retry',
-        errorKind: invalid ? 'configuration' : 'network',
+        kind: 'retry',
+        errorKind: 'network',
         possiblyDispatched: false,
       });
     }
