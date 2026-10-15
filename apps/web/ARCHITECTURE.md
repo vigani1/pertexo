@@ -1494,3 +1494,11 @@ no redirects or referrer, and browser-owned Content-Length. Application endpoint
 calls still use ApiClient. File objects, bytes and signed capabilities stay
 local to the upload session; only finalized descriptors enter a draft or run
 input.
+
+### Canonical request identity
+
+`lib/api/use-retained-command.ts` owns exact command identity across uncertain
+responses. Shared utilities may import only `canonicalJson` from the
+browser-safe model for this generic JSON rule; ESLint still rejects other model
+exports and all backend/feature imports there. Forms and workspace variables
+share the same algorithm instead of carrying another sorted-JSON implementation.

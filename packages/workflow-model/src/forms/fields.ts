@@ -1,3 +1,4 @@
+import { storageTextSchema } from '../json/text.js';
 import { inspectJsonValue } from '../json/canonical.js';
 import { z } from 'zod';
 
@@ -8,12 +9,6 @@ export const FORM_LIMITS = Object.freeze({
   textCharacters: 10_000,
   submissionBytes: 65_536,
 });
-export const formTextSchema = z
-  .string()
-  .refine(
-    (value) => !value.includes('\0') && !/[\uD800-\uDFFF]/u.test(value),
-    'Use valid Unicode text without null characters.',
-  );
 const field = z.object({
   id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u),
   name: z
@@ -23,8 +18,8 @@ const field = z.object({
       (name) => !['constructor', 'prototype', '__proto__'].includes(name),
       'Choose a different field name.',
     ),
-  label: formTextSchema.trim().min(1).max(160),
-  help: formTextSchema.max(500).default(''),
+  label: storageTextSchema.trim().min(1).max(160),
+  help: storageTextSchema.max(500).default(''),
   required: z.boolean().default(true),
 });
 export const formFieldSchema = z.discriminatedUnion('type', [
@@ -38,7 +33,7 @@ export const formFieldSchema = z.discriminatedUnion('type', [
       type: z.literal('select'),
       options: z
         .array(
-          formTextSchema
+          storageTextSchema
             .trim()
             .min(1)
             .max(160)
@@ -71,8 +66,8 @@ export const formFieldsSchema = z
   );
 export const formConfigSchema = z
   .object({
-    title: formTextSchema.trim().min(1).max(160).default('Send a request'),
-    instructions: formTextSchema.max(2_000).default(''),
+    title: storageTextSchema.trim().min(1).max(160).default('Send a request'),
+    instructions: storageTextSchema.max(2_000).default(''),
     fields: formFieldsSchema.default([
       {
         id: 'field-1',

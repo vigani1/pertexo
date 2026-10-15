@@ -126,7 +126,8 @@ One F13 PR after F11 merges. Plan/ADR first. A mechanical move commit extracts
 the existing valid-storage-text schema from Form fields into `json/text.ts` and
 moves Forms’ exact retained-command hook into `lib/api/use-retained-command.ts`
 for the second real consumer. Preserve behavior and update imports in that commit;
-context-specific error wording changes belong to the later logic commit. No
+context-specific error wording changes belong to the later logic commit. ESLint explicitly allows only the model’s browser-safe `canonicalJson` export
+in shared utilities; other model APIs and backend imports stay blocked. No
 second copy of either rule. Other moves, if needed, stay in their own commits,
 then coherent implementation and qualification commits. Every commit is gated
 by lint, TypeScript and units; final gates include format/build, mocked browser,
