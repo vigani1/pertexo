@@ -1,6 +1,7 @@
+import { storageTextSchema } from '../json/text.js';
 import { z } from 'zod';
 import { inspectJsonValue } from '../json/canonical.js';
-import { FORM_LIMITS, formTextSchema, type FormField } from './fields.js';
+import { FORM_LIMITS, type FormField } from './fields.js';
 
 export type FormValues = Readonly<Record<string, string | number | boolean>>;
 export class FormValuesInvalidError extends Error {
@@ -18,7 +19,7 @@ function valueSchema(field: FormField): z.ZodType {
     case 'boolean':
       return z.boolean();
     case 'email':
-      return formTextSchema.pipe(z.email().max(FORM_LIMITS.textCharacters));
+      return storageTextSchema.pipe(z.email().max(FORM_LIMITS.textCharacters));
     case 'date':
       return z.iso.date();
     case 'select':
@@ -29,7 +30,7 @@ function valueSchema(field: FormField): z.ZodType {
           'Choose an available option.',
         );
     default:
-      return formTextSchema
+      return storageTextSchema
         .max(FORM_LIMITS.textCharacters)
         .refine((value) => value.trim().length > 0, 'Enter a value.');
   }

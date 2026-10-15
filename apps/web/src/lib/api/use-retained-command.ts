@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 /** Exact commands survive lost responses; a later choice never reuses their keys. */
-export function useFormCommand<Input, Output>(
+export function useRetainedCommand<Input, Output>(
   execute: (body: Input, key: string) => Promise<Output>,
   onSuccess?: (result: Output, body: Input) => void | Promise<void>,
 ) {

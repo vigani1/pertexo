@@ -11,7 +11,7 @@ import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { formAccessQueryOptions } from '../data/forms.queries';
 import { setFormAccess, type MemberFormScope } from '../data/forms.api';
-import { useFormCommand } from '../data/use-command';
+import { useRetainedCommand } from '@/lib/api/use-retained-command';
 function newCapability() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes))
@@ -66,7 +66,7 @@ function SharedFormAccess({
   const cache = useQueryClient();
   const [shownLink, setShownLink] =
     useState<Readonly<{ url: string; revision: number }>>();
-  const command = useFormCommand(
+  const command = useRetainedCommand(
     (body: FormAccessRequest, key: string) => setFormAccess(scope, body, key),
     async (result, body) => {
       await cache.invalidateQueries({

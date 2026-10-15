@@ -76,6 +76,14 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: '@pertexo/workflow-model',
+              allowImportNames: ['canonicalJson'],
+              message:
+                'Shared transport may use canonical JSON, not workflow model APIs.',
+            },
+          ],
           patterns: [
             {
               group: [
@@ -94,9 +102,9 @@ export default tseslint.config(
                 'Shared UI and utilities cannot depend on application orchestration, features, or backend runtimes.',
             },
             {
-              regex: '^@pertexo/(?!contracts$).+',
+              regex: '^@pertexo/(?!(?:contracts|workflow-model)$).+',
               message:
-                'Shared UI and utilities may import only the browser-safe contracts.',
+                'Shared UI and utilities may import browser-safe contracts and the explicitly allowed canonical JSON helper.',
             },
           ],
         },
