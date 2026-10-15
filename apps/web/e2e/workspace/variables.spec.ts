@@ -24,13 +24,20 @@ for (const width of [1280, 375])
     await addCsrfCookie(context);
     let revision = 1;
     let value = 10;
+    let description = 'Rate applied to invoices.';
     const writes: { body: unknown; key: string | undefined }[] = [];
     await page.route(
       `**/v1/workspaces/${workspaceId}/variables`,
       async (route) => {
         const request = route.request();
         if (request.method() === 'GET')
-          return route.fulfill({ json: { revision, values: { RATE: value } } });
+          return route.fulfill({
+            json: {
+              revision,
+              values: { RATE: value },
+              descriptions: { RATE: description },
+            },
+          });
         expect(request.headers()['x-csrf-token']).toBeTruthy();
         writes.push({
           body: request.postDataJSON() as unknown,
@@ -51,12 +58,14 @@ for (const width of [1280, 375])
         if (writes.length === 2) {
           revision = 2;
           value = 20;
+          description = 'Rate for new invoices.';
           return route.fulfill({
             json: { revision, changed: true, replayed: true },
           });
         }
         revision = 3;
         value = 30;
+        description = 'New server description.';
         return route.fulfill({
           status: 409,
           contentType: 'application/problem+json',
@@ -72,7 +81,13 @@ for (const width of [1280, 375])
     );
     await page.goto(`/w/${workspaceId}/settings/variables`);
     const row = page.getByRole('region', { name: 'RATE', exact: true });
+    await expect(
+      row.getByLabel('Description (optional)', { exact: true }),
+    ).toHaveValue('Rate applied to invoices.');
     await row.getByLabel('Value', { exact: true }).fill('20');
+    await row
+      .getByLabel('Description (optional)', { exact: true })
+      .fill('Rate for new invoices.');
     await page
       .getByRole('button', { name: 'Save variables', exact: true })
       .click();
@@ -84,6 +99,11 @@ for (const width of [1280, 375])
       page.getByText('Saved revision 2 for new runs', { exact: true }),
     ).toBeVisible();
     expect(writes[1]).toEqual(writes[0]);
+    expect(writes[0]?.body).toEqual({
+      expectedRevision: 1,
+      values: { RATE: 20 },
+      descriptions: { RATE: 'Rate for new invoices.' },
+    });
     await row.getByLabel('Value', { exact: true }).fill('40');
     await page
       .getByRole('button', { name: 'Save variables', exact: true })
@@ -92,6 +112,9 @@ for (const width of [1280, 375])
       page.getByText(/Someone changed the shared values/u),
     ).toBeVisible();
     await expect(row.getByLabel('Value', { exact: true })).toHaveValue('40');
+    await expect(
+      row.getByLabel('Description (optional)', { exact: true }),
+    ).toHaveValue('Rate for new invoices.');
     expect(writes[2]?.key).not.toBe(writes[0]?.key);
     await page
       .getByRole('button', {
@@ -100,6 +123,9 @@ for (const width of [1280, 375])
       })
       .click();
     await expect(row.getByLabel('Value', { exact: true })).toHaveValue('30');
+    await expect(
+      row.getByLabel('Description (optional)', { exact: true }),
+    ).toHaveValue('New server description.');
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -117,7 +143,13 @@ test('members can inspect references and an empty scan page is never presented a
     },
   });
   await page.route(`**/v1/workspaces/${workspaceId}/variables`, (route) =>
-    route.fulfill({ json: { revision: 1, values: { RATE: 0 } } }),
+    route.fulfill({
+      json: {
+        revision: 1,
+        values: { RATE: 0 },
+        descriptions: { RATE: 'Rate applied to invoices.' },
+      },
+    }),
   );
   await page.route(
     `**/v1/workspaces/${workspaceId}/variables/usage?**`,
@@ -148,6 +180,9 @@ test('members can inspect references and an empty scan page is never presented a
   await expect(
     page.getByRole('button', { name: 'Save variables', exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page.getByText('Rate applied to invoices.', { exact: true }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'References', exact: true }).click();
   await expect(
     page.getByText(
@@ -177,13 +212,22 @@ test('the mapping picker inserts a typed scalar reference without an expression'
   await installEditorRoutes(page, draft);
   await addCsrfCookie(context);
   await page.route(`**/v1/workspaces/${workspaceId}/variables`, (route) =>
-    route.fulfill({ json: { revision: 1, values: { RATE: 0 } } }),
+    route.fulfill({
+      json: {
+        revision: 1,
+        values: { RATE: 0 },
+        descriptions: { RATE: 'Rate applied to invoices.' },
+      },
+    }),
   );
   await page.goto(editorUrl);
   await page.getByTestId('rf__node-target').focus();
   await page.keyboard.press('Enter');
   await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
   await page.getByRole('button', { name: 'Insert data', exact: true }).click();
+  await expect(
+    page.getByText('Rate applied to invoices.', { exact: true }),
+  ).toBeVisible();
   await page.getByRole('button', { name: /\$vars\.RATE/u }).click();
   await expect
     .poll(() => draft.graph.nodes)

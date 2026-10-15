@@ -101,6 +101,7 @@ it('stores typed current values once, acknowledges exact commands and audits nam
   expect(await store.read(scope(f.workspaceId))).toEqual({
     revision: 0,
     values: {},
+    descriptions: {},
   });
   const values = {
     CURRENCY: 'EUR-sensitive-to-audit',
@@ -127,6 +128,7 @@ it('stores typed current values once, acknowledges exact commands and audits nam
   expect(await store.read(scope(f.workspaceId))).toEqual({
     revision: 1,
     values,
+    descriptions: {},
   });
   expect(
     await store.replace({

@@ -6,6 +6,8 @@ export const WORKSPACE_VARIABLE_LIMITS = Object.freeze({
   count: 100,
   textCharacters: 4_096,
   bytes: 32_768,
+  descriptionCharacters: 500,
+  descriptionsBytes: 16_384,
 });
 export const workspaceVariableNameSchema = z
   .string()
@@ -30,6 +32,29 @@ export const workspaceVariableValuesSchema = z
       context.addIssue({
         code: 'custom',
         message: 'Keep workspace variables within 32 KB in total.',
+      });
+  })
+  .readonly();
+export const workspaceVariableDescriptionsSchema = z
+  .record(
+    workspaceVariableNameSchema,
+    storageTextSchema
+      .trim()
+      .max(WORKSPACE_VARIABLE_LIMITS.descriptionCharacters),
+  )
+  .superRefine((descriptions, context) => {
+    if (Object.keys(descriptions).length > WORKSPACE_VARIABLE_LIMITS.count)
+      context.addIssue({
+        code: 'custom',
+        message: 'Keep descriptions for at most 100 workspace variables.',
+      });
+    if (
+      inspectJsonValue(descriptions).bytes >
+      WORKSPACE_VARIABLE_LIMITS.descriptionsBytes
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'Keep variable descriptions within 16 KB in total.',
       });
   })
   .readonly();

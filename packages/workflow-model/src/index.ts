@@ -202,6 +202,7 @@ export {
   workspaceVariableValueSchema,
   workspaceVariableValuesSchema,
   workspaceVariableSnapshotSchema,
+  workspaceVariableDescriptionsSchema,
   EMPTY_VARIABLE_SNAPSHOT,
   type WorkspaceVariableValues,
   type WorkspaceVariableSnapshot,

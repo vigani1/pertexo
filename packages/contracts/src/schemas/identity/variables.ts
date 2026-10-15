@@ -1,16 +1,31 @@
 import { z } from 'zod';
 import {
   workspaceVariableValuesSchema,
+  workspaceVariableDescriptionsSchema,
   workspaceVariableSnapshotSchema,
   workspaceVariableNameSchema,
 } from '@pertexo/workflow-model';
-export const workspaceVariablesResponseSchema = workspaceVariableSnapshotSchema;
+export const workspaceVariablesResponseSchema = workspaceVariableSnapshotSchema
+  .unwrap()
+  .extend({ descriptions: workspaceVariableDescriptionsSchema.default({}) })
+  .strict()
+  .readonly();
 export const workspaceVariablesRequestSchema = z
   .object({
     expectedRevision: z.number().int().nonnegative().max(2_147_483_646),
     values: workspaceVariableValuesSchema,
+    descriptions: workspaceVariableDescriptionsSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((input, context) => {
+    for (const name of Object.keys(input.descriptions ?? {}))
+      if (!Object.hasOwn(input.values, name))
+        context.addIssue({
+          code: 'custom',
+          path: ['descriptions', name],
+          message: 'A description must belong to a configured variable.',
+        });
+  });
 export const workspaceVariablesCommandResponseSchema = z
   .object({
     revision: z.number().int().nonnegative(),

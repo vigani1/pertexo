@@ -545,11 +545,25 @@
               }
             ]
           }
+        },
+        "descriptions": {
+          "default": {},
+          "readOnly": true,
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 500
+          }
         }
       },
       "required": [
         "revision",
-        "values"
+        "values",
+        "descriptions"
       ],
       "additionalProperties": false
     },
@@ -582,6 +596,18 @@
                 "type": "boolean"
               }
             ]
+          }
+        },
+        "descriptions": {
+          "readOnly": true,
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 500
           }
         }
       },

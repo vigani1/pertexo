@@ -34,9 +34,13 @@ export function commandErrorMessage(error: unknown, action: string): string {
     const setup = error.problem?.errors?.find(
       (issue) => issue.code === 'executable_invalid',
     );
-    return setup === undefined
-      ? `${capitalize(action)} was stopped by issues in the workflow. Fix them and try again.`
-      : setup.message;
+    return (
+      setup?.message ??
+      (error.problem?.code === 'workflow.invalid'
+        ? error.problem.errors?.[0]?.message
+        : undefined) ??
+      `${capitalize(action)} was stopped by issues in the workflow. Fix them and try again.`
+    );
   }
   return describeCommandError(error, action);
 }

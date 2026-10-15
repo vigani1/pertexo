@@ -1,5 +1,6 @@
 import {
   workspaceVariableValuesSchema,
+  workspaceVariableDescriptionsSchema,
   type WorkspaceVariableValues,
 } from '@pertexo/workflow-model';
 export type VariableRow = Readonly<{
@@ -7,8 +8,12 @@ export type VariableRow = Readonly<{
   name: string;
   type: 'text' | 'number' | 'boolean';
   value: string;
+  description: string;
 }>;
-export function variableRows(values: WorkspaceVariableValues): VariableRow[] {
+export function variableRows(
+  values: WorkspaceVariableValues,
+  descriptions: Readonly<Record<string, string>> = {},
+): VariableRow[] {
   return Object.entries(values).map(([name, value]) => ({
     id: crypto.randomUUID(),
     name,
@@ -19,13 +24,16 @@ export function variableRows(values: WorkspaceVariableValues): VariableRow[] {
           ? 'boolean'
           : 'text',
     value: String(value),
+    description: descriptions[name] ?? '',
   }));
 }
-export function readVariableRows(
-  rows: readonly VariableRow[],
-):
-  | Readonly<{ values: WorkspaceVariableValues; error?: never }>
-  | Readonly<{ values?: never; error: string }> {
+export function readVariableRows(rows: readonly VariableRow[]):
+  | Readonly<{
+      values: WorkspaceVariableValues;
+      descriptions: Readonly<Record<string, string>>;
+      error?: never;
+    }>
+  | Readonly<{ values?: never; descriptions?: never; error: string }> {
   const values: Record<string, string | number | boolean> = Object.create(
     null,
   ) as Record<string, string | number | boolean>;
@@ -58,5 +66,18 @@ export function readVariableRows(
           : (first?.message ?? 'Check the variable values.'),
     };
   }
-  return { values: parsed.data };
+  const descriptions = workspaceVariableDescriptionsSchema.safeParse(
+    Object.fromEntries(
+      rows
+        .filter((row) => row.description.trim() !== '')
+        .map((row) => [row.name, row.description]),
+    ),
+  );
+  if (!descriptions.success)
+    return {
+      error:
+        descriptions.error.issues[0]?.message ??
+        'Check the variable descriptions.',
+    };
+  return { values: parsed.data, descriptions: descriptions.data };
 }

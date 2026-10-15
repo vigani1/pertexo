@@ -16,6 +16,7 @@ export function WorkspaceVariablesPage({
 }: Readonly<{ scope: VariablesScope; workspace: AccessibleWorkspace }>) {
   const [inspected, setInspected] = useState<string>();
   const query = useQuery(variablesQueryOptions(scope));
+  const snapshot = query.data;
   const editable =
     workspace.status === 'active' &&
     workspace.capabilities.includes('variable:manage');
@@ -57,17 +58,17 @@ export function WorkspaceVariablesPage({
               </Button>
             }
           >
-            {query.data === undefined
+            {snapshot === undefined
               ? 'Workspace variables could not be loaded.'
               : 'Current values could not be refreshed; showing the last revision.'}
           </Notice>
         ) : null}
-        {query.data === undefined ? (
+        {snapshot === undefined ? (
           query.isPending ? (
             <p role="status">Loading workspace variables…</p>
           ) : null
         ) : editable ? (
-          <VariablesEditor scope={scope} snapshot={query.data} />
+          <VariablesEditor scope={scope} snapshot={snapshot} />
         ) : (
           <>
             <Notice>
@@ -75,14 +76,21 @@ export function WorkspaceVariablesPage({
               variables.
             </Notice>
             <dl className="divide-y divide-border">
-              {Object.entries(query.data.values).map(([name, value]) => (
+              {Object.entries(snapshot.values).map(([name, value]) => (
                 <div
                   key={name}
                   className="flex min-w-0 flex-col gap-1 py-3 sm:flex-row sm:gap-6"
                 >
-                  <dt className="font-mono text-sm">{name}</dt>
+                  <dt className="min-w-0 font-mono text-sm [overflow-wrap:anywhere]">
+                    {name}
+                  </dt>
                   <dd className="break-words whitespace-pre-wrap text-sm">
-                    {String(value)}
+                    <p>{String(value)}</p>
+                    {snapshot.descriptions[name] === undefined ? null : (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {snapshot.descriptions[name]}
+                      </p>
+                    )}
                   </dd>
                   <Button
                     type="button"
@@ -97,7 +105,7 @@ export function WorkspaceVariablesPage({
                 </div>
               ))}
             </dl>
-            {Object.keys(query.data.values).length === 0 ? (
+            {Object.keys(snapshot.values).length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No workspace variables configured.
               </p>
