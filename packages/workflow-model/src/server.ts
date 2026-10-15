@@ -16,3 +16,10 @@ export {
   workflowIntegrationUsage,
   type WorkflowDefinitionCatalog,
 } from './graph/identity.js';
+
+export {
+  workflowVariableSources,
+  inspectWorkflowVariableSource,
+  type WorkflowVariableReference,
+  type WorkflowVariableSource,
+} from './expressions/variable-usage.js';

@@ -299,7 +299,7 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
     const expression = screen.getByLabelText('Expression');
     expect(expression).toHaveAttribute('placeholder', 'runInput.amount > 5000');
     expect(expression).toHaveAccessibleDescription(
-      /runInput and the available nodeOutputs, not this step’s mapped input/u,
+      /runInput, available nodeOutputs and captured \$vars, not this step’s mapped input/u,
     );
     fireEvent.change(expression, {
       target: { value: 'runInput.amount > 6000' },

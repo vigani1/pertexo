@@ -9,11 +9,12 @@ async function workspaceAuthority(
   actorId: string,
   roles: readonly Role[],
   locking: boolean,
+  allowedStatuses: readonly string[] = ['active'],
 ): Promise<Role> {
   const lock = locking ? 'for share' : '';
   const workspace = await client.query(
-    `select 1 from app.workspaces where id=$1 and status='active' ${lock}`,
-    [workspaceId],
+    `select 1 from app.workspaces where id=$1 and status=any($2::text[]) ${lock}`,
+    [workspaceId, [...allowedStatuses]],
   );
   if (workspace.rowCount !== 1)
     throw new WorkspaceAccessDeniedError('Workspace access is unavailable');
@@ -50,6 +51,14 @@ export function readWorkspaceAuthority(
   workspaceId: string,
   actorId: string,
   roles: readonly Role[],
+  allowedStatuses: readonly string[] = ['active'],
 ): Promise<Role> {
-  return workspaceAuthority(client, workspaceId, actorId, roles, false);
+  return workspaceAuthority(
+    client,
+    workspaceId,
+    actorId,
+    roles,
+    false,
+    allowedStatuses,
+  );
 }

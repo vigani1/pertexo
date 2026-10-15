@@ -1,3 +1,5 @@
+import { WorkspaceVariablesModule } from '../../workspace-variables/module.js';
+import type { WorkspaceVariablesStore } from '@pertexo/database/tenant-access';
 import { createFormStore, type FormStore } from '@pertexo/database/triggers';
 import { initialCheckpointFactory } from '@pertexo/execution';
 import { FormsModule } from '../../forms/module.js';
@@ -70,6 +72,7 @@ export type ApiWorkflowRuntime = Readonly<{
   runDependencies: WorkflowRunsDependencies;
   pendingTasks?: PendingTaskStore;
   forms?: FormStore;
+  variables?: WorkspaceVariablesStore;
   checkReadiness?(): Promise<void>;
   close(): Promise<void>;
 }>;
@@ -212,6 +215,7 @@ export async function createApiWorkflowRuntime(
     return Object.freeze({
       pendingTasks,
       forms,
+      variables: metadataRuntime.variables,
       dependencies: Object.freeze({
         persistence: database,
         portabilityPersistence: database,
@@ -416,6 +420,15 @@ export class WorkflowRuntimeModule {
               ),
             ]),
         WorkflowRunsModule.register(runtime.runDependencies, identityModule),
+        ...(runtime.variables === undefined
+          ? []
+          : [
+              WorkspaceVariablesModule.register(
+                runtime.variables,
+                runtime.dependencies.authorization,
+                identityModule,
+              ),
+            ]),
         ...(runtime.forms === undefined
           ? []
           : [

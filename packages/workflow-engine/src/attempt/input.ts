@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import {
   canonicalJson,
+  workspaceVariableValuesSchema,
+  type WorkspaceVariableValues,
   WORKFLOW_FAILURE_PORT,
   workflowNodeFailureValueSchema,
   type WorkflowNodeFailureValue,
@@ -24,6 +26,7 @@ export type PreparedNodeAttemptInput = Readonly<{
   directUpstream: ReadonlySet<string>;
   node: WorkflowExecutableNode;
   runInput: JsonValue;
+  variables: WorkspaceVariableValues;
   sourceFailure?: WorkflowNodeFailureValue;
   structuredInputs?: Readonly<Record<string, JsonValue>>;
 }>;
@@ -202,9 +205,11 @@ export function prepareNodeAttemptInput(
   input: ExecuteNodeAttemptInput,
 ): PreparedNodeAttemptInput {
   let runInput: JsonValue;
+  let variables: WorkspaceVariableValues;
   let completed: JsonValue;
   try {
     runInput = normalizeBoundedEngineJson(input.runInput);
+    variables = workspaceVariableValuesSchema.parse(input.variables ?? {});
     completed = normalizeBoundedEngineJson(input.completedNodeOutputs);
   } catch (error) {
     operationError(
@@ -263,6 +268,7 @@ export function prepareNodeAttemptInput(
   return {
     node,
     runInput,
+    variables,
     directUpstream,
     completedOutputs: parseCompletedOutputs(
       completed,

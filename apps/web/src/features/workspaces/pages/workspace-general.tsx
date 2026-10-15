@@ -137,6 +137,19 @@ export function WorkspaceGeneralPage({
         </SettingsSection>
 
         <SettingsSection
+          title="Variables"
+          description="Reusable non-secret text, numbers and true/false for workflow mappings."
+        >
+          <Link
+            className="text-sm text-action underline underline-offset-4"
+            to="/w/$workspaceId/settings/variables"
+            params={{ workspaceId: workspace.id }}
+          >
+            Manage workspace variables
+          </Link>
+        </SettingsSection>
+
+        <SettingsSection
           title="Your access"
           description={`You’re ${withArticle(workspace.role)}. ${ROLE_SUMMARIES[workspace.role]}`}
         >

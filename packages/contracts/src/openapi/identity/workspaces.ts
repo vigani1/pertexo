@@ -1,3 +1,4 @@
+import { variableContractSchemas, variableContractPaths } from './variables.js';
 import {
   apiTokenContractPaths,
   apiTokenContractSchemas,
@@ -51,6 +52,7 @@ import {
 
 const schemas = Object.freeze({
   ...apiTokenContractSchemas,
+  ...variableContractSchemas,
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WorkspaceCreateRequest: jsonSchema(workspaceCreateRequestSchema, 'input'),
   WorkspaceRenameRequest: jsonSchema(workspaceRenameRequestSchema, 'input'),
@@ -135,6 +137,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
   },
   paths: {
     ...apiTokenContractPaths,
+    ...variableContractPaths,
     ...authenticationContractPaths,
     '/v1/workspaces': {
       get: {

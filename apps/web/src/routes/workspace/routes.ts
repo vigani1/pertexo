@@ -409,6 +409,19 @@ export const usageRoute = createRoute({
   component: lazyRouteComponent(() => import('./usage'), 'UsageRoute'),
 });
 
+export const workspaceVariablesRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings/variables',
+  staticData: { crumb: 'Variables' },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Variables', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./variables'),
+    'WorkspaceVariablesRoute',
+  ),
+});
+
 export const apiTokensRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'settings/api-tokens',

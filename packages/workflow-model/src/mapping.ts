@@ -1,3 +1,4 @@
+import { lookupWorkspaceVariable } from './variables/lookup.js';
 import { canonicalizeJson, type JsonValue } from './json/canonical.js';
 import type {
   ExpressionContext,
@@ -13,7 +14,7 @@ export type ValueResolution =
   | { readonly kind: 'missing' }
   | {
       readonly kind: 'error';
-      readonly code: 'invalid_path' | 'expression_error';
+      readonly code: 'invalid_path' | 'expression_error' | 'variable_missing';
       readonly message: string;
       readonly expression?: Extract<ExpressionResult, { kind: 'error' }>;
     };
@@ -27,6 +28,8 @@ export async function resolveValueSource(
   evaluator?: ExpressionEvaluator,
   signal?: AbortSignal,
 ): Promise<ValueResolution> {
+  if (source.kind === 'workspace_variable')
+    return lookupWorkspaceVariable(source.name, context.variables ?? {});
   if (source.kind === 'literal')
     return { kind: 'value', value: canonicalizeJson(source.value) };
   if (source.kind === 'run_input')

@@ -176,6 +176,9 @@ function prepareNode(
           ? {}
           : { iterationPath: lease.iterationPath }),
         runInput: input.runInput,
+        ...(input.variables === undefined
+          ? {}
+          : { variables: input.variables }),
         completedNodeOutputs: input.completedNodeOutputs,
         ...(input.sourceFailure === undefined
           ? {}

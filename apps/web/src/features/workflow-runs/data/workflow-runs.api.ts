@@ -7,6 +7,7 @@ import {
   workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunInputResponseSchema,
+  workflowRunVariablesResponseSchema,
   workflowStepHealthResponseSchema,
   workflowStepRunsResponseSchema,
   workflowRunResponseSchema,
@@ -302,6 +303,22 @@ export function replayWorkflowRun(
     response: {
       kind: 'json',
       decode: (value) => workflowRunStartResponseSchema.parse(value),
+    },
+  });
+}
+
+export function getWorkflowRunVariables(
+  apiClient: ApiClient,
+  workspaceId: string,
+  runId: string,
+  signal: AbortSignal,
+) {
+  return apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/variables`,
+    signal,
+    response: {
+      kind: 'json',
+      decode: (value) => workflowRunVariablesResponseSchema.parse(value),
     },
   });
 }

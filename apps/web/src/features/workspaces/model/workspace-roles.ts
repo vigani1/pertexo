@@ -72,6 +72,11 @@ export const ROLE_MATRIX: readonly Readonly<{
     roles: ['owner', 'admin', 'builder'],
   },
   {
+    ability: 'Manage workspace variables',
+    capabilities: ['variable:manage'],
+    roles: ['owner', 'admin'],
+  },
+  {
     ability: 'Manage connections',
     capabilities: ['connection:manage'],
     roles: ['owner', 'admin'],

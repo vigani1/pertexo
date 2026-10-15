@@ -255,6 +255,15 @@ function MappedInputsTab({
               Add input
             </Button>
             <InsertDataPicker
+              {...(fileScope === undefined
+                ? {}
+                : {
+                    variableScope: {
+                      apiClient: fileScope.apiClient,
+                      userId: fileScope.userId,
+                      workspaceId: fileScope.workspaceId,
+                    },
+                  })}
               graph={graph}
               nodeId={node.id}
               loopPorts={loopPorts}

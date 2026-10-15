@@ -187,6 +187,16 @@ export async function installEditorRoutes(
       }),
   );
   await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}?include=templateOrigin`,
+    (route) =>
+      route.fulfill({
+        json: {
+          ...workflowSummary(options.workflowName ?? 'Customer onboarding'),
+          templateOrigin: null,
+        },
+      }),
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/validate`,
     (route) =>
       route.fulfill({
@@ -343,6 +353,9 @@ export function mappingGraph(): Graph {
 }
 
 export async function addCsrfCookie(context: BrowserContext) {
+  await context.route('**/v1/workspaces/*/variables', (route) =>
+    route.fulfill({ json: { revision: 0, values: {} } }),
+  );
   await context.addCookies([
     { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
   ]);

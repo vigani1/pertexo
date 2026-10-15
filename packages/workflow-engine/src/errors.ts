@@ -4,6 +4,7 @@ export type EngineErrorCode =
   | 'executable_invalid'
   | 'observation_invalid'
   | 'attempt_invalid'
+  | 'variable_missing'
   | 'attempt_aborted'
   | 'workflow_identity_invalid'
   | 'transition_invalid'

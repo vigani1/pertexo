@@ -19,6 +19,7 @@ import {
   GetWorkflowNodeRunInputUseCase,
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
+  GetWorkflowRunVariablesUseCase,
   GetWorkflowStepHealthUseCase,
   ListWorkflowStepRunsUseCase,
 } from './use-cases.js';
@@ -32,11 +33,27 @@ import {
 export class WorkflowRunDataController {
   public constructor(
     private readonly getRunInput: GetWorkflowRunInputUseCase,
+    private readonly getRunVariables: GetWorkflowRunVariablesUseCase,
     private readonly getNodeRunOutput: GetWorkflowNodeRunOutputUseCase,
     private readonly getNodeRunInput: GetWorkflowNodeRunInputUseCase,
     private readonly getStepHealth: GetWorkflowStepHealthUseCase,
     private readonly listStepRuns: ListWorkflowStepRunsUseCase,
   ) {}
+
+  @Get('runs/:runId/variables')
+  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  public async getVariables(
+    @Req() request: WorkflowRunsRequest,
+    @Param() params: unknown,
+  ) {
+    const route = workflowRunParamsSchema.parse(params);
+    return this.getRunVariables.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...optionalAuthorizedWorkspace(request),
+      runId: route.runId,
+    });
+  }
 
   @Get('runs/:runId/input')
   @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)

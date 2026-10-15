@@ -1,3 +1,4 @@
+import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -270,6 +271,7 @@ export type NodeAttemptClaimResult =
 /** What the database holds for an attempt; execution projects the rest. */
 export type NodeAttemptStoredInputs = Readonly<{
   runInput: unknown;
+  variables?: WorkspaceVariableValues;
   completedNodeOutputs: readonly Readonly<{
     invocationKey: string;
     nodeId: string;

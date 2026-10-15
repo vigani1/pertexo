@@ -1,4 +1,8 @@
 import {
+  createWorkspaceVariablesStore,
+  type WorkspaceVariablesStore,
+} from '@pertexo/database/tenant-access';
+import {
   createWorkflowInputCaseDatabase,
   createWorkflowTagDatabase,
   createWorkflowFavoriteDatabase,
@@ -16,6 +20,7 @@ import type { ApiWorkflowRuntimeOverrides } from './workflow-runtime.module.js';
 
 export type ApiWorkflowMetadataRuntime = Readonly<{
   inputCases?: WorkflowInputCaseDatabase;
+  variables: WorkspaceVariablesStore;
   organization: WorkflowAuthoringDependencies['organization'];
   close(): Promise<void>;
 }>;
@@ -58,6 +63,8 @@ export async function createApiWorkflowMetadataRuntime(
             createWorkflowInputCaseDatabase
           )(config, lease));
     if (inputCases !== undefined) resources.push(inputCases);
+    const variables = createWorkspaceVariablesStore(config, runtime);
+    resources.push(variables);
     const tags = createWorkflowTagDatabase(config, lease);
     resources.push(tags);
     const favorites = createWorkflowFavoriteDatabase(config, lease);
@@ -69,6 +76,7 @@ export async function createApiWorkflowMetadataRuntime(
     const batches = createWorkflowOrganizationBatchDatabase(config, lease);
     resources.push(batches);
     return Object.freeze({
+      variables,
       ...(inputCases === undefined ? {} : { inputCases }),
       organization: Object.freeze({
         tags,

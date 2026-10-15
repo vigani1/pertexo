@@ -1,3 +1,4 @@
+import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
@@ -74,6 +75,7 @@ import {
   readWorkflowNodeRunInput,
   readWorkflowNodeRunOutput,
   readWorkflowRunInput,
+  readWorkflowRunVariables,
   type ReadWorkflowNodeRunOutputInput,
   type ReadWorkflowRunInputInput,
   type WorkflowRunData,
@@ -232,6 +234,9 @@ export interface WorkflowRunDatabase {
   >;
   get(input: GetWorkflowRunInput): Promise<WorkflowRunReadModel | undefined>;
   list(input: ListWorkflowRunsDatabaseInput): Promise<WorkflowRunListPage>;
+  readVariables(
+    input: ReadWorkflowRunInputInput,
+  ): Promise<WorkspaceVariableSnapshot | null | undefined>;
   readInput(
     input: ReadWorkflowRunInputInput,
   ): Promise<WorkflowRunData | undefined>;
@@ -334,6 +339,8 @@ export function createWorkflowRunDatabase(
     get: (input: GetWorkflowRunInput) => readWorkflowRun(pool, input),
     list: (input: ListWorkflowRunsDatabaseInput) =>
       readWorkflowRunListPage(pool, input),
+    readVariables: (input: ReadWorkflowRunInputInput) =>
+      readWorkflowRunVariables(pool, input),
     readInput: (input: ReadWorkflowRunInputInput) =>
       readWorkflowRunInput(pool, input),
     readNodeRunOutput: (input: ReadWorkflowNodeRunOutputInput) =>

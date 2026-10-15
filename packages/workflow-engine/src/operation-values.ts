@@ -6,6 +6,7 @@ export function operationError(
   code:
     | 'observation_invalid'
     | 'attempt_invalid'
+    | 'variable_missing'
     | 'attempt_aborted'
     | 'workflow_identity_invalid',
   message: string,

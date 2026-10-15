@@ -43,6 +43,33 @@ export function MappingSourceEditor({
   const controlId = inputMappingSourceControlId(nodeId, row.id);
   const errorId = `${controlId}-error`;
   switch (row.kind) {
+    case 'workspace_variable':
+      return (
+        <Field data-invalid={error !== undefined}>
+          <FieldLabel htmlFor={controlId}>Workspace variable name</FieldLabel>
+          <Input
+            id={controlId}
+            name={`inputMapping.${row.id}.variable`}
+            value={row.name}
+            placeholder="CURRENCY"
+            autoComplete="off"
+            spellCheck={false}
+            disabled={disabled}
+            aria-invalid={error !== undefined}
+            aria-describedby={`${controlId}-hint${error === undefined ? '' : ` ${errorId}`}`}
+            onChange={(event) => {
+              onChange({ ...row, name: event.currentTarget.value });
+            }}
+          />
+          <FieldDescription id={`${controlId}-hint`}>
+            Reads $vars.NAME from this run’s captured workspace values. Use
+            Insert data to choose a current name.
+          </FieldDescription>
+          {error === undefined ? null : (
+            <FieldError id={errorId}>{error}</FieldError>
+          )}
+        </Field>
+      );
     case 'literal':
       return (
         <LiteralEditor
@@ -87,9 +114,9 @@ export function MappingSourceEditor({
             }}
           />
           <FieldDescription id={`${controlId}-hint`}>
-            JSONata reads runInput and the available nodeOutputs, not this
-            step’s mapped input. The server validates and evaluates it when the
-            step runs.
+            JSONata reads runInput, available nodeOutputs and captured $vars,
+            not this step’s mapped input. The server validates and evaluates it
+            when the step runs.
           </FieldDescription>
           {error === undefined ? null : (
             <FieldError id={errorId}>{error}</FieldError>

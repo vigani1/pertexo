@@ -96,7 +96,7 @@ export const RETENTION_RULES = Object.freeze([
         order by run.completed_at, run.id limit $1 for update skip locked
       )
       update app.workflow_runs run
-      set output_ref = null, error_summary = null, cancel_reason = null,
+      set output_ref = null, error_summary = null, cancel_reason = null, variable_snapshot = null,
           details_purged_at = clock_timestamp(), updated_at = clock_timestamp()
       from page where run.id = page.id`,
   },

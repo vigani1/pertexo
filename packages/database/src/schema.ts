@@ -1,3 +1,4 @@
+import { workspaceVariables } from './schema/identity/variables.js';
 import { workflowForms } from './schema/triggers/forms.js';
 import { pendingRunTasks } from './schema/runs/pending-task.js';
 import { workflowErrorPolicies } from './schema/authoring/error-workflow.js';
@@ -170,6 +171,7 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  workspaceVariables,
   workflowForms,
   pendingRunTasks,
   workflowErrorPolicies,

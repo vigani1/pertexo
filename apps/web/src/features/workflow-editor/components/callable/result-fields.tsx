@@ -12,6 +12,7 @@ import { indexGraph } from '../../model/graph/scopes';
 import { ChoiceSelect } from '../inspector/fields/choice-select';
 
 const SOURCES = [
+  { value: 'workspace_variable', label: 'Workspace variable' },
   { value: 'run_input', label: 'Run input' },
   { value: 'node_output', label: 'Step output' },
   { value: 'literal', label: 'Literal JSON' },
@@ -59,6 +60,29 @@ export function ResultFields({
           />
         )}
       </LabelledField>
+      {value.kind === 'workspace_variable' ? (
+        <LabelledField
+          id={`${id}-variable`}
+          label="Result variable name"
+          error={validation.error('callable.result.name')}
+          description="Reads the run’s captured workspace value."
+        >
+          {(control) => (
+            <Input
+              {...control}
+              name="callable.result.name"
+              ref={validation.register('callable.result.name')}
+              value={value.name}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="CURRENCY"
+              onChange={(event) => {
+                onChange({ ...value, name: event.currentTarget.value });
+              }}
+            />
+          )}
+        </LabelledField>
+      ) : null}
       {value.kind === 'node_output' ? (
         <LabelledField
           id={`${id}-step`}

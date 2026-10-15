@@ -2634,6 +2634,61 @@
         }
       ]
     },
+    "WorkflowRunVariablesResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "snapshot": {
+          "anyOf": [
+            {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "revision": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2147483647
+                },
+                "values": {
+                  "readOnly": true,
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                  },
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4096
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "revision",
+                "values"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "snapshot"
+      ],
+      "additionalProperties": false
+    },
     "WorkflowRecoveryRequest": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -3104,6 +3159,9 @@
             "pending_task.run_closed",
             "pending_task.self_decision",
             "pending_task.not_eligible",
+            "variables.changed",
+            "variables.usage_changed",
+            "workflow.variable_snapshot_unavailable",
             "form.unavailable",
             "form.changed",
             "form.access_conflict",

@@ -181,6 +181,10 @@ export function ReplayRunDialog({
       errorTone={replay.retryAvailable ? 'warning' : 'destructive'}
       onConfirm={submit}
     >
+      <p className="text-sm text-muted-foreground">
+        Replay keeps the source run’s workspace variables. Start a new run to
+        use current values.
+      </p>
       <RunInputFields
         idPrefix="replay-run"
         inputLabel="Replay input (JSON)"

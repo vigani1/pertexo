@@ -209,6 +209,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'webhook_trigger_secret_versions',
     'workflow_triggers',
     'workflow_failure_notification_policies',
+    'workspace_variables',
     'workspace_inbox_reads',
     'workspace_inbox_threads',
     'workspace_inbox_events',

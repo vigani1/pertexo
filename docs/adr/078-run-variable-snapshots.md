@@ -33,8 +33,11 @@ ordinary detail retention clears them. A purged replay/recovery source refuses
 instead of substituting current configuration. Workspace purge removes both the
 current set and its run details.
 
-Expose `$vars.NAME` through the existing expression ValueSource and isolated
-JSONata context. This amends ADR 009's named-variable exclusion for exactly one
+Expose a typed direct variable ValueSource, displayed as `$vars.NAME`, on every
+mapped input. Existing JSONata-capable nodes and callable expressions additionally
+bind `$vars` for computed values. Preserve per-definition expression policy pins;
+a simple lookup does not require an expression worker. Both paths use one captured
+map and one missing-name rule, within the existing graph/executable envelopes. This amends ADR 009's named-variable exclusion for exactly one
 immutable data binding. It adds no operators, host functions, arbitrary named
 bindings, graph format or competing expression policy. Existing expression byte,
 depth/member and runtime limits include the copied values. Direct missing names
@@ -43,7 +46,7 @@ fail clearly; dynamic/whole-map access is conservative in usage reporting.
 Usage reports current drafts and current publications, including body mappings
 and callable results, under current workflow-read authority. Parsed AST facts
 separate static names, whole-map/dynamic accesses and ordinary literal text.
-Exports contain expressions only, never workspace values; imports resolve names
+Exports contain mapping references only, never workspace values; imports resolve names
 in the destination workspace.
 
 ## Consequences

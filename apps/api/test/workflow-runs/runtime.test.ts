@@ -42,6 +42,7 @@ const persistence = {
   statistics: () => Promise.reject(new Error('not exercised')),
   usageCapacity: () => Promise.reject(new Error('not exercised')),
   cancel: () => Promise.reject(new Error('not exercised')),
+  readVariables: () => Promise.resolve({ revision: 0, values: {} }),
   readInput: () => Promise.resolve(undefined),
   readNodeRunOutput: () => Promise.resolve(undefined),
   readNodeRunInput: () => Promise.resolve(undefined),

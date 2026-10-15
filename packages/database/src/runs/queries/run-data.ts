@@ -1,3 +1,7 @@
+import {
+  workspaceVariableSnapshotSchema,
+  type WorkspaceVariableSnapshot,
+} from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -222,4 +226,29 @@ export async function readWorkflowRunFailedSteps(
     );
   }
   return steps;
+}
+
+/** Retained non-secret configuration uses the same authorization and logical detail window as run data. */
+export async function readWorkflowRunVariables(
+  pool: Pool,
+  input: ReadWorkflowRunInputInput,
+): Promise<WorkspaceVariableSnapshot | null | undefined> {
+  const parsed = runDataInputSchema.parse(input);
+  return withWorkspaceReadTransaction(
+    pool,
+    parsed.workspaceId,
+    async (transaction) => {
+      const result = await transaction.db.execute<{
+        snapshot: unknown;
+        retained: boolean;
+      }>(
+        sql`select variable_snapshot snapshot,(details_purged_at IS NULL AND variable_snapshot IS NOT NULL AND (completed_at IS NULL OR completed_at>clock_timestamp()-interval '30 days')) retained from app.workflow_runs where workspace_id=${transaction.workspaceId} and id=${parsed.runId}`,
+      );
+      const row = result.rows[0];
+      if (row === undefined) return undefined;
+      if (!row.retained) return null;
+      return workspaceVariableSnapshotSchema.parse(row.snapshot);
+    },
+    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  );
 }

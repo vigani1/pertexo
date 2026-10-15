@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg';
 import {
   CallableInputInvalidError,
   canonicalJson,
+  workspaceVariableSnapshotSchema,
 } from '@pertexo/workflow-model';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';
@@ -80,8 +81,9 @@ export async function acceptPendingCall(
     error_workflow_origin: boolean;
     started_by: string | null;
     absolute_deadline_at: Date | null;
+    variable_snapshot: unknown;
   }>(
-    `select run.status,run.cancel_requested_at,run.error_workflow_origin,run.started_by,run.absolute_deadline_at,
+    `select run.status,run.cancel_requested_at,run.error_workflow_origin,run.started_by,run.absolute_deadline_at,run.variable_snapshot,
        run.deadline_at <= clock_timestamp() as deadline_expired,
        exists(select 1 from jsonb_array_elements(checkpoint.scheduler_state->'invocations') invocation
          where invocation->>'status'='running') as has_ordinary_work,
@@ -158,7 +160,13 @@ export async function acceptPendingCall(
           ? {}
           : { traceparent: input.traceparent }),
       },
-      { ...preparation, errorWorkflowOrigin: row.error_workflow_origin },
+      {
+        ...preparation,
+        errorWorkflowOrigin: row.error_workflow_origin,
+        variableSnapshot: workspaceVariableSnapshotSchema.parse(
+          row.variable_snapshot,
+        ),
+      },
     );
     const bound = await client.query(
       "update app.workflow_calls set status='accepted',child_run_id=$3,live_child_run_id=$3 where workspace_id=$1 and id=$2 and status='pending'",

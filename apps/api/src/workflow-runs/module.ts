@@ -30,6 +30,7 @@ import {
   GetWorkflowNodeRunInputUseCase,
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
+  GetWorkflowRunVariablesUseCase,
   GetWorkflowStepHealthUseCase,
   ListWorkflowStepRunsUseCase,
 } from './run-data/use-cases.js';
@@ -126,6 +127,13 @@ export class WorkflowRunsModule {
         ),
       },
       {
+        provide: GetWorkflowRunVariablesUseCase,
+        useValue: new GetWorkflowRunVariablesUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
         provide: GetWorkflowRunInputUseCase,
         useValue: new GetWorkflowRunInputUseCase(
           dependencies.persistence,
@@ -201,6 +209,7 @@ export class WorkflowRunsModule {
         GetWorkflowRunStatisticsUseCase,
         GetUsageCapacityUseCase,
         GetWorkflowRunInputUseCase,
+        GetWorkflowRunVariablesUseCase,
         GetWorkflowNodeRunOutputUseCase,
         GetWorkflowNodeRunInputUseCase,
         GetWorkflowStepHealthUseCase,

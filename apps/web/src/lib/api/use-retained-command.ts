@@ -1,61 +1,94 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { canonicalJson } from '@pertexo/workflow-model';
-import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
-/** Exact commands survive lost responses; a later choice never reuses their keys. */
+import { describeCommandError, isUncertainOutcome } from './error-copy';
+import { isApiError } from './error';
+import { useNow } from '../hooks/use-now';
+const COMMAND_RETRY_WINDOW_MS = 86_400_000;
+type Command<Input> = Readonly<{
+  body: Input;
+  key: string;
+  createdAt: number;
+  uncertain: boolean;
+}>;
+/** Exact commands survive ambiguous responses only within the server receipt window. */
 export function useRetainedCommand<Input, Output>(
   execute: (body: Input, key: string) => Promise<Output>,
   onSuccess?: (result: Output, body: Input) => void | Promise<void>,
+  options: Readonly<{ action?: string; expiredMessage?: string }> = {},
 ) {
-  const intent = useRef<Readonly<{ body: Input; key: string }> | undefined>(
-    undefined,
-  );
+  const intent = useRef<Command<Input> | undefined>(undefined);
   const busy = useRef(false);
+  const [uncertainSince, setUncertainSince] = useState<number>();
+  const uncertain = uncertainSince !== undefined;
+  const until =
+    uncertainSince === undefined
+      ? undefined
+      : uncertainSince + COMMAND_RETRY_WINDOW_MS;
+  const now = useNow(1000, uncertain, until);
+  const expired = until !== undefined && now >= until;
   const mutation = useMutation({
-    mutationFn: (command: Readonly<{ body: Input; key: string }>) =>
-      execute(command.body, command.key),
+    mutationFn: (command: Command<Input>) => execute(command.body, command.key),
     retry: false,
     onSuccess: async (result, command) => {
       intent.current = undefined;
+      setUncertainSince(undefined);
       await onSuccess?.(result, command.body);
     },
-    onError: (error) => {
-      if (!isUncertainOutcome(error)) intent.current = undefined;
+    onError: (error, command) => {
+      if (
+        command.uncertain ||
+        isUncertainOutcome(error) ||
+        (isApiError(error) && (error.status ?? 0) >= 500)
+      ) {
+        intent.current = { ...command, uncertain: true };
+        setUncertainSince(command.createdAt);
+      } else intent.current = undefined;
     },
   });
   async function send(body: Input) {
     if (busy.current) return;
+    const retained = intent.current;
     if (
-      intent.current !== undefined &&
-      canonicalJson(intent.current.body) !== canonicalJson(body)
+      retained !== undefined &&
+      (canonicalJson(retained.body) !== canonicalJson(body) ||
+        Date.now() >= retained.createdAt + COMMAND_RETRY_WINDOW_MS)
     )
       return;
-    const command = intent.current ?? {
+    const command = retained ?? {
       body: structuredClone(body),
       key: crypto.randomUUID(),
+      createdAt: Date.now(),
+      uncertain: false,
     };
     intent.current = command;
     busy.current = true;
     try {
       await mutation.mutateAsync(command);
     } catch {
-      /* The caller renders the one visible error. */
+      /* The caller owns visible feedback. */
     } finally {
       busy.current = false;
     }
   }
-  const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
   return {
     send,
     pending: mutation.isPending,
     uncertain,
+    expired,
     data: mutation.data,
     cause: mutation.error,
-    error: mutation.isError
-      ? uncertain
+    error: expired
+      ? (options.expiredMessage ??
+        'This request’s 24-hour retry window has ended. Check its result before starting again.')
+      : uncertain
         ? 'We couldn’t confirm the result. Retry the same action before changing anything.'
-        : describeCommandError(mutation.error, 'sending this response')
-      : undefined,
+        : mutation.isError
+          ? describeCommandError(
+              mutation.error,
+              options.action ?? 'sending this response',
+            )
+          : undefined,
     retry: () => {
       if (intent.current !== undefined) void send(intent.current.body);
     },

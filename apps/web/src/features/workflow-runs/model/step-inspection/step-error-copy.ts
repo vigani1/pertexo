@@ -123,6 +123,16 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     sentence: 'The run was stopped before this step finished.',
     advice: 'Replay the run if the work still needs to happen.',
   },
+  'execution.variable_missing': {
+    sentence:
+      'A workspace variable used by this step is missing from the captured set.',
+    advice:
+      'Add the variable or update the mapping, then start a new run. Replay and recovery keep the original values.',
+  },
+  'preview.variable_missing': {
+    sentence: 'A workspace variable used by this preview is missing.',
+    advice: 'Add it in Variables, then start a new preview.',
+  },
   'execution.attempt_invalid': {
     sentence:
       'One of this step’s inputs couldn’t be worked out, so the step didn’t run.',
@@ -164,6 +174,8 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'execution.deadline_exceeded': 'deadline reached',
   'execution.canceled': 'stopped',
   'artifact.unavailable': 'file unavailable',
+  'execution.variable_missing': 'a workspace variable is missing',
+  'preview.variable_missing': 'a workspace variable is missing',
   'execution.attempt_invalid': 'an input couldn’t be worked out',
 };
 

@@ -1,3 +1,4 @@
+import { workspaceVariableNameSchema } from '@pertexo/workflow-model';
 import {
   WORKFLOW_FAILURE_PORT,
   WORKFLOW_FAILURE_PATHS,
@@ -15,6 +16,7 @@ export type EditableInputMappingKind = InputMapping['kind'];
 type RowBase = Readonly<{ id: string; destinationKey: string }>;
 
 export type InputMappingDraftRow =
+  | (RowBase & Readonly<{ kind: 'workspace_variable'; name: string }>)
   | (RowBase & Readonly<{ kind: 'literal'; literalJson: string }>)
   | (RowBase & Readonly<{ kind: 'run_input'; path: string }>)
   | (RowBase & Readonly<{ kind: 'node_output'; nodeId: string; path: string }>)
@@ -64,6 +66,13 @@ export function inputMappingRowsFor(
     ([destinationKey, source], index): InputMappingDraftRow => {
       const id = `existing-${String(index)}`;
       switch (source.kind) {
+        case 'workspace_variable':
+          return {
+            id,
+            destinationKey,
+            kind: 'workspace_variable',
+            name: source.name,
+          };
         case 'literal':
           return {
             id,
@@ -116,6 +125,8 @@ export function changeInputMappingKind(
 ): InputMappingDraftRow {
   const base = { id: row.id, destinationKey: row.destinationKey };
   switch (kind) {
+    case 'workspace_variable':
+      return { ...base, kind, name: '' };
     case 'literal':
       return { ...base, kind, literalJson: 'null' };
     case 'run_input':
@@ -208,6 +219,10 @@ function rowSource(
   check: SourceCheck,
 ): Readonly<{ mapping?: InputMapping; error?: string }> {
   switch (row.kind) {
+    case 'workspace_variable':
+      return workspaceVariableNameSchema.safeParse(row.name).success
+        ? { mapping: { kind: 'workspace_variable', name: row.name } }
+        : { error: 'Choose an uppercase workspace variable name.' };
     case 'literal': {
       const value = parseJsonValue(row.literalJson);
       return value === undefined
@@ -386,6 +401,7 @@ export function isEditableInputMappingKind(
   value: unknown,
 ): value is EditableInputMappingKind {
   return (
+    value === 'workspace_variable' ||
     value === 'literal' ||
     value === 'run_input' ||
     value === 'node_output' ||

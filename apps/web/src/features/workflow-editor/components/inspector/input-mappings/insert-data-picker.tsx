@@ -1,4 +1,8 @@
 import {
+  VariablePicker,
+  type VariablesScope,
+} from '@/features/workspace-variables/picker.public';
+import {
   WORKFLOW_FAILURE_PORT,
   WORKFLOW_FAILURE_FIELDS,
 } from '@pertexo/workflow-model';
@@ -24,6 +28,7 @@ import {
 } from '../../../model/inspector/input-mappings';
 
 export type InsertedSource =
+  | Readonly<{ kind: 'workspace_variable'; name: string }>
   | Readonly<{ kind: 'node_failure'; nodeId: string; path: string }>
   | Readonly<{ kind: 'node_output'; nodeId: string; path: string }>
   | Readonly<{ kind: 'run_input'; path: string }>
@@ -45,6 +50,7 @@ const loopFields: Readonly<
  */
 export function InsertDataPicker({
   graph,
+  variableScope,
   nodeId,
   loopPorts,
   definitions,
@@ -53,6 +59,7 @@ export function InsertDataPicker({
 }: Readonly<{
   /** The level the step is on: the workflow, or the body it's in. */
   graph: GraphLevel;
+  variableScope?: VariablesScope;
   nodeId: string;
   /** The body's inputs when the step is inside a For each; else empty. */
   loopPorts: readonly string[];
@@ -172,6 +179,19 @@ export function InsertDataPicker({
               </li>
             );
           })}
+          {variableScope === undefined ? null : (
+            <li>
+              <VariablePicker
+                scope={variableScope}
+                onChoose={(name) => {
+                  pick(
+                    { kind: 'workspace_variable', name },
+                    name.toLowerCase(),
+                  );
+                }}
+              />
+            </li>
+          )}
           <li>
             <p className="text-[0.8rem] font-semibold">Run input</p>
             <FieldList

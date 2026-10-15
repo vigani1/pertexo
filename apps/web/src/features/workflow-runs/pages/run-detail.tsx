@@ -1,3 +1,4 @@
+import { RunVariables } from '../components/run-detail/variables';
 import { PendingTasks } from '@/features/pending-tasks/public';
 import { ErrorWorkflowStatus } from '../components/error-workflow-status';
 import type {
@@ -208,6 +209,14 @@ export function RunDetailPage({
         <ErrorWorkflowStatus
           delivery={snapshot.errorWorkflow}
           workspaceId={workspace.id}
+        />
+        <RunVariables
+          scope={{
+            apiClient,
+            userId: user.id,
+            workspaceId: workspace.id,
+            runId,
+          }}
         />
         <CallHistory
           calls={snapshot.calls ?? []}

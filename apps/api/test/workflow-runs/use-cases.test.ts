@@ -107,6 +107,7 @@ function persistence() {
       statistics,
       usageCapacity: vi.fn<WorkflowRunPersistence['usageCapacity']>(),
       cancel,
+      readVariables: () => Promise.resolve({ revision: 0, values: {} }),
       readInput,
       readNodeRunOutput,
       readNodeRunInput,

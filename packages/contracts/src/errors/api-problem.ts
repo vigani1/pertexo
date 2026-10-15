@@ -1,3 +1,4 @@
+import { variableProblems } from './variables.js';
 import { formProblems } from './forms.js';
 import { pendingTaskProblems } from './pending-tasks.js';
 import { workflowErrorProblems } from './workflow-errors.js';
@@ -63,6 +64,9 @@ export const API_PROBLEM_CODES = [
   'pending_task.run_closed',
   'pending_task.self_decision',
   'pending_task.not_eligible',
+  'variables.changed',
+  'variables.usage_changed',
+  'workflow.variable_snapshot_unavailable',
   'form.unavailable',
   'form.changed',
   'form.access_conflict',
@@ -360,6 +364,7 @@ const apiProblemDetails = {
   ...workflowConcurrencyProblems,
   ...workflowErrorProblems,
   ...pendingTaskProblems,
+  ...variableProblems,
   ...formProblems,
   ...workflowInputCaseProblems,
   ...workflowOrganizationProblems,

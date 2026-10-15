@@ -1,3 +1,4 @@
+import { lookupWorkspaceVariable } from '../variables/lookup.js';
 import { Worker } from 'node:worker_threads';
 import { canonicalizeJson, inspectJsonValue } from '../json/canonical.js';
 import {
@@ -5,7 +6,7 @@ import {
   JSONATA_EVALUATOR_DIAGNOSTICS,
   expressionError,
   projectExpressionContext,
-  validateExpression,
+  inspectExpression,
   type ExpressionContext,
   type ExpressionEvaluator,
   type ExpressionRequest,
@@ -22,6 +23,7 @@ const WORKER_RUNTIME_URL = new URL(
 
 interface Pending {
   readonly request: ExpressionRequest;
+  readonly readsVariables: boolean;
   readonly resolve: (result: ExpressionResult) => void;
   queuedAbort: (() => void) | undefined;
 }
@@ -97,12 +99,15 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       return Promise.resolve(
         expressionError('canceled', 'evaluation canceled'),
       );
-    const validation = validateExpression(request.expression);
+    const validation = inspectExpression(request.expression);
     if (validation.kind === 'error') return Promise.resolve(validation);
     let context: ExpressionContext;
     let inspection;
     try {
-      context = projectExpressionContext(request.context);
+      context = projectExpressionContext(
+        request.context,
+        validation.references.names.length > 0 || validation.references.dynamic,
+      );
       inspection = inspectJsonValue(context);
     } catch (cause) {
       return Promise.resolve(
@@ -111,6 +116,11 @@ export class JsonataEvaluator implements ExpressionEvaluator {
           cause instanceof Error ? cause.message : 'invalid context',
         ),
       );
+    }
+    for (const name of validation.references.requiredNames) {
+      const value = lookupWorkspaceVariable(name, context.variables ?? {});
+      if (value.kind === 'error')
+        return Promise.resolve(expressionError(value.code, value.message));
     }
     for (const [limit, actual, maximum] of [
       ['input_bytes', inspection.bytes, EXPRESSION_POLICY.inputBytes],
@@ -134,6 +144,9 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       );
     return new Promise((resolve) => {
       const pending: Pending = {
+        readsVariables:
+          validation.references.names.length > 0 ||
+          validation.references.dynamic,
         request: {
           ...request,
           context,
@@ -383,7 +396,14 @@ export class JsonataEvaluator implements ExpressionEvaluator {
         return;
       }
       if (response.missing) {
-        void finish({ kind: 'missing' });
+        void finish(
+          pending.readsVariables
+            ? expressionError(
+                'variable_missing',
+                'This variable expression has no value. Check the captured workspace variables.',
+              )
+            : { kind: 'missing' },
+        );
         return;
       }
       try {

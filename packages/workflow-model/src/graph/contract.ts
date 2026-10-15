@@ -1,3 +1,4 @@
+import { workspaceVariableNameSchema } from '../variables/contract.js';
 import { z } from 'zod';
 
 import type { JsonValue } from '../json/canonical.js';
@@ -15,6 +16,7 @@ import {
 
 export type NodeId = string;
 export type ValueSource =
+  | { readonly kind: 'workspace_variable'; readonly name: string }
   | { readonly kind: 'literal'; readonly value: JsonValue }
   | { readonly kind: 'run_input'; readonly path: string }
   | {
@@ -102,6 +104,12 @@ const identifierSchema = z
 const positiveVersionSchema = z.number().int().positive();
 const jsonRecordSchema = z.record(z.string(), z.json());
 const valueSourceSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('workspace_variable'),
+      name: workspaceVariableNameSchema,
+    })
+    .strict(),
   z.object({ kind: z.literal('literal'), value: z.json() }).strict(),
   z.object({ kind: z.literal('run_input'), path: z.string() }).strict(),
   z

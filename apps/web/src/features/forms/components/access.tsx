@@ -187,7 +187,7 @@ function SharedFormAccess({
               <Button
                 type="button"
                 variant="outline"
-                disabled={command.pending}
+                disabled={command.pending || command.expired}
                 onClick={command.retry}
               >
                 Retry same change

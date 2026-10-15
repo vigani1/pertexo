@@ -335,6 +335,7 @@ describe('durable Call declaration and result ownership', () => {
           workspaceId: fixture.workspaceId,
           runId: fixture.parentRunId,
           inputRef: null,
+          variableSnapshot: { revision: 0, values: {} },
           nodeIds: ['call'],
         });
         expect(values.outputs).toEqual([

@@ -4,7 +4,10 @@ import type {
   NodeExecutionResult,
   NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
-import type { JsonValue } from '@pertexo/workflow-model';
+import type {
+  WorkspaceVariableValues,
+  JsonValue,
+} from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import type { CompiledWorkflowExecutable } from '../compilation/foundation.js';
@@ -40,6 +43,7 @@ export interface ExecuteNodeAttemptInput {
     readonly declaredCollectionChecksum: string;
   }>;
   readonly runInput: unknown;
+  readonly variables?: WorkspaceVariableValues;
   readonly completedNodeOutputs: unknown;
   readonly coordinatorInput?: unknown;
   readonly sourceFailure?: unknown;
