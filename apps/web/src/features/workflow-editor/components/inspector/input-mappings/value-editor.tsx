@@ -1,0 +1,102 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import type { GraphLevel } from '../../../model/graph/scopes';
+import {
+  changeInputMappingKind,
+  isEditableInputMappingKind,
+  type EditableInputMappingKind,
+  type InputMappingDraftRow,
+  type PredecessorOption,
+  type SchemaValueType,
+} from '../../../model/inspector/input-mappings';
+import { MappingSourceEditor } from './mapping-source-editor';
+
+type KindOption = Readonly<{ kind: EditableInputMappingKind; label: string }>;
+
+const kinds: readonly KindOption[] = [
+  { kind: 'literal', label: 'Value' },
+  { kind: 'run_input', label: 'Run input' },
+  { kind: 'node_output', label: 'Step output' },
+  { kind: 'expression', label: 'Expression' },
+];
+/** Offered inside a For each body, or kept visible where one is stored. */
+const loopItemKind: KindOption = {
+  kind: 'structured_input',
+  label: 'Loop item',
+};
+
+export function MappingValueEditor({
+  nodeId,
+  row,
+  graph,
+  predecessors,
+  loopPorts,
+  type,
+  error,
+  disabled,
+  onChange,
+}: Readonly<{
+  nodeId: string;
+  row: InputMappingDraftRow;
+  graph: GraphLevel;
+  predecessors: readonly PredecessorOption[];
+  loopPorts: readonly string[];
+  type: SchemaValueType | undefined;
+  error: string | undefined;
+  disabled: boolean;
+  onChange: (row: InputMappingDraftRow) => void;
+}>) {
+  const failureSource = graph.edges.find(
+    (edge) =>
+      edge.target.nodeId === nodeId &&
+      edge.source.port === WORKFLOW_FAILURE_PORT,
+  )?.source.nodeId;
+  const failureKind: KindOption = { kind: 'node_failure', label: 'Failure' };
+  const baseKinds =
+    failureSource !== undefined || row.kind === 'node_failure'
+      ? [...kinds, failureKind]
+      : kinds;
+  const options =
+    loopPorts.length > 0 || row.kind === 'structured_input'
+      ? [...baseKinds, loopItemKind]
+      : baseKinds;
+  return (
+    <>
+      <ToggleGroup
+        aria-label="Source"
+        value={[row.kind]}
+        disabled={disabled}
+        // The options share the width, tighter than a page toggle, so all
+        // four fit the inspector on one line.
+        className="w-full flex-wrap [&>*]:flex-1 [&>*]:px-1.5 [&>*]:text-[0.78rem]"
+        onValueChange={(values) => {
+          const kind: unknown = values[0];
+          if (!isEditableInputMappingKind(kind)) return;
+          onChange(
+            changeInputMappingKind(
+              row,
+              kind,
+              kind === 'node_failure' ? failureSource : predecessors[0]?.nodeId,
+            ),
+          );
+        }}
+      >
+        {options.map((option) => (
+          <ToggleGroupItem key={option.kind} value={option.kind}>
+            {option.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <MappingSourceEditor
+        nodeId={nodeId}
+        row={row}
+        type={type}
+        predecessors={predecessors}
+        loopPorts={loopPorts}
+        error={error}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    </>
+  );
+}

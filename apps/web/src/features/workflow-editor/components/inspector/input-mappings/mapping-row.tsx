@@ -1,37 +1,18 @@
-import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { StatusGlyph } from '@/components/ui/status';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { GraphLevel } from '../../../model/graph/scopes';
 import {
-  changeInputMappingKind,
   inputMappingKeyControlId,
-  isEditableInputMappingKind,
-  type EditableInputMappingKind,
   type InputKeySuggestion,
   type InputMappingDraftRow,
   type InputMappingRowErrors,
   type PredecessorOption,
 } from '../../../model/inspector/input-mappings';
-import { MappingSourceEditor } from './mapping-source-editor';
+import { MappingValueEditor } from './value-editor';
 import { MappingSummary } from './mapping-summary';
-
-type KindOption = Readonly<{ kind: EditableInputMappingKind; label: string }>;
-
-const kinds: readonly KindOption[] = [
-  { kind: 'literal', label: 'Value' },
-  { kind: 'run_input', label: 'Run input' },
-  { kind: 'node_output', label: 'Step output' },
-  { kind: 'expression', label: 'Expression' },
-];
-/** Offered inside a For each body, or kept visible where one is stored. */
-const loopItemKind: KindOption = {
-  kind: 'structured_input',
-  label: 'Loop item',
-};
 
 /** Puts the cursor in a field as it appears, e.g. a just-added input's name. */
 function focusOnMount(element: HTMLInputElement | null) {
@@ -135,20 +116,6 @@ function MappingEditor({
   const keyErrorId = `${keyId}-error`;
   const listId = `${keyId}-suggestions`;
   const suggestion = suggestions.find(({ key }) => key === row.destinationKey);
-  const failureSource = graph.edges.find(
-    (edge) =>
-      edge.target.nodeId === nodeId &&
-      edge.source.port === WORKFLOW_FAILURE_PORT,
-  )?.source.nodeId;
-  const failureKind: KindOption = { kind: 'node_failure', label: 'Failure' };
-  const baseKinds =
-    failureSource !== undefined || row.kind === 'node_failure'
-      ? [...kinds, failureKind]
-      : kinds;
-  const options =
-    loopPorts.length > 0 || row.kind === 'structured_input'
-      ? [...baseKinds, loopItemKind]
-      : baseKinds;
   return (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
@@ -202,37 +169,13 @@ function MappingEditor({
           {suggestion.description}
         </p>
       )}
-      <ToggleGroup
-        aria-label="Source"
-        value={[row.kind]}
-        disabled={disabled}
-        // The options share the width, tighter than a page toggle, so all
-        // four fit the inspector on one line.
-        className="w-full flex-wrap [&>*]:flex-1 [&>*]:px-1.5 [&>*]:text-[0.78rem]"
-        onValueChange={(values) => {
-          const kind: unknown = values[0];
-          if (!isEditableInputMappingKind(kind)) return;
-          onChange(
-            changeInputMappingKind(
-              row,
-              kind,
-              kind === 'node_failure' ? failureSource : predecessors[0]?.nodeId,
-            ),
-          );
-        }}
-      >
-        {options.map((option) => (
-          <ToggleGroupItem key={option.kind} value={option.kind}>
-            {option.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      <MappingSourceEditor
+      <MappingValueEditor
         nodeId={nodeId}
         row={row}
-        type={suggestion?.type}
+        graph={graph}
         predecessors={predecessors}
         loopPorts={loopPorts}
+        type={suggestion?.type}
         error={errors?.source}
         disabled={disabled}
         onChange={onChange}
