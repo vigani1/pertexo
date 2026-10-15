@@ -1,4 +1,4 @@
-import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   char,
@@ -57,7 +57,7 @@ export const apiTokens = appSchema.table(
     ),
     check(
       'api_tokens_scopes_valid',
-      sql`jsonb_typeof(scopes) = 'array' and jsonb_array_length(scopes) between 1 and 7 and scopes <@ ${sql.raw(`'${serializeStoredExecutionJsonValue(API_TOKEN_SCOPES)}'`)}::jsonb`,
+      sql`jsonb_typeof(scopes) = 'array' and jsonb_array_length(scopes) between 1 and 7 and scopes <@ ${sql.raw(`'${canonicalJson(API_TOKEN_SCOPES)}'`)}::jsonb`,
     ),
     index('api_tokens_owner_page_idx').on(
       table.workspaceId,
