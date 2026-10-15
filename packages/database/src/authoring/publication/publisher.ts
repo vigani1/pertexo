@@ -1,3 +1,4 @@
+import { validateApprovalAudience } from './pending-tasks.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import {
   claimCommand,
@@ -187,6 +188,7 @@ async function lockAndCompilePublication(
     draft.graphJson,
     variant.definitionCatalog,
   );
+  await validateApprovalAudience(client, input.workspaceId, graph);
   await lockArtifactReferences(client, input.workspaceId, graph);
   const executable = executableSchema.parse(variant.executableCompiler(graph));
   const versionId = generatePersistedId();

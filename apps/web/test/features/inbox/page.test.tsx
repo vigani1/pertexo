@@ -260,6 +260,38 @@ describe('workspace inbox', () => {
     });
   });
 
+  it('lets a viewer discover approvals without fetching privileged failure threads', async () => {
+    let failureReads = 0;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({
+          items: [{ ...workspace(['run:read']), role: 'viewer' }],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`${api}/notifications`, () => {
+        failureReads += 1;
+        return HttpResponse.json({
+          items: [],
+          nextCursor: null,
+          revision: '1',
+        });
+      }),
+    );
+    renderApp(`/w/${workspaceId}/inbox`);
+    expect(
+      await screen.findByRole('region', { name: 'Approvals' }),
+    ).toBeVisible();
+    expect(
+      await screen.findByText('No approvals waiting for you.'),
+    ).toBeVisible();
+    expect(failureReads).toBe(0);
+    expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();
+  });
+
   it('hides the inbox from a role without it', async () => {
     mockServer.use(
       http.get('http://pertexo.test/v1/users/me', () =>

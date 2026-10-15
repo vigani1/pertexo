@@ -1,3 +1,4 @@
+import { PendingApprovals } from '@/features/approvals/public';
 import { ErrorWorkflowStatus } from '../components/error-workflow-status';
 import type {
   AccessibleWorkspace,
@@ -198,6 +199,12 @@ export function RunDetailPage({
           onReconnect={events.reconnect}
           onRunAccepted={onRunAccepted}
         />
+        {run.hasHumanTasks ? (
+          <PendingApprovals
+            scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
+            runId={runId}
+          />
+        ) : null}
         <ErrorWorkflowStatus
           delivery={snapshot.errorWorkflow}
           workspaceId={workspace.id}

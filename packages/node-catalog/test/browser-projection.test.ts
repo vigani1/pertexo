@@ -35,6 +35,22 @@ describe('browser-safe platform catalog projection', () => {
     }
   });
 
+  it('advertises the logical Approval result rather than the private declaration marker', () => {
+    const item = platformBrowserNodeDefinitionCatalog().definitions.find(
+      (definition) => definition.definition.key === 'core.approval',
+    );
+    expect(item?.outputSchema).toMatchObject({
+      type: 'object',
+      properties: {
+        decision: { enum: ['approved', 'rejected'] },
+        comment: {},
+        decidedBy: { type: 'string' },
+        decidedAt: { type: 'string' },
+      },
+    });
+    expect(JSON.stringify(item?.outputSchema)).not.toContain('pending');
+  });
+
   it('offers every node to the browser, including integrations', () => {
     const catalog = platformBrowserNodeDefinitionCatalog();
     const keys = new Set(

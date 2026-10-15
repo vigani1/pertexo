@@ -185,8 +185,10 @@ export function buildWorkflowTransitionPlan(
     state.runStatus === 'running' &&
     nonterminal.length > 0 &&
     nonterminal.every(
-      ({ status }) =>
-        status === 'waiting' || (!input.hasExecutionSlot && status === 'ready'),
+      ({ status, invocationKey }) =>
+        status === 'waiting' ||
+        (status === 'pending' && state.joins.has(invocationKey)) ||
+        (!input.hasExecutionSlot && status === 'ready'),
     )
   ) {
     assertRunTransition(state.runStatus, 'waiting');

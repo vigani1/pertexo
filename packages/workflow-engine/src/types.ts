@@ -1,5 +1,6 @@
 import type {
   JsonValue,
+  ApprovalConfig,
   WorkflowCallPin,
   WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
@@ -31,7 +32,8 @@ export const NODE_STATUSES = [
 export type NodeStatus = (typeof NODE_STATUSES)[number];
 
 export type SideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
-export type WaitKind = 'node_wait' | 'retry_backoff' | 'workflow_call';
+export type WaitKind =
+  'node_wait' | 'retry_backoff' | 'workflow_call' | 'human_task';
 export type AdmissionKind = 'execute' | 'retry' | 'wait_resume';
 export type BranchDisposition =
   'pending' | 'arrived' | 'skipped' | 'missing' | 'failed' | 'canceled';
@@ -40,7 +42,8 @@ export type OutputReference =
   | Readonly<{ readonly kind: 'inline'; readonly attemptId: string }>
   | Readonly<{ readonly kind: 'artifact'; readonly artifactId: string }>
   | Readonly<{ readonly kind: 'reused'; readonly nodeRunId: string }>
-  | Readonly<{ readonly kind: 'call'; readonly callId: string }>;
+  | Readonly<{ readonly kind: 'call'; readonly callId: string }>
+  | Readonly<{ readonly kind: 'task'; readonly taskId: string }>;
 
 export interface BranchScopePart {
   readonly nodeId: string;
@@ -84,6 +87,11 @@ export type WorkflowObservation =
   | { readonly kind: 'cursor_only' }
   | {
       readonly kind: 'call_started';
+      readonly invocationKey: string;
+      readonly coordinatorDerived: true;
+    }
+  | {
+      readonly kind: 'task_started';
       readonly invocationKey: string;
       readonly coordinatorDerived: true;
     }
@@ -297,7 +305,7 @@ export interface WorkflowCallIntent {
   readonly invocationKey: string;
   readonly target: WorkflowCallPin;
   /** Physical declaration output; the Call result has a separate immutable owner. */
-  readonly input: Exclude<OutputReference, { kind: 'call' }>;
+  readonly input: Exclude<OutputReference, { kind: 'call' | 'task' }>;
 }
 
 export interface WorkflowCallOutcome {
@@ -316,6 +324,20 @@ export interface WorkflowCallOutcome {
   readonly reasonCode?: string;
 }
 
+export interface PendingTaskIntent {
+  readonly invocationKey: string;
+  readonly config: ApprovalConfig;
+}
+
+export interface PendingTaskOutcome {
+  readonly taskId: string;
+  readonly invocationKey: string;
+  readonly nodeId: string;
+  readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
+  readonly status: 'approved' | 'rejected' | 'expired' | 'refused' | 'canceled';
+}
+
 export interface WorkflowTransitionPlan {
   /** Mandatory selected source evidence, persisted atomically outside the checkpoint. */
   readonly failureValues?: readonly Readonly<{
@@ -323,6 +345,7 @@ export interface WorkflowTransitionPlan {
     entryInvocationKey: string;
   }>[];
   readonly callIntents?: readonly WorkflowCallIntent[];
+  readonly taskIntents?: readonly PendingTaskIntent[];
   /** A validated callable result for ordinary run storage, never checkpoint data. */
   readonly runResult?: JsonValue;
   readonly expectedRevision: number;

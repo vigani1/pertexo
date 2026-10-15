@@ -180,7 +180,12 @@ export function EditorInspector({
         },
       }}
       renderTest={(nodeId, stepSideEffect) =>
-        findStep(graph, nodeId)?.definition.key === 'core.call' ? (
+        findStep(graph, nodeId)?.definition.key === 'core.approval' ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            Run the workflow to create an approval, then decide it in Approvals.
+            A preview cannot pause for a human decision.
+          </p>
+        ) : findStep(graph, nodeId)?.definition.key === 'core.call' ? (
           <p className="p-4 text-sm text-muted-foreground">
             Run this workflow to test the Call with its child. A single-step
             preview cannot return a child result.

@@ -1,5 +1,6 @@
 import type {
   WorkflowCallOutcome,
+  PendingTaskOutcome,
   WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
 import { z } from 'zod';
@@ -31,6 +32,7 @@ export type RunAdvanceState = Readonly<{
   /** A loan explicitly fences new parent node admissions. */
   hasExecutionSlot: boolean;
   callOutcomes: readonly WorkflowCallOutcome[];
+  taskOutcomes: readonly PendingTaskOutcome[];
   workflow: PublishedWorkflow;
   /** On-demand completion projection using the already locked run transaction. */
   readCompletionValues(nodeIds?: readonly string[]): Promise<

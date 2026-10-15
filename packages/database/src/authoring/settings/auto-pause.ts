@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { ROLES, type Role } from '../../tenant-access/policy.js';
-import { lockWorkflowAuthoringAuthority } from '../../tenant-access/workspaces/authority.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 
 export type WorkflowAutoPauseSettings = Readonly<{

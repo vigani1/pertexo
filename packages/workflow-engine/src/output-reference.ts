@@ -9,6 +9,8 @@ export function sameOutputReference(
     return left.attemptId === right.attemptId;
   if (left.kind === 'artifact' && right.kind === 'artifact')
     return left.artifactId === right.artifactId;
+  if (left.kind === 'task' && right.kind === 'task')
+    return left.taskId === right.taskId;
   if (left.kind === 'call' && right.kind === 'call')
     return left.callId === right.callId;
   if (left.kind === 'reused' && right.kind === 'reused')

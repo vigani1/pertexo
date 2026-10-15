@@ -117,3 +117,10 @@ export {
   ErrorWorkflowVersionUnavailableError,
   type ErrorWorkflowStore,
 } from './error-workflows/store.js';
+
+export {
+  createPendingTaskStore,
+  PendingTaskDecisionError,
+  PendingTaskNotFoundError,
+  type PendingTaskStore,
+} from './pending-tasks/store.js';

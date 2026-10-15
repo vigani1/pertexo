@@ -4,6 +4,13 @@ import { unpausedWorkflowSettings } from './fixtures/auto-pause';
 import { defaultConcurrencySettings } from './fixtures/concurrency';
 
 export const mockServer = setupServer(
+  http.get('http://pertexo.test/v1/workspaces/:workspaceId/pending-tasks', () =>
+    HttpResponse.json({ items: [], nextCursor: null, pendingCount: 0 }),
+  ),
+  http.get(
+    'http://pertexo.test/v1/workspaces/:workspaceId/pending-tasks/audience',
+    () => HttpResponse.json({ items: [], nextCursor: null }),
+  ),
   http.get(
     'http://pertexo.test/v1/workspaces/:workspaceId/workflows/:workflowId/error-workflow',
     () => HttpResponse.json({ targetWorkflowId: null, revision: 1 }),

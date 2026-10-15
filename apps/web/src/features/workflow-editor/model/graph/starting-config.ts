@@ -1,3 +1,4 @@
+import { approvalConfigSchema } from '@pertexo/workflow-model';
 import type { WorkflowNode } from './scopes';
 
 type NodeConfig = WorkflowNode['config'];
@@ -51,6 +52,7 @@ export function startingConfig(
   definitionKey: string,
   levelNodes: readonly WorkflowNode[],
 ): NodeConfig {
+  if (definitionKey === 'core.approval') return approvalConfigSchema.parse({});
   if (definitionKey === 'core.merge') {
     const parallels = levelNodes.filter(
       (node) => node.definition.key === 'core.parallel',

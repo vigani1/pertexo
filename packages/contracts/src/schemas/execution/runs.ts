@@ -127,6 +127,20 @@ export const workflowRunSummarySchema = z
     completedAt: z.iso.datetime({ offset: true }).nullable(),
     deadlineAt: z.iso.datetime({ offset: true }).nullable(),
     cancelRequestedAt: z.iso.datetime({ offset: true }).nullable(),
+    hasHumanTasks: z.boolean().optional(),
+    humanWait: z
+      .object({
+        since: z.iso.datetime(),
+        remainingExecutionMs: z
+          .number()
+          .int()
+          .positive()
+          .max(3600000)
+          .nullable(),
+        absoluteDeadlineAt: z.iso.datetime().nullable(),
+      })
+      .strict()
+      .optional(),
     recovery: workflowRecoverySummarySchema.optional(),
     handledFailureCount: z.number().int().min(0).max(200).optional(),
   })

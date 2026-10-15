@@ -1,3 +1,5 @@
+import { synchronizeHumanWait } from '../../pending-tasks/time-capacity.js';
+import { readPendingTaskFacts } from '../../pending-tasks/facts.js';
 import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
@@ -34,6 +36,10 @@ export type CoordinatorCommitRow = Readonly<{
   failure_notification_side_effect_class: string | null;
   execution_entitlement_version: number;
   input_ref: unknown;
+  human_wait_started_at: Date | null;
+  has_unconsumed_tasks: boolean;
+  has_human_child?: boolean;
+  human_resume_deferred?: boolean;
 }>;
 
 export type PendingCoordinatorFailure = Readonly<{
@@ -103,7 +109,8 @@ export async function loadRunForAdvance(
             run.failure_notification_destination_id,
             run.failure_notification_destination_config_version,
             run.failure_notification_side_effect_class,
-            run.execution_entitlement_version, run.input_ref, run.deadline_at,
+            run.execution_entitlement_version, run.input_ref, run.deadline_at,run.human_wait_started_at,
+            exists(select 1 from app.pending_run_tasks task where task.workspace_id=run.workspace_id and task.run_id=run.id and task.consumed_at is null) has_unconsumed_tasks,
             run.deadline_at is not null
               and run.deadline_at <= clock_timestamp() as deadline_expired,
             version.id as version_id, version.workspace_id as version_workspace_id,
@@ -121,8 +128,22 @@ export async function loadRunForAdvance(
        for no key update of run, checkpoint`,
     [workspaceId, runId],
   );
-  const row = locked.rows[0];
+  let row = locked.rows[0];
   if (row === undefined) return Object.freeze({ kind: 'not_found' });
+  const taskOutcomes = row.has_unconsumed_tasks
+    ? await readPendingTaskFacts(client, workspaceId, runId)
+    : [];
+  const calls = await readCallFacts(client, workspaceId, runId);
+  row = { ...row, has_human_child: calls.hasHumanChild };
+  if (
+    row.human_wait_started_at !== null ||
+    row.has_unconsumed_tasks ||
+    calls.hasHumanChild
+  )
+    row = {
+      ...row,
+      ...(await synchronizeHumanWait(client, workspaceId, runId, 'loading')),
+    };
   // A run's version is immutable; one that is gone went with its run.
   const version = parsePublishedWorkflowRow(publishedVersion(row));
   if (version === null) return Object.freeze({ kind: 'not_found' });
@@ -191,7 +212,7 @@ export async function loadRunForAdvance(
             coalesce(node.retry_due_at, node.resume_at) as due_at
        from app.node_runs node
        where node.workspace_id = $1 and node.workflow_run_id = $2
-         and node.status = 'waiting'
+         and node.status = 'waiting' and node.control_kind is distinct from 'human_task'
          and coalesce(node.retry_due_at, node.resume_at) <= clock_timestamp()
          and node.invocation_key in (
            select invocation->>'invocationKey'
@@ -219,7 +240,10 @@ export async function loadRunForAdvance(
     row,
     pendingFailures: pendingFailures.rows,
     state: Object.freeze({
-      ...(await readCallFacts(client, workspaceId, runId)),
+      hasExecutionSlot:
+        calls.hasExecutionSlot && row.human_wait_started_at === null,
+      callOutcomes: calls.callOutcomes,
+      taskOutcomes,
       runId,
       workflowVersionId: row.workflow_version_id,
       checkpoint: row.scheduler_state,

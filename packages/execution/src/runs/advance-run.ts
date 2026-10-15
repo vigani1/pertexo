@@ -63,6 +63,7 @@ export async function advanceRun(
       observations: state.observations,
       completedOutputs: state.completedOutputs,
       callOutcomes: state.callOutcomes,
+      taskOutcomes: state.taskOutcomes,
       hasExecutionSlot: state.hasExecutionSlot,
       occurredAt: dependencies.now(),
       maximumAdmissions: dependencies.maximumAdmissions,

@@ -17,20 +17,13 @@ import {
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
   {
-    // A run's input is kept until the expiry recorded with it.
+    // Live human interactions may outlast the normal input window.
     name: 'run_inputs',
     statement: `
       with page as (
         select id from app.workflow_runs run
         where input_ref is not null and input_ref_expires_at <= clock_timestamp()
-          and not (status in ('queued','running','waiting') and (
-            exists (select 1 from app.workflow_version_dependencies dependency
-              where dependency.workspace_id = run.workspace_id
-                and dependency.parent_version_id = run.workflow_version_id)
-            or exists (select 1 from app.workflow_calls call
-              where call.workspace_id = run.workspace_id
-                and (call.parent_run_id = run.id or call.live_child_run_id = run.id))
-          ))
+          and status not in ('queued','running','waiting')
         order by input_ref_expires_at, id limit $1 for update skip locked
       )
       update app.workflow_runs run

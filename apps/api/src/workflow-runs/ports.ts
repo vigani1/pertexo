@@ -45,6 +45,12 @@ export type WorkflowRunRecord = Readonly<{
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
   Readonly<{
+    hasHumanTasks?: boolean;
+    humanWait?: Readonly<{
+      since: string;
+      remainingExecutionMs: number | null;
+      absoluteDeadlineAt: string | null;
+    }>;
     workflowName?: string | null;
     replaySourceRunId?: string | null;
     admissionBlockers?: WorkflowRunAdmissionBlockers;

@@ -1,3 +1,4 @@
+import { synchronizeHumanWait } from '../../pending-tasks/time-capacity.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.js';
 import type { PoolClient } from 'pg';
 
@@ -193,6 +194,19 @@ export async function persistCoordinatorRunTransition(
       ).length,
     ],
   );
+  if (
+    row.human_wait_started_at !== null ||
+    row.has_unconsumed_tasks ||
+    row.has_human_child === true ||
+    (plan.taskIntents?.length ?? 0) > 0
+  )
+    await synchronizeHumanWait(
+      client,
+      workspaceId,
+      runId,
+      'committed',
+      row.human_resume_deferred === true,
+    );
   await persistCallCompletion(client, input);
   const scheduleDueAt = scheduledOccurrence(row, plan);
   await persistDerivedContinuation(client, input);

@@ -440,6 +440,7 @@ describe('Coordinator observation integrity invariants', () => {
         observations: [],
         hasExecutionSlot: true,
         callOutcomes: [],
+        taskOutcomes: [],
         workflow: expect.objectContaining({ id: versionA }) as unknown,
       },
     });

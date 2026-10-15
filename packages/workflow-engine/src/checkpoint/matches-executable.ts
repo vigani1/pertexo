@@ -1,3 +1,4 @@
+import { isHumanTaskDefinition } from '@pertexo/workflow-model';
 import { assertFailureCheckpoint } from '../failure-routing/checkpoint.js';
 import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import type { parseCheckpoint } from './create-and-parse.js';
@@ -105,6 +106,12 @@ function assertInvocationBelongsToExecutable(
     (invocation.waitKind === 'workflow_call' ||
       invocation.output?.kind === 'call') &&
     !isWorkflowCallDefinition(nodesById.get(invocation.nodeId)?.definition)
+  )
+    invalidInvocationIdentity();
+  if (
+    (invocation.waitKind === 'human_task' ||
+      invocation.output?.kind === 'task') &&
+    !isHumanTaskDefinition(nodesById.get(invocation.nodeId)?.definition)
   )
     invalidInvocationIdentity();
   const branchPath = invocation.branchPath ?? [];

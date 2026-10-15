@@ -34,3 +34,23 @@ export {
   workflowErrorTargetsPageSchema,
   type WorkflowErrorTargetsPage,
 } from './schemas/workflows/error-workflow.js';
+
+export {
+  pendingTaskParamsSchema,
+  pendingTaskListQuerySchema,
+  pendingTaskDetailSchema,
+  pendingTaskResponseSchema,
+  pendingTaskListResponseSchema,
+  pendingTaskDecisionRequestSchema,
+  pendingTaskDecisionResponseSchema,
+  approvalAudienceQuerySchema,
+  approvalAudiencePageSchema,
+  type PendingTaskSummary,
+  type PendingTaskDetail,
+  type PendingTaskListQuery,
+  type PendingTaskListResponse,
+  type PendingTaskDecisionRequest,
+  type PendingTaskDecisionResponse,
+  type ApprovalAudienceQuery,
+  type ApprovalAudiencePage,
+} from './schemas/execution/pending-tasks.js';

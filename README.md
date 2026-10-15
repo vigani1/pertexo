@@ -189,6 +189,8 @@ credentials. See
 for configuration, delivery uncertainty and switching providers safely. Workflow
 Email steps and workspace Alerts still use their workspace Resend connections.
 
+Human decisions in workflows: [approvals guide](docs/approvals.md).
+
 Personal API tokens and the HTTP CLI: [automation guide](docs/automation.md).
 
 Run a separate workflow after a failure:

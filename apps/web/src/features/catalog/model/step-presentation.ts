@@ -172,6 +172,12 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
     icon: RepeatIcon,
     family: 'logic',
   },
+  'core.approval': {
+    name: 'Approval',
+    description: 'Pause for an eligible member to approve or reject.',
+    icon: HandIcon,
+    family: 'logic',
+  },
   'core.wait': {
     name: 'Wait',
     description: 'Pause the run for a set time',

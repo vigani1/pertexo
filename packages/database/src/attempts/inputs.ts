@@ -178,7 +178,7 @@ export async function loadNodeAttemptInputs(
                   node.reused_source_run_id,node.reused_source_node_run_id,node.reused_source_completed_at,
                   attempt.status as attempt_status,
                   node.output_ref as node_output_ref,
-                  case when call.id is not null then call.result_ref else attempt.output_ref end as attempt_output_ref
+                  case when task.id is not null then task.output_ref when call.id is not null then call.result_ref else attempt.output_ref end as attempt_output_ref
            from app.node_runs node
            left join app.node_attempts attempt
              on attempt.workspace_id=node.workspace_id
@@ -187,6 +187,7 @@ export async function loadNodeAttemptInputs(
            left join app.workflow_calls call
              on call.workspace_id=node.workspace_id and call.parent_run_id=node.workflow_run_id
             and call.invocation_key=node.invocation_key and call.status='succeeded'
+           left join app.pending_run_tasks task on task.workspace_id=node.workspace_id and task.node_run_id=node.id and task.run_id=node.workflow_run_id and task.status in ('approved','rejected')
             where node.workspace_id=$1 and node.workflow_run_id=$2
               and node.invocation_key=any($3::varchar[])
               and node.status='succeeded'`,

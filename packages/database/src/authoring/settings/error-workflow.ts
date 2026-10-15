@@ -8,7 +8,7 @@ import {
 } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { lockWorkflowAuthoringAuthority } from '../../tenant-access/workspaces/authority.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
 

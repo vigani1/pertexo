@@ -1,3 +1,7 @@
+import {
+  persistTaskIntents,
+  persistConsumedTasks,
+} from '../../pending-tasks/persist.js';
 import { persistFailureHandling } from './failure-handling.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
@@ -75,6 +79,7 @@ export async function saveRunTransition(
   }
 
   await persistCallIntents(client, input);
+  await persistTaskIntents(client, input);
   const rejectedForEachDeclarations = await settleRejectedForEachDeclarations(
     client,
     workspaceId,
@@ -105,6 +110,8 @@ export async function saveRunTransition(
   });
   await persistFailureHandling(client, workspaceId, runId, plan);
   await persistConsumedCalls(client, workspaceId, runId, plan);
+  if (row.has_unconsumed_tasks || (plan.taskIntents?.length ?? 0) > 0)
+    await persistConsumedTasks(client, workspaceId, runId, plan);
   const runTransition = await persistCoordinatorRunTransition(client, {
     authoritativeCancellation:
       previous.cancelRequested || row.cancel_requested_at !== null,

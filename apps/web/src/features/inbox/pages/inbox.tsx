@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
 import type {
   AccessibleWorkspace,
@@ -164,7 +165,9 @@ export function InboxPage({
   workspace,
   filter,
   onFilterChange,
+  children,
 }: Readonly<{
+  children?: ReactNode;
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
@@ -188,7 +191,7 @@ export function InboxPage({
   });
   const markAll = useMarkAllReadMutation(scope);
 
-  if (!canRead)
+  if (!canRead && children == null)
     return (
       <UnavailablePage
         heading="Inbox"
@@ -199,6 +202,22 @@ export function InboxPage({
           'get notified when workflows fail',
         )}
       />
+    );
+  if (!canRead)
+    return (
+      <section>
+        <PageHeader>
+          <PageHeaderTitle>Inbox</PageHeaderTitle>
+        </PageHeader>
+        {children}
+        <p className="mt-3 text-sm text-muted-foreground">
+          {roleLimitSentence(
+            workspace.role,
+            'notification:read',
+            'view workflow failure notices',
+          )}
+        </p>
+      </section>
     );
   if (
     threads.isError &&
@@ -228,6 +247,7 @@ export function InboxPage({
           if (cut !== undefined) markAll.mutate(cut);
         }}
       />
+      {children}
       <p className="-mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
         Each workflow that failed, timed out or ended with an unknown outcome
         appears once, with how often it failed. Reading it here doesn’t change

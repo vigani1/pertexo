@@ -37,6 +37,7 @@ const requestRowSchema = z
     request_fingerprint: sha256HexSchema,
     run_input: z.json(),
     source_run_id: z.uuid(),
+    started_by: z.uuid().nullable(),
     status: z.enum(['pending', 'completed', 'failed']),
     workflow_id: z.uuid(),
     workflow_version_id: z.uuid(),
@@ -145,11 +146,12 @@ export function createOperatorRunReplayStore(
             throw new OperatorRunReplayMismatchError();
 
           const requests = await transaction.db.execute(sql`
-            select request_fingerprint,run_input,source_run_id,status,
-              workflow_id,workflow_version_id
-            from app.operator_run_replay_requests
-            where workspace_id=${transaction.workspaceId}
-              and command_id=${parsed.commandId}
+            select request.request_fingerprint,request.run_input,request.source_run_id,request.status,
+              request.workflow_id,request.workflow_version_id,source.started_by
+            from app.operator_run_replay_requests request left join app.workflow_runs source
+              on source.workspace_id=request.workspace_id and source.id=request.source_run_id
+            where request.workspace_id=${transaction.workspaceId}
+              and request.command_id=${parsed.commandId}
           `);
           const request = requestRowSchema.safeParse(requests.rows[0]);
           if (!request.success || request.data.status !== 'pending')
@@ -168,6 +170,9 @@ export function createOperatorRunReplayStore(
             throw new OperatorRunReplayNotExecutableError();
           const initial = checkpointFactory(version);
           const accepted = await acceptWorkflowRun(transaction, {
+            ...(request.data.started_by === null
+              ? {}
+              : { startedBy: request.data.started_by }),
             initialCheckpoint: initial.checkpoint,
             ...(initial.validateInput === undefined
               ? {}

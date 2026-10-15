@@ -87,6 +87,7 @@ function validResults(): {
           request_fingerprint: 'a'.repeat(64),
           run_input: { retained: true },
           source_run_id: sourceRunId,
+          started_by: workflowId,
           status: 'pending',
           workflow_id: workflowId,
           workflow_version_id: workflowVersionId,
@@ -212,6 +213,7 @@ describe('operator run replay validation', () => {
       expect.objectContaining({
         replayCommandId: commandId,
         replaySourceRunId: sourceRunId,
+        startedBy: workflowId,
         runInput: { retained: true },
         workflowId,
         workflowVersionId,

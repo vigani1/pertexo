@@ -117,7 +117,15 @@ function applyInvocationObservation(
   state: MutableWorkflowTransition,
   observation: Extract<
     WorkflowObservation,
-    { kind: 'outcome' | 'ready' | 'resume' | 'wait' | 'call_started' }
+    {
+      kind:
+        | 'outcome'
+        | 'ready'
+        | 'resume'
+        | 'wait'
+        | 'call_started'
+        | 'task_started';
+    }
   >,
   occurredAt: string,
 ): void {
@@ -151,14 +159,19 @@ function applyInvocationObservation(
       'checkpoint_invalid',
       `unknown invocation ${observation.invocationKey}`,
     );
-  if (observation.kind === 'call_started') {
+  if (
+    observation.kind === 'call_started' ||
+    observation.kind === 'task_started'
+  ) {
+    const waitKind =
+      observation.kind === 'call_started' ? 'workflow_call' : 'human_task';
     if (isTerminalNodeStatus(existing.status)) return;
-    if (existing.waitKind === 'workflow_call') return;
+    if (existing.waitKind === waitKind) return;
     assertNodeTransition(existing.status, 'waiting');
     state.invocations.set(existing.invocationKey, {
       ...existing,
       status: 'waiting',
-      waitKind: 'workflow_call',
+      waitKind,
     });
     state.eventDrafts.push(event('node.waiting', occurredAt, existing));
     return;

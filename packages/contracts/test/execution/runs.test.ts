@@ -54,6 +54,10 @@ describe('workflow-run public contracts', () => {
 
   it('documents acceptance, cancellation, replay, reads and SSE independently', () => {
     expect(Object.keys(workflowRunsOpenApiDocument.paths)).toEqual([
+      '/v1/workspaces/{workspaceId}/pending-tasks',
+      '/v1/workspaces/{workspaceId}/pending-tasks/audience',
+      '/v1/workspaces/{workspaceId}/pending-tasks/{taskId}',
+      '/v1/workspaces/{workspaceId}/pending-tasks/{taskId}/decide',
       '/v1/workspaces/{workspaceId}/usage-capacity',
       '/v1/workspaces/{workspaceId}/runs',
       '/v1/workspaces/{workspaceId}/run-statistics',

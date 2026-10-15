@@ -1,3 +1,4 @@
+import { pendingTaskProblems } from './pending-tasks.js';
 import { workflowErrorProblems } from './workflow-errors.js';
 import { z } from 'zod';
 import {
@@ -56,6 +57,12 @@ export const API_PROBLEM_CODES = [
   'workflow.concurrency_limit_unavailable',
   'workflow.error_policy_conflict',
   'workflow.error_target_unavailable',
+  'pending_task.already_resolved',
+  'pending_task.expired',
+  'pending_task.run_closed',
+  'pending_task.self_decision',
+  'pending_task.not_eligible',
+
   'workflow.input_case_revision_conflict',
   'workflow.input_case_limit_exceeded',
   ...WORKFLOW_ORGANIZATION_PROBLEM_CODES,
@@ -346,6 +353,7 @@ const apiProblemDetails = {
   },
   ...workflowConcurrencyProblems,
   ...workflowErrorProblems,
+  ...pendingTaskProblems,
   ...workflowInputCaseProblems,
   ...workflowOrganizationProblems,
   'workspace.auto_pause_settings_conflict': {

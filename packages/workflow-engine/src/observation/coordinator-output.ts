@@ -8,7 +8,7 @@ import type { OutputReference } from '../types.js';
 export function completedOutputReference(
   outcome: Readonly<Record<string, JsonValue>>,
   attemptId: string,
-): Exclude<OutputReference, { kind: 'call' | 'reused' }> | undefined {
+): Exclude<OutputReference, { kind: 'call' | 'reused' | 'task' }> | undefined {
   const output = outcome.output;
   if (!isJsonRecord(output)) return undefined;
   if (output.kind === 'inline' && output.attemptId === attemptId)
