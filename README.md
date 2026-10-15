@@ -198,3 +198,6 @@ Run a separate workflow after a failure:
 
 Published member/public forms and durable input requests:
 [forms guide](docs/forms.md).
+
+Shared non-secret configuration with immutable run snapshots:
+[workspace variables guide](docs/variables.md).

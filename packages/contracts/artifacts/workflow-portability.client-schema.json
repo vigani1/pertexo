@@ -79,6 +79,9 @@
             "pending_task.run_closed",
             "pending_task.self_decision",
             "pending_task.not_eligible",
+            "variables.changed",
+            "variables.usage_changed",
+            "workflow.variable_snapshot_unavailable",
             "form.unavailable",
             "form.changed",
             "form.access_conflict",
@@ -275,6 +278,24 @@
                 },
                 "result": {
                   "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "workspace_variable"
+                        },
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
                     {
                       "type": "object",
                       "properties": {
@@ -567,6 +588,24 @@
               },
               "additionalProperties": {
                 "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "workspace_variable"
+                      },
+                      "name": {
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  },
                   {
                     "type": "object",
                     "properties": {
@@ -1198,6 +1237,24 @@
                           "properties": {
                             "kind": {
                               "type": "string",
+                              "const": "workspace_variable"
+                            },
+                            "name": {
+                              "type": "string",
+                              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
                               "const": "literal"
                             },
                             "value": {
@@ -1485,6 +1542,24 @@
                   },
                   "additionalProperties": {
                     "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "workspace_variable"
+                          },
+                          "name": {
+                            "type": "string",
+                            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      },
                       {
                         "type": "object",
                         "properties": {
@@ -2128,6 +2203,24 @@
                           "properties": {
                             "kind": {
                               "type": "string",
+                              "const": "workspace_variable"
+                            },
+                            "name": {
+                              "type": "string",
+                              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
                               "const": "literal"
                             },
                             "value": {
@@ -2415,6 +2508,24 @@
                   },
                   "additionalProperties": {
                     "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "workspace_variable"
+                          },
+                          "name": {
+                            "type": "string",
+                            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      },
                       {
                         "type": "object",
                         "properties": {

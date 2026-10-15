@@ -1,6 +1,7 @@
 import type { ValueSource } from '@pertexo/workflow-model';
 
 export type ResultDraft =
+  | Readonly<{ kind: 'workspace_variable'; name: string }>
   | Readonly<{ kind: 'literal'; json: string }>
   | Readonly<{ kind: 'run_input'; path: string }>
   | Readonly<{ kind: 'node_output'; nodeId: string; path: string }>
@@ -10,6 +11,7 @@ export function editResult(result: ValueSource): ResultDraft {
   switch (result.kind) {
     case 'literal':
       return { kind: 'literal', json: JSON.stringify(result.value, null, 2) };
+    case 'workspace_variable':
     case 'run_input':
     case 'node_output':
     case 'expression':
@@ -33,6 +35,8 @@ export function declaredResult(result: ResultDraft): unknown {
 
 export function emptyResult(kind: ResultDraft['kind']): ResultDraft {
   switch (kind) {
+    case 'workspace_variable':
+      return { kind, name: '' };
     case 'literal':
       return { kind, json: 'null' };
     case 'run_input':

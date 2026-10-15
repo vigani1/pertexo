@@ -1,3 +1,4 @@
+import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import type {
   UsageCapacityResponse,
   WorkflowCallSummary,
@@ -283,6 +284,9 @@ export interface WorkflowRunPersistence {
   statistics(
     input: WorkflowRunStatisticsQuery,
   ): Promise<WorkflowRunStatisticsRecord>;
+  readVariables(
+    input: Readonly<{ workspaceId: string; runId: string }>,
+  ): Promise<WorkspaceVariableSnapshot | null | undefined>;
   readInput(
     input: Readonly<{ workspaceId: string; runId: string }>,
   ): Promise<WorkflowRunDataRecord | undefined>;

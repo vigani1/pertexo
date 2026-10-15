@@ -1,3 +1,4 @@
+import { workflowRunVariablesResponseSchema } from '../../schemas/identity/variables.js';
 import { formSchemas, formPaths } from './forms.js';
 import { pendingTaskPaths, pendingTaskSchemas } from './pending-tasks.js';
 import {
@@ -54,6 +55,10 @@ import {
 const schemas = Object.freeze({
   ...pendingTaskSchemas,
   ...formSchemas,
+  WorkflowRunVariablesResponse: jsonSchema(
+    workflowRunVariablesResponseSchema,
+    'output',
+  ),
   WorkflowRecoveryRequest: jsonSchema(workflowRecoveryRequestSchema, 'input'),
   WorkflowRecoveryPreview: jsonSchema(workflowRecoveryPreviewSchema, 'output'),
   WorkflowRecoveryUnavailableProblem: jsonSchema(
@@ -168,6 +173,23 @@ export const workflowRunsOpenApiDocument = Object.freeze({
   paths: {
     ...pendingTaskPaths,
     ...formPaths,
+    '/v1/workspaces/{workspaceId}/runs/{runId}/variables': {
+      get: {
+        operationId: 'getWorkflowRunVariables',
+        security: [{ cookieSession: [] }],
+        parameters: [pathParameter('workspaceId'), pathParameter('runId')],
+        responses: {
+          '200': jsonResponse(
+            'Retained run variable snapshot; null after logical detail expiry',
+            'WorkflowRunVariablesResponse',
+          ),
+          '401': responseReference('Unauthenticated'),
+          '404': responseReference('NotFound'),
+          '429': problemResponse('Rate limited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
     '/v1/workspaces/{workspaceId}/usage-capacity': {
       get: {
         operationId: 'getWorkspaceUsageCapacity',

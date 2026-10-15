@@ -27,6 +27,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId/alerts'
     | '/w/$workspaceId/settings'
     | '/w/$workspaceId/settings/usage'
+    | '/w/$workspaceId/settings/variables'
     | '/w/$workspaceId/settings/api-tokens'
   >;
   label: string;
@@ -109,6 +110,11 @@ export function spineDestinations(
     label: 'Settings',
     icon: <SlidersHorizontalIcon />,
     exact: true,
+  });
+  administration.push({
+    to: '/w/$workspaceId/settings/variables',
+    label: 'Variables',
+    icon: <SlidersHorizontalIcon />,
   });
   administration.push({
     to: '/w/$workspaceId/settings/api-tokens',

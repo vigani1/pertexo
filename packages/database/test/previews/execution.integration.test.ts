@@ -262,6 +262,41 @@ afterAll(async () => {
 });
 
 describe('durable preview acceptance', () => {
+  it('captures variables on preview admission and preserves them for exact retries', async () => {
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `insert into app.workspace_variables(workspace_id,revision,values_json) values($1,1,'{"RATE":10}')`,
+      [workspaceA],
+    );
+    const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptPreviewRun(transaction, input()),
+    );
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `update app.workspace_variables set revision=2,values_json='{"RATE":20}' where workspace_id=$1`,
+      [workspaceA],
+    );
+    const duplicate = await apiDatabase.withWorkspace(
+      workspaceA,
+      (transaction) => acceptPreviewRun(transaction, input()),
+    );
+    expect(duplicate.previewRunId).toBe(first.previewRunId);
+    const next = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptPreviewRun(transaction, input({ keyHash: digest('new-preview') })),
+    );
+    const stored = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      transaction.db
+        .select({ id: previewRuns.id, snapshot: previewRuns.variableSnapshot })
+        .from(previewRuns),
+    );
+    expect(
+      stored.find((row) => row.id === first.previewRunId)?.snapshot,
+    ).toEqual({ revision: 1, values: { RATE: 10 } });
+    expect(
+      stored.find((row) => row.id === next.previewRunId)?.snapshot,
+    ).toEqual({ revision: 2, values: { RATE: 20 } });
+  });
+
   it('atomically pins one preview, attempt, safe audit fact, and identifier-only job', async () => {
     const accepted = await apiDatabase.withWorkspace(
       workspaceA,

@@ -5,6 +5,7 @@ import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
   RunRequiresFormError,
+  RunVariableSnapshotUnavailableError,
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
@@ -113,6 +114,15 @@ export function createPostgresWorkflowRunPersistence(
       try {
         return await database.list(input);
       } catch (error: unknown) {
+        return mapPersistenceError(error);
+      }
+    },
+    readVariables: async (
+      input: Parameters<WorkflowRunPersistence['readVariables']>[0],
+    ) => {
+      try {
+        return await database.readVariables(input);
+      } catch (error) {
         return mapPersistenceError(error);
       }
     },
@@ -269,6 +279,12 @@ function mapPersistenceError(error: unknown): never {
       applicationError('workspace.quota_exceeded', {
         safeDetail: 'The workspace queued-run limit has been reached.',
         details: { retryAfterSeconds: error.retryAfterSeconds },
+      }),
+    );
+  if (error instanceof RunVariableSnapshotUnavailableError)
+    return throwWorkflowRunError(
+      applicationError('workflow.variable_snapshot_unavailable', {
+        safeDetail: error.message,
       }),
     );
   if (error instanceof RunRequiresFormError)

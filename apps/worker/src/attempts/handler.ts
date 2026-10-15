@@ -270,14 +270,14 @@ async function executePreparedNodeAttempt(
     }
     if (
       error instanceof WorkflowEngineError &&
-      error.code === 'attempt_invalid'
+      (error.code === 'attempt_invalid' || error.code === 'variable_missing')
     ) {
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
         lease,
         outcome: {
           status: 'failed',
-          safeErrorCode: 'execution.attempt_invalid',
+          safeErrorCode: `execution.${error.code}`,
         },
         ...traceContext,
         signal: contextSignal,

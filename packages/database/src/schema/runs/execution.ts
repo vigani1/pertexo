@@ -88,6 +88,9 @@ export const workflowRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
+    variableSnapshot: jsonb('variable_snapshot').default(
+      sql`'{"revision":0,"values":{}}'::jsonb`,
+    ),
     inputRef: jsonb('input_ref'),
     inputRefExpiresAt: timestamp('input_ref_expires_at', {
       withTimezone: true,
@@ -144,6 +147,10 @@ export const workflowRuns = appSchema.table(
     check(
       'workflow_runs_failure_notification_policy_complete',
       sql`((((failure_notification_destination_id IS NULL) AND (failure_notification_destination_config_version IS NULL) AND (failure_notification_side_effect_class IS NULL) AND (failure_notification_connection_secret_version_id IS NULL)) OR ((failure_notification_destination_id IS NOT NULL) AND (failure_notification_destination_config_version IS NOT NULL) AND (failure_notification_destination_config_version > 0) AND (failure_notification_side_effect_class IS NOT NULL) AND ((failure_notification_side_effect_class)::text = ANY ((ARRAY['safe'::character varying, 'idempotent_with_key'::character varying, 'unsafe'::character varying])::text[])))) IS TRUE)`,
+    ),
+    check(
+      'workflow_runs_variable_snapshot_valid',
+      sql`((variable_snapshot IS NOT NULL AND jsonb_typeof(variable_snapshot)='object' AND octet_length(variable_snapshot::text)<=65536) OR (variable_snapshot IS NULL AND details_purged_at IS NOT NULL)) IS TRUE`,
     ),
     check(
       'workflow_runs_input_ref_bounded',
@@ -688,6 +695,9 @@ export const previewRuns = appSchema.table(
     providerKey: varchar('provider_key', { length: 64 }),
     operationKey: varchar('operation_key', { length: 128 }),
     executableNodeJson: jsonb('executable_node_json').notNull(),
+    variableSnapshot: jsonb('variable_snapshot').default(
+      sql`'{"revision":0,"values":{}}'::jsonb`,
+    ),
     inputRef: jsonb('input_ref').notNull(),
     priorPreviewRunId: uuid('prior_preview_run_id'),
     sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
@@ -721,6 +731,10 @@ export const previewRuns = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'preview_runs_variable_snapshot_valid',
+      sql`(variable_snapshot IS NOT NULL AND jsonb_typeof(variable_snapshot)='object' AND octet_length(variable_snapshot::text)<=65536) IS TRUE`,
+    ),
     check(
       'preview_runs_definition_key_format',
       sql`((definition_key)::text ~ '^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)*$'::text)`,

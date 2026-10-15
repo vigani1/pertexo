@@ -8,6 +8,7 @@ export type CallableResultDecision =
       kind: 'invalid';
       reasonCode:
         | 'callable_result_missing'
+        | 'callable_result_variable_missing'
         | 'callable_result_ambiguous'
         | 'callable_result_invalid'
         | 'callable_result_bounds';

@@ -1,4 +1,8 @@
 import {
+  workflowRunVariablesResponseSchema,
+  type WorkflowRunVariablesResponse,
+} from '@pertexo/contracts';
+import {
   workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunInputResponseSchema,
@@ -176,5 +180,23 @@ export class ListWorkflowStepRunsUseCase {
         completedAt: iso(item.completedAt),
       })),
     });
+  }
+}
+
+export class GetWorkflowRunVariablesUseCase {
+  constructor(
+    private readonly persistence: Pick<WorkflowRunPersistence, 'readVariables'>,
+    private readonly authorization: WorkspaceAuthorizationSource,
+  ) {}
+  async execute(
+    input: GetWorkflowRunInputInput,
+  ): Promise<WorkflowRunVariablesResponse> {
+    await authorizeRunData(input, this.authorization);
+    const snapshot = await this.persistence.readVariables({
+      workspaceId: input.routeWorkspaceId,
+      runId: input.runId,
+    });
+    if (snapshot === undefined) throw new WorkflowRunNotFoundError();
+    return workflowRunVariablesResponseSchema.parse({ snapshot });
   }
 }

@@ -190,3 +190,14 @@ export {
   inputRequestConfigSchema,
   type InputRequestConfig,
 } from './pending-tasks/input-request.js';
+
+export {
+  WORKSPACE_VARIABLE_LIMITS,
+  workspaceVariableNameSchema,
+  workspaceVariableValueSchema,
+  workspaceVariableValuesSchema,
+  workspaceVariableSnapshotSchema,
+  EMPTY_VARIABLE_SNAPSHOT,
+  type WorkspaceVariableValues,
+  type WorkspaceVariableSnapshot,
+} from './variables/contract.js';

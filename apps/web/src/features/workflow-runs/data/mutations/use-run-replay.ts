@@ -59,6 +59,11 @@ function runReplayError(error: unknown): string {
     return 'We couldn’t confirm whether the replay started. Retry the same request within 24 hours to check acceptance without starting it twice.';
   if (isApiError(error) && error.problem?.code === 'form.required')
     return 'Form replays keep the exact original response. Open the workflow form to send new values.';
+  if (
+    isApiError(error) &&
+    error.problem?.code === 'workflow.variable_snapshot_unavailable'
+  )
+    return 'This run’s workspace variables expired. Start a new run to use current values.';
   if (isApiError(error) && error.status === 409)
     return 'This replay clashes with an earlier one. Close this dialog and start a new replay.';
   return describeCommandError(error, 'replaying this run');

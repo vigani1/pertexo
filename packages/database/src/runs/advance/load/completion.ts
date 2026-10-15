@@ -1,3 +1,4 @@
+import { workspaceVariableSnapshotSchema } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import type { RunAdvanceState } from '../contract.js';
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
@@ -9,6 +10,7 @@ export async function readRunCompletionValues(
     workspaceId: string;
     runId: string;
     inputRef: unknown;
+    variableSnapshot: unknown;
     nodeIds: readonly string[] | undefined;
   }>,
 ): ReturnType<RunAdvanceState['readCompletionValues']> {
@@ -54,6 +56,8 @@ export async function readRunCompletionValues(
           [input.workspaceId, input.runId, input.nodeIds ?? null],
         );
   return {
+    variables: workspaceVariableSnapshotSchema.parse(input.variableSnapshot)
+      .values,
     runInput: storedInput?.kind === 'inline' ? storedInput.value : undefined,
     outputs: result.rows.map((row) => {
       const stored =

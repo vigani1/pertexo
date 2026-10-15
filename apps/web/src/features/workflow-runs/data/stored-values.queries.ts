@@ -4,6 +4,7 @@ import {
   getWorkflowNodeRunInput,
   getWorkflowNodeRunOutput,
   getWorkflowRunInput,
+  getWorkflowRunVariables,
 } from './workflow-runs.api';
 import { workflowRunKeys } from './workflow-runs.queries';
 
@@ -106,5 +107,24 @@ export function nodeRunInputQueryOptions(
         ? 1_000 * 2 ** (reads - 1)
         : false;
     },
+  });
+}
+
+export function workflowRunVariablesQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  runId: string,
+) {
+  return queryOptions({
+    queryKey: [
+      ...workflowRunKeys.data(userId, workspaceId, runId),
+      'variables',
+    ],
+    queryFn: ({ signal }) =>
+      getWorkflowRunVariables(apiClient, workspaceId, runId, signal),
+    staleTime: Infinity,
+    gcTime: 0,
+    retry: false,
   });
 }

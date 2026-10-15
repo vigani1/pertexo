@@ -95,3 +95,10 @@ export type {
 } from './tokens/types.js';
 export { parseApiTokenCredential } from './tokens/credential.js';
 export type { ParsedApiTokenCredential } from './tokens/credential.js';
+
+export { createWorkspaceVariablesStore } from './variables/store.js';
+export {
+  WorkspaceVariablesConflictError,
+  WorkspaceVariableUsageChangedError,
+  type WorkspaceVariablesStore,
+} from './variables/contract.js';

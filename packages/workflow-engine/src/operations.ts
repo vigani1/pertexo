@@ -1,4 +1,8 @@
 import {
+  workspaceVariableValuesSchema,
+  type WorkspaceVariableValues,
+} from '@pertexo/workflow-model';
+import {
   taskDeclarationObservations,
   taskOutcomeObservations,
 } from './observation/coordinator-tasks.js';
@@ -361,6 +365,7 @@ async function resolveMappedNodeInput(
   expressionEvaluator?: ExpressionEvaluator,
   structuredInputs?: Readonly<Record<string, JsonValue>>,
   sourceFailure?: WorkflowNodeFailureValue,
+  variables?: WorkspaceVariableValues,
 ): Promise<JsonValue> {
   if (isTriggerSourceDefinition(node.definition)) return runInput;
   const mapped = Object.create(null) as Record<string, JsonValue>;
@@ -392,6 +397,7 @@ async function resolveMappedNodeInput(
         {
           runInput,
           nodeOutputs: completedOutputs,
+          ...(variables === undefined ? {} : { variables }),
           ...(sourceFailure === undefined
             ? {}
             : { nodeFailure: sourceFailure }),
@@ -411,7 +417,13 @@ async function resolveMappedNodeInput(
     )
       operationError('attempt_aborted', 'node attempt was aborted');
     if (resolution.kind === 'error')
-      operationError('attempt_invalid', 'mapping resolution failed');
+      operationError(
+        resolution.code === 'variable_missing' ||
+          resolution.expression?.code === 'variable_missing'
+          ? 'variable_missing'
+          : 'attempt_invalid',
+        'Mapping could not resolve; check its inputs and captured workspace variables.',
+      );
     if (resolution.kind === 'value') mapped[key] = resolution.value;
   }
   try {
@@ -426,6 +438,7 @@ export async function resolveSingleNodePreviewInput(
   input: Readonly<{
     node: unknown;
     runInput: unknown;
+    variables?: WorkspaceVariableValues;
     signal: AbortSignal;
     expressionEvaluator?: ExpressionEvaluator;
   }>,
@@ -462,6 +475,8 @@ export async function resolveSingleNodePreviewInput(
     input.signal,
     input.expressionEvaluator,
     undefined,
+    undefined,
+    workspaceVariableValuesSchema.parse(input.variables ?? {}),
   );
 }
 
@@ -481,6 +496,7 @@ export async function executeNodeAttempt(
   const {
     node,
     runInput,
+    variables,
     completedOutputs,
     directUpstream,
     structuredInputs,
@@ -497,6 +513,7 @@ export async function executeNodeAttempt(
     input.expressionEvaluator,
     structuredInputs,
     sourceFailure,
+    variables,
   );
   let executionInput = resolvedInput;
   if (isCoreMergeDefinition(node.definition)) {

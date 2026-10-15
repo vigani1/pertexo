@@ -75,3 +75,19 @@ export {
   type FormAccessRequest,
 } from './schemas/forms/requests.js';
 export { publicFormSubmissionResponseSchema } from './schemas/forms/requests.js';
+
+export {
+  workspaceVariablesResponseSchema,
+  workspaceVariablesRequestSchema,
+  workspaceVariablesCommandResponseSchema,
+  workspaceVariableUsageQuerySchema,
+  workspaceVariableUsageCursorSchema,
+  workspaceVariableUsageResponseSchema,
+  workflowRunVariablesResponseSchema,
+  type WorkspaceVariablesRequest,
+  type WorkspaceVariablesResponse,
+  type WorkspaceVariablesCommandResponse,
+  type WorkspaceVariableUsageCursor,
+  type WorkspaceVariableUsageResponse,
+  type WorkflowRunVariablesResponse,
+} from './schemas/identity/variables.js';

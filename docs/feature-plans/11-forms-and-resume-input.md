@@ -1,6 +1,6 @@
 # F11 — Forms and requested member input
 
-Status: implemented and merged in #302; natural main qualification pending.
+Status: complete; merged in #302 and natural main qualification passed.
 Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 
 ## Current code and outcome
@@ -216,7 +216,7 @@ Update existing CI real-stack browser journeys; no new job.
       completion, invalid fields, uncertain responses and dynamic publication.
 - [x] Lint, types, units, build, mocked e2e, contracts/schema/architecture/Knip,
       changed React Doctor, inspected screenshots and owned-fixture cleanup.
-- [ ] PR green, rebase merged; inspect natural main result.
+- [x] PR green, rebase merged; inspect natural main result.
 
 ## Local qualification
 
@@ -262,4 +262,5 @@ after this feature is implemented and merged.
 
 PR #302 rebase merged as `0eaa5ac4409a7bafe15b91445f7adb9952fad083`.
 CI 38732419684 passed all required jobs, including the real browser batch;
-CodeQL 38732419735 passed. Natural main CI is being inspected separately.
+CodeQL 38732419735 passed. Natural main CI 38735773347 passed every job, including ARM image publication;
+CodeQL 38735773344 also passed.

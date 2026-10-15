@@ -57,6 +57,9 @@ export async function resolveRunResult(
     {
       runInput: inputs.runInput ?? null,
       nodeOutputs,
+      ...(inputs.variables === undefined
+        ? {}
+        : { variables: inputs.variables }),
     },
     evaluator,
     signal,
@@ -66,9 +69,13 @@ export async function resolveRunResult(
     return {
       kind: 'invalid',
       reasonCode:
-        resolution.kind === 'missing'
-          ? 'callable_result_missing'
-          : 'callable_result_invalid',
+        resolution.kind === 'error' &&
+        (resolution.code === 'variable_missing' ||
+          resolution.expression?.code === 'variable_missing')
+          ? 'callable_result_variable_missing'
+          : resolution.kind === 'missing'
+            ? 'callable_result_missing'
+            : 'callable_result_invalid',
     };
   let prepared: ReturnType<typeof prepareStoredExecutionValue>;
   try {

@@ -1,4 +1,7 @@
-import { workflowNodeFailureValueSchema } from '@pertexo/workflow-model';
+import {
+  workspaceVariableSnapshotSchema,
+  workflowNodeFailureValueSchema,
+} from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -101,9 +104,10 @@ export async function loadNodeAttemptInputs(
         abort_requested: boolean;
         deadline_at: Date | null;
         input_ref: unknown;
+        variable_snapshot: unknown;
         scheduler_state: unknown;
       }>(
-        `select run.input_ref,run.deadline_at,checkpoint.scheduler_state,
+        `select run.input_ref,run.variable_snapshot,run.deadline_at,checkpoint.scheduler_state,
                 (run.cancel_requested_at is not null or
                  (run.deadline_at is not null and
                   run.deadline_at <= clock_timestamp())) as abort_requested,
@@ -249,6 +253,8 @@ export async function loadNodeAttemptInputs(
       return Object.freeze({
         ...(sourceFailure === undefined ? {} : { sourceFailure }),
         runInput,
+        variables: workspaceVariableSnapshotSchema.parse(row.variable_snapshot)
+          .values,
         completedNodeOutputs,
         abortRequested: row.abort_requested,
         ...(row.abort_reason === null ? {} : { abortReason: row.abort_reason }),

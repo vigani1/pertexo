@@ -1,4 +1,8 @@
 import {
+  workspaceVariablesResponseSchema,
+  workspaceVariablesRequestSchema,
+  workspaceVariablesCommandResponseSchema,
+  workspaceVariableUsageResponseSchema,
   apiTokenCreateRequestSchema,
   apiTokenCreateResponseSchema,
   apiTokenListResponseSchema,
@@ -62,6 +66,22 @@ describe('identity/workspace generated contracts', () => {
   it('projects every client schema mechanically from the owning Zod contract', () => {
     expect(identityWorkspaceClientContract).toEqual({
       schemas: {
+        WorkspaceVariablesResponse: generated(
+          workspaceVariablesResponseSchema,
+          'output',
+        ),
+        WorkspaceVariablesRequest: generated(
+          workspaceVariablesRequestSchema,
+          'input',
+        ),
+        WorkspaceVariablesCommandResponse: generated(
+          workspaceVariablesCommandResponseSchema,
+          'output',
+        ),
+        WorkspaceVariableUsageResponse: generated(
+          workspaceVariableUsageResponseSchema,
+          'output',
+        ),
         ApiTokenCreateRequest: generated(apiTokenCreateRequestSchema, 'input'),
         ApiTokenCreateResponse: generated(
           apiTokenCreateResponseSchema,
@@ -250,6 +270,8 @@ describe('identity/workspace generated contracts', () => {
     expect(Object.keys(identityWorkspaceOpenApiDocument.paths)).toEqual([
       '/v1/workspaces/{workspaceId}/api-tokens',
       '/v1/workspaces/{workspaceId}/api-tokens/{tokenId}/revoke',
+      '/v1/workspaces/{workspaceId}/variables',
+      '/v1/workspaces/{workspaceId}/variables/usage',
       '/v1/auth/capabilities',
       '/v1/users/me',
       '/v1/auth/account-security/sessions',

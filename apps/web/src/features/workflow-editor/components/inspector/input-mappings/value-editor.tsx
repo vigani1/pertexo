@@ -14,6 +14,7 @@ import { MappingSourceEditor } from './mapping-source-editor';
 type KindOption = Readonly<{ kind: EditableInputMappingKind; label: string }>;
 
 const kinds: readonly KindOption[] = [
+  { kind: 'workspace_variable', label: 'Variable' },
   { kind: 'literal', label: 'Value' },
   { kind: 'run_input', label: 'Run input' },
   { kind: 'node_output', label: 'Step output' },
@@ -66,8 +67,7 @@ export function MappingValueEditor({
         aria-label="Source"
         value={[row.kind]}
         disabled={disabled}
-        // The options share the width, tighter than a page toggle, so all
-        // four fit the inspector on one line.
+        // Wrap source choices within the inspector rather than narrowing the labels.
         className="w-full flex-wrap [&>*]:flex-1 [&>*]:px-1.5 [&>*]:text-[0.78rem]"
         onValueChange={(values) => {
           const kind: unknown = values[0];

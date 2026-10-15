@@ -55,7 +55,7 @@ function graph(): WorkflowGraph {
       node('manual', 'core.manual'),
       {
         ...node('prefix', 'core.set'),
-        inputMappings: { name: { kind: 'run_input', path: '$.name' } },
+        inputMappings: { name: { kind: 'workspace_variable', name: 'NAME' } },
       },
       {
         ...node('choice', 'core.condition'),
@@ -246,6 +246,10 @@ qualified(
         ]);
         dispatcher.start();
         const key = createHash('sha256').update(randomUUID()).digest('hex');
+        await fixture.ownerQuery(
+          'insert into app.workspace_variables(workspace_id,revision,values_json) values($1,1,\'{"NAME":"original"}\')',
+          [fixture.workspaceId],
+        );
         const source = await runs.start({
           actorId: fixture.actorId,
           workspaceId: fixture.workspaceId,
@@ -264,6 +268,10 @@ qualified(
             ),
           (rows) => rows[0]?.status === 'failed',
           30_000,
+        );
+        await fixture.ownerQuery(
+          'update app.workspace_variables set revision=2,values_json=\'{"NAME":"changed"}\' where workspace_id=$1',
+          [fixture.workspaceId],
         );
         const before = await runs.get({
           workspaceId: fixture.workspaceId,
@@ -347,6 +355,12 @@ qualified(
         expect(first.run.id).toBe(second.run.id);
         expect([first.replayed, second.replayed].sort()).toEqual([false, true]);
         const accepted = first.run.id;
+        expect(
+          await runs.readVariables({
+            workspaceId: fixture.workspaceId,
+            runId: accepted,
+          }),
+        ).toEqual({ revision: 1, values: { NAME: 'original' } });
         await fixture.waitFor(
           () =>
             fixture.workerQuery<{ status: string }>(

@@ -125,3 +125,5 @@ export {
   PendingTaskNotFoundError,
   type PendingTaskStore,
 } from './pending-tasks/store.js';
+
+export { RunVariableSnapshotUnavailableError } from './commands/variables.js';

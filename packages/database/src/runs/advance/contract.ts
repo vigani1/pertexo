@@ -1,3 +1,4 @@
+import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type {
   WorkflowCallOutcome,
   PendingTaskOutcome,
@@ -38,6 +39,7 @@ export type RunAdvanceState = Readonly<{
   readCompletionValues(nodeIds?: readonly string[]): Promise<
     Readonly<{
       runInput: JsonValue | undefined;
+      variables?: WorkspaceVariableValues;
       outputs: readonly Readonly<{
         nodeId: string;
         invocationKey: string;

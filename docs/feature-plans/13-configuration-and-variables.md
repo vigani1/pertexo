@@ -1,6 +1,6 @@
 # F13 — Workspace variables
 
-Status: implementation authorized by the owner's sequential feature request.
+Status: implemented; final qualification and PR merge pending.
 Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 
 ## Outcome and current code
@@ -72,17 +72,25 @@ runs exist would reinterpret executions.
   one immutable data binding, without adding operators, built-ins or a second
   expression policy/runtime. Bind a plain immutable copied value
   map, never the host environment or a callable object. Include it in the existing
-  expression input byte/member/depth budget. A direct reference to a missing
+  expression input byte/member/depth budget when the expression reads variables;
+  unrelated expressions retain their original two-value context and exact bounds. A direct reference to a missing
   name fails that mapping clearly, even inside a conditional/exists guard; use
   whole-map `$lookup` for optional names. A dynamic lookup with no match fails
   when it is the mapping result; ordinary JSONata missing behavior elsewhere
   stays unchanged. Errors and history expose a safe missing-configuration code,
   never variable values.
-- Keep the existing expression ValueSource; a picker inserts `$vars.NAME`. No new
-  graph format or overlapping variable-specific ValueSource.
+- Current compiler/authoring checks allow JSONata mappings only on definitions
+  that pin that policy (Set, conditions, list/date steps and Call). Preserve those
+  immutable definition pins. Add one typed ValueSource `{ kind: 'workspace_variable',
+  name }` for direct scalar lookup on any mapped input, displayed as `$vars.NAME`.
+  The picker uses it, avoiding an expression worker for a simple value. Existing
+  JSONata-capable mappings and callable expressions also bind `$vars` for computed
+  values. Both paths use one captured map and missing-name lookup rule. This is
+  an additive source variant inside the existing graph/executable envelopes;
+  reader rollout precedes new references, with no new policy or envelope version.
 - Run details expose retained non-secret snapshot/revision under existing run-read
-  authorization so people can explain execution. Snapshot retention follows run
-  details, remains while a live task needs it and is removed with workspace purge.
+  authorization so people can explain execution. Snapshot retention follows the existing 30-day completed-run detail window
+  (logical expiry applies before physical cleanup), remains while a live task needs it and is removed with workspace purge.
   Preview snapshots follow preview retention. Reader/writer rollout must precede
   enabling variable mappings; roll back writers before old readers.
 
@@ -91,7 +99,7 @@ runs exist would reinterpret executions.
 - `workflow-model/src/variables/` owns types and bounds; the server expression
   owner inspects JSONata's public AST for reference facts, never regex matching.
   Walk input mappings in root/body graphs and the callable result. Literal text
-  containing `$vars.NAME` is not a reference. Direct static reads name the value;
+  containing `$vars.NAME` is not a reference. Typed variable sources and direct static expression reads name the value;
   computed reads or whole-map access conservatively mean "may use any variable".
 - `database/src/tenant-access/variables/` owns scoped current-set commands and
   usage reads, exported through the existing tenant-access entry point. Reuse
@@ -113,8 +121,8 @@ runs exist would reinterpret executions.
   Plain forms, explicit typed controls, no JSON editor for routine values. Keep
   Weft typography, Status glyphs and existing thread pieces; one quiet visual
   explanation of "new runs pick up changes; existing runs keep their values".
-- The editor's Insert data picker lists variable name/type and inserts a normal
-  expression; explain snapshot semantics there. Queries own current values, local
+- The editor's Insert data picker lists variable name/type and inserts a typed
+  variable source; explain snapshot semantics there. Queries own current values, local
   form state owns unsaved edits, one feedback owner per failed command. Stable
   command identity/body survive uncertain outcomes; conflicts retain edits.
 - Desktop and phone layouts, keyboard labels/focus and reduced motion remain
@@ -144,17 +152,76 @@ phone and attach synthetic screenshots. No external provider is needed.
 ## Tracker
 
 - [x] Current owners and requested scope reconciled; recommendations recorded.
-- [ ] ADR and contracts complete.
-- [ ] Scoped persistence, snapshot admission and execution implemented.
-- [ ] Variable settings, usage and mapping UI implemented.
-- [ ] Independent persistence/runtime/browser evidence passed.
-- [ ] Rollout, guide, roadmap and remaining limits documented.
+- [x] ADR and contracts complete.
+- [x] Scoped persistence, snapshot admission and execution implemented.
+- [x] Variable settings, usage and mapping UI implemented.
+- [x] Independent persistence/runtime/browser evidence passed.
+- [x] Rollout, guide, roadmap and remaining limits documented.
 - [ ] PR green, rebase merged; inspect natural main result.
 
 ## Later work
 
 Environment overrides, secret variables, automatic substitution into configuration
 text, historical editable revisions and per-workflow variable ACLs are outside this
-feature. Exports keep the ordinary expression references, never workspace values;
+feature. Exports keep ordinary mapping references, never workspace values;
 imports resolve names in their destination workspace. No placeholder service or
 migration framework is added for later environments.
+
+### Admission/mapping refinement from code inspection — 2026-10-15
+
+The per-definition JSONata fence also exists in executable compilation and pin
+verification, not only the editor. A direct typed variable source keeps that
+contract intact and avoids changing every old definition or weakening the fence.
+Scalar lookup and the expression binding share the same snapshot; no environment
+lookup or second evaluator is added. Simple direct references do not spawn a worker.
+
+The shared retained-command boundary also needs the existing 24-hour receipt
+window and sticky uncertainty for HTTP 5xx after possible commit. Qualify those
+behaviors for Forms and variables while adding this consumer; expired requests
+never silently acquire new keys.
+
+### Bounded usage and read-only workspaces — 2026-10-15
+
+Each reference page analyses at most 100 candidate sources and 64 KiB of source,
+inside at most one workflow. A continuation is returned even when this budget
+finds no matching names, so large/invalid drafts cannot monopolize the API or
+be reported as unused. Oversized expressions hit the existing 16 KiB profile
+fence before parsing. Reference identities bind the draft revision/publication
+and source position. No materialized index, cache or additional worker is needed.
+Current members may read values/references in suspended or pending-deletion
+workspaces too; writes and new independent admissions still require active state.
+The existing current-authority read fence accepts that explicit status list.
+
+After implementation, isolate the final mechanical placement of the shared
+24-hour command constant, uncertainty classification and workspace API scope in a separate move commit.
+
+## Qualification — 2026-10-15
+
+- Real PostgreSQL: seven scoped configuration/usage tests plus eleven preview
+  persistence tests. Initial CAS race, complete committed old/new sets, exact
+  receipts, authority loss, read-only workspaces, forced RLS without caller
+  filters, safe audit, replay/expiry/physical cleanup and no-match usage budgets.
+- Real Redis/PostgreSQL workers: a three-run nested Call → Call → Request input
+  journey, restarted while pending, finishes with 10 for original/replay and 20
+  for a fresh run. Both typed mappings and a separately resolved JSONata callable
+  result use the same snapshot. The existing recovery qualification now also
+  edits configuration between source failure and recovery and proves the suffix
+  retains the original set. No production hooks.
+- Real API/worker/browser journey: an actual committed save loses its response
+  behind a local browser gateway, then exact retry produces one revision/audit.
+  A waiting run, replay and fresh run produce 10, 10 and 20; independent SQL
+  checks outputs, snapshots and audit metadata. Desktop 1280px and phone 375px,
+  reduced motion, labelled controls, keyboard submission and inspected synthetic
+  screenshots in `docs/media/variables/`.
+- Changed React Doctor: 100/100, no warnings or suppressions. Feedback rendering
+  has its own small component; draft state remains in the editor. An explicit
+  discard/reload queries current server values rather than reusing cached data;
+  a failed refresh retains local edits.
+
+Final local gates passed: 9,162 Vitest unit tests plus native checks; 176 mocked
+browser tests including variable edit/conflict/uncertainty, read-only usage
+pagination and the typed picker; TypeScript, lint, format/build, contracts,
+88-table schema ownership, architecture and Knip. PR/main receipts follow
+when observed. Local web
+units are run with two workers to avoid saturating the laptop while checking
+all 153 files; assertion deadlines and CI behavior are unchanged.

@@ -1,3 +1,11 @@
+import {
+  expressionVariableReferences,
+  type ExpressionVariableReferences,
+} from './variable-references.js';
+import {
+  workspaceVariableValuesSchema,
+  type WorkspaceVariableValues,
+} from '../variables/contract.js';
 import { isRecord } from '../json/object.js';
 import { availableParallelism } from 'node:os';
 import type { Worker, WorkerOptions } from 'node:worker_threads';
@@ -47,12 +55,14 @@ export type ExpressionResult =
         | 'limit_exceeded'
         | 'timed_out'
         | 'canceled'
-        | 'evaluation_failed';
+        | 'evaluation_failed'
+        | 'variable_missing';
       readonly message: string;
       readonly limit?: ExpressionLimit;
     };
 
 export interface ExpressionContext {
+  readonly variables?: WorkspaceVariableValues;
   readonly runInput: JsonValue;
   readonly nodeOutputs: Readonly<Record<string, JsonValue>>;
 }
@@ -231,7 +241,8 @@ function astSize(root: JsonataAst): {
       if (
         type === 'variable' &&
         parentKey !== 'procedure' &&
-        value.value !== ''
+        value.value !== '' &&
+        value.value !== 'vars'
       )
         disallowed = 'variable';
       const steps = isUnknownArray(value.steps) ? value.steps : undefined;
@@ -254,7 +265,11 @@ function astSize(root: JsonataAst): {
     : { nodes, depth, disallowed };
 }
 
-export function validateExpression(source: string): ExpressionValidation {
+export function inspectExpression(
+  source: string,
+):
+  | Exclude<ExpressionValidation, { kind: 'valid' }>
+  | Readonly<{ kind: 'valid'; references: ExpressionVariableReferences }> {
   if (Buffer.byteLength(source, 'utf8') > EXPRESSION_POLICY.expressionBytes)
     return expressionError(
       'limit_exceeded',
@@ -281,7 +296,7 @@ export function validateExpression(source: string): ExpressionValidation {
         'disallowed_construct',
         `JSONata construct ${size.disallowed} is unavailable`,
       );
-    return { kind: 'valid' };
+    return { kind: 'valid', references: expressionVariableReferences(ast) };
   } catch (cause) {
     return expressionError(
       'invalid_expression',
@@ -297,10 +312,13 @@ export const JSONATA_EVALUATOR_DIAGNOSTICS = Object.freeze({
 });
 
 /**
- * Canonicalizes only the two values exposed to JSONata. The evaluator calls
+ * Canonicalizes the data exposed to JSONata, including its immutable variable binding. The evaluator calls
  * this before queue admission so hostile context values cannot reach a worker.
  */
-export function projectExpressionContext(value: unknown): ExpressionContext {
+export function projectExpressionContext(
+  value: unknown,
+  readsVariables = true,
+): ExpressionContext {
   try {
     if (value === null || typeof value !== 'object') throw new TypeError();
     const runInputDescriptor = Object.getOwnPropertyDescriptor(
@@ -320,11 +338,22 @@ export function projectExpressionContext(value: unknown): ExpressionContext {
       throw new TypeError();
     const runInputValue: unknown = runInputDescriptor.value;
     const nodeOutputsValue: unknown = nodeOutputsDescriptor.value;
+    const variablesDescriptor = readsVariables
+      ? Object.getOwnPropertyDescriptor(value, 'variables')
+      : undefined;
+    if (variablesDescriptor !== undefined && !('value' in variablesDescriptor))
+      throw new TypeError();
+    const variablesValue: unknown = variablesDescriptor?.value;
     const canonical = canonicalizeJson({
       runInput: runInputValue,
       nodeOutputs: nodeOutputsValue,
+      ...(variablesValue === undefined ? {} : { variables: variablesValue }),
     });
     if (!isJsonObject(canonical)) throw new TypeError();
+    const variables =
+      canonical.variables === undefined
+        ? undefined
+        : workspaceVariableValuesSchema.parse(canonical.variables);
     const runInput = canonical.runInput;
     const nodeOutputs = canonical.nodeOutputs;
     if (
@@ -333,8 +362,17 @@ export function projectExpressionContext(value: unknown): ExpressionContext {
       !isJsonObject(nodeOutputs)
     )
       throw new TypeError();
-    return { runInput, nodeOutputs };
+    return {
+      runInput,
+      nodeOutputs,
+      ...(variables === undefined ? {} : { variables }),
+    };
   } catch {
     throw new TypeError('invalid expression context');
   }
+}
+
+export function validateExpression(source: string): ExpressionValidation {
+  const inspected = inspectExpression(source);
+  return inspected.kind === 'valid' ? { kind: 'valid' } : inspected;
 }

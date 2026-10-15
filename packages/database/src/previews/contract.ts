@@ -1,3 +1,4 @@
+import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 import type { parseStoredExecutionValue } from '../platform/stored-execution-value.js';
@@ -97,6 +98,7 @@ export type PreviewAttemptLease = Readonly<{
   executionDeadlineAt: Date;
   retentionExpiresAt: Date;
   input: ReturnType<typeof parseStoredExecutionValue>;
+  variables?: WorkspaceVariableValues;
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;
   nodeId: string;

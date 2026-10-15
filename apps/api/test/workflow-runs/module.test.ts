@@ -19,6 +19,7 @@ const dependencies = {
     replay: () => Promise.reject(new Error('not exercised')),
     get: () => Promise.resolve(undefined),
     list: () => Promise.resolve({ items: [] }),
+    readVariables: () => Promise.resolve({ revision: 0, values: {} }),
     readInput: () => Promise.resolve(undefined),
     readNodeRunOutput: () => Promise.resolve(undefined),
     readNodeRunInput: () => Promise.resolve(undefined),

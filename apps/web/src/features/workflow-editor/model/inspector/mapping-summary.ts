@@ -35,6 +35,10 @@ export function describeMappingSource(
   graph: GraphLevel,
 ): MappingSourceSummary {
   switch (row.kind) {
+    case 'workspace_variable':
+      return row.name === ''
+        ? { tone: 'missing', label: 'Choose a variable' }
+        : { tone: 'reference', label: `$vars.${row.name}` };
     case 'literal':
       return describeLiteral(row.literalJson);
     case 'expression':

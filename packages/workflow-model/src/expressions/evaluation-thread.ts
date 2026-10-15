@@ -1,6 +1,8 @@
 import { parentPort } from 'node:worker_threads';
 
 import jsonata from 'jsonata';
+import type { ExpressionRequest } from './policy.js';
+type EvaluationMessage = Pick<ExpressionRequest, 'expression' | 'context'>;
 
 function copyJsonataValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(copyJsonataValue);
@@ -21,15 +23,18 @@ if (port === null) throw new Error('expression worker requires a parent port');
 
 port.postMessage({ ready: true });
 async function evaluateExpression(
-  message: Readonly<{ expression: string; context: unknown }>,
+  message: EvaluationMessage,
   targetPort: NonNullable<typeof parentPort>,
 ): Promise<void> {
   try {
-    const input = copyJsonataValue(message.context);
+    const input = copyJsonataValue({
+      runInput: message.context.runInput,
+      nodeOutputs: message.context.nodeOutputs,
+    });
     targetPort.postMessage({ started: true });
-    const value = (await jsonata(message.expression).evaluate(
-      input,
-    )) as unknown;
+    const value = (await jsonata(message.expression).evaluate(input, {
+      vars: copyJsonataValue(message.context.variables ?? {}),
+    })) as unknown;
     targetPort.postMessage({
       ok: true,
       missing: value === undefined,
@@ -43,9 +48,6 @@ async function evaluateExpression(
   }
 }
 
-port.once(
-  'message',
-  (message: Readonly<{ expression: string; context: unknown }>) => {
-    void evaluateExpression(message, port);
-  },
-);
+port.once('message', (message: EvaluationMessage) => {
+  void evaluateExpression(message, port);
+});

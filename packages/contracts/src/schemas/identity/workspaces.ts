@@ -289,6 +289,7 @@ export const accessibleWorkspacesQuerySchema = z
 const workspaceCapabilitySchema = z.enum([
   'workspace:read',
   'workspace:manage',
+  'variable:manage',
   'artifact:read',
   'artifact:upload',
   'workflow:read',
@@ -311,7 +312,9 @@ export const accessibleWorkspaceSchema = workspaceResponseSchema
     status: z.enum(['active', 'suspended', 'pending_deletion']),
     revision: workspaceRevisionSchema,
     role: workspaceRoleSchema,
-    capabilities: z.array(workspaceCapabilitySchema).max(18),
+    capabilities: z
+      .array(workspaceCapabilitySchema)
+      .max(workspaceCapabilitySchema.options.length),
   })
   .strict();
 export const workspaceRenameResponseSchema = z

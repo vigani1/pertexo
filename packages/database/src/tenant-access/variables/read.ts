@@ -1,0 +1,24 @@
+import { eq } from 'drizzle-orm';
+import {
+  EMPTY_VARIABLE_SNAPSHOT,
+  workspaceVariableSnapshotSchema,
+  type WorkspaceVariableSnapshot,
+} from '@pertexo/workflow-model';
+import { workspaceVariables } from '../../schema/identity/variables.js';
+import type { WorkspaceTransaction } from '../transactions.js';
+/** Admission and settings share the same current-set projection. A missing row is an untouched workspace. */
+export async function readWorkspaceVariables(
+  transaction: WorkspaceTransaction,
+): Promise<WorkspaceVariableSnapshot> {
+  const [row] = await transaction.db
+    .select({
+      revision: workspaceVariables.revision,
+      values: workspaceVariables.values,
+    })
+    .from(workspaceVariables)
+    .where(eq(workspaceVariables.workspaceId, transaction.workspaceId))
+    .limit(1);
+  return row === undefined
+    ? EMPTY_VARIABLE_SNAPSHOT
+    : workspaceVariableSnapshotSchema.parse(row);
+}

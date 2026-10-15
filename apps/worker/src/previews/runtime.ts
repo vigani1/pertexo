@@ -83,6 +83,9 @@ export function createPlatformPreviewNodeInvoker(
       const resolvedInput = await resolveSingleNodePreviewInput({
         node,
         runInput: lease.input.value,
+        ...(lease.variables === undefined
+          ? {}
+          : { variables: lease.variables }),
         signal,
         expressionEvaluator,
       });
@@ -108,6 +111,11 @@ export function createPlatformPreviewNodeInvoker(
       return succeededWith(result.output);
     } catch (error: unknown) {
       try {
+        if (
+          error instanceof WorkflowEngineError &&
+          error.code === 'variable_missing'
+        )
+          return failedWith('preview.variable_missing');
         if (error instanceof z.ZodError)
           return failedWith('preview.executable_invalid');
         if (
