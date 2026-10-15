@@ -1,22 +1,35 @@
 import type { PoolClient } from 'pg';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   EMPTY_VARIABLE_SNAPSHOT,
   workspaceVariableSnapshotSchema,
   type WorkspaceVariableSnapshot,
 } from '@pertexo/workflow-model';
-import { workspaceVariables } from '../schema/variables.js';
+import {
+  workspaceVariables,
+  workspaceVariableSetRevisions,
+} from '../schema/variables.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-/** Admission and settings share the same current-set projection. A missing row is an untouched workspace. */
+/** Settings read one committed head/set view; a missing head is an untouched workspace. */
 export async function readWorkspaceVariables(
   transaction: WorkspaceTransaction,
 ): Promise<WorkspaceVariableSnapshot> {
   const [row] = await transaction.db
     .select({
       revision: workspaceVariables.revision,
-      values: workspaceVariables.values,
+      values: workspaceVariableSetRevisions.values,
     })
     .from(workspaceVariables)
+    .innerJoin(
+      workspaceVariableSetRevisions,
+      and(
+        eq(
+          workspaceVariableSetRevisions.workspaceId,
+          workspaceVariables.workspaceId,
+        ),
+        eq(workspaceVariableSetRevisions.revision, workspaceVariables.revision),
+      ),
+    )
     .where(eq(workspaceVariables.workspaceId, transaction.workspaceId))
     .limit(1);
   return row === undefined
@@ -24,15 +37,37 @@ export async function readWorkspaceVariables(
     : workspaceVariableSnapshotSchema.parse(row);
 }
 
-/** A publication must keep its checked names current until it commits. */
+/** Admission holds the head until its immutable reference has been inserted. */
+export async function captureWorkspaceVariableRevision(
+  transaction: WorkspaceTransaction,
+): Promise<number | null> {
+  const [row] = await transaction.db
+    .select({ revision: workspaceVariables.revision })
+    .from(workspaceVariables)
+    .where(eq(workspaceVariables.workspaceId, transaction.workspaceId))
+    .limit(1)
+    .for('share');
+  return row?.revision ?? null;
+}
+
+/** Lock only the mutable head, then read its exact immutable set after any wait. */
 export async function lockWorkspaceVariableNames(
   client: PoolClient,
   workspaceId: string,
 ): Promise<readonly string[]> {
-  const found = await client.query<{ names: string[] }>(
-    `select array(select jsonb_object_keys(values_json)) names
-     from app.workspace_variables where workspace_id=$1 for share`,
+  const head = await client.query<{ revision: number }>(
+    'select revision from app.workspace_variables where workspace_id=$1 for share',
     [workspaceId],
   );
-  return found.rows[0]?.names ?? [];
+  const revision = head.rows[0]?.revision;
+  if (revision === undefined) return [];
+  const found = await client.query<{ names: string[] }>(
+    `select array(select jsonb_object_keys(values_json)) names
+     from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2`,
+    [workspaceId, revision],
+  );
+  const row = found.rows[0];
+  if (row === undefined)
+    throw new Error('Workspace variable revision is missing');
+  return row.names;
 }

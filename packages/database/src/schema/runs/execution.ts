@@ -1,3 +1,4 @@
+import { workspaceVariableSetRevisions } from '../variables.js';
 import { workspaceExecutionEntitlementVersions } from './entitlements.js';
 import { failureNotificationDestinationVersions } from '../notifications.js';
 import { users } from '../foundation.js';
@@ -88,9 +89,7 @@ export const workflowRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    variableSnapshot: jsonb('variable_snapshot').default(
-      sql`'{"revision":0,"values":{}}'::jsonb`,
-    ),
+    variableSetRevision: integer('variable_set_revision'),
     inputRef: jsonb('input_ref'),
     inputRefExpiresAt: timestamp('input_ref_expires_at', {
       withTimezone: true,
@@ -110,6 +109,17 @@ export const workflowRuns = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      name: 'workflow_runs_variable_set_fk',
+      columns: [table.workspaceId, table.variableSetRevision],
+      foreignColumns: [
+        workspaceVariableSetRevisions.workspaceId,
+        workspaceVariableSetRevisions.revision,
+      ],
+    }),
+    index('workflow_runs_variable_set_idx')
+      .on(table.workspaceId, table.variableSetRevision)
+      .where(sql`variable_set_revision IS NOT NULL`),
     foreignKey({
       name: 'workflow_runs_starter_fk',
       columns: [table.startedBy],
@@ -149,8 +159,8 @@ export const workflowRuns = appSchema.table(
       sql`((((failure_notification_destination_id IS NULL) AND (failure_notification_destination_config_version IS NULL) AND (failure_notification_side_effect_class IS NULL) AND (failure_notification_connection_secret_version_id IS NULL)) OR ((failure_notification_destination_id IS NOT NULL) AND (failure_notification_destination_config_version IS NOT NULL) AND (failure_notification_destination_config_version > 0) AND (failure_notification_side_effect_class IS NOT NULL) AND ((failure_notification_side_effect_class)::text = ANY ((ARRAY['safe'::character varying, 'idempotent_with_key'::character varying, 'unsafe'::character varying])::text[])))) IS TRUE)`,
     ),
     check(
-      'workflow_runs_variable_snapshot_valid',
-      sql`((variable_snapshot IS NOT NULL AND jsonb_typeof(variable_snapshot)='object' AND octet_length(variable_snapshot::text)<=65536) OR (variable_snapshot IS NULL AND details_purged_at IS NOT NULL)) IS TRUE`,
+      'workflow_runs_variable_set_retention',
+      sql`details_purged_at IS NULL OR variable_set_revision IS NULL`,
     ),
     check(
       'workflow_runs_input_ref_bounded',
@@ -695,9 +705,7 @@ export const previewRuns = appSchema.table(
     providerKey: varchar('provider_key', { length: 64 }),
     operationKey: varchar('operation_key', { length: 128 }),
     executableNodeJson: jsonb('executable_node_json').notNull(),
-    variableSnapshot: jsonb('variable_snapshot').default(
-      sql`'{"revision":0,"values":{}}'::jsonb`,
-    ),
+    variableSetRevision: integer('variable_set_revision'),
     inputRef: jsonb('input_ref').notNull(),
     priorPreviewRunId: uuid('prior_preview_run_id'),
     sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
@@ -731,10 +739,17 @@ export const previewRuns = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
-    check(
-      'preview_runs_variable_snapshot_valid',
-      sql`(variable_snapshot IS NOT NULL AND jsonb_typeof(variable_snapshot)='object' AND octet_length(variable_snapshot::text)<=65536) IS TRUE`,
-    ),
+    foreignKey({
+      name: 'preview_runs_variable_set_fk',
+      columns: [table.workspaceId, table.variableSetRevision],
+      foreignColumns: [
+        workspaceVariableSetRevisions.workspaceId,
+        workspaceVariableSetRevisions.revision,
+      ],
+    }),
+    index('preview_runs_variable_set_idx')
+      .on(table.workspaceId, table.variableSetRevision)
+      .where(sql`variable_set_revision IS NOT NULL`),
     check(
       'preview_runs_definition_key_format',
       sql`((definition_key)::text ~ '^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)*$'::text)`,

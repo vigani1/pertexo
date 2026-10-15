@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, Client } from 'pg';
 
 export function scopedConnectionUrl(
   baseUrl: string,
@@ -13,7 +13,7 @@ export function scopedConnectionUrl(
 }
 
 export async function waitForApplicationLock(
-  observer: Pool,
+  observer: Pool | Client,
   applicationName: string,
 ): Promise<void> {
   let lastObserved: unknown = null;

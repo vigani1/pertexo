@@ -1,5 +1,4 @@
-import { variablesForAcceptance } from './variables.js';
-import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
+import { variableRevisionForAcceptance } from './variables.js';
 import { requireFormAdmission } from './forms.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { lockExecutionArtifactReferences } from '../../artifacts/references.js';
@@ -285,7 +284,7 @@ export async function readWorkflowRunAcceptanceReplay(
 
 export type PreparedWorkflowRunAcceptance = Readonly<{
   runId?: string;
-  variableSnapshot?: WorkspaceVariableSnapshot;
+  variableSetRevision?: number | null;
   errorWorkflowOrigin?: boolean;
   recovery?: WorkflowRecoverySummary;
   failureNotificationPolicy: Awaited<
@@ -358,10 +357,10 @@ export async function acceptWorkflowRun(
             )
             .limit(1)
         )[0]?.origin === true;
-  const variableSnapshot = await variablesForAcceptance(
+  const variableSetRevision = await variableRevisionForAcceptance(
     transaction,
     parsed.replaySourceRunId,
-    prepared.variableSnapshot,
+    prepared.variableSetRevision,
   );
   const { failureNotificationPolicy } = prepared;
   const idempotencyRecordId = generatePersistedId();
@@ -436,7 +435,7 @@ export async function acceptWorkflowRun(
             : sql`${storedRunInputJson}::jsonb`,
         inputRefExpiresAt:
           storedRunInputJson === null ? null : sql`now() + interval '30 days'`,
-        variableSnapshot,
+        variableSetRevision,
         triggerType: parsed.triggerType,
         startedBy: parsed.startedBy ?? null,
         absoluteDeadlineAt:

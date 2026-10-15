@@ -1,3 +1,4 @@
+import { VARIABLE_SET_RETENTION_RULE } from '../variables/retention.js';
 import { API_TOKEN_RETENTION_RULE } from './identity/api-tokens.js';
 import { reapInvitationReplacementClaims } from './invitation-claims.js';
 import {
@@ -96,7 +97,7 @@ export const RETENTION_RULES = Object.freeze([
         order by run.completed_at, run.id limit $1 for update skip locked
       )
       update app.workflow_runs run
-      set output_ref = null, error_summary = null, cancel_reason = null, variable_snapshot = null,
+      set output_ref = null, error_summary = null, cancel_reason = null, variable_set_revision = null,
           details_purged_at = clock_timestamp(), updated_at = clock_timestamp()
       from page where run.id = page.id`,
   },
@@ -433,6 +434,7 @@ export const RETENTION_RULES = Object.freeze([
       delete from app.workflow_input_cases input_case using page
       where input_case.workspace_id = page.workspace_id and input_case.id = page.id`,
   },
+  VARIABLE_SET_RETENTION_RULE,
 ] as const);
 
 export type RetentionRuleName = (typeof RETENTION_RULES)[number]['name'];

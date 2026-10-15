@@ -37,14 +37,23 @@ export async function replaceWorkspaceVariables(
       .digest('hex'),
   });
   if (replay !== null) return { ...result.parse(replay), replayed: true };
-  const found = await client.query<{ revision: number; values_json: unknown }>(
-    'select revision,values_json from app.workspace_variables where workspace_id=$1 for update',
+  const found = await client.query<{ revision: number }>(
+    'select revision from app.workspace_variables where workspace_id=$1 for update',
     [input.workspaceId],
   );
   const row = found.rows[0];
+  const stored =
+    row === undefined
+      ? undefined
+      : (
+          await client.query<{ values_json: unknown }>(
+            'select values_json from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2',
+            [input.workspaceId, row.revision],
+          )
+        ).rows[0];
   const current = workspaceVariableSnapshotSchema.parse({
     revision: row?.revision ?? 0,
-    values: row?.values_json ?? {},
+    values: row === undefined ? {} : stored?.values_json,
   });
   if (current.revision !== input.expectedRevision)
     throw new WorkspaceVariablesConflictError();
@@ -55,15 +64,20 @@ export async function replaceWorkspaceVariables(
     .filter((name) => !Object.is(current.values[name], input.values[name]));
   let revision = current.revision;
   if (names.length > 0) {
-    const saved = await client.query<{ revision: number }>(
-      `insert into app.workspace_variables(workspace_id,revision,values_json) values($1,1,$2::jsonb)
-   on conflict(workspace_id) do update set revision=workspace_variables.revision+1,values_json=excluded.values_json,updated_at=clock_timestamp()
-   where workspace_variables.revision=$3 returning revision`,
-      [input.workspaceId, canonicalJson(input.values), input.expectedRevision],
+    revision = current.revision + 1;
+    const inserted = await client.query<{ revision: number }>(
+      `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json)
+       values($1,$2,$3::jsonb) on conflict do nothing returning revision`,
+      [input.workspaceId, revision, canonicalJson(input.values)],
     );
-    const version = saved.rows[0];
-    if (version === undefined) throw new WorkspaceVariablesConflictError();
-    revision = version.revision;
+    if (inserted.rowCount !== 1) throw new WorkspaceVariablesConflictError();
+    const saved = await client.query<{ revision: number }>(
+      `insert into app.workspace_variables(workspace_id,revision) values($1,$2)
+       on conflict(workspace_id) do update set revision=excluded.revision,updated_at=clock_timestamp()
+       where workspace_variables.revision=$3 returning revision`,
+      [input.workspaceId, revision, input.expectedRevision],
+    );
+    if (saved.rowCount !== 1) throw new WorkspaceVariablesConflictError();
     await client.query(
       `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
    values($1,$2,$3,'workspace.variables_changed','workspace_variables',$2,$4,$5,$6::jsonb)`,

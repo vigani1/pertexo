@@ -4,7 +4,6 @@ import type { PoolClient } from 'pg';
 import {
   CallableInputInvalidError,
   canonicalJson,
-  workspaceVariableSnapshotSchema,
 } from '@pertexo/workflow-model';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';
@@ -81,9 +80,9 @@ export async function acceptPendingCall(
     error_workflow_origin: boolean;
     started_by: string | null;
     absolute_deadline_at: Date | null;
-    variable_snapshot: unknown;
+    variable_set_revision: number | null;
   }>(
-    `select run.status,run.cancel_requested_at,run.error_workflow_origin,run.started_by,run.absolute_deadline_at,run.variable_snapshot,
+    `select run.status,run.cancel_requested_at,run.error_workflow_origin,run.started_by,run.absolute_deadline_at,run.variable_set_revision,
        run.deadline_at <= clock_timestamp() as deadline_expired,
        exists(select 1 from jsonb_array_elements(checkpoint.scheduler_state->'invocations') invocation
          where invocation->>'status'='running') as has_ordinary_work,
@@ -163,9 +162,7 @@ export async function acceptPendingCall(
       {
         ...preparation,
         errorWorkflowOrigin: row.error_workflow_origin,
-        variableSnapshot: workspaceVariableSnapshotSchema.parse(
-          row.variable_snapshot,
-        ),
+        variableSetRevision: row.variable_set_revision,
       },
     );
     const bound = await client.query(

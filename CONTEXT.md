@@ -133,11 +133,14 @@ Names use uppercase identifiers; mappings display direct typed references as
 `$vars.NAME`, and existing JSONata expressions may compute with the same
 binding.
 
-A **variable snapshot** is the complete revision and value map captured at run
-admission. Independent runs and previews capture current configuration; replay,
-step recovery and nested child workflows retain their source or parent's set. An
-error workflow is independent and captures current values. Workers never look up
-mutable configuration while executing. Snapshots expire with execution details;
-missing historical snapshots refuse replay rather than substitute current
-values. See [the guide](docs/variables.md) and
+A **variable set revision** is one immutable workspace map of values and
+optional descriptions, stored once per change. A **variable snapshot** is its
+revision and value map captured at run admission; executions store only a
+workspace-bound reference. Revision zero is the fixed empty set. Independent
+runs and previews capture current configuration; replay, step recovery and
+nested child workflows retain their source or parent's set. An error workflow is
+independent and captures current values. Workers never look up mutable
+configuration while executing. Snapshots expire with execution details; missing
+historical snapshots refuse replay rather than substitute current values. See
+[the guide](docs/variables.md) and
 [ADR 078](docs/adr/078-run-variable-snapshots.md).

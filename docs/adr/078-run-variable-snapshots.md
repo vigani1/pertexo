@@ -31,6 +31,9 @@ sets; run detail cleanup and preview deletion release references. Workspace
 purge removes heads and executions before revisions. App permissions do not
 allow revision updates. Migrate existing snapshots without changing their values,
 and stop old API/worker readers before the coordinated schema/binary rollout.
+The owner briefly disables forced row security on previews inside the migration
+transaction to update all workspaces, then restores it before commit; the usual
+owner policy only permits workspace-scoped preview updates.
 
 Publication checks required static variable names using the existing bounded
 authoring worker and its AST inspection. Optional/dynamic lookups keep their
@@ -44,9 +47,9 @@ environment, secret material, per-workflow ACL, version-history service or extra
 runtime. Audit stores names/revision only. Values are explicitly visible to every
 member; Connections remain the credential authority.
 
-At admission, each independent run captures `{ revision, values }` in its own
-retained details. Exact command retries keep the accepted snapshot. Full replay
-and step recovery copy their source snapshot, including when another published
+At admission, each independent run captures a reference to the current immutable
+set in its retained details; read responses resolve `{ revision, values }`. Exact command retries keep the accepted snapshot. Full replay
+and step recovery retain their source reference, including when another published
 version is selected. Child Calls inherit the parent snapshot recursively. Error
 workflows are independent starts and capture the current set; no source snapshot
 is added to their safe failure summary. Previews capture current values at their
@@ -55,8 +58,7 @@ own admission. Existing pre-feature runs have an empty revision-zero snapshot.
 Workers resolve variables from the captured run/preview only. Snapshot access
 uses existing attempt fencing and run-read authorization. Live runs retain them;
 ordinary detail retention clears them. A purged replay/recovery source refuses
-instead of substituting current configuration. Workspace purge removes both the
-current set and its run details.
+instead of substituting current configuration. Workspace purge removes current heads, execution references and immutable sets.
 
 Expose a typed direct variable ValueSource, displayed as `$vars.NAME`, on every
 mapped input. Existing JSONata-capable nodes and callable expressions additionally

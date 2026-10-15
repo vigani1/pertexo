@@ -4,7 +4,10 @@ import {
   noticeSubscriptions,
 } from './schema/inbox/preferences.js';
 import { noticeMailBatches, noticeMailItems } from './schema/inbox/mail.js';
-import { workspaceVariables } from './schema/variables.js';
+import {
+  workspaceVariables,
+  workspaceVariableSetRevisions,
+} from './schema/variables.js';
 import { workflowForms } from './schema/triggers/forms.js';
 import { pendingRunTasks } from './schema/runs/pending-task.js';
 import { workflowErrorPolicies } from './schema/authoring/error-workflow.js';
@@ -139,6 +142,7 @@ export {
   auditEvents,
   usageEvents,
 } from './schema/foundation.js';
+export { workspaceVariableSetRevisions } from './schema/variables.js';
 export { rlsProbeRecords } from './schema/rls-probe.js';
 export {
   artifacts,
@@ -183,6 +187,7 @@ export const databaseSchema = {
   noticeMailBatches,
   noticeMailItems,
   workspaceVariables,
+  workspaceVariableSetRevisions,
   workflowForms,
   pendingRunTasks,
   workflowErrorPolicies,

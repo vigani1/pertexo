@@ -1,4 +1,5 @@
-import { workspaceVariableSnapshotSchema } from '@pertexo/workflow-model';
+import { variableSetValuesSql } from '../../variables/values.js';
+import { workspaceVariableValuesSchema } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -42,7 +43,7 @@ async function loadPreviewLease(
       executor_key: string;
       executor_version: number;
       input_ref: unknown;
-      variable_snapshot: unknown;
+      variable_values: unknown;
       may_contact_provider: boolean;
       may_cause_external_side_effect: boolean;
       node_id: string;
@@ -54,14 +55,16 @@ async function loadPreviewLease(
     }> & { execution_deadline_at: Date; retention_expires_at: Date }
   >(
     `select definition_key,definition_version,dry_run,executable_node_json,
-            executor_key,executor_version,input_ref,variable_snapshot,may_contact_provider,
+            executor_key,executor_version,input_ref,${variableSetValuesSql('preview')} variable_values,may_contact_provider,
              may_cause_external_side_effect,node_id,operation_key,provider_key,
              side_effect_class,
             traceparent,workflow_id,
             execution_deadline_at,
             expires_at as retention_expires_at
-     from app.preview_runs
-     where workspace_id=$1 and id=$2`,
+     from app.preview_runs preview
+     left join app.workspace_variable_set_revisions variable_set
+       on variable_set.workspace_id=preview.workspace_id and variable_set.revision=preview.variable_set_revision
+     where preview.workspace_id=$1 and preview.id=$2`,
     [input.workspaceId, input.previewRunId],
   );
   const attempts = await client.query<{
@@ -103,8 +106,7 @@ async function loadPreviewLease(
     executionDeadlineAt: run.execution_deadline_at,
     retentionExpiresAt: run.retention_expires_at,
     input: parseStoredExecutionValue(run.input_ref),
-    variables: workspaceVariableSnapshotSchema.parse(run.variable_snapshot)
-      .values,
+    variables: workspaceVariableValuesSchema.parse(run.variable_values),
     mayContactProvider: run.may_contact_provider,
     mayCauseExternalSideEffect: run.may_cause_external_side_effect,
     nodeId: run.node_id,

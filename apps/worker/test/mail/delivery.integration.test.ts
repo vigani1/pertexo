@@ -379,7 +379,7 @@ it('delivers real personal notice mail, refuses revoked content before DATA, and
       [workflowId, workspaceId, user],
     );
     await owner.query(
-      `with tenant as(select set_config('app.workspace_id',$2::text,true)) insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,input_ref,input_ref_expires_at,variable_snapshot) select $1::uuid,$2::uuid,$3::uuid,$4::uuid,'manual','failed','{"kind":"inline","value":{"private":"NEVER_MAIL_INPUT"}}'::jsonb,clock_timestamp()+interval '7 days','{"revision":1,"values":{"PRIVATE":"NEVER_MAIL_VARIABLE"}}'::jsonb from tenant`,
+      `with tenant as(select set_config('app.workspace_id',$2::text,true)), revision as(insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json) select $2::uuid,1,'{"PRIVATE":"NEVER_MAIL_VARIABLE"}'::jsonb from tenant returning workspace_id,revision) insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,input_ref,input_ref_expires_at,variable_set_revision) select $1::uuid,revision.workspace_id,$3::uuid,$4::uuid,'manual','failed','{"kind":"inline","value":{"private":"NEVER_MAIL_INPUT"}}'::jsonb,clock_timestamp()+interval '7 days',revision.revision from revision`,
       [runId, workspaceId, workflowId, randomUUID()],
     );
     await owner.query(

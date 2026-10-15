@@ -1,7 +1,12 @@
+import { waitForApplicationLock } from '../support/postgres/lock-coordination.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
+import {
+  canonicalJson,
+  workspaceVariableValuesSchema,
+} from '@pertexo/workflow-model';
 import { createCheckpoint } from '@pertexo/workflow-engine';
 import type {
   WorkspaceVariableSnapshot,
@@ -26,10 +31,15 @@ import {
   userId,
 } from '../lifecycle/retention.support.js';
 const config = () => parseDatabaseConfig({ connectionString: apiUrl, max: 4 });
+const admissionApplication = `variable-admission-${randomUUID()}`;
 let store: ReturnType<typeof createWorkspaceVariablesStore>, pool: Pool;
 beforeAll(() => {
   store = createWorkspaceVariablesStore(config());
-  pool = new Pool({ connectionString: apiUrl, max: 4 });
+  pool = new Pool({
+    connectionString: apiUrl,
+    max: 4,
+    application_name: admissionApplication,
+  });
 });
 afterAll(async () => {
   await store.close();
@@ -77,11 +87,14 @@ async function admit(f: Awaited<ReturnType<typeof fixture>>, key = hash()) {
 }
 async function snapshot(runId: string) {
   return (
-    await admin.query<{ variable_snapshot: WorkspaceVariableSnapshot }>(
-      'select variable_snapshot from app.workflow_runs where id=$1',
+    await admin.query<{ snapshot: WorkspaceVariableSnapshot | null }>(
+      `select case when run.details_purged_at is not null then null else jsonb_build_object(
+       'revision',coalesce(run.variable_set_revision,0),'values',case when run.variable_set_revision is null then '{}'::jsonb else variable_set.values_json end) end snapshot
+       from app.workflow_runs run left join app.workspace_variable_set_revisions variable_set
+         on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision where run.id=$1`,
       [runId],
     )
-  ).rows[0]?.variable_snapshot;
+  ).rows[0]?.snapshot;
 }
 it('stores typed current values once, acknowledges exact commands and audits names without values', async () => {
   const f = await fixture();
@@ -242,48 +255,99 @@ it('forces workspace row security even without a caller-supplied filter', async 
   expect(
     (await pool.query('select workspace_id from app.workspace_variables')).rows,
   ).toEqual([]);
+  expect(
+    (
+      await withWorkspaceTransaction(pool, a.workspaceId, (transaction) =>
+        transaction.db.execute(
+          sql`select workspace_id from app.workspace_variable_set_revisions`,
+        ),
+      )
+    ).rows,
+  ).toEqual([{ workspace_id: a.workspaceId }]);
+  expect(
+    (
+      await pool.query(
+        'select workspace_id from app.workspace_variable_set_revisions',
+      )
+    ).rows,
+  ).toEqual([]);
+  await expect(
+    withWorkspaceTransaction(pool, a.workspaceId, (transaction) =>
+      transaction.db.execute(
+        sql`update app.workspace_variable_set_revisions set values_json='{}'::jsonb`,
+      ),
+    ),
+  ).rejects.toMatchObject({ cause: { code: '42501' } });
+  await expect(
+    withWorkspaceTransaction(pool, a.workspaceId, (transaction) =>
+      transaction.db.execute(
+        sql`update app.workspace_variable_set_revisions set descriptions_json='{}'::jsonb`,
+      ),
+    ),
+  ).rejects.toMatchObject({ cause: { code: '42501' } });
 });
-it('captures a complete committed set and exact acceptance retries never refresh it', async () => {
-  const f = await fixture();
-  await store.replace({
-    ...scope(f.workspaceId),
-    idempotencyKey: randomUUID(),
-    expectedRevision: 0,
-    values: { RATE: 10, CURRENCY: 'EUR' },
-  });
-  const writer = await pool.connect();
-  try {
-    await writer.query('begin');
-    await writer.query("select set_config('app.workspace_id',$1,true)", [
-      f.workspaceId,
-    ]);
-    await writer.query(
-      `update app.workspace_variables set revision=2,values_json='{"RATE":20,"CURRENCY":"GBP"}' where workspace_id=$1`,
-      [f.workspaceId],
-    );
-    const key = hash();
-    const first = await admit(f, key);
-    expect(await snapshot(first.runId)).toEqual({
-      revision: 1,
+it.each(['commit', 'rollback'] as const)(
+  'captures a coherent set after a concurrent edit %s and preserves exact retries',
+  async (finish) => {
+    const f = await fixture();
+    await store.replace({
+      ...scope(f.workspaceId),
+      idempotencyKey: randomUUID(),
+      expectedRevision: 0,
       values: { RATE: 10, CURRENCY: 'EUR' },
     });
-    await writer.query('commit');
-    expect((await admit(f, key)).runId).toBe(first.runId);
-    expect(await snapshot(first.runId)).toEqual({
-      revision: 1,
-      values: { RATE: 10, CURRENCY: 'EUR' },
-    });
-    const next = await admit(f);
-    expect(await snapshot(next.runId)).toEqual({
-      revision: 2,
-      values: { RATE: 20, CURRENCY: 'GBP' },
-    });
-  } finally {
-    await writer.query('rollback');
-    writer.release();
-  }
-});
-it('full replay copies the source snapshot after edits; logical detail expiry refuses even before cleanup', async () => {
+    const writer = await pool.connect();
+    let pending: ReturnType<typeof admit> | undefined;
+    try {
+      await writer.query('begin');
+      await writer.query("select set_config('app.workspace_id',$1,true)", [
+        f.workspaceId,
+      ]);
+      await writer.query(
+        `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json)
+      values($1,2,'{"RATE":20,"CURRENCY":"GBP"}')`,
+        [f.workspaceId],
+      );
+      await writer.query(
+        'update app.workspace_variables set revision=2 where workspace_id=$1',
+        [f.workspaceId],
+      );
+      const key = hash();
+      pending = admit(f, key);
+      await waitForApplicationLock(admin, admissionApplication);
+      expect((await store.read(scope(f.workspaceId))).values).toEqual({
+        RATE: 10,
+        CURRENCY: 'EUR',
+      });
+      await writer.query(finish);
+      const first = await pending;
+      const revision = finish === 'commit' ? 2 : 1;
+      const values =
+        finish === 'commit'
+          ? { RATE: 20, CURRENCY: 'GBP' }
+          : { RATE: 10, CURRENCY: 'EUR' };
+      expect(await snapshot(first.runId)).toEqual({ revision, values });
+      await store.replace({
+        ...scope(f.workspaceId),
+        idempotencyKey: randomUUID(),
+        expectedRevision: revision,
+        values: { RATE: 30, CURRENCY: 'USD' },
+      });
+      expect((await admit(f, key)).runId).toBe(first.runId);
+      expect(await snapshot(first.runId)).toEqual({ revision, values });
+      const next = await admit(f);
+      expect(await snapshot(next.runId)).toEqual({
+        revision: revision + 1,
+        values: { RATE: 30, CURRENCY: 'USD' },
+      });
+    } finally {
+      await writer.query('rollback');
+      writer.release();
+      await pending?.catch(() => undefined);
+    }
+  },
+);
+it('full replay retains the source snapshot after edits; logical detail expiry refuses even before cleanup', async () => {
   const f = await fixture();
   await store.replace({
     ...scope(f.workspaceId),
@@ -323,7 +387,7 @@ it('full replay copies the source snapshot after edits; logical detail expiry re
       values: { RATE: 10 },
     });
     await admin.query(
-      "update app.workflow_runs set status='succeeded',created_at=clock_timestamp()-interval '32 days',completed_at=clock_timestamp()-interval '31 days' where id=$1",
+      "update app.workflow_runs set status='succeeded',input_ref=null,input_ref_expires_at=null,created_at=clock_timestamp()-interval '32 days',completed_at=clock_timestamp()-interval '31 days' where id=$1",
       [source.runId],
     );
     expect(await snapshot(source.runId)).not.toBeNull();
@@ -345,6 +409,27 @@ it('full replay copies the source snapshot after edits; logical detail expiry re
     );
     try {
       await retention.enforce();
+      expect(
+        (
+          await admin.query(
+            'select revision from app.workspace_variable_set_revisions where workspace_id=$1 order by revision',
+            [f.workspaceId],
+          )
+        ).rows,
+      ).toEqual([{ revision: 1 }, { revision: 2 }]);
+      await admin.query(
+        "update app.workflow_runs set status='succeeded',input_ref=null,input_ref_expires_at=null,created_at=clock_timestamp()-interval '32 days',completed_at=clock_timestamp()-interval '31 days' where id=$1",
+        [replay.run.id],
+      );
+      await retention.enforce();
+      expect(
+        (
+          await admin.query(
+            'select revision from app.workspace_variable_set_revisions where workspace_id=$1 order by revision',
+            [f.workspaceId],
+          )
+        ).rows,
+      ).toEqual([{ revision: 2 }]);
     } finally {
       await retention.close();
     }
@@ -427,4 +512,108 @@ it('bounds a no-match expression scan, continues to real references and rejects 
       after: first.next,
     }),
   ).rejects.toBeInstanceOf(WorkspaceVariableUsageChangedError);
+});
+
+it('keeps the fixed empty revision on replay after configuration is first added', async () => {
+  const f = await fixture();
+  const source = await admit(f);
+  await store.replace({
+    ...scope(f.workspaceId),
+    idempotencyKey: randomUUID(),
+    expectedRevision: 0,
+    values: { RATE: 20 },
+  });
+  const runs = createWorkflowRunDatabase(config());
+  try {
+    const command = {
+      ...scope(f.workspaceId),
+      sourceRunId: source.runId,
+      workflowVersionId: f.parentVersionId,
+      input: {},
+      idempotencyKeyHash: hash(),
+      requestHash: hash(),
+      scope: `workflow:${f.parentWorkflowId}:replay`,
+      checkpointFactory: (version: { id: string }) => ({
+        checkpoint: createCheckpoint({
+          workflowVersionId: version.id,
+          iterationBudget: 200,
+          nextEventSequence: 2,
+        }),
+      }),
+    };
+    const replay = await runs.replay(command);
+    expect(await snapshot(replay.run.id)).toEqual({ revision: 0, values: {} });
+    expect(
+      await runs.readVariables({
+        workspaceId: f.workspaceId,
+        runId: replay.run.id,
+      }),
+    ).toEqual({ revision: 0, values: {} });
+    expect(await snapshot((await admit(f)).runId)).toEqual({
+      revision: 1,
+      values: { RATE: 20 },
+    });
+    await admin.query(
+      "update app.workflow_runs set status='succeeded',input_ref=null,input_ref_expires_at=null,created_at=clock_timestamp()-interval '32 days',completed_at=clock_timestamp()-interval '31 days' where id=$1",
+      [source.runId],
+    );
+    await expect(
+      runs.replay({
+        ...command,
+        idempotencyKeyHash: hash(),
+        requestHash: hash(),
+      }),
+    ).rejects.toBeInstanceOf(RunVariableSnapshotUnavailableError);
+  } finally {
+    await runs.close();
+  }
+});
+it('shares one maximum-size value set across fifty accepted runs', async () => {
+  const f = await fixture();
+  const values: Record<string, string> = Object.fromEntries(
+    Array.from({ length: 8 }, (_, index) => [
+      `TEXT_${String(index)}`,
+      Array.from({ length: 4000 }, (_, offset) =>
+        String.fromCharCode(97 + ((offset + index) % 26)),
+      ).join(''),
+    ]),
+  );
+  let spare = 32768 - Buffer.byteLength(canonicalJson(values));
+  for (const key of Object.keys(values)) {
+    const add = Math.min(96, spare);
+    values[key] = (values[key] ?? '') + 'x'.repeat(add);
+    spare -= add;
+  }
+  expect(Buffer.byteLength(canonicalJson(values))).toBe(32768);
+  workspaceVariableValuesSchema.parse(values);
+  await store.replace({
+    ...scope(f.workspaceId),
+    idempotencyKey: randomUUID(),
+    expectedRevision: 0,
+    values,
+  });
+  const started = performance.now();
+  const accepted = [];
+  for (let i = 0; i < 50; i += 1) accepted.push(await admit(f));
+  expect(
+    (
+      await admin.query(
+        'select count(*)::int n from app.workspace_variable_set_revisions where workspace_id=$1',
+        [f.workspaceId],
+      )
+    ).rows,
+  ).toEqual([{ n: 1 }]);
+  expect(
+    (
+      await admin.query(
+        'select count(*)::int n,min(variable_set_revision)::int revision,sum(pg_column_size(variable_set_revision))::int reference_bytes from app.workflow_runs where id=any($1::uuid[])',
+        [accepted.map((run) => run.runId)],
+      )
+    ).rows,
+  ).toEqual([{ n: 50, revision: 1, reference_bytes: 200 }]);
+  for (const run of accepted)
+    expect(await snapshot(run.runId)).toEqual({ revision: 1, values });
+  console.info(
+    `Variable revision qualification: 32,768 canonical bytes, 50 runs, 200 reference bytes, ${String(Math.round(performance.now() - started))}ms.`,
+  );
 });

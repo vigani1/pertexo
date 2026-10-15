@@ -450,6 +450,22 @@ describe('workspace purge', () => {
         ) values($1,$2,'preview_run',$3)`,
         [workspaceId, artifactId, previewRunId],
       );
+      await owner.query(
+        `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json) values($1,1,'{"RATE":10}'),($1,2,'{"RATE":20}')`,
+        [workspaceId],
+      );
+      await owner.query(
+        'insert into app.workspace_variables(workspace_id,revision) values($1,2)',
+        [workspaceId],
+      );
+      await owner.query(
+        'update app.workflow_runs set variable_set_revision=1 where id=$1',
+        [workflowRunId],
+      );
+      await owner.query(
+        'update app.preview_runs set variable_set_revision=1 where id=$1',
+        [previewRunId],
+      );
       await owner.query('set constraints all immediate');
       for (const table of [
         'workflow_runs',
