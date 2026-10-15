@@ -1457,3 +1457,20 @@ retain its exact source version and captured input while that input remains
 available. New form values go through a new submission, preserving server-owned
 submitter/time metadata. Other full replays keep their existing explicit input
 behavior. Approval and Request input graphs remain outside prefix recovery.
+
+## Follow-up — shared trigger definitions (2026-10-15)
+
+Status: implemented and locally qualified; fourth ordered follow-up after #307.
+
+`workflow-model/src/graph/triggers.ts` owns the supported trigger identities.
+Error-workflow target selection, recovery decision trees, failure-source checks
+and callable declaration checks use its key predicate. The engine uses its exact
+key/version predicate when passing accepted run input to a trigger. Recognition
+by key remains intentional for graph checks, including unsupported versions;
+execution remains version-specific. Manual/Webhook-only callable eligibility is
+a separate rule and stays unchanged. No stored format or ADR decision changes.
+
+Qualification: full `pnpm check`, all 9,205 unit tests plus native checks, and
+178 mocked browser tests passed. Target/callable/recovery/failure-route coverage
+includes unsupported trigger versions; existing engine input behavior is retained.
+PR CI must pass before rebase merge.

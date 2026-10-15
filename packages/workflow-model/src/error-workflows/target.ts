@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isWorkflowTriggerKey } from '../graph/triggers.js';
 
 const targetGraphSchema = z.object({
   nodes: z.array(
@@ -14,13 +15,7 @@ export function isWorkflowErrorTarget(graph: unknown): boolean {
   const parsed = targetGraphSchema.safeParse(graph);
   if (!parsed.success) return false;
   const triggers = parsed.data.nodes.filter((node) =>
-    [
-      'core.manual',
-      'core.form',
-      'core.schedule',
-      'core.webhook',
-      'core.workflow_error',
-    ].includes(node.definition.key),
+    isWorkflowTriggerKey(node.definition.key),
   );
   const entry = triggers[0];
   return (

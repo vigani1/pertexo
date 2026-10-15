@@ -1,3 +1,4 @@
+import { isWorkflowTriggerKey } from '../graph/triggers.js';
 import { parseJsonPath } from '../json/path.js';
 import type { WorkflowGraph } from '../graph/contract.js';
 import type { GraphValidationIssue } from '../graph/validation/contract.js';
@@ -25,13 +26,7 @@ export function callableDeclarationIssues(
             : 'Callable types must fit the stored JSON depth limit of 64.',
       });
   const entries = graph.nodes.filter(({ definition }) =>
-    [
-      'core.manual',
-      'core.form',
-      'core.webhook',
-      'core.schedule',
-      'core.workflow_error',
-    ].includes(definition.key),
+    isWorkflowTriggerKey(definition.key),
   );
   if (
     entries.length !== 1 ||

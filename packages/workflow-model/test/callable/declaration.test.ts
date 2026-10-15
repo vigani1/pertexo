@@ -47,6 +47,7 @@ describe('callable graph declarations', () => {
   it('rejects non-callable triggers, disabled entries and multiple entries', () => {
     for (const value of [
       graph('core.schedule'),
+      graph('core.form'),
       graph('core.workflow_error'),
       {
         ...graph(),
@@ -57,6 +58,17 @@ describe('callable graph declarations', () => {
         nodes: [
           ...graph().nodes,
           ...graph().nodes.map((node) => ({ ...node, id: 'second' })),
+        ],
+      },
+      {
+        ...graph(),
+        nodes: [
+          ...graph().nodes,
+          ...graph('core.form').nodes.map((node) => ({
+            ...node,
+            id: 'form',
+            definition: { ...node.definition, version: 2 },
+          })),
         ],
       },
       { ...graph(), nodes: [] },

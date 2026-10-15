@@ -97,6 +97,26 @@ describe('explicit disjoint failure routes', () => {
       ).toMatchObject({ kind: 'invalid' });
     },
   );
+  it.each([
+    'core.manual',
+    'core.webhook',
+    'core.schedule',
+    'core.form',
+    'core.workflow_error',
+  ])('never treats a %s trigger as an action with a failure handler', (key) => {
+    const current = graph();
+    for (const version of [1, 2])
+      expect(
+        inspectWorkflowFailureRoutes({
+          ...current,
+          nodes: current.nodes.map((n) =>
+            n.id === 'action'
+              ? { ...node(n.id, key), definition: { key, version } }
+              : n,
+          ),
+        }).kind,
+      ).toBe('invalid');
+  });
   it('allows a skipped ordinary source but never a disabled handler', () => {
     const current = graph();
     expect(

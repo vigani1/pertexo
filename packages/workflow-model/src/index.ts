@@ -1,4 +1,8 @@
 // Safe anywhere, including the browser. Node-only parts are in ./server.ts.
+export {
+  isWorkflowTriggerKey,
+  isWorkflowTriggerDefinition,
+} from './graph/triggers.js';
 export { assertNever } from './assert-never.js';
 export {
   WORKFLOW_FAILURE_PORT,

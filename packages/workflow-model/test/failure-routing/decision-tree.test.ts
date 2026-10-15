@@ -37,6 +37,26 @@ describe('one selected recovery path', () => {
       inspectWorkflowDecisionTree(graph)?.outgoing.get('first'),
     ).toHaveLength(2);
   });
+  it.each([
+    'core.form',
+    'core.workflow_error',
+    'core.webhook',
+    'core.schedule',
+  ])(
+    'recognizes %s as the selected path root independently of catalog version validation',
+    (key) => {
+      for (const version of [1, 2])
+        expect(
+          inspectWorkflowDecisionTree({
+            nodes: [
+              { ...node('entry', key), definition: { key, version } },
+              node('action'),
+            ],
+            edges: [edge('entry', 'action')],
+          })?.rootId,
+        ).toBe('entry');
+    },
+  );
   it('supports skipped ordinary actions but refuses a disabled Condition with no saved choice', () => {
     expect(
       inspectWorkflowDecisionTree({

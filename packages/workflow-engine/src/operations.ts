@@ -1,4 +1,5 @@
 import {
+  isWorkflowTriggerDefinition,
   workspaceVariableValuesSchema,
   type WorkspaceVariableValues,
 } from '@pertexo/workflow-model';
@@ -57,10 +58,7 @@ import type {
   NodeAttemptOutcome,
 } from './attempt/contract.js';
 import type { WorkflowTransitionPlan } from './types.js';
-import {
-  isCoreMergeDefinition,
-  isTriggerSourceDefinition,
-} from './core-definition-identities.js';
+import { isCoreMergeDefinition } from './core-definition-identities.js';
 import { assertCheckpointMatchesExecutable } from './checkpoint/matches-executable.js';
 
 export type {
@@ -367,7 +365,7 @@ async function resolveMappedNodeInput(
   sourceFailure?: WorkflowNodeFailureValue,
   variables?: WorkspaceVariableValues,
 ): Promise<JsonValue> {
-  if (isTriggerSourceDefinition(node.definition)) return runInput;
+  if (isWorkflowTriggerDefinition(node.definition)) return runInput;
   const mapped = Object.create(null) as Record<string, JsonValue>;
   for (const key of Object.keys(node.inputMappings).sort()) {
     assertNotAborted(signal);
