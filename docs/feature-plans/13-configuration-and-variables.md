@@ -225,3 +225,12 @@ pagination and the typed picker; TypeScript, lint, format/build, contracts,
 when observed. Local web
 units are run with two workers to avoid saturating the laptop while checking
 all 153 files; assertion deadlines and CI behavior are unchanged.
+
+### CI contract correction
+
+The first PR run passed 823 of 824 database integration tests. Its remaining
+assertion compared the complete leased attempt input with the pre-F13 shape.
+Reproduced locally (16/17 passing), then updated that exact assertion to require
+`variables: {}` for a run with no configured values. Keep the strict equality;
+this proves the additive empty snapshot rather than hiding it with a partial
+match. No runtime change or history rewrite.
