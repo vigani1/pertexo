@@ -230,9 +230,10 @@ file descriptors. Pause new attachment/admission deliberately if needed; retain
 readers and lifetime protection while accepted owners exist. Generic upload,
 finalize/download and abandoned-upload cleanup stay operational.
 
-The proposed follow-up below covers bounded CSV/JSON reading, multipart and a
-narrow Read file recovery exception. Later work retains larger/streaming bodies,
-asset discovery, file creation, scanning and general artifact-aware recovery.
+The proposed follow-up below covers bounded CSV/JSON reading and multipart.
+Bigger files via streaming or paging are the next file improvement, separately
+scoped after this slice. Asset discovery, file creation, scanning and all
+artifact-aware step recovery remain later work.
 No production rollout is included.
 
 ## Delivery tracker
@@ -327,16 +328,53 @@ service, role, table, queue, storage backend or CI job is required.
   object/array mapping constructor. Multipart part metadata/order will therefore
   live in HTTP config; part values use the existing flat input mappings. Do not
   invent nested graph mappings or generate JSONata behind the user's controls.
-- F09 currently rejects descriptors inside inline input/prefix JSON as well as
-  artifact-backed stored execution values. Merely marking Read file safe would
-  leave common run-input/HTTP-response cases unrecoverable. The narrow exception
-  proposed below is part of this review, not permission for general artifact
-  recovery. ADR 075 records its precedence over that part of ADR 072.
+- F09 artifact restrictions remain unchanged. Read file is safe, so temporary
+  storage failures already use the engine’s automatic retries within the same
+  run and existing attempt budget. Malformed content needs a corrected file and
+  a new run; a special recovery exception adds little value here. File-aware
+  step recovery stays later work, with no recovery-engine/acceptance changes.
 - Attempt completion already has `node_attempts.error_summary`, but the
   `executor_failure` completion variant drops it and run views expose only a
   classification code. Delivering useful parser positions requires the small,
   explicitly sanitized diagnostic path below; throwing a detailed Error alone
   would not deliver that information to the person.
+
+### Owner revisions — 2026-10-15
+
+The owner requested these changes to the proposal: defer the special Read file
+recovery exception, enable conservative CSV value conversion by default, and
+make limits/split-file guidance visible. They are incorporated below; approval
+of the complete plan and implementation remains pending.
+
+### Limits people see
+
+Use **1 MB** in human-facing copy, with the exact existing **1 MiB (1,048,576
+bytes)** bound in help/details. No byte or item limits change.
+
+- Beside Read file’s upload/configuration controls and in `docs/files.md`, say:
+  “Files up to 1 MB. About 4,996 rows through Filter and Summarize, fewer for
+  wide rows.” This is a rough end-to-end guide, not a guaranteed CSV row count;
+  long cells, column count and downstream configuration also consume the value
+  envelope. Keep the separate 4,998-item technical cap.
+- Beside multipart parts and its file-upload action, say: “The whole request
+  must fit in 1 MB, including form headers. A full 1 MB file won’t fit.”
+  Known literal-size estimates remain advisory; actual wire bytes decide.
+- File-size, row/member/depth/output-size and multipart-size failures must give
+  an action, not just a number. Examples: “File is larger than 1 MB. Split it
+  into smaller files and run them separately”; “Parsed data is too large. Split
+  the file into fewer rows or columns and run the files separately”; “Multipart
+  request is larger than 1 MB including form headers. Use a smaller file or
+  split it for separate uploads accepted by your destination.” Keep safe
+  numeric positions/counts where available. Malformed-content errors instead
+  explain what to correct; splitting is not a cure for broken quoting/JSON.
+- Show the applicable limits before selection/configuration, then the corrective
+  message at the failed step. Persist approved summaries through the existing
+  diagnostic path so reload preserves the advice. Qualify visible copy in
+  desktop/phone controls, failure details and guide examples.
+
+**Next file improvement:** bigger files via streaming or paging, with a separate
+plan that preserves bounded worker memory and per-step values. Record it now;
+this slice adds no automatic splitting, batching, reassembly or paging machinery.
 
 ### Part 1 — Read file, as one complete vertical slice
 
@@ -352,8 +390,11 @@ No separate file-processing package or parser in the engine/browser.
 Input is `{ file: <existing kind: 'artifact' descriptor> }`. Configuration is a
 strict union: `{ format: 'json' }` or
 `{ format: 'csv', delimiter: ',' | ';' | '\t', convertValues: boolean }`.
-Default to CSV/comma with conversion off; JSON does not accept CSV-only options.
-An explicit format chooses the parser; extension and MIME do not auto-select it.
+Default new steps to CSV/comma with `convertValues: true`. The CSV schema
+defaults an omitted conversion option to true, and the editor writes that choice
+explicitly. Users can select false to keep every cell as text. JSON does not
+accept CSV-only options. An explicit format chooses the parser; extension and
+MIME do not auto-select it.
 
 Output is the **parsed JSON value itself**, without a wrapper. CSV returns an
 array of objects; JSON may return an object, array or scalar. Map a CSV result
@@ -408,7 +449,7 @@ extra stream-transform dependency.
 - Construct own data properties safely, including `__proto__`, `constructor` and
   `prototype`; these names must never mutate prototypes or disappear. Apply the
   platform's existing own-property mapping rules, not a second path resolver.
-- Values default to strings. With `convertValues` on, quoted and unquoted cells
+- Conversion is on by default. With `convertValues` on, quoted and unquoted cells
   follow the same rule: exact lowercase `true`/`false` become booleans; otherwise
   only the JSON decimal-number grammar is a numeric candidate. No trimming,
   grouping separators, hexadecimal, leading plus, leading-zero integers,
@@ -416,7 +457,8 @@ extra stream-transform dependency.
   JavaScript number whose value, when integral, is a safe integer; other cells
   remain strings. Decimal fractions use JavaScript/JSON number precision.
   `00123`, `9007199254740993`, `1e999`, `TRUE`, `null` and empty cells stay strings;
-  `12.5`, `-3` and `false` convert. Headers never convert; SDK normalizes `-0`.
+  `12.5`, `-3` and `false` convert. With conversion explicitly off, every cell
+  remains a string. Headers never convert; SDK normalizes `-0`.
 
 **Clear, safe failures.** Use a closed file-input diagnostic on the existing
 SDK executor-failure path: approved reason plus optional positive record/line/
@@ -447,27 +489,13 @@ contents/integrity/limits are definite failures, operational storage failures us
 existing safe pre-effect retry policy, and cancellation remains cancellation.
 Do not automatically retry malformed content.
 
-Recommend a narrow F09 exception **only when the recovery target is Read file**:
-allow complete file descriptors inside otherwise bounded inline original input
-and completed-prefix snapshots. Keep artifact-backed whole execution-value
-hydration excluded. The pure planner checks shapes/bounds, never workspace
-permission. Recovery preview checks availability through the existing artifact
-metadata rules; acceptance gathers references from original input and every
-copied prefix value and locks/validates their union in stable ID order, in the
-same transaction as creating the new run and copied rows. Reuse the existing
-reference validator and retention reachability. Never persist a copied owner
-first and validate its references later; never hold those locks during byte I/O.
-
-Preserve exact original input/version, prefix provenance, current caller
-permissions, capacity, aggregate recovery limits and source-retention fences.
-The new run's retained input/copied values protect the files after source details
-expire. A descriptor does not authorize another workspace, an expired preview
-output, deleted bytes or altered metadata. If deletion wins, refuse recovery;
-if recovery wins, cleanup observes the new owner. No effect acknowledgement is
-needed for this safe target. All other F09 target eligibility and HTTP effects/
-unknown acknowledgements remain unchanged; general file-aware downstream
-recovery stays later work. A malformed file can be retried safely but still
-fails until a separate edited-version run supplies corrected data.
+Keep ADR 072 and the recovery machinery unchanged: no Read file exception,
+file-aware prefix copying or new recovery admission/locking path. Existing
+same-run automatic retries handle temporary storage failures for this safe step
+within the configured retry budget. They neither repeat earlier completed HTTP
+effects nor require new recovery logic. A malformed file needs corrected content
+in a separately started run; retrying the same immutable bytes cannot repair it.
+File-aware “Retry from this step” remains later work under current F09 refusals.
 
 **Editor and real qualification.** Add the catalog entry, format/delimiter/
 conversion controls and an input-local Upload file for the Read file `file`
@@ -479,12 +507,13 @@ No browser file preview/parser. Run through the ordinary compiled worker:
 `upload CSV → Read file → Filter items → Summarize items → Stop run`
 
 Use `currency,amount,paid` with `EUR,12.5,true`, `EUR,7.5,true`, `USD,9,true`,
-`EUR,100,false`; conversion on, Filter `$.paid == true`, Summarize `$.amount`
-grouped by `$.currency`. Independently assert EUR count 2/sum 20 and USD count
+`EUR,100,false`; leave the new step’s conversion default untouched, Filter
+`$.paid == true`, Summarize `$.amount` grouped by `$.currency`. Independently assert EUR count 2/sum 20 and USD count
 1/sum 9, exact retained outputs and successful Stop. Also consume an earlier
-owned HTTP-response artifact and run-input file, qualify safe recovery after a
-transient storage failure without repeating the earlier HTTP effect, and prove
-malformed-content diagnostics survive a page reload.
+owned HTTP-response artifact and run-input file, qualify automatic within-run
+retry after a transient storage failure without repeating the earlier HTTP
+effect, and prove malformed-content diagnostics and split-file advice on limit
+failures survive a page reload.
 
 ### Part 2 — Multipart HTTP, as one complete vertical slice
 
@@ -588,7 +617,9 @@ Update `docs/files.md` with the currency CSV pipeline, JSON object/array example
 conversion/strict-header/error rules, and an API form with a text field plus
 file part. Show the normal mapping paths and named upload workflow. Explain the
 full multipart wire budget, explicit filename metadata, no scanning guarantee,
-safe Read file versus unsafe HTTP effects, and the narrow recovery limitation.
+safe Read file versus unsafe HTTP effects, unchanged F09 file restrictions,
+visible rough limits and split-file error guidance. Record bigger files via
+streaming or paging as the next file improvement.
 Update the F04 tracker and roadmap from planned to delivered only with actual
 merged PRs and inspected main CI. Keep first-release evidence above as history.
 
@@ -599,7 +630,6 @@ merged PRs and inspected main CI. Keep first-release evidence above as history.
 | `nodes-core/src/data/read-file/` | File decoding/parsing/conversion and transform definition/executor |
 | `node-sdk` artifacts/executor contracts | Reuse reference/read/JSON limits; closed diagnostic carried by existing failure |
 | Worker `attempts/artifacts/` and attempt completion | Existing checked reader; trusted diagnostic formatting/propagation |
-| Engine `recovery/`, execution recovery and database `runs/recovery/` | Narrow Read file-target descriptor exception, pure eligibility and atomic reference acceptance |
 | Database `attempts/completion/`, existing run queries; contracts execution schemas/OpenAPI | Persist approved summary in existing column and expose authorized detail; no new endpoint |
 | `integrations/src/http-request/` and private `multipart/` | Mode/part contracts, bounded encoding and existing secure dispatch |
 | `nodes-core` registrations and `node-catalog` | Current identities, capability and portable projection |
@@ -620,8 +650,9 @@ Required cases, beyond the successful workflows:
   numeric overflow, depth/member/byte boundaries, nested array caps; no MIME sniff.
 - All CSV delimiters, quoting/escaped quotes/multiline/line endings, exact and
   duplicate/blank/prototype-like headers, ragged rows, empty cells/blank records,
-  conversion on/off and precision/leading-zero cases. Read file accepts/persists
-  4,998 one-column records and rejects 4,999. For the full maximum-row pipeline,
+  default-on, omitted-option and explicit-off conversion, plus precision and
+  leading-zero cases. The currency pipeline works without changing the conversion default.
+  Read file accepts/persists 4,998 one-column records and rejects 4,999. For the full maximum-row pipeline,
   use 4,996 one-column records with numeric Filter comparison and ungrouped
   Summarize: Filter admission uses 2N+7 members (9,999 at that count), so 4,997
   would fail its envelope even though Read file can return them. Qualify that
@@ -634,10 +665,13 @@ Required cases, beyond the successful workflows:
   logs; only approved reasons and numeric positions survive reload.
 - Existing foreign/missing/pending/deleting/preview/integrity/storage-failure
   and cancellation cases through each new consumer, not just a fake byte reader.
-- Read file safe retry/recovery for literal/run-input/prior-response descriptors,
-  no repeat of earlier HTTP effects, source-detail retirement, copied-owner
-  retention, both cleanup races and missing/foreign/corrupt reference refusal.
-  Other recovery targets retain their artifact refusal and acknowledgement rules.
+- Read file’s existing automatic within-run storage retry for literal/run-input/
+  prior-response descriptors, with no repeat of earlier completed HTTP effects.
+  Malformed input fails definitely; current F09 artifact refusals and HTTP
+  acknowledgement rules stay unchanged. No new recovery code or copied owners.
+- Visible file/row/multipart limits, split-file advice on each size/envelope
+  refusal, and persistence of that guidance after reload; malformed data keeps
+  correction-specific advice. Desktop/phone layout and guide copy agree.
 - Multipart exact final body at the byte ceiling and one over, repeated names/
   files, empty values, Unicode, explicit/default names/types, header injection,
   boundary collision, GET/HEAD, Content-Type conflict and stale part mappings.
@@ -655,14 +689,15 @@ choice outside this plan returns to the owner for review.
 
 - [x] Reconcile code seams, constraints and dependency/protocol sources.
 - [ ] Owner reviews and accepts this follow-up and ADR 075 amendment.
-- [ ] Part 1 merged green; real CSV pipeline, diagnostics and safe recovery qualified.
+- [ ] Part 1 merged green; default-on CSV pipeline, diagnostics, visible limits and automatic retry qualified.
 - [ ] Part 2 merged green; exact multipart bytes and editor journeys qualified.
 - [ ] Part 3 examples/tracker/roadmap merged; natural main evidence recorded.
 
-Later work: email attachments, files arriving through webhook ingestion,
-larger-file streaming, Excel/other formats, a file browser, CSV/JSON file
-creation, scanning, general artifact-aware downstream recovery and asset
-management. None is an implicit dependency of these parts.
+Next file improvement: **bigger files via streaming or paging**, separately
+planned after this slice. Other later work: email attachments, webhook file
+ingestion, Excel/other formats, a file browser, CSV/JSON file creation, scanning,
+all artifact-aware step recovery (including Read file) and asset management.
+None is an implicit dependency of these parts.
 
 ### Follow-up sources checked on 2026-10-15
 
