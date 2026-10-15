@@ -46,7 +46,8 @@ fails rather than silently omitting required data.
 ## Which values does a run use?
 
 Each independent run captures the complete current set once when Pertexo accepts
-it. Changes apply to later independent runs. A queued run, retry, Wait, Approval
+it. The values are stored once per immutable workspace revision; runs and previews
+keep a reference, rather than a second full copy. Changes apply to later independent runs. A queued run, retry, Wait, Approval
 or Request input continues with its captured values. Child workflows inherit
 the parent's snapshot, including nested Calls.
 

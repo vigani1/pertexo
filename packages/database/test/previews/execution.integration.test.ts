@@ -1,9 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { createRetentionDatabase } from '../../src/lifecycle/retention.js';
+import { createPreviewRetentionCoordinator } from '../../src/lifecycle/preview-retention.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
 import { migrateDatabase } from '../../src/migrations.js';
@@ -21,6 +23,7 @@ import {
   outboxEvents,
   previewAttempts,
   previewRuns,
+  workspaceVariableSetRevisions,
 } from '../../src/schema.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 
@@ -265,7 +268,8 @@ describe('durable preview acceptance', () => {
   it('captures variables on preview admission and preserves them for exact retries', async () => {
     await ownerWorkspaceQuery(
       workspaceA,
-      `insert into app.workspace_variables(workspace_id,revision,values_json) values($1,1,'{"RATE":10}')`,
+      `with revision as (insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json) values($1,1,'{"RATE":10}') returning workspace_id,revision)
+       insert into app.workspace_variables(workspace_id,revision) select workspace_id,revision from revision`,
       [workspaceA],
     );
     const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
@@ -273,7 +277,8 @@ describe('durable preview acceptance', () => {
     );
     await ownerWorkspaceQuery(
       workspaceA,
-      `update app.workspace_variables set revision=2,values_json='{"RATE":20}' where workspace_id=$1`,
+      `with revision as (insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json) values($1,2,'{"RATE":20}') returning workspace_id,revision)
+       update app.workspace_variables head set revision=revision.revision from revision where head.workspace_id=revision.workspace_id`,
       [workspaceA],
     );
     const duplicate = await apiDatabase.withWorkspace(
@@ -286,15 +291,73 @@ describe('durable preview acceptance', () => {
     );
     const stored = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
       transaction.db
-        .select({ id: previewRuns.id, snapshot: previewRuns.variableSnapshot })
-        .from(previewRuns),
+        .select({
+          id: previewRuns.id,
+          revision: previewRuns.variableSetRevision,
+          values: workspaceVariableSetRevisions.values,
+        })
+        .from(previewRuns)
+        .leftJoin(
+          workspaceVariableSetRevisions,
+          and(
+            eq(
+              workspaceVariableSetRevisions.workspaceId,
+              previewRuns.workspaceId,
+            ),
+            eq(
+              workspaceVariableSetRevisions.revision,
+              previewRuns.variableSetRevision,
+            ),
+          ),
+        ),
     );
-    expect(
-      stored.find((row) => row.id === first.previewRunId)?.snapshot,
-    ).toEqual({ revision: 1, values: { RATE: 10 } });
-    expect(
-      stored.find((row) => row.id === next.previewRunId)?.snapshot,
-    ).toEqual({ revision: 2, values: { RATE: 20 } });
+    expect(stored.find((row) => row.id === first.previewRunId)).toEqual({
+      id: first.previewRunId,
+      revision: 1,
+      values: { RATE: 10 },
+    });
+    expect(stored.find((row) => row.id === next.previewRunId)).toEqual({
+      id: next.previewRunId,
+      revision: 2,
+      values: { RATE: 20 },
+    });
+    const maintenanceConfig = parseDatabaseConfig({
+      connectionString: disposableDatabase.databaseUrl(
+        process.env.DATABASE_MAINTENANCE_URL ??
+          'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+      ),
+      max: 1,
+    });
+    const retention = createRetentionDatabase(maintenanceConfig);
+    const previews = createPreviewRetentionCoordinator(maintenanceConfig, {
+      delete: () => Promise.resolve(),
+      head: () => Promise.resolve(null),
+    });
+    const revisions = () =>
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        transaction.db
+          .select({ revision: workspaceVariableSetRevisions.revision })
+          .from(workspaceVariableSetRevisions)
+          .orderBy(workspaceVariableSetRevisions.revision),
+      );
+    try {
+      await retention.enforce();
+      expect(await revisions()).toEqual([{ revision: 1 }, { revision: 2 }]);
+      await ownerWorkspaceQuery(
+        workspaceA,
+        `update app.preview_runs set status='failed',created_at=clock_timestamp()-interval '3 days',started_at=clock_timestamp()-interval '3 days'+interval '1 second',completed_at=clock_timestamp()-interval '3 days'+interval '2 seconds',execution_deadline_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day' where id=$1`,
+        [first.previewRunId],
+      );
+      expect(await previews.processNext()).toMatchObject({
+        status: 'completed',
+        previewRunId: first.previewRunId,
+      });
+      await retention.enforce();
+      expect(await revisions()).toEqual([{ revision: 2 }]);
+    } finally {
+      await previews.close();
+      await retention.close();
+    }
   });
 
   it('atomically pins one preview, attempt, safe audit fact, and identifier-only job', async () => {

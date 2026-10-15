@@ -339,7 +339,21 @@ maximum bounded value set referenced by many accepted runs. No external service.
   Full repository checks, 9,214 units and 47 PostgreSQL variable/publication/
   portability/Call/restore cases passed. Exact publication receipts survive a
   later removal; a fresh request checks names even when it could reuse a version.
-- [ ] Replace stored run/preview copies with immutable set references and qualify
-  migration, concurrency, retention and purge.
+- [x] Replace stored run/preview copies with immutable set references and qualify
+  migration, concurrency, retention and purge. All 9,214 units, 37 focused
+  PostgreSQL cases, 53 variable/lifecycle cases and five real-worker recovery,
+  nested-Call and notification-privacy cases passed. A maximum 32,768-byte set
+  is stored once for 50 accepted runs; their revision references total 200 bytes.
 - [ ] Add descriptions to settings and the picker, show safe publication findings
   in the web, and qualify desktop/phone behavior and required release gates.
+
+Immutable-storage qualification (2026-10-16): migration 0016 replaces stored JSON
+copies with workspace/revision foreign keys, preserves historical and fixed-empty
+captures, and refuses conflicting legacy captures atomically. The migration
+updates every preview under a temporary transaction-local owner RLS bypass and
+restores FORCE before commit. Current heads, live runs and retained previews keep
+sets alive; existing detail/preview cleanup releases references before bounded
+maintenance deletes unused sets. Application grants allow insertion/read only.
+The maintenance role receives UPDATE on created_at solely for row locking, not
+on values or descriptions. Settings reads remain unlocked; admissions and
+publication lock the head, then resolve the exact immutable revision.

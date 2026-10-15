@@ -36,7 +36,7 @@ export type CoordinatorCommitRow = Readonly<{
   failure_notification_side_effect_class: string | null;
   execution_entitlement_version: number;
   input_ref: unknown;
-  variable_snapshot: unknown;
+  variable_set_revision: number | null;
   human_wait_started_at: Date | null;
   has_unconsumed_tasks: boolean;
   has_human_child?: boolean;
@@ -110,7 +110,7 @@ export async function loadRunForAdvance(
             run.failure_notification_destination_id,
             run.failure_notification_destination_config_version,
             run.failure_notification_side_effect_class,
-            run.execution_entitlement_version, run.input_ref, run.variable_snapshot, run.deadline_at,run.human_wait_started_at,
+            run.execution_entitlement_version, run.input_ref, run.variable_set_revision, run.deadline_at,run.human_wait_started_at,
             exists(select 1 from app.pending_run_tasks task where task.workspace_id=run.workspace_id and task.run_id=run.id and task.consumed_at is null) has_unconsumed_tasks,
             run.deadline_at is not null
               and run.deadline_at <= clock_timestamp() as deadline_expired,
@@ -260,7 +260,7 @@ export async function loadRunForAdvance(
           workspaceId,
           runId,
           inputRef: row.input_ref,
-          variableSnapshot: row.variable_snapshot,
+          variableSetRevision: row.variable_set_revision,
           nodeIds,
         }),
     }),

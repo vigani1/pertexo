@@ -262,6 +262,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
       )
       delete from app.preview_runs row using page where row.ctid = page.ctid`,
   },
+  deleteRows('workspace_variable_set_revisions'),
   {
     // A workflow points at its published version; clear it before versions go.
     name: 'workflow_published_versions',

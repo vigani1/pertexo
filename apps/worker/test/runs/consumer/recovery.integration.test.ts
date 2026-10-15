@@ -247,7 +247,7 @@ qualified(
         dispatcher.start();
         const key = createHash('sha256').update(randomUUID()).digest('hex');
         await fixture.ownerQuery(
-          'insert into app.workspace_variables(workspace_id,revision,values_json) values($1,1,\'{"NAME":"original"}\')',
+          `with revision as (insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json) values($1,1,'{"NAME":"original"}') returning workspace_id,revision) insert into app.workspace_variables(workspace_id,revision) select workspace_id,revision from revision`,
           [fixture.workspaceId],
         );
         const source = await runs.start({
@@ -270,7 +270,7 @@ qualified(
           30_000,
         );
         await fixture.ownerQuery(
-          'update app.workspace_variables set revision=2,values_json=\'{"NAME":"changed"}\' where workspace_id=$1',
+          `with revision as (insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json) values($1,2,'{"NAME":"changed"}') returning workspace_id,revision) update app.workspace_variables head set revision=revision.revision from revision where head.workspace_id=revision.workspace_id`,
           [fixture.workspaceId],
         );
         const before = await runs.get({

@@ -76,6 +76,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0013_task_context.sql',
       '0014_error_workflow_queue_wait.sql',
       '0015_notice_audience_fence.sql',
+      '0016_variable_set_revisions.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

@@ -1,4 +1,4 @@
-import { readWorkspaceVariables } from '../../variables/read.js';
+import { captureWorkspaceVariableRevision } from '../../variables/read.js';
 import { lockExecutionArtifactReferences } from '../../artifacts/references.js';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
@@ -417,7 +417,7 @@ export async function acceptPreviewRun(
       providerKey: parsed.providerKey ?? null,
       operationKey: parsed.operationKey ?? null,
       executableNodeJson: parsed.executableNode,
-      variableSnapshot: await readWorkspaceVariables(transaction),
+      variableSetRevision: await captureWorkspaceVariableRevision(transaction),
       inputRef: sql`${resolvedInput.stored}::jsonb`,
       priorPreviewRunId: resolvedInput.priorPreviewRunId,
       sideEffectClass: parsed.sideEffectClass,

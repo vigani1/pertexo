@@ -1,11 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
-import {
-  workspaceVariableSnapshotSchema,
-  type WorkspaceVariableSnapshot,
-} from '@pertexo/workflow-model';
 import { workflowRuns } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { readWorkspaceVariables } from '../../variables/read.js';
+import { captureWorkspaceVariableRevision } from '../../variables/read.js';
 export class RunVariableSnapshotUnavailableError extends Error {
   override readonly name = 'RunVariableSnapshotUnavailableError';
   constructor() {
@@ -15,16 +11,16 @@ export class RunVariableSnapshotUnavailableError extends Error {
   }
 }
 /** Replay precedes inheritance; neither may silently fall back to mutable workspace values. */
-export async function variablesForAcceptance(
+export async function variableRevisionForAcceptance(
   transaction: WorkspaceTransaction,
   sourceRunId: string | undefined,
-  inherited?: WorkspaceVariableSnapshot,
-): Promise<WorkspaceVariableSnapshot> {
+  inherited?: number | null,
+): Promise<number | null> {
   if (sourceRunId !== undefined) {
     const [source] = await transaction.db
       .select({
-        snapshot: workflowRuns.variableSnapshot,
-        retained: sql<boolean>`(${workflowRuns.completedAt} IS NULL OR ${workflowRuns.completedAt}>clock_timestamp()-interval '30 days')`,
+        revision: workflowRuns.variableSetRevision,
+        retained: sql<boolean>`(${workflowRuns.detailsPurgedAt} IS NULL AND (${workflowRuns.completedAt} IS NULL OR ${workflowRuns.completedAt}>clock_timestamp()-interval '30 days'))`,
       })
       .from(workflowRuns)
       .where(
@@ -33,10 +29,12 @@ export async function variablesForAcceptance(
           eq(workflowRuns.id, sourceRunId),
         ),
       )
-      .limit(1);
-    if (source === undefined || source.snapshot === null || !source.retained)
-      throw new RunVariableSnapshotUnavailableError();
-    return workspaceVariableSnapshotSchema.parse(source.snapshot);
+      .limit(1)
+      .for('share');
+    if (!source?.retained) throw new RunVariableSnapshotUnavailableError();
+    return source.revision;
   }
-  return inherited ?? readWorkspaceVariables(transaction);
+  return inherited === undefined
+    ? captureWorkspaceVariableRevision(transaction)
+    : inherited;
 }

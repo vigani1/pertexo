@@ -132,16 +132,17 @@ describe.runIf(fixture.enabled)(
             ]);
           });
           const snapshots = await fixture.workerQuery<{
-            variable_snapshot: unknown;
+            variable_set_revision: number;
+            values_json: unknown;
           }>(
-            'select variable_snapshot from app.workflow_runs where id in (with recursive family(id) as (select $1::uuid union all select call.child_run_id from app.workflow_calls call join family on call.parent_run_id=family.id where call.child_run_id is not null) select id from family)',
+            'select run.variable_set_revision,variable_set.values_json from app.workflow_runs run join app.workspace_variable_set_revisions variable_set on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision where run.id in (with recursive family(id) as (select $1::uuid union all select call.child_run_id from app.workflow_calls call join family on call.parent_run_id=family.id where call.child_run_id is not null) select id from family)',
             [runId],
           );
           expect(snapshots).toHaveLength(3);
           for (const row of snapshots)
-            expect(row.variable_snapshot).toEqual({
-              revision: expected === 10 ? 1 : 2,
-              values: { RATE: expected },
+            expect(row).toEqual({
+              variable_set_revision: expected === 10 ? 1 : 2,
+              values_json: { RATE: expected },
             });
         }
         await workers.until(async () => {

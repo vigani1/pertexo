@@ -1,3 +1,4 @@
+import { variableSetSnapshotSql } from '../../variables/values.js';
 import {
   workspaceVariableSnapshotSchema,
   type WorkspaceVariableSnapshot,
@@ -239,7 +240,7 @@ export async function readWorkflowRunVariables(
         snapshot: unknown;
         retained: boolean;
       }>(
-        sql`select variable_snapshot snapshot,(details_purged_at IS NULL AND variable_snapshot IS NOT NULL AND (completed_at IS NULL OR completed_at>clock_timestamp()-interval '30 days')) retained from app.workflow_runs where workspace_id=${transaction.workspaceId} and id=${parsed.runId}`,
+        sql`select ${sql.raw(variableSetSnapshotSql('run'))} snapshot,(run.details_purged_at IS NULL AND (run.completed_at IS NULL OR run.completed_at>clock_timestamp()-interval '30 days')) retained from app.workflow_runs run left join app.workspace_variable_set_revisions variable_set on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision where run.workspace_id=${transaction.workspaceId} and run.id=${parsed.runId}`,
       );
       const row = result.rows[0];
       if (row === undefined) return undefined;
