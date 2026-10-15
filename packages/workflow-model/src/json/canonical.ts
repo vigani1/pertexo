@@ -106,8 +106,23 @@ function normalize(
 export function canonicalizeJson(value: unknown): JsonValue {
   return normalize(value, '$', new Set(), 0);
 }
+// Normalized objects have no prototype; normalized arrays still inherit toJSON.
+// Serialize containers ourselves so neither checksum nor byte inspection runs it.
+function serializeNormalizedJson(value: JsonValue): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value))
+    return `[${value.map(serializeNormalizedJson).join(',')}]`;
+  const object = value as Readonly<Record<string, JsonValue>>;
+  return `{${Object.entries(object)
+    .map(
+      ([key, item]) =>
+        `${JSON.stringify(key)}:${serializeNormalizedJson(item)}`,
+    )
+    .join(',')}}`;
+}
+
 export function canonicalJson(value: unknown): string {
-  return JSON.stringify(canonicalizeJson(value));
+  return serializeNormalizedJson(canonicalizeJson(value));
 }
 
 export function inspectJsonValue(value: unknown): JsonInspection {
@@ -128,7 +143,7 @@ export function inspectJsonValue(value: unknown): JsonInspection {
   };
   visit(normalized, 0);
   return {
-    bytes: Buffer.byteLength(JSON.stringify(normalized), 'utf8'),
+    bytes: Buffer.byteLength(serializeNormalizedJson(normalized), 'utf8'),
     depth,
     members,
   };

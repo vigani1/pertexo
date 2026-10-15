@@ -17,6 +17,37 @@ describe('canonical JSON', () => {
       members: 4,
     });
   });
+  it('never invokes inherited toJSON when hashing or measuring arrays', () => {
+    const previous = Object.getOwnPropertyDescriptor(Array.prototype, 'toJSON');
+    let calls = 0;
+    let serialized: string | undefined;
+    let inspection: ReturnType<typeof inspectJsonValue> | undefined;
+    Object.defineProperty(Array.prototype, 'toJSON', {
+      configurable: true,
+      value: () => {
+        calls += 1;
+        return 'substituted';
+      },
+    });
+    try {
+      serialized = canonicalJson({ nested: [1, { z: ['é'], a: true }] });
+      inspection = inspectJsonValue({ nested: [1, { z: ['é'], a: true }] });
+    } finally {
+      if (previous === undefined)
+        Reflect.deleteProperty(Array.prototype, 'toJSON');
+      else Object.defineProperty(Array.prototype, 'toJSON', previous);
+    }
+    expect(calls).toBe(0);
+    expect(serialized).toBe('{"nested":[1,{"a":true,"z":["é"]}]}');
+    expect(inspection).toEqual({ bytes: 36, depth: 4, members: 6 });
+  });
+
+  it('preserves the existing canonical representation of numeric object keys', () => {
+    expect(canonicalJson({ z: -0, '10': 'ten', a: [null], '2': 'two' })).toBe(
+      '{"2":"two","10":"ten","a":[null],"z":0}',
+    );
+  });
+
   it('rejects cycles, sparse arrays, prototypes, non-finite numbers, and undefined', () => {
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;

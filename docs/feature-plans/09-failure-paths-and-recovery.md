@@ -1385,3 +1385,12 @@ validation and stored formats are unchanged. An initial combined test run hit
 an authoring-worker deadline while browser/lint work also ran; the isolated
 42-case check and the subsequent ordinary full unit gate pass without changing
 a timeout or validation policy.
+
+CI's complete PostgreSQL suite found that the prerequisite shared serializer
+still let `JSON.stringify` invoke inherited array `toJSON` during schema
+constraint construction. The unchanged hostile-prototype admission test
+reproduced this locally (two hook calls). The shared serializer now writes
+normalized containers without calling their hooks; numeric-key ordering and
+existing canonical bytes are preserved. Both new serializer regressions, all
+282 model tests and all 16 real admission-persistence cases pass. The fix is a
+new commit, with no test weakening or hook suppression.
