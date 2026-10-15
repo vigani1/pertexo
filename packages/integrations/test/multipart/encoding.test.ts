@@ -176,6 +176,17 @@ describe('bounded multipart encoding', () => {
     ).rejects.toMatchObject({ diagnostic: { reason: 'multipart_size' } });
     expect(store.read).not.toHaveBeenCalled();
   });
+  it('refuses a large finalized-file reference with split-file diagnostics before storage reads', async () => {
+    const store = runtime(new Uint8Array());
+    await expect(
+      encode(
+        { parts: [{ inputKey: fileKey, name: 'file', kind: 'file' }] },
+        { [fileKey]: { ...reference(new Uint8Array()), byteLength: 2097152 } },
+        store.artifacts,
+      ),
+    ).rejects.toMatchObject({ diagnostic: { reason: 'multipart_size' } });
+    expect(store.read).not.toHaveBeenCalled();
+  });
   it('measures an exact 1 MiB wire body and refuses one byte over, including framing', async () => {
     const config = {
       parts: [{ inputKey: fileKey, name: 'file', kind: 'file' }],

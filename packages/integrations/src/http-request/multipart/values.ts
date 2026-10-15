@@ -1,6 +1,5 @@
-import { ARTIFACT_INPUT_MAX_BYTES } from '@pertexo/node-sdk';
 import { FileInputFailure } from '@pertexo/node-sdk/server';
-import type { HttpRequestInput } from '../validation.js';
+import { HTTP_REQUEST_LIMITS, type HttpRequestInput } from '../validation.js';
 import type {
   HttpMultipartConfig,
   HttpMultipartFile,
@@ -39,7 +38,7 @@ export function multipartValues(
         throw new FileInputFailure({ reason: 'multipart_values' });
       bytes += value.byteLength;
     }
-    if (bytes >= ARTIFACT_INPUT_MAX_BYTES)
+    if (bytes >= HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
       throw new FileInputFailure({ reason: 'multipart_size' });
     return { part, value };
   });

@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
+import { createNodeCatalog } from '@pertexo/node-sdk';
+import {
+  createNodeRegistry,
+  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
+  type NodeExecutionRuntime,
+} from '@pertexo/node-sdk/server';
+import {
+  HTTP_REQUEST_MANIFEST,
+  HTTP_REQUEST_DEFINITION_REGISTRATION,
+} from '../../src/index.js';
 import {
   createHttpRequestExecutorRegistration,
   SecureHttpClient,
@@ -67,6 +76,7 @@ function fixture(
     });
   return {
     execute,
+    registration: executor,
     config,
     runtime,
     resolve,
@@ -181,4 +191,61 @@ describe('multipart dispatch outcomes', () => {
       expect(state.secret.every((byte) => byte === 0)).toBe(true);
     },
   );
+});
+
+describe('multipart size feedback through registry validation', () => {
+  it('reports oversized file metadata without reading storage, credentials or dispatching', async () => {
+    const state = fixture({ authorization: 'Bearer owned' });
+    const catalog = createNodeCatalog({
+      definitions: [HTTP_REQUEST_MANIFEST],
+      executors: [
+        {
+          executor: HTTP_REQUEST_MANIFEST.executor,
+          abiVersion: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
+          definitions: [HTTP_REQUEST_MANIFEST.definition],
+          policyReferences: HTTP_REQUEST_MANIFEST.policyReferences,
+        },
+      ],
+      policies: HTTP_REQUEST_MANIFEST.policyReferences,
+    });
+    const registry = createNodeRegistry({
+      catalog,
+      definitions: [HTTP_REQUEST_DEFINITION_REGISTRATION],
+      executors: [state.registration],
+    });
+    const read = vi
+      .fn()
+      .mockRejectedValue(new Error('Storage must not be read'));
+    await expect(
+      registry.execute({
+        definition: HTTP_REQUEST_MANIFEST.definition,
+        executor: HTTP_REQUEST_MANIFEST.executor,
+        config: {
+          ...state.config,
+          multipart: { parts: [{ inputKey: key, name: 'file', kind: 'file' }] },
+        },
+        input: {
+          [key]: {
+            kind: 'artifact',
+            artifactId: '44444444-4444-4444-8444-444444444444',
+            byteLength: 2097152,
+            mediaType: 'application/octet-stream',
+            sha256: 'a'.repeat(64),
+          },
+        },
+        connectionRefs: { http_headers: connectionId },
+        signal: new AbortController().signal,
+        runtime: { ...state.runtime, artifacts: { read, write: vi.fn() } },
+      }),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+      diagnostic: { reason: 'multipart_size' },
+    });
+    expect(read).not.toHaveBeenCalled();
+    expect(state.resolve).not.toHaveBeenCalled();
+    expect(state.beforeDispatch).not.toHaveBeenCalled();
+    expect(state.executeStreaming).not.toHaveBeenCalled();
+  });
 });
