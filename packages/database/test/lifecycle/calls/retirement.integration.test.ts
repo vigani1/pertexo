@@ -116,7 +116,13 @@ describe('parent-owned call retention', () => {
     ]);
     await retire();
     expect((await runRow(family.parentRunId))?.input_ref).not.toBeNull();
-    // The parent publication already pins its child; no relation yet owns child input.
+    // A live run retains its input even before a Call relation owns it.
+    expect((await runRow(family.childRunId))?.input_ref).not.toBeNull();
+    await admin.query(
+      "update app.workflow_runs set status='succeeded',completed_at=clock_timestamp() where id=$1",
+      [family.childRunId],
+    );
+    await retire();
     expect((await runRow(family.childRunId))?.input_ref).toBeNull();
     const accepted = await createFamily();
     await retire();

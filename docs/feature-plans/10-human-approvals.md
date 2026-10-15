@@ -230,6 +230,11 @@ proof, green CI and rebase merge. Update this tracker with actual receipts.
   and rejects at 375px using keyboard controls; independent SQL proves exactly
   two declarations, terminal continuations and comment-free audit metadata.
   Inspector empty instructions and invalid title preserve normal editing.
+- CI caught a previous Call-retention assertion that expected a live unrelated
+  child input to expire. It now proves live input remains, and expires after
+  terminal completion, matching the explicit human-wait retention policy.
+- The existing real-stack browser CI job includes the `approvals` journey; no
+  new job or infrastructure was added.
 - Screenshots: `docs/media/approvals/` contains desktop/mobile before and after.
   The harness used the attested CI fixture on ports 56432/56389/59090 and
   disposed its own databases, Redis namespace and Vite process. Owner development
