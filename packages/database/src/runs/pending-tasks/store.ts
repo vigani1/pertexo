@@ -12,7 +12,7 @@ import {
   readWorkspaceAuthority,
 } from '../../tenant-access/workspaces/authority.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
-import { respondToTask } from './decide.js';
+import { respondToTask } from './respond.js';
 import { listTasks, projectTask, readTaskRow } from './queries.js';
 import type { PendingTaskStore } from './contract.js';
 
