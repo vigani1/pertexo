@@ -9,6 +9,10 @@ Choose a name such as `BASE_URL`, `CURRENCY`, `RETRY_LIMIT` or `SANDBOX`. Names 
 uppercase letters, digits and underscores and begin with a letter. Values are
 text, a finite number or true/false. Empty text, zero and false are valid. There
 are at most 100 variables, 4,096 characters per text value and 32 KB in total.
+An optional description explains each value in Settings and the mapping picker.
+Descriptions are visible to every member too: at most 500 characters each and
+16 KB in total, separately from the values budget. Blank descriptions are removed.
+Changing a description creates a revision; it does not change execution values.
 
 In a step's mapping, choose **Insert data → Workspace variables**, for a direct typed reference such as `$vars.CURRENCY`. On steps that
 support expressions (Set, conditions, list/date transforms and Call), you can
@@ -86,3 +90,7 @@ sets are later work.
 ![Variables on a phone](media/variables/settings-phone.png)
 
 ![The captured values on a completed run](media/variables/captured-run-phone.png)
+
+![A missing variable blocks publication with an actionable finding](media/variables/publish-desktop.png)
+
+![Long names wrap in the phone publication dialog](media/variables/publish-phone.png)

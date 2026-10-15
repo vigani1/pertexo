@@ -28,7 +28,7 @@ export function VariablesEditor({
   const cache = useQueryClient();
   const [draft, setDraft] = useState(() => ({
     base: snapshot,
-    rows: variableRows(snapshot.values),
+    rows: variableRows(snapshot.values, snapshot.descriptions),
   }));
   const [error, setError] = useState<string>();
   const [inspect, setInspect] =
@@ -36,10 +36,18 @@ export function VariablesEditor({
   const [saved, setSaved] = useState<number>();
   const [reloading, setReloading] = useState(false);
   const command = useRetainedCommand(
-    (body: WorkspaceVariablesRequest, key: string) =>
-      replaceVariables(scope, body, key),
+    (
+      body: WorkspaceVariablesRequest & {
+        descriptions: WorkspaceVariablesResponse['descriptions'];
+      },
+      key: string,
+    ) => replaceVariables(scope, body, key),
     async (result, body) => {
-      const accepted = { revision: result.revision, values: body.values };
+      const accepted = {
+        revision: result.revision,
+        values: body.values,
+        descriptions: body.descriptions,
+      };
       setDraft((current) => ({ ...current, base: accepted }));
       setSaved(result.revision);
       setError(undefined);
@@ -58,7 +66,14 @@ export function VariablesEditor({
   const parsed = readVariableRows(draft.rows);
   const changed =
     parsed.values === undefined ||
-    canonicalJson(parsed.values) !== canonicalJson(draft.base.values);
+    canonicalJson({
+      values: parsed.values,
+      descriptions: parsed.descriptions,
+    }) !==
+      canonicalJson({
+        values: draft.base.values,
+        descriptions: draft.base.descriptions,
+      });
   const locked = command.pending || command.uncertain || reloading;
   const removalId = inspect?.removeId;
   const serverChanged = snapshot.revision !== draft.base.revision;
@@ -91,7 +106,10 @@ export function VariablesEditor({
       command.reset();
       setError(undefined);
       setSaved(undefined);
-      setDraft({ base: latest, rows: variableRows(latest.values) });
+      setDraft({
+        base: latest,
+        rows: variableRows(latest.values, latest.descriptions),
+      });
     } catch {
       setError(
         'Current variables could not be loaded. Your edits are kept. Try reloading again.',
@@ -115,6 +133,7 @@ export function VariablesEditor({
           void command.send({
             expectedRevision: draft.base.revision,
             values: parsed.values,
+            descriptions: parsed.descriptions,
           });
         }}
         className="flex flex-col gap-4"
@@ -159,6 +178,7 @@ export function VariablesEditor({
                     name: '',
                     type: 'text',
                     value: '',
+                    description: '',
                   },
                 ],
               }));

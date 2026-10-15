@@ -60,6 +60,9 @@ test('real variables save once after a lost acknowledgement and retain old run v
   const rate = page.getByRole('region', { name: 'RATE', exact: true });
   await rate.getByLabel('Type', { exact: true }).selectOption('number');
   await rate.getByLabel('Value', { exact: true }).fill('10');
+  await rate
+    .getByLabel('Description (optional)', { exact: true })
+    .fill('Rate applied to new invoices.');
   let intercepted = false;
   const writes: { body: string | null; key: string | undefined }[] = [];
   await page.route(`**${variablePath}`, async (route) => {
@@ -149,15 +152,26 @@ test('real variables save once after a lost acknowledgement and retain old run v
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
+    if (width < 1024) {
+      const description = page
+        .getByRole('region', { name: 'RATE', exact: true })
+        .getByLabel('Description (optional)', { exact: true });
+      await description.scrollIntoViewIfNeeded();
+      await description.click();
+    }
     await page.screenshot({
       path: `/tmp/pertexo-variable-screenshots/settings-${String(width)}.png`,
-      fullPage: true,
+      fullPage: width >= 1024,
     });
   }
   const current = workspaceVariablesResponseSchema.parse(
     await (await page.request.get(variablePath)).json(),
   );
-  expect(current).toEqual({ revision: 2, values: { RATE: 20 } });
+  expect(current).toEqual({
+    revision: 2,
+    values: { RATE: 20 },
+    descriptions: { RATE: 'Rate applied to new invoices.' },
+  });
   async function finish(runId: string, expected: number) {
     let taskId = '';
     await expect

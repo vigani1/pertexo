@@ -122,7 +122,7 @@ export function PublishDialog({
           </div>
         )}
         {error === undefined ? null : (
-          <Notice tone="destructive" className="mt-4">
+          <Notice tone="destructive" className="mt-4 [overflow-wrap:anywhere]">
             {error}
           </Notice>
         )}

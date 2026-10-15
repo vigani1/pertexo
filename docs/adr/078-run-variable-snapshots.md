@@ -38,7 +38,9 @@ owner policy only permits workspace-scoped preview updates.
 Publication checks required static variable names using the existing bounded
 authoring worker and its AST inspection. Optional/dynamic lookups keep their
 runtime semantics. Descriptions are non-secret settings metadata, not execution
-values. The database variable area has its own Node-only `/variables` entry point;
+values: 500 characters each, 16 KiB total. Omitted update metadata preserves
+descriptions for retained names; an explicit empty map clears them. Empty
+descriptions normalize away, and metadata changes advance the same CAS revision. The database variable area has its own Node-only `/variables` entry point;
 no new service, role, cache or editable history UI is introduced.
 
 Store one bounded current workspace map of text, finite number and boolean values

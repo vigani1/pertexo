@@ -14,7 +14,7 @@ function fixture() {
   const store = {
     read: vi
       .fn<WorkspaceVariablesStore['read']>()
-      .mockResolvedValue({ revision: 0, values: {} }),
+      .mockResolvedValue({ revision: 0, values: {}, descriptions: {} }),
     replace: vi
       .fn<WorkspaceVariablesStore['replace']>()
       .mockResolvedValue({ revision: 1, changed: true, replayed: false }),

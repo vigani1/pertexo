@@ -65,46 +65,64 @@ export function VariableRow({
           </select>
         )}
       </LabelledField>
-      <LabelledField id={`${prefix}-value`} label="Value">
-        {(control) =>
-          row.type === 'boolean' ? (
-            <select
-              {...control}
-              name={`${prefix}.value`}
-              className={selectClass}
-              value={row.value}
-              onChange={(event) => {
-                onChange({ ...row, value: event.currentTarget.value });
-              }}
-            >
-              <option value="true">True</option>
-              <option value="false">False</option>
-            </select>
-          ) : row.type === 'text' ? (
-            <Textarea
-              {...control}
-              name={`${prefix}.value`}
-              rows={1}
-              value={row.value}
-              maxLength={4096}
-              onChange={(event) => {
-                onChange({ ...row, value: event.currentTarget.value });
-              }}
-            />
-          ) : (
+      <div className="flex min-w-0 flex-col gap-3">
+        <LabelledField id={`${prefix}-value`} label="Value">
+          {(control) =>
+            row.type === 'boolean' ? (
+              <select
+                {...control}
+                name={`${prefix}.value`}
+                className={selectClass}
+                value={row.value}
+                onChange={(event) => {
+                  onChange({ ...row, value: event.currentTarget.value });
+                }}
+              >
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select>
+            ) : row.type === 'text' ? (
+              <Textarea
+                {...control}
+                name={`${prefix}.value`}
+                rows={1}
+                value={row.value}
+                maxLength={4096}
+                onChange={(event) => {
+                  onChange({ ...row, value: event.currentTarget.value });
+                }}
+              />
+            ) : (
+              <Input
+                {...control}
+                name={`${prefix}.value`}
+                type="number"
+                step="any"
+                value={row.value}
+                onChange={(event) => {
+                  onChange({ ...row, value: event.currentTarget.value });
+                }}
+              />
+            )
+          }
+        </LabelledField>
+        <LabelledField
+          id={`${prefix}-description`}
+          label="Description (optional)"
+        >
+          {(control) => (
             <Input
               {...control}
-              name={`${prefix}.value`}
-              type="number"
-              step="any"
-              value={row.value}
+              name={`${prefix}.description`}
+              value={row.description}
+              maxLength={500}
               onChange={(event) => {
-                onChange({ ...row, value: event.currentTarget.value });
+                onChange({ ...row, description: event.currentTarget.value });
               }}
             />
-          )
-        }
-      </LabelledField>
+          )}
+        </LabelledField>
+      </div>
       <div className="flex flex-wrap items-end gap-2">
         <Button
           type="button"

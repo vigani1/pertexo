@@ -344,8 +344,12 @@ maximum bounded value set referenced by many accepted runs. No external service.
   PostgreSQL cases, 53 variable/lifecycle cases and five real-worker recovery,
   nested-Call and notification-privacy cases passed. A maximum 32,768-byte set
   is stored once for 50 accepted runs; their revision references total 200 bytes.
-- [ ] Add descriptions to settings and the picker, show safe publication findings
+- [x] Add descriptions to settings and the picker, show safe publication findings
   in the web, and qualify desktop/phone behavior and required release gates.
+  All repository gates, 9,219 units, 16 variable PostgreSQL cases, 180 mocked
+  browser cases and the real API/worker/browser capture/replay journey passed.
+  React Doctor reports 100/100 with no diagnostics. Desktop and phone screenshots
+  include a maximum-length missing name without horizontal overflow.
 
 Immutable-storage qualification (2026-10-16): migration 0016 replaces stored JSON
 copies with workspace/revision foreign keys, preserves historical and fixed-empty

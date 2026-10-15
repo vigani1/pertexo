@@ -1,10 +1,10 @@
 import type { PoolClient } from 'pg';
-import { and, eq } from 'drizzle-orm';
 import {
-  EMPTY_VARIABLE_SNAPSHOT,
-  workspaceVariableSnapshotSchema,
-  type WorkspaceVariableSnapshot,
-} from '@pertexo/workflow-model';
+  workspaceVariablesResponseSchema,
+  type WorkspaceVariablesResponse,
+} from '@pertexo/contracts';
+import { and, eq } from 'drizzle-orm';
+import { EMPTY_VARIABLE_SNAPSHOT } from '@pertexo/workflow-model';
 import {
   workspaceVariables,
   workspaceVariableSetRevisions,
@@ -13,11 +13,12 @@ import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 /** Settings read one committed head/set view; a missing head is an untouched workspace. */
 export async function readWorkspaceVariables(
   transaction: WorkspaceTransaction,
-): Promise<WorkspaceVariableSnapshot> {
+): Promise<WorkspaceVariablesResponse> {
   const [row] = await transaction.db
     .select({
       revision: workspaceVariables.revision,
       values: workspaceVariableSetRevisions.values,
+      descriptions: workspaceVariableSetRevisions.descriptions,
     })
     .from(workspaceVariables)
     .innerJoin(
@@ -32,9 +33,9 @@ export async function readWorkspaceVariables(
     )
     .where(eq(workspaceVariables.workspaceId, transaction.workspaceId))
     .limit(1);
-  return row === undefined
-    ? EMPTY_VARIABLE_SNAPSHOT
-    : workspaceVariableSnapshotSchema.parse(row);
+  return workspaceVariablesResponseSchema.parse(
+    row ?? { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} },
+  );
 }
 
 /** Admission holds the head until its immutable reference has been inserted. */

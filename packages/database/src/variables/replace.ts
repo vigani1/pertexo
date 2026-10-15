@@ -1,10 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  canonicalJson,
-  workspaceVariableSnapshotSchema,
-} from '@pertexo/workflow-model';
+import { canonicalJson } from '@pertexo/workflow-model';
+import { workspaceVariablesResponseSchema } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
@@ -32,6 +30,9 @@ export async function replaceWorkspaceVariables(
         canonicalJson({
           expectedRevision: input.expectedRevision,
           values: input.values,
+          ...(input.descriptions === undefined
+            ? {}
+            : { descriptions: input.descriptions }),
         }),
       )
       .digest('hex'),
@@ -46,29 +47,49 @@ export async function replaceWorkspaceVariables(
     row === undefined
       ? undefined
       : (
-          await client.query<{ values_json: unknown }>(
-            'select values_json from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2',
+          await client.query<{
+            values_json: unknown;
+            descriptions_json: unknown;
+          }>(
+            'select values_json,descriptions_json from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2',
             [input.workspaceId, row.revision],
           )
         ).rows[0];
-  const current = workspaceVariableSnapshotSchema.parse({
+  const current = workspaceVariablesResponseSchema.parse({
     revision: row?.revision ?? 0,
     values: row === undefined ? {} : stored?.values_json,
+    descriptions: row === undefined ? {} : stored?.descriptions_json,
   });
   if (current.revision !== input.expectedRevision)
     throw new WorkspaceVariablesConflictError();
+  // An update without metadata keeps descriptions for the names it retains.
+  const descriptions: Record<string, string> = {};
+  for (const [name, description] of Object.entries(
+    input.descriptions ?? current.descriptions,
+  ))
+    if (Object.hasOwn(input.values, name) && description !== '')
+      descriptions[name] = description;
   const names = [
     ...new Set([...Object.keys(current.values), ...Object.keys(input.values)]),
   ]
     .sort()
-    .filter((name) => !Object.is(current.values[name], input.values[name]));
+    .filter(
+      (name) =>
+        !Object.is(current.values[name], input.values[name]) ||
+        current.descriptions[name] !== descriptions[name],
+    );
   let revision = current.revision;
   if (names.length > 0) {
     revision = current.revision + 1;
     const inserted = await client.query<{ revision: number }>(
-      `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json)
-       values($1,$2,$3::jsonb) on conflict do nothing returning revision`,
-      [input.workspaceId, revision, canonicalJson(input.values)],
+      `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json,descriptions_json)
+       values($1,$2,$3::jsonb,$4::jsonb) on conflict do nothing returning revision`,
+      [
+        input.workspaceId,
+        revision,
+        canonicalJson(input.values),
+        canonicalJson(descriptions),
+      ],
     );
     if (inserted.rowCount !== 1) throw new WorkspaceVariablesConflictError();
     const saved = await client.query<{ revision: number }>(
