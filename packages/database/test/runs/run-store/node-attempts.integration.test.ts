@@ -1025,6 +1025,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
     ).resolves.toEqual({
       abortRequested: false,
       completedNodeOutputs: [],
+      variables: {},
       runInput: { hello: 'world' },
       checkpoint: expect.objectContaining({ runStatus: 'running' }) as unknown,
     });
