@@ -1,4 +1,4 @@
-import { ApprovalSetup } from '../approval/setup';
+import { ApprovalSetup } from '../human-task/setup';
 import { ReadFileSetup } from '../builders/read-file-setup';
 import { DateSetup } from '../builders/date-setup';
 import { CallTargetField } from '../fields/call-target';

@@ -1,4 +1,4 @@
-import { PendingApprovals } from '@/features/approvals/public';
+import { PendingApprovals } from '@/features/pending-tasks/public';
 import { ErrorWorkflowStatus } from '../components/error-workflow-status';
 import type {
   AccessibleWorkspace,

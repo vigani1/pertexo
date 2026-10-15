@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import type { ApprovalAudience } from '@pertexo/workflow-model';
+import type { TaskAudience } from '@pertexo/workflow-model';
 import {
   audienceQueryOptions,
   type TaskScope,
-} from '@/features/approvals/queries.public';
+} from '@/features/pending-tasks/queries.public';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
@@ -21,8 +21,8 @@ export function AudienceField({
 }: Readonly<{
   scope: TaskScope;
   form: NodeFormApi;
-  audience: ApprovalAudience;
-  onChange: (next: ApprovalAudience) => void;
+  audience: TaskAudience;
+  onChange: (next: TaskAudience) => void;
 }>) {
   const [search, setSearch] = useState('');
   const members = useInfiniteQuery({

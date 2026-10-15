@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { LabelledField } from '@/components/ui/field';
 import { useInspectorDraftField } from '../use-draft-field';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-export function ApprovalTextField({
+export function TaskTextField({
   name,
   value,
   form,
