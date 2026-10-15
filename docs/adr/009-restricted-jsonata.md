@@ -213,3 +213,12 @@ requires explicit compatibility support. Worker threads provide a hard
 computation stop but are not claimed to be a general hostile-code OS sandbox;
 the AST capability boundary and executable escape suite must pass before the
 custom engine proceeds.
+
+## F13 amendment — 2026-10-15
+
+[ADR 078](078-run-variable-snapshots.md) adds exactly one immutable data binding,
+`$vars`, from the accepted run/preview snapshot. This is an explicit exception to
+the named-variable exclusion above, retaining the existing restricted policy
+and runtime. No new operators, built-ins, arbitrary named bindings or host
+functions are enabled. The copied map participates in existing context bounds.
+Direct missing names fail clearly; whole-map lookup supports optional names.

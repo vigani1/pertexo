@@ -1,6 +1,6 @@
 # F11 — Forms and requested member input
 
-Status: implementation authorized by the owner's sequential feature request.
+Status: implemented and merged in #302; natural main qualification pending.
 Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 
 ## Current code and outcome
@@ -257,3 +257,9 @@ Later: file fields, public mid-run input, email links, CAPTCHA if actual abuse
 requires it, conditional fields, richer validation and form theming. No extra
 machinery is built for those now. F13 variables and F27 preferences follow only
 after this feature is implemented and merged.
+
+## Merge evidence
+
+PR #302 rebase merged as `0eaa5ac4409a7bafe15b91445f7adb9952fad083`.
+CI 38732419684 passed all required jobs, including the real browser batch;
+CodeQL 38732419735 passed. Natural main CI is being inspected separately.
