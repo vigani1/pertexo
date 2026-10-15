@@ -51,7 +51,7 @@ export function TaskDetailPage({
         <p className="mt-3 text-sm text-muted-foreground">
           Expires {formatDateTime(task.expiresAt)}.{' '}
           {task.kind === 'approval'
-            ? 'One eligible person decides; the starter cannot decide.'
+            ? 'One eligible person approves or rejects this request.'
             : 'One eligible member responds. The person who started the run may respond.'}
         </p>
         {task.instructions === '' ? null : (

@@ -134,6 +134,13 @@ export async function installEditorRoutes(
   const accessibleWorkspace = options.accessibleWorkspace ?? workspace;
   const definitions = options.definitions ?? [definition];
   await page.route(
+    `**/v1/workspaces/${workspaceId}/pending-tasks/audience/inspect`,
+    (route) =>
+      route.fulfill({
+        json: { matchingMemberCount: 1, actorMatchesAudience: true },
+      }),
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/pending-tasks?**`,
     (route) =>
       route.fulfill({ json: { items: [], nextCursor: null, pendingCount: 0 } }),

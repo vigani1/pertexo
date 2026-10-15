@@ -17,6 +17,7 @@ import {
   pendingTaskDecisionRequestSchema,
   pendingTaskSubmitRequestSchema,
   approvalAudienceQuerySchema,
+  approvalAudienceInspectionRequestSchema,
 } from '@pertexo/contracts';
 import {
   CsrfProtectionGuard,
@@ -71,6 +72,26 @@ export class PendingTasksController {
     const input = approvalAudienceQuerySchema.parse(query ?? {});
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.audience({
+        workspaceId,
+        actorId: authenticatedSession(request).userId,
+        ...input,
+        signal,
+      }),
+    );
+  }
+  @Post('audience/inspect')
+  @HttpCode(200)
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(ApprovalAudienceGuard, CsrfProtectionGuard)
+  inspectAudience(
+    @Req() request: TaskRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const { workspaceId } = workspaceParams.parse(params);
+    const input = approvalAudienceInspectionRequestSchema.parse(body);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tasks.inspectAudience({
         workspaceId,
         actorId: authenticatedSession(request).userId,
         ...input,

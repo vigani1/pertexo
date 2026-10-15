@@ -1,5 +1,7 @@
 import type {
   ApprovalAudiencePage,
+  ApprovalAudienceInspectionRequest,
+  ApprovalAudienceInspectionResponse,
   ApprovalAudienceQuery,
   PendingTaskDecisionRequest,
   PendingTaskSubmitRequest,
@@ -36,6 +38,9 @@ export interface PendingTaskStore {
   audience(
     input: PendingTaskScope & ApprovalAudienceQuery,
   ): Promise<ApprovalAudiencePage>;
+  inspectAudience(
+    input: PendingTaskScope & ApprovalAudienceInspectionRequest,
+  ): Promise<ApprovalAudienceInspectionResponse>;
   close(): Promise<void>;
 }
 export class PendingTaskNotFoundError extends Error {

@@ -405,6 +405,10 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
+                    "decidedByName": {
+                      "type": "string",
+                      "maxLength": 256
+                    },
                     "decidedAt": {
                       "type": "string",
                       "format": "date-time",
@@ -1079,6 +1083,10 @@
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "decidedByName": {
+                          "type": "string",
+                          "maxLength": 256
                         },
                         "decidedAt": {
                           "type": "string",
@@ -1991,6 +1999,10 @@
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                         },
+                        "decidedByName": {
+                          "type": "string",
+                          "maxLength": 256
+                        },
                         "decidedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -2516,6 +2528,69 @@
       "required": [
         "items",
         "nextCursor"
+      ],
+      "additionalProperties": false
+    },
+    "ApprovalAudienceInspectionRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "audience": {
+          "type": "object",
+          "properties": {
+            "roles": {
+              "default": [
+                "owner",
+                "admin"
+              ],
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "admin",
+                  "builder",
+                  "operator",
+                  "viewer"
+                ]
+              }
+            },
+            "memberIds": {
+              "default": [],
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "audience"
+      ],
+      "additionalProperties": false
+    },
+    "ApprovalAudienceInspectionResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "matchingMemberCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "actorMatchesAudience": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "matchingMemberCount",
+        "actorMatchesAudience"
       ],
       "additionalProperties": false
     },

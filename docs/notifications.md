@@ -8,7 +8,8 @@ notice. Reading a notice changes only your own read state.
 
 Owners, admins and operators see workflow failures, pauses and limits by default.
 Owners and admins see connection attention. Approval cards use the task's actual
-allowed people and exclude its starter. The Approvals list and authenticated task
+allowed people. Its starter is excluded unless that step explicitly allows
+starter decisions. The Approvals list and authenticated task
 page remain authoritative; email never approves or rejects anything. Input
 requests stay in the Inbox's Requests section, without duplicating approvals.
 

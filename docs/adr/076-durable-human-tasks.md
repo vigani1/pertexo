@@ -25,8 +25,9 @@ service, package or database role is introduced.
 
 The audience is captured roles and/or named member IDs, default owner/admin.
 Eligibility always requires current active membership, user, workspace and run
-read access. The initiating human cannot decide Approval tasks, including in
-Call descendants; ordinary replay binds its new initiator. Automated starts have
+read access. By default, the initiating human cannot decide Approval tasks, including in
+Call descendants; the captured per-step `allowStarterToDecide` setting may
+explicitly permit that human while retaining all other eligibility checks; ordinary replay binds its new initiator. Automated starts have
 no human initiator. Operator replay preserves source attribution. F11 request
 input will use the same pending-task owner with its own explicit audience and
 self-response policy, not a second decision store.
@@ -34,7 +35,8 @@ self-response policy, not a second decision store.
 A decision locks current authority, the run and task in the existing workspace
 lock order. Database time must precede expiry; committed cancellation or terminal
 state prevents acceptance. One atomic resolution records the decision, optional
-plain comment, deciding user and timestamp, audit and normal coordinator outbox.
+plain comment, deciding user, recorded display name and timestamp, audit and
+normal coordinator outbox.
 Idempotent retries return that command's result; another decision cannot replace
 it. Membership loss, read state, stale UI, automation tokens or an unguessable ID
 are never a decision capability. Decision and comment are ordinary retained step
@@ -107,3 +109,19 @@ This adds explicit checkpoint control/result identities and requires matching AP
 and worker readers before first publication. Rollback must settle/cancel pending
 human runs and retain compatible readers for served history; turning off a UI
 control cannot make an old worker understand these records.
+
+### Amendment: starter choice and recorded names (2026-10-16)
+
+The owner approved a per-step opt-in to starter decisions, default off. The
+choice belongs to immutable task setup, not mutable workflow settings. The same
+TypeScript eligibility owner serves discovery, decisions, Inbox and mail. A
+prospective editor hint counts the full current audience through the existing
+authoring authority; directory search or its first page cannot determine that
+someone would be the only decider. The hint is advisory because automated and
+other-member starts can have another initiator.
+
+New approval results capture `decidedByName` under the existing locked user
+authority, using the decision's database-time query. Later profile edits do not
+rewrite the recorded output or its displayed name. Earlier output may omit the
+field; retain its existing current-name display fallback without fabricating a
+historical value. No new table, role, service or executor identity is introduced.

@@ -49,6 +49,7 @@ describe('current authority and atomic human decisions', () => {
       decision: 'approved',
       comment: 'Looks good',
       decidedBy: f.deciderId,
+      decidedByName: 'Approver',
     });
   });
   it('has one winner under concurrent approve/reject and emits one audit and wake', async () => {
@@ -237,4 +238,64 @@ it('refuses a decision released from a task lock after expiry and records one ex
     await decision?.catch(() => undefined);
     await contender.close();
   }
+});
+
+it('allows the starter only by captured opt-in and still enforces the audience', async () => {
+  for (const allowed of [undefined, false, true]) {
+    const f = await taskFixture(
+      allowed === undefined ? {} : { allowStarterToDecide: allowed },
+    );
+    const command = {
+      ...f.scope,
+      actorId: userId,
+      decision: 'approved' as const,
+      idempotencyKey: 'starter-choice',
+    };
+    if (allowed === true) {
+      expect((await store.read(command)).canRespond).toBe(true);
+      expect(
+        (
+          await store.list({ ...command, view: 'mine', status: 'pending' })
+        ).items.map((item) => item.id),
+      ).toContain(f.taskId);
+      expect((await store.decide(command)).task.status).toBe('approved');
+    } else {
+      expect((await store.read(command)).blockedReason).toBe('starter');
+      await expect(store.decide(command)).rejects.toMatchObject({
+        reason: 'starter',
+      });
+    }
+  }
+  const named = await taskFixture({ named: true, allowStarterToDecide: true });
+  await expect(
+    store.decide({
+      ...named.scope,
+      actorId: userId,
+      decision: 'approved',
+      idempotencyKey: 'outside-audience',
+    }),
+  ).rejects.toMatchObject({ reason: 'audience' });
+});
+it('keeps the decision name through profile edits and command replay; reads legacy outputs', async () => {
+  const f = await taskFixture();
+  const command = {
+    ...f.scope,
+    decision: 'approved' as const,
+    idempotencyKey: 'captured-name',
+  };
+  const first = await store.decide(command);
+  expect(first.task.output).toMatchObject({ decidedByName: 'Approver' });
+  await admin.query(
+    "update app.users set display_name='Renamed person' where id=$1",
+    [f.deciderId],
+  );
+  expect((await store.read(f.scope)).completedByName).toBe('Approver');
+  expect((await store.decide(command)).task.output).toEqual(first.task.output);
+  await admin.query(
+    "update app.pending_run_tasks set output_ref=output_ref #- '{value,decidedByName}' where id=$1",
+    [f.taskId],
+  );
+  const legacy = await store.read(f.scope);
+  expect(legacy.completedByName).toBe('Renamed person');
+  expect(legacy.output).not.toHaveProperty('decidedByName');
 });

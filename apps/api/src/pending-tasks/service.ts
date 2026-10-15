@@ -1,5 +1,6 @@
 import {
   approvalAudiencePageSchema,
+  approvalAudienceInspectionResponseSchema,
   pendingTaskResponseSchema,
   pendingTaskListResponseSchema,
   pendingTaskDecisionResponseSchema,
@@ -28,6 +29,13 @@ export class PendingTaskService {
   submit(input: Parameters<PendingTaskStore['submit']>[0]) {
     return taskOperation(async () =>
       pendingTaskDecisionResponseSchema.parse(await this.store.submit(input)),
+    );
+  }
+  inspectAudience(input: Parameters<PendingTaskStore['inspectAudience']>[0]) {
+    return taskOperation(async () =>
+      approvalAudienceInspectionResponseSchema.parse(
+        await this.store.inspectAudience(input),
+      ),
     );
   }
   audience(input: Parameters<PendingTaskStore['audience']>[0]) {

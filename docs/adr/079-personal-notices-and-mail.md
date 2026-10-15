@@ -26,7 +26,8 @@ Compute each person's current view from membership, the notice's audience,
 workflow follow and private mute. Following adds only that workflow's notices
 through run-read access. Mutes never change another person's view, a human task or
 shared ADR 022 alerts. Approval waiting uses the pending-task eligibility owner,
-including starter exclusion. Resolved operational notices leave current attention;
+including the captured Approval starter choice (default excluded, explicit
+per-step opt-in allowed under ADR 076). Resolved operational notices leave current attention;
 failure threads retain F03's window. Inbox guards allow current workspace members,
 with precise row eligibility and private read state under forced RLS.
 

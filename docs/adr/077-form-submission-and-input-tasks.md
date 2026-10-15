@@ -38,7 +38,7 @@ rate limiting fails closed for public writes, alongside ordinary capacity fences
 Request input extends ADR 076's closed pending task with a captured form schema
 and a submitted outcome. Only a current eligible member may submit, once, before
 expiry and while the run remains live. The starter may supply requested input;
-Approval's self-decision prohibition remains. The same task store, engine facts,
+Approval retains its captured starter choice (default off; ADR 076). The same task store, engine facts,
 result references, clocks, capacity, cancellation and retention own both kinds.
 Responses become ordinary authorized step output; audits/receipts omit values.
 F09 prefix recovery remains unavailable for these human graphs.

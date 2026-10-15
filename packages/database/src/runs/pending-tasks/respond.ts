@@ -70,17 +70,21 @@ export async function respondToTask(
   if (replay !== null) return { task: projectTask(row), replayed: true };
   if (row.blocked_reason !== null)
     throw new PendingTaskDecisionError(row.blocked_reason);
-  const observed = await client.query<{ now: Date }>(
-    'select clock_timestamp() now',
+  const observed = await client.query<{ now: Date; display_name: string }>(
+    'select clock_timestamp() now,display_name from app.users where id=$1',
+    [input.actorId],
   );
-  const now = observed.rows[0]?.now;
-  if (now === undefined) throw new Error('Decision time unavailable');
+  const observation = observed.rows[0];
+  if (observation === undefined)
+    throw new Error('Decision identity and time unavailable');
+  const { now, display_name } = observation;
   const output =
     input.kind === 'approval'
       ? approvalOutputSchema.parse({
           decision: input.decision,
           comment: input.comment === '' ? null : (input.comment ?? null),
           decidedBy: input.actorId,
+          decidedByName: display_name,
           decidedAt: now.toISOString(),
         })
       : formSubmissionSchema.parse({
