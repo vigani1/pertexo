@@ -1,100 +1,159 @@
-# F13 — Workspace variables and reusable non-secret configuration
+# F13 — Workspace variables
 
-Status: proposed plan; not implementation-authorized by this document.
-Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
-Scope: New version-aware configuration. Relative size: **L**, not a calendar estimate.
+Status: implementation authorized by the owner's sequential feature request.
+Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 
-## Outcome
+## Outcome and current code
 
-Users reuse ordinary configuration across workflows without misusing secrets or introducing nondeterministic replay.
+Reuse non-secret workspace text, finite numbers and booleans in mappings as
+`$vars.NAME`. Editing a value affects new independent runs; existing runs,
+replays, recovery and their child workflows keep the original snapshot.
 
-## Current implementation and evidence
+The shared `runs/commands/acceptance.ts` already admits every trigger, replay,
+recovery and Call through one transaction. Attempt inputs are loaded under the
+workspace and live attempt fence; callable results have a separate completion
+projection. Restricted JSONata currently exposes runInput and nodeOutputs and
+rejects named variables. Previews have their own durable admission. Extend these
+existing owners; no service, package, role, queue or process environment binding.
 
-Node configuration, workflow inputs and encrypted connections exist. A first-class user-managed variable product is not established.
+Recommended decisions below are accepted under the owner's autonomous mandate.
+Record snapshot retention and inheritance in ADR 078 because changing them after
+runs exist would reinterpret executions.
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
+## Values, permissions and edits
 
-- [packages/workflow-model/src/graph/contract.ts](../../packages/workflow-model/src/graph/contract.ts)
-- [apps/api/src/connections](../../apps/api/src/connections)
-- [apps/web/src/features/connections](../../apps/web/src/features/connections)
+- Names match `[A-Z][A-Z0-9_]{0,63}`. Values are text (up to 4,096 characters),
+  finite JSON numbers or booleans. No objects, null, arrays, interpolation,
+  credentials or hidden/environment-specific values. False, zero and empty text
+  remain values. Text uses the existing valid-Unicode/no-NUL storage rule.
+- Maximum 100 variables and 32 KiB of canonical JSON per workspace. Validate the
+  whole set once at the API boundary. Database constraints provide an outer JSON
+  envelope fence; domain rules remain in TypeScript.
+- All current workspace members may read values. Owners and admins manage them
+  through an explicit variable-management capability in the existing role policy.
+  Builders can insert/read variables without changing shared configuration.
+- One `workspace_variables` row stores the current bounded typed value map and
+  positive revision. Absence means revision zero and an empty set. A replacement
+  command requires the expected revision and a stable idempotency key, returns a
+  conflict on concurrent edits and preserves the person's local values. No second
+  version-history table: immutable run snapshots provide execution history.
+- Current membership/role is locked in the same tenant transaction as the write.
+  Audit records changed names and revision only, never values. No secret heuristic
+  can make these values safe for credentials: the UI says plainly that every
+  member can read them and to use Connections for secrets.
+- Renaming is remove/add in one set update. Show usages before removing a name;
+  removal does not mutate published graphs or retained snapshots. New executions
+  with a missing reference fail clearly instead of silently dropping the mapping.
 
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+## Snapshot and execution contract
 
-## Dependencies and planning gate
+- Add nullable bounded `variable_snapshot` JSON to runs and previews. Its single
+  stored shape is `{ revision, values }`. Additive migration fills existing rows
+  with revision zero/empty values; null is reserved for purged execution details.
+- Fresh independent acceptance reads one committed variable row in the same
+  transaction and inserts its snapshot with the run. Exact command retries reuse
+  the accepted row and never refresh values. A concurrent edit linearizes at that
+  snapshot read: the complete old or complete new set, never a mixture.
+- A full replay and step recovery copy the source snapshot, regardless of a new
+  version or changed input. A purged source snapshot refuses replay clearly; it
+  never silently replaces history with today's values. Older runs start empty.
+- Calls inherit the parent's snapshot at child admission, including nested Calls.
+  This keeps a logical run consistent while waiting for capacity or a person.
+  An error workflow is a new independent run and captures the current workspace
+  set; its safe failure summary remains the only source-run data it receives.
+- Attempt input loading carries the stored snapshot through the existing lease
+  fence into mapping resolution; callable result resolution uses the same snapshot.
+  Workers do not read the mutable workspace table during execution. Retries,
+  waits, human responses, branches and loops therefore need no special cache.
+- A preview captures current values at its own admission and uses them through
+  the same resolver. Its exact retry uses that accepted snapshot.
+- Expose only `$vars` as the new named JSONata binding. Keep every other named
+  binding and forbidden construct blocked. Amend ADR 009 explicitly: this adds
+  one immutable data binding, without adding operators, built-ins or a second
+  expression policy/runtime. Bind a plain immutable copied value
+  map, never the host environment or a callable object. Include it in the existing
+  expression input byte/member/depth budget. A direct reference to a missing
+  name fails that mapping clearly, even inside a conditional/exists guard; use
+  whole-map `$lookup` for optional names. A dynamic lookup with no match fails
+  when it is the mapping result; ordinary JSONata missing behavior elsewhere
+  stays unchanged. Errors and history expose a safe missing-configuration code,
+  never variable values.
+- Keep the existing expression ValueSource; a picker inserts `$vars.NAME`. No new
+  graph format or overlapping variable-specific ValueSource.
+- Run details expose retained non-secret snapshot/revision under existing run-read
+  authorization so people can explain execution. Snapshot retention follows run
+  details, remains while a live task needs it and is removed with workspace purge.
+  Preview snapshots follow preview retention. Reader/writer rollout must precede
+  enabling variable mappings; roll back writers before old readers.
 
-01; design snapshot semantics with 08/17 before runtime use.
+## Usage and UI
 
-Recommend snapshot at run acceptance for replay traceability; decide template/import placeholders and environment overrides before 17.
+- `workflow-model/src/variables/` owns types and bounds; the server expression
+  owner inspects JSONata's public AST for reference facts, never regex matching.
+  Walk input mappings in root/body graphs and the callable result. Literal text
+  containing `$vars.NAME` is not a reference. Direct static reads name the value;
+  computed reads or whole-map access conservatively mean "may use any variable".
+- `database/src/tenant-access/variables/` owns scoped current-set commands and
+  usage reads, exported through the existing tenant-access entry point. Reuse
+  current pool leases, tenant transactions, current-authority and command receipts.
+  Group schema under the existing schema area. No extra entry point.
+- A bounded paginated usage endpoint scans at most one workflow (its bounded
+  draft and current publication) per page and returns matching step/input names,
+  including archived workflows clearly. Continue pagination through workflows
+  with no matches; never report a partial scan as "unused". A response is bounded
+  and supplies a continuation within a workflow when its references fill a page.
+  It excludes retained historical versions and explains this. Current snapshots
+  are historical execution facts, not editable references. Read workflow metadata
+  only under the current workflow-read capability; no cross-tenant discovery.
+- API owns the existing session/CSRF/rate-limit/error boundaries and typed public
+  contracts. Settings commands remain cookie-only; automation tokens do not gain
+  variable-management scopes implicitly.
+- Web `features/workspace-variables/` owns queries, typed editor, usage and public
+  interfaces. Workspace route composes a Variables page linked from Settings.
+  Plain forms, explicit typed controls, no JSON editor for routine values. Keep
+  Weft typography, Status glyphs and existing thread pieces; one quiet visual
+  explanation of "new runs pick up changes; existing runs keep their values".
+- The editor's Insert data picker lists variable name/type and inserts a normal
+  expression; explain snapshot semantics there. Queries own current values, local
+  form state owns unsaved edits, one feedback owner per failed command. Stable
+  command identity/body survive uncertain outcomes; conflicts retain edits.
+- Desktop and phone layouts, keyboard labels/focus and reduced motion remain
+  usable. Reuse primitives rather than inventing a design system.
 
-Recommendations are not accepted ADRs. Resolve consequential choices before code;
-use the next free ADR number when required. Do not create ADRs for routine fixes.
+## Verification and delivery
 
-## Ownership and structure
+One F13 PR after F11 merges. Plan/ADR first. A mechanical move commit extracts
+the existing valid-storage-text schema from Form fields into `json/text.ts` and
+moves Forms’ exact retained-command hook into `lib/api/use-retained-command.ts`
+for the second real consumer. Preserve behavior and update imports in that commit;
+context-specific error wording changes belong to the later logic commit. No
+second copy of either rule. Other moves, if needed, stay in their own commits,
+then coherent implementation and qualification commits. Every commit is gated
+by lint, TypeScript and units; final gates include format/build, mocked browser,
+contracts/OpenAPI, schema ownership, architecture/Knip and changed React Doctor.
 
-Application workspace configuration; database revisions; model value-source policy; runtime snapshot resolver; contracts; web settings/editor.
+Behavioral evidence must include finite typed limits; named-variable policy and
+missing references; old/new snapshot coherence under an edit; duplicate acceptance;
+replay/recovery preserving values; nested Calls; preview; task restart; current
+role loss and forced workspace RLS; audit without values; retention; accurate
+static/dynamic usage. A real API/worker/browser journey creates variables, maps
+one, runs, edits it, replays and proves old/new outputs in SQL. Test desktop and
+phone and attach synthetic screenshots. No external provider is needed.
 
-Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
-These are responsibility owners, not a mandate to create empty folders/packages.
-Reuse the post-cleanup canonical owners; do not restore old duplicated paths.
+## Tracker
 
-## Frontend work
+- [x] Current owners and requested scope reconciled; recommendations recorded.
+- [ ] ADR and contracts complete.
+- [ ] Scoped persistence, snapshot admission and execution implemented.
+- [ ] Variable settings, usage and mapping UI implemented.
+- [ ] Independent persistence/runtime/browser evidence passed.
+- [ ] Rollout, guide, roadmap and remaining limits documented.
+- [ ] PR green, rebase merged; inspect natural main result.
 
-Workspace variable settings, typed values, references and resolved-source labels; credential values never appear in this editor.
+## Later work
 
-## Backend work
-
-Revisioned workspace variable records and authorization; run/version binding rule and captured snapshot metadata. Keep secret references in connections/secret authority; no interpolation from process environment.
-
-## Delivery slices
-
-1. Define types, limits, name scope and whether publish or run acceptance pins values.
-2. Implement variable CRUD/audit and bounded resolution with explicit missing-value errors.
-3. Add mapping reference picker and inspectable non-secret provenance.
-
-Each slice ends in a usable, tested behavior; do not ship enabled placeholder
-controls backed by invented responses.
-
-## Acceptance evidence
-
-Changed variable during a run does not mutate its snapshot, missing/removed value, role loss, cross-tenant denial, replay retention and secret-like data handling.
-
-Apply the shared completion checklist: contract/authorization tests, real
-persistence and restart/race tests when relevant, real browser/backend flow for
-visible behavior, and exact reviewed source/CI evidence. Mocks alone cannot close
-the live gate. Record unsupported environments explicitly.
-
-## Non-goals
-
-Global mutable implicit state, secret storage inside normal variables, hot-changing in-flight execution semantics.
-
-## Rollout and rollback
-
-Stop new references while old versions/snapshots remain interpretable.
-
-No production rollout, paid provisioning or real external calls are authorized by
-this plan. New persistent behavior requires additive reader/writer rollout and
-retention/membership-deletion handling before enablement.
-
-## Competitor context
-
-n8n documents reusable custom variables; Pertexo still needs its own pinning and replay contract. Sources: [n8n custom variables](https://docs.n8n.io/build/code-in-n8n/define-custom-variables).
-
-Research checked 2026-09-28; product editions and availability can change.
-This context informs the outcome, not Pertexo's implementation or billing policy.
-
-## Delivery tracker
-
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
-- [ ] Contracts and failure/security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
-
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+Environment overrides, secret variables, automatic substitution into configuration
+text, historical editable revisions and per-workflow variable ACLs are outside this
+feature. Exports keep the ordinary expression references, never workspace values;
+imports resolve names in their destination workspace. No placeholder service or
+migration framework is added for later environments.
