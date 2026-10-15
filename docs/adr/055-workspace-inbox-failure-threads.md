@@ -16,6 +16,11 @@
 > **Amendment (2026-10-15, ADR 079).** F27 generalizes subject identity and
 > personal audience. Existing failure aggregation and read behavior remain.
 
+> **Audience amendment (2026-10-15, ADR 079).** The TypeScript notice owner
+> now enforces business audiences for Inbox and email. SQL keeps workspace and
+> active-member isolation plus private read state. The original SQL business
+> audience description below is superseded; old readers stop before migration.
+
 ## Context
 
 ADR 054 delivers a failed run as one entry per eligible person. Every failure

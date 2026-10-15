@@ -11,6 +11,40 @@ eligible Approval notices, using the existing task context projection. Requested
 input Inbox rows show the same details. Email, stream hints, audit and error
 workflow summaries remain free of task data; task eligibility gates context.
 
+## Follow-up: one audience owner (2026-10-15)
+
+Status: implemented and locally qualified under the owner's instruction.
+
+`inbox/eligibility.ts` owns one query predicate used before list/mail limits,
+summary/revision counts and single/all read commands. It derives role audiences
+from the existing TypeScript capability policy and combines them with current
+membership, follow, mute, the current attention flag and the failure window.
+Approval notices reuse `runs/pending-tasks/eligibility.ts`; task queries and
+locked response commands share that owner. Mute affects notices only.
+
+Move the existing task predicate out of row projection in a separate commit,
+without changing behavior. Then replace the JavaScript mail post-filter and
+persistent `workspace_notice_visible` business function with the shared
+TypeScript-owned predicate. SQL RLS keeps workspace and active
+workspace/user/member fences; private preferences/read state remain fenced.
+Keep trusted worker operations within their existing workspace scope.
+
+Migration weakens the old SQL business filter, so stop older API/worker readers
+before applying it and start only matching binaries. Use a coordinated restart
+on the existing server, with no new role, service, format or deployment mechanism.
+No reader may rely on the removed SQL audience rule.
+
+Qualify role/follow/mute/task changes, suspended/foreign readers, filtering before
+pagination and mail's 100-subject cap, unread/revision/read commands, immutable
+context visibility and populated upgrade. Required checks and existing CI must
+pass before rebase merge.
+
+Local proof: each commit passed full checks and 9,192 unit assertions; the
+move passed 36 PostgreSQL cases, and the completed policy passed 57. All 178
+mocked browser cases and the real notification/API/worker/SMTP journey passed.
+A foreign workspace containing notices and a suspended member remain fenced in
+raw SQL; business-ineligible current members are filtered by the application.
+
 ## Current code and outcome
 
 F03 already has one workspace inbox: terminal failure events are folded into a
@@ -25,7 +59,7 @@ Current anchors:
 
 - `database/src/inbox/{producer,fold-store,read-store,failure-days}.ts` and
   `schema/inbox/core.ts`; accepted F03 SQL fold/recipient policies.
-- `runs/pending-tasks/queries.ts`: one audience/blocked predicate for tasks.
+- `runs/pending-tasks/eligibility.ts`: one audience/blocked predicate for tasks.
 - `triggers/pause/fold-store.ts`, `connections/health/`, and
   `runs/queries/usage-capacity.ts`: authoritative source facts.
 - `database/src/platform/mail/store.ts`, worker

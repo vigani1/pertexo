@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0014_error_workflow_queue_wait.sql';
+export const EXPECTED_MIGRATION_HEAD = '0015_notice_audience_fence.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

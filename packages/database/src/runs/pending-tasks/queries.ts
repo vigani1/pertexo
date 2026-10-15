@@ -16,9 +16,11 @@ import type { Role } from '../../tenant-access/policy.js';
 import { PendingTaskNotFoundError, type PendingTaskScope } from './contract.js';
 
 import {
-  taskAudienceSql as audience,
-  taskBlockedReasonSql as blocked,
+  pendingTaskAudienceSql,
+  pendingTaskBlockedSql,
 } from './eligibility.js';
+const audience = pendingTaskAudienceSql('$2', '$3');
+const blocked = pendingTaskBlockedSql('$2', '$3');
 const columns = `task.*,node.node_id,run.workflow_id,workflow.name workflow_name,
   decider.display_name decided_by_name,node.branch_context,${blocked} blocked_reason`;
 const from = `from app.pending_run_tasks task join app.workflow_runs run
@@ -142,7 +144,7 @@ export async function listTasks(
     input.kind ?? 'all',
   ];
   const candidates = `task.workspace_id=$1 and ($4::uuid is null or task.run_id=$4)
-    and ($5='all' or task.decided_by=$2::uuid or ((task.kind<>'approval' or run.started_by is distinct from $2::uuid) and ${audience}))
+    and ($5='all' or task.decided_by=$2::uuid or (${audience}))
     and ($8='all' or task.kind=$8)
     and ($6='all' or ($6='pending' and task.status='pending') or ($6='resolved' and task.status<>'pending'))`;
   const rows = await client.query<TaskRow>(

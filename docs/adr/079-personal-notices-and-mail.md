@@ -59,6 +59,24 @@ only personal email Off. Old links cannot undo a later opt-in or rejoined
 membership. Approval actions remain authenticated. Removal/departure clears
 private state; workspace purge also removes linked pending mail.
 
+### Amendment: one TypeScript audience owner (2026-10-15)
+
+`database/src/inbox/eligibility.ts` owns the complete notice audience predicate.
+Inbox reads/counts/revisions/read commands and mail preparation/authorization use
+it before pagination. It derives capability audiences from the existing role
+policy and reuses `runs/pending-tasks/eligibility.ts` for approvals. Follow and
+mute are notice choices; a mute never hides or resolves a task.
+
+Remove the persistent SQL `workspace_notice_visible` business rule. SQL thread
+security keeps the workspace and active workspace/user/member fence, with the
+existing trusted worker scope and private read/preference policies. This amends
+ADR 055's claim that SQL enforces the entire business audience. The application
+must always apply its shared predicate; SQL is the isolation fence.
+
+Stop older API/worker readers before this migration and restart matching binaries.
+Old readers that relied solely on the SQL policy must not run after it is removed.
+This uses the existing coordinated deployment, without a new service or role.
+
 ## Consequences
 
 ### Amendment: authenticated task context (2026-10-15)
