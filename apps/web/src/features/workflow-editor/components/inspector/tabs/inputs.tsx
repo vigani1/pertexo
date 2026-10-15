@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { HttpBodyInputs } from '../http-body/inputs';
 import { ReadFileUpload } from '../input-mappings/read-file-upload';
-import { UploadFile, type FileUploadScope } from '@/features/artifacts/public';
+import { UploadFile } from '@/features/artifacts/public';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { PlusIcon } from 'lucide-react';
@@ -44,7 +45,7 @@ type RowDisclosure = Readonly<{
  */
 type InputsTabProps = Readonly<{
   node: WorkflowNode;
-  fileScope?: FileUploadScope;
+  workspaceScope?: WorkspaceApiScope;
   /** The level the step is on: the workflow, or the body it's in. */
   graph: GraphLevel;
   /** The body's inputs when the step is inside a For each; else empty. */
@@ -74,7 +75,7 @@ export function InputsTab(props: InputsTabProps) {
       node={props.node}
       graph={props.graph}
       form={props.form}
-      fileScope={props.fileScope}
+      fileScope={props.workspaceScope}
       loopPorts={props.loopPorts}
       links={links}
       rawInputs={(form) => (
@@ -88,7 +89,7 @@ export function InputsTab(props: InputsTabProps) {
 
 function MappedInputsTab({
   node,
-  fileScope,
+  workspaceScope,
   graph,
   loopPorts,
   definition,
@@ -204,21 +205,22 @@ function MappedInputsTab({
             ))}
           </ol>
         )}
-        {fileScope !== undefined && node.definition.key === 'core.read_file' ? (
+        {workspaceScope !== undefined &&
+        node.definition.key === 'core.read_file' ? (
           <ReadFileUpload
-            scope={fileScope}
+            scope={workspaceScope}
             node={node}
             form={form}
             hasScratch={mappings.hasScratch}
           />
         ) : null}
-        {fileScope !== undefined &&
+        {workspaceScope !== undefined &&
         node.definition.key === 'http.request' &&
         node.config.method !== 'GET' &&
         node.config.method !== 'HEAD' ? (
           <UploadFile
             targetKey={JSON.stringify(node.inputMappings)}
-            scope={fileScope}
+            scope={workspaceScope}
             disabled={!editable || mappings.hasScratch}
             label="Upload body file"
             useLabel={
@@ -255,13 +257,13 @@ function MappedInputsTab({
               Add input
             </Button>
             <InsertDataPicker
-              {...(fileScope === undefined
+              {...(workspaceScope === undefined
                 ? {}
                 : {
                     variableScope: {
-                      apiClient: fileScope.apiClient,
-                      userId: fileScope.userId,
-                      workspaceId: fileScope.workspaceId,
+                      apiClient: workspaceScope.apiClient,
+                      userId: workspaceScope.userId,
+                      workspaceId: workspaceScope.workspaceId,
                     },
                   })}
               graph={graph}

@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
-import { useRetainedCommand } from '@/lib/api/use-retained-command';
+import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { ApiError } from '@/lib/api/error';
 function wrapper() {
   const client = new QueryClient({
