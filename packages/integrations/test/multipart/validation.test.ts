@@ -41,6 +41,8 @@ describe('multipart boundary validation', () => {
     { name: '' },
     { name: 'é'.repeat(65) },
     { name: 'bad\r\nx-header: x' },
+    { name: 'bad\u0085name' },
+    { filename: 'bad\u009ffile' },
     { filename: '../file' },
     { filename: 'dir\\file' },
     { filename: '.' },
