@@ -15,6 +15,7 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   AuthoringValidationUnavailableError,
   WorkflowAuthoringValidator,
+  type WorkflowAuthoringValidationOptions,
 } from '@pertexo/workflow-model/server';
 import { platformPortableDefinitionPolicy } from '@pertexo/node-catalog/server';
 
@@ -85,7 +86,7 @@ export function createCoreAuthoringOptions(
     portableCatalog: compatibility.portableCatalog,
     validateAuthoringGraph: (
       graph: WorkflowGraph,
-      options: Readonly<{ signal?: AbortSignal }>,
+      options: WorkflowAuthoringValidationOptions,
     ) => validator.validate(graph, compatibility.authoringPolicies, options),
     executableCompiler: (
       graph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],

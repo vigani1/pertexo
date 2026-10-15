@@ -11,6 +11,7 @@ import {
   validationReportSchema,
   type AuthoringValidationUnavailableReason,
   type WorkflowExpressionPolicyProjection,
+  type WorkflowAuthoringValidationOptions,
 } from './contracts.js';
 import { assertReportBudget } from './validation.js';
 
@@ -54,7 +55,11 @@ interface PendingBatch {
   id: number;
   bytes: number;
   payload:
-    | { graph: WorkflowGraph; policies: WorkflowExpressionPolicyProjection }
+    | {
+        graph: WorkflowGraph;
+        policies: WorkflowExpressionPolicyProjection;
+        workspaceVariableNames?: readonly string[];
+      }
     | undefined;
   signal: AbortSignal | undefined;
   abort: (() => void) | undefined;
@@ -139,7 +144,7 @@ export class WorkflowAuthoringValidator {
   async validate(
     graphInput: unknown,
     policyInput: WorkflowExpressionPolicyProjection,
-    options: Readonly<{ signal?: AbortSignal }> = {},
+    options: WorkflowAuthoringValidationOptions = {},
   ): Promise<GraphValidationResult> {
     const submittedAt = performance.now();
     if (this.#closed) throw new AuthoringValidationUnavailableError('closed');
@@ -161,7 +166,14 @@ export class WorkflowAuthoringValidator {
         'invalid_policy_projection',
       );
     }
-    const bytes = Buffer.byteLength(JSON.stringify({ graph, policies }));
+    const payload = {
+      graph,
+      policies,
+      ...(options.workspaceVariableNames === undefined
+        ? {}
+        : { workspaceVariableNames: [...options.workspaceVariableNames] }),
+    };
+    const bytes = Buffer.byteLength(JSON.stringify(payload));
     if (bytes > budget.envelopeBytes)
       throw new AuthoringValidationUnavailableError('payload_limit');
     if (options.signal?.aborted)
@@ -176,7 +188,7 @@ export class WorkflowAuthoringValidator {
       const job: PendingBatch = {
         id: ++this.#nextId,
         bytes,
-        payload: { graph, policies },
+        payload,
         signal: options.signal,
         abort: undefined,
         timer: undefined,

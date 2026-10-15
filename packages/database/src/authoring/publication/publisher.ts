@@ -1,3 +1,4 @@
+import { lockWorkspaceVariableNames } from '../../variables/read.js';
 import { revokeRemovedFormAccess } from '../../triggers/forms/publication.js';
 import { validateApprovalAudience } from './pending-tasks.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
@@ -182,7 +183,13 @@ async function lockAndCompilePublication(
     client,
     variant.validateAuthoringGraph,
     draft.graphJson,
-    input.signal,
+    {
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
+      workspaceVariableNames: await lockWorkspaceVariableNames(
+        client,
+        input.workspaceId,
+      ),
+    },
   );
   if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
   const graph = parseWorkflowGraphForPublish(

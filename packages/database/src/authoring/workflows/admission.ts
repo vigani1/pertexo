@@ -3,6 +3,7 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
+  type WorkflowAuthoringValidationOptions,
 } from '@pertexo/workflow-model/server';
 import type { WorkflowAuthoringGraphValidator } from './types.js';
 
@@ -42,7 +43,7 @@ export async function admitWorkflowAuthoring(
   client: Pick<PoolClient, 'query'>,
   validator: WorkflowAuthoringGraphValidator | undefined,
   graph: WorkflowGraph,
-  signal?: AbortSignal,
+  options: WorkflowAuthoringValidationOptions = {},
 ) {
   if (validator === undefined)
     throw new AuthoringValidationUnavailableError('not_configured');
@@ -52,6 +53,6 @@ export async function admitWorkflowAuthoring(
   const budget = result.rows[0];
   if (!authoringIdleBudgetIsSafe(budget?.setting, budget?.unit))
     throw new AuthoringValidationUnavailableError('database_budget');
-  signal?.throwIfAborted();
-  return validator(graph, signal === undefined ? {} : { signal });
+  options.signal?.throwIfAborted();
+  return validator(graph, options);
 }

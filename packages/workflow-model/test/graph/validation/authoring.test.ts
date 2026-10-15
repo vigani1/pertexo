@@ -801,7 +801,7 @@ describe('report and invocation-local policy cache', () => {
   });
 
   it('deduplicates within one invocation only and caps findings without claiming validity', () => {
-    const spy = vi.spyOn(policy, 'validateExpression');
+    const spy = vi.spyOn(policy, 'inspectExpression');
     const input = graph('runInput.');
     required(input.nodes[0]).inputMappings = Object.fromEntries(
       Array.from({ length: 150 }, (_, i) => [

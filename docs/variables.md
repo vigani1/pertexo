@@ -27,6 +27,12 @@ source works on every mapped input and does not need an expression worker. A var
 itself into literal text or a step's configuration JSON. `$vars` is the only new
 binding; process environment variables and credentials are unavailable.
 
+Publishing checks that every direct variable source and required static
+`$vars.NAME` exists, including loop bodies and callable results. Add missing
+names in **Settings → Variables**, or change the mapping. Optional and dynamic
+whole-map lookups keep the behavior described below. Removing a name later does
+not rewrite an existing publication or the values captured by earlier runs.
+
 A direct read of a missing name fails the step clearly, including a direct read
 inside an `exists`/conditional guard. For an optional name, use whole-map lookup:
 

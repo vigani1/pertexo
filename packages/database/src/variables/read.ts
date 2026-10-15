@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { eq } from 'drizzle-orm';
 import {
   EMPTY_VARIABLE_SNAPSHOT,
@@ -21,4 +22,17 @@ export async function readWorkspaceVariables(
   return row === undefined
     ? EMPTY_VARIABLE_SNAPSHOT
     : workspaceVariableSnapshotSchema.parse(row);
+}
+
+/** A publication must keep its checked names current until it commits. */
+export async function lockWorkspaceVariableNames(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<readonly string[]> {
+  const found = await client.query<{ names: string[] }>(
+    `select array(select jsonb_object_keys(values_json)) names
+     from app.workspace_variables where workspace_id=$1 for share`,
+    [workspaceId],
+  );
+  return found.rows[0]?.names ?? [];
 }
