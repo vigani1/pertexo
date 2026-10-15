@@ -127,7 +127,7 @@ async function fixture(
 async function delivery(f: Awaited<ReturnType<typeof fixture>>) {
   const row = (
     await admin.query<{ id: string; payload_checksum: string }>(
-      "select id,payload_checksum from app.outbox_events where workspace_id=$1 and aggregate_id=$2 and job_name='start-error-workflow'",
+      "select event.id,event.payload_checksum from app.outbox_events event join app.run_error_workflow_intents intent on intent.workspace_id=event.workspace_id and intent.outbox_event_id=event.id where event.workspace_id=$1 and event.aggregate_id=$2 and event.job_name='start-error-workflow'",
       [f.workspaceId, f.parentRunId],
     )
   ).rows[0];
@@ -147,8 +147,10 @@ async function intent(f: Awaited<ReturnType<typeof fixture>>) {
       accepted_run_id: string | null;
       refusal_code: string | null;
       context: unknown;
+      queue_wait_expires_at: Date | null;
+      outbox_event_id: string;
     }>(
-      'select status,accepted_run_id,refusal_code,context from app.run_error_workflow_intents where workspace_id=$1 and source_run_id=$2',
+      'select status,accepted_run_id,refusal_code,context,queue_wait_expires_at,outbox_event_id from app.run_error_workflow_intents where workspace_id=$1 and source_run_id=$2',
       [f.workspaceId, f.parentRunId],
     )
   ).rows[0];
@@ -403,7 +405,7 @@ it('retains error-workflow origin on deliberate replay admission', async () => {
   expect(row.rows[0]?.error_workflow_origin).toBe(true);
 });
 
-it('records a full-queue refusal while leaving the source intent and failure independent', async () => {
+async function fullQueue() {
   const f = await fixture();
   await f.produce();
   await admin.query(
@@ -414,9 +416,69 @@ it('records a full-queue refusal while leaving the source intent and failure ind
     'update app.workspace_execution_entitlements set current_version=2 where workspace_id=$1',
     [f.workspaceId],
   );
+  const blocker = crypto.randomUUID();
   await admin.query(
     `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status) values($1,$2,$3,$4,'manual','queued')`,
-    [crypto.randomUUID(), f.workspaceId, f.childWorkflowId, f.childVersionId],
+    [blocker, f.workspaceId, f.childWorkflowId, f.childVersionId],
+  );
+  return { ...f, blocker };
+}
+
+it('keeps one bounded pending intent under duplicate delivery, then admits once after capacity frees', async () => {
+  const f = await fullQueue();
+  const original = await delivery(f);
+  await Promise.all([store.dispatch(original), store.dispatch(original)]);
+  const pending = await intent(f);
+  expect(pending).toMatchObject({
+    status: 'pending',
+    refusal_code: null,
+    accepted_run_id: null,
+  });
+  expect(pending?.queue_wait_expires_at).toBeInstanceOf(Date);
+  expect(pending?.outbox_event_id).not.toBe(original.outboxEventId);
+  const next = await delivery(f);
+  const scheduled = await admin.query<{ delay: number }>(
+    'select extract(epoch from available_at-clock_timestamp())::float8 delay from app.outbox_events where id=$1',
+    [next.outboxEventId],
+  );
+  expect(scheduled.rows[0]?.delay).toBeGreaterThan(0);
+  expect(scheduled.rows[0]?.delay).toBeLessThanOrEqual(30);
+  await store.dispatch(next);
+  expect((await intent(f))?.queue_wait_expires_at).toEqual(
+    pending?.queue_wait_expires_at,
+  );
+  await admin.query(
+    "update app.workflow_runs set status='canceled',completed_at=clock_timestamp() where id=$1",
+    [f.blocker],
+  );
+  const ready = await delivery(f);
+  await Promise.all([
+    store.dispatch(original),
+    store.dispatch(ready),
+    store.dispatch(next),
+    store.dispatch(ready),
+  ]);
+  expect(await intent(f)).toMatchObject({
+    status: 'accepted',
+    refusal_code: null,
+    queue_wait_expires_at: pending?.queue_wait_expires_at,
+  });
+  expect(
+    (
+      await admin.query(
+        "select id from app.workflow_runs where workspace_id=$1 and trigger_type='workflow_error'",
+        [f.workspaceId],
+      )
+    ).rows,
+  ).toHaveLength(1);
+});
+
+it('refuses visibly after the fixed capacity-wait deadline without losing the source failure', async () => {
+  const f = await fullQueue();
+  await store.dispatch(await delivery(f));
+  await admin.query(
+    "update app.run_error_workflow_intents set queue_wait_expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and source_run_id=$2",
+    [f.workspaceId, f.parentRunId],
   );
   await store.dispatch(await delivery(f));
   expect(await intent(f)).toMatchObject({

@@ -86,6 +86,22 @@ and readers must understand the additive trigger kind and origin flag before
 publishing error-trigger workflows. Existing in-run routes, unknown-outcome
 warnings, automatic retries and recovery restrictions are unchanged.
 
+## 2026-10-15 error-workflow summary and capacity wait
+
+The captured failure summary also includes immutable step name/type and F09's
+exact allowlisted failure kind/code. Missing classifications remain null, with
+the existing fixed generic error. It never copies provider text or execution
+values. Older summaries retain their original meaning with empty added metadata.
+
+Queue pressure keeps the intent pending for a fixed 15 minutes from its first
+capacity refusal, with 30-second existing-outbox retries and a durable deadline.
+Replacement deliveries, the current intent identity and completed transport
+receipts commit together. Duplicate old deliveries cannot admit another run or
+reset the deadline. Expiry records the existing visible queue-full refusal.
+Admission still uses the captured publication and one semantic source-run
+identity. Other current authority/lifecycle refusals and recursion suppression
+stay unchanged. No extra queue, scanner, service or role is introduced.
+
 ## 2026-10-15 human-task failures
 
 [ADR 076](076-durable-human-tasks.md) extends the exact failure-value allowlist

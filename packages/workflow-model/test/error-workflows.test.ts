@@ -11,11 +11,49 @@ const summary = {
 };
 describe('safe error workflow input', () => {
   it('accepts only the documented summary and relative application run link', () => {
-    expect(workflowErrorInputSchema.parse(summary)).toEqual(summary);
+    expect(workflowErrorInputSchema.parse(summary)).toEqual({
+      ...summary,
+      failedStep: {
+        ...summary.failedStep,
+        name: null,
+        nodeType: null,
+        errorKind: null,
+        safeErrorCode: null,
+      },
+    });
     expect(
       workflowErrorInputSchema.safeParse({
         ...summary,
         run: { ...summary.run, url: 'https://service.test/?token=secret' },
+      }).success,
+    ).toBe(false);
+  });
+  it('accepts fixed step classifications and rejects provider-bearing or mismatched codes', () => {
+    const step = {
+      id: 'http',
+      name: 'Fetch invoices',
+      nodeType: 'http.request',
+      errorKind: 'provider',
+      safeErrorCode: 'execution.provider',
+    };
+    expect(
+      workflowErrorInputSchema.parse({ ...summary, failedStep: step })
+        .failedStep,
+    ).toEqual(step);
+    for (const safeErrorCode of [
+      'execution.provider:customer-secret',
+      'execution.network',
+    ])
+      expect(
+        workflowErrorInputSchema.safeParse({
+          ...summary,
+          failedStep: { ...step, safeErrorCode },
+        }).success,
+      ).toBe(false);
+    expect(
+      workflowErrorInputSchema.safeParse({
+        ...summary,
+        failedStep: { ...step, providerMessage: 'private' },
       }).success,
     ).toBe(false);
   });

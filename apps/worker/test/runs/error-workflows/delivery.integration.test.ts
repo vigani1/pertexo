@@ -41,6 +41,7 @@ function graph(errorTrigger: boolean): WorkflowGraph {
       node(entry, errorTrigger ? 'core.workflow_error' : 'core.manual'),
       {
         ...node(errorTrigger ? 'summary' : 'source', 'core.set'),
+        label: errorTrigger ? 'Capture the summary' : 'Fetch invoices',
         inputMappings: errorTrigger
           ? { failure: { kind: 'node_output', nodeId: entry, path: '$' } }
           : {},
@@ -247,7 +248,13 @@ describe.runIf(fixture.enabled)(
         expect(summary).toMatchObject({
           workflow: { id: sourceWorkflowId, versionId: sourceVersionId },
           run: { id: first.run.id, status: 'failed' },
-          failedStep: { id: 'source' },
+          failedStep: {
+            id: 'source',
+            name: 'Fetch invoices',
+            nodeType: 'core.set',
+            errorKind: 'authentication',
+            safeErrorCode: 'execution.authentication',
+          },
           error: { code: 'execution.failed', message: 'The workflow failed.' },
         });
         expect(

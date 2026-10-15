@@ -388,6 +388,65 @@ test('contains long applied filters and keeps keyboard removal reachable', async
 });
 
 for (const width of [1280, 375])
+  test(`shows bounded error-workflow capacity waiting and its refusal at ${String(width)}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await installRoutes(page);
+    let status: 'pending' | 'refused' = 'pending';
+    const deadline = new Date(Date.now() + 15 * 60_000).toISOString();
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
+      (route) =>
+        route.fulfill({
+          json: {
+            run: run(firstRunId, 'failed'),
+            nodes: [],
+            errorWorkflow: {
+              status,
+              targetWorkflowId: workflowId,
+              targetVersionId: workflowVersionId,
+              acceptedRunId: null,
+              queueWaitExpiresAt: deadline,
+              refusalCode: status === 'pending' ? null : 'queue_full',
+            },
+          },
+        }),
+    );
+    await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+    await expect(
+      page.getByText('Error workflow is waiting for queue capacity', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByText(/^Retries until /u)).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath(`queue-wait-${String(width)}.png`),
+      fullPage: true,
+    });
+    status = 'refused';
+    await expect(
+      page.getByText('Error workflow did not start', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/15-minute wait for queue capacity expired/u),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Failed after 2s', exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`queue-refused-${String(width)}.png`),
+      fullPage: true,
+    });
+  });
+
+for (const width of [1280, 375])
   for (const risk of ['possible_effects', 'unknown_outcome'] as const)
     test(`confirms ${risk} saved-result recovery and shows reused history at ${String(width)}px`, async ({
       page,

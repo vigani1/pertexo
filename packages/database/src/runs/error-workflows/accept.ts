@@ -6,6 +6,7 @@ import {
   isWorkflowErrorTarget,
   workflowErrorInputSchema,
   CallableInputInvalidError,
+  canonicalJson,
 } from '@pertexo/workflow-model';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';
@@ -22,16 +23,13 @@ import {
   ErrorWorkflowVersionUnavailableError,
   type ErrorWorkflowDeliveryInput,
 } from './contract.js';
+import { deferErrorWorkflowForQueue } from './queue-wait.js';
 
 export async function acceptErrorWorkflow(
   client: PoolClient,
   input: ErrorWorkflowDeliveryInput,
   prepare: InitialCheckpointFactory,
 ): Promise<void> {
-  // Workspace precedes workflow/intent locks, matching ordinary admission and purge.
-  await client.query('select app.lock_workspace_run_admission($1)', [
-    input.workspaceId,
-  ]);
   const intent = await client.query<{
     target_workflow_id: string;
     target_version_id: string;
@@ -49,8 +47,10 @@ export async function acceptErrorWorkflow(
     status: string;
     context: unknown;
     outbox_event_id: string;
+    queue_wait_expires_at: Date | null;
+    now: Date;
   }>(
-    'select status,context,outbox_event_id from app.run_error_workflow_intents where workspace_id=$1 and source_run_id=$2 for update',
+    'select status,context,outbox_event_id,queue_wait_expires_at,clock_timestamp() now from app.run_error_workflow_intents where workspace_id=$1 and source_run_id=$2 for update',
     [input.workspaceId, input.sourceRunId],
   );
   const row = locked.rows[0];
@@ -66,6 +66,13 @@ export async function acceptErrorWorkflow(
   };
   if (target.rows[0]?.lifecycle_status !== 'active') {
     await refuse('target_unavailable');
+    return;
+  }
+  if (
+    row.queue_wait_expires_at !== null &&
+    row.queue_wait_expires_at <= row.now
+  ) {
+    await refuse('queue_full');
     return;
   }
   const version = await client.query(
@@ -91,6 +98,7 @@ export async function acceptErrorWorkflow(
   }
   await client.query('savepoint error_workflow_admission');
   try {
+    const summary = workflowErrorInputSchema.parse(row.context);
     const initial = prepare(projection);
     const transaction = {
       db: drizzle(client, { schema: databaseSchema }),
@@ -113,12 +121,12 @@ export async function acceptErrorWorkflow(
         scope: `workflow-error:${input.sourceRunId}`,
         keyHash: digest(input.sourceRunId),
         requestHash: digest(
-          `${input.sourceRunId}:${candidate.target_version_id}:${input.payloadChecksum}`,
+          `${input.sourceRunId}:${candidate.target_version_id}:${canonicalJson(summary)}`,
         ),
         workflowId: candidate.target_workflow_id,
         workflowVersionId: candidate.target_version_id,
         triggerType: 'workflow_error',
-        runInput: workflowErrorInputSchema.parse(row.context),
+        runInput: summary,
         ...(input.traceparent === undefined
           ? {}
           : { traceparent: input.traceparent }),
@@ -143,6 +151,11 @@ export async function acceptErrorWorkflow(
     if (reason === undefined) throw error;
     await client.query('rollback to savepoint error_workflow_admission');
     await client.query('release savepoint error_workflow_admission');
+    if (
+      reason === 'queue_full' &&
+      (await deferErrorWorkflowForQueue(client, input))
+    )
+      return;
     await refuse(reason);
   }
 }

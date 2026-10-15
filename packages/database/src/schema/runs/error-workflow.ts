@@ -25,6 +25,10 @@ export const runErrorWorkflowIntents = appSchema.table(
     status: varchar({ length: 16 }).notNull().default('pending'),
     acceptedRunId: uuid('accepted_run_id'),
     refusalCode: varchar('refusal_code', { length: 64 }),
+    queueWaitExpiresAt: timestamp('queue_wait_expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .defaultNow(),

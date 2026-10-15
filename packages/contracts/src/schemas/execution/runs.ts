@@ -433,6 +433,7 @@ export const workflowRunErrorWorkflowSchema = z
     targetWorkflowId: z.uuid(),
     targetVersionId: z.uuid(),
     acceptedRunId: z.uuid().nullable(),
+    queueWaitExpiresAt: z.iso.datetime().nullable().default(null),
     refusalCode: z
       .enum([
         'target_unavailable',

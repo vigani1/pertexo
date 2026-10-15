@@ -3,6 +3,7 @@ import {
   type WorkspaceVariableSnapshot,
 } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
+import { workflowGraphStepSql } from './graph-step.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -188,8 +189,8 @@ export async function readWorkflowRunFailedSteps(
     select distinct on (node.workflow_run_id)
       node.workflow_run_id,
       node.node_id,
-      left(nullif(btrim(graph_node ->> 'label'), ''), 200) as label,
-      left(graph_node -> 'definition' ->> 'key', 256) as definition_key,
+      left(nullif(btrim(graph_node.value ->> 'label'), ''), 200) as label,
+      left(graph_node.value -> 'definition' ->> 'key', 256) as definition_key,
       node.safe_error_code
     from app.node_runs node
     join app.workflow_runs run
@@ -198,11 +199,7 @@ export async function readWorkflowRunFailedSteps(
     left join app.workflow_versions version
       on version.workspace_id = run.workspace_id
      and version.id = run.workflow_version_id
-    left join lateral jsonb_path_query_first(
-      version.graph_json,
-      '$.** ? (@.id == $id && exists(@.definition))',
-      jsonb_build_object('id', node.node_id)
-    ) graph_node on true
+    left join lateral (${sql.raw(workflowGraphStepSql('version.graph_json', 'node.node_id'))}) graph_node on true
     where node.workspace_id = ${transaction.workspaceId}
       and node.workflow_run_id = any(${ids}::uuid[])
       and node.status in ('failed', 'timed_out', 'outcome_unknown')
