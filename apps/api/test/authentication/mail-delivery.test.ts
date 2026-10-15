@@ -1,4 +1,4 @@
-import type { AuthenticationMailEnqueueStore } from '@pertexo/database/tenant-access';
+import type { SystemMailEnqueueStore } from '@pertexo/database/platform';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -61,7 +61,7 @@ describe('durable authentication mail', () => {
     const store = {
       enqueue,
       close: vi.fn().mockResolvedValue(undefined),
-    } satisfies AuthenticationMailEnqueueStore;
+    } satisfies SystemMailEnqueueStore;
     const seal = vi.fn().mockReturnValue({
       ciphertext: 'ciphertext',
       nonce: 'nonce',

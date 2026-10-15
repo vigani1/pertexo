@@ -61,19 +61,6 @@ export type {
 } from './invitations/delivery.js';
 
 export {
-  createAuthenticationMailDeliveryStore,
-  createAuthenticationMailEnqueueStore,
-} from '../identity/authentication-mail.js';
-export type {
-  AuthenticationMailDeliveryClaim,
-  AuthenticationMailDeliveryStore,
-  AuthenticationMailEnqueueStore,
-  AuthenticationMailInput,
-  AuthenticationMailPurpose,
-  SealedAuthenticationMailPayload,
-} from '../identity/authentication-mail.js';
-
-export {
   hasCredentialAccount,
   changePasswordAndRevokeSessions,
   setupPasswordAndRevokeSessions,

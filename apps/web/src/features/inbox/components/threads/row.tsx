@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { formatDateTime, formatElapsedTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
-import { describeInboxThread } from '../model/inbox-thread';
+import { describeInboxThread } from '../../model/inbox-thread.js';
 
 /**
  * One failing workflow as its last 30 days of thread: a ring holding the

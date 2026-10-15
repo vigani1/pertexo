@@ -36,7 +36,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isForbidden, isNotFound } from '@/lib/api/error-copy';
 import { useNow } from '@/lib/hooks/use-now';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
-import { InboxThreadRow } from '../components/inbox-thread-row';
+import { InboxThreadRow } from '../components/threads/row';
 import {
   useMarkAllReadMutation,
   useMarkThreadReadMutation,

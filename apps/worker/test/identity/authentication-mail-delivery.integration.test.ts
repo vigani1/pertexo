@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { createAuthenticationMailEnqueueStore } from '@pertexo/database/tenant-access';
-import { createAuthenticationMailDeliveryStore } from '@pertexo/database/tenant-access';
+import { createSystemMailEnqueueStore } from '@pertexo/database/platform';
+import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
 import { migrateDatabase } from '@pertexo/database/testing';
 import {
   createApplicationSecretEnvelope,
@@ -11,7 +11,7 @@ import { Pool } from 'pg';
 import { SMTPServer } from 'smtp-server';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 
-import { createAuthenticationMailDeliveryHandler } from '../../src/identity/authentication-mail-delivery.js';
+import { createSystemMailDeliveryHandler } from '../../src/mail/delivery.js';
 
 const databaseName = `pertexo_test_auth_delivery_${randomUUID().replaceAll('-', '')}`;
 const adminUrl =
@@ -74,10 +74,10 @@ afterAll(async () => {
 }, 30_000);
 
 it('delivers an API-sealed command through the real worker role and clears ciphertext', async () => {
-  const api = createAuthenticationMailEnqueueStore(
+  const api = createSystemMailEnqueueStore(
     storeConfig(databaseUrl(apiBaseUrl)),
   );
-  const worker = createAuthenticationMailDeliveryStore(
+  const worker = createSystemMailDeliveryStore(
     storeConfig(databaseUrl(workerBaseUrl)),
   );
   const owner = new Pool({ connectionString: databaseUrl(adminUrl), max: 1 });
@@ -113,7 +113,7 @@ it('delivers an API-sealed command through the real worker role and clears ciphe
       'recipient@example.test',
     );
 
-    const handler = createAuthenticationMailDeliveryHandler({
+    const handler = createSystemMailDeliveryHandler({
       store: worker,
       envelope,
       email: { sendNotification, deduplicates: true },
@@ -170,10 +170,10 @@ it('delivers a sealed account command through a real SMTP session and fences los
   const address = relay.server.address();
   if (!address || typeof address === 'string')
     throw new Error('Missing SMTP fixture');
-  const api = createAuthenticationMailEnqueueStore(
+  const api = createSystemMailEnqueueStore(
     storeConfig(databaseUrl(apiBaseUrl)),
   );
-  const worker = createAuthenticationMailDeliveryStore(
+  const worker = createSystemMailDeliveryStore(
     storeConfig(databaseUrl(workerBaseUrl)),
   );
   const owner = new Pool({ connectionString: databaseUrl(adminUrl), max: 1 });
@@ -186,7 +186,7 @@ it('delivers a sealed account command through a real SMTP session and fences los
     port: address.port,
     tls: 'none',
   });
-  const handler = createAuthenticationMailDeliveryHandler({
+  const handler = createSystemMailDeliveryHandler({
     store: worker,
     envelope,
     email: client,

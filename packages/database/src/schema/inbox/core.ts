@@ -12,10 +12,10 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-import { appSchema } from './namespace.js';
-import { workflows } from './authoring/workflows.js';
-import { workflowRuns } from './runs/execution.js';
-import { workspaceMemberships } from './foundation.js';
+import { appSchema } from '../namespace.js';
+import { workflows } from '../authoring/workflows.js';
+import { workflowRuns } from '../runs/execution.js';
+import { workspaceMemberships } from '../foundation.js';
 
 // ADR 055. String-mode timestamps and bigint revisions preserve PostgreSQL
 // precision.

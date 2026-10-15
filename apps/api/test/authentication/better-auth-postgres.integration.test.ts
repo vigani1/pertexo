@@ -1,7 +1,7 @@
 import { captureLocalAuthenticationMail } from '../support/better-auth/mail-capture.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
-import { createAuthenticationMailEnqueueStore } from '@pertexo/database/tenant-access';
+import { createSystemMailEnqueueStore } from '@pertexo/database/platform';
 import { createIdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
 import {
   migrateDatabase,
@@ -655,7 +655,7 @@ describe('Better Auth on PostgreSQL', () => {
     const envelope = createApplicationSecretEnvelope({
       current: { version: 'v1', key },
     });
-    const store = createAuthenticationMailEnqueueStore({
+    const store = createSystemMailEnqueueStore({
       connectionString: apiUrl,
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 5_000,
@@ -723,7 +723,7 @@ describe('Better Auth on PostgreSQL', () => {
     const envelope = createApplicationSecretEnvelope({
       current: { version: 'v1', key: Buffer.alloc(32, 17).toString('base64') },
     });
-    const store = createAuthenticationMailEnqueueStore({
+    const store = createSystemMailEnqueueStore({
       connectionString: apiUrl,
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 5_000,

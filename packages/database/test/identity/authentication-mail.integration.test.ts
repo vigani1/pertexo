@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createAuthenticationMailEnqueueStore } from '../../src/tenant-access/index.js';
+import { createSystemMailEnqueueStore } from '../../src/platform/index.js';
 import type { DatabaseConfig } from '../../src/platform/index.js';
-import { createAuthenticationMailDeliveryStore } from '../../src/tenant-access/index.js';
+import { createSystemMailDeliveryStore } from '../../src/platform/index.js';
 import { createRetentionDatabase } from '../../src/lifecycle/index.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
@@ -52,10 +52,10 @@ afterAll(database.drop);
 
 describe('durable authentication mail', () => {
   it('fences leases, retries with the same payload and drops ciphertext once sent', async () => {
-    const api = createAuthenticationMailEnqueueStore(
+    const api = createSystemMailEnqueueStore(
       databaseConfig(database.databaseUrl(apiBaseUrl)),
     );
-    const worker = createAuthenticationMailDeliveryStore(
+    const worker = createSystemMailDeliveryStore(
       databaseConfig(database.databaseUrl(workerBaseUrl)),
     );
     const id = randomUUID();
@@ -153,7 +153,7 @@ describe('durable authentication mail', () => {
       databaseConfig(database.databaseUrl(maintenanceBaseUrl)),
       { pageSize: 7 },
     );
-    const worker = createAuthenticationMailDeliveryStore(
+    const worker = createSystemMailDeliveryStore(
       databaseConfig(database.databaseUrl(workerBaseUrl)),
     );
     const expiredIds: string[] = Array.from({ length: 15 }, () => randomUUID());
@@ -222,10 +222,10 @@ describe('durable authentication mail', () => {
 });
 
 it('exposes a crashed unknown claim without changing its immutable command', async () => {
-  const api = createAuthenticationMailEnqueueStore(
+  const api = createSystemMailEnqueueStore(
     databaseConfig(database.databaseUrl(apiBaseUrl)),
   );
-  const worker = createAuthenticationMailDeliveryStore(
+  const worker = createSystemMailDeliveryStore(
     databaseConfig(database.databaseUrl(workerBaseUrl)),
   );
   const owner = new Pool({

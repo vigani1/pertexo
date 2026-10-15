@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type {
-  AuthenticationMailDeliveryClaim,
-  AuthenticationMailDeliveryStore,
-} from '@pertexo/database/tenant-access';
+  SystemMailDeliveryClaim,
+  SystemMailDeliveryStore,
+} from '@pertexo/database/platform';
 import type {
   ApplicationSecretEnvelope,
   SystemMailResult,
@@ -18,13 +18,13 @@ const payload = z
   })
   .strict();
 
-export interface AuthenticationMailDeliveryHandler {
+export interface SystemMailDeliveryHandler {
   runOnce(signal?: AbortSignal): Promise<number>;
 }
 
-export function createAuthenticationMailDeliveryHandler(
+export function createSystemMailDeliveryHandler(
   dependencies: Readonly<{
-    store: AuthenticationMailDeliveryStore;
+    store: SystemMailDeliveryStore;
     envelope: Pick<ApplicationSecretEnvelope, 'open'>;
     email: SystemMailClient;
     timeoutMillis: number;
@@ -32,7 +32,7 @@ export function createAuthenticationMailDeliveryHandler(
     now?: () => Date;
     random?: () => number;
   }>,
-): AuthenticationMailDeliveryHandler {
+): SystemMailDeliveryHandler {
   const now = dependencies.now ?? (() => new Date());
   const random = dependencies.random ?? Math.random;
   return Object.freeze({
@@ -51,8 +51,8 @@ export function createAuthenticationMailDeliveryHandler(
 }
 
 async function deliverClaim(
-  dependencies: Parameters<typeof createAuthenticationMailDeliveryHandler>[0],
-  claim: AuthenticationMailDeliveryClaim,
+  dependencies: Parameters<typeof createSystemMailDeliveryHandler>[0],
+  claim: SystemMailDeliveryClaim,
   now: () => Date,
   random: () => number,
   signal?: AbortSignal,
@@ -143,8 +143,8 @@ async function deliverClaim(
 }
 
 function settleRetry(
-  store: AuthenticationMailDeliveryStore,
-  claim: AuthenticationMailDeliveryClaim,
+  store: SystemMailDeliveryStore,
+  claim: SystemMailDeliveryClaim,
   now: () => Date,
   random: () => number,
   failureCode: string,
@@ -159,7 +159,7 @@ function settleRetry(
   });
 }
 
-function claimIdentity(claim: AuthenticationMailDeliveryClaim) {
+function claimIdentity(claim: SystemMailDeliveryClaim) {
   return {
     id: claim.id,
     leaseToken: claim.leaseToken,

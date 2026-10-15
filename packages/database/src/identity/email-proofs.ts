@@ -8,9 +8,9 @@ import { authEmailProofs, authSessions } from '../schema/authentication.js';
 import { users } from '../schema/foundation.js';
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
 import {
-  insertAuthenticationMail,
-  type AuthenticationMailInput,
-} from './authentication-mail.js';
+  insertSystemMail,
+  type SystemMailInput,
+} from '../platform/mail/store.js';
 import { rethrowIdentityQueryFailure } from './query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 
@@ -27,7 +27,7 @@ export class EmailProofCommands {
     tokenDigest: Buffer,
     newEmail: string | undefined,
     expiresAt: Date,
-    prepared: AuthenticationMailInput | undefined,
+    prepared: SystemMailInput | undefined,
   ): Promise<boolean> {
     return withPlatformTransaction(this.pool, async (client) => {
       const db = drizzle(client);
@@ -51,8 +51,7 @@ export class EmailProofCommands {
         newEmail: newEmail ?? null,
         expiresAt: expiresAt.toISOString(),
       });
-      if (prepared !== undefined)
-        await insertAuthenticationMail(client, prepared);
+      if (prepared !== undefined) await insertSystemMail(client, prepared);
       return true;
     }).catch(rethrowIdentityQueryFailure);
   }
@@ -81,7 +80,7 @@ export class EmailProofCommands {
   public async consume(
     tokenDigest: Buffer,
     next: Readonly<{ digest: Buffer; expiresAt: Date }> | undefined,
-    nextMail: AuthenticationMailInput | undefined,
+    nextMail: SystemMailInput | undefined,
   ): Promise<ProofPurpose | 'invalid'> {
     return withPlatformTransaction(this.pool, (client) =>
       consumeProof(client, tokenDigest, next, nextMail),
@@ -94,7 +93,7 @@ async function consumeProof(
   client: PoolClient,
   tokenDigest: Buffer,
   next: Readonly<{ digest: Buffer; expiresAt: Date }> | undefined,
-  nextMail: AuthenticationMailInput | undefined,
+  nextMail: SystemMailInput | undefined,
 ): Promise<ProofPurpose | 'invalid'> {
   const db = drizzle(client);
   const [owner] = await db
@@ -146,8 +145,7 @@ async function consumeProof(
       newEmail: proof.newEmail,
       expiresAt: next.expiresAt.toISOString(),
     });
-    if (nextMail !== undefined)
-      await insertAuthenticationMail(client, nextMail);
+    if (nextMail !== undefined) await insertSystemMail(client, nextMail);
     await recordIdentitySecurityFact(client, userId, 'email.old_confirmed');
     outcome = proof.purpose;
   } else if (proof.purpose === 'change_new') {

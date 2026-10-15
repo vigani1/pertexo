@@ -76,7 +76,7 @@ import {
   workspaceInboxEvents,
   workspaceInboxReads,
   workspaceInboxThreads,
-} from './schema/workspace-inbox.js';
+} from './schema/inbox/core.js';
 import {
   workflowFailureStreaks,
   workflowTriggerOutcomes,

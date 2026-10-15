@@ -2,14 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { authenticationMailDeliveries } from '../schema/authentication.js';
+import { authenticationMailDeliveries } from '../../schema/authentication.js';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from '../config.js';
-import {
-  acquireDatabasePool,
-  type DatabaseRuntime,
-} from '../platform/pool/runtime.js';
+import type { DatabaseConfig } from '../../config.js';
+import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
 
 const purpose = z.enum([
   'verification',
@@ -25,29 +22,29 @@ const sealedPayload = z
   })
   .strict();
 
-export type AuthenticationMailPurpose = z.infer<typeof purpose>;
-export type SealedAuthenticationMailPayload = z.infer<typeof sealedPayload>;
+export type SystemMailPurpose = z.infer<typeof purpose>;
+export type SealedSystemMailPayload = z.infer<typeof sealedPayload>;
 
-export interface AuthenticationMailEnqueueStore {
-  enqueue(input: AuthenticationMailInput): Promise<void>;
+export interface SystemMailEnqueueStore {
+  enqueue(input: SystemMailInput): Promise<void>;
   close(): Promise<void>;
 }
 
-export type AuthenticationMailDeliveryClaim = Readonly<{
+export type SystemMailDeliveryClaim = Readonly<{
   id: string;
-  purpose: AuthenticationMailPurpose;
+  purpose: SystemMailPurpose;
   expiresAt: Date;
   attemptCount: number;
   recoveredUnknown: boolean;
   leaseGeneration: number;
   leaseToken: string;
-  sealedPayload: SealedAuthenticationMailPayload;
+  sealedPayload: SealedSystemMailPayload;
 }>;
 
-export interface AuthenticationMailDeliveryStore {
+export interface SystemMailDeliveryStore {
   claim(
     input: Readonly<{ workerId: string; limit: number }>,
-  ): Promise<readonly AuthenticationMailDeliveryClaim[]>;
+  ): Promise<readonly SystemMailDeliveryClaim[]>;
   settle(
     input: Readonly<{
       id: string;
@@ -62,17 +59,17 @@ export interface AuthenticationMailDeliveryStore {
   close(): Promise<void>;
 }
 
-export type AuthenticationMailInput = Readonly<{
+export type SystemMailInput = Readonly<{
   id: string;
-  purpose: AuthenticationMailPurpose;
+  purpose: SystemMailPurpose;
   expiresAt: Date;
-  sealedPayload: SealedAuthenticationMailPayload;
+  sealedPayload: SealedSystemMailPayload;
 }>;
 
 /** Queues one sealed authentication mail in the caller's transaction. */
-export async function insertAuthenticationMail(
+export async function insertSystemMail(
   client: Pool | PoolClient,
-  input: AuthenticationMailInput,
+  input: SystemMailInput,
 ): Promise<void> {
   const sealed = sealedPayload.parse(input.sealedPayload);
   await drizzle(client)
@@ -88,27 +85,24 @@ export async function insertAuthenticationMail(
     });
 }
 
-export function createAuthenticationMailEnqueueStore(
+export function createSystemMailEnqueueStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): AuthenticationMailEnqueueStore {
+): SystemMailEnqueueStore {
   const lease = acquireDatabasePool(config, runtime, { role: 'api' });
   return Object.freeze({
-    enqueue: (input: AuthenticationMailInput) =>
-      insertAuthenticationMail(lease.pool, input),
+    enqueue: (input: SystemMailInput) => insertSystemMail(lease.pool, input),
     close: () => lease.close(),
   });
 }
 
-export function createAuthenticationMailDeliveryStore(
+export function createSystemMailDeliveryStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): AuthenticationMailDeliveryStore {
+): SystemMailDeliveryStore {
   const lease = acquireDatabasePool(config, runtime, { role: 'worker' });
   return Object.freeze({
-    claim: async (
-      input: Parameters<AuthenticationMailDeliveryStore['claim']>[0],
-    ) => {
+    claim: async (input: Parameters<SystemMailDeliveryStore['claim']>[0]) => {
       const leaseToken = randomUUID();
       const result = await lease.pool.query<{
         id: string;
@@ -192,9 +186,7 @@ export function createAuthenticationMailDeliveryStore(
         ),
       );
     },
-    settle: async (
-      input: Parameters<AuthenticationMailDeliveryStore['settle']>[0],
-    ) => {
+    settle: async (input: Parameters<SystemMailDeliveryStore['settle']>[0]) => {
       if (input.outcome === 'retry' && input.retryAt === undefined)
         throw new TypeError('A retry needs its next attempt time');
       // A retry keeps its sealed payload only while another attempt is still

@@ -49,7 +49,7 @@ describe('parseWorkerConfig', () => {
         AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
         AUTH_MAIL_KEY: Buffer.alloc(32, 4).toString('base64'),
         AUTH_MAIL_KEY_VERSION: 'mail-v1',
-      }).authenticationMailDelivery,
+      }).systemMailDelivery,
     ).toMatchObject({
       delivery: { mode: 'resend', apiKey: 'provider-key' },
       timeoutMillis: 5_000,

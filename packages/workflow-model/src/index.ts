@@ -201,3 +201,5 @@ export {
   type WorkspaceVariableValues,
   type WorkspaceVariableSnapshot,
 } from './variables/contract.js';
+
+export { ianaTimeZoneSchema } from './json/time-zone.js';
