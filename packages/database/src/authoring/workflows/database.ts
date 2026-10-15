@@ -1,3 +1,4 @@
+import { createWorkflowErrorStore } from '../settings/error-workflow.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 
 import type { Pool, PoolClient } from 'pg';
@@ -228,6 +229,7 @@ export function createWorkflowAuthoringDatabase(
   return Object.freeze({
     autoPause: createWorkflowAutoPauseStore(transact),
     concurrency: createWorkflowConcurrencyStore(transact),
+    errorWorkflow: createWorkflowErrorStore(transact),
     ...createPreviewStore(pool),
     ...createWorkflowAuthoringDraftStore(authoringContext),
     ...createWorkflowVersionRestoreStore(authoringContext),

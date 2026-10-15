@@ -49,6 +49,7 @@ export const FailureNotificationContextSchema = z
       'schedule',
       'webhook',
       'workflow_call',
+      'workflow_error',
     ]),
     startedAt: z.iso.datetime(),
     completedAt: z.iso.datetime(),

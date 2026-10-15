@@ -121,7 +121,7 @@ reconnect or missed events.
 
 ## Database boundaries
 
-All 82 tables are declared once under `packages/database/src/schema/`. Typed
+All 85 tables are declared once under `packages/database/src/schema/`. Typed
 Drizzle reads/writes and typed `sql` statements share those definitions. Runtime
 code contains application rules; PostgreSQL retains constraints, forced
 workspace row security, transactions, queue claims, atomic capacity counters and
@@ -183,3 +183,13 @@ contract generation, schema inventory and architecture. Unit tests run with
 browser journeys use `pnpm test:e2e`. Integration fixtures own isolated
 databases and service namespaces. CI also runs the existing owned application
 fixtures, images and security checks. The pre-push hook runs without bypass.
+
+
+Error workflows are an F09 follow-up. Operational Settings select a same-workspace
+published target with **When a workflow fails**. The terminal transaction writes
+one source-run intent and outbox delivery; the existing maintenance consumer
+admits the captured version through ordinary run admission. Only a strict safe
+summary crosses that interface. Error-origin flags propagate through Calls,
+replays and recovery to prevent notification loops. Settings belong to authoring,
+intent production/admission to database `/runs`, and delivery to the worker’s
+existing maintenance runtime. See [the guide](error-workflows.md).

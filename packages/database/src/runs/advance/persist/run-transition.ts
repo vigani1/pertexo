@@ -1,3 +1,4 @@
+import { persistErrorWorkflowIntent } from '../../error-workflows/produce.js';
 import type { PoolClient } from 'pg';
 
 import { CoordinatorRunStateCorruptError } from '../contract.js';
@@ -110,6 +111,15 @@ export async function persistCoordinatorRunTransition(
     destinationConfigVersion:
       row.failure_notification_destination_config_version,
     sideEffectClass: row.failure_notification_side_effect_class,
+    cancellationRequested: authoritativeCancellation,
+    plan,
+    ...(traceparent === undefined ? {} : { traceparent }),
+  });
+  await persistErrorWorkflowIntent(client, {
+    workspaceId,
+    runId,
+    workflowId: row.workflow_id,
+    workflowVersionId,
     cancellationRequested: authoritativeCancellation,
     plan,
     ...(traceparent === undefined ? {} : { traceparent }),

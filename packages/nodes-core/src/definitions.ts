@@ -1,4 +1,10 @@
 import {
+  CORE_WORKFLOW_ERROR_MANIFEST,
+  CORE_WORKFLOW_ERROR_CONFIG_SCHEMA,
+  CORE_WORKFLOW_ERROR_INPUT_SCHEMA,
+  CORE_WORKFLOW_ERROR_OUTPUT_SCHEMA,
+} from './triggers/workflow-error/index.js';
+import {
   CORE_READ_FILE_MANIFEST,
   CORE_READ_FILE_CONFIG_SCHEMA,
   CORE_READ_FILE_INPUT_SCHEMA,
@@ -136,6 +142,12 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_WORKFLOW_ERROR_MANIFEST,
+      configSchema: CORE_WORKFLOW_ERROR_CONFIG_SCHEMA,
+      inputSchema: CORE_WORKFLOW_ERROR_INPUT_SCHEMA,
+      outputSchema: CORE_WORKFLOW_ERROR_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_READ_FILE_MANIFEST,
       configSchema: CORE_READ_FILE_CONFIG_SCHEMA,

@@ -15,3 +15,22 @@ export * from './schemas/workflows/portability.js';
 export * from './schemas/execution/runs.js';
 export * from './schemas/identity/inbox.js';
 export * from './schemas/identity/api-tokens.js';
+
+export {
+  workflowErrorSettingsSchema,
+  workflowErrorSettingsRequestSchema,
+  workflowErrorSettingsResponseSchema,
+  type WorkflowErrorSettings,
+  type WorkflowErrorSettingsRequest,
+} from './schemas/workflows/error-workflow.js';
+
+export {
+  workflowRunErrorWorkflowSchema,
+  type WorkflowRunErrorWorkflow,
+} from './schemas/execution/runs.js';
+
+export {
+  workflowErrorTargetsQuerySchema,
+  workflowErrorTargetsPageSchema,
+  type WorkflowErrorTargetsPage,
+} from './schemas/workflows/error-workflow.js';

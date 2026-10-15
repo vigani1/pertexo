@@ -1,3 +1,4 @@
+import { workflowErrorProblems } from './workflow-errors.js';
 import { z } from 'zod';
 import {
   WORKFLOW_PORTABILITY_PROBLEM_CODES,
@@ -53,6 +54,8 @@ export const API_PROBLEM_CODES = [
   'workflow.concurrency_revision_conflict',
   'workflow.concurrency_limit_exceeded',
   'workflow.concurrency_limit_unavailable',
+  'workflow.error_policy_conflict',
+  'workflow.error_target_unavailable',
   'workflow.input_case_revision_conflict',
   'workflow.input_case_limit_exceeded',
   ...WORKFLOW_ORGANIZATION_PROBLEM_CODES,
@@ -342,6 +345,7 @@ const apiProblemDetails = {
     exposeDetail: true,
   },
   ...workflowConcurrencyProblems,
+  ...workflowErrorProblems,
   ...workflowInputCaseProblems,
   ...workflowOrganizationProblems,
   'workspace.auto_pause_settings_conflict': {

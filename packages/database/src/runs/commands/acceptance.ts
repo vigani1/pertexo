@@ -49,6 +49,7 @@ const acceptWorkflowRunInputSchema = z
       'schedule',
       'webhook',
       'workflow_call',
+      'workflow_error',
     ]),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
@@ -278,6 +279,7 @@ export async function readWorkflowRunAcceptanceReplay(
 
 export type PreparedWorkflowRunAcceptance = Readonly<{
   runId?: string;
+  errorWorkflowOrigin?: boolean;
   recovery?: WorkflowRecoverySummary;
   failureNotificationPolicy: Awaited<
     ReturnType<typeof resolveWorkflowFailureNotificationPolicy>
@@ -333,6 +335,21 @@ export async function acceptWorkflowRun(
   const prepared =
     preparation ??
     (await prepareWorkflowRunAcceptance(transaction, parsed.workflowId));
+  const sourceOrigin =
+    parsed.replaySourceRunId === undefined
+      ? false
+      : (
+          await transaction.db
+            .select({ origin: workflowRuns.errorWorkflowOrigin })
+            .from(workflowRuns)
+            .where(
+              and(
+                eq(workflowRuns.workspaceId, transaction.workspaceId),
+                eq(workflowRuns.id, parsed.replaySourceRunId),
+              ),
+            )
+            .limit(1)
+        )[0]?.origin === true;
   const { failureNotificationPolicy } = prepared;
   const idempotencyRecordId = generatePersistedId();
   const runId = prepared.runId ?? generatePersistedId();
@@ -407,6 +424,10 @@ export async function acceptWorkflowRun(
         inputRefExpiresAt:
           storedRunInputJson === null ? null : sql`now() + interval '30 days'`,
         triggerType: parsed.triggerType,
+        errorWorkflowOrigin:
+          parsed.triggerType === 'workflow_error' ||
+          prepared.errorWorkflowOrigin === true ||
+          sourceOrigin,
         ...(failureNotificationPolicy === undefined
           ? {}
           : {

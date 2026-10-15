@@ -134,6 +134,14 @@ export async function installEditorRoutes(
   const accessibleWorkspace = options.accessibleWorkspace ?? workspace;
   const definitions = options.definitions ?? [definition];
   await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/error-workflow`,
+    (route) => route.fulfill({ json: { targetWorkflowId: null, revision: 1 } }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/error-workflow/targets`,
+    (route) => route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/concurrency`,
     (route) => route.fulfill({ json: defaultConcurrencySettings }),
   );

@@ -108,3 +108,8 @@ Workflow connection
 **Account linking**: Adding a proven sign-in method to one existing Pertexo
 account without transferring workspace memberships or combining users. _Avoid_:
 Account merging
+
+**Error workflow**: A separate workflow started once after another run ends in
+an unhandled failure. It receives only a safe failure summary. Its own run
+family never starts another error workflow. _Avoid_: Failure route, recovery,
+replay

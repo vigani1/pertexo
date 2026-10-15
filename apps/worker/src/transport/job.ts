@@ -3,6 +3,10 @@ import { JOB_NAME, QUEUE_FOR_JOB } from '@pertexo/queue';
 import type { JobName, QueueHandlerObservation } from '@pertexo/queue';
 
 const TRANSPORT_JOB_BY_NAME = Object.freeze({
+  [JOB_NAME.startErrorWorkflow]: {
+    jobName: JOB_NAME.startErrorWorkflow,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.startErrorWorkflow],
+  },
   [JOB_NAME.advanceWorkflowRun]: {
     jobName: JOB_NAME.advanceWorkflowRun,
     queueName: QUEUE_FOR_JOB[JOB_NAME.advanceWorkflowRun],

@@ -5,6 +5,7 @@ type Phase =
   | 'dispatcher-database'
   | 'attempts'
   | 'coordinator'
+  | 'maintenance'
   | 'triggers'
   | 'capabilities'
   | 'controlled-http'
@@ -20,6 +21,7 @@ export type EditorBrowserWorkerRuntimes = Readonly<{
   triggers?: readonly Closable[] | undefined;
   attempts?: Closable | undefined;
   coordinator?: Closable | undefined;
+  maintenance?: Closable | undefined;
   capabilities?: Closable | undefined;
   controlledHttp?: Closable | undefined;
   envelopeKeys?: Closable | undefined;
@@ -55,6 +57,7 @@ export async function closeEditorBrowserWorkerRuntimes(
         ? resources.dispatcherDatabase
         : undefined,
     ],
+    ['maintenance', resources.maintenance],
     ['attempts', resources.attempts],
     ['coordinator', resources.coordinator],
     ['capabilities', resources.capabilities],

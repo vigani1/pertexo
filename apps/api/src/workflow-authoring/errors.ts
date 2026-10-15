@@ -1,3 +1,7 @@
+import {
+  WorkflowErrorSettingsConflictError,
+  WorkflowErrorTargetUnavailableError,
+} from '@pertexo/database/authoring';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
@@ -104,6 +108,16 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
     return applicationError('workflow.input_case_limit_exceeded', {
       safeDetail:
         'The run-input case count or retained storage limit has been reached.',
+    });
+  if (error instanceof WorkflowErrorSettingsConflictError)
+    return applicationError('workflow.error_policy_conflict', {
+      safeDetail:
+        'The error workflow setting changed. Reload before trying again.',
+    });
+  if (error instanceof WorkflowErrorTargetUnavailableError)
+    return applicationError('workflow.error_target_unavailable', {
+      safeDetail:
+        'Choose a different active workflow published with When a workflow fails.',
     });
   if (error instanceof WorkflowConcurrencyRevisionConflictError)
     return applicationError('workflow.concurrency_revision_conflict', {

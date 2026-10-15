@@ -1,6 +1,7 @@
 import type {
   UsageCapacityResponse,
   WorkflowCallSummary,
+  WorkflowRunErrorWorkflow,
   WorkflowRecoveryPreview,
   WorkflowRecoverySummary,
   WorkflowNodeReuse,
@@ -27,7 +28,13 @@ export type WorkflowRunRecord = Readonly<{
     | 'timed_out'
     | 'outcome_unknown';
   triggerType:
-    'api' | 'manual' | 'replay' | 'schedule' | 'webhook' | 'workflow_call';
+    | 'api'
+    | 'manual'
+    | 'replay'
+    | 'schedule'
+    | 'webhook'
+    | 'workflow_call'
+    | 'workflow_error';
   createdAt: Date;
   updatedAt: Date;
   startedAt: Date | null;
@@ -125,6 +132,7 @@ export type WorkflowRunReadModel = Readonly<{
   nodes: readonly WorkflowNodeRunRecord[];
   calls?: readonly WorkflowCallSummary[];
   parentCall?: WorkflowParentCall;
+  errorWorkflow?: WorkflowRunErrorWorkflow;
 }>;
 
 export type WorkflowRunListPosition = Readonly<{

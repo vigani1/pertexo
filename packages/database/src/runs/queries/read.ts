@@ -1,3 +1,5 @@
+import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
+import { readErrorWorkflow } from '../error-workflows/read.js';
 import {
   readWorkflowCalls,
   type WorkflowCallReadRecord,
@@ -88,6 +90,7 @@ export type WorkflowRunReadModel = Readonly<{
   nodes: readonly WorkflowNodeRunRecord[];
   calls?: readonly WorkflowCallReadRecord[];
   parentCall?: WorkflowParentCallReadRecord;
+  errorWorkflow?: WorkflowRunErrorWorkflow;
 }>;
 
 /** One run and its node runs, read in a workspace-scoped snapshot. */
@@ -146,6 +149,7 @@ async function readRunModel(
   return Object.freeze({
     run,
     ...(await readWorkflowCalls(transaction, runId)),
+    ...(await readErrorWorkflow(transaction, runId)),
     nodes: Object.freeze(nodes.rows.map(toNodeRecord)),
   });
 }

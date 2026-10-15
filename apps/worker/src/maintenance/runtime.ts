@@ -1,3 +1,5 @@
+import { errorWorkflowFactories } from '../notifications/error-workflow.js';
+import type { ErrorWorkflowStore } from '@pertexo/database/runs';
 import { operatorRunReplayFactories } from '../operator/run-replay.js';
 import {
   connectionHealthObservationFactories,
@@ -45,6 +47,7 @@ export type MaintenanceRuntime = ScannerRuntime;
 
 export type MaintenanceRuntimeFactories = Readonly<{
   connectionHealth: typeof connectionHealthObservationFactories;
+  errorWorkflows: typeof errorWorkflowFactories;
   consumer: typeof createQueueConsumer;
   notifications: Readonly<{
     handler: typeof failureNotificationFactories.handler;
@@ -67,6 +70,7 @@ export type MaintenanceRuntimeFactories = Readonly<{
 
 const productionFactories: MaintenanceRuntimeFactories = {
   connectionHealth: connectionHealthObservationFactories,
+  errorWorkflows: errorWorkflowFactories,
   consumer: createQueueConsumer,
   notifications: failureNotificationFactories,
   preview: previewReconciliationFactories,
@@ -89,6 +93,7 @@ type MaintenanceOptions = Readonly<{
 
 type MaintenanceDependencies = Readonly<{
   connectionHealthStore?: ConnectionHealthObservationStore;
+  errorWorkflowStore?: ErrorWorkflowStore;
   consumerFactory?: typeof createQueueConsumer;
   reconciliationStore?: PreviewReconciliationStore & {
     close?: () => Promise<void>;
@@ -127,6 +132,7 @@ export async function createMaintenanceRuntime(
   let connectionHealthStore: ConnectionHealthObservationStore | undefined;
   let failureNotification: FailureNotificationHandler | undefined;
   let consumer: QueueConsumer | undefined;
+  let errorWorkflowStore: ErrorWorkflowStore | undefined;
   try {
     connectionHealthStore =
       dependencies.connectionHealthStore ??
@@ -157,7 +163,11 @@ export async function createMaintenanceRuntime(
       dependencies.runReplayStore ??
       factories.replay.store(options.database, options.databaseRuntime);
 
+    errorWorkflowStore =
+      dependencies.errorWorkflowStore ??
+      factories.errorWorkflows.store(options.database, options.databaseRuntime);
     const handlers: MaintenanceHandlers = {
+      errorWorkflow: factories.errorWorkflows.handler(errorWorkflowStore),
       connectionHealth: factories.connectionHealth.handler(
         connectionHealthStore,
       ),
@@ -182,6 +192,7 @@ export async function createMaintenanceRuntime(
   } catch (error: unknown) {
     const cleanup = await closeOwners(
       [
+        errorWorkflowStore,
         connectionHealthStore,
         reconciliationStore,
         unknownOutcomeStore,
@@ -205,6 +216,7 @@ export async function createMaintenanceRuntime(
     name: 'Maintenance',
     consumer,
     owners: [
+      errorWorkflowStore,
       connectionHealthStore,
       reconciliationStore,
       unknownOutcomeStore,

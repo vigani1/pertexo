@@ -106,3 +106,9 @@ export type {
   WorkflowRecord,
   WorkflowVersionRecord,
 } from './workflows/database.js';
+
+export {
+  WorkflowErrorSettingsConflictError,
+  WorkflowErrorTargetUnavailableError,
+  type WorkflowErrorDatabase,
+} from './settings/error-workflow.js';

@@ -1,3 +1,4 @@
+import type { ErrorWorkflowHandler } from '../notifications/error-workflow.js';
 import {
   InvalidQueueDeliveryError,
   JOB_NAME,
@@ -18,6 +19,7 @@ import type { createConnectionHealthObservationHandler } from '../connections/he
 
 export type MaintenanceHandlers = Readonly<{
   failureNotification?: FailureNotificationHandler;
+  errorWorkflow?: ErrorWorkflowHandler;
   reconciliation?: ReturnType<typeof createPreviewReconciliationHandler>;
   replay?: ReturnType<typeof createOperatorRunReplayHandler>;
   unknownOutcome?: ReturnType<typeof createUnknownOutcomeReconciliationHandler>;
@@ -32,6 +34,13 @@ export function maintenanceDeliveryHandler(
 ): QueueConsumerOptions['handler'] {
   return async (delivery, context): Promise<void> => {
     switch (delivery.name) {
+      case JOB_NAME.startErrorWorkflow:
+        if (handlers.errorWorkflow === undefined)
+          throw new InvalidQueueDeliveryError(
+            'Error workflow delivery is not enabled',
+          );
+        await handlers.errorWorkflow.handle(delivery, context);
+        return;
       case JOB_NAME.applyConnectionHealthObservation:
         if (handlers.connectionHealth === undefined)
           throw new InvalidQueueDeliveryError(

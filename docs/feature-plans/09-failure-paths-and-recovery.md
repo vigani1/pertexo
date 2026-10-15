@@ -1246,3 +1246,142 @@ visible and that this graph still refuses recovery as `unsupported_graph`
 because it has failure links. The dialog offers separately confirmed full
 replay and no acknowledgement checkbox; the unknown handler remains skipped.
 The broader graph boundary is not relaxed by the new manual target decision.
+
+
+## Follow-up — error workflows (owner request 2026-10-15)
+
+Status: implementation authorized. This extends F09; it does not reopen the
+existing failure-route or recovery decisions. F04 is delivered through PR #299.
+The owner authorizes recommended internal design choices without a plan-approval
+pause. Accounts, paid services and new infrastructure remain outside this work.
+
+### Behavior and decisions
+
+A workflow's Settings offers **When this workflow fails, run …**. The target
+must be a different active workflow in the same workspace with a published,
+single **When a workflow fails** (`core.workflow_error@1`) entry. Setting or
+changing the target requires `workflow:update` on both workflows, rechecked
+inside the authoring transaction. Clearing requires source edit access. Reads
+require source read access. Current access is workspace-role based; this does
+not introduce workflow ACLs or grant the target any extra authority.
+
+The setting is operational metadata, like failure alerts and concurrency. It
+is not part of the draft, portable graph or checksum. At terminal failure the
+current setting and target's current publication are captured into one durable
+intent. Changes after that point affect later failures only. The dispatcher
+runs that exact captured version, with normal current lifecycle, workspace,
+queue and credential checks. Archiving the target refuses pending admission;
+it does not silently switch to another version or undo the source failure.
+
+Terminal `failed`, `timed_out` and `outcome_unknown` count as failures, matching
+existing failure notices. Successful handled failure routes and canceled runs
+produce no intent. A failure after a handler itself fails produces one intent.
+The unique source-run identity prevents repeated terminal delivery from creating
+a second logical error run. Existing idempotent admission and its outbox commit
+make a lost dispatch response safe to retry.
+
+Runs admitted by this trigger carry an error-workflow origin. Child Calls
+inherit it, so a failing child cannot start an indirect notification loop.
+Replay/recovery of such runs retain that origin too. They still run normally,
+and retain ordinary failure history and inbox notices, but never start another
+error workflow. This is recursion prevention, not a new capacity exemption.
+The source slot settles normally; the error run queues under normal limits.
+
+### Safe trigger input
+
+Only allowlisted metadata crosses the seam: source workflow ID and name,
+source run ID and relative application run link, immutable version ID, terminal
+status, failed step ID (nullable for run-level failure), and a sanitized error
+**code and fixed application-owned description**. No run input, output, mapped
+values, provider text, stack, URL query, HTTP body, connection or credential is
+read or copied. Names are bounded authoring metadata, rendered as text. Unknown
+codes use a fixed generic description; code syntax alone is not sanitization.
+The safe envelope has one shared strict browser-safe schema used by the trigger,
+producer and read projections. It stays within the existing value envelope.
+
+### Placement and delivery
+
+- `nodes-core/src/triggers/workflow-error/`: manifest, strict config/input/output
+  validation and safe pass-through executor; register in the existing catalog.
+  Extend existing trigger-source identities and editor labels/mapping examples.
+- `database/src/authoring/settings/error-workflow.ts`: current policy read and
+  idempotent edit through the existing authoring factory and membership locks.
+- `database/src/schema/authoring/` and `schema/runs/`: policy and intent tables,
+  forced workspace RLS, workspace-composite foreign keys and ordinary grants.
+  Additive Drizzle migration, readiness head and existing schema checks.
+- `database/src/runs/error-workflows/`: terminal producer, safe summary and
+  transactional acceptance. Use the existing initial-checkpoint factory,
+  admission, lifecycle locks, command receipts and queue outbox. Expose through
+  `/runs` and `/authoring`; no new package or database door.
+- `queue` and worker: one typed delivery job on an existing queue, no new queue,
+  polling service or CI job. Transient infrastructure failures use existing
+  transport retries; permanent target/queue refusal is recorded as such and
+  visible in source run detail. A source failure always remains committed.
+- `contracts`/API: strict Settings GET/PUT, paginated eligible-target discovery
+  (`error-workflow/targets?after=…`) and safe run-detail delivery summary,
+  generated OpenAPI, existing cookie/CSRF/idempotency/rate limits. Automation
+  tokens keep their existing explicit scope rules.
+- web: existing workflow Settings owns the selector and explanation; run detail
+  owns captured/accepted/refused status and authorized run link. Query snapshots
+  stay in TanStack Query. Keep Weft controls, narrow/mobile layouts and one
+  feedback owner. Never expose a selected target as an access grant.
+
+Retention deletes intents with their source summaries, keeping admitted runs
+as independent ordinary history. Captured target versions remain pinned for their source intent’s retention window; workspace purge removes policy/intents in dependency order.
+No provider account, external effect, image download or deployment is needed.
+
+### Qualification and tracker
+
+- [x] Reconcile current terminal producers, admission, Calls and authoring seams;
+      record the owner scope and recommended decisions before implementation.
+- [x] Implement catalog/model, additive storage, atomic producer/admission,
+      authorization and safe contracts/API.
+- [x] Implement Settings and source-run delivery feedback, user documentation.
+- [x] Prove one admission across redelivery/concurrency/worker restart; source
+      failure commits independently; archived/deleted/unpublished target,
+      capacity and revoked-editor behavior; workspace isolation and purge.
+- [x] Prove handled success/cancel exclusion, failed handler inclusion, direct
+      and child/replayed error-origin suppression, and secret-bearing error
+      text absent from the entire envelope.
+- [x] Qualify a real failure → error trigger → mapped safe summary → successful
+      action run using owned local fixtures; browser desktop/phone and keyboard.
+- [x] Lint, types, units, mocked e2e, relevant live integration, changed React
+      diagnostics.
+- [ ] Green PR CI, rebase merge and natural main result.
+
+The existing F09 exclusions now defer *other* new triggers; this explicitly
+requested trigger is included. Approvals/forms/variables/preferences follow
+only after this follow-up is complete. Broader failure-route graphs and
+file-aware recovery remain deferred.
+
+
+Local qualification: the real browser creates/publishes the error trigger,
+chooses it in Settings, saves/reloads at desktop and 375 × 768, starts a real
+failing Summarize workflow, follows the admitted error run and checks its mapped
+safe output. Independent SQL verifies exactly one intent, failed source,
+successful `workflow_error` run and origin suppression. The real worker journey
+also restarts maintenance with an intent pending and proves that a failing error
+workflow does not start its configured fallback. PostgreSQL cases cover duplicate
+concurrent deliveries, captured publication identity, all three failure statuses,
+cancellation/handled-success exclusion, archived/unpublished/incompatible targets,
+queue refusal, revoked membership, workspace isolation, replay/Call origin and
+ordinary workspace purge. Pure summary cases distinguish a failed handler from
+its pending source and a run-level deadline from an earlier failed step.
+
+All 166 mocked browser tests pass. The full ordinary unit run passes 9,086 tests;
+subsequent focused additions cover two construction-cleanup cases and one
+run-level summary case. Lint, TypeScript, generated OpenAPI, typed schema inventory
+(85 tables), dependencies and ownership checks pass. Changed React Doctor scope
+is 100/100 with no suppressions. Final commit/pre-push and CI receipts are recorded
+on the PR. [Review images](../media/error-workflows/README.md) use only owned
+synthetic fixtures.
+
+One prerequisite fix uses workflow-model’s canonical serializer for the static
+API-token SQL scope constant. drizzle-kit adds an enumerable `Array.prototype.random`;
+execution-value validation correctly rejects such inherited properties. The
+static constraint needs canonical serialization, not execution input validation.
+A regression proves its exact generated SQL under that tool behavior. Runtime
+validation and stored formats are unchanged. An initial combined test run hit
+an authoring-worker deadline while browser/lint work also ran; the isolated
+42-case check and the subsequent ordinary full unit gate pass without changing
+a timeout or validation policy.

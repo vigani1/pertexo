@@ -48,6 +48,7 @@ export const workflowRunTriggerTypeSchema = z.enum([
   'schedule',
   'webhook',
   'workflow_call',
+  'workflow_error',
 ]);
 export const workflowRunPageLimitSchema = z.coerce
   .number()
@@ -411,12 +412,33 @@ const workflowParentCallSchema = z
 export type WorkflowCallSummary = z.output<typeof workflowCallSummarySchema>;
 export type WorkflowParentCall = z.output<typeof workflowParentCallSchema>;
 
+export const workflowRunErrorWorkflowSchema = z
+  .object({
+    status: z.enum(['pending', 'accepted', 'refused']),
+    targetWorkflowId: z.uuid(),
+    targetVersionId: z.uuid(),
+    acceptedRunId: z.uuid().nullable(),
+    refusalCode: z
+      .enum([
+        'target_unavailable',
+        'workspace_unavailable',
+        'queue_full',
+        'invalid_target',
+      ])
+      .nullable(),
+  })
+  .strict();
+export type WorkflowRunErrorWorkflow = z.infer<
+  typeof workflowRunErrorWorkflowSchema
+>;
+
 export const workflowRunResponseSchema = z
   .object({
     run: workflowRunReadSummarySchema,
     nodes: z.array(workflowNodeRunSummarySchema).max(1_000),
     calls: z.array(workflowCallSummarySchema).max(200).optional(),
     parentCall: workflowParentCallSchema.optional(),
+    errorWorkflow: workflowRunErrorWorkflowSchema.optional(),
   })
   .strict();
 export const workflowRunCancelResponseSchema = z

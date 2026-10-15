@@ -463,6 +463,8 @@
             "workflow.concurrency_revision_conflict",
             "workflow.concurrency_limit_exceeded",
             "workflow.concurrency_limit_unavailable",
+            "workflow.error_policy_conflict",
+            "workflow.error_target_unavailable",
             "workflow.input_case_revision_conflict",
             "workflow.input_case_limit_exceeded",
             "workflow.tag_key_conflict",
@@ -642,7 +644,8 @@
                 "replay",
                 "schedule",
                 "webhook",
-                "workflow_call"
+                "workflow_call",
+                "workflow_error"
               ]
             },
             "createdAt": {
@@ -819,7 +822,8 @@
             "replay",
             "schedule",
             "webhook",
-            "workflow_call"
+            "workflow_call",
+            "workflow_error"
           ]
         },
         "createdAt": {
@@ -986,7 +990,8 @@
             "replay",
             "schedule",
             "webhook",
-            "workflow_call"
+            "workflow_call",
+            "workflow_error"
           ]
         },
         "createdAt": {
@@ -1205,7 +1210,8 @@
             "replay",
             "schedule",
             "webhook",
-            "workflow_call"
+            "workflow_call",
+            "workflow_error"
           ]
         },
         "createdAt": {
@@ -1490,7 +1496,8 @@
                   "replay",
                   "schedule",
                   "webhook",
-                  "workflow_call"
+                  "workflow_call",
+                  "workflow_error"
                 ]
               },
               "createdAt": {
@@ -2208,7 +2215,8 @@
                 "replay",
                 "schedule",
                 "webhook",
-                "workflow_call"
+                "workflow_call",
+                "workflow_error"
               ]
             },
             "createdAt": {
@@ -2669,6 +2677,65 @@
             "invocationKey"
           ],
           "additionalProperties": false
+        },
+        "errorWorkflow": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "accepted",
+                "refused"
+              ]
+            },
+            "targetWorkflowId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "targetVersionId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "acceptedRunId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "refusalCode": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "target_unavailable",
+                    "workspace_unavailable",
+                    "queue_full",
+                    "invalid_target"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "targetWorkflowId",
+            "targetVersionId",
+            "acceptedRunId",
+            "refusalCode"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -2737,7 +2804,8 @@
                 "replay",
                 "schedule",
                 "webhook",
-                "workflow_call"
+                "workflow_call",
+                "workflow_error"
               ]
             },
             "createdAt": {

@@ -1,3 +1,4 @@
+import type { WorkflowErrorDatabase } from '../settings/error-workflow.js';
 import type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
@@ -261,4 +262,5 @@ export type WorkflowAuthoringDatabase = Readonly<{
   close(): Promise<void>;
   readonly autoPause?: WorkflowAutoPauseDatabase;
   readonly concurrency?: WorkflowConcurrencyDatabase;
+  readonly errorWorkflow?: WorkflowErrorDatabase;
 }>;

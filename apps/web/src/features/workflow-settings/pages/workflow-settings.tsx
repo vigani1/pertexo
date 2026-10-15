@@ -1,3 +1,4 @@
+import { ErrorWorkflowSection } from '../components/settings/error-workflow-section';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -52,6 +53,12 @@ function SettingsSession({
         query={summary}
       />
       <FailureAlertsSection
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        workflowId={workflowId}
+      />
+      <ErrorWorkflowSection
         apiClient={apiClient}
         userId={user.id}
         workspace={workspace}
