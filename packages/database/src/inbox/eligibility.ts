@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { WorkspaceNoticeKind } from '@pertexo/contracts';
 import { hasCapability, type Role } from '../tenant-access/policy.js';
-import { pendingTaskBlockedSql } from '../runs/pending-tasks/queries.js';
+import { pendingTaskBlockedSql } from '../runs/pending-tasks/eligibility.js';
 export type NoticeSubjectRecord = Readonly<{
   id: string;
   notice_kind: WorkspaceNoticeKind;

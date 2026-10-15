@@ -15,21 +15,10 @@ import { parseStoredExecutionValue } from '../../platform/stored-execution-value
 import type { Role } from '../../tenant-access/policy.js';
 import { PendingTaskNotFoundError, type PendingTaskScope } from './contract.js';
 
-// One eligibility predicate serves discovery, detail and the locked command.
-const audience = `((task.config->'audience'->'roles') ? $3::text OR (task.config->'audience'->'memberIds') ? $2::text)`;
-const blocked = `case when task.status='expired' then 'expired' when task.status <> 'pending' then 'resolved'
-  when run.status not in ('queued','running','waiting') or run.cancel_requested_at is not null or run.deadline_at<=clock_timestamp() then 'run_closed'
-  when task.expires_at <= clock_timestamp() then 'expired'
-  when task.kind='approval' and run.started_by=$2::uuid then 'starter'
-  when not ${audience} then 'audience' else null end`;
-export function pendingTaskBlockedSql(
-  actorParameter: string,
-  roleParameter: string,
-): string {
-  return blocked
-    .replaceAll('$2', actorParameter)
-    .replaceAll('$3', roleParameter);
-}
+import {
+  taskAudienceSql as audience,
+  taskBlockedReasonSql as blocked,
+} from './eligibility.js';
 const columns = `task.*,node.node_id,run.workflow_id,workflow.name workflow_name,
   decider.display_name decided_by_name,node.branch_context,${blocked} blocked_reason`;
 const from = `from app.pending_run_tasks task join app.workflow_runs run
