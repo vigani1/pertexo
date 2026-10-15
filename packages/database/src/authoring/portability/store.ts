@@ -184,7 +184,7 @@ async function inspectImport(
     client,
     selection.validateAuthoringGraph,
     inspected.graph,
-    input.signal,
+    input.signal === undefined ? {} : { signal: input.signal },
   );
   const issues: PortableIssue[] = [
     ...inspectTemplateOrigin(input, catalog),
@@ -251,7 +251,7 @@ function exportPortableWorkflow(
           client,
           selection.validateAuthoringGraph,
           graph,
-          input.signal,
+          input.signal === undefined ? {} : { signal: input.signal },
         );
         if (
           admission.issues.some(({ code }) =>

@@ -3,6 +3,11 @@ import { z } from 'zod';
 import { GRAPH_ISSUE_CODES } from '../graph/validation/contract.js';
 import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../graph/contract.js';
 
+export type WorkflowAuthoringValidationOptions = Readonly<{
+  signal?: AbortSignal;
+  workspaceVariableNames?: readonly string[];
+}>;
+
 /** Operational admission, not expression-language or graph limits. */
 export const AUTHORING_VALIDATION_BUDGET = Object.freeze({
   maxActive: Math.min(2, availableParallelism()),

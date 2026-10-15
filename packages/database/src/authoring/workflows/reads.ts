@@ -84,7 +84,7 @@ export function createWorkflowAuthoringReadStore(
             client,
             variant.validateAuthoringGraph,
             parseWorkflowGraphDraft(draft.graphJson),
-            options.signal,
+            options.signal === undefined ? {} : { signal: options.signal },
           );
           const publication = await client.query<{
             versionId: string;

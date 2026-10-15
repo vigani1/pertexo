@@ -5,7 +5,10 @@ import type {
   WorkflowPortabilityCatalog,
   WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
-import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
+import type {
+  WorkflowDefinitionCatalog,
+  WorkflowAuthoringValidationOptions,
+} from '@pertexo/workflow-model/server';
 import type { WorkflowTemplateOriginRequest } from '@pertexo/templates';
 
 /** Compiles a graph into the executable a published version stores. */
@@ -16,7 +19,7 @@ export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
 
 export type WorkflowAuthoringGraphValidator = (
   graph: WorkflowGraph,
-  options: Readonly<{ signal?: AbortSignal }>,
+  options: WorkflowAuthoringValidationOptions,
 ) => Promise<GraphValidationResult>;
 
 /** The portability catalog, plus the registered check of a template's setup values. */

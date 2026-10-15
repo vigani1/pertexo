@@ -122,7 +122,9 @@ describe('effective authoring idle budget', () => {
     const validator = vi.fn().mockResolvedValue(valid);
     const controller = new AbortController();
     await expect(
-      admitWorkflowAuthoring({ query }, validator, graph, controller.signal),
+      admitWorkflowAuthoring({ query }, validator, graph, {
+        signal: controller.signal,
+      }),
     ).resolves.toBe(valid);
     expect(validator).toHaveBeenCalledWith(graph, {
       signal: controller.signal,
@@ -135,7 +137,9 @@ describe('effective authoring idle budget', () => {
     query.mockResolvedValue(budget);
     controller.abort();
     await expect(
-      admitWorkflowAuthoring({ query }, validator, graph, controller.signal),
+      admitWorkflowAuthoring({ query }, validator, graph, {
+        signal: controller.signal,
+      }),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(validator).toHaveBeenCalledOnce();
   });
@@ -460,7 +464,10 @@ describe('snapshot validation and publication ordering', () => {
     await expect(fixture.publish({ ...command, signal })).rejects.toMatchObject(
       { reason: 'overloaded' },
     );
-    expect(fixture.validator).toHaveBeenCalledWith(graph, { signal });
+    expect(fixture.validator).toHaveBeenCalledWith(graph, {
+      signal,
+      workspaceVariableNames: [],
+    });
     expect(fixture.transact).toHaveBeenCalledWith(
       workspaceId,
       actorId,

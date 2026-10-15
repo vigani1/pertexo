@@ -3,6 +3,7 @@
 export {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
+  type WorkflowAuthoringValidationOptions,
 } from './authoring-validation/contracts.js';
 export { WorkflowAuthoringValidator } from './authoring-validation/validator.js';
 export { JsonataEvaluator } from './expressions/evaluator.js';

@@ -1,6 +1,8 @@
+import { workspaceVariableNameSchema } from '../variables/contract.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
+  type ValueSource,
 } from '../graph/contract.js';
 import { validateWorkflowGraph } from '../graph/validation/index.js';
 import type {
@@ -8,7 +10,7 @@ import type {
   GraphValidationResult,
 } from '../graph/validation/contract.js';
 import {
-  validateExpression,
+  inspectExpression,
   type ExpressionValidation,
 } from '../expressions/policy.js';
 import {
@@ -48,6 +50,7 @@ export function assertReportBudget(report: GraphValidationResult): void {
 export function validateAuthoringBatch(
   graph: WorkflowGraph,
   policies: WorkflowExpressionPolicyProjection,
+  workspaceVariableNames?: readonly string[],
 ): GraphValidationResult {
   let issueBytes = 0;
   const admitIssue = (issue: GraphValidationIssue): void => {
@@ -77,16 +80,72 @@ export function validateAuthoringBatch(
           `${definition.key}\u0000${String(definition.version)}`,
       ),
   );
-  const sources = new Map<string, ExpressionValidation>();
+  const names =
+    workspaceVariableNames === undefined
+      ? undefined
+      : new Set(workspaceVariableNames);
+  const sources = new Map<string, ReturnType<typeof inspectExpression>>();
+  function missingVariableMessage(required: readonly string[]): string {
+    if (names === undefined) return '';
+    const missing = required.find((name) => !names.has(name));
+    if (missing === undefined) return '';
+    return workspaceVariableNameSchema.safeParse(missing).success
+      ? `Workspace variable ${missing} does not exist. Add it in Settings → Variables.`
+      : 'This mapping requires an unavailable workspace variable. Use an uppercase variable name from Settings → Variables.';
+  }
+  function inspectSource(expression: string) {
+    let validation = sources.get(expression);
+    if (validation === undefined) {
+      validation = inspectExpression(expression);
+      // Retain only policy/reference facts; parser messages may echo private source.
+      validation =
+        validation.kind === 'valid'
+          ? validation
+          : {
+              kind: 'error',
+              code: validation.code,
+              message: safeExpressionMessage(validation),
+              ...(validation.limit === undefined
+                ? {}
+                : { limit: validation.limit }),
+            };
+      sources.set(expression, validation);
+    }
+    return validation;
+  }
+  function inspectMapping(
+    source: ValueSource,
+    path: string,
+    supportsExpressions: boolean,
+  ): GraphValidationIssue | undefined {
+    let message = '';
+    let code: GraphValidationIssue['code'] = 'invalid_mapping';
+    if (source.kind === 'workspace_variable') {
+      message = missingVariableMessage([source.name]);
+    } else if (source.kind === 'expression') {
+      code = 'invalid_expression';
+      if (!supportsExpressions) {
+        message =
+          'The expression policy is not available for this step definition.';
+      } else {
+        const validation = inspectSource(source.expression);
+        message = safeExpressionMessage(validation);
+        if (validation.kind === 'valid') {
+          code = 'invalid_mapping';
+          message = missingVariableMessage(validation.references.requiredNames);
+        }
+      }
+    }
+    return message === '' ? undefined : { code, path, message };
+  }
   const issues: GraphValidationIssue[] = [];
-  if (graph.callable?.result.kind === 'expression') {
-    const validation = validateExpression(graph.callable.result.expression);
-    if (validation.kind !== 'valid') {
-      const issue: GraphValidationIssue = {
-        code: 'invalid_expression',
-        path: '$.callable.result',
-        message: safeExpressionMessage(validation),
-      };
+  if (graph.callable !== undefined) {
+    const issue = inspectMapping(
+      graph.callable.result,
+      '$.callable.result',
+      true,
+    );
+    if (issue !== undefined) {
       admitIssue(issue);
       issues.push(issue);
     }
@@ -108,37 +167,12 @@ export function validateAuthoringBatch(
         `${node.definition.key}\u0000${String(node.definition.version)}`,
       );
       for (const [key, source] of Object.entries(node.inputMappings)) {
-        if (source.kind !== 'expression') continue;
-        let message: string;
-        if (!supportsExpressions) {
-          message =
-            'The expression policy is not available for this step definition.';
-        } else {
-          let validation = sources.get(source.expression);
-          if (validation === undefined) {
-            validation = validateExpression(source.expression);
-            // Retain only safe policy facts; parser messages can echo private source.
-            validation =
-              validation.kind === 'valid'
-                ? validation
-                : {
-                    kind: 'error',
-                    code: validation.code,
-                    message: safeExpressionMessage(validation),
-                    ...(validation.limit === undefined
-                      ? {}
-                      : { limit: validation.limit }),
-                  };
-            sources.set(source.expression, validation);
-          }
-          message = safeExpressionMessage(validation);
-        }
-        if (message === '') continue;
-        const issue: GraphValidationIssue = {
-          code: 'invalid_expression',
-          path: `${nodePath}.inputMappings.${key}`,
-          message,
-        };
+        const issue = inspectMapping(
+          source,
+          `${nodePath}.inputMappings.${key}`,
+          supportsExpressions,
+        );
+        if (issue === undefined) continue;
         admitIssue(issue);
         issues.push(issue);
         if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;

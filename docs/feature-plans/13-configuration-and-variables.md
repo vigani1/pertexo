@@ -247,8 +247,8 @@ ARM image publication; CodeQL 38755884421 passed.
 
 ## Follow-up — immutable variable sets (2026-10-16)
 
-Status: database area moved and qualified; publication, revision storage and
-descriptions are next in this fifth ordered follow-up. The decisions below supersede the
+Status: database area and publication check implemented and locally qualified.
+Revision storage and descriptions remain in progress in this fifth ordered follow-up. The decisions below supersede the
 original per-run JSON storage and tenant-access placement described above.
 
 ### Storage and admission
@@ -331,3 +331,15 @@ missing direct/expression/nested/result references; real worker/API/browser
 old/new/replay behavior, descriptions, uncertainty and desktop/phone; mocked
 browser suite, React Doctor and green PR CI. Measure shared storage with the
 maximum bounded value set referenced by many accepted runs. No external service.
+
+### Follow-up slice status
+
+- [x] Move variable persistence/schema/tests to their own area, separately gated.
+- [x] Check required names at publication using the existing authoring worker.
+  Full repository checks, 9,214 units and 47 PostgreSQL variable/publication/
+  portability/Call/restore cases passed. Exact publication receipts survive a
+  later removal; a fresh request checks names even when it could reuse a version.
+- [ ] Replace stored run/preview copies with immutable set references and qualify
+  migration, concurrency, retention and purge.
+- [ ] Add descriptions to settings and the picker, show safe publication findings
+  in the web, and qualify desktop/phone behavior and required release gates.

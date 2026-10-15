@@ -17,6 +17,7 @@ port.once(
       id: number;
       graph: WorkflowGraph;
       policies: WorkflowExpressionPolicyProjection;
+      workspaceVariableNames?: readonly string[];
     }>,
   ) => {
     port.postMessage({ kind: 'started', id: message.id });
@@ -24,7 +25,11 @@ port.once(
       port.postMessage({
         kind: 'result',
         id: message.id,
-        report: validateAuthoringBatch(message.graph, message.policies),
+        report: validateAuthoringBatch(
+          message.graph,
+          message.policies,
+          message.workspaceVariableNames,
+        ),
       });
     } catch (error: unknown) {
       port.postMessage({
