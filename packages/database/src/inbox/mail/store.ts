@@ -10,7 +10,7 @@ import { insertSystemMail } from '../../platform/mail/store.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.js';
-import { rolesForCapability, type Role } from '../../tenant-access/policy.js';
+import { rolesForCapability } from '../../tenant-access/policy.js';
 import {
   projectNoticePreferences,
   type DefaultsRow,
@@ -92,7 +92,7 @@ async function preparePerson(
   person: Person,
   seal: NoticeMailSealer,
 ): Promise<number> {
-  const role = await lockWorkspaceAuthority(
+  await lockWorkspaceAuthority(
     client,
     person.workspace_id,
     person.user_id,
@@ -152,7 +152,6 @@ async function preparePerson(
     client,
     person.workspace_id,
     person.user_id,
-    role,
     new Date(Math.max(current.cut.getTime(), to.created_at.getTime())),
   );
   if (subjects.length === 0 && current.effective.mode === 'immediate') {
@@ -220,7 +219,6 @@ async function authorizeBatch(
   workspaceId: string,
   actorId: string,
   deliveryId: string,
-  role: Role,
 ): Promise<boolean> {
   const found = await client.query<{
     preference_revision: number;
@@ -258,7 +256,6 @@ async function authorizeBatch(
     client,
     workspaceId,
     actorId,
-    role,
     new Date(Math.max(current.cut.getTime(), to.created_at.getTime())),
     items.rows.map((row) => row.thread_id),
   );
@@ -317,7 +314,7 @@ export function createNoticeMailStore(
           lease.pool,
           { workspaceId: person.workspace_id, actorId: person.user_id },
           async (client) => {
-            const role = await lockWorkspaceAuthority(
+            await lockWorkspaceAuthority(
               client,
               person.workspace_id,
               person.user_id,
@@ -328,7 +325,6 @@ export function createNoticeMailStore(
               person.workspace_id,
               person.user_id,
               deliveryId,
-              role,
             );
           },
           { statementTimeoutMillis: 5000 },
