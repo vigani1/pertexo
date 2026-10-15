@@ -113,9 +113,8 @@ export function RunRowMenu({
         <ReplayRunDialog
           apiClient={apiClient}
           userId={userId}
-          workspaceId={workspace.id}
-          sourceRunId={run.id}
-          workflowVersionId={run.workflowVersionId}
+          workspace={workspace}
+          source={run}
           open
           onOpenChange={(open) => {
             setDialog(open ? 'replay' : undefined);

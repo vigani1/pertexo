@@ -1400,3 +1400,11 @@ new commit, with no test weakening or hook suppression.
 checks passed. The natural [main CI run](https://github.com/vigani1/pertexo/actions/runs/38695255050),
 including ARM images, passed too. Error workflows is complete; the next
 authorized feature is F10.
+
+### F11 Form replay boundary — 2026-10-15
+
+[ADR 077](../adr/077-form-submission-and-input-tasks.md) requires a Form replay to
+retain its exact source version and captured input while that input remains
+available. New form values go through a new submission, preserving server-owned
+submitter/time metadata. Other full replays keep their existing explicit input
+behavior. Approval and Request input graphs remain outside prefix recovery.

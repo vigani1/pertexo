@@ -6,19 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { TaskScope } from '../data/tasks.api';
-import { useDecision } from '../data/use-decision';
+import { useTaskResponse } from '../data/use-decision';
 import { blockedSentence } from '../model/presentation';
 export function DecisionForm({
   task,
   scope,
-}: Readonly<{ task: PendingTaskDetail; scope: TaskScope }>) {
+}: Readonly<{
+  task: Extract<PendingTaskDetail, { kind: 'approval' }>;
+  scope: TaskScope;
+}>) {
   const id = useId();
   const [comment, setComment] = useState('');
-  const command = useDecision(scope, task.id);
-  const disabled = command.pending || command.uncertain || !task.canDecide;
+  const command = useTaskResponse(scope, task.id);
+  const disabled = command.pending || command.uncertain || !task.canRespond;
   return (
     <div className="flex flex-col gap-4">
-      {!task.canDecide ? (
+      {!task.canRespond ? (
         <Notice>{blockedSentence(task.blockedReason)}</Notice>
       ) : null}
       {task.status === 'pending' ? (

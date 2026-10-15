@@ -53,11 +53,13 @@ function subject(request: RateLimitRequest): RateLimitSubject {
     objectString(request.authorizedWorkspace, 'workspaceId') ??
     objectString(request.params, 'workspaceId');
   const connectionId = objectString(request.params, 'connectionId');
+  const formId = objectString(request.params, 'publicId');
   const actorId =
     request.apiTokenActor?.actorId ?? request.identitySession?.userId;
   return {
     ...(request.ip === undefined ? {} : { clientAddress: request.ip }),
     origin: origin(request),
+    ...(formId === undefined ? {} : { formId }),
     ...(actorId === undefined ? {} : { actorId }),
     ...(request.apiTokenActor === undefined
       ? {}

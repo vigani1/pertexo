@@ -49,6 +49,7 @@ export const workflowRunTriggerTypeSchema = z.enum([
   'webhook',
   'workflow_call',
   'workflow_error',
+  'form',
 ]);
 export const workflowRunPageLimitSchema = z.coerce
   .number()

@@ -1,6 +1,6 @@
 # F10 — Durable human approvals
 
-Status: implemented and rebase-merged in #301; natural main CI pending.
+Status: implemented and rebase-merged in #301; natural main CI green.
 Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 
 ## Outcome and scope
@@ -207,14 +207,15 @@ proof, green CI and rebase merge. Update this tracker with actual receipts.
       route, starter refused; desktop/phone/keyboard and independent SQL checks.
 - [x] Lint/types/units/build, contracts/schema/architecture/dependencies, mocked e2e,
       changed React Doctor, owned fixture cleanup; record exact evidence.
-- [ ] PR green, rebase merged and natural main result inspected.
+- [x] PR green, rebase merged and natural main result inspected.
 
 ### Merge evidence (2026-10-15)
 
 PR #301 rebase-merged as `e871b8cc618e5ae7aafb141a78edac1b7c788600`.
 Updated-head CI `38713571613` passed all required jobs, including the complete
 real-stack browser job with Approvals. CodeQL `38713571748` passed. Natural main
-CI is running; its final receipt remains pending.
+CI `38716308362` passed, including native ARM image publication; its CodeQL
+run `38716308497` also passed.
 
 ### Local integrated evidence (2026-10-15)
 

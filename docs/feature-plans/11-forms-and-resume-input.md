@@ -31,10 +31,19 @@ ADR 077 records the durable field/submission/public-capability contracts.
 - Shared browser-safe model in `workflow-model/src/forms/`: strict ordered fields,
   title, instructions and one submission validator. Maximum 20 fields; unique
   stable names matching `[A-Za-z][A-Za-z0-9_]{0,63}`, excluding prototype names.
+  Each field also has an immutable local ID, separate from its editable data name,
+  so renaming and reordering preserve focus and control state. IDs are unique
+  within that form, 1–64 ASCII letters/digits/underscore/hyphen.
   Labels are 1–160 characters, help text up to 500, plain text throughout.
+  Text must be valid Unicode without null characters, matching PostgreSQL JSON
+  storage; emoji are supported. Invalid text fails before any admission write.
+  Field definitions together fit 10 KiB, leaving room for audience and
+  instructions inside the existing 16 KiB durable task configuration fence.
+  The complete Request input setup also validates that 16 KiB budget, including
+  escaped Unicode/control characters and its audience, before publication.
 - Types: short text, long text, email, finite number, boolean, single select,
   date (`YYYY-MM-DD`). Required defaults true. Single select has 1–50 unique
-  nonempty options, each at most 160 characters. No free-form pattern language,
+  nonempty single-line options, each at most 160 characters. No free-form pattern language,
   calculations, conditional visibility, dynamic field schemas or custom scripts.
 - Text/email values are strings up to 10,000 characters; email additionally uses
   the existing email validation convention. Number accepts finite JSON numbers,
@@ -57,8 +66,17 @@ ADR 077 records the durable field/submission/public-capability contracts.
 `core.form@1` lives in `nodes-core/src/triggers/form/`. It is a safe CPU trigger
 that returns the supplied normalized input. There is at most one Form trigger,
 in the root graph, with one `out` port. Publish validates this constraint; forms
-are not available from draft schemas. The editor's usual Run action remains an
-explicit member-authorized run with editable input, not a public admission path.
+are not available from draft schemas. The editor's run action opens the published member form for a Form workflow.
+Ordinary Manual/API start refuses a Form version with an explicit “use the form”
+response, so a caller cannot forge the form's server-owned submitter/timestamp.
+Other workflow starts retain their existing behavior; replay retains the original
+submission envelope and binds its new initiating person as usual. For a Form
+version, replay requires the exact source version and input; changing either
+uses a new form submission. The common admission transaction enforces this,
+preventing replay from inventing a form submitter or submission time. Expired
+captured input cannot be replayed even if its row awaits physical cleanup. The
+replay dialog shows known Form input as read-only and links to the current form
+for a new response; server refusal also explains this for an unreadable version.
 
 Member form discovery/submission requires current active workspace membership,
 including viewers. This permits only the named workflow's published form; it
@@ -68,14 +86,19 @@ their current policy. Form settings/link management requires workflow edit acces
 Use current active workflow/publication under a workflow lock. A submission carries
 the displayed immutable version ID; if publication changed, return a clear stale
 form conflict and preserve local fields until the person reloads the schema.
-Archived, unpublished, disabled-step or missing-form workflows refuse new starts.
+Archived, auto-paused, unpublished, disabled-step or missing-form workflows refuse
+new starts. Form outcomes participate in the existing automatic pause policy.
 Already admitted runs and pending tasks continue through normal lifecycle rules.
 
 Use common queued run admission, capacity and input/artifact validation. A stable
-idempotency key plus exact normalized fields/version/actor identifies a submission;
+idempotency key plus exact submitted fields/version/actor identifies a submission;
 a changed request with the same key conflicts. Do not store a second submission
 payload. The run input, starter attribution, command receipt and normal advance
-outbox commit together. Public responses acknowledge acceptance only: no run link,
+outbox commit together. A public start has no authenticated human starter, like a webhook. Approval
+cannot exclude an anonymous sender from later member decisions; use member-only
+access when that independence must be enforced for the submitting person.
+
+Public responses acknowledge acceptance only: no run link,
 run ID, workflow graph, workspace membership or execution data. Member responses
 may link the run through ordinary authorized navigation.
 
@@ -86,6 +109,12 @@ per workflow stores only access mode, stable public identity, current capability
 hash/revision and timestamps. Fields stay in the immutable graph. Enabling public
 access generates a random 256-bit capability; only its SHA-256 digest is stored.
 Disabling clears the grant immediately. Regeneration invalidates the old grant.
+A publication that removes, replaces or disables its Form entry revokes the
+public grant in that same transaction; reintroducing a Form never silently
+resurrects the old link. The grant also binds its exact entry node identity.
+The browser generates the capability with Web Crypto and retains its exact
+command/key through an uncertain response. The server stores only its digest;
+the idempotency receipt contains grant identity/revision, never the capability.
 The full URL is shown once after enable/regenerate; no stored plaintext secret,
 encryption provider or new master key. Explain that losing it requires regeneration.
 
@@ -114,7 +143,7 @@ new rate-limit service. Existing workspace queue/capacity fences still apply.
 
 ## Requested input on F10 tasks
 
-`core.request-input@1` in `nodes-core/src/flow/request-input/` has the same form
+`core.request_input@1` in `nodes-core/src/flow/request-input/` has the same form
 fields, title/instructions, expiry (default seven days; 1 hour–30 days), and F10's
 roles/named-member audience. Default owners/admins. The initiating person **may**
 respond to a Request input task; Approval's self-decision prohibition stays intact.
@@ -175,19 +204,47 @@ Update existing CI real-stack browser journeys; no new job.
 
 - [x] Reconcile merged F10 and current publication/admission/HTTP boundaries.
 - [x] Record recommended field, access, retention and response choices; ADR 077.
-- [ ] Shared fields, Form and Request input nodes, pure engine submitted facts.
-- [ ] Grants/admission and task response transactions; forced RLS and purge.
-- [ ] HTTP discovery, publication conflict, validation, idempotency, rate limits.
-- [ ] Editor fields, member/public forms, link controls, inbox and input response.
-- [ ] Real database races: changed publication, disable/rotate, duplicate submits,
+- [x] Shared fields, Form and Request input nodes, pure engine submitted facts.
+- [x] Grants/admission and task response transactions; forced RLS and purge.
+- [x] HTTP discovery, publication conflict, validation, idempotency, rate limits.
+- [x] Editor fields, member/public forms, link controls, inbox and input response.
+- [x] Real database races: changed publication, disable/rotate, duplicate submits,
       membership loss, foreign IDs, task expiry/cancel and one winning response.
-- [ ] Real worker: Form → Request input → downstream mapped output, restart,
+- [x] Real worker: Form → Request input → downstream mapped output, restart,
       handled expiry and exactly one continuation; public starts have no actor.
-- [ ] Desktop/phone/keyboard browser journeys against real API/worker; safe public
+- [x] Desktop/phone/keyboard browser journeys against real API/worker; safe public
       completion, invalid fields, uncertain responses and dynamic publication.
-- [ ] Lint, types, units, build, mocked e2e, contracts/schema/architecture/Knip,
+- [x] Lint, types, units, build, mocked e2e, contracts/schema/architecture/Knip,
       changed React Doctor, inspected screenshots and owned-fixture cleanup.
 - [ ] PR green, rebase merged; inspect natural main result.
+
+## Local qualification
+
+The final isolated full run passed lint, TypeScript and all 9,127 Vitest tests,
+plus native test scripts. Real PostgreSQL passed 30 Form/pending-task cases and
+seven existing acceptance/security/schema cases. Real worker proofs cover
+Form → Request input → mapped Stop, restart with one continuation, and expiry
+handled by a failure link. The engine human-task group passed all 14 cases.
+
+The real API/worker/browser journey passed at desktop 1280 and phone 375 with
+reduced motion, keyboard response, field rename/reorder focus, member/public
+submissions, trusted actor/time, CSRF and typed-value refusals, manual-start
+refusal, revocation, and independent SQL checks of downstream values and audits.
+Inspected synthetic screenshots are in `docs/media/forms/` (filled form before
+submission and receipt after submission). Public receipts contain no run identity.
+The mocked suite passed all 172 browser cases, including exact lost-acknowledgement
+retry and stale-schema input preservation. React Doctor on changed React files: 100/100, no findings; no suppressions added.
+
+Qualification caught and fixed declaration materialization for the single-output
+input step, browser byte inspection using Node Buffer, unpublished sharing-cache
+invalidation, and the test fixture missing its existing notifications runtime.
+Simultaneous real-browser builds and unit runs produced editor lazy-load timeouts;
+the complete isolated run passed without extending those test deadlines. Live and
+mocked browser builds must run serially because both own the same Vite output.
+
+The initial documentation commit accidentally staged Approval-file deletions.
+The following commit restored them before the separate move commit. History was
+preserved; the final tree contains the intended moves and shared task owner.
 
 ## Rollout, rollback and later work
 

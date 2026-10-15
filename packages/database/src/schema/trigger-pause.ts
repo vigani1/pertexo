@@ -61,7 +61,7 @@ export const workflowTriggerPausePeriods = appSchema.table(
   ],
 );
 
-/** Pending schedule and webhook run outcomes, deleted once folded. */
+/** Pending external-trigger run outcomes, deleted once folded. */
 export const workflowTriggerOutcomes = appSchema.table(
   'workflow_trigger_outcomes',
   {

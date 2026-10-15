@@ -27,6 +27,7 @@ export function callableDeclarationIssues(
   const entries = graph.nodes.filter(({ definition }) =>
     [
       'core.manual',
+      'core.form',
       'core.webhook',
       'core.schedule',
       'core.workflow_error',

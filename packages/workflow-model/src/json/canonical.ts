@@ -143,7 +143,8 @@ export function inspectJsonValue(value: unknown): JsonInspection {
   };
   visit(normalized, 0);
   return {
-    bytes: Buffer.byteLength(serializeNormalizedJson(normalized), 'utf8'),
+    bytes: new TextEncoder().encode(serializeNormalizedJson(normalized))
+      .byteLength,
     depth,
     members,
   };

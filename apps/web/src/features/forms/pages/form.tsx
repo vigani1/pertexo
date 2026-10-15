@@ -1,0 +1,135 @@
+import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
+import type {
+  FormSchemaResponse,
+  FormSubmissionResponse,
+} from '@pertexo/contracts';
+import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
+import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/ui/notice';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { isApiError } from '@/lib/api/error';
+import { FormResponse } from '../components/response';
+import { sendForm, type FormScope } from '../data/forms.api';
+import { formQueryOptions } from '../data/forms.queries';
+import { useFormCommand } from '../data/use-command';
+export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
+  const query = useQuery(formQueryOptions(scope));
+  if (query.isPending) return <Skeleton className="h-72 w-full" />;
+  if (query.isError)
+    return (
+      <Notice
+        tone="warning"
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void query.refetch()}
+          >
+            Try again
+          </Button>
+        }
+      >
+        {isApiError(query.error) &&
+        query.error.problem?.code === 'form.unavailable'
+          ? 'This form is not available. Its owner may have turned it off or changed the link.'
+          : 'The form could not be loaded. Check your connection and try again.'}
+      </Notice>
+    );
+  return (
+    <PublishedForm
+      key={query.data.versionId}
+      scope={scope}
+      schema={query.data}
+      reload={() => void query.refetch()}
+    />
+  );
+}
+function SubmissionReceipt({
+  scope,
+  receipt,
+}: Readonly<{ scope: FormScope; receipt: FormSubmissionResponse }>) {
+  return (
+    <section className="flex flex-col gap-4">
+      <FinishedThread />
+      <h1 className="font-heading text-3xl font-semibold">Response sent</h1>
+      <Status tone="success">The workflow accepted your response.</Status>
+      {scope.target.kind === 'member' && receipt.runId !== undefined ? (
+        <Link
+          to="/w/$workspaceId/runs/$runId"
+          params={{
+            workspaceId: scope.target.workspaceId,
+            runId: receipt.runId,
+          }}
+          className="text-sm underline underline-offset-4"
+        >
+          Open run
+        </Link>
+      ) : null}
+    </section>
+  );
+}
+function PublishedForm({
+  scope,
+  schema,
+  reload,
+}: Readonly<{
+  scope: FormScope;
+  schema: FormSchemaResponse;
+  reload: () => void;
+}>) {
+  const command = useFormCommand(
+    (body: Parameters<typeof sendForm>[1], key: string) =>
+      sendForm(scope, body, key),
+  );
+  if (command.data !== undefined)
+    return <SubmissionReceipt scope={scope} receipt={command.data} />;
+  const changed =
+    isApiError(command.cause) && command.cause.problem?.code === 'form.changed';
+  const { versionId, form } = schema;
+  return (
+    <div className="flex max-w-2xl flex-col gap-6">
+      <header className="flex flex-col gap-3">
+        <h1 className="break-words font-heading text-3xl font-semibold [overflow-wrap:anywhere]">
+          {form.title}
+        </h1>
+        {form.instructions === '' ? null : (
+          <p className="whitespace-pre-wrap break-words text-muted-foreground">
+            {form.instructions}
+          </p>
+        )}
+      </header>
+      <FormResponse
+        fields={form.fields}
+        pending={command.pending}
+        disabled={command.uncertain || changed}
+        submitLabel="Send response"
+        onSubmit={(values) => command.send({ versionId, values })}
+      />
+      {command.error === undefined ? null : (
+        <Notice
+          tone={command.uncertain ? 'warning' : 'destructive'}
+          action={
+            command.uncertain ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={command.pending}
+                onClick={command.retry}
+              >
+                Retry same response
+              </Button>
+            ) : changed ? (
+              <Button type="button" variant="outline" onClick={reload}>
+                Reload form
+              </Button>
+            ) : undefined
+          }
+        >
+          {command.error}
+        </Notice>
+      )}
+    </div>
+  );
+}

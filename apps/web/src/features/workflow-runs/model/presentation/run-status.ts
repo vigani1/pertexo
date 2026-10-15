@@ -45,6 +45,7 @@ const triggerLabels: Readonly<Record<RunTriggerType, string>> = {
   webhook: 'Webhook',
   workflow_call: 'Workflow Call',
   workflow_error: 'Workflow failure',
+  form: 'Form',
 };
 
 export const runTriggerTypes: readonly RunTriggerType[] = [
@@ -55,6 +56,7 @@ export const runTriggerTypes: readonly RunTriggerType[] = [
   'replay',
   'workflow_call',
   'workflow_error',
+  'form',
 ];
 
 export const runStatuses: readonly RunStatus[] = [

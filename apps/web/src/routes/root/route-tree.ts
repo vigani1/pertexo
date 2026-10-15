@@ -1,3 +1,4 @@
+import { publicFormRoute } from '../forms/routes';
 import {
   accountSecurityRoute,
   authStageRoute,
@@ -21,6 +22,9 @@ import {
 } from '../workflow/hub/routes';
 import {
   alertsRoute,
+  requestsRoute,
+  requestDetailRoute,
+  memberFormRoute,
   approvalsRoute,
   approvalDetailRoute,
   apiTokensRoute,
@@ -40,6 +44,7 @@ import {
 } from '../workspace/routes';
 
 export const routeTree = rootRoute.addChildren([
+  publicFormRoute,
   indexRoute,
   authStageRoute.addChildren([
     loginRoute,
@@ -58,6 +63,9 @@ export const routeTree = rootRoute.addChildren([
       runsRoute,
       runDetailRoute,
       inboxRoute,
+      requestsRoute,
+      requestDetailRoute,
+      memberFormRoute,
       approvalsRoute,
       approvalDetailRoute,
       connectionsRoute,

@@ -1,4 +1,16 @@
 import {
+  CORE_REQUEST_INPUT_MANIFEST,
+  CORE_REQUEST_INPUT_CONFIG_SCHEMA,
+  CORE_REQUEST_INPUT_INPUT_SCHEMA,
+  CORE_REQUEST_INPUT_OUTPUT_SCHEMA,
+} from './flow/request-input/index.js';
+import {
+  CORE_FORM_MANIFEST,
+  CORE_FORM_CONFIG_SCHEMA,
+  CORE_FORM_INPUT_SCHEMA,
+  CORE_FORM_OUTPUT_SCHEMA,
+} from './triggers/form/index.js';
+import {
   CORE_APPROVAL_MANIFEST,
   CORE_APPROVAL_CONFIG_SCHEMA,
   CORE_APPROVAL_INPUT_SCHEMA,
@@ -148,6 +160,18 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_REQUEST_INPUT_MANIFEST,
+      configSchema: CORE_REQUEST_INPUT_CONFIG_SCHEMA,
+      inputSchema: CORE_REQUEST_INPUT_INPUT_SCHEMA,
+      outputSchema: CORE_REQUEST_INPUT_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_FORM_MANIFEST,
+      configSchema: CORE_FORM_CONFIG_SCHEMA,
+      inputSchema: CORE_FORM_INPUT_SCHEMA,
+      outputSchema: CORE_FORM_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_APPROVAL_MANIFEST,
       configSchema: CORE_APPROVAL_CONFIG_SCHEMA,

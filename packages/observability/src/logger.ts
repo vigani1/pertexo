@@ -42,6 +42,7 @@ const SECRET_NAMES = [
   'api_key',
   'clientSecret',
   'credential',
+  'capability',
   'password',
   'refreshToken',
   'secret',
@@ -53,6 +54,7 @@ const SECRET_NORMALIZED_NAMES = new Set([
   'authorization',
   'cookie',
   'setcookie',
+  'xpertexoformkey',
 ]);
 
 const SECRET_PATHS = SECRET_NAMES.flatMap((name) => [

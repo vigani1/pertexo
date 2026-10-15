@@ -44,7 +44,7 @@ export async function readRunCompletionValues(
        left join app.pending_run_tasks task
          on task.workspace_id=node.workspace_id and task.run_id=node.workflow_run_id
         and task.node_run_id=node.id and task.invocation_key=node.invocation_key
-        and task.status in ('approved','rejected')
+        and task.status in ('approved','rejected','submitted')
        where node.workspace_id = $1 and node.workflow_run_id = $2
          and ($3::varchar[] is null or node.node_id = any($3::varchar[]))
          and (node.status = 'succeeded' or

@@ -48,6 +48,8 @@ describe('core node catalog', () => {
           `${manifest.definition.key}@${String(manifest.definition.version)}`,
       ),
     ).toEqual([
+      'core.request_input@1',
+      'core.form@1',
       'core.approval@1',
       'core.workflow_error@1',
       'core.read_file@1',

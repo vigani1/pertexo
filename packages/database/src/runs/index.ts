@@ -1,3 +1,4 @@
+export { RunRequiresFormError } from './commands/forms.js';
 export { ExecutionStateConflictError } from './state-errors.js';
 export { readRunEventsAfter } from './queries/events.js';
 export {

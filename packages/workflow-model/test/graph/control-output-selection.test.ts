@@ -92,3 +92,21 @@ describe('immutable executable control-output selection', () => {
     },
   );
 });
+
+it('materializes input declarations without treating their single continuation as a branch', () => {
+  expect(
+    workflowControlOutputKind({ key: 'core.request_input', version: 1 }),
+  ).toBe('human_task');
+  expect(
+    workflowControlOutputNodeIds({
+      graph: {
+        nodes: [
+          {
+            id: 'input',
+            definition: { key: 'core.request_input', version: 1 },
+          },
+        ],
+      },
+    }),
+  ).toEqual(new Set(['input']));
+});

@@ -50,3 +50,11 @@ export type {
   WorkflowTriggerPauseDecision,
   WorkflowTriggerPauseFoldStore,
 } from './pause/fold-store.js';
+export { createFormStore } from './forms/store.js';
+export {
+  FormUnavailableError,
+  FormChangedError,
+  FormAccessConflictError,
+  type FormStore,
+  type PublicFormGrant,
+} from './forms/contract.js';

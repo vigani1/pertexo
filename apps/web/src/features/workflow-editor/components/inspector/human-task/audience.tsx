@@ -18,11 +18,13 @@ export function AudienceField({
   form,
   audience,
   onChange,
+  purpose = 'approval',
 }: Readonly<{
   scope: TaskScope;
   form: NodeFormApi;
   audience: TaskAudience;
   onChange: (next: TaskAudience) => void;
+  purpose?: 'approval' | 'input_request';
 }>) {
   const [search, setSearch] = useState('');
   const members = useInfiniteQuery({
@@ -36,10 +38,12 @@ export function AudienceField({
   );
   return (
     <fieldset className="flex flex-col gap-3" disabled={!form.editable}>
-      <legend className="mb-2 text-sm font-medium">Who can decide</legend>
+      <legend className="mb-2 text-sm font-medium">
+        Who can {purpose === 'approval' ? 'decide' : 'respond'}
+      </legend>
       <p className="text-xs text-muted-foreground">
         Choose roles, named members, or both. At least one must remain. Current
-        membership is checked when deciding.
+        membership is checked when responding.
       </p>
       <div className="flex flex-wrap gap-x-4 gap-y-3">
         {roles.map((role) => (

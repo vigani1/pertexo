@@ -90,3 +90,10 @@ describe('canonical JSON', () => {
     expect(() => canonicalJson(value)).toThrow(InvalidJsonValueError);
   });
 });
+
+it('counts UTF-8 and JSON-escaped bytes identically in browsers and Node', () => {
+  const input = { text: '😀é\u0000\ud800' };
+  expect(inspectJsonValue(input).bytes).toBe(
+    Buffer.byteLength(canonicalJson(input), 'utf8'),
+  );
+});

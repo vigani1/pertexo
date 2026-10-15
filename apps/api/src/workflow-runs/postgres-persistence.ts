@@ -4,6 +4,7 @@ import {
   IdempotencyRequestConflictError,
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
+  RunRequiresFormError,
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
@@ -268,6 +269,13 @@ function mapPersistenceError(error: unknown): never {
       applicationError('workspace.quota_exceeded', {
         safeDetail: 'The workspace queued-run limit has been reached.',
         details: { retryAfterSeconds: error.retryAfterSeconds },
+      }),
+    );
+  if (error instanceof RunRequiresFormError)
+    return throwWorkflowRunError(
+      applicationError('form.required', {
+        safeDetail:
+          'Open this workflow’s form to enter its fields and start a run.',
       }),
     );
   if (error instanceof WorkspaceRunAdmissionDeniedError)

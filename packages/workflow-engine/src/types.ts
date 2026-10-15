@@ -1,6 +1,7 @@
 import type {
   JsonValue,
   ApprovalConfig,
+  InputRequestConfig,
   WorkflowCallPin,
   WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
@@ -324,10 +325,11 @@ export interface WorkflowCallOutcome {
   readonly reasonCode?: string;
 }
 
-export interface PendingTaskIntent {
-  readonly invocationKey: string;
-  readonly config: ApprovalConfig;
-}
+export type PendingTaskIntent = Readonly<{ invocationKey: string }> &
+  (
+    | Readonly<{ kind: 'approval'; config: ApprovalConfig }>
+    | Readonly<{ kind: 'input_request'; config: InputRequestConfig }>
+  );
 
 export interface PendingTaskOutcome {
   readonly taskId: string;
@@ -335,7 +337,8 @@ export interface PendingTaskOutcome {
   readonly nodeId: string;
   readonly branchPath?: readonly BranchScopePart[];
   readonly iterationPath?: readonly IterationScopePart[];
-  readonly status: 'approved' | 'rejected' | 'expired' | 'refused' | 'canceled';
+  readonly status:
+    'approved' | 'rejected' | 'submitted' | 'expired' | 'refused' | 'canceled';
 }
 
 export interface WorkflowTransitionPlan {

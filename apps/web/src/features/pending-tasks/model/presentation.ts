@@ -2,10 +2,17 @@ import type {
   PendingTaskSummary,
   PendingTaskListQuery,
 } from '@pertexo/contracts';
-export function parseApprovalSearch(
+export function parseTaskSearch(
   value: Record<string, unknown>,
-): Pick<PendingTaskListQuery, 'view' | 'status'> {
+  defaultKind: 'all' | 'approval' = 'all',
+): Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'> {
   return {
+    kind:
+      value.kind === 'all' ||
+      value.kind === 'approval' ||
+      value.kind === 'input_request'
+        ? value.kind
+        : defaultKind,
     view: value.view === 'all' ? 'all' : 'mine',
     status:
       value.status === 'resolved' || value.status === 'all'
@@ -15,6 +22,7 @@ export function parseApprovalSearch(
 }
 export function taskTone(status: PendingTaskSummary['status']) {
   switch (status) {
+    case 'submitted':
     case 'approved':
       return 'success';
     case 'rejected':
@@ -34,9 +42,9 @@ export function blockedSentence(reason: PendingTaskSummary['blockedReason']) {
     case 'starter':
       return 'The person who started this run cannot decide. Another eligible member needs to respond.';
     case 'audience':
-      return 'Your current role or member identity is not in this approval’s audience.';
+      return 'Your current role or member identity is not in this request’s audience.';
     case 'expired':
-      return 'This approval expired. The step follows its failure path.';
+      return 'This request expired. The step follows its failure path.';
     case 'run_closed':
       return 'This run was canceled, finished, or reached its deadline. It cannot accept a decision.';
     case 'resolved':

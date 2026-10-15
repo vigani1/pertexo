@@ -1,2 +1,2 @@
-export { ApprovalsPage } from './pages/list';
-export { ApprovalDetailPage } from './pages/detail';
+export { TasksPage } from './pages/list';
+export { TaskDetailPage } from './pages/detail';

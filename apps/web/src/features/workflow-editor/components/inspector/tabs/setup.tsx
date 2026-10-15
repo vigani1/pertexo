@@ -1,4 +1,4 @@
-import { ApprovalSetup } from '../human-task/setup';
+import { HumanFormSetup } from '../human-task/setup';
 import { ReadFileSetup } from '../builders/read-file-setup';
 import { DateSetup } from '../builders/date-setup';
 import { CallTargetField } from '../fields/call-target';
@@ -195,8 +195,21 @@ function SetupControls({
   form: NodeFormApi;
 }>) {
   const { config } = node;
-  if (node.definition.key === 'core.approval' && callScope !== undefined)
-    return <ApprovalSetup config={config} form={form} scope={callScope} />;
+  const formKey = node.definition.key;
+  if (
+    (formKey === 'core.approval' ||
+      formKey === 'core.form' ||
+      formKey === 'core.request_input') &&
+    callScope !== undefined
+  )
+    return (
+      <HumanFormSetup
+        definitionKey={formKey}
+        config={config}
+        form={form}
+        scope={callScope}
+      />
+    );
   if (node.definition.key === 'core.read_file')
     return <ReadFileSetup config={config} form={form} />;
   if (node.definition.key === 'core.date')

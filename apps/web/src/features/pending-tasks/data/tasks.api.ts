@@ -75,3 +75,21 @@ export function listAudience(
     },
   });
 }
+
+export function submitTask(
+  scope: TaskScope,
+  taskId: string,
+  values: Readonly<Record<string, string | number | boolean>>,
+  key: string,
+) {
+  return scope.apiClient.request({
+    path: `${path(scope.workspaceId)}/${encodeURIComponent(taskId)}/submit`,
+    method: 'POST',
+    headers: { 'Idempotency-Key': key },
+    body: { values },
+    response: {
+      kind: 'json',
+      decode: (value) => pendingTaskDecisionResponseSchema.parse(value),
+    },
+  });
+}

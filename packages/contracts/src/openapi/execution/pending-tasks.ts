@@ -2,6 +2,7 @@ import {
   approvalAudiencePageSchema,
   approvalAudienceQuerySchema,
   pendingTaskDecisionRequestSchema,
+  pendingTaskSubmitRequestSchema,
   pendingTaskDecisionResponseSchema,
   pendingTaskListQuerySchema,
   pendingTaskListResponseSchema,
@@ -32,6 +33,7 @@ export const pendingTaskSchemas = {
     pendingTaskDecisionResponseSchema,
     'output',
   ),
+  PendingTaskSubmitRequest: jsonSchema(pendingTaskSubmitRequestSchema, 'input'),
   ApprovalAudiencePage: jsonSchema(approvalAudiencePageSchema, 'output'),
 };
 const workspace = uuidPathParameter('workspaceId', 'Workspace identifier');
@@ -45,6 +47,24 @@ const errors = {
   '500': responseReference('Unexpected'),
 };
 export const pendingTaskPaths = {
+  '/v1/workspaces/{workspaceId}/pending-tasks/{taskId}/submit': {
+    post: {
+      operationId: 'submitPendingTask',
+      security,
+      parameters: [
+        workspace,
+        task,
+        csrfHeaderParameter(),
+        idempotencyHeaderParameter(),
+      ],
+      requestBody: jsonRequest('PendingTaskSubmitRequest'),
+      responses: {
+        '200': jsonResponse('Recorded input', 'PendingTaskDecisionResponse'),
+        ...errors,
+        '409': responseReference('Conflict'),
+      },
+    },
+  },
   '/v1/workspaces/{workspaceId}/pending-tasks': {
     get: {
       operationId: 'listPendingTasks',

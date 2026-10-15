@@ -6,6 +6,8 @@ import type {
 } from '@pertexo/contracts';
 import {
   approvalConfigSchema,
+  inputRequestConfigSchema,
+  formSubmissionSchema,
   approvalOutputSchema,
 } from '@pertexo/workflow-model';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
@@ -40,7 +42,7 @@ export type TaskRow = Readonly<{
   }>;
   workflow_id: string;
   workflow_name: string;
-  kind: 'approval';
+  kind: 'approval' | 'input_request';
   config: unknown;
   status: PendingTaskDetail['status'];
   output_ref: unknown;
@@ -51,12 +53,22 @@ export type TaskRow = Readonly<{
   blocked_reason: PendingTaskDetail['blockedReason'];
 }>;
 export function projectTask(row: TaskRow): PendingTaskDetail {
-  const config = approvalConfigSchema.parse(row.config);
+  const captured =
+    row.kind === 'approval'
+      ? {
+          kind: 'approval' as const,
+          config: approvalConfigSchema.parse(row.config),
+        }
+      : {
+          kind: 'input_request' as const,
+          config: inputRequestConfigSchema.parse(row.config),
+        };
+  const config = captured.config;
   const stored =
     row.output_ref === null ? null : parseStoredExecutionValue(row.output_ref);
   if (stored !== null && stored.kind !== 'inline')
     throw new Error('Task result is not inline');
-  return {
+  const common = {
     id: row.id,
     workspaceId: row.workspace_id,
     workflowId: row.workflow_id,
@@ -74,14 +86,28 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
     createdAt: row.created_at.toISOString(),
     expiresAt: row.expires_at.toISOString(),
     completedAt: row.completed_at?.toISOString() ?? null,
-    decidedByName: row.decided_by_name,
-    canDecide: row.blocked_reason === null,
+    completedByName: row.decided_by_name,
+    canRespond: row.blocked_reason === null,
     blockedReason: row.blocked_reason,
-    output:
-      stored?.kind === 'inline'
-        ? approvalOutputSchema.parse(stored.value)
-        : null,
   };
+  return captured.kind === 'input_request'
+    ? {
+        ...common,
+        kind: 'input_request',
+        fields: captured.config.fields,
+        output:
+          stored?.kind === 'inline'
+            ? formSubmissionSchema.parse(stored.value)
+            : null,
+      }
+    : {
+        ...common,
+        kind: 'approval',
+        output:
+          stored?.kind === 'inline'
+            ? approvalOutputSchema.parse(stored.value)
+            : null,
+      };
 }
 export async function readTaskRow(
   client: PoolClient,
@@ -111,17 +137,19 @@ export async function listTasks(
     input.view,
     input.status,
     input.after ?? null,
+    input.kind ?? 'all',
   ];
   const candidates = `task.workspace_id=$1 and ($4::uuid is null or task.run_id=$4)
-    and ($5='all' or task.decided_by=$2::uuid or (run.started_by is distinct from $2::uuid and ${audience}))
+    and ($5='all' or task.decided_by=$2::uuid or ((task.kind<>'approval' or run.started_by is distinct from $2::uuid) and ${audience}))
+    and ($8='all' or task.kind=$8)
     and ($6='all' or ($6='pending' and task.status='pending') or ($6='resolved' and task.status<>'pending'))`;
   const rows = await client.query<TaskRow>(
     `select ${columns} ${from} where ${candidates} and ($7::uuid is null or task.id<$7) order by task.id desc limit 51`,
     params,
   );
   const count = await client.query<{ count: number }>(
-    `select count(*)::int count ${from} where task.workspace_id=$1 and task.status='pending' and (${blocked}) is null`,
-    params.slice(0, 3),
+    `select count(*)::int count ${from} where task.workspace_id=$1 and task.status='pending' and ($4='all' or task.kind=$4) and (${blocked}) is null`,
+    [...params.slice(0, 3), input.kind ?? 'all'],
   );
   const page = rows.rows.slice(0, 50);
   return {
@@ -133,6 +161,10 @@ export async function listTasks(
         workflowVersionId: _version,
         ...summary
       } = projectTask(row);
+      if ('fields' in summary) {
+        const { fields: _fields, ...item } = summary;
+        return item;
+      }
       return summary;
     }),
     nextCursor: rows.rows.length > 50 ? (page.at(-1)?.id ?? null) : null,

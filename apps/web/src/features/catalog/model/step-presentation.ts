@@ -100,6 +100,18 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
     icon: CalendarClockIcon,
     family: 'transform',
   },
+  'core.form': {
+    name: 'Form',
+    description: 'Start when someone submits a form',
+    icon: ListChecksIcon,
+    family: 'trigger',
+  },
+  'core.request_input': {
+    name: 'Request input',
+    description: 'Wait for an allowed member to fill in a form',
+    icon: ListChecksIcon,
+    family: 'logic',
+  },
   'core.webhook': {
     name: 'Webhook',
     description: 'Start when another app sends a request',

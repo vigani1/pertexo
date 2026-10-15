@@ -1,3 +1,4 @@
+import { formProblems } from './forms.js';
 import { pendingTaskProblems } from './pending-tasks.js';
 import { workflowErrorProblems } from './workflow-errors.js';
 import { z } from 'zod';
@@ -62,6 +63,11 @@ export const API_PROBLEM_CODES = [
   'pending_task.run_closed',
   'pending_task.self_decision',
   'pending_task.not_eligible',
+  'form.unavailable',
+  'form.changed',
+  'form.access_conflict',
+  'form.invalid',
+  'form.required',
 
   'workflow.input_case_revision_conflict',
   'workflow.input_case_limit_exceeded',
@@ -354,6 +360,7 @@ const apiProblemDetails = {
   ...workflowConcurrencyProblems,
   ...workflowErrorProblems,
   ...pendingTaskProblems,
+  ...formProblems,
   ...workflowInputCaseProblems,
   ...workflowOrganizationProblems,
   'workspace.auto_pause_settings_conflict': {

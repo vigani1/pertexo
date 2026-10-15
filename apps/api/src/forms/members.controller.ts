@@ -1,0 +1,112 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  formParamsSchema,
+  formSubmissionRequestSchema,
+  formAccessRequestSchema,
+} from '@pertexo/contracts';
+import {
+  CsrfProtectionGuard,
+  SessionAuthenticationGuard,
+  authenticatedSession,
+} from '../workspaces/index.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
+import {
+  requestIdempotencyKey,
+  withRequestOperationSignal,
+} from '../platform/http/index.js';
+import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
+import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { FormMemberGuard, FormManageGuard } from './guards.js';
+import { FormService } from './service.js';
+type FormRequest = IdentityWorkspaceRequest & AbortableRequest;
+@Controller('v1/workspaces/:workspaceId/workflows/:workflowId/form')
+@UseGuards(SessionAuthenticationGuard)
+@RateLimit('authenticated_read')
+export class MemberFormsController {
+  constructor(private readonly forms: FormService) {}
+  @Get()
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(FormMemberGuard)
+  read(@Req() request: FormRequest, @Param() params: unknown) {
+    const scope = formParamsSchema.parse(params);
+    return withRequestOperationSignal(request, (signal) =>
+      this.forms.read({
+        ...scope,
+        actorId: authenticatedSession(request).userId,
+        signal,
+      }),
+    );
+  }
+  @Post('submit')
+  @HttpCode(200)
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(FormMemberGuard, CsrfProtectionGuard)
+  @RateLimit('ordinary_mutation')
+  submit(
+    @Req() request: FormRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const scope = formParamsSchema.parse(params);
+    const input = formSubmissionRequestSchema.parse(body);
+    const idempotencyKey = requestIdempotencyKey(request.headers);
+    return withRequestOperationSignal(request, (signal) =>
+      this.forms.submit({
+        ...scope,
+        ...input,
+        actorId: authenticatedSession(request).userId,
+        idempotencyKey,
+        ...authenticatedRequestIdentifiers(request),
+        signal,
+      }),
+    );
+  }
+  @Get('access')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(FormManageGuard)
+  access(@Req() request: FormRequest, @Param() params: unknown) {
+    const scope = formParamsSchema.parse(params);
+    return withRequestOperationSignal(request, (signal) =>
+      this.forms.access({
+        ...scope,
+        actorId: authenticatedSession(request).userId,
+        signal,
+      }),
+    );
+  }
+  @Post('access')
+  @HttpCode(200)
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(FormManageGuard, CsrfProtectionGuard)
+  @RateLimit('ordinary_mutation')
+  setAccess(
+    @Req() request: FormRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const scope = formParamsSchema.parse(params);
+    const input = formAccessRequestSchema.parse(body);
+    const idempotencyKey = requestIdempotencyKey(request.headers);
+    return withRequestOperationSignal(request, (signal) =>
+      this.forms.setAccess({
+        ...scope,
+        ...input,
+        actorId: authenticatedSession(request).userId,
+        idempotencyKey,
+        ...authenticatedRequestIdentifiers(request),
+        signal,
+      }),
+    );
+  }
+}

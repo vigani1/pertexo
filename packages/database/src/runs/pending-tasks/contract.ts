@@ -2,6 +2,7 @@ import type {
   ApprovalAudiencePage,
   ApprovalAudienceQuery,
   PendingTaskDecisionRequest,
+  PendingTaskSubmitRequest,
   PendingTaskDecisionResponse,
   PendingTaskDetail,
   PendingTaskListQuery,
@@ -25,6 +26,11 @@ export interface PendingTaskStore {
   decide(
     input: PendingTaskScope &
       PendingTaskDecisionRequest &
+      Readonly<{ taskId: string; idempotencyKey: string }>,
+  ): Promise<PendingTaskDecisionResponse>;
+  submit(
+    input: PendingTaskScope &
+      PendingTaskSubmitRequest &
       Readonly<{ taskId: string; idempotencyKey: string }>,
   ): Promise<PendingTaskDecisionResponse>;
   audience(

@@ -306,9 +306,8 @@ export function RunHeader({
           key={`${userId}:${workspace.id}:${run.id}`}
           apiClient={apiClient}
           userId={userId}
-          workspaceId={workspace.id}
-          sourceRunId={run.id}
-          workflowVersionId={run.workflowVersionId}
+          workspace={workspace}
+          source={run}
           {...(versionLabel === undefined ? {} : { versionLabel })}
           open={replayOpen}
           onOpenChange={onReplayOpenChange}

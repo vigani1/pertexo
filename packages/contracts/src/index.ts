@@ -54,3 +54,24 @@ export {
   type ApprovalAudienceQuery,
   type ApprovalAudiencePage,
 } from './schemas/execution/pending-tasks.js';
+
+export {
+  pendingTaskSubmitRequestSchema,
+  type PendingTaskSubmitRequest,
+} from './schemas/execution/pending-tasks.js';
+export {
+  formParamsSchema,
+  publicFormParamsSchema,
+  formCapabilitySchema,
+  formSchemaResponseSchema,
+  formSubmissionRequestSchema,
+  formSubmissionResponseSchema,
+  formAccessSchema,
+  formAccessRequestSchema,
+  type FormSchemaResponse,
+  type FormSubmissionRequest,
+  type FormSubmissionResponse,
+  type FormAccess,
+  type FormAccessRequest,
+} from './schemas/forms/requests.js';
+export { publicFormSubmissionResponseSchema } from './schemas/forms/requests.js';

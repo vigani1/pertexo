@@ -1,3 +1,6 @@
+import { createFormStore, type FormStore } from '@pertexo/database/triggers';
+import { initialCheckpointFactory } from '@pertexo/execution';
+import { FormsModule } from '../../forms/module.js';
 import {
   createPendingTaskStore,
   type PendingTaskStore,
@@ -66,6 +69,7 @@ export type ApiWorkflowRuntime = Readonly<{
   nodeTestingDependencies?: NodeTestingDependencies;
   runDependencies: WorkflowRunsDependencies;
   pendingTasks?: PendingTaskStore;
+  forms?: FormStore;
   checkReadiness?(): Promise<void>;
   close(): Promise<void>;
 }>;
@@ -116,6 +120,7 @@ export async function createApiWorkflowRuntime(
   let database: WorkflowAuthoringDatabase | undefined;
   let metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
   let pendingTasks: PendingTaskStore | undefined;
+  let forms: FormStore | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
   let runAdapter:
     ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined;
@@ -140,6 +145,11 @@ export async function createApiWorkflowRuntime(
       );
     }
     pendingTasks = createPendingTaskStore(databaseConfig, runtime);
+    forms = createFormStore(
+      databaseConfig,
+      initialCheckpointFactory({ catalog: compatibility.catalog }),
+      runtime,
+    );
     metadataRuntime = await createApiWorkflowMetadataRuntime(
       databaseConfig,
       authoring,
@@ -192,6 +202,7 @@ export async function createApiWorkflowRuntime(
     const acquiredDatabase = database;
     const acquiredMetadataRuntime = metadataRuntime;
     const acquiredPendingTasks = pendingTasks;
+    const acquiredForms = forms;
     const acquiredRunAdapter = runAdapter;
     const acquiredEventDatabase = eventDatabase;
     const acquiredNotifications = notifications;
@@ -200,6 +211,7 @@ export async function createApiWorkflowRuntime(
     let closePromise: Promise<void> | undefined;
     return Object.freeze({
       pendingTasks,
+      forms,
       dependencies: Object.freeze({
         persistence: database,
         portabilityPersistence: database,
@@ -246,6 +258,7 @@ export async function createApiWorkflowRuntime(
           acquiredAuthoringValidator,
           acquiredMetadataRuntime,
           acquiredPendingTasks,
+          acquiredForms,
         );
         return closePromise;
       },
@@ -260,6 +273,7 @@ export async function createApiWorkflowRuntime(
       authoringValidator,
       metadataRuntime,
       pendingTasks,
+      forms,
     );
     if (cleanupFailures.length > 0)
       throw new AggregateError(
@@ -279,6 +293,7 @@ async function closeWorkflowResources(
   authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
   metadata: ApiWorkflowMetadataRuntime | undefined,
   pendingTasks: PendingTaskStore | undefined,
+  forms: FormStore | undefined,
 ): Promise<void> {
   const failures = await collectWorkflowCloseFailures(
     authoring,
@@ -289,6 +304,7 @@ async function closeWorkflowResources(
     authoringValidator,
     metadata,
     pendingTasks,
+    forms,
   );
   if (failures.length > 0)
     throw new AggregateError(failures, 'Workflow resource shutdown failed');
@@ -303,6 +319,7 @@ async function collectWorkflowCloseFailures(
   authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
   metadata: ApiWorkflowMetadataRuntime | undefined,
   pendingTasks: PendingTaskStore | undefined,
+  forms: FormStore | undefined,
 ): Promise<unknown[]> {
   const failures: unknown[] = [];
   try {
@@ -314,6 +331,7 @@ async function collectWorkflowCloseFailures(
     Promise.resolve().then(() => authoring?.close()),
     Promise.resolve().then(() => metadata?.close()),
     Promise.resolve().then(() => pendingTasks?.close()),
+    Promise.resolve().then(() => forms?.close()),
     Promise.resolve().then(() => runs?.close()),
     Promise.resolve().then(() => events?.close()),
     Promise.resolve().then(() => notifications?.close()),
@@ -383,6 +401,7 @@ export class WorkflowRuntimeModule {
   public static register(
     runtime: ApiWorkflowRuntime,
     identityModule: DynamicModule,
+    admission: DynamicModule,
   ): DynamicModule {
     return {
       module: WorkflowRuntimeModule,
@@ -397,6 +416,16 @@ export class WorkflowRuntimeModule {
               ),
             ]),
         WorkflowRunsModule.register(runtime.runDependencies, identityModule),
+        ...(runtime.forms === undefined
+          ? []
+          : [
+              FormsModule.register(
+                runtime.forms,
+                runtime.dependencies.authorization,
+                identityModule,
+                admission,
+              ),
+            ]),
         ...(runtime.pendingTasks === undefined
           ? []
           : [

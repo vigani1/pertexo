@@ -1,4 +1,8 @@
-import { approvalConfigSchema } from '@pertexo/workflow-model';
+import {
+  approvalConfigSchema,
+  formConfigSchema,
+  inputRequestConfigSchema,
+} from '@pertexo/workflow-model';
 import type { WorkflowNode } from './scopes';
 
 type NodeConfig = WorkflowNode['config'];
@@ -52,6 +56,9 @@ export function startingConfig(
   definitionKey: string,
   levelNodes: readonly WorkflowNode[],
 ): NodeConfig {
+  if (definitionKey === 'core.form') return formConfigSchema.parse({});
+  if (definitionKey === 'core.request_input')
+    return inputRequestConfigSchema.parse({});
   if (definitionKey === 'core.approval') return approvalConfigSchema.parse({});
   if (definitionKey === 'core.merge') {
     const parallels = levelNodes.filter(

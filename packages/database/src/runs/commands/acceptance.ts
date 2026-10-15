@@ -1,3 +1,4 @@
+import { requireFormAdmission } from './forms.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { lockExecutionArtifactReferences } from '../../artifacts/references.js';
 import { z } from 'zod';
@@ -52,6 +53,7 @@ const acceptWorkflowRunInputSchema = z
       'webhook',
       'workflow_call',
       'workflow_error',
+      'form',
     ]),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
@@ -327,6 +329,7 @@ export async function acceptWorkflowRun(
     hash: initialCheckpointHash,
   });
   if (existing !== null) return existing;
+  await requireFormAdmission(transaction, parsed, preparedRunInput?.value);
   parsed.validateInput?.(
     preparedRunInput?.value.kind === 'inline'
       ? preparedRunInput.value.value

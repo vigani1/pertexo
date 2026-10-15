@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const PENDING_TASK_LIMITS = Object.freeze({
   titleCharacters: 160,
+  configBytes: 16_384,
   instructionsCharacters: 2_000,
   commentCharacters: 2_000,
   audienceMembers: 50,

@@ -47,7 +47,7 @@ export function TaskTextField({
       label={name === 'title' ? 'Request title' : 'Instructions'}
       error={field.error}
       {...(name === 'instructions'
-        ? { description: 'Optional context for the person deciding.' }
+        ? { description: 'Optional context for the person responding.' }
         : {})}
     >
       {(control) =>

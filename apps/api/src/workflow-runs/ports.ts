@@ -34,7 +34,8 @@ export type WorkflowRunRecord = Readonly<{
     | 'schedule'
     | 'webhook'
     | 'workflow_call'
-    | 'workflow_error';
+    | 'workflow_error'
+    | 'form';
   createdAt: Date;
   updatedAt: Date;
   startedAt: Date | null;

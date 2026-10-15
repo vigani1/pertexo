@@ -10,25 +10,58 @@ import {
 } from '@/components/ui/select';
 import type { TaskScope } from '../data/tasks.api';
 import { TaskList } from '../components/task-list';
-export function ApprovalsPage({
+export function TasksPage({
   scope,
   filters,
   onFilters,
 }: Readonly<{
   scope: TaskScope;
-  filters: Pick<PendingTaskListQuery, 'view' | 'status'>;
-  onFilters: (filters: Pick<PendingTaskListQuery, 'view' | 'status'>) => void;
+  filters: Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'>;
+  onFilters: (
+    filters: Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'>,
+  ) => void;
 }>) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader>
-        <PageHeaderTitle>Approvals</PageHeaderTitle>
+        <PageHeaderTitle>
+          {filters.kind === 'approval'
+            ? 'Approvals'
+            : filters.kind === 'input_request'
+              ? 'Input requests'
+              : 'Requests'}
+        </PageHeaderTitle>
       </PageHeader>
       <p className="max-w-2xl text-sm text-muted-foreground">
-        One eligible person decides each request. The person who started a run
-        cannot approve or reject it.
+        One eligible member resolves each request. Run starters can supply
+        input; approvals require another person.
       </p>
       <div className="flex flex-wrap gap-4">
+        <LabelledField id="request-kind" label="Kind">
+          {(control) => (
+            <Select
+              value={filters.kind ?? 'all'}
+              onValueChange={(value) => {
+                onFilters({
+                  ...filters,
+                  kind:
+                    value === 'approval' || value === 'input_request'
+                      ? value
+                      : 'all',
+                });
+              }}
+            >
+              <SelectTrigger {...control} className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All requests</SelectItem>
+                <SelectItem value="approval">Approvals</SelectItem>
+                <SelectItem value="input_request">Input requests</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </LabelledField>
         <LabelledField id="approval-view" label="Audience">
           {(control) => (
             <Select

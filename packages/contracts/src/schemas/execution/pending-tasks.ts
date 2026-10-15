@@ -3,6 +3,8 @@ import {
   taskAudienceSchema,
   approvalDecisionSchema,
   approvalOutputSchema,
+  formFieldsSchema,
+  formSubmissionSchema,
   PENDING_TASK_LIMITS,
 } from '@pertexo/workflow-model';
 
@@ -12,6 +14,7 @@ export const pendingTaskParamsSchema = z
 export const pendingTaskListQuerySchema = z
   .object({
     after: z.uuid().optional(),
+    kind: z.enum(['all', 'approval', 'input_request']).optional(),
     runId: z.uuid().optional(),
     view: z.enum(['mine', 'all']).default('mine'),
     status: z.enum(['pending', 'resolved', 'all']).default('pending'),
@@ -21,6 +24,7 @@ const pendingTaskStatusSchema = z.enum([
   'pending',
   'approved',
   'rejected',
+  'submitted',
   'expired',
   'refused',
   'canceled',
@@ -44,27 +48,45 @@ export const pendingTaskSummarySchema = z
           .strict(),
       )
       .max(64),
-    kind: z.literal('approval'),
+    kind: z.enum(['approval', 'input_request']),
     title: z.string().max(PENDING_TASK_LIMITS.titleCharacters),
     status: pendingTaskStatusSchema,
     createdAt: z.iso.datetime(),
     expiresAt: z.iso.datetime(),
     completedAt: z.iso.datetime().nullable(),
-    decidedByName: z.string().max(256).nullable(),
-    canDecide: z.boolean(),
+    completedByName: z.string().max(256).nullable(),
+    canRespond: z.boolean(),
     blockedReason: z
       .enum(['starter', 'audience', 'expired', 'resolved', 'run_closed'])
       .nullable(),
   })
   .strict();
-export const pendingTaskDetailSchema = pendingTaskSummarySchema
-  .extend({
-    workflowVersionId: z.uuid(),
-    instructions: z.string().max(PENDING_TASK_LIMITS.instructionsCharacters),
-    audience: taskAudienceSchema,
-    output: approvalOutputSchema.nullable(),
-  })
+const taskDetailBase = pendingTaskSummarySchema.extend({
+  workflowVersionId: z.uuid(),
+  instructions: z.string().max(PENDING_TASK_LIMITS.instructionsCharacters),
+  audience: taskAudienceSchema,
+});
+export const pendingTaskDetailSchema = z.discriminatedUnion('kind', [
+  taskDetailBase
+    .extend({
+      kind: z.literal('approval'),
+      output: approvalOutputSchema.nullable(),
+    })
+    .strict(),
+  taskDetailBase
+    .extend({
+      kind: z.literal('input_request'),
+      fields: formFieldsSchema,
+      output: formSubmissionSchema.nullable(),
+    })
+    .strict(),
+]);
+export const pendingTaskSubmitRequestSchema = z
+  .object({ values: z.record(z.string(), z.unknown()) })
   .strict();
+export type PendingTaskSubmitRequest = z.output<
+  typeof pendingTaskSubmitRequestSchema
+>;
 export const pendingTaskResponseSchema = z
   .object({ task: pendingTaskDetailSchema })
   .strict();

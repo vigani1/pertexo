@@ -1,4 +1,7 @@
 export const RATE_LIMIT_ENDPOINT_CLASSES = [
+  'form_read',
+  'form_submission',
+  'form_workspace_submission',
   'identity_start',
   'automation_authentication',
   'identity_callback',
@@ -18,7 +21,13 @@ export type RateLimitEndpointClass =
   (typeof RATE_LIMIT_ENDPOINT_CLASSES)[number];
 export type RateLimitFailureMode = 'open' | 'closed';
 export type RateLimitDimensionKind =
-  'client_address' | 'origin' | 'actor' | 'workspace' | 'connection' | 'token';
+  | 'client_address'
+  | 'origin'
+  | 'actor'
+  | 'workspace'
+  | 'connection'
+  | 'token'
+  | 'form';
 
 export type RateLimitSubject = Readonly<{
   clientAddress?: string;
@@ -27,6 +36,7 @@ export type RateLimitSubject = Readonly<{
   workspaceId?: string;
   connectionId?: string;
   tokenId?: string;
+  formId?: string;
 }>;
 
 export type RateLimitDimension = Readonly<{
@@ -55,6 +65,25 @@ type EndpointRule = Readonly<{
 }>;
 
 const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
+  form_read: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'client_address', subject: 'clientAddress', limit: 60 },
+      { kind: 'form', subject: 'formId', limit: 300 },
+    ],
+  },
+  form_submission: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'client_address', subject: 'clientAddress', limit: 10 },
+      { kind: 'form', subject: 'formId', limit: 30 },
+    ],
+  },
+  form_workspace_submission: {
+    failureMode: 'closed',
+    dimensions: [{ kind: 'workspace', subject: 'workspaceId', limit: 60 }],
+  },
+
   automation_authentication: {
     failureMode: 'closed',
     dimensions: [
@@ -168,6 +197,7 @@ const SUBJECT_LABELS: Readonly<Record<keyof RateLimitSubject, string>> = {
   workspaceId: 'workspace',
   connectionId: 'connection',
   tokenId: 'token',
+  formId: 'form',
 };
 
 function requiredSubject(

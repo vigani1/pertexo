@@ -1,4 +1,4 @@
-import { parseApprovalSearch } from '@/features/pending-tasks/queries.public';
+import { parseTaskSearch } from '@/features/pending-tasks/queries.public';
 import {
   createRoute,
   lazyRouteComponent,
@@ -438,7 +438,7 @@ export const approvalsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'approvals',
   staticData: { crumb: 'Approvals' },
-  validateSearch: parseApprovalSearch,
+  validateSearch: (search) => parseTaskSearch(search, 'approval'),
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Approvals', match.context.workspace.name) }],
   }),
@@ -454,5 +454,38 @@ export const approvalDetailRoute = createRoute({
   component: lazyRouteComponent(
     () => import('./approvals/detail'),
     'ApprovalDetailRoute',
+  ),
+});
+
+export const memberFormRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'forms/$workflowId',
+  staticData: { crumb: 'Form' },
+  component: lazyRouteComponent(
+    () => import('../forms/member'),
+    'MemberFormRoute',
+  ),
+});
+
+export const requestsRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'requests',
+  staticData: { crumb: 'Requests' },
+  validateSearch: (search) => parseTaskSearch(search),
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Requests', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./requests/list'),
+    'RequestsRoute',
+  ),
+});
+export const requestDetailRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'requests/$taskId',
+  staticData: { crumb: 'Request' },
+  component: lazyRouteComponent(
+    () => import('./requests/detail'),
+    'RequestDetailRoute',
   ),
 });

@@ -195,3 +195,6 @@ Personal API tokens and the HTTP CLI: [automation guide](docs/automation.md).
 
 Run a separate workflow after a failure:
 [error workflow guide](docs/error-workflows.md).
+
+Published member/public forms and durable input requests:
+[forms guide](docs/forms.md).

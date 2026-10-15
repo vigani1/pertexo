@@ -200,7 +200,7 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
       ? text(error.safeDetail, 2_000)
       : undefined;
   const issues =
-    error.code === 'workflow.invalid'
+    error.code === 'workflow.invalid' || error.code === 'form.invalid'
       ? safeApplicationIssues(error.details?.issues)
       : undefined;
   const base = {

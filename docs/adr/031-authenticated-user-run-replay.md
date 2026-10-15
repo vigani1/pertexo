@@ -71,3 +71,12 @@ User replay is a normal, explicitly side-effecting tenant command rather than
 an HTTP proxy for recovery authority. Requiring input makes the choice clear
 even after source-input retention expires. Clients must supply the intended
 version and input rather than relying on mutable server defaults.
+
+## 2026-10-15 — Form submissions
+
+[ADR 077](077-form-submission-and-input-tasks.md) narrows replay for a Form
+version: use the exact source version and retained submission input. The submitter
+and submission time are server-owned, so replay cannot invent or replace them.
+An expired Form input cannot be supplied again through replay. Send a new response
+through the current published form to change its fields. Other trigger types keep
+the version/input behavior described above.

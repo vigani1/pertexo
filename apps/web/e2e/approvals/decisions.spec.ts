@@ -25,9 +25,9 @@ const task = {
   createdAt: '2026-10-15T08:00:00.000Z',
   expiresAt: '2026-10-22T08:00:00.000Z',
   completedAt: null,
-  decidedByName: null,
+  completedByName: null,
   output: null,
-  canDecide: true,
+  canRespond: true,
   blockedReason: null,
 };
 for (const width of [1280, 375])
@@ -49,10 +49,10 @@ for (const width of [1280, 375])
     const resolved = {
       ...task,
       status: 'approved',
-      canDecide: false,
+      canRespond: false,
       blockedReason: 'resolved',
       completedAt: '2026-10-15T09:00:00.000Z',
-      decidedByName: user.displayName,
+      completedByName: user.displayName,
       output: {
         decision: 'approved',
         comment: 'Ready to send',
@@ -114,7 +114,7 @@ test('explains why the starter cannot decide and sends no command', async ({
   await installEditorRoutes(page, remoteDraft());
   await page.route(`**/pending-tasks/${taskId}`, (route) =>
     route.fulfill({
-      json: { task: { ...task, canDecide: false, blockedReason: 'starter' } },
+      json: { task: { ...task, canRespond: false, blockedReason: 'starter' } },
     }),
   );
   await page.goto(`/w/${workspaceId}/approvals/${taskId}`);

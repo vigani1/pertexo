@@ -12,7 +12,7 @@ import {
   readWorkspaceAuthority,
 } from '../../tenant-access/workspaces/authority.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
-import { decideTask } from './decide.js';
+import { respondToTask } from './decide.js';
 import { listTasks, projectTask, readTaskRow } from './queries.js';
 import type { PendingTaskStore } from './contract.js';
 
@@ -69,7 +69,26 @@ export function createPendingTaskStore(
             input.actorId,
             rolesForCapability('run:read'),
           );
-          return decideTask(client, input, role);
+          return respondToTask(client, { ...input, kind: 'approval' }, role);
+        },
+        input.signal === undefined ? {} : { signal: input.signal },
+      ),
+    submit: (input) =>
+      withTenantScopedClient(
+        lease.pool,
+        { workspaceId: input.workspaceId, actorId: input.actorId },
+        async (client) => {
+          const role = await lockWorkspaceAuthority(
+            client,
+            input.workspaceId,
+            input.actorId,
+            rolesForCapability('run:read'),
+          );
+          return respondToTask(
+            client,
+            { ...input, kind: 'input_request' },
+            role,
+          );
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),

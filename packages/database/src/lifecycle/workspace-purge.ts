@@ -72,6 +72,7 @@ export const PURGE_PRESERVED_TABLES = Object.freeze([
  */
 export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
   deleteRows('api_tokens'),
+  deleteRows('workflow_forms'),
   deleteRows('pending_run_tasks'),
   deleteRows('run_error_workflow_intents'),
   deleteRows('workflow_error_policies'),

@@ -37,7 +37,7 @@ export async function persistTaskIntents(
         : 'pending';
     const inserted = await client.query<{ id: string; expires_at: Date }>(
       `insert into app.pending_run_tasks(id,workspace_id,run_id,workflow_version_id,node_run_id,invocation_key,kind,config,status,created_at,expires_at,completed_at)
-      select $1,$2,$3,run.workflow_version_id,node.id,$4::varchar,'approval',$5::jsonb,$6::varchar,observed.time,observed.time+make_interval(secs=>$7),case when $6::varchar='pending' then null else observed.time end
+      select $1,$2,$3,run.workflow_version_id,node.id,$4::varchar,$8::varchar,$5::jsonb,$6::varchar,observed.time,observed.time+make_interval(secs=>$7),case when $6::varchar='pending' then null else observed.time end
       from app.workflow_runs run join app.node_runs node on node.workspace_id=run.workspace_id and node.workflow_run_id=run.id
       cross join (select clock_timestamp() time) observed
       where run.workspace_id=$2 and run.id=$3 and node.invocation_key=$4::varchar and node.status='succeeded'
@@ -50,6 +50,7 @@ export async function persistTaskIntents(
         JSON.stringify(intent.config),
         status,
         intent.config.expiresAfterSeconds,
+        intent.kind,
       ],
     );
     const row = inserted.rows[0];
@@ -84,7 +85,7 @@ export async function persistConsumedTasks(
     if (node.output?.kind !== 'task' || !completed.has(node.invocationKey))
       continue;
     const updated = await client.query(
-      `update app.node_runs node set output_ref=task.output_ref from app.pending_run_tasks task where task.workspace_id=$1 and task.run_id=$2 and task.id=$3 and task.invocation_key=$4 and task.status in ('approved','rejected') and task.output_ref is not null and node.workspace_id=task.workspace_id and node.id=task.node_run_id and node.workflow_run_id=task.run_id and node.invocation_key=task.invocation_key and node.status='succeeded'`,
+      `update app.node_runs node set output_ref=task.output_ref from app.pending_run_tasks task where task.workspace_id=$1 and task.run_id=$2 and task.id=$3 and task.invocation_key=$4 and task.status in ('approved','rejected','submitted') and task.output_ref is not null and node.workspace_id=task.workspace_id and node.id=task.node_run_id and node.workflow_run_id=task.run_id and node.invocation_key=task.invocation_key and node.status='succeeded'`,
       [workspaceId, runId, node.output.taskId, node.invocationKey],
     );
     if (updated.rowCount !== 1) throw new CoordinatorRunStateCorruptError();

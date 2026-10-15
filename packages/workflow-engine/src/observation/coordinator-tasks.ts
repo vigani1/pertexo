@@ -5,6 +5,7 @@ import {
   WORKFLOW_GRAPH_LIMITS,
   type JsonValue,
   type ApprovalConfig,
+  type InputRequestConfig,
 } from '@pertexo/workflow-model';
 import type {
   WorkflowExecutableGraph,
@@ -84,7 +85,15 @@ export function taskDeclarationObservations(
     declarations.add(owner.invocationKey);
     intents.push({
       invocationKey: owner.invocationKey,
-      config: node.config as unknown as ApprovalConfig,
+      ...(node.definition.key === 'core.approval'
+        ? {
+            kind: 'approval' as const,
+            config: node.config as unknown as ApprovalConfig,
+          }
+        : {
+            kind: 'input_request' as const,
+            config: node.config as unknown as InputRequestConfig,
+          }),
     });
   }
   return {
@@ -114,9 +123,14 @@ function parseTaskOutcome(value: JsonValue): PendingTaskOutcome {
     typeof fact.nodeId !== 'string' ||
     fact.nodeId.length === 0 ||
     typeof fact.status !== 'string' ||
-    !['approved', 'rejected', 'expired', 'refused', 'canceled'].includes(
-      fact.status,
-    )
+    ![
+      'approved',
+      'rejected',
+      'submitted',
+      'expired',
+      'refused',
+      'canceled',
+    ].includes(fact.status)
   )
     operationError('observation_invalid', 'task outcome identity is invalid');
   return {
@@ -201,7 +215,14 @@ export function taskOutcomeObservations(
     }
     if (owner.status !== 'waiting' || owner.waitKind !== 'human_task')
       operationError('observation_invalid', 'task outcome has no durable wait');
-    const decided = fact.status === 'approved' || fact.status === 'rejected';
+    const inputRequest =
+      nodes.get(fact.nodeId)?.definition.key === 'core.request_input';
+    if (
+      (fact.status === 'submitted' && !inputRequest) ||
+      (['approved', 'rejected'].includes(fact.status) && inputRequest)
+    )
+      operationError('observation_invalid', 'task result kind conflicts');
+    const decided = ['approved', 'rejected', 'submitted'].includes(fact.status);
     const reasonCode =
       fact.status === 'refused'
         ? 'pending_task.capacity_exceeded'
@@ -230,7 +251,7 @@ export function taskOutcomeObservations(
         : {}),
       coordinatorDerived: true,
     });
-    if (decided)
+    if (decided && !inputRequest)
       observations.push({
         kind: 'branch_selected',
         invocationKey: fact.invocationKey,
