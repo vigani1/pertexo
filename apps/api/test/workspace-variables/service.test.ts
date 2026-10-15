@@ -3,9 +3,9 @@ import { WorkspaceVariablesService } from '../../src/workspace-variables/service
 import {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,
-  WorkspaceAccessDeniedError,
   type WorkspaceVariablesStore,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/database/variables';
+import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
 const scope = {
   workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

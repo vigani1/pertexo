@@ -1,4 +1,4 @@
-import { readWorkspaceVariables } from '../../tenant-access/variables/read.js';
+import { readWorkspaceVariables } from '../../variables/read.js';
 import { lockExecutionArtifactReferences } from '../../artifacts/references.js';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';

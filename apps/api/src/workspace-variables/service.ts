@@ -8,9 +8,9 @@ import {
 import {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,
-  WorkspaceAccessDeniedError,
   type WorkspaceVariablesStore,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/database/variables';
+import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   applicationError,

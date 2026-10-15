@@ -4,8 +4,8 @@ import {
   workspaceVariableSnapshotSchema,
   type WorkspaceVariableSnapshot,
 } from '@pertexo/workflow-model';
-import { workspaceVariables } from '../../schema/identity/variables.js';
-import type { WorkspaceTransaction } from '../transactions.js';
+import { workspaceVariables } from '../schema/variables.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 /** Admission and settings share the same current-set projection. A missing row is an untouched workspace. */
 export async function readWorkspaceVariables(
   transaction: WorkspaceTransaction,

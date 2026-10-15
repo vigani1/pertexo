@@ -1,7 +1,7 @@
 import {
   createWorkspaceVariablesStore,
   type WorkspaceVariablesStore,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/database/variables';
 import {
   createWorkflowInputCaseDatabase,
   createWorkflowTagDatabase,

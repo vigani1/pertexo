@@ -4,7 +4,7 @@ import {
   noticeSubscriptions,
 } from './schema/inbox/preferences.js';
 import { noticeMailBatches, noticeMailItems } from './schema/inbox/mail.js';
-import { workspaceVariables } from './schema/identity/variables.js';
+import { workspaceVariables } from './schema/variables.js';
 import { workflowForms } from './schema/triggers/forms.js';
 import { pendingRunTasks } from './schema/runs/pending-task.js';
 import { workflowErrorPolicies } from './schema/authoring/error-workflow.js';

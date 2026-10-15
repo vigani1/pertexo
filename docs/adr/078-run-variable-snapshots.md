@@ -13,6 +13,31 @@ workspace/run authority. Restricted JSONata has one bounded isolated runtime.
 
 ## Decision
 
+### Amendment: immutable variable set revisions (2026-10-16)
+
+The owner requested shared immutable sets instead of a full stored copy per run
+and preview. This supersedes the per-run JSON storage clauses below. Store one
+workspace/revision row per change, containing values and optional descriptions,
+and keep a small current-revision head. Runs/previews reference the captured
+revision by workspace-bound foreign key. Null references represent the fixed
+empty revision zero; existing detail-retention state distinguishes expired data.
+Never replace a missing historical revision with current values.
+
+Current-head capture holds a shared lock through admission; replay/recovery hold
+the retained source while copying its reference. Calls inherit it. Lock heads
+alone before reading their exact immutable set, so concurrent edits cannot mix
+revision and content. Bounded retention removes only noncurrent, unreferenced
+sets; run detail cleanup and preview deletion release references. Workspace
+purge removes heads and executions before revisions. App permissions do not
+allow revision updates. Migrate existing snapshots without changing their values,
+and stop old API/worker readers before the coordinated schema/binary rollout.
+
+Publication checks required static variable names using the existing bounded
+authoring worker and its AST inspection. Optional/dynamic lookups keep their
+runtime semantics. Descriptions are non-secret settings metadata, not execution
+values. The database variable area has its own Node-only `/variables` entry point;
+no new service, role, cache or editable history UI is introduced.
+
 Store one bounded current workspace map of text, finite number and boolean values
 with a CAS revision. Current members read it; owners/admins manage it. No process
 environment, secret material, per-workflow ACL, version-history service or extra

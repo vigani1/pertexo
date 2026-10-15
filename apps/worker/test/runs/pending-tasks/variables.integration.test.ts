@@ -8,7 +8,7 @@ import {
   createPendingTaskStore,
   createWorkflowRunDatabase,
 } from '@pertexo/database/runs';
-import { createWorkspaceVariablesStore } from '@pertexo/database/tenant-access';
+import { createWorkspaceVariablesStore } from '@pertexo/database/variables';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { initialCheckpointFactory } from '@pertexo/execution';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';

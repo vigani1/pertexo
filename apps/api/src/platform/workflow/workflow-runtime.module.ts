@@ -1,5 +1,5 @@
 import { WorkspaceVariablesModule } from '../../workspace-variables/module.js';
-import type { WorkspaceVariablesStore } from '@pertexo/database/tenant-access';
+import type { WorkspaceVariablesStore } from '@pertexo/database/variables';
 import { createFormStore, type FormStore } from '@pertexo/database/triggers';
 import { initialCheckpointFactory } from '@pertexo/execution';
 import { FormsModule } from '../../forms/module.js';
