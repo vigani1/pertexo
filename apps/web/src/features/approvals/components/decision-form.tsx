@@ -1,0 +1,90 @@
+import { useId, useState } from 'react';
+import type { PendingTaskDetail } from '@pertexo/contracts';
+import { LabelledField } from '@/components/ui/field';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Notice } from '@/components/ui/notice';
+import { ProgressButton } from '@/components/ui/progress-button';
+import type { TaskScope } from '../data/tasks.api';
+import { useDecision } from '../data/use-decision';
+import { blockedSentence } from '../model/presentation';
+export function DecisionForm({
+  task,
+  scope,
+}: Readonly<{ task: PendingTaskDetail; scope: TaskScope }>) {
+  const id = useId();
+  const [comment, setComment] = useState('');
+  const command = useDecision(scope, task.id);
+  const disabled = command.pending || command.uncertain || !task.canDecide;
+  return (
+    <div className="flex flex-col gap-4">
+      {!task.canDecide ? (
+        <Notice>{blockedSentence(task.blockedReason)}</Notice>
+      ) : null}
+      {task.status === 'pending' ? (
+        <>
+          <LabelledField
+            id={id}
+            label="Comment (optional)"
+            description="Saved as step output. Members who can read this run can see your comment."
+          >
+            {(control) => (
+              <Textarea
+                {...control}
+                value={comment}
+                maxLength={2000}
+                rows={4}
+                disabled={disabled}
+                onChange={(event) => {
+                  setComment(event.target.value);
+                }}
+              />
+            )}
+          </LabelledField>
+          <div className="flex flex-wrap gap-3">
+            <ProgressButton
+              type="button"
+              pending={command.pending}
+              pendingLabel="Recording…"
+              disabled={disabled}
+              onClick={() =>
+                void command.send({ decision: 'approved', comment })
+              }
+            >
+              Approve
+            </ProgressButton>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled}
+              onClick={() =>
+                void command.send({ decision: 'rejected', comment })
+              }
+            >
+              Reject
+            </Button>
+          </div>
+        </>
+      ) : null}
+      {command.error === undefined ? null : (
+        <Notice
+          tone={command.uncertain ? 'warning' : 'destructive'}
+          action={
+            command.uncertain ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={command.pending}
+                onClick={command.retry}
+              >
+                Retry same decision
+              </Button>
+            ) : undefined
+          }
+        >
+          {command.error}
+        </Notice>
+      )}
+    </div>
+  );
+}
