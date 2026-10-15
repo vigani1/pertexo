@@ -1,3 +1,4 @@
+import { formSchemas, formPaths } from './forms.js';
 import { pendingTaskPaths, pendingTaskSchemas } from './pending-tasks.js';
 import {
   authenticatedComponents,
@@ -52,6 +53,7 @@ import {
 
 const schemas = Object.freeze({
   ...pendingTaskSchemas,
+  ...formSchemas,
   WorkflowRecoveryRequest: jsonSchema(workflowRecoveryRequestSchema, 'input'),
   WorkflowRecoveryPreview: jsonSchema(workflowRecoveryPreviewSchema, 'output'),
   WorkflowRecoveryUnavailableProblem: jsonSchema(
@@ -165,6 +167,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
   info: { title: 'Pertexo Workflow Runs API', version: '1.0.0' },
   paths: {
     ...pendingTaskPaths,
+    ...formPaths,
     '/v1/workspaces/{workspaceId}/usage-capacity': {
       get: {
         operationId: 'getWorkspaceUsageCapacity',

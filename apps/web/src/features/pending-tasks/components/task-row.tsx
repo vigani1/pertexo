@@ -9,7 +9,7 @@ export function TaskRow({ task }: Readonly<{ task: PendingTaskSummary }>) {
       <span className="mt-1 h-10 w-px shrink-0 bg-border" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <Link
-          to="/w/$workspaceId/approvals/$taskId"
+          to="/w/$workspaceId/requests/$taskId"
           params={{ workspaceId: task.workspaceId, taskId: task.id }}
           className="break-words font-medium text-foreground underline-offset-4 hover:underline"
         >

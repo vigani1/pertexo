@@ -388,3 +388,16 @@ describe('createStructuredLogger', () => {
     manager.disable();
   });
 });
+
+it('redacts public form capability headers and configuration at every nesting level', () => {
+  const capture = captureDestination();
+  const logger = createStructuredLogger(testConfig(), capture.destination);
+  logger.info('form.request', {
+    request: { headers: { 'x-pertexo-form-key': 'public-header-secret' } },
+    nested: { capability: 'public-command-secret' },
+  });
+  expect(JSON.stringify(capture.records)).not.toContain('public-header-secret');
+  expect(JSON.stringify(capture.records)).not.toContain(
+    'public-command-secret',
+  );
+});

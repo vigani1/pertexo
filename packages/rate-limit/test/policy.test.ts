@@ -16,6 +16,7 @@ function subject(
       actorId,
       workspaceId,
       connectionId,
+      formId: connectionId,
       ...change,
     }).filter((entry): entry is [string, string] => entry[1] !== undefined),
   );
@@ -26,6 +27,21 @@ describe('abuse rate-limit policy', () => {
 
   it('locks every endpoint class to the reviewed one-minute policy table', () => {
     const expected = {
+      form_read: [
+        'closed',
+        [
+          ['client_address', 60],
+          ['form', 300],
+        ],
+      ],
+      form_submission: [
+        'closed',
+        [
+          ['client_address', 10],
+          ['form', 30],
+        ],
+      ],
+      form_workspace_submission: ['closed', [['workspace', 60]]],
       identity_start: [
         'closed',
         [

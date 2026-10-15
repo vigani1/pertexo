@@ -283,10 +283,10 @@ describe('workspace inbox', () => {
     );
     renderApp(`/w/${workspaceId}/inbox`);
     expect(
-      await screen.findByRole('region', { name: 'Approvals' }),
+      await screen.findByRole('region', { name: 'Requests' }),
     ).toBeVisible();
     expect(
-      await screen.findByText('No approvals waiting for you.'),
+      await screen.findByText('No requests waiting for you.'),
     ).toBeVisible();
     expect(failureReads).toBe(0);
     expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();

@@ -1,5 +1,10 @@
 import type { PoolClient } from 'pg';
-import { approvalOutputSchema } from '@pertexo/workflow-model';
+import {
+  approvalOutputSchema,
+  formSubmissionSchema,
+  inputRequestConfigSchema,
+  parseFormValues,
+} from '@pertexo/workflow-model';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -12,9 +17,13 @@ import {
 } from './contract.js';
 import { projectTask, readTaskRow } from './queries.js';
 
-export async function decideTask(
+export async function respondToTask(
   client: PoolClient,
-  input: Parameters<PendingTaskStore['decide']>[0],
+  input:
+    | (Parameters<PendingTaskStore['decide']>[0] &
+        Readonly<{ kind: 'approval' }>)
+    | (Parameters<PendingTaskStore['submit']>[0] &
+        Readonly<{ kind: 'input_request' }>),
   role: Role,
 ) {
   const target = await client.query<{ run_id: string }>(
@@ -29,16 +38,30 @@ export async function decideTask(
     [input.workspaceId, runId],
   );
   const row = await readTaskRow(client, input, role, true);
+  if (row.kind !== input.kind)
+    throw new PendingTaskNotFoundError('Task is not visible.');
+  const values =
+    input.kind === 'input_request'
+      ? parseFormValues(
+          inputRequestConfigSchema.parse(row.config).fields,
+          input.values,
+        )
+      : undefined;
+  const status = input.kind === 'approval' ? input.decision : 'submitted';
   const command = {
     workspaceId: input.workspaceId,
-    operation: 'pending.task.decide',
+    operation:
+      input.kind === 'approval' ? 'pending.task.decide' : 'pending.task.submit',
     scope: `${input.actorId}:${input.taskId}`,
     idempotencyKey: input.idempotencyKey,
   };
-  const request = {
-    decision: input.decision,
-    comment: input.comment === '' ? null : (input.comment ?? null),
-  };
+  const request =
+    input.kind === 'approval'
+      ? {
+          decision: input.decision,
+          comment: input.comment === '' ? null : (input.comment ?? null),
+        }
+      : { values };
   const replay = await claimCommand(client, {
     ...command,
     request,
@@ -52,18 +75,25 @@ export async function decideTask(
   );
   const now = observed.rows[0]?.now;
   if (now === undefined) throw new Error('Decision time unavailable');
-  const output = approvalOutputSchema.parse({
-    decision: input.decision,
-    comment: request.comment,
-    decidedBy: input.actorId,
-    decidedAt: now.toISOString(),
-  });
+  const output =
+    input.kind === 'approval'
+      ? approvalOutputSchema.parse({
+          decision: input.decision,
+          comment: input.comment === '' ? null : (input.comment ?? null),
+          decidedBy: input.actorId,
+          decidedAt: now.toISOString(),
+        })
+      : formSubmissionSchema.parse({
+          values,
+          submittedBy: input.actorId,
+          submittedAt: now.toISOString(),
+        });
   const changed = await client.query(
     `update app.pending_run_tasks set status=$3,output_ref=$4::jsonb,decided_by=$5,completed_at=$6 where workspace_id=$1 and id=$2 and status='pending' and expires_at>clock_timestamp()`,
     [
       input.workspaceId,
       input.taskId,
-      input.decision,
+      status,
       serializeStoredExecutionValue({ kind: 'inline', value: output }),
       input.actorId,
       now,
@@ -71,7 +101,7 @@ export async function decideTask(
   );
   if (changed.rowCount !== 1) throw new PendingTaskDecisionError('expired');
   await client.query(
-    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,'pending_task.decided','pending_task',$4,$5,$6,$7::jsonb)`,
+    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,$8,'pending_task',$4,$5,$6,$7::jsonb)`,
     [
       generatePersistedId(),
       input.workspaceId,
@@ -79,12 +109,19 @@ export async function decideTask(
       input.taskId,
       input.requestId ?? null,
       input.traceId ?? null,
-      JSON.stringify({ runId, decision: input.decision }),
+      JSON.stringify(
+        input.kind === 'approval'
+          ? { runId, decision: status }
+          : { runId, status },
+      ),
+      input.kind === 'approval'
+        ? 'pending_task.decided'
+        : 'pending_task.submitted',
     ],
   );
   await completeCommand(client, command, {
     taskId: input.taskId,
-    status: input.decision,
+    status,
   });
   await wakeWorkflowRun(client, input.workspaceId, runId);
   await wakeTaskAncestors(client, input.workspaceId, runId);

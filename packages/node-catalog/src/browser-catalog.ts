@@ -1,5 +1,9 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
-import { approvalOutputSchema } from '@pertexo/workflow-model';
+import {
+  approvalOutputSchema,
+  formSubmissionSchema,
+} from '@pertexo/workflow-model';
+const inputBrowserOutputSchema = generateSchemaDocument(formSubmissionSchema);
 const approvalBrowserOutputSchema =
   generateSchemaDocument(approvalOutputSchema);
 
@@ -65,7 +69,10 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
           projection.definition.key === 'core.approval' &&
           projection.definition.version === 1
             ? approvalBrowserOutputSchema
-            : projection.outputSchema,
+            : projection.definition.key === 'core.request_input' &&
+                projection.definition.version === 1
+              ? inputBrowserOutputSchema
+              : projection.outputSchema,
         ports: Object.freeze({
           inputs: Object.freeze([...projection.ports.inputs]),
           outputs: Object.freeze([...projection.ports.outputs]),

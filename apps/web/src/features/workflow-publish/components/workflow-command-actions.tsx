@@ -1,3 +1,5 @@
+import { useNavigate } from '@tanstack/react-router';
+import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/queries.public';
 import type {
   AccessibleWorkspace,
   WorkflowGraphContract,
@@ -12,7 +14,7 @@ import { PublishButton } from './publication/publish-button';
 import { PublishDialog } from './publication/publish-dialog';
 import { PublishedStamp } from './publication/published-stamp';
 import { RunInputDialog } from './run-submission/run-input-dialog';
-import { RunMenu } from './run-submission/run-menu';
+import { PublishedRunAction } from './run-submission/published-run-action';
 import type { WorkflowIssuesView } from '../model/issues-state';
 import { emptyDraftHint } from '../model/publish-readiness';
 import { summarizePublish } from '../model/publish-summary';
@@ -21,6 +23,44 @@ import type { PublicationReceipt } from '../data/mutations/use-workflow-publicat
 import type { WorkflowCommandSession } from '../hooks/use-workflow-command-session';
 import { latestVersionQueryOptions } from '../data/workflow-publish.queries';
 import { unchangedLiveVersion } from '../model/unchanged-publication';
+
+function usePublishedFormEntry(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+  activeVersionId: string | undefined,
+) {
+  const navigate = useNavigate();
+  const liveVersion = useQuery({
+    ...workflowRunVersionQueryOptions(
+      apiClient,
+      userId,
+      workspaceId,
+      workflowId,
+      activeVersionId ?? '',
+    ),
+    enabled: activeVersionId !== undefined,
+  });
+  const liveIsForm =
+    liveVersion.data?.graph.nodes.some(
+      (node) =>
+        node.definition.key === 'core.form' && node.definition.version === 1,
+    ) === true;
+  async function openForm(versionId: string | undefined) {
+    if (
+      !liveIsForm ||
+      (versionId !== undefined && versionId !== activeVersionId)
+    )
+      return false;
+    await navigate({
+      to: '/w/$workspaceId/forms/$workflowId',
+      params: { workspaceId, workflowId },
+    });
+    return true;
+  }
+  return { liveVersion, liveIsForm, openForm };
+}
 
 /**
  * "Edited since v4" once the draft moves on from what was just published.
@@ -145,6 +185,13 @@ export function WorkflowCommandActions({
   const queryClient = useQueryClient();
   const { publication, runSubmission } = commandSession;
   const receipt = publication.publicationReceipt;
+  const { liveVersion, liveIsForm, openForm } = usePublishedFormEntry(
+    apiClient,
+    userId,
+    workspace.id,
+    workflowId,
+    workflow?.publishedVersionId ?? receipt?.versionId,
+  );
   const { everPublished, summary, versionLabel, ...preview } =
     usePublishPreview({
       apiClient,
@@ -189,6 +236,7 @@ export function WorkflowCommandActions({
   async function runNow(
     publishedVersionId = workflow?.publishedVersionId ?? undefined,
   ) {
+    if (await openForm(publishedVersionId)) return;
     const started = await runSubmission.startNew({
       value: {},
       ...(publishedVersionId === undefined
@@ -207,21 +255,21 @@ export function WorkflowCommandActions({
           open={issuesOpen}
           onOpenChange={onIssuesOpenChange}
         />
-        {canRun ? (
-          <RunMenu
-            published={workflow === undefined || everPublished}
-            pending={runSubmission.pending}
-            acceptedRunPending={runSubmission.acceptedRunId !== undefined}
-            unresolvedRun={runSubmission.retryAvailable}
-            onRunNow={() => {
-              void runNow();
-            }}
-            onRunWithInput={() => {
-              setRunOpen(true);
-            }}
-            onOpenAcceptedRun={() => void runSubmission.openAcceptedRun()}
-          />
-        ) : null}
+        <PublishedRunAction
+          form={liveIsForm}
+          canRun={canRun}
+          workspaceId={workspace.id}
+          workflowId={workflowId}
+          submission={runSubmission}
+          published={workflow === undefined || everPublished}
+          loading={liveVersion.isFetching}
+          onRunNow={() => {
+            void runNow();
+          }}
+          onRunWithInput={() => {
+            setRunOpen(true);
+          }}
+        />
         {receipt === undefined ? null : (
           <EditedSinceNote receipt={receipt} draft={draft} />
         )}

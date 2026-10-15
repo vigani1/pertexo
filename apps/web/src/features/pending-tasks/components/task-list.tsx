@@ -21,7 +21,7 @@ export function TaskList({
   if (query.isError)
     return (
       <ReadFailure
-        resource="Approvals"
+        resource="Requests"
         showing={false}
         retrying={query.isFetching}
         updatedAt={query.dataUpdatedAt}
@@ -36,14 +36,14 @@ export function TaskList({
       filters.status === 'pending' &&
       filters.runId === undefined ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          {query.data.pages[0]?.pendingCount ?? 0} ready for your decision
+          {query.data.pages[0]?.pendingCount ?? 0} ready for your response
         </p>
       ) : null}
       {items.length === 0 ? (
         <p className="py-4 text-sm text-muted-foreground">
           {filters.status === 'pending'
-            ? 'No approvals waiting for you.'
-            : 'No approvals match this view.'}
+            ? 'No requests waiting for you.'
+            : 'No requests match this view.'}
         </p>
       ) : (
         <ul>
@@ -54,39 +54,39 @@ export function TaskList({
       )}
       {compact ? (
         <Link
-          to="/w/$workspaceId/approvals"
+          to="/w/$workspaceId/requests"
           search={{ view: 'mine', status: 'pending' }}
           params={{ workspaceId: scope.workspaceId }}
           className="mt-3 inline-block text-sm underline underline-offset-4"
         >
-          View all approvals
+          View all requests
         </Link>
       ) : (
         <LoadMore
           hasNextPage={query.hasNextPage}
           loading={query.isFetchingNextPage}
           failed={query.isFetchNextPageError}
-          subject="approvals"
+          subject="requests"
           onLoadMore={() => void query.fetchNextPage()}
         />
       )}
     </div>
   );
 }
-export function PendingApprovals({
+export function PendingTasks({
   scope,
   runId,
 }: Readonly<{ scope: TaskScope; runId?: string }>) {
   return (
     <section
-      aria-label="Approvals"
+      aria-label="Requests"
       className="rounded-xl border border-border p-4"
     >
-      <h2 className="font-medium">Approvals</h2>
+      <h2 className="font-medium">Requests</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {runId === undefined
-          ? 'Requests waiting for your decision.'
-          : 'Human decisions for this run.'}
+          ? 'Approvals and input waiting for your response.'
+          : 'Approvals and requested input for this run.'}
       </p>
       <TaskList
         scope={scope}

@@ -1,3 +1,5 @@
+import { formValidationProblem } from '../forms/errors.js';
+import { FormValuesInvalidError } from '@pertexo/workflow-model';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
@@ -14,6 +16,8 @@ export async function taskOperation<T>(
   try {
     return await operation();
   } catch (error) {
+    if (error instanceof FormValuesInvalidError)
+      return throwApplicationError(formValidationProblem(error));
     if (
       error instanceof PendingTaskNotFoundError ||
       error instanceof WorkspaceAccessDeniedError

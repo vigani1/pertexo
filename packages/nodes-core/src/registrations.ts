@@ -1,3 +1,5 @@
+import { coreRequestInputExecutor } from './flow/request-input/executor.js';
+import { coreFormExecutor } from './triggers/form/executor.js';
 import { coreApprovalExecutor } from './flow/approval/executor.js';
 import { coreWorkflowErrorExecutor } from './triggers/workflow-error/executor.js';
 import { coreReadFileExecutor } from './data/read-file/executor.js';
@@ -28,6 +30,8 @@ import { coreWebhookExecutor } from './triggers/webhook/executor.js';
 /** One implementation per core executor, in definition order. */
 export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration[] =
   Object.freeze([
+    coreRequestInputExecutor,
+    coreFormExecutor,
     coreApprovalExecutor,
     coreWorkflowErrorExecutor,
     coreReadFileExecutor,

@@ -1,3 +1,4 @@
+import { revokeRemovedFormAccess } from '../../triggers/forms/publication.js';
 import { validateApprovalAudience } from './pending-tasks.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import {
@@ -264,6 +265,12 @@ async function persistPublicationProjections(
   publication: CompiledPublication,
   version: WorkflowVersionRecord,
 ): Promise<void> {
+  await revokeRemovedFormAccess(
+    client,
+    input.workspaceId,
+    workflowId,
+    publication.graph,
+  );
   const usage = workflowIntegrationUsage(
     version.graphJson,
     publication.definitionCatalog,

@@ -1,3 +1,4 @@
+import { formDeclarationIssues } from '../../forms/publication.js';
 import { inspectJsonValue } from '../../json/canonical.js';
 import { callableDeclarationIssues } from '../../callable/validate-declaration.js';
 import { inspectWorkflowFailureRoutes } from '../../failure-routing/validation.js';
@@ -67,6 +68,8 @@ export function validateWorkflowGraph(
     });
     expandedInvocations = totals.expanded;
     worstCaseLoopIterations = totals.iterations;
+    for (const candidate of formDeclarationIssues(graph))
+      issue(candidate.code, candidate.path, candidate.message);
     const routing = inspectWorkflowFailureRoutes(graph);
     if (routing.kind === 'invalid')
       issue('invalid_failure_route', '$', routing.message);

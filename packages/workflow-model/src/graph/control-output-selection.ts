@@ -1,4 +1,5 @@
-export type WorkflowControlOutputKind = 'branch' | 'parallel' | 'for_each';
+export type WorkflowControlOutputKind =
+  'branch' | 'parallel' | 'for_each' | 'human_task';
 
 /** Definition identity, not output property names, determines control materialization. */
 export function workflowControlOutputKind(
@@ -11,6 +12,7 @@ export function workflowControlOutputKind(
     definition.key === 'core.approval'
   )
     return 'branch';
+  if (definition.key === 'core.request_input') return 'human_task';
   if (definition.key === 'core.foreach') return 'for_each';
   if (definition.key === 'core.parallel') return 'parallel';
   return undefined;

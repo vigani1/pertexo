@@ -1,1 +1,1 @@
-export { PendingApprovals } from './components/task-list';
+export { PendingTasks } from './components/task-list';

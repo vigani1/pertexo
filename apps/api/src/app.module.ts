@@ -156,6 +156,7 @@ export class AppModule {
       config,
       dependencies,
       identityModule,
+      admissionModule,
     );
 
     return {
@@ -223,6 +224,7 @@ function registerFeatureModules(
   config: ApiConfig,
   dependencies: ApiModuleDependencies,
   identityModule: DynamicModule | undefined,
+  admissionModule: DynamicModule,
 ): DynamicModule[] {
   if (identityModule === undefined) return [];
   const modules = [CatalogModule.register(identityModule)];
@@ -232,6 +234,7 @@ function registerFeatureModules(
       WorkflowRuntimeModule.register(
         dependencies.workflowRuntime,
         identityModule,
+        admissionModule,
       ),
     );
 

@@ -21,7 +21,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId/workflows'
     | '/w/$workspaceId/runs'
     | '/w/$workspaceId/inbox'
-    | '/w/$workspaceId/approvals'
+    | '/w/$workspaceId/requests'
     | '/w/$workspaceId/connections'
     | '/w/$workspaceId/team'
     | '/w/$workspaceId/alerts'
@@ -75,8 +75,8 @@ export function spineDestinations(
     });
   if (can('run:read'))
     primary.push({
-      to: '/w/$workspaceId/approvals',
-      label: 'Approvals',
+      to: '/w/$workspaceId/requests',
+      label: 'Requests',
       icon: <CheckCheckIcon />,
     });
   if (can('connection:read'))

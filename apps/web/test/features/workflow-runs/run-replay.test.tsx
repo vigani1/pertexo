@@ -230,3 +230,49 @@ describe('run replay', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+it('shows a captured Form response as read-only and links new input to the published form', async () => {
+  const captured = {
+    values: { message: 'Original response' },
+    submittedBy: userId,
+    submittedAt: '2026-10-15T10:00:00.000Z',
+  };
+  installRunHandlers(operator, { kind: 'inline', value: captured });
+  mockServer.use(
+    http.get(`${apiBase}/runs/:runId`, ({ params }) =>
+      HttpResponse.json({
+        run: { ...run(String(params.runId)), triggerType: 'form' },
+        nodes: [],
+      }),
+    ),
+  );
+  renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+  const dialog = await openReplay();
+  const input = within(dialog).getByLabelText('Replay input (JSON)');
+  await waitFor(() =>
+    expect(input).toHaveValue(JSON.stringify(captured, null, 2)),
+  );
+  expect(input).toHaveAttribute('readonly');
+  expect(
+    within(dialog).getByRole('link', { name: 'Open workflow form' }),
+  ).toHaveAttribute('href', `/w/${workspaceId}/forms/${fixtureIds.workflow}`);
+});
+it('blocks replay of an expired Form response rather than letting someone invent its submitter', async () => {
+  installRunHandlers(operator, { kind: 'expired' });
+  mockServer.use(
+    http.get(`${apiBase}/runs/:runId`, ({ params }) =>
+      HttpResponse.json({
+        run: { ...run(String(params.runId)), triggerType: 'form' },
+        nodes: [],
+      }),
+    ),
+  );
+  renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+  const dialog = await openReplay();
+  expect(
+    within(dialog).getByRole('button', { name: 'Replay run' }),
+  ).toBeDisabled();
+  expect(
+    within(dialog).getByRole('link', { name: 'Open workflow form' }),
+  ).toBeVisible();
+});

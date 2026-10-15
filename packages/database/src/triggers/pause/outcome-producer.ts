@@ -3,7 +3,11 @@ import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { RunTransitionPlan } from '../../runs/advance/plan.js';
 
-const countedTriggers: ReadonlySet<string> = new Set(['schedule', 'webhook']);
+const countedTriggers: ReadonlySet<string> = new Set([
+  'schedule',
+  'webhook',
+  'form',
+]);
 const failureStatuses: ReadonlySet<string> = new Set([
   'failed',
   'timed_out',
@@ -11,7 +15,7 @@ const failureStatuses: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Records the terminal outcome of a schedule- or webhook-started run for the
+ * Records the terminal outcome of an externally triggered run for the
  * failure streak (ADR 056) in the transition's own transaction. It only
  * inserts, so concurrent runs of one workflow never contend; the worker folds
  * it into the workflow's streak. A success resets the streak; a canceled run

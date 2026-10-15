@@ -1,3 +1,4 @@
+import { workflowForms } from './schema/triggers/forms.js';
 import { pendingRunTasks } from './schema/runs/pending-task.js';
 import { workflowErrorPolicies } from './schema/authoring/error-workflow.js';
 import { runErrorWorkflowIntents } from './schema/runs/error-workflow.js';
@@ -169,6 +170,7 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  workflowForms,
   pendingRunTasks,
   workflowErrorPolicies,
   runErrorWorkflowIntents,

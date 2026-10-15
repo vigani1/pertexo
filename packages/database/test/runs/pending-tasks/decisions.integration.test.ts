@@ -20,7 +20,7 @@ describe('current authority and atomic human decisions', () => {
     const f = await taskFixture({ named: true });
     expect(
       pendingTaskDetailSchema.parse(await store.read(f.scope)),
-    ).toMatchObject({ canDecide: true, status: 'pending', iterationPath: [] });
+    ).toMatchObject({ canRespond: true, status: 'pending', iterationPath: [] });
     const mine = await store.list({
       ...f.scope,
       view: 'mine',
@@ -100,7 +100,7 @@ describe('current authority and atomic human decisions', () => {
     'rechecks %s loss before deciding',
     async (change) => {
       const f = await taskFixture();
-      expect((await store.read(f.scope)).canDecide).toBe(true);
+      expect((await store.read(f.scope)).canRespond).toBe(true);
       if (change === 'role')
         await admin.query(
           "update app.workspace_memberships set role='viewer',role_revision=role_revision+1 where workspace_id=$1 and user_id=$2",

@@ -57,6 +57,8 @@ export function useRunReplay({
 function runReplayError(error: unknown): string {
   if (isUnconfirmedRunCommand(error))
     return 'We couldn’t confirm whether the replay started. Retry the same request within 24 hours to check acceptance without starting it twice.';
+  if (isApiError(error) && error.problem?.code === 'form.required')
+    return 'Form replays keep the exact original response. Open the workflow form to send new values.';
   if (isApiError(error) && error.status === 409)
     return 'This replay clashes with an earlier one. Close this dialog and start a new replay.';
   return describeCommandError(error, 'replaying this run');

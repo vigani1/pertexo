@@ -10,12 +10,14 @@ export function RunInputFields({
   runInput,
   disabled,
   autoFocus = false,
+  inputReadOnly = false,
 }: Readonly<{
   idPrefix: string;
   inputLabel: string;
   runInput: RunInput;
   disabled: boolean;
   autoFocus?: boolean;
+  inputReadOnly?: boolean;
 }>) {
   const { validation } = runInput;
   return (
@@ -23,7 +25,11 @@ export function RunInputFields({
       <LabelledField
         id={`${idPrefix}-input`}
         label={inputLabel}
-        description="Use {} if the workflow doesn’t read any input."
+        description={
+          inputReadOnly
+            ? 'This captured form response is fixed.'
+            : 'Use {} if the workflow doesn’t read any input.'
+        }
         error={validation.error('input')}
       >
         {(control) => (
@@ -36,6 +42,7 @@ export function RunInputFields({
             spellCheck={false}
             className="min-h-32 font-mono text-[0.8rem]"
             disabled={disabled}
+            readOnly={inputReadOnly}
             value={runInput.input}
             onChange={(event) => {
               runInput.changeInput(event.currentTarget.value);

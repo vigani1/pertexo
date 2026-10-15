@@ -3,17 +3,22 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PendingTaskDecisionRequest } from '@pertexo/contracts';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';
-import { decideTask, type TaskScope } from './tasks.api';
+import { decideTask, submitTask, type TaskScope } from './tasks.api';
 import { taskKeys, taskQueryOptions } from './tasks.queries';
-export function useDecision(scope: TaskScope, taskId: string) {
+type TaskResponse =
+  | PendingTaskDecisionRequest
+  | Readonly<{ values: Readonly<Record<string, string | number | boolean>> }>;
+export function useTaskResponse(scope: TaskScope, taskId: string) {
   const cache = useQueryClient();
   const intent = useRef<
-    Readonly<{ body: PendingTaskDecisionRequest; key: string }> | undefined
+    Readonly<{ body: TaskResponse; key: string }> | undefined
   >(undefined);
   const busy = useRef(false);
   const mutation = useMutation({
     mutationFn: (command: NonNullable<typeof intent.current>) =>
-      decideTask(scope, taskId, command.body, command.key),
+      'values' in command.body
+        ? submitTask(scope, taskId, command.body.values, command.key)
+        : decideTask(scope, taskId, command.body, command.key),
     retry: false,
     onSuccess: (result) => {
       intent.current = undefined;
@@ -37,7 +42,7 @@ export function useDecision(scope: TaskScope, taskId: string) {
         queryKey: taskKeys.scope(scope.userId, scope.workspaceId),
       }),
   });
-  async function send(body: PendingTaskDecisionRequest) {
+  async function send(body: TaskResponse) {
     if (busy.current) return;
     if (
       intent.current !== undefined &&
@@ -58,6 +63,10 @@ export function useDecision(scope: TaskScope, taskId: string) {
       busy.current = false;
     }
   }
+  const responseName =
+    mutation.variables !== undefined && 'values' in mutation.variables.body
+      ? 'response'
+      : 'decision';
   const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
   return {
     send,
@@ -65,8 +74,8 @@ export function useDecision(scope: TaskScope, taskId: string) {
     uncertain,
     error: mutation.isError
       ? uncertain
-        ? 'We couldn’t confirm the decision. Retry the same decision to recover the result before changing anything.'
-        : describeCommandError(mutation.error, 'recording this decision')
+        ? `We couldn’t confirm the ${responseName}. Retry the same ${responseName} to recover the result before changing anything.`
+        : describeCommandError(mutation.error, `recording this ${responseName}`)
       : undefined,
     retry: () => {
       if (intent.current !== undefined) void send(intent.current.body);

@@ -42,5 +42,9 @@ export type ApprovalOutput = z.output<typeof approvalOutputSchema>;
 export function isHumanTaskDefinition(
   definition: Readonly<{ key: string; version: number }> | undefined,
 ): boolean {
-  return definition?.key === 'core.approval' && definition.version === 1;
+  return (
+    definition !== undefined &&
+    ['core.approval', 'core.request_input'].includes(definition.key) &&
+    definition.version === 1
+  );
 }

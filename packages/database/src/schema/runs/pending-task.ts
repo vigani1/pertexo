@@ -50,7 +50,14 @@ export const pendingRunTasks = appSchema.table(
       table.runId,
       table.invocationKey,
     ),
-    check('pending_run_tasks_kind_valid', sql`kind = 'approval'`),
+    check(
+      'pending_run_tasks_kind_valid',
+      sql`kind IN ('approval', 'input_request')`,
+    ),
+    check(
+      'pending_run_tasks_result_kind_valid',
+      sql`(status NOT IN ('approved','rejected','submitted') OR (kind='approval' AND status IN ('approved','rejected')) OR (kind='input_request' AND status='submitted')) IS TRUE`,
+    ),
     check(
       'pending_run_tasks_config_bounded',
       sql`jsonb_typeof(config) = 'object' AND octet_length(config::text) <= 16384`,
@@ -66,7 +73,7 @@ export const pendingRunTasks = appSchema.table(
     check(
       'pending_run_tasks_state_valid',
       sql`((status = 'pending' AND output_ref IS NULL AND decided_by IS NULL AND completed_at IS NULL AND consumed_at IS NULL)
-    OR (status IN ('approved','rejected') AND output_ref IS NOT NULL AND decided_by IS NOT NULL AND completed_at IS NOT NULL)
+    OR (status IN ('approved','rejected','submitted') AND output_ref IS NOT NULL AND decided_by IS NOT NULL AND completed_at IS NOT NULL)
     OR (status IN ('expired','refused','canceled') AND output_ref IS NULL AND decided_by IS NULL AND completed_at IS NOT NULL)) IS TRUE`,
     ),
     foreignKey({

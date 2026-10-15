@@ -171,3 +171,22 @@ export {
   taskAudienceSchema,
   type TaskAudience,
 } from './pending-tasks/audience.js';
+export {
+  FORM_LIMITS,
+  formFieldSchema,
+  formFieldsSchema,
+  formConfigSchema,
+  type FormField,
+  type FormConfig,
+} from './forms/fields.js';
+export {
+  parseFormValues,
+  formSubmissionSchema,
+  FormValuesInvalidError,
+  type FormValues,
+  type FormSubmission,
+} from './forms/values.js';
+export {
+  inputRequestConfigSchema,
+  type InputRequestConfig,
+} from './pending-tasks/input-request.js';

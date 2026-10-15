@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import {
   approvalConfigSchema,
+  inputRequestConfigSchema,
   InvalidWorkflowGraphError,
   isHumanTaskDefinition,
   type WorkflowGraph,
@@ -25,7 +26,11 @@ export async function validateApprovalAudience(
           path: `${path}.structured.body`,
         });
       if (!isHumanTaskDefinition(node.definition)) continue;
-      const config = approvalConfigSchema.parse(node.config);
+      const config = (
+        node.definition.key === 'core.approval'
+          ? approvalConfigSchema
+          : inputRequestConfigSchema
+      ).parse(node.config);
       for (const id of config.audience.memberIds)
         members.set(id, [
           ...(members.get(id) ?? []),
@@ -45,7 +50,7 @@ export async function validateApprovalAudience(
           code: 'invalid_graph' as const,
           path,
           message:
-            'Choose active members of this workspace for the approval audience.',
+            'Choose active members of this workspace for the task audience.',
         })),
   );
   if (issues.length > 0) throw new InvalidWorkflowGraphError(issues);

@@ -1,3 +1,4 @@
+import { ListChecksIcon } from 'lucide-react';
 import {
   BracesIcon,
   CalendarClockIcon,
@@ -21,6 +22,7 @@ const triggerIcons: Readonly<Record<RunTriggerType, LucideIcon>> = {
   schedule: CalendarClockIcon,
   webhook: WebhookIcon,
   workflow_call: GitForkIcon,
+  form: ListChecksIcon,
   workflow_error: OctagonXIcon,
 };
 

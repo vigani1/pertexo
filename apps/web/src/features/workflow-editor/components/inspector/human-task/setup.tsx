@@ -1,61 +1,115 @@
-import { TaskTextField } from './text';
-import { ExpiryField } from './expiry';
+import { FormAccessControl } from '@/features/forms/sharing.public';
+import type { MemberFormScope } from '@/features/forms/queries.public';
 import {
   approvalConfigSchema,
+  inputRequestConfigSchema,
+  formConfigSchema,
   type TaskAudience,
+  type FormConfig,
+  type ApprovalConfig,
+  type InputRequestConfig,
 } from '@pertexo/workflow-model';
 import { Notice } from '@/components/ui/notice';
-import type { TaskScope } from '@/features/pending-tasks/queries.public';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ConfigJsonEditor } from '../fields/config-json-editor';
+import { TaskTextField } from './text';
+import { ExpiryField } from './expiry';
 import { AudienceField } from './audience';
-export function ApprovalSetup({
+import { FormFields } from './fields';
+type Setup =
+  | Readonly<{ definitionKey: 'core.form'; config: FormConfig }>
+  | Readonly<{ definitionKey: 'core.approval'; config: ApprovalConfig }>
+  | Readonly<{
+      definitionKey: 'core.request_input';
+      config: InputRequestConfig;
+    }>;
+function readSetup(
+  definitionKey: Setup['definitionKey'],
+  config: NodeConfig,
+): Setup | null {
+  if (definitionKey === 'core.form') {
+    const parsed = formConfigSchema.safeParse(config);
+    return parsed.success ? { definitionKey, config: parsed.data } : null;
+  }
+  if (definitionKey === 'core.request_input') {
+    const parsed = inputRequestConfigSchema.safeParse(config);
+    return parsed.success ? { definitionKey, config: parsed.data } : null;
+  }
+  const parsed = approvalConfigSchema.safeParse(config);
+  return parsed.success ? { definitionKey, config: parsed.data } : null;
+}
+export function HumanFormSetup({
   config,
+  definitionKey,
   form,
   scope,
-}: Readonly<{ config: NodeConfig; form: NodeFormApi; scope: TaskScope }>) {
-  const parsed = approvalConfigSchema.safeParse(config);
-  if (!parsed.success)
+}: Readonly<{
+  config: NodeConfig;
+  definitionKey: 'core.form' | 'core.approval' | 'core.request_input';
+  form: NodeFormApi;
+  scope: MemberFormScope;
+}>) {
+  const parsed = readSetup(definitionKey, config);
+  if (parsed === null)
     return (
       <ConfigJsonEditor
         config={config}
         form={form}
-        description="Correct this approval setup. Choose at least one role or active workspace member."
+        description="Correct the form fields and audience in this setup."
       />
     );
-  const audience = parsed.data.audience;
-  function change(next: TaskAudience) {
+  const { definitionKey: kind, config: captured } = parsed;
+  const text = (
+    <>
+      <TaskTextField name="title" value={captured.title} form={form} />
+      <TaskTextField
+        name="instructions"
+        value={captured.instructions}
+        form={form}
+      />
+    </>
+  );
+  if (kind === 'core.form')
+    return (
+      <>
+        {text}
+        <FormFields fields={captured.fields} form={form} />
+        <FormAccessControl scope={scope} editable={form.editable} />
+      </>
+    );
+  function changeAudience(next: TaskAudience) {
     if (next.roles.length + next.memberIds.length === 0) return;
     form.commit(
-      {
+      (node) => ({
         config: {
-          ...parsed.data,
+          ...node.config,
           audience: { roles: [...next.roles], memberIds: [...next.memberIds] },
         },
-      },
-      `${form.nodeId}:approval:audience`,
+      }),
+      `${form.nodeId}:task:audience`,
     );
   }
   return (
     <>
-      <TaskTextField name="title" value={parsed.data.title} form={form} />
-      <TaskTextField
-        name="instructions"
-        value={parsed.data.instructions}
-        form={form}
-      />
-      <ExpiryField seconds={parsed.data.expiresAfterSeconds} form={form} />
+      {text}
+      {kind === 'core.request_input' ? (
+        <FormFields fields={captured.fields} form={form} />
+      ) : null}
+      <ExpiryField seconds={captured.expiresAfterSeconds} form={form} />
       <AudienceField
+        purpose={kind === 'core.approval' ? 'approval' : 'input_request'}
         scope={scope}
         form={form}
-        audience={audience}
-        onChange={change}
+        audience={captured.audience}
+        onChange={changeAudience}
       />
       <Notice glyph="waiting">
-        One eligible person approves or rejects. The person who started the run
-        cannot decide. Human waiting releases the active slot and pauses the
-        execution budget; an explicit absolute deadline still applies.
+        {kind === 'core.approval'
+          ? 'One eligible person approves or rejects. The person who started the run cannot decide.'
+          : 'One eligible member fills in this form. The person who started the run may respond.'}{' '}
+        Human waiting releases the active slot and pauses the execution budget;
+        an explicit absolute deadline still applies.
       </Notice>
     </>
   );

@@ -80,6 +80,7 @@ export function inspectWorkflowDecisionTree(
     ![
       'core.workflow_error',
       'core.manual',
+      'core.form',
       'core.webhook',
       'core.schedule',
     ].includes(root.definition.key)

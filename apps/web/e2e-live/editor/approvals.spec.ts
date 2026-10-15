@@ -188,7 +188,7 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       await decider.emulateMedia({ reducedMotion: 'reduce' });
       await decider.goto(`/w/${workspaceId}/inbox`);
       const section = decider.getByRole('region', {
-        name: 'Approvals',
+        name: 'Requests',
         exact: true,
       });
       await expect(

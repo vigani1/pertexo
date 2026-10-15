@@ -16,6 +16,7 @@ export const WORKFLOW_FAILURE_PATHS: readonly string[] = [
 const excludedSources = new Set([
   'core.workflow_error',
   'core.manual',
+  'core.form',
   'core.webhook',
   'core.schedule',
   'core.condition',

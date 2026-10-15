@@ -1,3 +1,4 @@
+import { InputResponse } from '../components/input-response';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
@@ -9,7 +10,7 @@ import { taskQueryOptions } from '../data/tasks.queries';
 import type { TaskScope } from '../data/tasks.api';
 import { taskTone } from '../model/presentation';
 import { DecisionForm } from '../components/decision-form';
-export function ApprovalDetailPage({
+export function TaskDetailPage({
   scope,
   taskId,
 }: Readonly<{ scope: TaskScope; taskId: string }>) {
@@ -18,7 +19,7 @@ export function ApprovalDetailPage({
   if (query.isError)
     return (
       <ReadFailure
-        resource="Approval"
+        resource="Request"
         error={query.error}
         showing={false}
         retrying={query.isFetching}
@@ -47,8 +48,10 @@ export function ApprovalDetailPage({
           Open run
         </Link>
         <p className="mt-3 text-sm text-muted-foreground">
-          Expires {formatDateTime(task.expiresAt)}. One eligible person decides;
-          the starter cannot decide.
+          Expires {formatDateTime(task.expiresAt)}.{' '}
+          {task.kind === 'approval'
+            ? 'One eligible person decides; the starter cannot decide.'
+            : 'One eligible member responds. The person who started the run may respond.'}
         </p>
         {task.instructions === '' ? null : (
           <p className="mt-4 whitespace-pre-wrap break-words">
@@ -56,10 +59,10 @@ export function ApprovalDetailPage({
           </p>
         )}
       </div>
-      {task.output === null ? null : (
+      {task.kind !== 'approval' || task.output === null ? null : (
         <section className="rounded-xl border border-border p-5">
           <h2 className="font-medium">
-            {task.decidedByName ?? 'Workspace member'} {task.output.decision}{' '}
+            {task.completedByName ?? 'Workspace member'} {task.output.decision}{' '}
             this request
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -72,14 +75,18 @@ export function ApprovalDetailPage({
           )}
         </section>
       )}
-      <DecisionForm key={task.id} task={task} scope={scope} />
+      {task.kind === 'approval' ? (
+        <DecisionForm key={task.id} task={task} scope={scope} />
+      ) : (
+        <InputResponse key={task.id} task={task} scope={scope} />
+      )}
       <Link
-        to="/w/$workspaceId/approvals"
+        to="/w/$workspaceId/requests"
         search={{ view: 'mine', status: 'pending' }}
         params={{ workspaceId: scope.workspaceId }}
         className="text-sm underline underline-offset-4"
       >
-        Back to approvals
+        Back to requests
       </Link>
     </div>
   );

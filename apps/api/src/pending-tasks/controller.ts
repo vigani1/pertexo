@@ -15,6 +15,7 @@ import {
   pendingTaskParamsSchema,
   pendingTaskListQuerySchema,
   pendingTaskDecisionRequestSchema,
+  pendingTaskSubmitRequestSchema,
   approvalAudienceQuerySchema,
 } from '@pertexo/contracts';
 import {
@@ -105,6 +106,30 @@ export class PendingTasksController {
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.decide({
+        ...route,
+        ...input,
+        actorId: authenticatedSession(request).userId,
+        idempotencyKey,
+        ...authenticatedRequestIdentifiers(request),
+        signal,
+      }),
+    );
+  }
+  @Post(':taskId/submit')
+  @HttpCode(200)
+  @Header('Cache-Control', 'private, no-store')
+  @RateLimit('ordinary_mutation')
+  @UseGuards(PendingTaskReadGuard, CsrfProtectionGuard)
+  submit(
+    @Req() request: TaskRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const route = pendingTaskParamsSchema.parse(params);
+    const input = pendingTaskSubmitRequestSchema.parse(body);
+    const idempotencyKey = requestIdempotencyKey(request.headers);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tasks.submit({
         ...route,
         ...input,
         actorId: authenticatedSession(request).userId,

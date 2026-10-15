@@ -25,6 +25,11 @@ export class PendingTaskService {
       pendingTaskDecisionResponseSchema.parse(await this.store.decide(input)),
     );
   }
+  submit(input: Parameters<PendingTaskStore['submit']>[0]) {
+    return taskOperation(async () =>
+      pendingTaskDecisionResponseSchema.parse(await this.store.submit(input)),
+    );
+  }
   audience(input: Parameters<PendingTaskStore['audience']>[0]) {
     return taskOperation(async () =>
       approvalAudiencePageSchema.parse(await this.store.audience(input)),
