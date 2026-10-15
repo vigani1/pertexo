@@ -729,7 +729,7 @@ Local evidence before PR review (merge remains unchecked above):
   the independent destination's exact request hashes.
 - Desktop (1280 × 768) and phone (375 × 768) Read file setup and diagnostic
   screenshots were inspected locally. Changed-scope React Doctor includes all
-  12 changed frontend source files and reports 100/100. Dependency audit reports
+  changed frontend source files and reports 100/100. Dependency audit reports
   no known production vulnerabilities.
 
 The final mocked and live browser runs are sequential: overlapping their shared
