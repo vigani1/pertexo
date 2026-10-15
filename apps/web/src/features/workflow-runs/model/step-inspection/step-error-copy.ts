@@ -37,6 +37,11 @@ const outcomeUnknown: StepErrorCopy = {
 };
 
 const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
+  'execution.file_input': {
+    sentence: 'This step could not read the file.',
+    advice:
+      'Correct the file or reference, then start a new run. Files fit up to 1 MB; split larger files into smaller files for separate runs.',
+  },
   call_target_unavailable: {
     sentence: 'The child workflow could not accept this Call.',
     advice: 'Check that the child is active, then replay the parent.',

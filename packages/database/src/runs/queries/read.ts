@@ -49,6 +49,7 @@ const nodeRowSchema = z
     started_at: z.coerce.date().nullable(),
     completed_at: z.coerce.date().nullable(),
     resume_at: z.coerce.date().nullable(),
+    error_summary: z.string().max(2048).nullable(),
     safe_error_code: z.string().min(1).max(128).nullable(),
     failure_handler_entry_key: z.string().min(1).max(256).nullable(),
     failure_handler_sink_key: z.string().min(1).max(256).nullable(),
@@ -78,6 +79,7 @@ export type WorkflowNodeRunRecord = Readonly<{
   startedAt: Date | null;
   completedAt: Date | null;
   resumeAt: Date | null;
+  errorSummary?: string;
   safeErrorCode: string | null;
 }>;
 
@@ -125,6 +127,13 @@ async function readRunModel(
       completed_at,
       coalesce(retry_due_at, resume_at) as resume_at,
       safe_error_code,
+      case when safe_error_code = 'execution.file_input' then (
+        select attempt.error_summary from app.node_attempts attempt
+        where attempt.workspace_id = app.node_runs.workspace_id
+          and attempt.node_run_id = app.node_runs.id
+          and attempt.id = app.node_runs.current_attempt_id
+          and attempt.safe_error_code = 'execution.file_input'
+      ) end as error_summary,
       failure_handler_entry_key, failure_handler_sink_key, failure_handling,
       reused_source_run_id, reused_source_node_run_id, reused_source_completed_at
     from app.node_runs
@@ -153,6 +162,7 @@ function toNodeRecord(value: unknown): WorkflowNodeRunRecord {
     completedAt: row.completed_at,
     resumeAt: row.resume_at,
     safeErrorCode: row.safe_error_code,
+    ...(row.error_summary === null ? {} : { errorSummary: row.error_summary }),
     ...(row.failure_handler_entry_key === null ||
     row.failure_handler_sink_key === null ||
     row.failure_handling === null

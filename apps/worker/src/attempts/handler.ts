@@ -21,7 +21,12 @@ import type {
 } from '@pertexo/workflow-engine';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  FileInputFailure,
+  NodeExecutorFailure,
+} from '@pertexo/node-sdk/server';
+import { FILE_INPUT_ERROR_CODE } from '@pertexo/node-sdk';
+import { describeFileInputFailure } from './artifacts/diagnostics.js';
 import { classifyProcessError } from '@pertexo/observability/startup';
 import { waitForCancelableDelay } from '../runtime/abortable-delay.js';
 import type { NodeExecutionCapabilityFactories } from './capabilities.js';
@@ -250,7 +255,13 @@ async function executePreparedNodeAttempt(
           failureKind: error.kind,
           errorKind: error.errorKind,
           possiblyDispatched: error.possiblyDispatched,
-          safeErrorCode: `execution.${error.errorKind}`,
+          safeErrorCode:
+            error instanceof FileInputFailure
+              ? FILE_INPUT_ERROR_CODE
+              : `execution.${error.errorKind}`,
+          ...(error instanceof FileInputFailure
+            ? { errorSummary: describeFileInputFailure(error.diagnostic) }
+            : {}),
         },
         ...traceContext,
         signal: contextSignal,

@@ -978,7 +978,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             '--config',
             'playwright.live.config.ts',
             scenario === 'artifact-inputs'
-              ? 'editor/files/inputs.spec.ts'
+              ? 'editor/files/'
               : scenario === 'api-tokens'
                 ? 'api-tokens.spec.ts'
                 : scenario === 'callable'
@@ -1136,8 +1136,8 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     if (scenario === 'artifact-inputs') {
       if (httpEffects === undefined)
         throw new Error('Owned artifact HTTP effects missing');
-      expect(httpEffects.requests).toBe(4);
-      expect(httpEffects.effects).toBe(4);
+      expect(httpEffects.requests).toBe(5);
+      expect(httpEffects.effects).toBe(5);
       const binary = Buffer.alloc(1048576);
       for (let index = 0; index < binary.length; index++)
         binary[index] = index % 256;
@@ -1148,6 +1148,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         hash('{}'),
         hash(''),
         hash('{}'),
+        hash('one earlier effect'),
       ]);
       process.stdout.write(
         `Live artifact input destination hashes ${JSON.stringify(httpEffects.bodyHashes)}\n`,

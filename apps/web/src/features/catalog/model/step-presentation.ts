@@ -2,6 +2,7 @@ import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   BoxIcon,
+  FileJsonIcon,
   BracesIcon,
   ArrowDownWideNarrowIcon,
   CopyMinusIcon,
@@ -45,6 +46,12 @@ type RegistryEntry = Omit<StepPresentation, 'family'> &
   Readonly<{ family: StepFamily }>;
 
 const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
+  'core.read_file': {
+    name: 'Read file',
+    description: 'Turn a CSV or JSON file into data',
+    icon: FileJsonIcon,
+    family: 'transform',
+  },
   'core.batch': {
     name: 'Batch items',
     description: 'Split a list into ordered batches',

@@ -1,6 +1,6 @@
 # F04 — File inputs and artifact lifecycle
 
-Status: first release complete on 2026-10-15; Read file/multipart follow-up proposed below, awaiting owner review.
+Status: first release complete on 2026-10-15; Read file/multipart follow-up approved on 2026-10-15; implementation in progress.
 The owner accepted the HTTP consumer, 1 MiB budget, opaque-file policy and reference
 lifetime on 2026-10-14. Delivery and qualification evidence is recorded below.
 Created: 2026-09-28. Reconciled against main
@@ -17,7 +17,7 @@ response artifact can feed a later HTTP request through the same input.
 
 The first release includes the consumer, both input-local upload entry points,
 retention safety, documentation and real integrated qualification. CSV/JSON
-parsing and multipart are proposed in the follow-up below; generated files and
+parsing and multipart are approved in the follow-up below; generated files and
 asset discovery remain later work. Undelivered controls stay absent.
 
 ## Reconciled foundation
@@ -230,7 +230,7 @@ file descriptors. Pause new attachment/admission deliberately if needed; retain
 readers and lifetime protection while accepted owners exist. Generic upload,
 finalize/download and abandoned-upload cleanup stay operational.
 
-The proposed follow-up below covers bounded CSV/JSON reading and multipart.
+The approved follow-up below covers bounded CSV/JSON reading and multipart.
 Bigger files via streaming or paging are the next file improvement, separately
 scoped after this slice. Asset discovery, file creation, scanning and all
 artifact-aware step recovery remain later work.
@@ -306,13 +306,13 @@ request. This complements cancellation during hashing/transfer/contract reads.
 
 A pre-push route-loading test exposed an existing detached-heading race across the loading-to-sign-in swap. Its three sign-out assertions now use the existing same-pass visibility helper; no production authentication behavior changed. The complete pre-push API, worker and web suites passed afterward.
 
-## Proposed follow-up — Read file and multipart (2026-10-15)
+## Approved follow-up — Read file and multipart (2026-10-15)
 
-**Status: plan only, awaiting owner review.** The first release above remains
-complete. This section, including the proposed ADR 075 amendment, does not
-approve implementation. Reconciled against main
+**Status: owner approved implementation on 2026-10-15.** The first release above
+remains complete. The owner accepted this follow-up and the ADR 075 amendment
+with the three revisions recorded below. Reconciled against main
 `4800013813f8927ced695c1fad1b8a1c0b79beb5`. Use one implementation PR per part
-below, in order, after approval; merge only with green CI. No new subsystem,
+below, in order; merge only with green CI. No new subsystem,
 service, role, table, queue, storage backend or CI job is required.
 
 ### Current seams and decisions to review
@@ -343,8 +343,8 @@ service, role, table, queue, storage backend or CI job is required.
 
 The owner requested these changes to the proposal: defer the special Read file
 recovery exception, enable conservative CSV value conversion by default, and
-make limits/split-file guidance visible. They are incorporated below; approval
-of the complete plan and implementation remains pending.
+make limits/split-file guidance visible. They are incorporated below. The owner
+approved implementation of the revised plan on 2026-10-15.
 
 ### Limits people see
 
@@ -428,9 +428,9 @@ no runtime dependencies) in nodes-core. Its documented strict quoting, record
 limits, record context and error positions are safer than maintaining a second
 CSV state machine. Use its Node stream API over chunks of the already verified,
 bounded bytes, not an object-store/network streaming feature. `pipeline` owns
-cancellation/teardown/backpressure; a bounded async record transform checks the
-signal and accumulates accepted rows. Record callbacks enforce limits before
-parser buffering can accumulate unbounded rows. No parsing worker, cache or
+cancellation/teardown/backpressure. Record callbacks check cancellation,
+convert and accumulate accepted rows within the budget before parser buffering
+can accumulate unbounded rows; the pipeline drains to completion. No parsing worker, cache or
 extra stream-transform dependency.
 
 - Delimiter is selected explicitly. RFC 4180 double-quote/escaped-quote rules,
@@ -688,7 +688,7 @@ choice outside this plan returns to the owner for review.
 ### Follow-up tracker
 
 - [x] Reconcile code seams, constraints and dependency/protocol sources.
-- [ ] Owner reviews and accepts this follow-up and ADR 075 amendment.
+- [x] Owner accepts this follow-up and ADR 075 amendment (2026-10-15).
 - [ ] Part 1 merged green; default-on CSV pipeline, diagnostics, visible limits and automatic retry qualified.
 - [ ] Part 2 merged green; exact multipart bytes and editor journeys qualified.
 - [ ] Part 3 examples/tracker/roadmap merged; natural main evidence recorded.
@@ -698,6 +698,45 @@ planned after this slice. Other later work: email attachments, webhook file
 ingestion, Excel/other formats, a file browser, CSV/JSON file creation, scanning,
 all artifact-aware step recovery (including Read file) and asset management.
 None is an implicit dependency of these parts.
+
+### Part 1 implementation and local qualification — 2026-10-15
+
+Read file is implemented with Node-only `csv-parse` 7.0.3, native JSON parsing,
+the existing scoped worker reader and SDK value bounds. CSV conversion defaults
+on, the editor stores that choice explicitly, and the returned array maps
+directly into list operations. Parser failures carry only closed reasons and
+bounded numeric coordinates; the worker formats them into the existing attempt
+summary. The authorized run read exposes only this diagnostic code. Completion
+replay compares the persisted summary; no recovery eligibility changed.
+
+Local evidence before PR review (merge remains unchecked above):
+
+- Core: 199 tests pass, including exact 1 MiB JSON, UTF-8/BOM, all delimiters,
+  quoted multiline cells, malformed quoting/width/headers, conservative conversion,
+  prototype-like own keys, cancellation, nested-array and expansion bounds.
+- The 4,996-row numeric Read → Filter → Summarize → Stop pipeline completes
+  in approximately 85–109 ms locally; 4,997 rows fail the unchanged downstream
+  envelope. Read alone admits 4,998 one-column rows and refuses 4,999.
+- Database: all 17 attempt integration tests pass, including diagnostic storage,
+  duplicate completion and changed-summary refusal. Worker file tests and upload
+  unit tests pass; the full repository unit suites passed.
+- All 161 mocked browser tests pass. Six live journeys use the attested isolated
+  PostgreSQL/Redis fixture and pinned, cached RustFS 1.0.1 with real signatures:
+  original raw-file consumers, default-on CSV currency totals, malformed-file
+  diagnostics after reload without a redaction sentinel, manual JSON file input,
+  and JSON from an earlier HTTP response file. A controlled temporary read outage
+  yields two Read attempts; the earlier HTTP step executes once, confirmed by
+  the independent destination's exact request hashes.
+- Desktop (1280 × 768) and phone (375 × 768) Read file setup and diagnostic
+  screenshots were inspected locally. Changed-scope React Doctor includes all
+  12 changed frontend source files and reports 100/100. Dependency audit reports
+  no known production vulnerabilities.
+
+The final mocked and live browser runs are sequential: overlapping their shared
+Playwright output directory caused an initial local trace-artifact collision;
+one overlapped publication also reported a temporary validation outage. The
+isolated journeys pass without application retries, relaxed assertions or
+longer timeouts. The production key/storage configuration is unchanged.
 
 ### Follow-up sources checked on 2026-10-15
 

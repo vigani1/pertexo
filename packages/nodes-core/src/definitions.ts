@@ -1,4 +1,10 @@
 import {
+  CORE_READ_FILE_MANIFEST,
+  CORE_READ_FILE_CONFIG_SCHEMA,
+  CORE_READ_FILE_INPUT_SCHEMA,
+  CORE_READ_FILE_OUTPUT_SCHEMA,
+} from './data/read-file/index.js';
+import {
   CORE_CONCAT_CONFIG_SCHEMA,
   CORE_CONCAT_INPUT_SCHEMA,
   CORE_CONCAT_MANIFEST,
@@ -130,6 +136,12 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_READ_FILE_MANIFEST,
+      configSchema: CORE_READ_FILE_CONFIG_SCHEMA,
+      inputSchema: CORE_READ_FILE_INPUT_SCHEMA,
+      outputSchema: CORE_READ_FILE_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_CONCAT_MANIFEST,
       configSchema: CORE_CONCAT_CONFIG_SCHEMA,

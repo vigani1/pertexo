@@ -416,3 +416,5 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     execute,
   });
 }
+
+export { FileInputFailure } from './artifacts/failure.js';

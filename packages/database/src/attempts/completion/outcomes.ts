@@ -87,7 +87,7 @@ function completionFields(input: CompletionInput): CompletionFields {
     case 'executor_failure':
       return {
         durableStatus: 'failed',
-        errorSummary: null,
+        errorSummary: outcome.errorSummary ?? null,
         executorOutcome: outcome,
         safeErrorCode: outcome.safeErrorCode,
         suspendedOutcome: undefined,

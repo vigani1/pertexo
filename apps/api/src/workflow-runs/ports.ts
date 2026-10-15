@@ -116,6 +116,7 @@ export type WorkflowNodeRunRecord = Readonly<{
   startedAt: Date | null;
   completedAt: Date | null;
   resumeAt: Date | null;
+  errorSummary?: string;
   safeErrorCode: string | null;
 }>;
 

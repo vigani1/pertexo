@@ -17,12 +17,21 @@ import type { RunTimelineRow } from '../../model/timeline/runs';
 export function StepError({
   code,
   workspace,
-}: Readonly<{ code: string; workspace: AccessibleWorkspace }>) {
+  summary,
+}: Readonly<{
+  code: string;
+  summary?: string | undefined;
+  workspace: AccessibleWorkspace;
+}>) {
   const copy = describeStepError(code);
   const canOpenConnections = workspace.capabilities.includes('connection:read');
   return (
     <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/[0.05] p-3 text-[0.8rem] leading-relaxed">
-      <p className="text-foreground">{copy.sentence}</p>
+      <p className="text-foreground">
+        {code === 'execution.file_input' && summary !== undefined
+          ? summary
+          : copy.sentence}
+      </p>
       <p className="mt-1 text-muted-foreground">{copy.advice}</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <code className="font-mono text-[0.7rem] text-destructive/90">
@@ -46,7 +55,9 @@ function StoryEntry({
   entry,
   nowMs,
   workspace,
+  errorSummary,
 }: Readonly<{
+  errorSummary?: string | undefined;
   entry: StepStoryEntry;
   nowMs: number;
   workspace: AccessibleWorkspace;
@@ -69,7 +80,11 @@ function StoryEntry({
           <p className="mt-1.5 text-muted-foreground">{reason}</p>
         )}
         {entry.safeErrorCode === undefined ? null : (
-          <StepError code={entry.safeErrorCode} workspace={workspace} />
+          <StepError
+            code={entry.safeErrorCode}
+            summary={errorSummary}
+            workspace={workspace}
+          />
         )}
       </div>
     </li>
@@ -134,13 +149,18 @@ export function StepExecutionHistory({
               entry={entry}
               nowMs={nowMs}
               workspace={workspace}
+              errorSummary={row.errorSummary}
             />
           ))}
         </ol>
       )}
       {row.safeErrorCode !== undefined &&
       !row.story.some((entry) => entry.safeErrorCode !== undefined) ? (
-        <StepError code={row.safeErrorCode} workspace={workspace} />
+        <StepError
+          code={row.safeErrorCode}
+          summary={row.errorSummary}
+          workspace={workspace}
+        />
       ) : null}
     </>
   );
