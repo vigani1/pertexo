@@ -185,8 +185,7 @@ await output(
   optionalValues([...previous, ...providers, 'AUTH_MICROSOFT_TENANT_ID']) +
     encryptionLines,
 );
-const mailMode =
-  workerConfig.authenticationMailDelivery.delivery?.mode ?? 'resend';
+const mailMode = workerConfig.systemMailDelivery.delivery?.mode ?? 'resend';
 if (environment.SYSTEM_MAIL_TRANSPORT === 'smtp' && mailMode !== 'smtp')
   throw new Error('The selected release does not support SMTP system mail');
 const mailNames =

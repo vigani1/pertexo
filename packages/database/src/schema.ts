@@ -1,3 +1,9 @@
+import {
+  noticeWorkspaceSettings,
+  noticePreferences,
+  noticeSubscriptions,
+} from './schema/inbox/preferences.js';
+import { noticeMailBatches, noticeMailItems } from './schema/inbox/mail.js';
 import { workspaceVariables } from './schema/identity/variables.js';
 import { workflowForms } from './schema/triggers/forms.js';
 import { pendingRunTasks } from './schema/runs/pending-task.js';
@@ -171,6 +177,11 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  noticeWorkspaceSettings,
+  noticePreferences,
+  noticeSubscriptions,
+  noticeMailBatches,
+  noticeMailItems,
   workspaceVariables,
   workflowForms,
   pendingRunTasks,

@@ -13,8 +13,6 @@ export class NotificationReadGuard extends WorkspaceCapabilityGuard {
     authorization: WorkspaceAuthorizationSource,
     contexts: RequestContextStore,
   ) {
-    super('notification:read', authorization, contexts, 'not_found', [
-      'active',
-    ]);
+    super('workspace:read', authorization, contexts, 'not_found', ['active']);
   }
 }

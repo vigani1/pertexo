@@ -157,7 +157,7 @@ phone and attach synthetic screenshots. No external provider is needed.
 - [x] Variable settings, usage and mapping UI implemented.
 - [x] Independent persistence/runtime/browser evidence passed.
 - [x] Rollout, guide, roadmap and remaining limits documented.
-- [ ] PR green, rebase merged; inspect natural main result.
+- [x] PR green, rebase merged; inspect natural main result.
 
 ## Later work
 
@@ -241,4 +241,5 @@ PR #303 rebase merged as `170adcae79109f3e0299c7e797a5ae2dc8a88f06`.
 Corrected-head CI 38752254074 passed every required job, including 824 database
 integration tests and the real browser batch; CodeQL 38752254073 passed. The
 five source commits preserve history and the owner author, with no co-author.
-Natural main CI 38755884223 and CodeQL 38755884421 are being inspected separately.
+Natural main CI 38755884223 passed all jobs, including real browser journeys and
+ARM image publication; CodeQL 38755884421 passed.

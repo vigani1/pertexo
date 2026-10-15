@@ -49,6 +49,8 @@ describe('parseWorkerConfig', () => {
         AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
         AUTH_MAIL_KEY: Buffer.alloc(32, 4).toString('base64'),
         AUTH_MAIL_KEY_VERSION: 'mail-v1',
+        AUTH_MAIL_FROM: 'security@example.test',
+        PUBLIC_WEB_ORIGIN: 'https://app.example.test',
       }).systemMailDelivery,
     ).toMatchObject({
       delivery: { mode: 'resend', apiKey: 'provider-key' },
@@ -298,6 +300,8 @@ describe('parseWorkerConfig', () => {
       AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
       AUTH_MAIL_KEY: Buffer.alloc(32, 4).toString('base64'),
       AUTH_MAIL_KEY_VERSION: 'mail-v1',
+      AUTH_MAIL_FROM: 'security@example.test',
+      PUBLIC_WEB_ORIGIN: 'https://app.example.test',
     });
 
     expect(selected.artifactStore.endpoint).toBe(

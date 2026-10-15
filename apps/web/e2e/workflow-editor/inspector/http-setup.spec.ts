@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../../support/fixtures';
 import { workflowDraftResponseSchema } from '@pertexo/contracts';
 import { httpMultipartConfigSchema } from '@pertexo/integrations';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';

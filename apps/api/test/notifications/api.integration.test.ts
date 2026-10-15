@@ -113,7 +113,12 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const listed = await send('GET', base, { browser: owner });
       expect(listed.statusCode, listed.payload).toBe(200);
       const page = listed.json<{
-        items: { workflowId: string; revision: string; unread: boolean }[];
+        items: {
+          id: string;
+          workflowId: string;
+          revision: string;
+          unread: boolean;
+        }[];
         revision: string;
       }>();
       expect(page.items).toEqual([
@@ -131,14 +136,18 @@ describe.runIf(betterAuthIntegrationEnabled)(
 
       expect(
         (await send('GET', `${base}/summary`, { browser: builder })).statusCode,
-      ).toBe(404);
-
-      const read = await send('POST', `${base}/${workflowId}/read`, {
+      ).toBe(200);
+      expect(
+        (await send('GET', base, { browser: builder })).json(),
+      ).toMatchObject({ items: [] });
+      const threadId = page.items[0]?.id;
+      if (threadId === undefined) throw new Error('Expected thread identity');
+      const read = await send('POST', `${base}/${threadId}/read`, {
         browser: operator,
         payload: { revision },
       });
       expect(read.statusCode, read.payload).toBe(200);
-      expect(read.json()).toEqual({ workflowId, unread: false, revision });
+      expect(read.json()).toEqual({ threadId, unread: false, revision });
       expect(
         (await send('GET', `${base}/summary`, { browser: operator })).json(),
       ).toEqual({ unreadCount: 0, revision });

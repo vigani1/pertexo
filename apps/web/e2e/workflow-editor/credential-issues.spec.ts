@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/fixtures';
 import { slackConnection } from '../../test/support/fixtures/slack-channels';
 import {
   addCsrfCookie,

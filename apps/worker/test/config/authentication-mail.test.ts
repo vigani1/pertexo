@@ -37,6 +37,8 @@ describe('parseSystemMailDeliveryConfig', () => {
       parseSystemMailDeliveryConfig(
         {
           ...configuredEnvironment,
+          AUTH_MAIL_FROM: 'security@example.test',
+          PUBLIC_WEB_ORIGIN: 'https://app.example.test',
           AUTH_MAIL_EMAIL_TIMEOUT_MILLIS: '2500',
           AUTH_MAIL_POLL_MILLIS: '750',
           AUTH_MAIL_PREVIOUS_KEYS: JSON.stringify([
@@ -58,7 +60,7 @@ describe('parseSystemMailDeliveryConfig', () => {
 
   it('requires authentication mail delivery in a deployed worker', () => {
     expect(() => parseSystemMailDeliveryConfig({}, true)).toThrow(
-      'Deployed workers require authentication mail delivery',
+      'Deployed workers require system mail delivery',
     );
   });
 

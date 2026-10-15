@@ -9,6 +9,7 @@ import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
 
 const purpose = z.enum([
+  'workspace_notice',
   'verification',
   'password_reset',
   'email_change_confirmation',
@@ -127,7 +128,7 @@ export function createSystemMailDeliveryStore(
              and next_attempt_at <= clock_timestamp()
              and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
              and attempt_count < 12
-           order by next_attempt_at, id
+           order by (purpose='workspace_notice'),next_attempt_at,id
            limit $2
            for update skip locked
          )
@@ -154,6 +155,8 @@ export function createSystemMailDeliveryStore(
       );
       const claimed = [...result.rows].sort(
         (left, right) =>
+          Number(left.purpose === 'workspace_notice') -
+            Number(right.purpose === 'workspace_notice') ||
           left.next_attempt_at.getTime() - right.next_attempt_at.getTime() ||
           left.id.localeCompare(right.id),
       );

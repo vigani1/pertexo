@@ -9,6 +9,7 @@ import {
   workspaceInboxStreamEventSchema,
   workspaceInboxSummaryResponseSchema,
   workspaceInboxThreadSchema,
+  workspaceInboxFailureThreadSchema,
 } from '../../src/schemas/identity/inbox.js';
 import {
   workspaceInboxClientContract,
@@ -17,6 +18,8 @@ import {
 import { CONTRACT_ARTIFACTS } from '../../src/server.js';
 
 const thread = {
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  noticeKind: 'workflow_failure',
   workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   workflowName: 'Nightly import',
   kind: 'failed',
@@ -72,6 +75,7 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
       { revision: '01' },
       { revision: '-1' },
       { revision: '1'.repeat(20) },
+      { revision: '9223372036854775808' },
       { revision: 1 },
       { latestOccurredAt: '2026-09-28T11:00:00.0009001Z' },
       { latestFailedStep: { nodeId: 'fetch' } },
@@ -80,8 +84,10 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
         workspaceInboxThreadSchema.safeParse({ ...thread, ...change }).success,
       ).toBe(false);
     expect(
-      workspaceInboxThreadSchema.parse({ ...thread, latestFailedStep: null })
-        .latestFailedStep,
+      workspaceInboxFailureThreadSchema.parse({
+        ...thread,
+        latestFailedStep: null,
+      }).latestFailedStep,
     ).toBeNull();
   });
 
@@ -145,7 +151,7 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
     }
     expect(
       workspaceInboxReadResponseSchema.parse({
-        workflowId: thread.workflowId,
+        threadId: thread.id,
         unread: false,
         revision: '7',
       }).unread,
@@ -169,8 +175,7 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
   it('declares cookie sessions, CSRF on commands and nondisclosing 404s', () => {
     const paths = workspaceInboxOpenApiDocument.paths;
     for (const command of [
-      paths['/v1/workspaces/{workspaceId}/notifications/{workflowId}/read']
-        .post,
+      paths['/v1/workspaces/{workspaceId}/notifications/{threadId}/read'].post,
       paths['/v1/workspaces/{workspaceId}/notifications/read-all'].post,
     ]) {
       expect(command.security).toEqual([{ cookieSession: [] }]);
@@ -186,7 +191,7 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
     expect(
       paths['/v1/workspaces/{workspaceId}/notifications'].get.responses,
     ).toHaveProperty('404');
-    expect(workspaceInboxClientContract.routes).toHaveLength(5);
+    expect(workspaceInboxClientContract.routes).toHaveLength(11);
     expect(
       CONTRACT_ARTIFACTS.filter((artifact) =>
         artifact.fileName.startsWith('workspace-inbox.'),

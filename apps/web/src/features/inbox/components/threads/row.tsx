@@ -1,5 +1,5 @@
 import { FailureLane } from './failure-lane';
-import type { WorkspaceInboxThread } from '@pertexo/contracts';
+import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { CheckIcon, HistoryIcon } from 'lucide-react';
 import { StatusGlyph } from '@/components/ui/status';
@@ -24,7 +24,7 @@ export function InboxThreadRow({
   onRead,
 }: Readonly<{
   workspaceId: string;
-  thread: WorkspaceInboxThread;
+  thread: WorkspaceInboxFailureThread;
   nowMs: number;
   marking: boolean;
   onRead: () => void;

@@ -306,6 +306,7 @@ const workspaceCapabilitySchema = z.enum([
   'member:read',
   'member:manage',
   'notification:read',
+  'notification:manage_defaults',
 ]);
 export const accessibleWorkspaceSchema = workspaceResponseSchema
   .extend({

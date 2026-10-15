@@ -1,3 +1,4 @@
+import { noticeUnsubscribeRoute } from '../notifications/routes';
 import { publicFormRoute } from '../forms/routes';
 import {
   accountSecurityRoute,
@@ -29,6 +30,7 @@ import {
   approvalDetailRoute,
   apiTokensRoute,
   workspaceVariablesRoute,
+  notificationPreferencesRoute,
   connectionsRoute,
   homeRoute,
   inboxRoute,
@@ -46,6 +48,7 @@ import {
 
 export const routeTree = rootRoute.addChildren([
   publicFormRoute,
+  noticeUnsubscribeRoute,
   indexRoute,
   authStageRoute.addChildren([
     loginRoute,
@@ -76,6 +79,7 @@ export const routeTree = rootRoute.addChildren([
       workspaceSettingsRoute,
       apiTokensRoute,
       workspaceVariablesRoute,
+      notificationPreferencesRoute,
       workspaceAccountRoute,
       shellCatchAllRoute,
     ]),

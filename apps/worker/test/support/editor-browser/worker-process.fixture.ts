@@ -1,3 +1,4 @@
+import { createEditorNotifications } from './notifications/runtime.js';
 import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
 import { withArtifactReadOutage } from './artifact-read-retry.js';
 import { createArtifactDestination } from '../../attempts/artifacts/http-destination.js';
@@ -303,6 +304,28 @@ async function constructRuntimes(
     connectionString: raw.workerUrl,
     max: 6,
   });
+  if (
+    ['approvals', 'forms', 'variables', 'notifications'].includes(
+      process.env.EDITOR_BROWSER_CASE ?? '',
+    )
+  ) {
+    const notifications = await createEditorNotifications(
+      database,
+      parseDatabaseConfig({ connectionString: raw.dispatcherUrl, max: 1 }),
+      namespace.redisUrl,
+      process.env.EDITOR_BROWSER_CASE === 'notifications'
+        ? {
+            key: process.env.EDITOR_BROWSER_NOTICE_MAIL_KEY ?? '',
+            publicWebOrigin:
+              process.env.EDITOR_BROWSER_NOTICE_PUBLIC_ORIGIN ?? '',
+          }
+        : undefined,
+    );
+    resources.notifications = notifications;
+    notifications.start();
+    await notifications.checkReadiness();
+    assertSetupActive();
+  }
   const coordinator = await createCoordinatorRuntime(
     {
       maintenanceDatabase: parseDatabaseConfig({

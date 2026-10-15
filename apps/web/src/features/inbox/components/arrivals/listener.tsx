@@ -1,6 +1,6 @@
 import type {
   WorkspaceInboxSummaryResponse,
-  WorkspaceInboxThread,
+  WorkspaceInboxFailureThread,
 } from '@pertexo/contracts';
 import { Toast } from '@base-ui/react/toast';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
@@ -35,7 +35,7 @@ function ArrivalList({
   onOpenRun,
 }: Readonly<{
   workspaceId: string;
-  onOpenRun: (thread: WorkspaceInboxThread) => void;
+  onOpenRun: (thread: WorkspaceInboxFailureThread) => void;
 }>) {
   const { toasts, close } = Toast.useToastManager<InboxArrivalData>();
   return toasts.map((toast) => {
@@ -94,10 +94,10 @@ export function InboxArrivals({
   const showing = useRef<
     Readonly<{ id: string; data: InboxArrivalData }> | undefined
   >(undefined);
-  const pending = useRef<readonly WorkspaceInboxThread[]>([]);
+  const pending = useRef<readonly WorkspaceInboxFailureThread[]>([]);
   const markRead = useMarkThreadReadMutation(scope);
 
-  function present(arrived: readonly WorkspaceInboxThread[]) {
+  function present(arrived: readonly WorkspaceInboxFailureThread[]) {
     if (document.visibilityState === 'hidden') {
       pending.current = mergeArrivals(pending.current, arrived);
       return;
@@ -195,7 +195,7 @@ export function InboxArrivals({
             workspaceId={scope.workspaceId}
             onOpenRun={(thread) => {
               markRead.mutate({
-                workflowId: thread.workflowId,
+                threadId: thread.id,
                 revision: thread.revision,
               });
             }}

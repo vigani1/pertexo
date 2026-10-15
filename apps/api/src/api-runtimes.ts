@@ -192,6 +192,7 @@ export async function acquireApiRuntimes(
         config.redisUrl,
         {},
         databaseRuntime,
+        config.identity?.betterAuth.durableMail,
       );
 
     artifactRuntime = dependencies.artifactRuntime;

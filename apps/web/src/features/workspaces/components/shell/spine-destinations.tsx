@@ -28,6 +28,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId/settings'
     | '/w/$workspaceId/settings/usage'
     | '/w/$workspaceId/settings/variables'
+    | '/w/$workspaceId/settings/notifications'
     | '/w/$workspaceId/settings/api-tokens'
   >;
   label: string;
@@ -65,7 +66,7 @@ export function spineDestinations(
         ? {}
         : { badge: liveRunCount, badgeNoun: 'running' }),
     });
-  if (can('run:read') || can('notification:read'))
+  if (can('workspace:read'))
     primary.push({
       to: '/w/$workspaceId/inbox',
       label: 'Inbox',
@@ -115,6 +116,11 @@ export function spineDestinations(
     to: '/w/$workspaceId/settings/variables',
     label: 'Variables',
     icon: <SlidersHorizontalIcon />,
+  });
+  administration.push({
+    to: '/w/$workspaceId/settings/notifications',
+    label: 'Notifications',
+    icon: <BellIcon />,
   });
   administration.push({
     to: '/w/$workspaceId/settings/api-tokens',

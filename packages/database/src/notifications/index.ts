@@ -26,3 +26,18 @@ export type {
   WorkspaceInboxChange,
   WorkspaceInboxFoldStore,
 } from '../inbox/fold-store.js';
+
+export { createNoticePreferencesStore } from '../inbox/preferences/store.js';
+export {
+  NoticeConflictError,
+  NoticeUnavailableError,
+  type NoticePreferencesStore,
+} from '../inbox/preferences/contract.js';
+
+export { createNoticeMailStore } from '../inbox/mail/store.js';
+export type {
+  NoticeMailStore,
+  NoticeMailSealer,
+  NoticeMailToSeal,
+  NoticeMailItem,
+} from '../inbox/mail/contract.js';

@@ -4,6 +4,7 @@ import {
   workspaceInboxReadResponseSchema,
   workspaceInboxSummaryResponseSchema,
   type WorkspaceInboxFilter,
+  type WorkspaceNoticeKind,
   type WorkspaceInboxListResponse,
   type WorkspaceInboxReadAllResponse,
   type WorkspaceInboxReadResponse,
@@ -36,17 +37,27 @@ export class WorkspaceInboxService {
     input: Reader &
       Readonly<{
         filter?: WorkspaceInboxFilter;
+        noticeKind?: WorkspaceNoticeKind;
         limit?: number;
         after?: string;
         signal?: AbortSignal;
       }>,
   ): Promise<WorkspaceInboxListResponse> {
     const filter = input.filter ?? 'all';
-    const context = { workspaceId: input.workspaceId, filter };
+    const context = {
+      workspaceId: input.workspaceId,
+      filter,
+      ...(input.noticeKind === undefined
+        ? {}
+        : { noticeKind: input.noticeKind }),
+    };
     const page = await this.database.listThreads({
       workspaceId: input.workspaceId,
       actorId: input.actorId,
       filter,
+      ...(input.noticeKind === undefined
+        ? {}
+        : { noticeKind: input.noticeKind }),
       limit: input.limit ?? DEFAULT_PAGE_SIZE,
       ...(input.after === undefined
         ? {}
@@ -72,12 +83,12 @@ export class WorkspaceInboxService {
   }
 
   public async markRead(
-    input: Reader & Readonly<{ workflowId: string; revision: string }>,
+    input: Reader & Readonly<{ threadId: string; revision: string }>,
   ): Promise<WorkspaceInboxReadResponse> {
     const read = await this.database.markThreadRead(input);
     if (read === undefined) throw new WorkspaceInboxThreadNotFoundError();
     return workspaceInboxReadResponseSchema.parse({
-      workflowId: input.workflowId,
+      threadId: input.threadId,
       ...read,
     });
   }

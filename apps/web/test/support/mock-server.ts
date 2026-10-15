@@ -4,6 +4,29 @@ import { unpausedWorkflowSettings } from './fixtures/auto-pause';
 import { defaultConcurrencySettings } from './fixtures/concurrency';
 
 export const mockServer = setupServer(
+  http.get('http://pertexo.test/v1/workspaces/:workspaceId/notifications', () =>
+    HttpResponse.json({ items: [], nextCursor: null, revision: '0' }),
+  ),
+  http.get(
+    'http://pertexo.test/v1/workspaces/:workspaceId/notifications/summary',
+    () => HttpResponse.json({ unreadCount: 0, revision: '0' }),
+  ),
+  http.get(
+    'http://pertexo.test/v1/workspaces/:workspaceId/notifications/events',
+    () =>
+      new HttpResponse(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                'event: inbox.ready\ndata: {"revision":null}\n\n',
+              ),
+            );
+          },
+        }),
+        { headers: { 'content-type': 'text/event-stream' } },
+      ),
+  ),
   http.get('http://pertexo.test/v1/workspaces/:workspaceId/pending-tasks', () =>
     HttpResponse.json({ items: [], nextCursor: null, pendingCount: 0 }),
   ),

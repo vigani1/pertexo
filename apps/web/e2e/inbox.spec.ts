@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/fixtures';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -9,6 +9,8 @@ const csrfToken = 'csrf-token-for-inbox-browser-tests-12345678901234';
 const timestamp = '2026-09-15T10:00:00.000Z';
 
 type Thread = Readonly<{
+  id: string;
+  noticeKind: 'workflow_failure';
   workflowId: string;
   workflowName: string;
   kind: 'failed' | 'timed_out' | 'outcome_unknown';
@@ -24,6 +26,8 @@ type Thread = Readonly<{
 
 function thread(workflowId: string, workflowName: string): Thread {
   return {
+    id: workflowId,
+    noticeKind: 'workflow_failure' as const,
     workflowId,
     workflowName,
     kind: 'failed',
@@ -124,7 +128,7 @@ async function mockInbox(page: Page) {
       item.workflowId === workflowId ? { ...item, unread: false } : item,
     );
     await route.fulfill({
-      json: { workflowId, unread: false, revision: '7' },
+      json: { threadId: workflowId, unread: false, revision: '7' },
     });
   });
   return state;
@@ -139,7 +143,7 @@ test('shows the unread count and marks a failing workflow read', async ({
   await spine.getByRole('link', { name: 'Inbox, 2 unread' }).click();
 
   await expect(page.getByRole('heading', { name: 'Inbox' })).toBeVisible();
-  const list = page.getByRole('list', { name: 'Failing workflows' });
+  const list = page.getByRole('list', { name: 'Notices' });
   await expect(list.getByRole('listitem')).toHaveCount(2);
   await expect(
     list.getByRole('link', { name: 'Nightly import, unread' }),

@@ -1,4 +1,4 @@
-import type { WorkspaceInboxThread } from '@pertexo/contracts';
+import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import {
   arrivedThreads,
@@ -8,9 +8,11 @@ import {
 
 function thread(
   workflowId: string,
-  overrides: Partial<WorkspaceInboxThread> = {},
-): WorkspaceInboxThread {
+  overrides: Partial<WorkspaceInboxFailureThread> = {},
+): WorkspaceInboxFailureThread {
   return {
+    id: workflowId,
+    noticeKind: 'workflow_failure' as const,
     workflowId,
     workflowName: `Workflow ${workflowId.slice(0, 1)}`,
     kind: 'failed',

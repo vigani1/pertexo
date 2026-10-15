@@ -106,7 +106,7 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
     });
-    assert.equal(worker.authenticationMailDelivery.delivery.mode, transport);
+    assert.equal(worker.systemMailDelivery.delivery.mode, transport);
     assert.equal(worker.invitationDelivery.delivery.mode, transport);
     for (const name of ['api', 'ops', 'migration']) {
       assert.equal(
@@ -128,7 +128,7 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
         undefined,
       );
       assert.equal(
-        worker.authenticationMailDelivery.delivery.auth.pass,
+        worker.systemMailDelivery.delivery.auth.pass,
         'fixture-smtp-password',
       );
     }

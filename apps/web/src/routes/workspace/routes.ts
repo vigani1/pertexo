@@ -309,10 +309,11 @@ export const inboxRoute = createRoute({
   validateSearch: (search) => parseInboxSearch(search),
   loaderDeps: ({ search }) => ({
     filter: search.filter ?? ('all' as const),
+    noticeKind: search.noticeKind,
   }),
   loader: ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace } = context;
-    if (!workspace.capabilities.includes('notification:read')) return;
+    if (!workspace.capabilities.includes('workspace:read')) return;
     warmPrefetches(context, [
       queryClient.infiniteQuery(
         inboxThreadsInfiniteQueryOptions(
@@ -320,6 +321,7 @@ export const inboxRoute = createRoute({
           user.id,
           workspace.id,
           deps.filter,
+          deps.noticeKind,
         ),
       ),
       queryClient.query(
@@ -500,5 +502,18 @@ export const requestDetailRoute = createRoute({
   component: lazyRouteComponent(
     () => import('./requests/detail'),
     'RequestDetailRoute',
+  ),
+});
+
+export const notificationPreferencesRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings/notifications',
+  staticData: { crumb: 'Notifications' },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Notifications', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./settings/notifications'),
+    'NotificationPreferencesRoute',
   ),
 });

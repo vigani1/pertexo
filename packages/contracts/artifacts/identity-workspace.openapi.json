@@ -3958,6 +3958,9 @@
               "pending_task.run_closed",
               "pending_task.self_decision",
               "pending_task.not_eligible",
+              "notifications.changed",
+              "notifications.unavailable",
+              "notifications.unsubscribe_unavailable",
               "variables.changed",
               "variables.usage_changed",
               "workflow.variable_snapshot_unavailable",
@@ -5423,7 +5426,7 @@
                   ]
                 },
                 "capabilities": {
-                  "maxItems": 19,
+                  "maxItems": 20,
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -5446,7 +5449,8 @@
                       "connection:manage",
                       "member:read",
                       "member:manage",
-                      "notification:read"
+                      "notification:read",
+                      "notification:manage_defaults"
                     ]
                   }
                 }

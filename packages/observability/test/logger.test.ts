@@ -393,10 +393,18 @@ it('redacts public form capability headers and configuration at every nesting le
   const capture = captureDestination();
   const logger = createStructuredLogger(testConfig(), capture.destination);
   logger.info('form.request', {
-    request: { headers: { 'x-pertexo-form-key': 'public-header-secret' } },
+    request: {
+      headers: {
+        'x-pertexo-form-key': 'public-header-secret',
+        'X-Pertexo-Unsubscribe-Key': 'unsubscribe-header-secret',
+      },
+    },
     nested: { capability: 'public-command-secret' },
   });
   expect(JSON.stringify(capture.records)).not.toContain('public-header-secret');
+  expect(JSON.stringify(capture.records)).not.toContain(
+    'unsubscribe-header-secret',
+  );
   expect(JSON.stringify(capture.records)).not.toContain(
     'public-command-secret',
   );

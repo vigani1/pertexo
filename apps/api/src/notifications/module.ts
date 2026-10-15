@@ -1,3 +1,6 @@
+import { NoticePreferencesService } from './preferences/service.js';
+import { NoticePreferencesController } from './preferences/controller.js';
+import { NoticeUnsubscribeController } from './preferences/unsubscribe.controller.js';
 import { Module, type DynamicModule } from '@nestjs/common';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
@@ -16,13 +19,22 @@ export class NotificationsModule {
     hints: InboxHintSource,
     authorization: WorkspaceAuthorizationSource,
     identityModule: DynamicModule,
+    preferences?: NoticePreferencesService,
   ): DynamicModule {
     return {
       module: NotificationsModule,
       imports: [identityModule],
-      controllers: [NotificationsController],
+      controllers: [
+        NotificationsController,
+        ...(preferences === undefined
+          ? []
+          : [NoticePreferencesController, NoticeUnsubscribeController]),
+      ],
       providers: [
         { provide: WorkspaceInboxService, useValue: service },
+        ...(preferences === undefined
+          ? []
+          : [{ provide: NoticePreferencesService, useValue: preferences }]),
         { provide: INBOX_HINT_SOURCE, useValue: hints },
         { provide: NOTIFICATION_AUTHORIZATION, useValue: authorization },
         NotificationReadGuard,

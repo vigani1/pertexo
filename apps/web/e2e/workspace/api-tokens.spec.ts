@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../support/fixtures';
 import { API_TOKEN_SCOPES, type ApiTokenMetadata } from '@pertexo/contracts';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

@@ -37,6 +37,7 @@ const expectedCapabilitiesByRole = {
     'member:read',
     'member:manage',
     'notification:read',
+    'notification:manage_defaults',
   ],
   builder: [
     'artifact:read',

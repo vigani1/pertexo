@@ -59,7 +59,11 @@ export function createWorkspaceInboxRuntime(
     name: 'Workspace inbox',
     pollMillis: options.foldPollMillis,
     checkStore: (signal) => store.checkReadiness(signal),
-    cycle: fold,
+    cycle: async (signal) => {
+      await fold(signal);
+      if (store.observeCurrent !== undefined)
+        await hint(await store.observeCurrent(signal));
+    },
     cycleFailed: diagnostics.cycleFailed,
     release: async () => {
       const closed = await Promise.allSettled([

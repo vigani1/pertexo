@@ -12,8 +12,25 @@ const workspaceInboxTimestampSchema = z.iso.datetime({ precision: 6 });
 /** PostgreSQL bigint revisions stay decimal strings across the wire. */
 const workspaceInboxRevisionSchema = z
   .string()
-  .regex(/^(?:0|[1-9][0-9]{0,18})$/u);
+  .regex(/^(?:0|[1-9][0-9]{0,18})$/u)
+  .refine(
+    (value) => {
+      try {
+        return BigInt(value) <= 9223372036854775807n;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Revision exceeds PostgreSQL bigint' },
+  );
 export const workspaceInboxCursorSchema = z.string().min(1).max(1_024);
+export const workspaceNoticeKindSchema = z.enum([
+  'workflow_failure',
+  'workflow_auto_paused',
+  'connection_attention',
+  'limit_reached',
+  'approval_waiting',
+]);
 export const workspaceInboxFilterSchema = z.enum(['all', 'unread']);
 export const workspaceInboxLimitSchema = z.coerce
   .number()
@@ -23,15 +40,18 @@ export const workspaceInboxLimitSchema = z.coerce
 export const workspaceInboxListQuerySchema = z
   .object({
     filter: workspaceInboxFilterSchema.optional(),
+    noticeKind: workspaceNoticeKindSchema.optional(),
     limit: workspaceInboxLimitSchema.optional(),
     after: workspaceInboxCursorSchema.optional(),
   })
   .strict();
 export const workspaceInboxThreadParamsSchema = z
-  .object({ workspaceId: z.uuid(), workflowId: z.uuid() })
+  .object({ workspaceId: z.uuid(), threadId: z.uuid() })
   .strict();
-export const workspaceInboxThreadSchema = z
+export const workspaceInboxFailureThreadSchema = z
   .object({
+    id: z.uuid(),
+    noticeKind: z.literal('workflow_failure'),
     workflowId: z.uuid(),
     workflowName: z.string().min(1).max(200),
     kind: workspaceInboxFailureKindSchema,
@@ -54,6 +74,39 @@ export const workspaceInboxThreadSchema = z
     unread: z.boolean(),
   })
   .strict();
+export const workspaceInboxAttentionThreadSchema = z
+  .object({
+    id: z.uuid(),
+    noticeKind: z.enum([
+      'workflow_auto_paused',
+      'connection_attention',
+      'limit_reached',
+      'approval_waiting',
+    ]),
+    subjectId: z.uuid(),
+    workflowId: z.uuid().nullable(),
+    name: z.string().max(200),
+    occurrenceCount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    firstOccurredAt: workspaceInboxTimestampSchema,
+    latestOccurredAt: workspaceInboxTimestampSchema,
+    revision: workspaceInboxRevisionSchema,
+    unread: z.boolean(),
+    limits: z
+      .array(z.enum(['queue', 'artifact_bytes', 'artifact_count']))
+      .max(3),
+  })
+  .strict();
+export const workspaceInboxThreadSchema = z.union([
+  workspaceInboxFailureThreadSchema,
+  workspaceInboxAttentionThreadSchema,
+]);
+export type WorkspaceInboxFailureThread = z.output<
+  typeof workspaceInboxFailureThreadSchema
+>;
+export type WorkspaceInboxAttentionThread = z.output<
+  typeof workspaceInboxAttentionThreadSchema
+>;
+export type WorkspaceNoticeKind = z.output<typeof workspaceNoticeKindSchema>;
 export const workspaceInboxListResponseSchema = z
   .object({
     items: z.array(workspaceInboxThreadSchema).max(100),
@@ -74,7 +127,7 @@ export const workspaceInboxReadRequestSchema = z
   .strict();
 export const workspaceInboxReadResponseSchema = z
   .object({
-    workflowId: z.uuid(),
+    threadId: z.uuid(),
     unread: z.boolean(),
     revision: workspaceInboxRevisionSchema,
   })

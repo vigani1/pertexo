@@ -1,9 +1,11 @@
+import { NoticeKindFilter } from '../components/threads/kind-filter';
 import type { ReactNode } from 'react';
 import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
   WorkspaceInboxFilter,
+  WorkspaceNoticeKind,
   WorkspaceInboxListResponse,
 } from '@pertexo/contracts';
 import {
@@ -36,7 +38,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isForbidden, isNotFound } from '@/lib/api/error-copy';
 import { useNow } from '@/lib/hooks/use-now';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
-import { InboxThreadRow } from '../components/threads/row';
+import { NoticeThreadRow } from '../components/threads/notice-row';
 import {
   useMarkAllReadMutation,
   useMarkThreadReadMutation,
@@ -113,17 +115,17 @@ function InboxEmpty({ filter }: Readonly<{ filter: WorkspaceInboxFilter }>) {
         <>
           <EmptyTitle>You’re caught up</EmptyTitle>
           <EmptyDescription>
-            Nothing has failed since you last looked. New failures show up here
-            as they happen.
+            Nothing needs your attention. New notices show up here as they
+            happen.
           </EmptyDescription>
         </>
       ) : (
         <>
-          <EmptyTitle>No failing workflows</EmptyTitle>
+          <EmptyTitle>Everything finished</EmptyTitle>
           <EmptyDescription>
-            No failing workflows need attention here. When a run fails, times
-            out or ends with an unknown outcome, its workflow shows up here for
-            30 days after its latest failure.
+            No notices need your attention. Workflow failures, auto-paused
+            workflows, connections, limits and waiting approvals appear here
+            when they need a look.
           </EmptyDescription>
         </>
       )}
@@ -165,6 +167,8 @@ export function InboxPage({
   workspace,
   filter,
   onFilterChange,
+  noticeKind,
+  onNoticeKindChange,
   children,
 }: Readonly<{
   children?: ReactNode;
@@ -173,8 +177,10 @@ export function InboxPage({
   workspace: AccessibleWorkspace;
   filter: WorkspaceInboxFilter;
   onFilterChange: (filter: WorkspaceInboxFilter) => void;
+  noticeKind?: WorkspaceNoticeKind;
+  onNoticeKindChange?: (kind: WorkspaceNoticeKind | undefined) => void;
 }>) {
-  const canRead = workspace.capabilities.includes('notification:read');
+  const canRead = workspace.capabilities.includes('workspace:read');
   const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const threads = useInfiniteQuery({
     ...inboxThreadsInfiniteQueryOptions(
@@ -182,6 +188,7 @@ export function InboxPage({
       user.id,
       workspace.id,
       filter,
+      noticeKind,
     ),
     enabled: canRead,
   });
@@ -247,11 +254,13 @@ export function InboxPage({
           if (cut !== undefined) markAll.mutate(cut);
         }}
       />
+      {onNoticeKindChange === undefined ? null : (
+        <NoticeKindFilter kind={noticeKind} onChange={onNoticeKindChange} />
+      )}
       {children}
       <p className="-mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        Each workflow that failed, timed out or ended with an unknown outcome
-        appears once, with how often it failed. Reading it here doesn’t change
-        its runs.
+        Notices show what needs attention. Failures are grouped by workflow;
+        reading or muting a notice never changes its runs or pending tasks.
       </p>
       <InboxThreadResults
         scope={scope}
@@ -304,21 +313,20 @@ function InboxThreadResults({
           <InboxEmpty filter={filter} />
         )
       ) : (
-        <ul aria-label="Failing workflows" className="flex flex-col">
+        <ul aria-label="Notices" className="flex flex-col">
           {items.map((thread) => (
-            <InboxThreadRow
-              key={thread.workflowId}
+            <NoticeThreadRow
+              key={thread.id}
               workspaceId={scope.workspaceId}
               thread={thread}
               nowMs={nowMs}
               marking={
-                markRead.isPending &&
-                markRead.variables.workflowId === thread.workflowId
+                markRead.isPending && markRead.variables.threadId === thread.id
               }
               onRead={() => {
                 if (thread.unread)
                   markRead.mutate({
-                    workflowId: thread.workflowId,
+                    threadId: thread.id,
                     revision: thread.revision,
                   });
               }}

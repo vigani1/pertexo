@@ -31,16 +31,27 @@ export function createSystemMailDeliveryHandler(
     workerId: string;
     now?: () => Date;
     random?: () => number;
+    notices?: Readonly<{
+      prepare(signal?: AbortSignal): Promise<number>;
+      authorize(id: string): Promise<boolean>;
+    }>;
   }>,
 ): SystemMailDeliveryHandler {
   const now = dependencies.now ?? (() => new Date());
   const random = dependencies.random ?? Math.random;
   return Object.freeze({
     runOnce: async (signal?: AbortSignal) => {
-      const claims = await dependencies.store.claim({
+      let claims = await dependencies.store.claim({
         workerId: dependencies.workerId,
         limit: 1,
       });
+      if (claims.length === 0 && dependencies.notices !== undefined) {
+        await dependencies.notices.prepare(signal);
+        claims = await dependencies.store.claim({
+          workerId: dependencies.workerId,
+          limit: 1,
+        });
+      }
       for (const claim of claims) {
         if (signal?.aborted === true) break;
         await deliverClaim(dependencies, claim, now, random, signal);
@@ -80,6 +91,7 @@ async function deliverClaim(
     ) as unknown,
   );
   let result: SystemMailResult;
+  const authorization = { superseded: false };
   try {
     result = await dependencies.email.sendNotification({
       fromEmail: message.fromEmail,
@@ -88,10 +100,27 @@ async function deliverClaim(
       text: message.text,
       idempotencyKey: `authentication-mail:${claim.id}`,
       timeoutMillis: dependencies.timeoutMillis,
-      beforeDispatch: () => Promise.resolve(),
+      beforeDispatch: async () => {
+        if (
+          claim.purpose === 'workspace_notice' &&
+          (dependencies.notices === undefined ||
+            !(await dependencies.notices.authorize(claim.id)))
+        ) {
+          authorization.superseded = true;
+          throw new Error('Notice no longer eligible');
+        }
+      },
       ...(signal === undefined ? {} : { signal }),
     });
   } catch {
+    if (authorization.superseded) {
+      await dependencies.store.settle({
+        ...claimIdentity(claim),
+        outcome: 'failed',
+        failureCode: 'notice.superseded',
+      });
+      return;
+    }
     if (!dependencies.email.deduplicates) {
       await dependencies.store.settle({
         ...claimIdentity(claim),
@@ -107,6 +136,14 @@ async function deliverClaim(
       random,
       'delivery.transport',
     );
+    return;
+  }
+  if (authorization.superseded) {
+    await dependencies.store.settle({
+      ...claimIdentity(claim),
+      outcome: 'failed',
+      failureCode: 'notice.superseded',
+    });
     return;
   }
   if (result.kind === 'submitted') {

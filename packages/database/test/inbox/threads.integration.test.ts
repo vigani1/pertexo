@@ -93,6 +93,15 @@ afterAll(async () => {
   if (failure?.status === 'rejected') throw failure.reason;
 });
 
+async function threadId(workspaceId: string, workflowId: string) {
+  const found = await admin.query<{ id: string }>(
+    "select id from app.workspace_inbox_threads where workspace_id=$1 and workflow_id=$2 and notice_kind='workflow_failure'",
+    [workspaceId, workflowId],
+  );
+  const id = found.rows[0]?.id;
+  if (id === undefined) throw new Error('Expected folded failure thread');
+  return id;
+}
 async function asAdmin<Row extends Record<string, unknown>>(
   text: string,
   values: unknown[] = [],
@@ -458,7 +467,7 @@ describe('workspace inbox threads (ADR 055)', () => {
     await expect(
       inbox.markThreadRead({
         ...owner,
-        workflowId: first,
+        threadId: await threadId(workspaceId, first),
         revision: seen.revision,
       }),
     ).resolves.toEqual({ unread: false, revision: seen.revision });
@@ -475,14 +484,14 @@ describe('workspace inbox threads (ADR 055)', () => {
     await drain();
     const again = await inbox.markThreadRead({
       ...owner,
-      workflowId: first,
+      threadId: await threadId(workspaceId, first),
       revision: seen.revision,
     });
     expect(again?.unread).toBe(true);
     // Asking for more than the thread's revision reads only what exists.
     await inbox.markThreadRead({
       ...owner,
-      workflowId: first,
+      threadId: await threadId(workspaceId, first),
       revision: '999999999999',
     });
     await fail(workspaceId, first);
@@ -493,7 +502,7 @@ describe('workspace inbox threads (ADR 055)', () => {
     await expect(
       inbox.markThreadRead({
         ...reader(workspaceId, members.viewer),
-        workflowId: first,
+        threadId: await threadId(workspaceId, first),
         revision: seen.revision,
       }),
     ).resolves.toBeUndefined();
@@ -556,7 +565,10 @@ describe('workspace inbox threads (ADR 055)', () => {
     });
     expect(secondPage.items.map((item) => item.workflowId)).toEqual([first]);
     expect(secondPage.next).toBeNull();
-    expect(firstPage.items[0]?.workflowName).toMatch(/^Workflow /u);
+    expect(
+      firstPage.items.find((t) => t.noticeKind === 'workflow_failure')
+        ?.workflowName,
+    ).toMatch(/^Workflow /u);
     expect(firstPage.items[0]).toMatchObject({
       failureDays: [],
       occurrenceCount: 1,
@@ -595,9 +607,9 @@ describe('workspace inbox threads (ADR 055)', () => {
       limit: 10,
     });
     expect(page.items).toHaveLength(1);
-    expect(page.items[0]?.failureDays).toEqual([
-      { day: new Date().toISOString().slice(0, 10), count: 2 },
-    ]);
+    expect(
+      page.items.find((t) => t.noticeKind === 'workflow_failure')?.failureDays,
+    ).toEqual([{ day: new Date().toISOString().slice(0, 10), count: 2 }]);
   });
 
   it('never moves a read backwards', async () => {
@@ -606,9 +618,17 @@ describe('workspace inbox threads (ADR 055)', () => {
     await drain();
     const owner = reader(workspaceId, members.owner);
     const { revision } = await inbox.readSummary(owner);
-    await inbox.markThreadRead({ ...owner, workflowId: first, revision });
+    await inbox.markThreadRead({
+      ...owner,
+      threadId: await threadId(workspaceId, first),
+      revision,
+    });
     expect(BigInt(revision)).toBeGreaterThan(1n);
-    await inbox.markThreadRead({ ...owner, workflowId: first, revision: '1' });
+    await inbox.markThreadRead({
+      ...owner,
+      threadId: await threadId(workspaceId, first),
+      revision: '1',
+    });
     const [read] = await asAdmin<{ read_revision: string }>(
       'select read_revision::text from app.workspace_inbox_reads where workspace_id=$1',
       [workspaceId],
@@ -624,7 +644,7 @@ describe('workspace inbox threads (ADR 055)', () => {
     const { revision } = await inbox.readSummary(owner);
     await inbox.markThreadRead({
       ...owner,
-      workflowId: idle.first,
+      threadId: await threadId(idle.workspaceId, idle.first),
       revision,
     });
     await asAdmin(

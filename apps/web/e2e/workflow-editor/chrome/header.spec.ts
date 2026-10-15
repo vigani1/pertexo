@@ -1,4 +1,9 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import {
+  expect,
+  test,
+  type BrowserContext,
+  type Page,
+} from '../../support/fixtures';
 import {
   addCsrfCookie,
   currentEtag,

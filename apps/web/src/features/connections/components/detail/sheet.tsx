@@ -1,3 +1,4 @@
+import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ConnectionResponse } from '@pertexo/contracts';
@@ -181,6 +182,11 @@ function DetailBody({
   return (
     <SheetBody className="flex flex-col gap-5">
       <ConnectionState connection={connection} />
+      <NoticeSubjectActions
+        scope={scope}
+        subject={{ subjectKind: 'connection', subjectId: connection.id }}
+        name={connection.name}
+      />
       {mode === 'overview' ? (
         <>
           <OverviewActions

@@ -1,4 +1,7 @@
-import type { WorkspaceInboxFilter } from '@pertexo/contracts';
+import type {
+  WorkspaceNoticeKind,
+  WorkspaceInboxFilter,
+} from '@pertexo/contracts';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getInboxSummary, getInboxThreads } from './inbox.api';
@@ -12,7 +15,14 @@ export const inboxKeys = {
     userId: string,
     workspaceId: string,
     filter: WorkspaceInboxFilter,
-  ) => [...inboxKeys.scope(userId, workspaceId), 'threads', filter] as const,
+    noticeKind?: WorkspaceNoticeKind,
+  ) =>
+    [
+      ...inboxKeys.scope(userId, workspaceId),
+      'threads',
+      filter,
+      noticeKind ?? 'all',
+    ] as const,
 };
 
 /**
@@ -37,12 +47,14 @@ export function inboxThreadsInfiniteQueryOptions(
   userId: string,
   workspaceId: string,
   filter: WorkspaceInboxFilter,
+  noticeKind?: WorkspaceNoticeKind,
 ) {
   return infiniteQueryOptions({
-    queryKey: inboxKeys.threads(userId, workspaceId, filter),
+    queryKey: inboxKeys.threads(userId, workspaceId, filter, noticeKind),
     queryFn: ({ pageParam, signal }) =>
       getInboxThreads(apiClient, workspaceId, {
         filter,
+        ...(noticeKind === undefined ? {} : { noticeKind }),
         ...(pageParam === null ? {} : { after: pageParam }),
         signal,
       }),

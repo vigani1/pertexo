@@ -21,6 +21,14 @@ const blocked = `case when task.status='expired' then 'expired' when task.status
   when task.expires_at <= clock_timestamp() then 'expired'
   when task.kind='approval' and run.started_by=$2::uuid then 'starter'
   when not ${audience} then 'audience' else null end`;
+export function pendingTaskBlockedSql(
+  actorParameter: string,
+  roleParameter: string,
+): string {
+  return blocked
+    .replaceAll('$2', actorParameter)
+    .replaceAll('$3', roleParameter);
+}
 const columns = `task.*,node.node_id,run.workflow_id,workflow.name workflow_name,
   decider.display_name decided_by_name,node.branch_context,${blocked} blocked_reason`;
 const from = `from app.pending_run_tasks task join app.workflow_runs run

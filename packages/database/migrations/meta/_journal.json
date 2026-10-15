@@ -85,6 +85,13 @@
       "when": 1792068685016,
       "tag": "0011_workspace_variables",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792077441104,
+      "tag": "0012_personal_notices",
+      "breakpoints": true
     }
   ]
 }

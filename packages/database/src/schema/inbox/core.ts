@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
   bigint,
+  boolean,
   check,
   foreignKey,
   index,
@@ -15,7 +16,9 @@ import {
 import { appSchema } from '../namespace.js';
 import { workflows } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/execution.js';
-import { workspaceMemberships } from '../foundation.js';
+import { connections } from '../connections.js';
+import { pendingRunTasks } from '../runs/pending-task.js';
+import { workspaces, workspaceMemberships } from '../foundation.js';
 
 // ADR 055. String-mode timestamps and bigint revisions preserve PostgreSQL
 // precision.
@@ -77,7 +80,14 @@ export const workspaceInboxThreads = appSchema.table(
   'workspace_inbox_threads',
   {
     workspaceId: uuid('workspace_id').notNull(),
-    workflowId: uuid('workflow_id').notNull(),
+    id: uuid('id').notNull(),
+    noticeKind: varchar('notice_kind', { length: 32 }).notNull(),
+    subjectId: uuid('subject_id').notNull(),
+    connectionId: uuid('connection_id'),
+    taskId: uuid('task_id'),
+    active: boolean('active').notNull().default(true),
+    sourceRevision: varchar('source_revision', { length: 128 }),
+    workflowId: uuid('workflow_id'),
     revision: bigint('revision', { mode: 'bigint' }).notNull(),
     occurrenceCount: bigint('occurrence_count', { mode: 'bigint' }).notNull(),
     firstOccurredAt: timestamp('first_occurred_at', {
@@ -88,13 +98,41 @@ export const workspaceInboxThreads = appSchema.table(
       withTimezone: true,
       mode: 'string',
     }).notNull(),
-    latestRunId: uuid('latest_run_id').notNull(),
-    latestKind: varchar('latest_kind', { length: 32 }).notNull(),
+    latestRunId: uuid('latest_run_id'),
+    latestKind: varchar('latest_kind', { length: 32 }),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      name: 'workspace_inbox_threads_workspace_fk',
+      columns: [table.workspaceId],
+      foreignColumns: [workspaces.id],
+    }).onDelete('restrict'),
+    uniqueIndex('workspace_inbox_threads_subject_unique').on(
+      table.workspaceId,
+      table.noticeKind,
+      table.subjectId,
+    ),
+    check(
+      'workspace_inbox_threads_subject_valid',
+      sql`((notice_kind IN ('workflow_failure','workflow_auto_paused') AND workflow_id=subject_id AND connection_id IS NULL AND task_id IS NULL) OR (notice_kind='connection_attention' AND connection_id=subject_id AND workflow_id IS NULL AND task_id IS NULL) OR (notice_kind='approval_waiting' AND task_id=subject_id AND workflow_id IS NOT NULL AND connection_id IS NULL) OR (notice_kind='limit_reached' AND subject_id=workspace_id AND workflow_id IS NULL AND connection_id IS NULL AND task_id IS NULL)) IS TRUE`,
+    ),
+    check(
+      'workspace_inbox_threads_failure_valid',
+      sql`((notice_kind='workflow_failure' AND latest_run_id IS NOT NULL AND latest_kind IS NOT NULL) OR (notice_kind<>'workflow_failure' AND latest_run_id IS NULL AND latest_kind IS NULL)) IS TRUE`,
+    ),
+    foreignKey({
+      name: 'workspace_inbox_threads_connection_fk',
+      columns: [table.workspaceId, table.connectionId],
+      foreignColumns: [connections.workspaceId, connections.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'workspace_inbox_threads_task_fk',
+      columns: [table.workspaceId, table.taskId],
+      foreignColumns: [pendingRunTasks.workspaceId, pendingRunTasks.id],
+    }).onDelete('cascade'),
     check(
       'workspace_inbox_threads_latest_kind_check',
       sql`((latest_kind)::text = ANY (ARRAY[('failed'::character varying)::text, ('timed_out'::character varying)::text, ('outcome_unknown'::character varying)::text]))`,
@@ -110,7 +148,7 @@ export const workspaceInboxThreads = appSchema.table(
     check('workspace_inbox_threads_revision_check', sql`(revision > 0)`),
     primaryKey({
       name: 'workspace_inbox_threads_pkey',
-      columns: [table.workspaceId, table.workflowId],
+      columns: [table.workspaceId, table.id],
     }),
     foreignKey({
       name: 'workspace_inbox_threads_workflow_fk',
@@ -120,12 +158,12 @@ export const workspaceInboxThreads = appSchema.table(
     index('workspace_inbox_threads_expiry_idx').on(
       table.latestOccurredAt,
       table.workspaceId,
-      table.workflowId,
+      table.id,
     ),
     index('workspace_inbox_threads_recent_idx').on(
       table.workspaceId,
       table.latestOccurredAt.desc().nullsFirst(),
-      table.workflowId.desc().nullsFirst(),
+      table.id.desc().nullsFirst(),
     ),
   ],
 );
@@ -136,7 +174,7 @@ export const workspaceInboxReads = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     userId: uuid('user_id').notNull(),
-    workflowId: uuid('workflow_id').notNull(),
+    threadId: uuid('thread_id').notNull(),
     readRevision: bigint('read_revision', { mode: 'bigint' }).notNull(),
     readAt: timestamp('read_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
@@ -149,7 +187,7 @@ export const workspaceInboxReads = appSchema.table(
     ),
     primaryKey({
       name: 'workspace_inbox_reads_pkey',
-      columns: [table.workspaceId, table.userId, table.workflowId],
+      columns: [table.workspaceId, table.userId, table.threadId],
     }),
     foreignKey({
       name: 'workspace_inbox_reads_membership_fk',
@@ -161,10 +199,10 @@ export const workspaceInboxReads = appSchema.table(
     }).onDelete('restrict'),
     foreignKey({
       name: 'workspace_inbox_reads_thread_fk',
-      columns: [table.workspaceId, table.workflowId],
+      columns: [table.workspaceId, table.threadId],
       foreignColumns: [
         workspaceInboxThreads.workspaceId,
-        workspaceInboxThreads.workflowId,
+        workspaceInboxThreads.id,
       ],
     }).onDelete('cascade'),
   ],

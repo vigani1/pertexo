@@ -1,3 +1,4 @@
+import type { ApiIdentityConfig } from '../../../src/platform/config/identity.js';
 import { captureLocalAuthenticationMail } from './mail-capture.js';
 import { randomUUID } from 'node:crypto';
 
@@ -129,6 +130,7 @@ export function useBetterAuthRealApi(
     schedules?: boolean;
     /** Compose the real workspace inbox runtime (ADR 055). */
     notifications?: boolean;
+    notificationMail?: ApiIdentityConfig['betterAuth']['durableMail'];
     webhookRuntime?: (config: ApiConfig) => Promise<ApiWebhookRuntime>;
     logger?: StructuredLogger;
     connections?: Readonly<{
@@ -192,7 +194,7 @@ export function useBetterAuthRealApi(
       }
     });
     await creator.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_app`,
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_maintenance`,
     );
     await migrateDatabase({
       appRole: 'pertexo_app',
@@ -248,7 +250,13 @@ export function useBetterAuthRealApi(
       options.notifications === true
         ? owner.acquire(
             'notification runtime',
-            createApiNotificationRuntime(databaseConfig, config.redisUrl),
+            createApiNotificationRuntime(
+              databaseConfig,
+              config.redisUrl,
+              {},
+              undefined,
+              options.notificationMail,
+            ),
             (runtime) => runtime.close(),
           )
         : undefined;

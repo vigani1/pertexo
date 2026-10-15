@@ -41,6 +41,8 @@ function thread(
   overrides: Readonly<Record<string, unknown>> = {},
 ) {
   return {
+    id: workflowId,
+    noticeKind: 'workflow_failure' as const,
     workflowId,
     workflowName: workflowId === importId ? 'Nightly import' : 'Billing sync',
     kind: 'failed',
@@ -130,7 +132,7 @@ function inboxApi(state: {
             : item,
         );
         return HttpResponse.json({
-          workflowId: params.workflowId,
+          threadId: params.workflowId,
           unread: false,
           revision: state.revision,
         });
@@ -167,7 +169,7 @@ describe('workspace inbox', () => {
     });
     renderApp(`/w/${workspaceId}/inbox`);
 
-    const list = await screen.findByRole('list', { name: 'Failing workflows' });
+    const list = await screen.findByRole('list', { name: 'Notices' });
     const [first, second, ...rest] = within(list).getAllByRole('listitem');
     if (first === undefined || second === undefined)
       throw new Error('Expected two notices');
@@ -260,7 +262,8 @@ describe('workspace inbox', () => {
     });
   });
 
-  it('lets a viewer discover approvals without fetching privileged failure threads', async () => {
+  it('lets a viewer load its scoped notices and input requests', async () => {
+    inboxApi({ threads: [], revision: '1' });
     let failureReads = 0;
     mockServer.use(
       http.get('http://pertexo.test/v1/users/me', () =>
@@ -288,11 +291,12 @@ describe('workspace inbox', () => {
     expect(
       await screen.findByText('No requests waiting for you.'),
     ).toBeVisible();
-    expect(failureReads).toBe(0);
+    expect(failureReads).toBeGreaterThan(0);
     expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();
   });
 
-  it('hides the inbox from a role without it', async () => {
+  it('keeps the inbox available to builders', async () => {
+    inboxApi({ threads: [], revision: '0' });
     mockServer.use(
       http.get('http://pertexo.test/v1/users/me', () =>
         HttpResponse.json(user),
@@ -307,9 +311,9 @@ describe('workspace inbox', () => {
     renderApp(`/w/${workspaceId}/inbox`);
 
     expect(
-      await screen.findByRole('heading', { name: 'The inbox is unavailable' }),
+      await screen.findByRole('heading', { name: 'Everything finished' }),
     ).toBeVisible();
-    expect(spineInbox().queryByRole('link', { name: /Inbox/u })).toBeNull();
+    expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();
   });
 });
 
