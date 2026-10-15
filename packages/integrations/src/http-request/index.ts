@@ -20,3 +20,14 @@ export type {
   HttpRequestInput,
   HttpRequestOutput,
 } from './validation.js';
+
+export {
+  HTTP_MULTIPART_MAX_PARTS,
+  httpMultipartConfigSchema,
+  httpMultipartValueSchema,
+} from './multipart/validation.js';
+export type {
+  HttpMultipartConfig,
+  HttpMultipartPart,
+  HttpMultipartFile,
+} from './multipart/validation.js';

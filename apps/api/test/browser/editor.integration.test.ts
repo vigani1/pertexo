@@ -1136,20 +1136,21 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     if (scenario === 'artifact-inputs') {
       if (httpEffects === undefined)
         throw new Error('Owned artifact HTTP effects missing');
-      expect(httpEffects.requests).toBe(5);
-      expect(httpEffects.effects).toBe(5);
+      expect(httpEffects.requests).toBe(7);
+      expect(httpEffects.effects).toBe(7);
       const binary = Buffer.alloc(1048576);
       for (let index = 0; index < binary.length; index++)
         binary[index] = index % 256;
       const hash = (value: Buffer | string) =>
         createHash('sha256').update(value).digest('hex');
-      expect(httpEffects.bodyHashes).toEqual([
+      expect(httpEffects.bodyHashes.slice(0, 5)).toEqual([
         hash(binary),
         hash('{}'),
         hash(''),
         hash('{}'),
-        hash('one earlier effect'),
+        hash('multipart response source'),
       ]);
+      expect(httpEffects.bodyHashes[6]).toBe(hash('one earlier effect'));
       process.stdout.write(
         `Live artifact input destination hashes ${JSON.stringify(httpEffects.bodyHashes)}\n`,
       );

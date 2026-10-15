@@ -10,6 +10,7 @@ const webAllowedWorkspaceImports = new Set([
   '@pertexo/contracts',
   '@pertexo/workflow-model',
   '@pertexo/templates',
+  '@pertexo/integrations',
 ]);
 const webRawFetchOwners = new Set([
   'apps/web/src/lib/api/client.ts',

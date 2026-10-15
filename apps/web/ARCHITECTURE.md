@@ -327,6 +327,12 @@ browser-entry check proves the package root reaches no Node module.
 `@pertexo/workflow-model` is browser-safe; `@pertexo/workflow-model/server`
 (checksums, expressions, authoring validation) is not. Do not import node
 executors or `@pertexo/node-sdk/server` just to obtain a type.
+`@pertexo/integrations` was reviewed for the HTTP form editor: its root exposes
+browser-safe schemas/types and declarative definitions only. The editor shares
+multipart metadata/value bounds from this root; availability still comes from
+the authenticated catalog. Its `/server` entry and HTTP encoder/transport stay
+forbidden in browser imports. The web import allowlist and project reference
+admit only this reviewed root; the production Vite build verifies that boundary.
 
 Type conventions:
 

@@ -11,7 +11,7 @@ const repositoryRoot = resolve(
 );
 const execFileAsync = promisify(execFile);
 
-describe('contracts browser entry', () => {
+describe.each(['contracts', 'integrations'])('%s browser entry', (name) => {
   it('reaches no Node module, so the web can import it', async () => {
     await expect(
       execFileAsync(process.execPath, [
@@ -21,7 +21,7 @@ describe('contracts browser entry', () => {
         ),
         '--root',
         repositoryRoot,
-        'packages/contracts/src/index.ts',
+        `packages/${name}/src/index.ts`,
       ]),
     ).resolves.toMatchObject({ stderr: '' });
   });

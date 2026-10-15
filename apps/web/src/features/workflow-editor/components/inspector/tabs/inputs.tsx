@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { HttpBodyInputs } from '../http-body/inputs';
 import { ReadFileUpload } from '../input-mappings/read-file-upload';
 import { UploadFile, type FileUploadScope } from '@/features/artifacts/public';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
@@ -40,18 +42,7 @@ type RowDisclosure = Readonly<{
  * made here; Fix opens the row it names. Inside a For each body, rows can
  * also read the item the body runs for.
  */
-export function InputsTab({
-  node,
-  fileScope,
-  graph,
-  loopPorts,
-  definition,
-  definitions,
-  form,
-  focusTarget,
-  onConnect,
-  onRemoveEdge,
-}: Readonly<{
+type InputsTabProps = Readonly<{
   node: WorkflowNode;
   fileScope?: FileUploadScope;
   /** The level the step is on: the workflow, or the body it's in. */
@@ -65,7 +56,47 @@ export function InputsTab({
     (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
   onConnect: (link: Connection) => void;
   onRemoveEdge: (edgeId: string) => void;
-}>) {
+}>;
+
+export function InputsTab(props: InputsTabProps) {
+  const links = (
+    <IncomingLinks
+      node={props.node}
+      graph={props.graph}
+      definitions={props.definitions}
+      editable={props.form.editable}
+      onConnect={props.onConnect}
+      onRemoveEdge={props.onRemoveEdge}
+    />
+  );
+  return props.node.definition.key === 'http.request' ? (
+    <HttpBodyInputs
+      node={props.node}
+      graph={props.graph}
+      form={props.form}
+      fileScope={props.fileScope}
+      loopPorts={props.loopPorts}
+      links={links}
+      rawInputs={(form) => (
+        <MappedInputsTab {...props} form={form} links={links} />
+      )}
+    />
+  ) : (
+    <MappedInputsTab {...props} links={links} />
+  );
+}
+
+function MappedInputsTab({
+  node,
+  fileScope,
+  graph,
+  loopPorts,
+  definition,
+  definitions,
+  form,
+  focusTarget,
+  links,
+}: InputsTabProps & Readonly<{ links: ReactNode }>) {
   const activeRowId = useRef<string | undefined>(undefined);
   const store = useEditorStoreApi();
   const notifications = useNotifications();
@@ -82,16 +113,6 @@ export function InputsTab({
   const editable = form.editable && definition !== undefined;
   const suggestions = inputKeySuggestions(definition?.inputSchema);
   const predecessors = directPredecessorOptions(graph, node.id);
-  const links = (
-    <IncomingLinks
-      node={node}
-      graph={graph}
-      definitions={definitions}
-      editable={form.editable}
-      onConnect={onConnect}
-      onRemoveEdge={onRemoveEdge}
-    />
-  );
   if (nodeUsesRunInputDirectly(node.definition))
     return (
       <div className="flex flex-col gap-5">

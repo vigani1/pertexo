@@ -45,7 +45,7 @@ async function ownerTransaction<T>(
     throw error;
   }
 }
-async function fixture() {
+async function fixture(shape: 'literal' | 'multipart') {
   const workflowId = randomUUID();
   const versionId = randomUUID();
   const artifactId = randomUUID();
@@ -56,16 +56,32 @@ async function fixture() {
     mediaType: 'application/octet-stream',
     sha256: 'a'.repeat(64),
   };
+  const partKey = 'part_22222222-2222-4222-8222-222222222222';
   const graph = {
     ...EMPTY_WORKFLOW_GRAPH,
     nodes: [
       {
         id: 'file',
-        definition: { key: 'core.set', version: 1 },
+        definition: {
+          key: shape === 'multipart' ? 'http.request' : 'core.set',
+          version: 1,
+        },
         configVersion: 1,
-        config: {},
+        config:
+          shape === 'multipart'
+            ? {
+                multipart: {
+                  parts: [{ inputKey: partKey, name: 'file', kind: 'file' }],
+                },
+              }
+            : {},
         connectionRefs: {},
-        inputMappings: { file: { kind: 'literal', value: reference } },
+        inputMappings: {
+          [shape === 'multipart' ? partKey : 'file']: {
+            kind: 'literal',
+            value: reference,
+          },
+        },
       },
     ],
   };
@@ -154,11 +170,12 @@ async function addVersion(
     ),
   );
 }
-describe('artifact owner lifetime and concurrent cleanup', () => {
+const shapes = ['literal', 'multipart'] as const;
+describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
   it.each(['draft', 'version', 'input-case'] as const)(
     'keeps a file while its %s owner exists, then erases it after reference release',
     async (kind) => {
-      const state = await fixture();
+      const state = await fixture(shape);
       try {
         if (kind === 'draft')
           await ownerTransaction((client) =>
@@ -220,7 +237,7 @@ describe('artifact owner lifetime and concurrent cleanup', () => {
     },
   );
   it('lets an accepted writer win without exposing its file to concurrent deletion', async () => {
-    const state = await fixture();
+    const state = await fixture(shape);
     const held = gate();
     const release = gate();
     const writer = withTenantScopedClient(
@@ -257,7 +274,7 @@ describe('artifact owner lifetime and concurrent cleanup', () => {
     }
   });
   it('refuses a new owner after cleanup wins, including while physical deletion is pending', async () => {
-    const state = await fixture();
+    const state = await fixture(shape);
     const deleting = gate();
     const release = gate();
     state.store.delete.mockImplementation(async () => {
@@ -288,7 +305,7 @@ describe('artifact owner lifetime and concurrent cleanup', () => {
     }
   });
   it('rejects unavailable identity and tampered metadata', async () => {
-    const state = await fixture();
+    const state = await fixture(shape);
     try {
       for (const reference of [
         { ...state.reference, artifactId: randomUUID() },
@@ -306,7 +323,7 @@ describe('artifact owner lifetime and concurrent cleanup', () => {
     }
   });
   it('keeps preview output readable only in a live preview context and refuses durable promotion', async () => {
-    const state = await fixture();
+    const state = await fixture(shape);
     const previewRunId = randomUUID();
     try {
       await ownerTransaction(async (client) => {
@@ -378,7 +395,7 @@ describe('artifact owner lifetime and concurrent cleanup', () => {
     }
   });
   it('refuses an existing artifact in a different active workspace', async () => {
-    const state = await fixture();
+    const state = await fixture(shape);
     const foreignWorkspaceId = randomUUID();
     try {
       await ownerTransaction(async (client) => {

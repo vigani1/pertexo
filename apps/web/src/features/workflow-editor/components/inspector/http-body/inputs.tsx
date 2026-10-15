@@ -1,0 +1,245 @@
+import { useMemo, useState, type ReactNode } from 'react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import type { FileUploadScope } from '@/features/artifacts/public';
+import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
+import type { NodeFormApi } from '../../../model/inspector/node-form';
+import {
+  bodyValue,
+  newFormPart,
+  populatedSource,
+  type FormPartDraft,
+  type HttpBodyDraft,
+  type HttpBodyValue,
+} from '../../../model/inspector/http-body';
+import { useEditorStoreApi } from '../../../model/state/context';
+import { findStep } from '../../../model/graph/scopes';
+import { useHttpBodyDraft } from './use-draft';
+import { MultipartParts } from './parts';
+import { focusFormPart } from './focus';
+
+type Props = Readonly<{
+  node: WorkflowNode;
+  graph: GraphLevel;
+  form: NodeFormApi;
+  fileScope: FileUploadScope | undefined;
+  loopPorts: readonly string[];
+  links: ReactNode;
+  rawInputs: (form: NodeFormApi) => ReactNode;
+}>;
+export function HttpBodyInputs(props: Props) {
+  const value = bodyValue(props.node);
+  if (value === undefined)
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-warning">
+          These form settings cannot be shown without changing them. Review
+          multipart in Setup → Edit as JSON.
+        </p>
+        {props.rawInputs(props.form)}
+      </div>
+    );
+  return <BodyInputs {...props} value={value} />;
+}
+function BodyInputs({
+  node,
+  graph,
+  form,
+  fileScope,
+  loopPorts,
+  links,
+  rawInputs,
+  value,
+}: Props & Readonly<{ value: HttpBodyValue }>) {
+  const draft = useHttpBodyDraft(value, graph, form);
+  const store = useEditorStoreApi();
+  function change(next: HttpBodyDraft, key: string) {
+    draft.change(next, key);
+  }
+  const [rawScratch, setRawScratch] = useState(false);
+  const rawForm = useMemo<NodeFormApi>(
+    () => ({
+      ...form,
+      reportScratch: (field, scratch) => {
+        if (field === 'inputs') setRawScratch(scratch);
+        form.reportScratch(field, scratch);
+      },
+    }),
+    [form],
+  );
+  const [confirmation, setConfirmation] = useState<
+    | Readonly<{
+        signature: string;
+        title: string;
+        description: string;
+        confirmLabel: string;
+        apply: () => void;
+      }>
+    | undefined
+  >();
+  const signature = JSON.stringify(draft.text);
+  const pending =
+    confirmation?.signature === signature ? confirmation : undefined;
+  const parts = draft.text.mode === 'multipart' ? draft.text.parts : [];
+  const bodyAllowed =
+    node.config.method !== 'GET' && node.config.method !== 'HEAD';
+  function request(
+    apply: () => void,
+    destructive: boolean,
+    title: string,
+    description: string,
+    confirmLabel = 'Replace',
+  ) {
+    if (destructive)
+      setConfirmation({ signature, title, description, confirmLabel, apply });
+    else apply();
+  }
+  function mode(next: 'raw' | 'multipart') {
+    if (next === draft.text.mode) return;
+    const nextDraft: HttpBodyDraft =
+      next === 'raw'
+        ? {
+            mode: 'raw',
+            mappings: value.multipart === undefined ? value.inputMappings : {},
+          }
+        : { mode: 'multipart', parts: [newFormPart('text')] };
+    const populated =
+      draft.text.mode === 'raw'
+        ? Object.keys(draft.text.mappings).length > 0
+        : draft.text.parts.length > 0;
+    request(
+      () => {
+        change(nextDraft, `mode:${crypto.randomUUID()}`);
+      },
+      populated,
+      'Replace the current body?',
+      'Switching body type replaces its current mappings and form parts. Cancel keeps them; Undo restores a completed change. Shared files are kept.',
+    );
+  }
+  function changePart(next: FormPartDraft, field: string): string | undefined {
+    if (field === 'upload') {
+      const current = findStep(store.getState().graph, node.id);
+      if (
+        current === undefined ||
+        JSON.stringify(bodyValue(current)) !== JSON.stringify(value)
+      )
+        return 'The form changed while uploading. Review the current part and choose the file again.';
+    }
+    if (draft.text.mode !== 'multipart')
+      return 'The form part is no longer available.';
+    const previous = draft.text.parts.find(
+      (part) => part.inputKey === next.inputKey,
+    );
+    if (previous === undefined) return 'The form part is no longer available.';
+    const changedKind =
+      previous.kind !== next.kind || previous.source.kind !== next.source.kind;
+    request(
+      () => {
+        change(
+          {
+            mode: 'multipart',
+            parts: parts.map((part) =>
+              part.inputKey === next.inputKey ? next : part,
+            ),
+          },
+          field === 'upload' || field === 'kind'
+            ? `${field}:${crypto.randomUUID()}`
+            : `${next.inputKey}:${field}`,
+        );
+      },
+      field !== 'upload' && changedKind && populatedSource(previous.source),
+      'Replace this part’s value?',
+      'The new value source replaces the current value. Cancel keeps it; Undo restores the change.',
+    );
+    return undefined;
+  }
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <ToggleGroup
+          aria-label="Body type"
+          value={[draft.text.mode]}
+          disabled={!form.editable || rawScratch}
+          onValueChange={(values) => {
+            const next = values[0];
+            if (next === 'raw' || next === 'multipart') mode(next);
+          }}
+        >
+          <ToggleGroupItem value="raw">Raw body</ToggleGroupItem>
+          <ToggleGroupItem value="multipart" disabled={!bodyAllowed}>
+            Form parts
+          </ToggleGroupItem>
+        </ToggleGroup>
+        {!bodyAllowed ? (
+          <p className="text-xs text-muted-foreground">
+            GET and HEAD cannot send a body. Choose another method to use form
+            parts.
+          </p>
+        ) : null}
+      </div>
+      {draft.text.mode === 'raw' ? (
+        rawInputs(rawForm)
+      ) : (
+        <>
+          <MultipartParts
+            parts={parts}
+            validation={draft.validation}
+            nodeId={node.id}
+            graph={graph}
+            loopPorts={loopPorts}
+            scope={fileScope}
+            editable={form.editable}
+            targetKey={signature}
+            change={change}
+            onChangePart={changePart}
+            onRemove={(part) => {
+              request(
+                () => {
+                  const index = parts.findIndex(
+                    ({ inputKey }) => inputKey === part.inputKey,
+                  );
+                  change(
+                    {
+                      mode: 'multipart',
+                      parts: parts.filter(
+                        ({ inputKey }) => inputKey !== part.inputKey,
+                      ),
+                    },
+                    `remove:${crypto.randomUUID()}`,
+                  );
+                  focusFormPart(
+                    node.id,
+                    parts[index + 1]?.inputKey ?? parts[index - 1]?.inputKey,
+                  );
+                },
+                populatedSource(part.source),
+                'Remove this form part?',
+                'This removes the part and its mapping. Shared file bytes are kept. Undo restores the part.',
+                'Remove',
+              );
+            }}
+          />
+          {links}
+        </>
+      )}
+      <ConfirmDialog
+        open={pending !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setConfirmation(undefined);
+        }}
+        title={pending?.title ?? 'Replace body'}
+        description={pending?.description}
+        confirmLabel={pending?.confirmLabel ?? 'Replace'}
+        onConfirm={() => {
+          const current = findStep(store.getState().graph, node.id);
+          if (
+            current !== undefined &&
+            JSON.stringify(bodyValue(current)) === JSON.stringify(value)
+          )
+            pending?.apply();
+          setConfirmation(undefined);
+        }}
+      />
+    </div>
+  );
+}

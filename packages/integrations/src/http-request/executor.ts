@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
+  FileInputFailure,
   NodeExecutorFailure,
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
@@ -33,6 +34,7 @@ import {
 } from './validation.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 import { decodeCredential, mergeHeaders } from './request-material.js';
+import { encodeMultipart } from './multipart/encode.js';
 import { readRequestBody, artifactContentType } from './read-body.js';
 
 export class HttpRequestExecutorError extends NodeExecutorFailure {
@@ -97,6 +99,20 @@ function inlineBody(bytes: Uint8Array, preferred: 'base64' | 'utf8') {
   });
 }
 
+function requestHeaders(
+  input: HttpRequestInput,
+  configured: Readonly<Record<string, string>>,
+  credential: Readonly<Record<string, string>>,
+  multipartContentType: string | undefined,
+): Readonly<Record<string, string>> {
+  const headers = mergeHeaders(configured, credential, failedConfiguration);
+  if (multipartContentType === undefined)
+    return artifactContentType(input, headers);
+  if (Object.hasOwn(headers, 'content-type'))
+    throw new FileInputFailure({ reason: 'multipart_content_type' });
+  return { ...headers, 'content-type': multipartContentType };
+}
+
 async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
@@ -127,14 +143,28 @@ async function executeHttpRequest(
   const target = new URL(config.url);
   if (target.protocol !== 'https:') throw failedConfiguration();
   let body: Uint8Array | undefined;
+  let multipartContentType: string | undefined;
   try {
-    body = await readRequestBody(
-      input,
-      config.method,
-      runtime.artifacts,
-      invocation.signal,
-      failedConfiguration,
-    );
+    if (config.multipart !== undefined) {
+      const encoded = await encodeMultipart({
+        config: config.multipart,
+        values: input,
+        artifacts: runtime.artifacts,
+        signal: invocation.signal,
+      });
+      body = encoded.body;
+      multipartContentType = encoded.contentType;
+    } else {
+      if (Object.keys(input).some((key) => key !== 'body'))
+        throw new FileInputFailure({ reason: 'multipart_values' });
+      body = await readRequestBody(
+        input,
+        config.method,
+        runtime.artifacts,
+        invocation.signal,
+        failedConfiguration,
+      );
+    }
   } catch (error) {
     if (runtime.providerDispatchUnresolved === true)
       throw new HttpRequestExecutorError(
@@ -203,20 +233,32 @@ async function executeHttpRequest(
           false,
         ),
     );
+    let headers: Readonly<Record<string, string>>;
+    try {
+      headers = requestHeaders(
+        input,
+        config.headers,
+        credential.headers,
+        multipartContentType,
+      );
+    } catch (error) {
+      if (
+        multipartContentType !== undefined &&
+        runtime.providerDispatchUnresolved === true
+      )
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
+          true,
+        );
+      throw error;
+    }
     let response;
     try {
       response = await dependencies.httpClient.executeStreaming(
         {
           url: config.url,
           method: config.method,
-          headers: artifactContentType(
-            input,
-            mergeHeaders(
-              config.headers,
-              credential.headers,
-              failedConfiguration,
-            ),
-          ),
+          headers,
           ...(body === undefined ? {} : { body }),
           timeoutMillis: config.timeoutMillis,
           maxRedirects: config.maxRedirects,

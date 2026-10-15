@@ -4,6 +4,12 @@ import {
   nodeArtifactReferenceSchema,
 } from '@pertexo/node-sdk';
 
+import {
+  httpMultipartConfigSchema,
+  httpMultipartFileSchema,
+  httpMultipartInputKeySchema,
+  httpMultipartValueSchema,
+} from './multipart/validation.js';
 import { isSerializableHttpHeaderValue } from '../http/header-value.js';
 
 const MAX_URL_BYTES = 2_048;
@@ -176,9 +182,31 @@ export const httpRequestConfigSchema = z
     maxRedirects: z.number().int().min(0).max(5),
     maxResponseBytes: z.number().int().min(1).max(MAX_RESPONSE_BYTES),
     inlineResponseBytes: z.number().int().min(1).max(MAX_INLINE_RESPONSE_BYTES),
+    multipart: httpMultipartConfigSchema.optional(),
   })
   .strict()
   .superRefine((config, context) => {
+    if (
+      config.multipart !== undefined &&
+      (config.method === 'GET' || config.method === 'HEAD')
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['multipart'],
+        message: 'GET and HEAD cannot send a multipart body',
+      });
+    if (
+      config.multipart !== undefined &&
+      Object.keys(config.headers).some(
+        (name) => name.toLowerCase() === 'content-type',
+      )
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['headers'],
+        message:
+          'Multipart generates Content-Type; remove the configured Content-Type header',
+      });
     if (config.inlineResponseBytes > config.maxResponseBytes)
       context.addIssue({
         code: 'custom',
@@ -188,30 +216,35 @@ export const httpRequestConfigSchema = z
   })
   .readonly();
 
+const inlineRequestBodySchema = z
+  .object({
+    encoding: z.enum(['base64', 'utf8']),
+    value: z.string().max(Math.ceil((MAX_REQUEST_BODY_BYTES * 4) / 3) + 4),
+  })
+  .strict()
+  .readonly();
 export const httpRequestInputSchema = z
   .object({
     body: z
-      .union([
-        z
-          .object({
-            encoding: z.enum(['base64', 'utf8']),
-            value: z
-              .string()
-              .max(Math.ceil((MAX_REQUEST_BODY_BYTES * 4) / 3) + 4),
-          })
-          .strict()
-          .readonly(),
-        nodeArtifactReferenceSchema
-          .unwrap()
-          .extend({
-            kind: z.literal('artifact'),
-            byteLength: z.number().int().min(0).max(MAX_REQUEST_BODY_BYTES),
-          })
-          .readonly(),
-      ])
+      .union([inlineRequestBodySchema, httpMultipartFileSchema.readonly()])
       .optional(),
   })
-  .strict()
+  .catchall(z.union([httpMultipartValueSchema, inlineRequestBodySchema]))
+  .superRefine((input, context) => {
+    for (const [key, value] of Object.entries(input)) {
+      if (key === 'body') continue;
+      if (
+        !httpMultipartInputKeySchema.safeParse(key).success ||
+        (typeof value !== 'string' &&
+          (value === undefined || !('kind' in value)))
+      )
+        context.addIssue({
+          code: 'custom',
+          path: [key],
+          message: 'Use a multipart part key with text or a file reference',
+        });
+    }
+  })
   .readonly();
 
 const inlineBodySchema = z
