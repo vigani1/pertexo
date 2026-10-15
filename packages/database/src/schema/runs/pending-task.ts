@@ -24,6 +24,9 @@ export const pendingRunTasks = appSchema.table(
     invocationKey: varchar('invocation_key', { length: 256 }).notNull(),
     kind: varchar({ length: 32 }).notNull(),
     config: jsonb().notNull(),
+    context: jsonb()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     status: varchar({ length: 16 }).notNull().default('pending'),
     outputRef: jsonb('output_ref'),
     decidedBy: uuid('decided_by'),
@@ -65,6 +68,10 @@ export const pendingRunTasks = appSchema.table(
     check(
       'pending_run_tasks_output_bounded',
       sql`output_ref IS NULL OR octet_length(output_ref::text) <= 4194304`,
+    ),
+    check(
+      'pending_run_tasks_context_bounded',
+      sql`jsonb_typeof(context) = 'object' AND octet_length(context::text) <= 73728`,
     ),
     check(
       'pending_run_tasks_expiry_valid',

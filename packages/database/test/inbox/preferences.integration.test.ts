@@ -145,6 +145,16 @@ describe('personal notice preferences and audience fences', () => {
     );
     const fold = observer();
     const read = inbox();
+    await queryAsOwner(
+      'update app.pending_run_tasks set context=$2::jsonb where id=$1',
+      [
+        task.taskId,
+        JSON.stringify({
+          details: { Amount: 120, Customer: 'Captured customer' },
+          prefill: {},
+        }),
+      ],
+    );
     await Promise.all([fold.observeCurrent?.(), observer().observeCurrent?.()]);
     const owner = await read.listThreads({
       ...f.scope,
@@ -163,6 +173,7 @@ describe('personal notice preferences and audience fences', () => {
         noticeKind: 'approval_waiting',
         subjectId: task.taskId,
         occurrenceCount: 1,
+        details: { Amount: 120, Customer: 'Captured customer' },
       },
     ]);
     expect(

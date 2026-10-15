@@ -2,6 +2,7 @@ import type {
   JsonValue,
   ApprovalConfig,
   InputRequestConfig,
+  TaskContext,
   WorkflowCallPin,
   WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
@@ -325,7 +326,10 @@ export interface WorkflowCallOutcome {
   readonly reasonCode?: string;
 }
 
-export type PendingTaskIntent = Readonly<{ invocationKey: string }> &
+export type PendingTaskIntent = Readonly<{
+  invocationKey: string;
+  context?: TaskContext;
+}> &
   (
     | Readonly<{ kind: 'approval'; config: ApprovalConfig }>
     | Readonly<{ kind: 'input_request'; config: InputRequestConfig }>

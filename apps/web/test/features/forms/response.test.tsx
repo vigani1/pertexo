@@ -35,3 +35,35 @@ it('prevents changes and submissions while a response outcome is unresolved', as
   await userEvent.click(screen.getByRole('button', { name: 'Send response' }));
   expect(send).not.toHaveBeenCalled();
 });
+it('initializes typed prefills once without replacing local edits on refetch', async () => {
+  const send = vi.fn().mockResolvedValue(undefined);
+  const { rerender } = render(
+    <FormResponse
+      fields={fields}
+      initialValues={{ amount: 0, ready: false, notes: 'Captured context' }}
+      onSubmit={send}
+    />,
+  );
+  const user = userEvent.setup();
+  expect(screen.getByLabelText('Amount', { exact: true })).toHaveValue(0);
+  expect(screen.getByRole('checkbox', { name: 'Ready' })).not.toBeChecked();
+  const notes = screen.getByLabelText('Notes (optional)', { exact: true });
+  await user.clear(notes);
+  await user.type(notes, 'My correction');
+  rerender(
+    <FormResponse
+      fields={fields}
+      initialValues={{ amount: 99, ready: true, notes: 'New server response' }}
+      onSubmit={send}
+    />,
+  );
+  expect(notes).toHaveValue('My correction');
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  await waitFor(() => {
+    expect(send).toHaveBeenCalledWith({
+      amount: 0,
+      ready: false,
+      notes: 'My correction',
+    });
+  });
+});

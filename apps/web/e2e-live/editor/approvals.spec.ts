@@ -87,6 +87,13 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
             instructions: 'Confirm the request is ready.',
             audience: { roles: [], memberIds: [identity.viewerId] },
           }),
+          inputMappings: {
+            details: {
+              kind: 'node_output',
+              nodeId: 'manual',
+              path: '$.review',
+            },
+          },
         },
         node('approved', 'core.terminate', 520),
         node('rejected', 'core.terminate', 520),
@@ -158,7 +165,9 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       ['rejected', 375],
     ] as const) {
       await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
-      const runId = await startSingleStep(page, {});
+      const runId = await startSingleStep(page, {
+        review: { Amount: 120, Customer: 'Captured customer', Ready: false },
+      });
       await waitForRun(page, workspaceId, runId, 'waiting');
       await expect(
         page.getByText('execution budget paused', { exact: true }),
@@ -170,6 +179,11 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       const task = pendingTaskListResponseSchema.parse(await response.json())
         .items[0];
       if (task === undefined) throw new Error('Approval missing');
+      expect(task.details).toEqual({
+        Amount: 120,
+        Customer: 'Captured customer',
+        Ready: false,
+      });
       const refused = await page.request.post(
         `/v1/workspaces/${workspaceId}/pending-tasks/${task.id}/decide`,
         {
@@ -195,6 +209,9 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
         notices.getByText('Approval waiting', { exact: true }),
       ).toBeVisible();
       await expect(
+        notices.getByText('Captured customer', { exact: true }),
+      ).toBeVisible();
+      await expect(
         notices.getByRole('link', { name: 'Review approval', exact: true }),
       ).toHaveCount(1);
       await notices
@@ -205,6 +222,9 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
           name: 'Review the request',
           exact: true,
         }),
+      ).toBeVisible();
+      await expect(
+        decider.getByText('Captured customer', { exact: true }),
       ).toBeVisible();
       expect(
         await decider.evaluate(

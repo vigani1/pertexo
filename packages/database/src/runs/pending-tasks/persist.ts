@@ -36,8 +36,8 @@ export async function persistTaskIntents(
         ? 'refused'
         : 'pending';
     const inserted = await client.query<{ id: string; expires_at: Date }>(
-      `insert into app.pending_run_tasks(id,workspace_id,run_id,workflow_version_id,node_run_id,invocation_key,kind,config,status,created_at,expires_at,completed_at)
-      select $1,$2,$3,run.workflow_version_id,node.id,$4::varchar,$8::varchar,$5::jsonb,$6::varchar,observed.time,observed.time+make_interval(secs=>$7),case when $6::varchar='pending' then null else observed.time end
+      `insert into app.pending_run_tasks(id,workspace_id,run_id,workflow_version_id,node_run_id,invocation_key,kind,config,status,created_at,expires_at,completed_at,context)
+      select $1,$2,$3,run.workflow_version_id,node.id,$4::varchar,$8::varchar,$5::jsonb,$6::varchar,observed.time,observed.time+make_interval(secs=>$7),case when $6::varchar='pending' then null else observed.time end,$9::jsonb
       from app.workflow_runs run join app.node_runs node on node.workspace_id=run.workspace_id and node.workflow_run_id=run.id
       cross join (select clock_timestamp() time) observed
       where run.workspace_id=$2 and run.id=$3 and node.invocation_key=$4::varchar and node.status='succeeded'
@@ -51,6 +51,7 @@ export async function persistTaskIntents(
         status,
         intent.config.expiresAfterSeconds,
         intent.kind,
+        JSON.stringify(intent.context ?? {}),
       ],
     );
     const row = inserted.rows[0];

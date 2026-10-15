@@ -24,15 +24,17 @@ export type NoticeRow = Readonly<{
   revision: string;
   unread: boolean;
   source_revision: string | null;
+  task_details: unknown;
 }>;
 export const noticeColumns = `thread.id,thread.notice_kind,thread.subject_id,thread.workflow_id,workflow.name workflow_name,connection.name connection_name,workspace.name workspace_name,thread.latest_kind,thread.occurrence_count::text,thread.source_revision,
- to_char(thread.first_occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') first_occurred_at,
+ task.context->'details' task_details,to_char(thread.first_occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') first_occurred_at,
  to_char(thread.latest_occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') latest_occurred_at,
  thread.latest_run_id,thread.revision::text,(seen.read_revision is null or seen.read_revision<thread.revision) unread`;
 export const noticeSource = `from app.workspace_inbox_threads thread
  join app.workspaces workspace on workspace.id=thread.workspace_id
  left join app.workflows workflow on workflow.workspace_id=thread.workspace_id and workflow.id=thread.workflow_id
  left join app.connections connection on connection.workspace_id=thread.workspace_id and connection.id=thread.connection_id
+ left join app.pending_run_tasks task on task.workspace_id=thread.workspace_id and task.id=thread.task_id
  left join app.workspace_inbox_reads seen on seen.workspace_id=thread.workspace_id and seen.thread_id=thread.id and seen.user_id=$2`;
 export async function projectNotices(
   client: PoolClient,
@@ -80,6 +82,10 @@ export async function projectNotices(
             ...common,
             subjectId: row.subject_id,
             workflowId: row.workflow_id,
+            details:
+              row.notice_kind === 'approval_waiting'
+                ? (row.task_details ?? {})
+                : {},
             name:
               row.workflow_name ?? row.connection_name ?? row.workspace_name,
             limits:

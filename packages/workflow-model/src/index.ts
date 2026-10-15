@@ -203,3 +203,9 @@ export {
 } from './variables/contract.js';
 
 export { ianaTimeZoneSchema } from './json/time-zone.js';
+export {
+  taskDetailsSchema,
+  taskContextSchema,
+  parseTaskPrefill,
+  type TaskContext,
+} from './pending-tasks/context.js';

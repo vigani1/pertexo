@@ -31,6 +31,14 @@ comment, then Approve or Reject. One decision wins. If a response is lost, use
 **Retry same decision** to recover that same command rather than sending a new
 choice. A competing decision refreshes the recorded result.
 
+In the step's **Inputs**, map `details` to an object of named facts, for example
+`{"Customer":"Ada","Amount":120,"Ready":false}`. Use earlier step output or a
+normal expression mapping. Up to 20 fields fit in 8 KB; values are text, numbers,
+booleans or null. These facts are captured when the task opens and appear on the
+request and in Inbox. Later workflow edits do not change an open request. Include
+only what the person needs to decide; details are retained run data, visible to
+authorized run readers. They are never included in notification emails.
+
 Expiry defaults to 7 days (168 hours). Setup accepts from 1 hour to 30 days. An
 expired task fails its step with `pending_task.expired`; attach a failure route if
 expiry needs a fallback. Expiry is not a rejection and does not automatically retry

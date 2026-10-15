@@ -75,6 +75,14 @@ test('published member and public forms start real runs; captured member input c
             { id: 'answer', name: 'answer', label: 'Answer', type: 'text' },
           ],
         }),
+        inputMappings: {
+          details: { kind: 'node_output', nodeId: 'form', path: '$.values' },
+          prefill: {
+            kind: 'expression',
+            language: 'jsonata',
+            expression: '{"answer": nodeOutputs.form.values.request_message}',
+          },
+        },
       },
       {
         ...node('finish', 'core.terminate', 520),
@@ -262,9 +270,19 @@ test('published member and public forms start real runs; captured member input c
           exact: true,
         }),
       ).toBeVisible({ timeout: 5000 });
+      await expect(
+        requests.getByText(`${kind} request`, { exact: true }),
+      ).toBeVisible();
       await requests
         .getByRole('link', { name: 'Complete the request', exact: true })
         .click();
+      await expect(page.getByLabel('Answer', { exact: true })).toHaveValue(
+        `${kind} request`,
+      );
+      await page.screenshot({
+        path: `/tmp/pertexo-form-screenshots/${kind}-${String(width)}-request-context.png`,
+        fullPage: true,
+      });
       await page.getByLabel('Answer', { exact: true }).fill(`${kind} answer`);
       await page
         .getByRole('button', { name: 'Send response', exact: true })

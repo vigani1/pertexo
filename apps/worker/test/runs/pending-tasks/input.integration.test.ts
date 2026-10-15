@@ -29,6 +29,14 @@ function graph(handler = false): WorkflowGraph {
       {
         ...node('input', 'core.request_input'),
         config: inputRequestConfigSchema.parse({}),
+        inputMappings: {
+          details: {
+            kind: 'expression',
+            language: 'jsonata',
+            expression: '{"Original message": nodeOutputs.form.values.message}',
+          },
+          prefill: { kind: 'node_output', nodeId: 'form', path: '$.values' },
+        },
       },
       {
         ...node('finish', 'core.terminate'),
@@ -93,6 +101,15 @@ describe.runIf(fixture.enabled)(
           taskId = rows[0]?.id ?? '';
         });
         await workers.restart();
+        const captured = await tasks.read({
+          workspaceId: fixture.workspaceId,
+          taskId,
+          actorId: fixture.actorId,
+        });
+        expect(captured).toMatchObject({
+          details: { 'Original message': 'Original' },
+          prefill: { message: 'Original' },
+        });
         const command = {
           workspaceId: fixture.workspaceId,
           taskId,
@@ -102,6 +119,16 @@ describe.runIf(fixture.enabled)(
         };
         await tasks.submit(command);
         expect((await tasks.submit(command)).replayed).toBe(true);
+        expect(
+          await tasks.read({
+            workspaceId: fixture.workspaceId,
+            taskId,
+            actorId: fixture.actorId,
+          }),
+        ).toMatchObject({
+          details: { 'Original message': 'Original' },
+          prefill: { message: 'Original' },
+        });
         await workers.until(async () => {
           expect(
             await fixture.workerQuery(

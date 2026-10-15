@@ -248,6 +248,32 @@ preserved; the final tree contains the intended moves and shared task owner.
 
 ## Rollout, rollback and later work
 
+### Follow-up: mapped context and prefills (2026-10-15)
+
+Status: implemented; qualification and merge evidence are recorded in its PR.
+
+Request input accepts the same mapped `details` fields and immutable task context
+as Approval (F10 follow-up). It also accepts optional mapped `prefill` values keyed
+by form field name. Validate each supplied value using the existing field rules,
+but allow required fields to be absent: prefills are a starting point, not a
+submission. Reject unknown names or invalid types/options; do not coerce values.
+The existing 64 KiB form-value budget applies, with a 72 KiB conservative JSON
+storage fence for complete context. A bad mapping fails declaration clearly and
+never opens a partial task. Prefills are captured once, remain editable on the
+response page, and never overwrite the responder's unsent edits on refetch.
+Submission still validates every required field against the captured schema.
+
+Use ordinary input mapping controls (`details`, `prefill`), not a second mapping
+language or browser evaluation. FormResponse initializes its local controls from
+the saved prefills once; public/start forms are unaffected. Input-request Inbox
+rows show captured details, with no extra per-row fetch. Tests cover typed zero
+and false, optional omissions, invalid/unknown fields, immutable capture through
+restart, corrected responder values and an unchanged idempotent continuation.
+
+Real member/public starts now qualify mapped details and editable prefills before
+continuing once; independent SQL checks the unchanged captured values after
+submission. Screenshots are in `docs/media/task-context/`.
+
 Matching API/worker readers precede publishing either definition. Disable public
 access before removing ingress; settle/cancel existing input tasks and retain
 compatible history readers before rolling back task support. Existing submitted

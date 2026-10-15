@@ -45,6 +45,16 @@ F09 prefix recovery remains unavailable for these human graphs.
 
 ## Consequences
 
+### Amendment: captured prefills (2026-10-15)
+
+Request input captures mapped details and optional typed prefills when its task
+opens, reusing ADR 076's context column. Prefills use the captured field schema's
+normal validator, except that a required field may be absent until submission.
+Unknown names and invalid supplied values fail declaration. Stored prefills never
+change and do not replace unsent edits when the browser refreshes the task.
+Submission remains a separately validated, one-winner member response. Start forms
+and public capabilities retain their existing behavior.
+
 Forms have one immutable schema and one retained submission, with explicit public
 revocation and safe stale-schema behavior. Input requests reuse durable human
 waiting without another service or task mechanism. Public links are shown once;

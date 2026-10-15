@@ -6,6 +6,8 @@ import {
   formFieldsSchema,
   formSubmissionSchema,
   PENDING_TASK_LIMITS,
+  taskDetailsSchema,
+  taskContextSchema,
 } from '@pertexo/workflow-model';
 
 export const pendingTaskParamsSchema = z
@@ -50,6 +52,7 @@ export const pendingTaskSummarySchema = z
       .max(64),
     kind: z.enum(['approval', 'input_request']),
     title: z.string().max(PENDING_TASK_LIMITS.titleCharacters),
+    details: taskDetailsSchema.default({}),
     status: pendingTaskStatusSchema,
     createdAt: z.iso.datetime(),
     expiresAt: z.iso.datetime(),
@@ -77,6 +80,7 @@ export const pendingTaskDetailSchema = z.discriminatedUnion('kind', [
     .extend({
       kind: z.literal('input_request'),
       fields: formFieldsSchema,
+      prefill: taskContextSchema.shape.prefill.default({}),
       output: formSubmissionSchema.nullable(),
     })
     .strict(),

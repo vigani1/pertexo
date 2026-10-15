@@ -20,6 +20,7 @@ const task = {
   kind: 'approval',
   title: 'Review payment',
   instructions: 'Check the amount before deciding.',
+  details: { Amount: 120, Ready: false, Note: '<b>Plain text</b>' },
   audience: { roles: ['owner', 'admin'], memberIds: [] },
   status: 'pending',
   createdAt: '2026-10-15T08:00:00.000Z',
@@ -76,6 +77,12 @@ for (const width of [1280, 375])
     await expect(
       page.getByRole('heading', { name: 'Review payment', exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByRole('definition').filter({ hasText: '<b>Plain text</b>' }),
+    ).toBeVisible();
+    await expect(
+      page.locator('b').filter({ hasText: 'Plain text' }),
+    ).toHaveCount(0);
     await page
       .getByLabel('Comment (optional)', { exact: true })
       .fill('Ready to send');

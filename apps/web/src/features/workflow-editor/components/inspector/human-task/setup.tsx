@@ -93,6 +93,13 @@ export function HumanFormSetup({
   return (
     <>
       {text}
+      <Notice>
+        In Inputs, map a details object with named text, number or boolean facts
+        (up to 20 fields, 8 KB). They are saved when the request opens.
+        {kind === 'core.request_input'
+          ? ' Map prefill to an object keyed by field name to supply editable starting values.'
+          : ''}
+      </Notice>
       {kind === 'core.request_input' ? (
         <FormFields fields={captured.fields} form={form} />
       ) : null}

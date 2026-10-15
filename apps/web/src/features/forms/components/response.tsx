@@ -18,17 +18,26 @@ export function FormResponse({
   pending = false,
   disabled = false,
   submitLabel = 'Send response',
+  initialValues,
 }: Readonly<{
   fields: readonly FormField[];
   onSubmit: (values: FormValues) => Promise<void>;
   pending?: boolean;
   disabled?: boolean;
   submitLabel?: string;
+  initialValues?: FormValues;
 }>) {
   const id = useId();
   const [draft, setDraft] = useState<
     Readonly<Record<string, string | boolean>>
-  >({});
+  >(() =>
+    Object.fromEntries(
+      Object.entries(initialValues ?? {}).map(([name, value]) => [
+        name,
+        typeof value === 'boolean' ? value : String(value),
+      ]),
+    ),
+  );
   const [errors, setErrors] = useState<
     readonly Readonly<{ name: string; message: string }>[]
   >([]);

@@ -47,6 +47,7 @@ export function InputResponse({
       {task.status === 'pending' ? (
         <FormResponse
           fields={task.fields}
+          initialValues={task.prefill}
           pending={command.pending}
           disabled={!task.canRespond || command.uncertain}
           onSubmit={(values) => command.send({ values })}

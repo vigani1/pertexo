@@ -61,6 +61,14 @@ private state; workspace purge also removes linked pending mail.
 
 ## Consequences
 
+### Amendment: authenticated task context (2026-10-15)
+
+An eligible Approval Inbox notice may display ADR 076's captured bounded detail
+fields. Requested-input rows use the same task projection. This is an explicit
+authenticated read of retained task data, never part of the notice email, stream
+hint, audit or error-workflow summary. Current task eligibility still gates the
+approval notice and its context together.
+
 One inbox, one mail delivery algorithm and the existing worker/transport serve
 these behaviors. No new service, account, role, package or CI job. The additive
 migration preserves populated private reads and matching readers precede writers.

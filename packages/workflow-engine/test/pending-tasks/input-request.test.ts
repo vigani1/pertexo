@@ -16,7 +16,10 @@ import {
 } from '../../src/index.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { completion } from '../compilation/calls/fixtures.js';
-async function waitingRequest() {
+async function waitingRequest(context?: {
+  details: Record<string, string>;
+  prefill: Record<string, string>;
+}) {
   const base = graph();
   const workflow: WorkflowGraph = {
     ...base,
@@ -56,7 +59,10 @@ async function waitingRequest() {
   const declared = await advance(initial.checkpoint, completion(initial));
   const waiting = await advance(
     declared.checkpoint,
-    completion(declared, { pending: true }),
+    completion(declared, {
+      pending: true,
+      ...(context === undefined ? {} : { context }),
+    }),
   );
   const owner = waiting.checkpoint.invocations.find(
     (owner) => owner.waitKind === 'human_task',
@@ -96,6 +102,18 @@ it('refuses approval decisions as evidence for an input response', async () => {
       taskOutcomes: [{ ...fact, status: 'approved' }],
     }),
   ).rejects.toThrow(/kind conflicts/u);
+});
+it('carries the declaration context once, without reevaluating it after restart', async () => {
+  const context = {
+    details: { Customer: 'Captured customer' },
+    prefill: { message: 'Draft response' },
+  };
+  const { advance, waiting } = await waitingRequest(context);
+  expect(waiting.taskIntents?.[0]?.context).toEqual(context);
+  const restarted = await advance(
+    parseCheckpoint(JSON.parse(JSON.stringify(waiting.checkpoint))),
+  );
+  expect(restarted.taskIntents).toBeUndefined();
 });
 it('expires as a definite human-task failure rather than retrying the declaration', async () => {
   const { advance, waiting, fact } = await waitingRequest();

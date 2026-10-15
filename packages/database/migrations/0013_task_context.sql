@@ -1,0 +1,2 @@
+ALTER TABLE "app"."pending_run_tasks" ADD COLUMN "context" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "app"."pending_run_tasks" ADD CONSTRAINT "pending_run_tasks_context_bounded" CHECK (jsonb_typeof(context) = 'object' AND octet_length(context::text) <= 73728);
