@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { workflowDraftResponseSchema } from '@pertexo/contracts';
+import { httpMultipartConfigSchema } from '@pertexo/integrations';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   addCsrfCookie,
@@ -48,7 +49,7 @@ function httpDraft(maxResponseBytes = 1_048_576) {
   });
 }
 
-function savedConfig(remote: RemoteDraft) {
+function savedHttpNode(remote: RemoteDraft) {
   const draft = workflowDraftResponseSchema.parse({
     workflowId,
     revision: remote.revision,
@@ -62,7 +63,11 @@ function savedConfig(remote: RemoteDraft) {
   });
   const node = draft.graph.nodes.find(({ id }) => id === 'http');
   if (node === undefined) throw new Error('HTTP step must remain in the draft');
-  return node.config;
+  return node;
+}
+
+function savedConfig(remote: RemoteDraft) {
+  return savedHttpNode(remote).config;
 }
 
 async function openSetup(page: Page, width: number) {
@@ -211,5 +216,133 @@ for (const width of [390, 1280]) {
     ).toHaveCount(0);
     expect(savedConfig(remote).maxResponseBytes).toBe(1_048_577);
     expect(remote.revision).toBe(1);
+  });
+}
+
+for (const width of [375, 1280]) {
+  test(`keeps multipart values stable through reorder, cancel, undo and reload at ${String(width)}px`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await addCsrfCookie(context);
+    const remote = httpDraft();
+    const initial = savedHttpNode(remote);
+    remote.graph = {
+      ...remote.graph,
+      nodes: [
+        {
+          ...initial,
+          config: { ...initial.config, method: 'POST' },
+          inputMappings: {
+            body: {
+              kind: 'literal',
+              value: { encoding: 'utf8', value: 'original' },
+            },
+          },
+        },
+      ],
+    };
+    await installHttp(page, remote);
+    await page.goto(editorUrl);
+    await openSetup(page, width);
+    await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
+    await page.getByRole('button', { name: 'Form parts', exact: true }).click();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    expect(savedHttpNode(remote).inputMappings).toHaveProperty('body');
+    await page.getByRole('button', { name: 'Form parts', exact: true }).click();
+    await page.getByRole('button', { name: 'Replace', exact: true }).click();
+    const first = page.getByRole('group', { name: /^Part 1:/u });
+    await first.getByLabel('Field name', { exact: true }).fill('title');
+    await first.getByLabel('Value', { exact: true }).fill('first');
+    await page
+      .getByRole('button', { name: 'Add text part', exact: true })
+      .click();
+    const second = page.getByRole('group', { name: /^Part 2:/u });
+    await second.getByLabel('Field name', { exact: true }).fill('title');
+    await second.getByLabel('Value', { exact: true }).fill('second');
+    await expect
+      .poll(() => JSON.stringify(savedHttpNode(remote).inputMappings))
+      .toContain('second');
+    const before = structuredClone(savedHttpNode(remote));
+    const originalParts = httpMultipartConfigSchema.parse(
+      before.config.multipart,
+    ).parts;
+    const reorderedParts = [originalParts[1], originalParts[0]];
+    const readParts = () =>
+      httpMultipartConfigSchema.parse(savedConfig(remote).multipart).parts;
+    await second
+      .getByRole('button', { name: 'Move part up', exact: true })
+      .press('Enter');
+    await expect(first.getByLabel('Value', { exact: true })).toHaveValue(
+      'second',
+    );
+    await expect(first.getByLabel('Field name', { exact: true })).toBeFocused();
+    await expect.poll(readParts).toEqual(reorderedParts);
+    await page.getByRole('tab', { name: 'Inputs', exact: true }).focus();
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect.poll(readParts).toEqual(originalParts);
+    await page.getByRole('tab', { name: 'Inputs', exact: true }).focus();
+    await page.keyboard.press('ControlOrMeta+Shift+z');
+    await expect(first.getByLabel('Value', { exact: true })).toHaveValue(
+      'second',
+    );
+    await expect.poll(readParts).toEqual(reorderedParts);
+    const secondKey = Object.entries(before.inputMappings).find(
+      ([, value]) => value.kind === 'literal' && value.value === 'second',
+    )?.[0];
+    if (secondKey === undefined) throw new Error('Second value missing');
+    await expect
+      .poll(() => savedHttpNode(remote).inputMappings[secondKey])
+      .toEqual({ kind: 'literal', value: 'second' });
+    await page.getByRole('button', { name: 'Raw body', exact: true }).click();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(first.getByLabel('Value', { exact: true })).toHaveValue(
+      'second',
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.reload();
+    await openSetup(page, width);
+    await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
+    await expect(first.getByLabel('Value', { exact: true })).toHaveValue(
+      'second',
+    );
+    await first
+      .getByRole('button', { name: 'Remove part', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
+    await expect(first.getByLabel('Value', { exact: true })).toHaveValue(
+      'first',
+    );
+    await expect(
+      first.getByRole('button', { name: 'Remove part', exact: true }),
+    ).toBeDisabled();
+    await first.getByLabel('Field name', { exact: true }).fill('');
+    await expect(
+      page.getByRole('button', { name: 'Publish v1', exact: true }),
+    ).toBeDisabled();
+    await expect(
+      first.getByText(
+        'Use a field name up to 128 UTF-8 bytes without control characters.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    expect(
+      httpMultipartConfigSchema
+        .parse(savedConfig(remote).multipart)
+        .parts.every(({ name }) => name === 'title'),
+    ).toBe(true);
+    await first.getByLabel('Field name', { exact: true }).fill('restored');
+    await expect
+      .poll(() =>
+        httpMultipartConfigSchema
+          .parse(savedConfig(remote).multipart)
+          .parts.map(({ name }) => name),
+      )
+      .toEqual(['restored']);
   });
 }

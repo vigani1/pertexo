@@ -548,11 +548,20 @@ cryptographic-boundary and header-parameter escaping fixes. The extra dependency
 is justified: native FormData cannot assign an independent Content-Type to a
 text part while keeping an omitted filename, and handwritten MIME framing would
 own security-sensitive quoting/boundaries unnecessarily. Lock its transitive
-dependencies and run the existing audit. Do not use its `submit`/network/stream
+dependencies and run the existing audit. Do not use its `submit` or network
 APIs; the sole outgoing path remains the existing secure byte-body HTTP client.
 
+**Owner-approved encoder adjustment, 2026-10-15.** The library's `getBuffer()`
+repeatedly concatenates the accumulated form: a measured 64-part, 1 MiB body
+allocated about 200 MB cumulatively. Instead, pipe the Buffer-only encoder into
+one preallocated, exact-length buffer through its public API, with cancellation,
+length checks and zeroing on failure. The prototype preserved all 64 parts and
+exact file bytes with about 2 MB of array-buffer growth. This replaces the
+no-stream-API restriction solely for bounded in-memory assembly; it introduces
+no streaming file reads, larger bodies or alternative network transport.
+
 Cheap preflight checks sum actual UTF-8 text lengths and declared file lengths,
-counting a repeated file for every occurrence. If that lower bound exceeds 1 MiB,
+counting a repeated file for every occurrence. If that lower bound reaches 1 MiB,
 stop before storage reads. Read each file sequentially through the existing
 scoped reader, match/verify it and check cancellation. Retain at most the bounded
 aggregate, not 64 separate 1 MiB allocations or concurrent reads. No file-read
@@ -689,7 +698,7 @@ choice outside this plan returns to the owner for review.
 
 - [x] Reconcile code seams, constraints and dependency/protocol sources.
 - [x] Owner accepts this follow-up and ADR 075 amendment (2026-10-15).
-- [ ] Part 1 merged green; default-on CSV pipeline, diagnostics, visible limits and automatic retry qualified.
+- [x] Part 1 merged green in [#296](https://github.com/vigani1/pertexo/pull/296); default-on CSV pipeline, diagnostics, visible limits and automatic retry qualified.
 - [ ] Part 2 merged green; exact multipart bytes and editor journeys qualified.
 - [ ] Part 3 examples/tracker/roadmap merged; natural main evidence recorded.
 
@@ -709,7 +718,7 @@ bounded numeric coordinates; the worker formats them into the existing attempt
 summary. The authorized run read exposes only this diagnostic code. Completion
 replay compares the persisted summary; no recovery eligibility changed.
 
-Local evidence before PR review (merge remains unchecked above):
+Local evidence, confirmed by green CI and merge of PR #296:
 
 - Core: 199 tests pass, including exact 1 MiB JSON, UTF-8/BOM, all delimiters,
   quoted multiline cells, malformed quoting/width/headers, conservative conversion,
@@ -754,3 +763,71 @@ longer timeouts. The production key/storage configuration is unchanged.
   and [parameter-escaping advisory](https://github.com/form-data/form-data/security/advisories/GHSA-hmw2-7cc7-3qxx).
   Registry metadata checked read-only for csv-parse 7.0.3 and form-data 4.0.6;
   this planning PR installs neither dependency.
+
+
+### Part 2 implementation and local qualification — 2026-10-15
+
+Multipart uses one optional HTTP config and stable ordinary input mappings.
+The browser shares the reviewed integrations-root schemas; the existing source
+entry walker now also checks that root for Node dependencies. The encoder stays
+on the Node-only executor path and the secure HTTP client remains the sole
+transport. CSV/Read file and F09 rules are unchanged.
+
+The owner-approved collector uses public `pipe()` and `finished()` with a bounded
+Writable: `pipeline()` cannot observe the legacy CombinedStream lifecycle.
+Every input is an already verified Buffer; cancellation/errors destroy the
+encoder and collector, failed output and owned part buffers are cleared, and
+exact encoded length is checked before dispatch. No private library fields,
+handwritten MIME framing or provider-network helper is used.
+
+Local evidence before PR review (Part 2 merge remains unchecked above):
+
+- Forty focused multipart cases pass, covering metadata/type/key validation,
+  duplicate-name order, Unicode/newline text, exact empty/binary bytes, filenames,
+  boundary collision regeneration, lower-bound refusal before reads, full 1 MiB
+  wire body and one byte over, cancellation, incomplete/failed assembly,
+  credential Content-Type conflict and prior unresolved dispatch. Actual secure
+  client dispatch preserves unknown outcomes for 5xx and post-dispatch network
+  loss and releases owned request bytes.
+- The maximum 64-part wire body has 9,288 framing bytes in the measured fixture;
+  assembly plus independent verification took about 3–4 ms locally. Observed
+  array-buffer growth before parsing was 2,096,324 bytes; GC can lower this
+  observation in other runs. The earlier `getBuffer()` experiment allocated
+  200,453,960 bytes cumulatively, justifying the approved collector.
+- Seven real browser journeys pass against the attested isolated API/worker/
+  PostgreSQL/Redis and cached RustFS with real signatures. The multipart journey
+  edits, uploads, keyboard-reorders, cancels replacement, undoes/redoes, saves,
+  reloads, publishes and runs at desktop/375px widths. The independent destination
+  uses dev-only `@fastify/busboy` 3.2.3 to parse ordered repeated names, exact UTF-8/newline text, file metadata/hashes,
+  binary/empty files, run-input and prior-response files, closing delimiter and
+  total wire length. Its request hashes also confirm prior effects execute once.
+- Changed-scope React Doctor includes all 13 changed frontend source files and
+  reports 100/100 without suppressions. The form's existing scratch callbacks own
+  edits; no effect mirrors live field validity into parent state. Part metadata
+  and value controls compose the existing mapping/upload primitives. Locally
+  inspected screenshots are in `docs/images/f04/multipart-*.png`.
+
+The independent owned receiver pins dev-only `@fastify/busboy` 3.2.3 (MIT),
+following Node/Undici's recommendation against server-side `Request.formData()`.
+It hashes bounded raw part streams in arrival order, retaining repeated names
+and exact bytes; production uploads still use form-data only for encoding.
+The parser includes the boundary-length and CR/LF fixes documented in
+[GHSA-xjh9-v7x6-24jw](https://github.com/fastify/busboy/security/advisories/GHSA-xjh9-v7x6-24jw)
+and [GHSA-gxm5-99cw-xjw9](https://github.com/fastify/busboy/security/advisories/GHSA-gxm5-99cw-xjw9).
+This is test-fixture parsing, not a webhook ingestion path or production parser.
+
+- The 16 database lifetime integration cases pass for literal and multipart
+  mapping shapes, including retained drafts/versions/input cases, both cleanup
+  race winners, preview refusal, workspace isolation and tampered metadata.
+- Natural main CI [38669520160](https://github.com/vigani1/pertexo/actions/runs/38669520160)
+  passed after rerunning its failed service job. Its initial failure exposed an
+  existing fixture race: the live coordinator's deadline scanner can claim the
+  same wakeup before the test's explicit scanner. Qualification now stops the
+  owned child before expiring that run and asserting scanner ownership, then
+  restarts through the existing recovery path. No production scheduling changed.
+- Production dependency audit is clean. An additional all-dependencies audit
+  reports the pre-existing dev-only `knip → fast-glob → micromatch → braces`
+  advisory GHSA-vfj7-8cjw-p6xm. The configured registry still publishes 3.0.3 as
+  latest; an attempted scoped lockfile update cannot select the advisory's
+  not-yet-published 3.0.4. No vulnerable dependency was introduced by this slice;
+  a maintained tooling update remains follow-up work.

@@ -39,7 +39,8 @@ export default tseslint.config(
                 'Browser-only app. Add a reviewed browser-safe public contract subpath explicitly when wiring the API; never import backend runtime code.',
             },
             {
-              regex: '^@pertexo/(?!(?:contracts|workflow-model|templates)$).+',
+              regex:
+                '^@pertexo/(?!(?:contracts|workflow-model|templates|integrations)$).+',
               message:
                 'Import only an explicitly reviewed browser-safe contract schema subpath.',
             },

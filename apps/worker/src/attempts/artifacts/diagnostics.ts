@@ -7,6 +7,16 @@ export function describeFileInputFailure(
   diagnostic: FileInputDiagnostic,
 ): string {
   switch (diagnostic.reason) {
+    case 'multipart_size':
+      return 'The multipart request exceeds 1 MB including form headers. A full 1 MB file cannot fit. Use a smaller file or split it into separate uploads accepted by the destination.';
+    case 'multipart_values':
+      return 'Multipart inputs do not match the parts. Give each text part a text value and each file part a file reference; remove unused inputs or the raw body.';
+    case 'multipart_content_type':
+      return 'Multipart generates its own Content-Type and boundary. Remove Content-Type from the step headers or its connection before running again.';
+    case 'multipart_encoding':
+      return 'The multipart request could not be assembled. Start a new run; no request was sent.';
+    case 'multipart_boundary':
+      return 'A multipart boundary could not be generated safely. Start a new run.';
     case 'file_size':
       return `The file exceeds 1 MB. ${split}`;
     case 'value_size':

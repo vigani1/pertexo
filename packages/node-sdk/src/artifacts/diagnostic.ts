@@ -14,6 +14,11 @@ export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
         'file_unavailable',
         'file_integrity',
         'csv_empty',
+        'multipart_size',
+        'multipart_values',
+        'multipart_content_type',
+        'multipart_boundary',
+        'multipart_encoding',
       ]),
     })
     .strict(),

@@ -1,3 +1,4 @@
+import { observeMultipart } from './multipart-observation.js';
 import { createHash } from 'node:crypto';
 import { createServer, request } from 'node:http';
 import type { Socket } from 'node:net';
@@ -33,6 +34,10 @@ export async function createArtifactDestination(
         return;
       }
       const hash = createHash('sha256');
+      const multipart =
+        incoming.headers['content-type']?.startsWith('multipart/form-data;') ===
+        true;
+      const chunks: Buffer[] = [];
       let byteLength = 0;
       for await (const value of incoming) {
         const chunk: unknown = value;
@@ -42,6 +47,7 @@ export async function createArtifactDestination(
         if (byteLength > 1048576)
           throw new Error('Destination byte limit exceeded');
         hash.update(chunk);
+        if (multipart) chunks.push(Buffer.from(chunk));
       }
       observations.push({
         byteLength,
@@ -49,7 +55,15 @@ export async function createArtifactDestination(
         mediaType: incoming.headers['content-type'],
       });
       onEffect();
-      outgoing.writeHead(200, { 'content-type': 'application/json' }).end('{}');
+      const response = multipart
+        ? await observeMultipart(
+            Buffer.concat(chunks),
+            incoming.headers['content-type'] ?? '',
+          )
+        : {};
+      outgoing
+        .writeHead(200, { 'content-type': 'application/json' })
+        .end(JSON.stringify(response));
     })().catch(() => {
       if (!outgoing.destroyed) outgoing.writeHead(400).end();
     });

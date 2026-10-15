@@ -92,6 +92,11 @@ first release's filename rule. It is not added to the artifact descriptor and
 must not be copied automatically from the user's local filename. Signed URLs,
 boundaries, file bytes and browser File objects remain transient. Use a patched,
 pinned encoder solely to construct bounded bytes; it never sends a request.
+The owner approved a bounded collector on 2026-10-15: use the encoder's public
+pipe API into one preallocated, exact-length buffer rather than its repeated
+`getBuffer()` concatenations. The measured 64-part maximum dropped from about
+200 MB of cumulative copies to about 2 MB of array-buffer growth. This is
+in-memory assembly within the existing limit, not larger-file streaming.
 
 Files outside explicit Read file remain opaque. There is still no malware scan
 or MIME safety guarantee, and downloads remain attachments. Existing ownership,
