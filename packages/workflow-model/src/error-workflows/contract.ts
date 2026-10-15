@@ -1,4 +1,26 @@
 import { z } from 'zod';
+import { workflowFailureClassificationSchema } from '../failure-routing/failure-value.js';
+
+const failedStepSchema = z
+  .object({
+    id: z.string().min(1).max(256),
+    name: z.string().min(1).max(256).nullable().default(null),
+    nodeType: z.string().min(1).max(256).nullable().default(null),
+    errorKind: workflowFailureClassificationSchema.shape.errorKind
+      .nullable()
+      .default(null),
+    safeErrorCode: z.string().max(128).nullable().default(null),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      (value.errorKind === null && value.safeErrorCode === null) ||
+      workflowFailureClassificationSchema.safeParse({
+        errorKind: value.errorKind,
+        safeErrorCode: value.safeErrorCode,
+      }).success,
+    'Use an approved failure classification.',
+  );
 
 /** Application-owned metadata only; provider messages never enter this input. */
 export const workflowErrorInputSchema = z
@@ -13,10 +35,7 @@ export const workflowErrorInputSchema = z
         status: z.enum(['failed', 'timed_out', 'outcome_unknown']),
       })
       .strict(),
-    failedStep: z
-      .object({ id: z.string().min(1).max(256) })
-      .strict()
-      .nullable(),
+    failedStep: failedStepSchema.nullable(),
     error: z.discriminatedUnion('code', [
       z
         .object({

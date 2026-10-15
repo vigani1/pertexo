@@ -15,6 +15,7 @@ export {
 export {
   isRoutableExecutorFailure,
   workflowNodeFailureValueSchema,
+  workflowFailureClassificationSchema,
   type WorkflowNodeFailureValue,
 } from './failure-routing/failure-value.js';
 export {

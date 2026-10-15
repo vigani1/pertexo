@@ -47,11 +47,37 @@ export function createErrorWorkflowStore(
               input.payloadChecksum
           )
             throw new ErrorWorkflowDeliveryMismatchError();
-          await acceptErrorWorkflow(client, input, prepare);
-          await client.query(
-            `insert into app.inbox_receipts(consumer_name,message_id,workspace_id,payload_checksum,completed_at) values('error-workflow',$1,$2,$3,clock_timestamp()) on conflict(consumer_name,message_id) do nothing`,
+          // The unique receipt serializes duplicates before the intent can change delivery.
+          await client.query('select app.lock_workspace_run_admission($1)', [
+            input.workspaceId,
+          ]);
+          const claimed = await client.query(
+            `insert into app.inbox_receipts(consumer_name,message_id,workspace_id,payload_checksum) values('error-workflow',$1,$2,$3) on conflict(consumer_name,message_id) do nothing returning message_id`,
             [input.outboxEventId, input.workspaceId, input.payloadChecksum],
           );
+          if (claimed.rowCount !== 1) {
+            const completed = await client.query<{
+              payload_checksum: string;
+              completed_at: Date | null;
+            }>(
+              `select payload_checksum,completed_at from app.inbox_receipts where workspace_id=$1 and consumer_name='error-workflow' and message_id=$2 for update`,
+              [input.workspaceId, input.outboxEventId],
+            );
+            const receipt = completed.rows[0];
+            if (
+              receipt?.payload_checksum !== input.payloadChecksum ||
+              receipt.completed_at === null
+            )
+              throw new ErrorWorkflowDeliveryMismatchError();
+            return;
+          }
+          await acceptErrorWorkflow(client, input, prepare);
+          const completed = await client.query(
+            `update app.inbox_receipts set completed_at=clock_timestamp() where consumer_name='error-workflow' and message_id=$1 and workspace_id=$2 and payload_checksum=$3 and completed_at is null`,
+            [input.outboxEventId, input.workspaceId, input.payloadChecksum],
+          );
+          if (completed.rowCount !== 1)
+            throw new ErrorWorkflowDeliveryMismatchError();
         },
         { signal: input.signal },
       );

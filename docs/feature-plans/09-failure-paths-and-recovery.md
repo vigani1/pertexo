@@ -1250,6 +1250,55 @@ The broader graph boundary is not relaxed by the new manual target decision.
 
 ## Follow-up — error workflows (owner request 2026-10-15)
 
+### Safe step facts and queue waiting (2026-10-15)
+
+Status: implemented and locally qualified for the second follow-up PR, after #305.
+
+Keep the existing terminal `error.code` and fixed description. Add the selected
+failed step's `name`, `nodeType`, `errorKind` and `safeErrorCode`. Name comes from
+the immutable version's label, falling back to its step ID; nodeType is the
+definition key, including for nested steps. Kind/code must match F09's existing
+exact executor/human-task classification allowlist. Extract that classification
+schema beside the existing failure-value schema so these readers share one rule.
+Unclassified or run-level failures keep the generic error and nullable step
+classification; syntax alone never makes a stored code safe. Old retained
+summaries default missing new fields to null. Select only graph metadata and
+fixed failure classifications, never inputs, outputs, diagnostics or provider text.
+The shared metadata query walks only declared nodes and structured bodies;
+configuration/mapping objects that resemble a step are never metadata.
+
+On the first full-queue response, save a fixed `queue_wait_expires_at` on the
+existing intent, using database time plus 15 minutes. Keep status pending and
+retry every 30 seconds through the existing outbox, capping the last delay at
+that deadline. Never extend the window after restart or redelivery. A nullable
+deadline distinguishes normal initial delivery from a capacity wait. After it
+expires, record the existing visible `queue_full` refusal; current unavailable
+target/workspace refusals still apply. Show the waiting deadline in run detail.
+No new queue, scanner, service, role or setting.
+
+Each deferral creates a new ordinary outbox identity, updates the intent's current
+delivery and completes the previous transport receipt in one transaction under
+the workspace admission fence. Claim the unique transport receipt before
+locking the intent; a conflicting completed receipt makes duplicate old
+deliveries succeed harmlessly, even after the current outbox ID changes.
+Admission identity remains bound to source run, captured publication and summary,
+not the changing transport ID. Capacity becoming free starts exactly one run of
+that captured version. The original failure and its notices remain recorded.
+
+Qualification: real PostgreSQL full/free/expired queue cases, duplicate old/new
+delivery races, restart, foreign workspace and purge; real worker/outbox/BullMQ
+continuation after capacity frees; sanitized step names/type/kind/code through
+the error trigger; unknown/provider-bearing codes refused by the shared schema;
+run-detail pending/refused feedback at desktop and phone widths. Required local
+checks and existing CI jobs precede rebase merge.
+
+Local evidence: full checks, 9,192 units plus native checks, final 561 database
+units, 35 PostgreSQL metadata/admission/Inbox/upgrade cases, 3 real transport
+worker cases, 178 mocked browser cases plus final desktop/phone views, and the
+real browser/API/worker error-workflow journey. React Doctor is 100/100 without
+suppressions. The metadata cases include nested steps and configuration/mapping
+decoys. Existing CI and rebase merge remain the release gate.
+
 Status: implementation authorized. This extends F09; it does not reopen the
 existing failure-route or recovery decisions. F04 is delivered through PR #299.
 The owner authorizes recommended internal design choices without a plan-approval

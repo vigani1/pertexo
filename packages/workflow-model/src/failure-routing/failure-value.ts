@@ -24,11 +24,8 @@ export function isRoutableExecutorFailure(
       value.errorKind === kind && value.safeErrorCode === `execution.${kind}`,
   );
 }
-export const workflowNodeFailureValueSchema = z
+export const workflowFailureClassificationSchema = z
   .object({
-    nodeId: z.string().min(1),
-    invocationKey: z.string().min(1),
-    attemptNumber: z.number().int().positive(),
     errorKind: z.enum([...routableKinds, 'human_task']),
     safeErrorCode: z.string(),
   })
@@ -40,6 +37,12 @@ export const workflowNodeFailureValueSchema = z
         pendingTaskFailureCodes.some((code) => code === value.safeErrorCode)),
     'Failure code must match its approved executor classification.',
   );
+export const workflowNodeFailureValueSchema =
+  workflowFailureClassificationSchema.safeExtend({
+    nodeId: z.string().min(1),
+    invocationKey: z.string().min(1),
+    attemptNumber: z.number().int().positive(),
+  });
 export type WorkflowNodeFailureValue = z.output<
   typeof workflowNodeFailureValueSchema
 >;

@@ -4,6 +4,20 @@ import {
 } from '@pertexo/workflow-model';
 import type { RunTransitionPlan } from '../advance/plan.js';
 
+export function errorWorkflowFailure(plan: RunTransitionPlan) {
+  const status = plan.checkpoint.runStatus;
+  const failures = plan.checkpoint.invocations.filter(
+    (invocation) =>
+      invocation.status === status &&
+      invocation.failureHandling?.disposition !== 'handled',
+  );
+  // A failed handler explains settlement ahead of the source it could not handle.
+  return (
+    failures.find((invocation) => invocation.failureHandling === undefined) ??
+    failures[0]
+  );
+}
+
 /** Deliberately never accepts an executor error message or run values. */
 export function errorWorkflowInput(
   input: Readonly<{
@@ -13,18 +27,11 @@ export function errorWorkflowInput(
     workflowVersionId: string;
     runId: string;
     plan: RunTransitionPlan;
+    step?: Omit<NonNullable<WorkflowErrorInput['failedStep']>, 'id'>;
   }>,
 ): WorkflowErrorInput {
   const status = input.plan.checkpoint.runStatus;
-  const failures = input.plan.checkpoint.invocations.filter(
-    (invocation) =>
-      invocation.status === status &&
-      invocation.failureHandling?.disposition !== 'handled',
-  );
-  // A failed handler explains settlement ahead of the source it could not handle.
-  const failed =
-    failures.find((invocation) => invocation.failureHandling === undefined) ??
-    failures[0];
+  const failed = errorWorkflowFailure(input.plan);
   const error =
     status === 'outcome_unknown'
       ? {
@@ -49,7 +56,8 @@ export function errorWorkflowInput(
       url: `/w/${input.workspaceId}/runs/${input.runId}`,
       status,
     },
-    failedStep: failed === undefined ? null : { id: failed.nodeId },
+    failedStep:
+      failed === undefined ? null : { id: failed.nodeId, ...input.step },
     error,
   });
 }

@@ -2,7 +2,8 @@ import type { PoolClient } from 'pg';
 import type { RunTransitionPlan } from '../advance/plan.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
-import { errorWorkflowInput } from './summary.js';
+import { errorWorkflowInput, errorWorkflowFailure } from './summary.js';
+import { readErrorWorkflowStep } from './step.js';
 
 /** The terminal transition and its unique intent/outbox either all commit or none do. */
 export async function persistErrorWorkflowIntent(
@@ -41,9 +42,19 @@ export async function persistErrorWorkflowIntent(
   const row = policy.rows[0];
   if (row === undefined) return;
   const outboxEventId = generatePersistedId();
+  const failed = errorWorkflowFailure(input.plan);
   const context = errorWorkflowInput({
     ...input,
     workflowName: row.workflow_name,
+    ...(failed === undefined
+      ? {}
+      : {
+          step: await readErrorWorkflowStep(client, {
+            ...input,
+            invocationKey: failed.invocationKey,
+            nodeId: failed.nodeId,
+          }),
+        }),
   });
   const inserted = await client.query(
     `insert into app.run_error_workflow_intents(workspace_id,source_run_id,target_workflow_id,target_version_id,context,outbox_event_id) values($1,$2,$3,$4,$5::jsonb,$6) on conflict(workspace_id,source_run_id) do nothing`,
