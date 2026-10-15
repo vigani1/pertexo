@@ -84,3 +84,13 @@ entire run families indefinitely.
 The plan defines delivery slices and evidence. The owner accepted the plan and
 this ADR; the reset follow-up precedes slice 1 pruning. No F08 runtime code or
 checkpoint pruning accompanies this decision commit.
+
+## 2026-10-15: human-wait execution clocks
+
+[ADR 076](076-durable-human-tasks.md) distinguishes the inherited absolute
+wall deadline from a run's pausable execution budget. Absolute deadlines never
+extend. Human quiescence pauses the execution budgets of accepted descendants;
+unstarted sibling Calls retain their remaining recorded budget across the same
+parent pause. An already expired Call is never revived, and retry still cannot
+reset a deadline. Target/version/input identity and ordinary Call handoff remain
+unchanged.

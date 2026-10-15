@@ -7,7 +7,7 @@ import {
 } from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { ROLES } from '../../tenant-access/policy.js';
-import { lockWorkflowAuthoringAuthority } from '../../tenant-access/workspaces/authority.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import {
   mapWorkflow,

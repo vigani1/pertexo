@@ -36,8 +36,11 @@ export function inspectWorkflowDecisionTree(
       excludedControls.has(node.definition.key) ||
       node.forEach !== undefined ||
       node.structured !== undefined ||
-      (node.definition.key === 'core.condition' && node.disabled === true) ||
-      (['core.condition', 'core.terminate'].includes(node.definition.key) &&
+      (['core.condition', 'core.approval'].includes(node.definition.key) &&
+        node.disabled === true) ||
+      (['core.condition', 'core.approval', 'core.terminate'].includes(
+        node.definition.key,
+      ) &&
         node.definition.version !== 1)
     )
       return undefined;
@@ -55,9 +58,13 @@ export function inspectWorkflowDecisionTree(
       return undefined;
     incoming.add(edge.target.nodeId);
     const siblings = outgoing.get(source.id) ?? [];
-    if (source.definition.key === 'core.condition') {
+    if (['core.condition', 'core.approval'].includes(source.definition.key)) {
+      const ports =
+        source.definition.key === 'core.approval'
+          ? ['approved', 'rejected']
+          : ['true', 'false'];
       if (
-        !['true', 'false'].includes(edge.source.port) ||
+        !ports.includes(edge.source.port) ||
         siblings.some((sibling) => sibling.source.port === edge.source.port)
       )
         return undefined;

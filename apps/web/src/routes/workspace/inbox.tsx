@@ -1,3 +1,4 @@
+import { PendingApprovals } from '@/features/approvals/public';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { InboxPage } from '@/features/inbox/inbox-page.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
@@ -16,6 +17,12 @@ export function InboxRoute() {
       onFilterChange={(filter) =>
         void navigate({ search: filter === 'unread' ? { filter } : {} })
       }
-    />
+    >
+      {workspace.capabilities.includes('run:read') ? (
+        <PendingApprovals
+          scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
+        />
+      ) : null}
+    </InboxPage>
   );
 }

@@ -104,6 +104,7 @@ export async function recoverWorkflowRunInTransaction(
       replayCommandId: generatePersistedId(),
       replaySourceRunId: input.sourceRunId,
       triggerType: 'replay',
+      startedBy: input.actorId,
       workflowId: metadata.run.workflowId,
       workflowVersionId: metadata.run.workflowVersionId,
       ...(prepared.input === undefined ? {} : { runInput: prepared.input }),

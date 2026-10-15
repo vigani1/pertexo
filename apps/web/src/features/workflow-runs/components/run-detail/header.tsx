@@ -15,7 +15,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { formatClock, formatDurationMs } from '@/lib/format/time';
+import {
+  formatClock,
+  formatDurationMs,
+  formatDateTime,
+} from '@/lib/format/time';
 import {
   describeLiveUpdates,
   type LiveConnectionStatus,
@@ -44,6 +48,19 @@ function MetaFact({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 function deadlineFact(run: WorkflowRunReadSummary, nowMs: number): ReactNode {
+  if (run.humanWait !== undefined)
+    return (
+      <>
+        execution budget paused
+        {run.humanWait.absoluteDeadlineAt === null ? null : (
+          <>
+            {' '}
+            · absolute deadline{' '}
+            <b>{formatDateTime(run.humanWait.absoluteDeadlineAt)}</b>
+          </>
+        )}
+      </>
+    );
   if (run.deadlineAt === null) return 'no deadline';
   const remaining = Date.parse(run.deadlineAt) - nowMs;
   if (!isActiveRunStatus(run.status))

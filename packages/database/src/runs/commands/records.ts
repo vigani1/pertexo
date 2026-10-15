@@ -51,6 +51,10 @@ const runRowSchema = z
   })
   .strict();
 const runReadRowSchema = runRowSchema.extend({
+  has_human_tasks: z.boolean(),
+  human_wait_started_at: z.coerce.date().nullable(),
+  remaining_execution_ms: z.number().int().positive().nullable(),
+  absolute_deadline_at: z.coerce.date().nullable(),
   handled_failure_count: z.number().int().min(0).max(200),
   admission_blockers: z
     .object({
@@ -90,6 +94,12 @@ export type WorkflowRunRecord = Readonly<{
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
   Readonly<{
+    hasHumanTasks?: boolean;
+    humanWait?: Readonly<{
+      since: string;
+      remainingExecutionMs: number | null;
+      absoluteDeadlineAt: string | null;
+    }>;
     workflowName?: string | null;
     replaySourceRunId: string | null;
     recovery?: WorkflowRecoverySummary;
@@ -170,7 +180,10 @@ export async function acceptWorkflowRunWithAudit(
     traceId?: string;
   }>,
 ): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>> {
-  const accepted = await acceptWorkflowRun(transaction, input.acceptance);
+  const accepted = await acceptWorkflowRun(transaction, {
+    ...input.acceptance,
+    startedBy: input.actorId,
+  });
   const run = await requireWorkflowRunRecord(transaction, accepted.runId);
   if (!accepted.duplicate) {
     await insertWorkflowRunAudit(transaction, {
@@ -228,6 +241,10 @@ function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
 export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
   const row = runReadRowSchema.parse(value);
   const {
+    has_human_tasks: hasHumanTasks,
+    human_wait_started_at: humanWaitStartedAt,
+    remaining_execution_ms: remainingExecutionMs,
+    absolute_deadline_at: absoluteDeadlineAt,
     handled_failure_count: handledFailureCount,
     workflow_name: workflowName,
     replay_source_run_id: replaySourceRunId,
@@ -242,6 +259,16 @@ export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
   return Object.freeze({
     ...toWorkflowRunRecord(runRow),
     workflowName,
+    ...(hasHumanTasks ? { hasHumanTasks: true } : {}),
+    ...(humanWaitStartedAt === null || row.status !== 'waiting'
+      ? {}
+      : {
+          humanWait: {
+            since: humanWaitStartedAt.toISOString(),
+            remainingExecutionMs,
+            absoluteDeadlineAt: absoluteDeadlineAt?.toISOString() ?? null,
+          },
+        }),
     replaySourceRunId,
     ...(handledFailureCount === 0 ? {} : { handledFailureCount }),
     ...(targetNodeRunId === null ||

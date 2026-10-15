@@ -1,3 +1,4 @@
+import { ApprovalSetup } from '../approval/setup';
 import { ReadFileSetup } from '../builders/read-file-setup';
 import { DateSetup } from '../builders/date-setup';
 import { CallTargetField } from '../fields/call-target';
@@ -78,6 +79,7 @@ function CatalogSetupTab({
   form,
   graph,
   onOpenInputs,
+  callScope,
 }: SetupTabProps) {
   const fields = useMemo(
     () =>
@@ -152,6 +154,7 @@ function CatalogSetupTab({
         />
       ) : (
         <SetupControls
+          {...(callScope === undefined ? {} : { callScope })}
           node={node}
           graph={graph}
           configSchema={definition.configSchema}
@@ -181,15 +184,19 @@ function SetupControls({
   fields,
   scheduleSchema,
   form,
+  callScope,
 }: Readonly<{
   node: WorkflowNode;
   graph: GraphLevel;
+  callScope?: CallTargetScope;
   configSchema: unknown;
   fields: ReturnType<typeof schemaFields>;
   scheduleSchema: ScheduleSchema | undefined;
   form: NodeFormApi;
 }>) {
   const { config } = node;
+  if (node.definition.key === 'core.approval' && callScope !== undefined)
+    return <ApprovalSetup config={config} form={form} scope={callScope} />;
   if (node.definition.key === 'core.read_file')
     return <ReadFileSetup config={config} form={form} />;
   if (node.definition.key === 'core.date')

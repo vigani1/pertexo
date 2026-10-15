@@ -11,6 +11,7 @@ export const jsonataPolicy = { key: 'jsonata.restricted', version: 1 } as const;
 export const schema = { type: 'object', additionalProperties: true } as const;
 
 type FixtureDefinitionKey =
+  | 'core.approval'
   | 'core.call'
   | 'core.condition'
   | 'core.foreach'
@@ -46,6 +47,12 @@ const fixtureDefinitions: Readonly<
     }>
   >
 > = {
+  'core.approval': {
+    capabilities: ['suspends_run'],
+    family: 'logic',
+    inputs: ['in'],
+    outputs: ['approved', 'rejected'],
+  },
   'core.call': {
     capabilities: [],
     family: 'logic',
@@ -159,6 +166,7 @@ export function nodeCatalog(input?: {
   readonly merge?: boolean;
   readonly forEach?: boolean;
   readonly call?: boolean;
+  readonly approval?: boolean;
   readonly schedule?: boolean;
   readonly webhook?: boolean;
   readonly extraPolicyVersion?: number;
@@ -177,6 +185,7 @@ export function nodeCatalog(input?: {
     ...(input?.parallel ? [manifest('core.parallel')] : []),
     ...(input?.merge ? [manifest('core.merge')] : []),
     ...(input?.call ? [manifest('core.call')] : []),
+    ...(input?.approval ? [manifest('core.approval')] : []),
     ...(input?.forEach ? [manifest('core.foreach')] : []),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];

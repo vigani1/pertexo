@@ -34,6 +34,8 @@ const acceptWorkflowRunInputSchema = z
       .custom<RunInputValidator>((value) => typeof value === 'function')
       .optional(),
     deadlineAt: z.date().optional(),
+    absoluteDeadlineAt: z.date().nullable().optional(),
+    startedBy: z.uuid().optional(),
     keyHash: sha256Schema,
     operation: z.literal('workflow.run.accept'),
     requestHash: sha256Schema,
@@ -424,6 +426,11 @@ export async function acceptWorkflowRun(
         inputRefExpiresAt:
           storedRunInputJson === null ? null : sql`now() + interval '30 days'`,
         triggerType: parsed.triggerType,
+        startedBy: parsed.startedBy ?? null,
+        absoluteDeadlineAt:
+          parsed.absoluteDeadlineAt === undefined
+            ? (parsed.deadlineAt ?? null)
+            : parsed.absoluteDeadlineAt,
         errorWorkflowOrigin:
           parsed.triggerType === 'workflow_error' ||
           prepared.errorWorkflowOrigin === true ||

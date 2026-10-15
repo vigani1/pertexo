@@ -1,3 +1,4 @@
+import { isHumanTaskDefinition } from '@pertexo/workflow-model';
 import {
   canonicalJson,
   inspectWorkflowDecisionTree,
@@ -96,7 +97,11 @@ export function selectRecoveryPrefix(
   if (source.status !== 'failed' && source.status !== 'outcome_unknown')
     return { kind: 'refused', reason: 'source_not_failed' };
   const graph = executable.envelope.graph;
-  const tree = inspectWorkflowDecisionTree(graph);
+  const tree = graph.nodes.some((node) =>
+    isHumanTaskDefinition(node.definition),
+  )
+    ? undefined
+    : inspectWorkflowDecisionTree(graph);
   if (
     tree === undefined ||
     graph.edges.some((edge) => edge.source.port === WORKFLOW_FAILURE_PORT)

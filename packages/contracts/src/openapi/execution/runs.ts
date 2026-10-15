@@ -1,3 +1,4 @@
+import { pendingTaskPaths, pendingTaskSchemas } from './pending-tasks.js';
 import {
   authenticatedComponents,
   automationSecurity,
@@ -50,6 +51,7 @@ import {
 } from '../../schemas/execution/runs.js';
 
 const schemas = Object.freeze({
+  ...pendingTaskSchemas,
   WorkflowRecoveryRequest: jsonSchema(workflowRecoveryRequestSchema, 'input'),
   WorkflowRecoveryPreview: jsonSchema(workflowRecoveryPreviewSchema, 'output'),
   WorkflowRecoveryUnavailableProblem: jsonSchema(
@@ -162,6 +164,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Workflow Runs API', version: '1.0.0' },
   paths: {
+    ...pendingTaskPaths,
     '/v1/workspaces/{workspaceId}/usage-capacity': {
       get: {
         operationId: 'getWorkspaceUsageCapacity',

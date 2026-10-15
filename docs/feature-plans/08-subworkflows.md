@@ -94,6 +94,11 @@ doors. Create only the files needed by each slice.
 | Recursion / workspace         | Reject any ancestor workflow identity repeated on a call path, including another version. Shared sibling dependencies remain legal. All targets stay in the parent's workspace.                                                                                                                                                                                                                         |
 | Worker / run capacity         | Waiting releases the worker job and hands the parent's workspace active-run slot to its child. Completion returns that same slot to the live parent; workspace capacity alone never fails the Call, including at limit one.                                                                                                                                                                                                                        |
 
+F10 human waiting extends the execution-clock part of this decision under
+[ADR 076](../adr/076-durable-human-tasks.md): accepted descendants and unstarted
+sibling Calls preserve remaining budgets across human quiescence. Absolute wall
+deadlines remain fixed, expired Calls cannot revive, and retry never resets them.
+
 Archive behavior deliberately follows the current glossary's distinction between
 new admission and an already accepted run. It avoids the former sealed-family
 lifecycle/authority protocol. The owner accepted this behavior, with the archive warning, on 2026-10-10.

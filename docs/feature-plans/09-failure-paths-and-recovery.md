@@ -1347,7 +1347,7 @@ No provider account, external effect, image download or deployment is needed.
       action run using owned local fixtures; browser desktop/phone and keyboard.
 - [x] Lint, types, units, mocked e2e, relevant live integration, changed React
       diagnostics.
-- [ ] Green PR CI, rebase merge and natural main result.
+- [x] Green PR CI, rebase merge and natural main result.
 
 The existing F09 exclusions now defer *other* new triggers; this explicitly
 requested trigger is included. Approvals/forms/variables/preferences follow
@@ -1394,3 +1394,9 @@ normalized containers without calling their hooks; numeric-key ordering and
 existing canonical bytes are preserved. Both new serializer regressions, all
 282 model tests and all 16 real admission-persistence cases pass. The fix is a
 new commit, with no test weakening or hook suppression.
+
+[PR #300](https://github.com/vigani1/pertexo/pull/300) rebase-merged on
+2026-10-15 at `d342d8982569fbf1033122970878aee9f22b0c53`. All required PR
+checks passed. The natural [main CI run](https://github.com/vigani1/pertexo/actions/runs/38695255050),
+including ARM images, passed too. Error workflows is complete; the next
+authorized feature is F10.

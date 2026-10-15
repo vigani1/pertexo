@@ -1,3 +1,4 @@
+import { terminalRunStatuses } from '../advance/plan.js';
 import type { Pool, PoolClient } from 'pg';
 import type { DatabaseConfig } from '../../config.js';
 import {
@@ -19,7 +20,7 @@ import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js
 import type { WorkflowCallStore } from './contract.js';
 import { acceptPendingCall, type PendingWorkflowCall } from './accept.js';
 import { applyIncomingCallCancellation } from './controls.js';
-import { wakeWorkflowRun } from './wakeup.js';
+import { wakeWorkflowRun, deferWorkflowRun } from './wakeup.js';
 
 async function performOutgoingActions(
   client: PoolClient,
@@ -48,6 +49,17 @@ async function performOutgoingActions(
           row.parent_run_id,
           input.traceparent,
         );
+    }
+    if (result.rows[0]?.returned !== true) {
+      const child = await client.query<{ status: string }>(
+        `select child.status from app.workflow_calls call join app.workflow_runs child on child.workspace_id=call.workspace_id and child.id=call.child_run_id where call.workspace_id=$1 and call.id=$2`,
+        [workspaceId, loan.rows[0].id],
+      );
+      if (
+        child.rows[0] !== undefined &&
+        terminalRunStatuses.has(child.rows[0].status)
+      )
+        await deferWorkflowRun(client, workspaceId, runId, input.traceparent);
     }
     return;
   }

@@ -52,7 +52,9 @@ export function WorkspaceMobileBar({
     ...destinations.workspace,
   ];
   const canReadRuns = workspace.capabilities.includes('run:read');
-  const canReadInbox = workspace.capabilities.includes('notification:read');
+  const canReadInbox =
+    workspace.capabilities.includes('notification:read') ||
+    workspace.capabilities.includes('run:read');
   const unread = unreadNoticeCount ?? 0;
   // Pages that live under More light More, so a page always shows where it is.
   const matchRoute = useMatchRoute();

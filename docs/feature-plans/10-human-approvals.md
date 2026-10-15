@@ -17,8 +17,8 @@ The current engine already separates a successful Call declaration attempt from
 its logical durable outcome (`workflow-engine/observation/coordinator-calls.ts`).
 The database persists that declaration, checkpoint and outbox in one transaction;
 Call results are separate immutable facts. Timed Wait has a database-authoritative
-due-node scanner and immutable attempts. Human decisions do not exist. Existing
-run deadlines are at most an hour, queue/capacity counts include ordinary waiting
+due-node scanner and immutable attempts. Human decisions do not exist. Configured
+run deadlines are bounded by an hour (an absent budget means no deadline), queue/capacity counts include ordinary waiting
 runs, and input expiry can remove an otherwise live ordinary run's input after
 30 days. These must be handled rather than inherited accidentally.
 
@@ -33,6 +33,10 @@ infrastructure is required.
 - Definition `core.approval@1`, `nodes-core/src/flow/approval/`, safe CPU
   declaration executor with `in`, `approved` and `rejected` ports. Its initial
   declaration is not a completed logical step and cannot activate successors.
+  The browser catalog exposes only the logical decision output, so Insert data
+  offers decision/comment/actor/time instead of an internal pending marker.
+  Defaults are materialized in editor configuration before publication, matching
+  the existing portable policy that refuses implicit schema transformations.
 - Strict config: title (1–160 characters), optional instructions (up to 2,000),
   expiry seconds (default 604800, 3600–2592000), and a bounded audience of roles
   and/or named member IDs (at most 50 IDs). Default roles are owner and admin;
@@ -98,10 +102,25 @@ subsequently wins run control; it never reopens.
 
 ### Time, capacity and retention
 
+### Deadline clarification from current admission code
+
+The optional caller deadline is an absolute wall deadline, while the published
+`maxRunDurationMs` is an execution budget. Preserve the caller deadline separately:
+human waiting pauses only the execution budget, with operational deadline equal
+to the absolute deadline while paused. A caller deadline still cancels waiting
+on time; a run originally without a budget stays unlimited. Calls inherit the
+parent's absolute deadline separately from its temporary execution deadline, so
+an inherited one-hour budget never becomes an accidental seven-day approval cap.
+Existing Call slot handoff remains: the parent regains its slot when the child
+finishes; a long human wait releases the shared workspace slot, and each suspended
+ancestor must satisfy its workflow cap before child work resumes.
+
+
 Quiescent human waiting pauses the remaining execution deadline and releases the
 active-run slot, while preserving status `waiting`. Ordinary timed Wait/retry
 semantics remain unchanged. Persist the remaining deadline budget and human-wait
-start in the run row. Shared `workflow_run_slot_counts` excludes suspended human
+start in the run row. An originally unlimited run retains a null remaining
+budget and resumes without inventing a deadline. Shared `workflow_run_slot_counts` excludes suspended human
 waits; the existing admission trigger/counters enforce resume capacity too.
 Releasing slots must not create an unbounded human-task queue: the workspace's
 existing queued-run allowance also bounds outstanding pending human tasks (100
@@ -115,13 +134,19 @@ normal slot, using existing bounded outbox deferral when full. Cancellation and
 expiry can settle without a slot; they do not need to start worker attempts.
 
 For parallel/loop scopes, suspend only when no ready/running/timed work remains
-and all outstanding executable work is waiting on human tasks (loop barriers are
+and all outstanding executable work is waiting on human tasks (loop and pending paired-Merge barriers are
 structural). An active sibling keeps the deadline and slot. Graph pruning and Stop also close
 any pending task in the pruned scope; late responses cannot resurrect it. For Calls, propagate
 quiescent human waiting through the existing parent/child relation using normal
 wakeups; each ancestor changes only under its own lock. Resume restores remaining
 budgets and normal Call slot handoff. Add explicit nested-Call proofs so a seven-day
 task cannot accidentally inherit the old one-hour Call deadline.
+
+Already declared, unstarted sibling Calls share their parent's human pause:
+restore their remaining recorded deadline when the parent resumes, bounded by
+its restored budget and absolute deadline. Do not revive a Call whose deadline
+had already expired before the pause. Accepted children keep their own durable
+paused clocks and their immutable Call identity.
 
 Retain live run input and referenced files while a pending human interaction or
 its live continuation needs them; ordinary terminal retention still owns cleanup.
@@ -162,26 +187,53 @@ retained decision identity is audit history, never an access grant.
 
 ## Verification and delivery
 
-One focused F10 PR after Error workflows merges. No moves planned; any necessary
-moves stay in separate buildable commits. Commit gates are lint, typecheck and
+One focused F10 PR after Error workflows merges. The shared workspace authority
+fence moved from authoring to tenant access in its own buildable commit
+(`f1fe45672`); workflow-specific error translation stays with authoring. Commit gates are lint, typecheck and
 units; PR includes Moved/Removed/Lines, full mocked e2e, real database/worker/browser
 proof, green CI and rebase merge. Update this tracker with actual receipts.
 
 - [x] Reconcile current code; record choices and accepted ADR before building.
-- [ ] Catalog/model and pure engine task lifecycle, branch, expiry failure route.
-- [ ] Additive storage, authority/initiator binding, idempotent one-winner command,
+- [x] Catalog/model and pure engine task lifecycle, branch, expiry failure route.
+- [x] Additive storage, authority/initiator binding, idempotent one-winner command,
       cancellation/purge/retention and restart-safe ordinary outbox delivery.
-- [ ] Deadline and capacity behavior, including active siblings, capacity-one
+- [x] Deadline and capacity behavior, including active siblings, capacity-one
       resume and nested Calls; no work admitted while a slot is unavailable.
-- [ ] Editor, eligible approvals list/detail, inbox/run links and accessible
+- [x] Editor, eligible approvals list/detail, inbox/run links and accessible
       decision/comment feedback with unknown-response retry.
-- [ ] Real races: approve/reject, same-key duplicate, expiry/decision, cancellation,
+- [x] Real races: approve/reject, same-key duplicate, expiry/decision, cancellation,
       role/member loss, cross-workspace IDs, process restart and exactly one resume.
-- [ ] Real browser/API/worker approve and reject paths; expiry handled by failure
+- [x] Real browser/API/worker approve and reject paths; expiry handled by failure
       route, starter refused; desktop/phone/keyboard and independent SQL checks.
-- [ ] Lint/types/units/build, contracts/schema/architecture/dependencies, mocked e2e,
+- [x] Lint/types/units/build, contracts/schema/architecture/dependencies, mocked e2e,
       changed React Doctor, owned fixture cleanup; record exact evidence.
 - [ ] PR green, rebase merged and natural main result inspected.
+
+### Local integrated evidence (2026-10-15)
+
+- Full lint, TypeScript, format, build (real and mocked browser harnesses),
+  units, contracts/OpenAPI, schema (86 typed tables), architecture and Knip
+  passed. All 169 mocked e2e cases passed; changed React Doctor 100/100.
+- PostgreSQL: 63 cases across tasks, authority/decision races, publication
+  membership checks (including loop bodies), retention, purge, coordinator
+  observations and Error-workflow regressions.
+- Real Redis/PostgreSQL worker: seven cases cover approve/reject after restart,
+  expiry handled through a failure route, nested capacity-one Calls, cancellation,
+  final Approval callable output, dormant slot return under competition, and
+  pending parallel sibling Call deadlines across human waiting.
+- Pure engine: 11 task cases include loop pruning and parallel Merge quiescence.
+- Existing Call execution/control group: all 14 cases passed. The five-parent
+  case timed out during concurrent browser/build checks; an isolated focused
+  rerun passed, then the complete group passed in 36 seconds. No assertion or
+  timeout was weakened.
+- Real API/worker/browser: starter refused; a named viewer approves at 1280px
+  and rejects at 375px using keyboard controls; independent SQL proves exactly
+  two declarations, terminal continuations and comment-free audit metadata.
+  Inspector empty instructions and invalid title preserve normal editing.
+- Screenshots: `docs/media/approvals/` contains desktop/mobile before and after.
+  The harness used the attested CI fixture on ports 56432/56389/59090 and
+  disposed its own databases, Redis namespace and Vite process. Owner development
+  services and the shared fixture containers remain untouched.
 
 ## Rollout and rollback
 

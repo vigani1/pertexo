@@ -1,3 +1,4 @@
+import { isHumanTaskDefinition } from '../pending-tasks/approval.js';
 import type { WorkflowEdge } from '../graph/contract.js';
 import {
   inspectWorkflowDecisionTree,
@@ -102,7 +103,8 @@ export function inspectWorkflowFailureRoutes(
             node.definition.key === 'core.terminate' &&
             node.definition.version === 1
           )) ||
-        node.structured !== undefined
+        node.structured !== undefined ||
+        isHumanTaskDefinition(node.definition)
       )
         return invalid(
           'Failure handlers contain sequential actions and may end in Stop run.',
@@ -149,7 +151,7 @@ export function inspectWorkflowFailureRoutes(
   });
   if (main === undefined)
     return invalid(
-      'Failure links require a root decision tree with Condition and leaf Stop run; joins, fan-out, loops, Wait and Calls are unsupported.',
+      'Failure links require a root decision tree with Condition, Approval and leaf Stop run; joins, fan-out, loops, Wait and Calls are unsupported.',
     );
   for (const node of graph.nodes)
     for (const mapping of Object.values(node.inputMappings)) {

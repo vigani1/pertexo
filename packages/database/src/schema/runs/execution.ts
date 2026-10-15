@@ -41,6 +41,16 @@ export const workflowRuns = appSchema.table(
     errorWorkflowOrigin: boolean('error_workflow_origin')
       .notNull()
       .default(false),
+    startedBy: uuid('started_by'),
+    absoluteDeadlineAt: timestamp('absolute_deadline_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    humanWaitStartedAt: timestamp('human_wait_started_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    remainingExecutionMs: integer('remaining_execution_ms'),
     triggerType: varchar('trigger_type', { length: 32 }).notNull(),
     failureNotificationDestinationId: uuid(
       'failure_notification_destination_id',
@@ -97,6 +107,16 @@ export const workflowRuns = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      name: 'workflow_runs_starter_fk',
+      columns: [table.startedBy],
+      foreignColumns: [users.id],
+    }).onDelete('set null'),
+    check(
+      'workflow_runs_human_wait_valid',
+      sql`((human_wait_started_at IS NULL AND remaining_execution_ms IS NULL)
+      OR (human_wait_started_at IS NOT NULL AND (remaining_execution_ms IS NULL OR (remaining_execution_ms > 0 AND remaining_execution_ms <= 3600000)) AND status IN ('waiting','succeeded','failed','canceled','timed_out','outcome_unknown') AND deadline_at IS NOT DISTINCT FROM absolute_deadline_at)) IS TRUE`,
+    ),
     check(
       'workflow_runs_handled_failure_count_valid',
       sql`handled_failure_count >= 0 AND handled_failure_count <= 200`,
@@ -425,7 +445,7 @@ export const nodeRuns = appSchema.table(
     ),
     check(
       'node_runs_control_kind_valid',
-      sql`((control_kind IS NULL) OR ((control_kind)::text IN ('for_each_barrier'::text, 'workflow_call'::text)))`,
+      sql`((control_kind IS NULL) OR ((control_kind)::text IN ('for_each_barrier'::text, 'workflow_call'::text, 'human_task'::text)))`,
     ),
     check(
       'node_runs_due_wakeup_consistent',
@@ -473,7 +493,7 @@ export const nodeRuns = appSchema.table(
     ),
     check(
       'node_runs_wait_state_valid',
-      sql`(((((status)::text = 'waiting'::text) AND ((control_kind)::text IN ('for_each_barrier'::text, 'workflow_call'::text)) AND (wait_kind IS NULL) AND (resume_at IS NULL) AND (retry_due_at IS NULL)) OR (((status)::text = 'waiting'::text) AND (control_kind IS NULL) AND ((((wait_kind)::text = 'node_wait'::text) AND (resume_at IS NOT NULL) AND (retry_due_at IS NULL)) OR (((wait_kind)::text = 'retry_backoff'::text) AND (resume_at IS NULL) AND (retry_due_at IS NOT NULL)))) OR (((status)::text <> 'waiting'::text) AND (control_kind IS NULL) AND (wait_kind IS NULL) AND (resume_at IS NULL) AND (retry_due_at IS NULL))) IS TRUE)`,
+      sql`(((((status)::text = 'waiting'::text) AND ((control_kind)::text IN ('for_each_barrier'::text, 'workflow_call'::text)) AND (wait_kind IS NULL) AND (resume_at IS NULL) AND (retry_due_at IS NULL)) OR (status = 'waiting' AND control_kind = 'human_task' AND wait_kind IS NULL AND resume_at IS NOT NULL AND retry_due_at IS NULL) OR (((status)::text = 'waiting'::text) AND (control_kind IS NULL) AND ((((wait_kind)::text = 'node_wait'::text) AND (resume_at IS NOT NULL) AND (retry_due_at IS NULL)) OR (((wait_kind)::text = 'retry_backoff'::text) AND (resume_at IS NULL) AND (retry_due_at IS NOT NULL)))) OR (((status)::text <> 'waiting'::text) AND (control_kind IS NULL) AND (wait_kind IS NULL) AND (resume_at IS NULL) AND (retry_due_at IS NULL))) IS TRUE)`,
     ),
     unique('node_runs_invocation_unique').on(
       table.workflowRunId,

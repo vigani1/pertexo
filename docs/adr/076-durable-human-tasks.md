@@ -10,7 +10,7 @@ F10 needs a human decision to pause a run for seven days by default. F11 then
 needs member input at the same boundary. Existing Wait is a timed suspension;
 Call already separates a short declaration attempt from an immutable logical
 result. Inbox read state, worker leases and process timers cannot authorize or
-own a human response. Ordinary run deadlines are at most one hour, and ordinary
+own a human response. Configured ordinary run deadlines are bounded by one hour, and ordinary
 waiting runs consume active capacity.
 
 ## Decision
@@ -69,6 +69,25 @@ Pending tasks close on cancellation, Stop or scope pruning. Run input and files
 remain available to live human runs. Task/comment history follows run-detail
 retention and workspace purge. No email, anonymous approval, escalation,
 reassignment or multi-person voting is included.
+
+### Deadline clarification from current admission code
+
+The optional caller deadline is an absolute wall deadline, while the published
+`maxRunDurationMs` is an execution budget. Preserve the caller deadline separately:
+human waiting pauses only the execution budget, with operational deadline equal
+to the absolute deadline while paused. A caller deadline still cancels waiting
+on time; a run originally without a budget stays unlimited. Calls inherit the
+parent's absolute deadline separately from its temporary execution deadline, so
+an inherited one-hour budget never becomes an accidental seven-day approval cap.
+Existing Call slot handoff remains: the parent regains its slot when the child
+finishes; a long human wait releases the shared workspace slot, and each suspended
+ancestor must satisfy its workflow cap before child work resumes.
+
+Already declared, unstarted sibling Calls share their parent's human pause:
+restore their remaining recorded deadline when the parent resumes, bounded by
+its restored budget and absolute deadline. Do not revive a Call whose deadline
+had already expired before the pause. Accepted children keep their own durable
+paused clocks and their immutable Call identity.
 
 ## Consequences
 

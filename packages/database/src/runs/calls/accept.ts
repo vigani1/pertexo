@@ -78,8 +78,10 @@ export async function acceptPendingCall(
     has_ordinary_work: boolean;
     has_wait: boolean;
     error_workflow_origin: boolean;
+    started_by: string | null;
+    absolute_deadline_at: Date | null;
   }>(
-    `select run.status,run.cancel_requested_at,run.error_workflow_origin,
+    `select run.status,run.cancel_requested_at,run.error_workflow_origin,run.started_by,run.absolute_deadline_at,
        run.deadline_at <= clock_timestamp() as deadline_expired,
        exists(select 1 from jsonb_array_elements(checkpoint.scheduler_state->'invocations') invocation
          where invocation->>'status'='running') as has_ordinary_work,
@@ -147,6 +149,8 @@ export async function acceptPendingCall(
         ),
         runInput: stored.value,
         triggerType: 'workflow_call',
+        absoluteDeadlineAt: row.absolute_deadline_at,
+        ...(row.started_by === null ? {} : { startedBy: row.started_by }),
         workflowId: call.target_workflow_id,
         workflowVersionId: call.target_version_id,
         ...(call.deadline_at === null ? {} : { deadlineAt: call.deadline_at }),

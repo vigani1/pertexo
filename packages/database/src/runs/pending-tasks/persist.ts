@@ -1,0 +1,101 @@
+import type { PoolClient } from 'pg';
+import type { RunTransitionPlan } from '../advance/plan.js';
+import { terminalRunStatuses } from '../advance/plan.js';
+import { CoordinatorRunStateCorruptError } from '../advance/contract.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { wakeWorkflowRun } from '../calls/wakeup.js';
+
+/** The validated declaration, logical wait and checkpoint share this transaction. */
+export async function persistTaskIntents(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    plan: RunTransitionPlan;
+  }>,
+): Promise<void> {
+  const { workspaceId, runId, plan } = input;
+  if ((plan.taskIntents?.length ?? 0) === 0) return;
+  await client.query('select app.lock_workspace_execution_counter($1)', [
+    workspaceId,
+  ]);
+  const policy = await client.query<{ limit: number }>(
+    `select version.queued_run_limit "limit" from app.workspace_execution_entitlements current join app.workspace_execution_entitlement_versions version on version.workspace_id=current.workspace_id and version.version=current.current_version where current.workspace_id=$1`,
+    [workspaceId],
+  );
+  const limit = policy.rows[0]?.limit;
+  if (limit === undefined) throw new CoordinatorRunStateCorruptError();
+  for (const intent of plan.taskIntents ?? []) {
+    const pending = await client.query<{ count: number }>(
+      `select count(*)::int count from app.pending_run_tasks where workspace_id=$1 and status='pending'`,
+      [workspaceId],
+    );
+    const status = terminalRunStatuses.has(plan.checkpoint.runStatus)
+      ? 'canceled'
+      : (pending.rows[0]?.count ?? 0) >= limit
+        ? 'refused'
+        : 'pending';
+    const inserted = await client.query<{ id: string; expires_at: Date }>(
+      `insert into app.pending_run_tasks(id,workspace_id,run_id,workflow_version_id,node_run_id,invocation_key,kind,config,status,created_at,expires_at,completed_at)
+      select $1,$2,$3,run.workflow_version_id,node.id,$4::varchar,'approval',$5::jsonb,$6::varchar,observed.time,observed.time+make_interval(secs=>$7),case when $6::varchar='pending' then null else observed.time end
+      from app.workflow_runs run join app.node_runs node on node.workspace_id=run.workspace_id and node.workflow_run_id=run.id
+      cross join (select clock_timestamp() time) observed
+      where run.workspace_id=$2 and run.id=$3 and node.invocation_key=$4::varchar and node.status='succeeded'
+      returning id,expires_at`,
+      [
+        generatePersistedId(),
+        workspaceId,
+        runId,
+        intent.invocationKey,
+        JSON.stringify(intent.config),
+        status,
+        intent.config.expiresAfterSeconds,
+      ],
+    );
+    const row = inserted.rows[0];
+    if (row === undefined) throw new CoordinatorRunStateCorruptError();
+    const wait = await client.query(
+      `update app.node_runs set status='waiting',control_kind='human_task',output_ref=null,completed_at=null,resume_at=$4,retry_due_at=null,due_wakeup_at=null,wait_kind=null,updated_at=clock_timestamp() where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3 and status='succeeded'`,
+      [workspaceId, runId, intent.invocationKey, row.expires_at],
+    );
+    if (wait.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+    if (status === 'refused') await wakeWorkflowRun(client, workspaceId, runId);
+  }
+}
+
+/** Project the task result, then close every task its logical node has settled. */
+export async function persistConsumedTasks(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+  plan: RunTransitionPlan,
+): Promise<void> {
+  const completed = new Set(
+    plan.events.flatMap(({ name, invocationKey }) =>
+      name === 'node.succeeded' && invocationKey !== undefined
+        ? [invocationKey]
+        : [],
+    ),
+  );
+  for (const node of [
+    ...plan.checkpoint.invocations,
+    ...(plan.prunedInvocations ?? []),
+  ]) {
+    if (node.output?.kind !== 'task' || !completed.has(node.invocationKey))
+      continue;
+    const updated = await client.query(
+      `update app.node_runs node set output_ref=task.output_ref from app.pending_run_tasks task where task.workspace_id=$1 and task.run_id=$2 and task.id=$3 and task.invocation_key=$4 and task.status in ('approved','rejected') and task.output_ref is not null and node.workspace_id=task.workspace_id and node.id=task.node_run_id and node.workflow_run_id=task.run_id and node.invocation_key=task.invocation_key and node.status='succeeded'`,
+      [workspaceId, runId, node.output.taskId, node.invocationKey],
+    );
+    if (updated.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+  }
+  await client.query(
+    `update app.pending_run_tasks task set
+    status=case when task.status='pending' then 'canceled' else task.status end,
+    completed_at=coalesce(task.completed_at,clock_timestamp()),consumed_at=coalesce(task.consumed_at,clock_timestamp())
+    from app.node_runs node where task.workspace_id=$1 and task.run_id=$2
+      and node.workspace_id=task.workspace_id and node.id=task.node_run_id and node.workflow_run_id=task.run_id
+      and node.status not in ('pending','ready','running','waiting') and task.consumed_at is null`,
+    [workspaceId, runId],
+  );
+}

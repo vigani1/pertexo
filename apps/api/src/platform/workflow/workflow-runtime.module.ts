@@ -1,3 +1,8 @@
+import {
+  createPendingTaskStore,
+  type PendingTaskStore,
+} from '@pertexo/database/runs';
+import { PendingTasksModule } from '../../pending-tasks/module.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
@@ -60,6 +65,7 @@ export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
   nodeTestingDependencies?: NodeTestingDependencies;
   runDependencies: WorkflowRunsDependencies;
+  pendingTasks?: PendingTaskStore;
   checkReadiness?(): Promise<void>;
   close(): Promise<void>;
 }>;
@@ -109,6 +115,7 @@ export async function createApiWorkflowRuntime(
   const compatibility = createCoreWorkflowCompatibility();
   let database: WorkflowAuthoringDatabase | undefined;
   let metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
+  let pendingTasks: PendingTaskStore | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
   let runAdapter:
     ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined;
@@ -132,6 +139,7 @@ export async function createApiWorkflowRuntime(
         },
       );
     }
+    pendingTasks = createPendingTaskStore(databaseConfig, runtime);
     metadataRuntime = await createApiWorkflowMetadataRuntime(
       databaseConfig,
       authoring,
@@ -183,6 +191,7 @@ export async function createApiWorkflowRuntime(
       authoring.expressionEvaluatorFactory?.() ?? new JsonataEvaluator();
     const acquiredDatabase = database;
     const acquiredMetadataRuntime = metadataRuntime;
+    const acquiredPendingTasks = pendingTasks;
     const acquiredRunAdapter = runAdapter;
     const acquiredEventDatabase = eventDatabase;
     const acquiredNotifications = notifications;
@@ -190,6 +199,7 @@ export async function createApiWorkflowRuntime(
     const acquiredAuthoringValidator = authoringValidator;
     let closePromise: Promise<void> | undefined;
     return Object.freeze({
+      pendingTasks,
       dependencies: Object.freeze({
         persistence: database,
         portabilityPersistence: database,
@@ -235,6 +245,7 @@ export async function createApiWorkflowRuntime(
           acquiredExpressionEvaluator,
           acquiredAuthoringValidator,
           acquiredMetadataRuntime,
+          acquiredPendingTasks,
         );
         return closePromise;
       },
@@ -248,6 +259,7 @@ export async function createApiWorkflowRuntime(
       expressionEvaluator,
       authoringValidator,
       metadataRuntime,
+      pendingTasks,
     );
     if (cleanupFailures.length > 0)
       throw new AggregateError(
@@ -266,6 +278,7 @@ async function closeWorkflowResources(
   expressionEvaluator: JsonataEvaluator,
   authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
   metadata: ApiWorkflowMetadataRuntime | undefined,
+  pendingTasks: PendingTaskStore | undefined,
 ): Promise<void> {
   const failures = await collectWorkflowCloseFailures(
     authoring,
@@ -275,6 +288,7 @@ async function closeWorkflowResources(
     expressionEvaluator,
     authoringValidator,
     metadata,
+    pendingTasks,
   );
   if (failures.length > 0)
     throw new AggregateError(failures, 'Workflow resource shutdown failed');
@@ -288,6 +302,7 @@ async function collectWorkflowCloseFailures(
   expressionEvaluator: JsonataEvaluator | undefined,
   authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
   metadata: ApiWorkflowMetadataRuntime | undefined,
+  pendingTasks: PendingTaskStore | undefined,
 ): Promise<unknown[]> {
   const failures: unknown[] = [];
   try {
@@ -298,6 +313,7 @@ async function collectWorkflowCloseFailures(
   const results = await Promise.allSettled([
     Promise.resolve().then(() => authoring?.close()),
     Promise.resolve().then(() => metadata?.close()),
+    Promise.resolve().then(() => pendingTasks?.close()),
     Promise.resolve().then(() => runs?.close()),
     Promise.resolve().then(() => events?.close()),
     Promise.resolve().then(() => notifications?.close()),
@@ -381,6 +397,15 @@ export class WorkflowRuntimeModule {
               ),
             ]),
         WorkflowRunsModule.register(runtime.runDependencies, identityModule),
+        ...(runtime.pendingTasks === undefined
+          ? []
+          : [
+              PendingTasksModule.register(
+                runtime.pendingTasks,
+                runtime.dependencies.authorization,
+                identityModule,
+              ),
+            ]),
       ],
       providers: [],
     };

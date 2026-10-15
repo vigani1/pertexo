@@ -177,20 +177,24 @@ async function insertOccurrence(
 }
 
 describe('retention rules', () => {
-  it('clears run inputs once they expire', async () => {
+  it('clears expired terminal input while retaining an expired live run input', async () => {
+    await admin.query(
+      "update app.workflow_runs set status='succeeded',completed_at=clock_timestamp() where id=any($1::uuid[])",
+      [runIds],
+    );
     const pending = randomUUID();
     await admin.query(
       `insert into app.workflow_runs
         (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
-         input_ref,input_ref_expires_at)
-       values($1,$2,$3,$4,'manual','queued',$5::jsonb,$6)`,
+         input_ref,input_ref_expires_at,created_at)
+       values($1,$2,$3,$4,'manual','queued',$5::jsonb,$6,$6::timestamptz-interval '30 days')`,
       [
         pending,
         workspaceId,
         randomUUID(),
         randomUUID(),
         inline('kept'),
-        new Date(Date.now() + DAY),
+        new Date(Date.now() - DAY),
       ],
     );
 

@@ -49,6 +49,8 @@ export function configuredBranchOutputPorts(
     node.definition.version === 1
   )
     return ['false', 'true'];
+  if (node.definition?.key === 'core.approval' && node.definition.version === 1)
+    return ['approved', 'rejected'];
   if (node.definition?.key !== 'core.switch' || node.definition.version !== 1)
     return undefined;
   if (node.config === undefined) return undefined;

@@ -9,6 +9,7 @@ export async function readCallFacts(
 ): Promise<
   Readonly<{
     hasExecutionSlot: boolean;
+    hasHumanChild: boolean;
     callOutcomes: readonly WorkflowCallOutcome[];
   }>
 > {
@@ -21,12 +22,14 @@ export async function readCallFacts(
     safe_error_code: string | null;
     slot_lent: boolean;
     consumed_at: Date | null;
+    child_wait: Date | null;
   }>(
     `select call.id,call.invocation_key,call.status,call.safe_error_code,
-            call.slot_lent,call.consumed_at,node.node_id,node.branch_context
+            call.slot_lent,call.consumed_at,node.node_id,node.branch_context,child.human_wait_started_at child_wait
      from app.workflow_calls call
      join app.node_runs node on node.workspace_id=call.workspace_id
        and node.workflow_run_id=call.parent_run_id and node.invocation_key=call.invocation_key
+     left join app.workflow_runs child on child.workspace_id=call.workspace_id and child.id=call.child_run_id
      where call.workspace_id=$1 and call.parent_run_id=$2
        and (call.slot_lent or call.consumed_at is null)
      order by call.invocation_key`,
@@ -34,6 +37,7 @@ export async function readCallFacts(
   );
   return {
     hasExecutionSlot: !rows.rows.some(({ slot_lent }) => slot_lent),
+    hasHumanChild: rows.rows.some(({ child_wait }) => child_wait !== null),
     callOutcomes: rows.rows.flatMap((row) =>
       row.consumed_at !== null ||
       row.status === 'pending' ||

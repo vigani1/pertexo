@@ -257,7 +257,8 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
         status !== 'waiting' ||
         (resumeAt !== undefined && waitKind !== undefined) ||
         loopControlKeys.has(key) ||
-        waitKind === 'workflow_call',
+        waitKind === 'workflow_call' ||
+        waitKind === 'human_task',
     ),
     'ordinary waiting invocation requires resumeAt',
   );

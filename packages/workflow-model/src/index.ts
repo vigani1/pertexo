@@ -156,3 +156,15 @@ export {
 } from './error-workflows/contract.js';
 
 export { isWorkflowErrorTarget } from './error-workflows/target.js';
+
+export {
+  PENDING_TASK_LIMITS,
+  approvalAudienceSchema,
+  approvalConfigSchema,
+  approvalDecisionSchema,
+  approvalOutputSchema,
+  isHumanTaskDefinition,
+  type ApprovalConfig,
+  type ApprovalAudience,
+  type ApprovalOutput,
+} from './pending-tasks/approval.js';

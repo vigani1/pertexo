@@ -15,7 +15,7 @@ import { WorkflowNotFoundError } from './errors.js';
 import { authoringCatalogs } from './catalogs.js';
 import { createWorkflowPublisher } from '../publication/publisher.js';
 import { createWorkflowAuthoringReadStore } from './reads.js';
-import { lockWorkflowAuthoringAuthority } from '../../tenant-access/workspaces/authority.js';
+import { lockWorkflowAuthoringAuthority } from './authority.js';
 import { createWorkflowAuthoringDraftStore } from './commands/drafts.js';
 import { createWorkflowVersionRestoreStore } from './commands/version-restore.js';
 import { createWorkflowDuplicationStore } from './commands/duplication.js';

@@ -1,3 +1,4 @@
+import { isHumanTaskDefinition } from '@pertexo/workflow-model';
 import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
 
 import type { parseCheckpoint } from '../checkpoint/create-and-parse.js';
@@ -67,7 +68,7 @@ export function branchSelectionObservations(
       );
     const invocation = invocations.get(material.invocationKey);
     const node = nodes.get(invocation?.nodeId ?? '');
-    if (node === undefined) return [];
+    if (node === undefined || isHumanTaskDefinition(node.definition)) return [];
     const parallelPorts = configuredParallelOutputPorts(node);
     if (parallelPorts !== undefined) {
       if (

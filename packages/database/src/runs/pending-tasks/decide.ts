@@ -1,0 +1,112 @@
+import type { PoolClient } from 'pg';
+import { approvalOutputSchema } from '@pertexo/workflow-model';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { wakeWorkflowRun } from '../calls/wakeup.js';
+import type { Role } from '../../tenant-access/policy.js';
+import {
+  PendingTaskDecisionError,
+  PendingTaskNotFoundError,
+  type PendingTaskStore,
+} from './contract.js';
+import { projectTask, readTaskRow } from './queries.js';
+
+export async function decideTask(
+  client: PoolClient,
+  input: Parameters<PendingTaskStore['decide']>[0],
+  role: Role,
+) {
+  const target = await client.query<{ run_id: string }>(
+    'select run_id from app.pending_run_tasks where workspace_id=$1 and id=$2',
+    [input.workspaceId, input.taskId],
+  );
+  const runId = target.rows[0]?.run_id;
+  if (runId === undefined)
+    throw new PendingTaskNotFoundError('Task is not visible.');
+  await client.query(
+    'select id from app.workflow_runs where workspace_id=$1 and id=$2 for no key update',
+    [input.workspaceId, runId],
+  );
+  const row = await readTaskRow(client, input, role, true);
+  const command = {
+    workspaceId: input.workspaceId,
+    operation: 'pending.task.decide',
+    scope: `${input.actorId}:${input.taskId}`,
+    idempotencyKey: input.idempotencyKey,
+  };
+  const request = {
+    decision: input.decision,
+    comment: input.comment === '' ? null : (input.comment ?? null),
+  };
+  const replay = await claimCommand(client, {
+    ...command,
+    request,
+    resourceId: input.taskId,
+  });
+  if (replay !== null) return { task: projectTask(row), replayed: true };
+  if (row.blocked_reason !== null)
+    throw new PendingTaskDecisionError(row.blocked_reason);
+  const observed = await client.query<{ now: Date }>(
+    'select clock_timestamp() now',
+  );
+  const now = observed.rows[0]?.now;
+  if (now === undefined) throw new Error('Decision time unavailable');
+  const output = approvalOutputSchema.parse({
+    decision: input.decision,
+    comment: request.comment,
+    decidedBy: input.actorId,
+    decidedAt: now.toISOString(),
+  });
+  const changed = await client.query(
+    `update app.pending_run_tasks set status=$3,output_ref=$4::jsonb,decided_by=$5,completed_at=$6 where workspace_id=$1 and id=$2 and status='pending' and expires_at>clock_timestamp()`,
+    [
+      input.workspaceId,
+      input.taskId,
+      input.decision,
+      serializeStoredExecutionValue({ kind: 'inline', value: output }),
+      input.actorId,
+      now,
+    ],
+  );
+  if (changed.rowCount !== 1) throw new PendingTaskDecisionError('expired');
+  await client.query(
+    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,'pending_task.decided','pending_task',$4,$5,$6,$7::jsonb)`,
+    [
+      generatePersistedId(),
+      input.workspaceId,
+      input.actorId,
+      input.taskId,
+      input.requestId ?? null,
+      input.traceId ?? null,
+      JSON.stringify({ runId, decision: input.decision }),
+    ],
+  );
+  await completeCommand(client, command, {
+    taskId: input.taskId,
+    status: input.decision,
+  });
+  await wakeWorkflowRun(client, input.workspaceId, runId);
+  await wakeTaskAncestors(client, input.workspaceId, runId);
+  return {
+    task: projectTask(await readTaskRow(client, input, role)),
+    replayed: false,
+  };
+}
+
+/** Ancestors observe their own state/locks; a response never takes parent locks. */
+export async function wakeTaskAncestors(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+): Promise<void> {
+  const ancestors = await client.query<{ id: string }>(
+    `with recursive ancestors(id) as (
+    select parent_run_id from app.workflow_calls where workspace_id=$1 and child_run_id=$2 and status='accepted'
+    union select call.parent_run_id from app.workflow_calls call join ancestors on call.child_run_id=ancestors.id where call.workspace_id=$1 and call.status='accepted'
+  ) select id from ancestors`,
+    [workspaceId, runId],
+  );
+  for (const row of ancestors.rows)
+    await wakeWorkflowRun(client, workspaceId, row.id);
+}

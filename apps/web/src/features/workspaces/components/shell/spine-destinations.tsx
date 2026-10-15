@@ -3,6 +3,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { LinkProps } from '@tanstack/react-router';
 import {
   BellIcon,
+  CheckCheckIcon,
   GaugeIcon,
   InboxIcon,
   KeyRoundIcon,
@@ -20,6 +21,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId/workflows'
     | '/w/$workspaceId/runs'
     | '/w/$workspaceId/inbox'
+    | '/w/$workspaceId/approvals'
     | '/w/$workspaceId/connections'
     | '/w/$workspaceId/team'
     | '/w/$workspaceId/alerts'
@@ -62,7 +64,7 @@ export function spineDestinations(
         ? {}
         : { badge: liveRunCount, badgeNoun: 'running' }),
     });
-  if (can('notification:read'))
+  if (can('run:read') || can('notification:read'))
     primary.push({
       to: '/w/$workspaceId/inbox',
       label: 'Inbox',
@@ -70,6 +72,12 @@ export function spineDestinations(
       ...(unreadNoticeCount === undefined || unreadNoticeCount === 0
         ? {}
         : { badge: unreadNoticeCount, badgeNoun: 'unread' }),
+    });
+  if (can('run:read'))
+    primary.push({
+      to: '/w/$workspaceId/approvals',
+      label: 'Approvals',
+      icon: <CheckCheckIcon />,
     });
   if (can('connection:read'))
     primary.push({

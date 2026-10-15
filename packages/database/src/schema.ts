@@ -1,3 +1,4 @@
+import { pendingRunTasks } from './schema/runs/pending-task.js';
 import { workflowErrorPolicies } from './schema/authoring/error-workflow.js';
 import { runErrorWorkflowIntents } from './schema/runs/error-workflow.js';
 import { apiTokens } from './schema/identity/api-tokens.js';
@@ -168,6 +169,7 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  pendingRunTasks,
   workflowErrorPolicies,
   runErrorWorkflowIntents,
   apiTokens,

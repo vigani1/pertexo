@@ -21,6 +21,8 @@ import {
 } from '../workflow/hub/routes';
 import {
   alertsRoute,
+  approvalsRoute,
+  approvalDetailRoute,
   apiTokensRoute,
   connectionsRoute,
   homeRoute,
@@ -56,6 +58,8 @@ export const routeTree = rootRoute.addChildren([
       runsRoute,
       runDetailRoute,
       inboxRoute,
+      approvalsRoute,
+      approvalDetailRoute,
       connectionsRoute,
       teamRoute,
       usageRoute,

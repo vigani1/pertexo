@@ -128,7 +128,7 @@ async function readRunModel(
       coalesce(current_attempt_number, 0) as current_attempt_number,
       started_at,
       completed_at,
-      coalesce(retry_due_at, resume_at) as resume_at,
+      case when control_kind='human_task' then null else coalesce(retry_due_at, resume_at) end as resume_at,
       safe_error_code,
       case when safe_error_code = 'execution.file_input' then (
         select attempt.error_summary from app.node_attempts attempt

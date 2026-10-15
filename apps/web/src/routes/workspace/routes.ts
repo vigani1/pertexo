@@ -1,3 +1,4 @@
+import { parseApprovalSearch } from '@/features/approvals/queries.public';
 import {
   createRoute,
   lazyRouteComponent,
@@ -430,5 +431,28 @@ export const workspaceAccountRoute = createRoute({
   component: lazyRouteComponent(
     () => import('./account'),
     'WorkspaceAccountRoute',
+  ),
+});
+
+export const approvalsRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'approvals',
+  staticData: { crumb: 'Approvals' },
+  validateSearch: parseApprovalSearch,
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Approvals', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./approvals/list'),
+    'ApprovalsRoute',
+  ),
+});
+export const approvalDetailRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'approvals/$taskId',
+  staticData: { crumb: 'Approval' },
+  component: lazyRouteComponent(
+    () => import('./approvals/detail'),
+    'ApprovalDetailRoute',
   ),
 });
