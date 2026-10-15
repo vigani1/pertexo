@@ -782,7 +782,7 @@ handwritten MIME framing or provider-network helper is used.
 
 Local evidence before PR review (Part 2 merge remains unchecked above):
 
-- Forty focused multipart cases pass, covering metadata/type/key validation,
+- Forty-two focused multipart cases pass, covering metadata/type/key validation,
   duplicate-name order, Unicode/newline text, exact empty/binary bytes, filenames,
   boundary collision regeneration, lower-bound refusal before reads, full 1 MiB
   wire body and one byte over, cancellation, incomplete/failed assembly,
@@ -831,3 +831,9 @@ This is test-fixture parsing, not a webhook ingestion path or production parser.
   latest; an attempted scoped lockfile update cannot select the advisory's
   not-yet-published 3.0.4. No vulnerable dependency was introduced by this slice;
   a maintained tooling update remains follow-up work.
+
+The final local check and full repository unit suites passed (9,055 cases),
+followed by two additional C1-control metadata refusals (538 integration-package
+unit cases in total). All 163 mocked browser tests pass, including the existing
+publication save barrier: an unfinished part reports its correction and sends
+no publish request. The separate fresh-worker deadline qualification also passes.
