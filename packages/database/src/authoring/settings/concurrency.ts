@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { ROLES, type Role } from '../../tenant-access/policy.js';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
+import { lockWorkflowAuthoringAuthority } from '../../tenant-access/workspaces/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 
 const revision = z.number().int().min(1).max(2_147_483_647);

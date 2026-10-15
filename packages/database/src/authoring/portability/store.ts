@@ -44,7 +44,7 @@ import {
   WorkflowPortabilityValidationError,
 } from '../workflows/errors.js';
 import { admitWorkflowAuthoring } from '../workflows/admission.js';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
+import { lockWorkflowAuthoringAuthority } from '../../tenant-access/workspaces/authority.js';
 import {
   inspectPortableConnections,
   lockPortableSource,
