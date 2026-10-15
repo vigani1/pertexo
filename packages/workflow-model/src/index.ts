@@ -158,13 +158,16 @@ export {
 export { isWorkflowErrorTarget } from './error-workflows/target.js';
 
 export {
-  PENDING_TASK_LIMITS,
-  approvalAudienceSchema,
   approvalConfigSchema,
   approvalDecisionSchema,
   approvalOutputSchema,
   isHumanTaskDefinition,
   type ApprovalConfig,
-  type ApprovalAudience,
   type ApprovalOutput,
 } from './pending-tasks/approval.js';
+
+export {
+  PENDING_TASK_LIMITS,
+  taskAudienceSchema,
+  type TaskAudience,
+} from './pending-tasks/audience.js';

@@ -1,11 +1,11 @@
-import { ApprovalTextField } from './text';
+import { TaskTextField } from './text';
 import { ExpiryField } from './expiry';
 import {
   approvalConfigSchema,
-  type ApprovalAudience,
+  type TaskAudience,
 } from '@pertexo/workflow-model';
 import { Notice } from '@/components/ui/notice';
-import type { TaskScope } from '@/features/approvals/queries.public';
+import type { TaskScope } from '@/features/pending-tasks/queries.public';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ConfigJsonEditor } from '../fields/config-json-editor';
@@ -25,7 +25,7 @@ export function ApprovalSetup({
       />
     );
   const audience = parsed.data.audience;
-  function change(next: ApprovalAudience) {
+  function change(next: TaskAudience) {
     if (next.roles.length + next.memberIds.length === 0) return;
     form.commit(
       {
@@ -39,8 +39,8 @@ export function ApprovalSetup({
   }
   return (
     <>
-      <ApprovalTextField name="title" value={parsed.data.title} form={form} />
-      <ApprovalTextField
+      <TaskTextField name="title" value={parsed.data.title} form={form} />
+      <TaskTextField
         name="instructions"
         value={parsed.data.instructions}
         form={form}

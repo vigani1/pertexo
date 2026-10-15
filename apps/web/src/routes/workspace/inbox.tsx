@@ -1,4 +1,4 @@
-import { PendingApprovals } from '@/features/approvals/public';
+import { PendingApprovals } from '@/features/pending-tasks/public';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { InboxPage } from '@/features/inbox/inbox-page.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';

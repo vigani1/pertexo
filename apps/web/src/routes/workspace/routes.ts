@@ -1,4 +1,4 @@
-import { parseApprovalSearch } from '@/features/approvals/queries.public';
+import { parseApprovalSearch } from '@/features/pending-tasks/queries.public';
 import {
   createRoute,
   lazyRouteComponent,

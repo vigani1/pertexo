@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  approvalAudienceSchema,
+  taskAudienceSchema,
   approvalDecisionSchema,
   approvalOutputSchema,
   PENDING_TASK_LIMITS,
@@ -61,7 +61,7 @@ export const pendingTaskDetailSchema = pendingTaskSummarySchema
   .extend({
     workflowVersionId: z.uuid(),
     instructions: z.string().max(PENDING_TASK_LIMITS.instructionsCharacters),
-    audience: approvalAudienceSchema,
+    audience: taskAudienceSchema,
     output: approvalOutputSchema.nullable(),
   })
   .strict();
