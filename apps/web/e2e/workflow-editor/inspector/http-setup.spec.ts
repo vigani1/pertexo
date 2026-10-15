@@ -322,9 +322,30 @@ for (const width of [375, 1280]) {
       first.getByRole('button', { name: 'Remove part', exact: true }),
     ).toBeDisabled();
     await first.getByLabel('Field name', { exact: true }).fill('');
+    let publishRequests = 0;
+    page.on('request', (outgoing) => {
+      if (
+        outgoing.method() === 'POST' &&
+        new URL(outgoing.url()).pathname.endsWith('/publish')
+      )
+        publishRequests++;
+    });
+    await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
+    const publish = page.getByRole('dialog', {
+      name: 'Publish v1',
+      exact: true,
+    });
+    await publish
+      .getByRole('button', { name: 'Publish v1', exact: true })
+      .click();
     await expect(
-      page.getByRole('button', { name: 'Publish v1', exact: true }),
-    ).toBeDisabled();
+      publish.getByText(
+        'Finish or discard the unfinished edit in the step panel first.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    expect(publishRequests).toBe(0);
+    await publish.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(
       first.getByText(
         'Use a field name up to 128 UTF-8 bytes without control characters.',
