@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { Role } from '../../tenant-access/policy.js';
 import { eligibleNoticeIds, type NoticeSubjectRecord } from '../eligibility.js';
-import { pendingTaskBlockedSql } from '../../runs/pending-tasks/queries.js';
+import { pendingTaskBlockedSql } from '../../runs/pending-tasks/eligibility.js';
 import { readAttentionFact } from '../observations/facts.js';
 import type { NoticeMailItem } from './contract.js';
 export type MailSubjectRow = NoticeSubjectRecord &
