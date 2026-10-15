@@ -35,7 +35,8 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 Packages expose a browser-safe root and, when needed, `/server`. The database
 exposes area doors because its consumers need distinct storage capabilities:
 `/attempts`, `/authoring`, `/connections`, `/lifecycle`, `/notifications`,
-`/outbox`, `/platform`, `/previews`, `/runs`, `/tenant-access` and `/triggers`.
+`/outbox`, `/platform`, `/previews`, `/runs`, `/tenant-access`, `/triggers` and
+`/variables`.
 `/testing` supplies fixtures. Observability's `/startup` must load before the
 instrumented runtime libraries. Artifact storage, execution, queue and rate
 limiting are server-side packages despite having a single root door.

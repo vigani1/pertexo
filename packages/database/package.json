@@ -51,6 +51,10 @@
     "./testing": {
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"
+    },
+    "./variables": {
+      "types": "./dist/variables/index.d.ts",
+      "default": "./dist/variables/index.js"
     }
   },
   "scripts": {

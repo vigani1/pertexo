@@ -7,24 +7,24 @@ import type {
   WorkspaceVariableSnapshot,
   WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { createWorkspaceVariablesStore } from '../../../src/tenant-access/variables/store.js';
+import { createWorkspaceVariablesStore } from '../../src/variables/store.js';
 import {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,
-} from '../../../src/tenant-access/variables/contract.js';
-import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
-import { parseDatabaseConfig } from '../../../src/config.js';
-import { withWorkspaceTransaction } from '../../../src/tenant-access/transactions.js';
-import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.js';
-import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.js';
-import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
-import { createRetentionDatabase } from '../../../src/lifecycle/retention.js';
-import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
+} from '../../src/variables/contract.js';
+import { WorkspaceAccessDeniedError } from '../../src/tenant-access/errors.js';
+import { parseDatabaseConfig } from '../../src/config.js';
+import { withWorkspaceTransaction } from '../../src/tenant-access/transactions.js';
+import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.js';
+import { RunVariableSnapshotUnavailableError } from '../../src/runs/commands/variables.js';
+import { createWorkflowRunDatabase } from '../../src/runs/runs.repository.js';
+import { createRetentionDatabase } from '../../src/lifecycle/retention.js';
+import { admin, createFamily } from '../lifecycle/calls/fixtures.js';
 import {
   apiUrl,
   maintenanceUrl,
   userId,
-} from '../../lifecycle/retention.support.js';
+} from '../lifecycle/retention.support.js';
 const config = () => parseDatabaseConfig({ connectionString: apiUrl, max: 4 });
 let store: ReturnType<typeof createWorkspaceVariablesStore>, pool: Pool;
 beforeAll(() => {

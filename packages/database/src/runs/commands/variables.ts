@@ -5,7 +5,7 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowRuns } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { readWorkspaceVariables } from '../../tenant-access/variables/read.js';
+import { readWorkspaceVariables } from '../../variables/read.js';
 export class RunVariableSnapshotUnavailableError extends Error {
   override readonly name = 'RunVariableSnapshotUnavailableError';
   constructor() {

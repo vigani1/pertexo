@@ -1,6 +1,7 @@
 # F13 — Workspace variables
 
-Status: merged in #303; natural main/ARM qualification pending.
+Status: base merged in #303; natural main/ARM qualification passed.
+Ordered follow-up in progress; the database area move is locally qualified.
 Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 
 ## Outcome and current code
@@ -101,10 +102,10 @@ runs exist would reinterpret executions.
   Walk input mappings in root/body graphs and the callable result. Literal text
   containing `$vars.NAME` is not a reference. Typed variable sources and direct static expression reads name the value;
   computed reads or whole-map access conservatively mean "may use any variable".
-- `database/src/tenant-access/variables/` owns scoped current-set commands and
-  usage reads, exported through the existing tenant-access entry point. Reuse
-  current pool leases, tenant transactions, current-authority and command receipts.
-  Group schema under the existing schema area. No extra entry point.
+- `database/src/variables/` owns scoped current-set commands and usage reads,
+  exported through its Node-only variable area entry point. Reuse current pool
+  leases, tenant transactions, current-authority and command receipts. Schema
+  ownership is `schema/variables.ts`; this move leaves behavior unchanged.
 - A bounded paginated usage endpoint scans at most one workflow (its bounded
   draft and current publication) per page and returns matching step/input names,
   including archived workflows clearly. Continue pagination through workflows
@@ -243,3 +244,90 @@ integration tests and the real browser batch; CodeQL 38752254073 passed. The
 five source commits preserve history and the owner author, with no co-author.
 Natural main CI 38755884223 passed all jobs, including real browser journeys and
 ARM image publication; CodeQL 38755884421 passed.
+
+## Follow-up — immutable variable sets (2026-10-16)
+
+Status: database area moved and qualified; publication, revision storage and
+descriptions are next in this fifth ordered follow-up. The decisions below supersede the
+original per-run JSON storage and tenant-access placement described above.
+
+### Storage and admission
+
+- Move the existing database variable commands, reads and usage into
+  `database/src/variables/`, with its own Node-only `/variables` entry point.
+  Move its integration tests and `schema/identity/variables.ts` to
+  `schema/variables.ts` with it. Keep behavior and imports buildable in a
+  separate move-only commit before changing storage or public contracts.
+- `workspace_variables` becomes a small current-revision head. Immutable
+  `workspace_variable_set_revisions` rows store one `{ values, descriptions }`
+  set per `(workspace_id, revision)`. App grants allow insert/read, not update;
+  maintenance may delete unreferenced history. Retain existing workspace RLS.
+- A run or preview stores only its nullable `variable_set_revision` foreign key.
+  Null means the immutable empty revision zero, with no physical revision-zero
+  row or provisioning work. Purged run details are distinguished by the existing
+  `details_purged_at` and logical retention window, never by null alone.
+- Current-set edits retain CAS/idempotency, authority locks and safe audits.
+  Lock the head alone, then read the immutable set by that exact revision;
+  publication does the same before projecting names. Avoid a locking join that
+  could mix a refreshed head with an older joined row after waiting on an edit.
+  Existing heads serialize edits; an initial revision collision is a typed
+  conflict, not a database error or another writer's success. Metadata-only
+  edits create a revision; equivalent values/descriptions do not.
+- Fresh admissions hold the current head shared until inserting their reference.
+  Replay/recovery hold the retained source shared while inheriting its exact
+  reference. Child Calls inherit their parent reference under the existing
+  parent lock. Exact retries keep accepted rows. No path substitutes current
+  values for missing historical values, including empty revision zero.
+- Worker input and preview queries join the immutable row within their existing
+  scoped lease read. Coordinator advances carry only the revision; callable
+  completion resolves values lazily. Avoid a second query per step and avoid
+  reading/copying the whole set merely to accept another run.
+- Migrate all existing current/retained run/preview positive revisions into the
+  shared table; fail clearly on conflicting historical maps or invalid empty
+  revision-zero data. Remove old value copies. Stop old API/worker binaries
+  before migrating and restart matching readers/writers together.
+
+### Retention and descriptions
+
+- Completed runs release the reference with their existing 30-day details;
+  logical expiry blocks replay before physical cleanup. Live runs and pending
+  tasks retain their references. Preview deletion releases its reference.
+- Existing bounded retention deletes a noncurrent revision only when no retained
+  run or preview references it. Workspace purge removes heads and executions
+  before revisions. Composite child-reference indexes keep these checks bounded.
+- Optional plain descriptions: at most 500 characters each, 16 KiB total, same
+  variable names and count bound. Descriptions do not change the existing 32 KiB
+  value budget and are not loaded into execution mappings. Blank descriptions
+  normalize away. Removing a variable removes its description.
+- An omitted descriptions property preserves descriptions for retained names,
+  so older clients do not erase them. An explicit empty map clears them. The
+  current editor sends the complete map, retains edits across conflict/uncertain
+  responses, and shows descriptions in settings and the mapping picker.
+- Audit still stores revision/changed names only, never values or descriptions.
+  Existing run snapshot responses retain `{ revision, values }`; settings add
+  descriptions. No editable history UI, environment values or new cache/service.
+
+### Publication
+
+- Publication fails clearly for any missing typed variable or required static
+  `$vars.NAME`, including nested bodies and callable results. Literal text is
+  not a reference. Optional/dynamic whole-map lookups retain runtime semantics.
+- Pass current variable names into the existing bounded off-thread authoring
+  validator and reuse its single AST inspection/cache. Never parse a whole
+  graph synchronously on the API thread or create another evaluator. Include
+  names in its existing payload budget. Empty names mean check against an empty
+  set; omitted names mean ordinary draft validation without existence checks.
+- The publisher holds the current head shared while validating/publishing.
+  Reference failures use the existing graph issue/report budget and safe copy;
+  no variable values or expression/provider text enter errors. Exact publication
+  command retries retain their accepted result.
+
+### Qualification
+
+Root lint/type/build/contracts/architecture/schema checks and units; real
+PostgreSQL initial-edit races, shared revision storage, replay empty/current,
+Call inheritance, preview and logical/physical retention/purge; publication
+missing direct/expression/nested/result references; real worker/API/browser
+old/new/replay behavior, descriptions, uncertainty and desktop/phone; mocked
+browser suite, React Doctor and green PR CI. Measure shared storage with the
+maximum bounded value set referenced by many accepted runs. No external service.

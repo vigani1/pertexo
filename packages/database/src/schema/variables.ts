@@ -7,8 +7,8 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { appSchema } from '../namespace.js';
-import { workspaces } from '../foundation.js';
+import { appSchema } from './namespace.js';
+import { workspaces } from './foundation.js';
 export const workspaceVariables = appSchema.table(
   'workspace_variables',
   {

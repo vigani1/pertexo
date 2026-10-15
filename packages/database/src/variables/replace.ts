@@ -5,8 +5,8 @@ import {
   canonicalJson,
   workspaceVariableSnapshotSchema,
 } from '@pertexo/workflow-model';
-import { claimCommand, completeCommand } from '../../platform/idempotency.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
+import { claimCommand, completeCommand } from '../platform/idempotency.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   WorkspaceVariablesConflictError,
   type WorkspaceVariablesStore,

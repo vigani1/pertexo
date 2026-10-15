@@ -1,20 +1,20 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { DatabaseConfig } from '../../config.js';
+import type { DatabaseConfig } from '../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../../platform/pool/runtime.js';
-import { databaseSchema } from '../../schema.js';
+} from '../platform/pool/runtime.js';
+import { databaseSchema } from '../schema.js';
 import {
   parseWorkspaceId,
   withTenantScopedClient,
   withTenantScopedReadClient,
-} from '../transactions.js';
+} from '../tenant-access/transactions.js';
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../workspaces/authority.js';
-import { rolesForCapability } from '../policy.js';
+} from '../tenant-access/workspaces/authority.js';
+import { rolesForCapability } from '../tenant-access/policy.js';
 import { readWorkspaceVariables } from './read.js';
 import { replaceWorkspaceVariables } from './replace.js';
 import { readVariableUsage } from './usage.js';
