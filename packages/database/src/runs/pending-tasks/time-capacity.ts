@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { wakeWorkflowRun, deferWorkflowRun } from '../calls/wakeup.js';
-import { wakeTaskAncestors } from './decide.js';
+import { wakeTaskAncestors } from './respond.js';
 
 export type HumanWaitState = Readonly<{
   human_wait_started_at: Date | null;

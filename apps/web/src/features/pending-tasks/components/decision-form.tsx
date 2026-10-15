@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { TaskScope } from '../data/tasks.api';
-import { useTaskResponse } from '../data/use-decision';
+import { useTaskResponse } from '../data/use-response';
 import { blockedSentence } from '../model/presentation';
 export function DecisionForm({
   task,

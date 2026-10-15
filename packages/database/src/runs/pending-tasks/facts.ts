@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import type { PendingTaskOutcome } from '@pertexo/workflow-engine';
-import { wakeTaskAncestors } from './decide.js';
+import { wakeTaskAncestors } from './respond.js';
 
 /** Database time resolves expiry; the existing due-node scanner supplies wakeups. */
 export async function readPendingTaskFacts(
