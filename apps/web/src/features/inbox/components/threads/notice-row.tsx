@@ -7,6 +7,7 @@ import { StatusGlyph } from '@/components/ui/status';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format/time';
 import { InboxThreadRow } from './row';
+import { TaskDetails } from '@/features/pending-tasks/public';
 const labels = {
   workflow_auto_paused: 'Workflow auto-paused',
   connection_attention: 'Connection needs attention',
@@ -93,6 +94,9 @@ export function NoticeThreadRow(
           {labels[thread.noticeKind]}
         </p>
         <p className="truncate font-medium">{thread.name}</p>
+        {thread.noticeKind === 'approval_waiting' ? (
+          <TaskDetails details={thread.details} />
+        ) : null}
         {thread.limits.length > 0 ? (
           <p className="text-sm text-muted-foreground">
             {thread.limits

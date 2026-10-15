@@ -91,6 +91,15 @@ paused clocks and their immutable Call identity.
 
 ## Consequences
 
+### Amendment: captured mapped context (2026-10-15)
+
+The declaration may carry mapped, named scalar details, bounded to 20 fields and
+8 KiB. They are captured once with the task in the checkpoint transaction and
+shown as plain text to authorized task/Inbox readers. They are retained run data,
+never email, audit or error-workflow payload. The separate context column keeps
+dynamic data outside immutable task setup and its 16 KiB configuration bound.
+Matching readers must precede publishing mappings; older tasks have empty context.
+
 Approvals and the already requested F11 input interactions have one durable
 response mechanism. Decision output remains reproducible, authorization stays
 current, and long human waits neither occupy workers nor starve active slots.

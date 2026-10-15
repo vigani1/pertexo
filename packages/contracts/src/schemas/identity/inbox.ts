@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { taskDetailsSchema } from '@pertexo/workflow-model';
 
 import { workflowRunFailedStepSchema } from '../execution/runs.js';
 
@@ -86,6 +87,7 @@ export const workspaceInboxAttentionThreadSchema = z
     subjectId: z.uuid(),
     workflowId: z.uuid().nullable(),
     name: z.string().max(200),
+    details: taskDetailsSchema.default({}),
     occurrenceCount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
     firstOccurredAt: workspaceInboxTimestampSchema,
     latestOccurredAt: workspaceInboxTimestampSchema,

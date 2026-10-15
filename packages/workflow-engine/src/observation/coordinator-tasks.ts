@@ -3,6 +3,8 @@ import {
   isHumanTaskDefinition,
   UUID_PATTERN,
   WORKFLOW_GRAPH_LIMITS,
+  taskContextSchema,
+  type TaskContext,
   type JsonValue,
   type ApprovalConfig,
   type InputRequestConfig,
@@ -43,6 +45,7 @@ export function taskDeclarationObservations(
   const declarations = new Set<string>();
   const intents: PendingTaskIntent[] = [];
   const pending = new Set<string>();
+  const contexts = new Map<string, TaskContext>();
   for (const item of completedItems) {
     const material = item as Readonly<{
       sequence: number;
@@ -58,12 +61,17 @@ export function taskDeclarationObservations(
       'observation_invalid',
       'task declaration output',
     );
-    exactKeys(value, ['pending']);
+    exactKeys(value, ['pending'], ['context']);
     if (value.pending !== true)
       operationError('observation_invalid', 'task declaration is not pending');
-    pending.add(
-      `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`,
-    );
+    const identity = `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`;
+    if (value.context !== undefined) {
+      const context = taskContextSchema.safeParse(value.context);
+      if (!context.success)
+        operationError('observation_invalid', 'task context is invalid');
+      contexts.set(identity, context.data);
+    }
+    pending.add(identity);
   }
   for (const [identity, outcome] of successfulOutcomes) {
     const owner =
@@ -83,8 +91,10 @@ export function taskDeclarationObservations(
         'task declaration evidence is missing or conflicting',
       );
     declarations.add(owner.invocationKey);
+    const context = contexts.get(identity);
     intents.push({
       invocationKey: owner.invocationKey,
+      ...(context === undefined ? {} : { context }),
       ...(node.definition.key === 'core.approval'
         ? {
             kind: 'approval' as const,

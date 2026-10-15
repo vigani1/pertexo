@@ -1,5 +1,8 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
-import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
+import {
+  CORE_BOUNDED_JSON_POLICY,
+  CORE_JSONATA_POLICY,
+} from '../../policies.js';
 import {
   CORE_REQUEST_INPUT_CONFIG_SCHEMA,
   CORE_REQUEST_INPUT_INPUT_SCHEMA,
@@ -32,5 +35,8 @@ export const CORE_REQUEST_INPUT_MANIFEST: NodeManifest = Object.freeze({
   capabilities: Object.freeze(['suspends_run']),
   executor: CORE_REQUEST_INPUT_EXECUTOR,
   executorAbi: 1,
-  policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
+  policyReferences: Object.freeze([
+    CORE_BOUNDED_JSON_POLICY,
+    CORE_JSONATA_POLICY,
+  ]),
 });

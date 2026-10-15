@@ -9,6 +9,7 @@ import {
   inputRequestConfigSchema,
   formSubmissionSchema,
   approvalOutputSchema,
+  taskContextSchema,
 } from '@pertexo/workflow-model';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import type { Role } from '../../tenant-access/policy.js';
@@ -52,6 +53,7 @@ export type TaskRow = Readonly<{
   workflow_name: string;
   kind: 'approval' | 'input_request';
   config: unknown;
+  context: unknown;
   status: PendingTaskDetail['status'];
   output_ref: unknown;
   decided_by_name: string | null;
@@ -72,6 +74,7 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
           config: inputRequestConfigSchema.parse(row.config),
         };
   const config = captured.config;
+  const context = taskContextSchema.parse(row.context);
   const stored =
     row.output_ref === null ? null : parseStoredExecutionValue(row.output_ref);
   if (stored !== null && stored.kind !== 'inline')
@@ -88,6 +91,7 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
     kind: row.kind,
     iterationPath: row.branch_context.iterationPath ?? [],
     title: config.title,
+    details: context.details ?? {},
     instructions: config.instructions,
     audience: config.audience,
     status: row.status,
@@ -103,6 +107,7 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
         ...common,
         kind: 'input_request',
         fields: captured.config.fields,
+        prefill: context.prefill ?? {},
         output:
           stored?.kind === 'inline'
             ? formSubmissionSchema.parse(stored.value)
@@ -170,7 +175,7 @@ export async function listTasks(
         ...summary
       } = projectTask(row);
       if ('fields' in summary) {
-        const { fields: _fields, ...item } = summary;
+        const { fields: _fields, prefill: _prefill, ...item } = summary;
         return item;
       }
       return summary;

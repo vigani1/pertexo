@@ -259,6 +259,38 @@ external service provisioning is part of this implementation request.
 
 ## Later work
 
+## Follow-up: captured task context (2026-10-15)
+
+Status: implemented; qualification and merge evidence are recorded in its PR.
+
+Approval accepts an optional mapped `details` object through normal step inputs.
+It contains at most 20 named fields (labels 1–160 characters); values are plain
+text, finite numbers, booleans or null. The complete object, including PostgreSQL
+JSON spacing, fits 8 KiB. This deliberately provides readable decision facts
+without arbitrary nested documents, HTML or file capabilities. The declaration
+executor validates it at the input boundary and includes it in its bounded
+declaration result. The engine carries that captured context in the task intent;
+the existing checkpoint/task transaction persists it once in a separate bounded
+`pending_run_tasks.context` column. Configuration retains its existing 16 KiB
+fence. Existing tasks have empty context. Resumption and subsequent workflow or
+variable edits never reevaluate the facts. Context expires/purges with its task.
+
+The task page, task-list rows and approval Inbox notice show these same named
+facts with plain, wrapping text. Inbox projects only context for an authorized
+approval task; emails, audit records and error-workflow summaries never contain
+it. Existing mapping controls own authoring; the Setup hint explains the input.
+No new task owner, role, service, dependency or workflow format is introduced.
+
+Qualification: mapped values through real worker/task creation, persistence over
+restart and resolution, empty older tasks, oversized/invalid values, eligible
+Inbox projection, phone layout, escaped markup, exact-response retries and
+unchanged decision authorization. Run normal lint/types/unit/mocked-browser,
+contracts/schema and changed React Doctor gates before the follow-up PR.
+
+Local proof: 9,191 units, 31 PostgreSQL task/Inbox/upgrade cases, nine real worker
+cases, and real Approval/Form journeys with independent stored-context/audit
+checks. Desktop and 375px screenshots are in `docs/media/task-context/`.
+
 Email/public approval links, multiple required votes, delegation/escalation,
 reassignment, approvals from outside the workspace and file fields remain out.
 F11 request-input reuses the pending-task mechanism in the next authorized feature.

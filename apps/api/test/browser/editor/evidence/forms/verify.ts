@@ -21,13 +21,19 @@ export async function verifyFormEvidence(database: Pool) {
   expect(
     (
       await database.query(
-        `select status,consumed_at is not null consumed from app.pending_run_tasks`,
+        `select status,context,consumed_at is not null consumed from app.pending_run_tasks order by created_at,id`,
       )
     ).rows,
-  ).toEqual([
-    { status: 'submitted', consumed: true },
-    { status: 'submitted', consumed: true },
-  ]);
+  ).toEqual(
+    ['member', 'public'].map((kind) => ({
+      status: 'submitted',
+      consumed: true,
+      context: {
+        details: { amount: 0, request_message: `${kind} request` },
+        prefill: { answer: `${kind} request` },
+      },
+    })),
+  );
   expect(
     (
       await database.query(

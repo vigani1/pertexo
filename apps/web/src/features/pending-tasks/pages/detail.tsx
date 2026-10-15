@@ -1,4 +1,5 @@
 import { InputResponse } from '../components/input-response';
+import { TaskDetails } from '../components/details';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
@@ -58,6 +59,7 @@ export function TaskDetailPage({
             {task.instructions}
           </p>
         )}
+        <TaskDetails details={task.details} />
       </div>
       {task.kind !== 'approval' || task.output === null ? null : (
         <section className="rounded-xl border border-border p-5">

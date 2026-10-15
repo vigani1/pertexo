@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
 import { formatDateTime } from '@/lib/format/time';
 import { taskTone } from '../model/presentation';
+import { TaskDetails } from './details';
 export function TaskRow({ task }: Readonly<{ task: PendingTaskSummary }>) {
   return (
     <li className="flex items-start gap-3 border-b border-border py-4">
@@ -21,6 +22,7 @@ export function TaskRow({ task }: Readonly<{ task: PendingTaskSummary }>) {
             .map((item) => ` · item ${String(item.ordinal + 1)}`)
             .join('')}
         </p>
+        <TaskDetails details={task.details} />
         <p className="mt-1 text-xs text-muted-foreground">
           {task.status === 'pending'
             ? `Expires ${formatDateTime(task.expiresAt)}`

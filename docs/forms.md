@@ -65,6 +65,15 @@ response wins, even if two people send at the same time. Its output contains
 `values`, `submittedBy` and `submittedAt`, with the same types as a Form trigger.
 Map the Request input step's `values.answer` into a later step.
 
+In **Inputs**, map `details` to named facts the responder needs, as for
+[Approval details](approvals.md). Map `prefill` to an object keyed by your field
+names, such as `{"answer":"Suggested response","amount":0,"ready":false}`.
+Only fields present in this request are accepted; values must already have their
+field's type and choice options. Required fields may be missing from prefills,
+but must be completed before sending. Prefills fit the existing 64 KB response
+budget. Both details and prefills are captured once when the task opens. The
+responder can edit prefills, and refreshing task data never replaces unsent edits.
+
 The run releases its active slot and pauses its execution budget while only human
 tasks are pending; an explicit absolute deadline still applies. Request expiry
 fails the step and can follow its failure link. Cancellation closes the task.

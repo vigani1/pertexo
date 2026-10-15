@@ -6,6 +6,11 @@ and natural-main image publication remain the release gates.
 Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 Decision: [ADR 079](../adr/079-personal-notices-and-mail.md).
 
+Follow-up (2026-10-15, implemented): show the task's captured bounded details on
+eligible Approval notices, using the existing task context projection. Requested
+input Inbox rows show the same details. Email, stream hints, audit and error
+workflow summaries remain free of task data; task eligibility gates context.
+
 ## Current code and outcome
 
 F03 already has one workspace inbox: terminal failure events are folded into a

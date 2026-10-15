@@ -73,6 +73,7 @@ it('upgrades populated workflow threads and private read revisions without chang
     );
     expect(await migrateDatabase(migration)).toEqual([
       '0012_personal_notices.sql',
+      '0013_task_context.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

@@ -72,6 +72,23 @@
           "type": "string",
           "maxLength": 160
         },
+        "details": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
         "status": {
           "type": "string",
           "enum": [
@@ -149,6 +166,7 @@
         "iterationPath",
         "kind",
         "title",
+        "details",
         "status",
         "createdAt",
         "expiresAt",
@@ -229,6 +247,23 @@
             "title": {
               "type": "string",
               "maxLength": 160
+            },
+            "details": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              }
             },
             "status": {
               "type": "string",
@@ -401,6 +436,7 @@
             "iterationPath",
             "kind",
             "title",
+            "details",
             "status",
             "createdAt",
             "expiresAt",
@@ -482,6 +518,23 @@
             "title": {
               "type": "string",
               "maxLength": 160
+            },
+            "details": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              }
             },
             "status": {
               "type": "string",
@@ -703,6 +756,20 @@
                 ]
               }
             },
+            "prefill": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            },
             "output": {
               "anyOf": [
                 {
@@ -763,6 +830,7 @@
             "iterationPath",
             "kind",
             "title",
+            "details",
             "status",
             "createdAt",
             "expiresAt",
@@ -774,6 +842,7 @@
             "instructions",
             "audience",
             "fields",
+            "prefill",
             "output"
           ],
           "additionalProperties": false
@@ -853,6 +922,23 @@
                 "title": {
                   "type": "string",
                   "maxLength": 160
+                },
+                "details": {
+                  "default": {},
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
                   "type": "string",
@@ -1025,6 +1111,7 @@
                 "iterationPath",
                 "kind",
                 "title",
+                "details",
                 "status",
                 "createdAt",
                 "expiresAt",
@@ -1106,6 +1193,23 @@
                 "title": {
                   "type": "string",
                   "maxLength": 160
+                },
+                "details": {
+                  "default": {},
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
                   "type": "string",
@@ -1327,6 +1431,20 @@
                     ]
                   }
                 },
+                "prefill": {
+                  "default": {},
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean"
+                    ]
+                  }
+                },
                 "output": {
                   "anyOf": [
                     {
@@ -1387,6 +1505,7 @@
                 "iterationPath",
                 "kind",
                 "title",
+                "details",
                 "status",
                 "createdAt",
                 "expiresAt",
@@ -1398,6 +1517,7 @@
                 "instructions",
                 "audience",
                 "fields",
+                "prefill",
                 "output"
               ],
               "additionalProperties": false
@@ -1488,6 +1608,23 @@
                 "type": "string",
                 "maxLength": 160
               },
+              "details": {
+                "default": {},
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
               "status": {
                 "type": "string",
                 "enum": [
@@ -1565,6 +1702,7 @@
               "iterationPath",
               "kind",
               "title",
+              "details",
               "status",
               "createdAt",
               "expiresAt",
@@ -1696,6 +1834,23 @@
                   "type": "string",
                   "maxLength": 160
                 },
+                "details": {
+                  "default": {},
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                },
                 "status": {
                   "type": "string",
                   "enum": [
@@ -1867,6 +2022,7 @@
                 "iterationPath",
                 "kind",
                 "title",
+                "details",
                 "status",
                 "createdAt",
                 "expiresAt",
@@ -1948,6 +2104,23 @@
                 "title": {
                   "type": "string",
                   "maxLength": 160
+                },
+                "details": {
+                  "default": {},
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
                   "type": "string",
@@ -2169,6 +2342,20 @@
                     ]
                   }
                 },
+                "prefill": {
+                  "default": {},
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean"
+                    ]
+                  }
+                },
                 "output": {
                   "anyOf": [
                     {
@@ -2229,6 +2416,7 @@
                 "iterationPath",
                 "kind",
                 "title",
+                "details",
                 "status",
                 "createdAt",
                 "expiresAt",
@@ -2240,6 +2428,7 @@
                 "instructions",
                 "audience",
                 "fields",
+                "prefill",
                 "output"
               ],
               "additionalProperties": false
