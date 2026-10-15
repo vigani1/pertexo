@@ -70,9 +70,12 @@ export function inspectWorkflowDecisionTree(
   if (
     roots.length !== 1 ||
     root === undefined ||
-    !['core.manual', 'core.webhook', 'core.schedule'].includes(
-      root.definition.key,
-    )
+    ![
+      'core.workflow_error',
+      'core.manual',
+      'core.webhook',
+      'core.schedule',
+    ].includes(root.definition.key)
   )
     return undefined;
 

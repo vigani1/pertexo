@@ -197,6 +197,9 @@ export async function createApiWorkflowRuntime(
           ? {}
           : { inputCasePersistence: metadataRuntime.inputCases }),
         organization: metadataRuntime.organization,
+        ...(database.errorWorkflow === undefined
+          ? {}
+          : { errorWorkflowPersistence: database.errorWorkflow }),
         ...(database.concurrency === undefined
           ? {}
           : { concurrencyPersistence: database.concurrency }),

@@ -72,6 +72,8 @@
             "workflow.concurrency_revision_conflict",
             "workflow.concurrency_limit_exceeded",
             "workflow.concurrency_limit_unavailable",
+            "workflow.error_policy_conflict",
+            "workflow.error_target_unavailable",
             "workflow.input_case_revision_conflict",
             "workflow.input_case_limit_exceeded",
             "workflow.tag_key_conflict",

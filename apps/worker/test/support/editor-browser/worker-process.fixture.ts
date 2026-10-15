@@ -1,3 +1,4 @@
+import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
 import { withArtifactReadOutage } from './artifact-read-retry.js';
 import { createArtifactDestination } from '../../attempts/artifacts/http-destination.js';
 import { parseArtifactStoreConfig } from '@pertexo/artifact-store';
@@ -71,6 +72,7 @@ const namespace = createRedisTestNamespace(
   },
 );
 const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
+const errorWorkflowCase = process.env.EDITOR_BROWSER_CASE === 'error-workflows';
 const transformCase = process.env.EDITOR_BROWSER_CASE === 'transforms';
 const artifactInputs = process.env.EDITOR_BROWSER_CASE === 'artifact-inputs';
 let artifactTarget:
@@ -322,6 +324,15 @@ async function constructRuntimes(
       : {},
   );
   resources.coordinator = coordinator;
+  if (errorWorkflowCase) {
+    const maintenance = await createMaintenanceRuntime({
+      database,
+      redisUrl: namespace.redisUrl,
+    });
+    resources.maintenance = maintenance;
+    await maintenance.consumer.waitUntilReady(5_000);
+    assertSetupActive();
+  }
   assertSetupActive();
   let controlledCapabilities:
     Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>> | undefined;
@@ -459,7 +470,7 @@ async function constructRuntimes(
   assertSetupActive();
   const triggers: TriggerRuntime[] = [];
   resources.triggers = triggers;
-  if (scheduleCase || controlledHttp || curatedTemplates) {
+  if (scheduleCase || controlledHttp || curatedTemplates || errorWorkflowCase) {
     for (const scanner of scheduleCase ? ['one', 'two'] : ['webhook']) {
       const trigger = await createTriggerRuntime({
         database,
@@ -499,6 +510,7 @@ async function constructRuntimes(
       jobNames: [
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.executeNodeAttempt,
+        ...(errorWorkflowCase ? [JOB_NAME.startErrorWorkflow] : []),
         ...(transformCase ? [JOB_NAME.executePreviewAttempt] : []),
         ...(triggers.length === 0 ? [] : [JOB_NAME.reconcileWorkflowTriggers]),
       ],

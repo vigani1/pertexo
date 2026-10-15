@@ -360,6 +360,7 @@ export function nodeUsesRunInputDirectly(
   definition: WorkflowNode['definition'],
 ): boolean {
   return (
+    (definition.key === 'core.workflow_error' && definition.version === 1) ||
     (definition.key === 'core.manual' && definition.version === 1) ||
     (definition.key === 'core.webhook' && definition.version === 1) ||
     (definition.key === 'core.schedule' && definition.version === 1)

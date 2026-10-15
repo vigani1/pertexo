@@ -110,3 +110,10 @@ export type {
   WorkflowRecoveryPreviewInput,
   RecoverPublishedWorkflowRunInput,
 } from './runs.repository.js';
+
+export {
+  createErrorWorkflowStore,
+  ErrorWorkflowDeliveryMismatchError,
+  ErrorWorkflowVersionUnavailableError,
+  type ErrorWorkflowStore,
+} from './error-workflows/store.js';

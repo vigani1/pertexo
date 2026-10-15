@@ -92,6 +92,14 @@ describe('queue contracts', () => {
         },
       ],
       [
+        JOB_NAME.startErrorWorkflow,
+        {
+          workspaceId: IDS.workspaceId,
+          sourceRunId: IDS.runId,
+          outboxEventId: IDS.outboxEventId,
+        },
+      ],
+      [
         JOB_NAME.executeNodeAttempt,
         {
           workspaceId: IDS.workspaceId,

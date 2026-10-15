@@ -118,6 +118,12 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
     icon: GitForkIcon,
     family: 'logic',
   },
+  'core.workflow_error': {
+    name: 'When a workflow fails',
+    description: 'Receive a safe summary after another workflow fails',
+    icon: OctagonXIcon,
+    family: 'trigger',
+  },
   'core.manual': {
     name: 'Manual start',
     description: 'Start when someone runs it by hand',

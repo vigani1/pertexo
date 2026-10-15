@@ -1,5 +1,6 @@
 export {
   AdvanceWorkflowRunJobSchema,
+  StartErrorWorkflowJobSchema,
   ApplyConnectionHealthObservationJobSchema,
   ExecuteNodeAttemptJobSchema,
   ExecutePreviewAttemptJobSchema,
@@ -15,6 +16,7 @@ export {
 } from './jobs/contracts.js';
 export type {
   AdvanceWorkflowRunJob,
+  StartErrorWorkflowJob,
   ApplyConnectionHealthObservationJob,
   ExecuteNodeAttemptJob,
   ExecutePreviewAttemptJob,

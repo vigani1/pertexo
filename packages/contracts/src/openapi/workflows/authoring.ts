@@ -1,3 +1,7 @@
+import {
+  workflowErrorContractPaths,
+  workflowErrorContractSchemas,
+} from './error-workflow.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
   workflowOrganizationContractPaths,
@@ -81,6 +85,7 @@ function contractSchemas(target: 'client' | 'openapi') {
     ...workflowRevisionCommandSchemas(project),
     ...workflowAutoPauseContractSchemas(project),
     ...workflowConcurrencyContractSchemas(project),
+    ...workflowErrorContractSchemas(project),
     ...workflowInputCaseContractSchemas(project),
     ...workflowOrganizationContractSchemas(project),
     WorkflowRevisionConflictProblem: project(
@@ -499,6 +504,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     },
     ...workflowAutoPauseContractPaths,
     ...workflowConcurrencyContractPaths,
+    ...workflowErrorContractPaths,
     ...workflowInputCaseContractPaths,
     ...workflowOrganizationContractPaths,
   },

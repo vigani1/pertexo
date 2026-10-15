@@ -21,6 +21,7 @@ describe('queue names', () => {
   it('owns the literal job names and queue routing', () => {
     expect(JOB_NAME).toEqual({
       advanceWorkflowRun: 'advance-workflow-run',
+      startErrorWorkflow: 'start-error-workflow',
       executeNodeAttempt: 'execute-node-attempt',
       executePreviewAttempt: 'execute-preview-attempt',
       reconcilePreviewAttempt: 'reconcile-preview-attempt',
@@ -33,6 +34,7 @@ describe('queue names', () => {
     });
     expect(QUEUE_FOR_JOB).toEqual({
       [JOB_NAME.advanceWorkflowRun]: QUEUE_NAME.workflowCoordinator,
+      [JOB_NAME.startErrorWorkflow]: QUEUE_NAME.maintenance,
       [JOB_NAME.executeNodeAttempt]: QUEUE_NAME.nodeAttempts,
       [JOB_NAME.executePreviewAttempt]: QUEUE_NAME.nodeAttempts,
       [JOB_NAME.reconcilePreviewAttempt]: QUEUE_NAME.maintenance,

@@ -5,6 +5,7 @@ import {
   RotateCcwIcon,
   WebhookIcon,
   GitForkIcon,
+  OctagonXIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ const triggerIcons: Readonly<Record<RunTriggerType, LucideIcon>> = {
   schedule: CalendarClockIcon,
   webhook: WebhookIcon,
   workflow_call: GitForkIcon,
+  workflow_error: OctagonXIcon,
 };
 
 /** How a run started, as an icon and a word. */

@@ -59,3 +59,29 @@ ship with the migration; accepted routed state makes older binaries unsafe to
 restore. Recovery initially refuses graphs with failure links (ADR 072).
 Compensation, return-to-main joins, loops, child handling and artifact recovery
 need separately reviewed semantics rather than implicit fallback behavior.
+
+
+## Follow-up: error workflows (2026-10-15)
+
+The owner authorized a separate workflow-level follow-up in F09. A current
+operational setting selects another published workflow with the **When a
+workflow fails** trigger. Changing it requires edit access to both workflows;
+it grants neither workflow nor credential access. Final failed, timed-out and
+unknown runs capture the current target version into a unique source-run
+intent in the terminal transaction. Handled success and cancellation do not.
+
+The target is admitted separately through normal capacity/lifecycle checks;
+refusal never prevents recording the source failure. Its input is a strict
+allowlist of workflow/version identity and name, relative run link, failed step
+identity and fixed sanitized error code/description. No execution values or
+provider error strings cross this interface. Redelivery uses the same intent
+and admission receipt. Error-origin runs, their Calls and deliberate replays or
+recoveries preserve a suppression flag, preventing direct and indirect loops.
+
+The existing queues, app role, forced workspace security, immutable publications
+and retention/purge own this behavior. Capture uses the setting at failure,
+rather than pinning a possibly old handler for every successful source run.
+The intent retains the captured publication with its source history. Workers
+and readers must understand the additive trigger kind and origin flag before
+publishing error-trigger workflows. Existing in-run routes, unknown-outcome
+warnings, automatic retries and recovery restrictions are unchanged.

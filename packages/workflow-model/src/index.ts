@@ -149,3 +149,10 @@ export {
   WorkflowCallDependencyError,
   type CallableVersionSummary,
 } from './callable/dependencies.js';
+
+export {
+  workflowErrorInputSchema,
+  type WorkflowErrorInput,
+} from './error-workflows/contract.js';
+
+export { isWorkflowErrorTarget } from './error-workflows/target.js';

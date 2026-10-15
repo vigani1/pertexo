@@ -479,6 +479,9 @@ function toRunResponse(result: WorkflowRunReadModel): WorkflowRunResponse {
   return workflowRunResponseSchema.parse({
     run: toRunSummary(result.run),
     ...(result.calls === undefined ? {} : { calls: result.calls }),
+    ...(result.errorWorkflow === undefined
+      ? {}
+      : { errorWorkflow: result.errorWorkflow }),
     ...(result.parentCall === undefined
       ? {}
       : { parentCall: result.parentCall }),

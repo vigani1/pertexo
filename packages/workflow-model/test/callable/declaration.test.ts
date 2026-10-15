@@ -44,9 +44,10 @@ describe('callable graph declarations', () => {
     },
   );
 
-  it('rejects a schedule or disabled entry and multiple entries', () => {
+  it('rejects non-callable triggers, disabled entries and multiple entries', () => {
     for (const value of [
       graph('core.schedule'),
+      graph('core.workflow_error'),
       {
         ...graph(),
         nodes: graph().nodes.map((node) => ({ ...node, disabled: true })),

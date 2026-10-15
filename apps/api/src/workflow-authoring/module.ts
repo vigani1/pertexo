@@ -1,3 +1,5 @@
+import { WorkflowErrorUseCase } from './settings/error-workflow.js';
+import { WorkflowErrorController } from './settings/error-workflow-controller.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
@@ -93,6 +95,17 @@ export class WorkflowAuthoringModule {
           telemetry,
         ),
       },
+      ...(dependencies.errorWorkflowPersistence === undefined
+        ? []
+        : [
+            {
+              provide: WorkflowErrorUseCase,
+              useValue: new WorkflowErrorUseCase(
+                dependencies.errorWorkflowPersistence,
+                dependencies.authorization,
+              ),
+            },
+          ]),
       ...(dependencies.concurrencyPersistence === undefined
         ? []
         : [
@@ -226,6 +239,9 @@ export class WorkflowAuthoringModule {
         ...(dependencies.inputCasePersistence === undefined
           ? []
           : [WorkflowInputCasesController]),
+        ...(dependencies.errorWorkflowPersistence === undefined
+          ? []
+          : [WorkflowErrorController]),
         ...(dependencies.concurrencyPersistence === undefined
           ? []
           : [WorkflowConcurrencyController]),

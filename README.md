@@ -190,3 +190,6 @@ for configuration, delivery uncertainty and switching providers safely. Workflow
 Email steps and workspace Alerts still use their workspace Resend connections.
 
 Personal API tokens and the HTTP CLI: [automation guide](docs/automation.md).
+
+Run a separate workflow after a failure:
+[error workflow guide](docs/error-workflows.md).

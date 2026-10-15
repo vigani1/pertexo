@@ -32,6 +32,7 @@ const triggerTypeSchema = z.enum([
   'schedule',
   'webhook',
   'workflow_call',
+  'workflow_error',
 ]);
 const runRowSchema = z
   .object({

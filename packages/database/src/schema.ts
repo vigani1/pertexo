@@ -1,3 +1,5 @@
+import { workflowErrorPolicies } from './schema/authoring/error-workflow.js';
+import { runErrorWorkflowIntents } from './schema/runs/error-workflow.js';
 import { apiTokens } from './schema/identity/api-tokens.js';
 import {
   authAccounts,
@@ -166,6 +168,8 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  workflowErrorPolicies,
+  runErrorWorkflowIntents,
   apiTokens,
   workflowVersionDependencies,
   workflowCalls,

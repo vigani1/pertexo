@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0007_unknown_outcome_recovery.sql';
+export const EXPECTED_MIGRATION_HEAD = '0008_error_workflows.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

@@ -9,6 +9,7 @@ export type QueueName = (typeof QUEUE_NAME)[keyof typeof QUEUE_NAME];
 
 export const JOB_NAME = Object.freeze({
   advanceWorkflowRun: 'advance-workflow-run',
+  startErrorWorkflow: 'start-error-workflow',
   executeNodeAttempt: 'execute-node-attempt',
   executePreviewAttempt: 'execute-preview-attempt',
   reconcilePreviewAttempt: 'reconcile-preview-attempt',
@@ -24,6 +25,7 @@ export type JobName = (typeof JOB_NAME)[keyof typeof JOB_NAME];
 
 export const QUEUE_FOR_JOB = Object.freeze({
   [JOB_NAME.advanceWorkflowRun]: QUEUE_NAME.workflowCoordinator,
+  [JOB_NAME.startErrorWorkflow]: QUEUE_NAME.maintenance,
   [JOB_NAME.executeNodeAttempt]: QUEUE_NAME.nodeAttempts,
   [JOB_NAME.executePreviewAttempt]: QUEUE_NAME.nodeAttempts,
   [JOB_NAME.reconcilePreviewAttempt]: QUEUE_NAME.maintenance,

@@ -1,3 +1,4 @@
+import { ErrorWorkflowStatus } from '../components/error-workflow-status';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -196,6 +197,10 @@ export function RunDetailPage({
           onReplayOpenChange={setReplayOpen}
           onReconnect={events.reconnect}
           onRunAccepted={onRunAccepted}
+        />
+        <ErrorWorkflowStatus
+          delivery={snapshot.errorWorkflow}
+          workspaceId={workspace.id}
         />
         <CallHistory
           calls={snapshot.calls ?? []}

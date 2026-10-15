@@ -30,6 +30,11 @@ export const AdvanceWorkflowRunJobSchema = z
   })
   .strict();
 
+export const StartErrorWorkflowJobSchema = z
+  .object({ ...commonJobShape, sourceRunId: z.uuid() })
+  .strict();
+export type StartErrorWorkflowJob = z.infer<typeof StartErrorWorkflowJobSchema>;
+
 export const ExecuteNodeAttemptJobSchema = z
   .object({
     ...commonJobShape,
@@ -124,6 +129,7 @@ type DeliverWorkspaceInvitationJob = z.infer<
 >;
 
 export interface QueueJobDataByName {
+  [JOB_NAME.startErrorWorkflow]: StartErrorWorkflowJob;
   [JOB_NAME.advanceWorkflowRun]: AdvanceWorkflowRunJob;
   [JOB_NAME.executeNodeAttempt]: ExecuteNodeAttemptJob;
   [JOB_NAME.executePreviewAttempt]: ExecutePreviewAttemptJob;
@@ -144,6 +150,10 @@ export type QueueJob = {
 }[JobName];
 
 export const QUEUE_JOB_REGISTRY = Object.freeze({
+  [JOB_NAME.startErrorWorkflow]: {
+    queueName: QUEUE_FOR_JOB[JOB_NAME.startErrorWorkflow],
+    schema: StartErrorWorkflowJobSchema,
+  },
   [JOB_NAME.advanceWorkflowRun]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.advanceWorkflowRun],
     schema: AdvanceWorkflowRunJobSchema,

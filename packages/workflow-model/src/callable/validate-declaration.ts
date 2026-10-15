@@ -25,11 +25,18 @@ export function callableDeclarationIssues(
             : 'Callable types must fit the stored JSON depth limit of 64.',
       });
   const entries = graph.nodes.filter(({ definition }) =>
-    ['core.manual', 'core.webhook', 'core.schedule'].includes(definition.key),
+    [
+      'core.manual',
+      'core.webhook',
+      'core.schedule',
+      'core.workflow_error',
+    ].includes(definition.key),
   );
   if (
     entries.length !== 1 ||
-    entries[0]?.definition.key === 'core.schedule' ||
+    !['core.manual', 'core.webhook'].includes(
+      entries[0]?.definition.key ?? '',
+    ) ||
     entries[0]?.disabled === true
   )
     issues.push({

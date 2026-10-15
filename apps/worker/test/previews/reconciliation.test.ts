@@ -91,6 +91,10 @@ function routedDelivery(name: string) {
 function idleStores() {
   return {
     connectionHealthStore: { apply: vi.fn() },
+    errorWorkflowStore: {
+      dispatch: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    },
     reconciliationStore: { close: vi.fn(), reconcile: vi.fn() },
     unknownOutcomeStore: { close: vi.fn(), reconcile: vi.fn() },
     runReplayStore: {
@@ -107,9 +111,33 @@ const idleConnectionHealth = {
   store: vi.fn(() => ({ apply: vi.fn() })),
 };
 
+const idleErrorWorkflows = {
+  store: vi.fn(() => ({ dispatch: vi.fn(), close: vi.fn() })),
+  handler: vi.fn(() => ({ handle: vi.fn() })),
+};
+
 describe('preview reconciliation handler', () => {
   it.each([
     ['traceRunner', []],
+    [
+      'errorWorkflowStore',
+      [
+        'previewStore',
+        'failureNotificationStore',
+        'unknownOutcomeStore',
+        'replayStore',
+      ],
+    ],
+    [
+      'errorWorkflowHandler',
+      [
+        'previewStore',
+        'failureNotificationStore',
+        'unknownOutcomeStore',
+        'replayStore',
+        'errorWorkflowStore',
+      ],
+    ],
     ['previewStore', []],
     ['failureNotificationStore', ['previewStore']],
     ['unknownOutcomeStore', ['previewStore', 'failureNotificationStore']],
@@ -124,6 +152,7 @@ describe('preview reconciliation handler', () => {
         'failureNotificationStore',
         'unknownOutcomeStore',
         'replayStore',
+        'errorWorkflowStore',
       ],
     ],
     [
@@ -133,6 +162,7 @@ describe('preview reconciliation handler', () => {
         'failureNotificationStore',
         'unknownOutcomeStore',
         'replayStore',
+        'errorWorkflowStore',
       ],
     ],
   ] as const)(
@@ -203,6 +233,17 @@ describe('preview reconciliation handler', () => {
           ),
         },
         connectionHealth: idleConnectionHealth,
+        errorWorkflows: {
+          store: vi.fn(() =>
+            acquire('errorWorkflowStore', {
+              dispatch: vi.fn(),
+              close: close('errorWorkflowStore'),
+            }),
+          ),
+          handler: vi.fn(() =>
+            acquire('errorWorkflowHandler', { handle: vi.fn() }),
+          ),
+        },
       } as unknown as MaintenanceRuntimeFactories;
 
       await expect(
@@ -228,6 +269,7 @@ describe('preview reconciliation handler', () => {
     let consumerOptions: QueueConsumerOptions | undefined;
     const handles = {
       preview: vi.fn().mockResolvedValue(undefined),
+      errorWorkflow: vi.fn().mockResolvedValue(undefined),
       notification: vi.fn().mockResolvedValue(undefined),
       unknown: vi.fn().mockResolvedValue(undefined),
       replay: vi.fn().mockResolvedValue(undefined),
@@ -262,6 +304,10 @@ describe('preview reconciliation handler', () => {
         store: vi.fn(),
       },
       connectionHealth: idleConnectionHealth,
+      errorWorkflows: {
+        store: vi.fn(),
+        handler: vi.fn(() => ({ handle: handles.errorWorkflow })),
+      },
     } as unknown as MaintenanceRuntimeFactories;
     const runtime = await createMaintenanceRuntime(
       {
@@ -292,6 +338,7 @@ describe('preview reconciliation handler', () => {
       factories,
     );
     const cases = [
+      [JOB_NAME.startErrorWorkflow, handles.errorWorkflow],
       [JOB_NAME.reconcilePreviewAttempt, handles.preview],
       [JOB_NAME.deliverRunFailureNotification, handles.notification],
       [JOB_NAME.reconcileUnknownOutcome, handles.unknown],
@@ -325,6 +372,7 @@ describe('preview reconciliation handler', () => {
       traceRunner: vi.fn(() => ({})),
       unknownOutcome: { handler: vi.fn(), store: vi.fn() },
       connectionHealth: idleConnectionHealth,
+      errorWorkflows: idleErrorWorkflows,
     } as unknown as MaintenanceRuntimeFactories;
     const runtime = await createMaintenanceRuntime(
       {
@@ -706,6 +754,7 @@ describe('preview reconciliation handler', () => {
       traceRunner: vi.fn(() => ({})),
       unknownOutcome: { handler: vi.fn(), store: vi.fn() },
       connectionHealth: idleConnectionHealth,
+      errorWorkflows: idleErrorWorkflows,
     } as unknown as MaintenanceRuntimeFactories;
     const runtime = await createMaintenanceRuntime(
       {

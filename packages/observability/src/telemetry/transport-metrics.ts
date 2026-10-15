@@ -29,6 +29,10 @@ export type TransportLeaseEvent = 'attempt_exhausted' | 'expired' | 'reclaimed';
 
 export type TransportJob =
   | {
+      readonly jobName: 'start-error-workflow';
+      readonly queueName: 'maintenance';
+    }
+  | {
       readonly jobName: 'advance-workflow-run';
       readonly queueName: 'workflow-coordinator';
     }

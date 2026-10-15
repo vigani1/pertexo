@@ -38,6 +38,9 @@ export const workflowRuns = appSchema.table(
     recoveryReusedCount: integer('recovery_reused_count'),
     recoveryEffectRisk: varchar('recovery_effect_risk', { length: 32 }),
     recoveryEffectsAcknowledged: boolean('recovery_effects_acknowledged'),
+    errorWorkflowOrigin: boolean('error_workflow_origin')
+      .notNull()
+      .default(false),
     triggerType: varchar('trigger_type', { length: 32 }).notNull(),
     failureNotificationDestinationId: uuid(
       'failure_notification_destination_id',
@@ -148,7 +151,7 @@ export const workflowRuns = appSchema.table(
     ),
     check(
       'workflow_runs_trigger_type_valid',
-      sql`((trigger_type)::text = ANY (ARRAY[('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))`,
+      sql`((trigger_type)::text = ANY (ARRAY[('workflow_error'::character varying)::text, ('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))`,
     ),
     unique('workflow_runs_failure_notification_pin_unique').on(
       table.workspaceId,

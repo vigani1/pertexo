@@ -57,6 +57,13 @@
       "when": 1791986047041,
       "tag": "0007_unknown_outcome_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792042019426,
+      "tag": "0008_error_workflows",
+      "breakpoints": true
     }
   ]
 }
