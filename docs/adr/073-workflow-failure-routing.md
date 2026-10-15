@@ -85,3 +85,13 @@ The intent retains the captured publication with its source history. Workers
 and readers must understand the additive trigger kind and origin flag before
 publishing error-trigger workflows. Existing in-run routes, unknown-outcome
 warnings, automatic retries and recovery restrictions are unchanged.
+
+## 2026-10-15 human-task failures
+
+[ADR 076](076-durable-human-tasks.md) extends the exact failure-value allowlist
+with `human_task` classification and `pending_task.expired` /
+`pending_task.capacity_exceeded`. These are definite coordinator-owned failures,
+separate from provider/executor classifications and automatic retry. Approval may
+own a failure link in the existing decision tree, with `approved` / `rejected`
+normal branches. It cannot branch inside a sequential handler. Broader join,
+loop, timed Wait and Call failure-route exclusions remain unchanged.

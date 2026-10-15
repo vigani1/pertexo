@@ -88,3 +88,10 @@ attempt for resume and a separate run-deadline wake source.
 - Letting a resume attempt arm the original duration again.
 - Waiting until a later node resume to discover an earlier run deadline.
 - Durable suspension during V1 preview execution.
+
+## 2026-10-15 clarification
+
+[ADR 076](076-durable-human-tasks.md) adds a separate authenticated human-task
+control for Approvals and later requested input. Timed Wait's due/resume attempt
+and deadline semantics above are unchanged; a human response never impersonates
+a timed Wait wakeup.

@@ -1,109 +1,199 @@
-# F10 — Durable human approvals and resume decisions
+# F10 — Durable human approvals
 
-Status: proposed plan; not implementation-authorized by this document.
-Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
-Scope: New cross-stack durable interaction. Relative size: **XL**, not a calendar estimate.
+Status: implementation authorized by the owner's sequential feature request.
+Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 
-## Outcome
+## Outcome and scope
 
-A workflow waits durably for an authorized human decision and resumes exactly once without holding a worker.
+An Approval step creates one durable task for its exact run and invocation.
+An eligible workspace member approves or rejects it once, optionally comments,
+and the run continues through that output port. No worker waits, browser timer
+owns expiry, email is sent, or public decision capability is created.
+F11 will add request-input tasks to this same concrete pending-task owner.
 
-## Current implementation and evidence
+## Current code and decisions
 
-Timed waits exist. Human approvals/external resume forms remain deferred; inbox read state is not an approval.
+The current engine already separates a successful Call declaration attempt from
+its logical durable outcome (`workflow-engine/observation/coordinator-calls.ts`).
+The database persists that declaration, checkpoint and outbox in one transaction;
+Call results are separate immutable facts. Timed Wait has a database-authoritative
+due-node scanner and immutable attempts. Human decisions do not exist. Existing
+run deadlines are at most an hour, queue/capacity counts include ordinary waiting
+runs, and input expiry can remove an otherwise live ordinary run's input after
+30 days. These must be handled rather than inherited accidentally.
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
+The recommended choices below are accepted under the owner's instruction to
+choose and record internal decisions. Record the durable interaction contract
+in ADR 076; amend ADR 021 only to clarify that timed Wait remains unchanged.
+No new role, package, database entry point, queue, service, CI job, provider or
+infrastructure is required.
 
-- [Current architecture](../architecture.md)
-- [docs/adr/021-durable-wait.md](../../docs/adr/021-durable-wait.md)
+### Step and audience
 
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+- Definition `core.approval@1`, `nodes-core/src/flow/approval/`, safe CPU
+  declaration executor with `in`, `approved` and `rejected` ports. Its initial
+  declaration is not a completed logical step and cannot activate successors.
+- Strict config: title (1–160 characters), optional instructions (up to 2,000),
+  expiry seconds (default 604800, 3600–2592000), and a bounded audience of roles
+  and/or named member IDs (at most 50 IDs). Default roles are owner and admin;
+  an empty audience is invalid. No escalation, reassignment or all-person vote.
+- Audience membership is evaluated when listing/deciding, against current active
+  workspace, user and membership. A named member grants no run-read capability.
+  Publication verifies named members belong to this workspace. Portable imports
+  retain explicit member references but cannot publish until editors replace any
+  foreign or removed audience; never silently substitute an approval policy. Role changes can
+  change eligibility; a stale browser cannot authorize a decision.
+- The authenticated person who starts a run cannot decide its tasks. Record
+  `started_by` at common admission. Browser and automation-token starts bind
+  their actual actor, Calls inherit their initiating human, replay/recovery bind
+  the new initiating human. Operator replay, which lacks a workspace human
+  identity, preserves the source starter rather than dropping this restriction. Scheduled/webhook/error starts have no human starter.
+  Do not infer identity from user-supplied run input or free-form audit text.
+- Output is `{ decision: "approved" | "rejected", comment: string | null,
+  decidedBy: UUID, decidedAt: ISO timestamp }`. Comment is optional, up to 2,000
+  characters, plain text. All ordinary authorized run readers can inspect it as
+  step output; the form states this. Selected branch is engine-owned metadata,
+  never inferred from an arbitrary output property.
 
-## Dependencies and planning gate
+### Durable task and decision
 
-03 for in-app discovery; 01; durable wait patterns reused, not notification read state.
+`database/src/runs/pending-tasks/` owns creation, current eligibility, atomic
+resolution, expiry, immutable result projection and cancellation. Use one
+workspace-scoped `pending_run_tasks` table, unique on workspace/run/invocation,
+with exact version/node identity, captured audience/config, database-created
+expiry, status, decision/result and consumption. Only the approval kind is
+accepted now; add request-input when implementing F11, not an open generic plugin
+payload. Workspace/run/node foreign keys, forced RLS and existing three roles.
 
-Approve-any versus all, escalation/reassignment, decision visibility and retention. Recommend single authorized decision first; freeze scope before schema.
+A small successful attempt validates and declares the request. The pure engine
+turns that declaration into `human_task` waiting state, with a task intent in the
+transition plan. Creation, logical wait and checkpoint share one commit. Task
+outcomes reach the pure engine through a bounded typed observation window, like
+Calls, and a task-owned output reference. The database projects that result into
+the ordinary node output for downstream mappings, history and callable results.
+A decision never rewrites the declaration attempt or feeds untrusted events into
+the run's persisted cursor.
 
-Recommendations are not accepted ADRs. Resolve consequential choices before code;
-use the next free ADR number when required. Do not create ADRs for routine fixes.
+Decision uses existing cookie authentication, CSRF, bounded JSON, rate limit and
+idempotency command receipts. Lock workspace admission, current authority, run,
+then task in the documented order; require the run still live and uncanceled and
+database time strictly before expiry. A single transaction records one winner,
+audit and the normal coordinator outbox. Same-key retries return the recorded
+result; competing decisions get a typed already-decided conflict. Lost responses
+retain the browser command/key for explicit retry. Membership loss and initiator
+self-decision fail closed without resolving anything.
 
-## User-configurable settings
+Expiry is a definite `pending_task.expired` failed step, not rejection and not a run
+wall timeout. It goes through existing failure-route selection; an attached
+handler can settle it successfully. Existing F09 tree rules learn Approval's two
+normal ports, without enabling unrelated joins/loops in failure-route graphs.
+Extend the failure-value allowlist with exact human-task expiry/capacity pairs,
+separately from executor/provider classifications, and amend ADR 073. Step
+recovery remains unavailable for graphs containing human tasks until it has
+explicit durable decision-prefix evidence; full replay creates fresh tasks.
+The regular due-node scanner owns an expiry wakeup; duplicate delivery cannot
+resolve or resume twice. Cancellation/terminal Stop closes pending tasks and
+clears due markers. A decided task may remain as history even if cancellation
+subsequently wins run control; it never reopens.
 
-Recommended values, confirmed in this feature's ADR. The server enforces every
-range; the control states its consequence.
+### Time, capacity and retention
 
-| Setting | Default | Range | Who changes it | Consequence shown |
-| --- | --- | --- | --- | --- |
-| Approval expires after | 7 days | 1 hour–30 days | Workflow editors | “Unanswered approvals expire and the run ends with that reason” |
-| Who may decide | Workspace owners and admins | Roles or named members who may read the run | Workflow editors | “Only these people can approve or reject” |
+Quiescent human waiting pauses the remaining execution deadline and releases the
+active-run slot, while preserving status `waiting`. Ordinary timed Wait/retry
+semantics remain unchanged. Persist the remaining deadline budget and human-wait
+start in the run row. Shared `workflow_run_slot_counts` excludes suspended human
+waits; the existing admission trigger/counters enforce resume capacity too.
+Releasing slots must not create an unbounded human-task queue: the workspace's
+existing queued-run allowance also bounds outstanding pending human tasks (100
+under the default entitlement), checked under the same workspace admission lock.
+A declaration above that budget becomes a definite `pending_task.capacity_exceeded`
+failed step through the normal task fact, with a clear wait/try-later message;
+it does not fail source settlement or add a new configuration knob. Lowering an
+allowance preserves existing tasks and blocks new ones until below the bound.
+Decision resolution does not bypass capacity: a ready continuation reacquires a
+normal slot, using existing bounded outbox deferral when full. Cancellation and
+expiry can settle without a slot; they do not need to start worker attempts.
 
-## Ownership and structure
+For parallel/loop scopes, suspend only when no ready/running/timed work remains
+and all outstanding executable work is waiting on human tasks (loop barriers are
+structural). An active sibling keeps the deadline and slot. Graph pruning and Stop also close
+any pending task in the pruned scope; late responses cannot resurrect it. For Calls, propagate
+quiescent human waiting through the existing parent/child relation using normal
+wakeups; each ancestor changes only under its own lock. Resume restores remaining
+budgets and normal Call slot handoff. Add explicit nested-Call proofs so a seven-day
+task cannot accidentally inherit the old one-hour Call deadline.
 
-Application approvals; database decisions; engine durable wait/resume; worker outbox; contracts; web approvals/editor; notifications only as projection.
+Retain live run input and referenced files while a pending human interaction or
+its live continuation needs them; ordinary terminal retention still owns cleanup.
+Tasks and comments follow run-detail retention and workspace purge, with no new
+independent indefinite retention. Removed memberships lose task eligibility;
+retained decision identity is audit history, never an access grant.
 
-Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
-These are responsibility owners, not a mandate to create empty folders/packages.
-Reuse the post-cleanup canonical owners; do not restore old duplicated paths.
+## Placement and interface
 
-## Frontend work
+- `workflow-model/src/pending-tasks/`: browser-safe config, output, roles, limits,
+  definition identity and expiry reason; exports through existing root. Keep
+  workspace authority in database policy rather than duplicating role rules.
+- `nodes-core/src/flow/approval/`: strict schemas, declaration executor/manifest;
+  existing catalog registration and editor presentation/defaults.
+- `workflow-engine/src/observation/`: task declaration/outcome projection; existing
+  transition/checkpoint/output-reference parsers learn this exact control kind.
+  Pure engine owns branching and failure handling; no database/time I/O in it.
+- `database/src/schema/runs/`: additive task/run columns plus generated migration,
+  RLS/grants and readiness/schema checks. `runs/pending-tasks/` groups command,
+  facts/persistence, audience and deadline/capacity responsibility; split an area
+  before it becomes a flat list. Expose through existing `/runs`.
+- `contracts`: task list/detail/decision requests, typed refusal/conflict problems
+  and OpenAPI. `apps/api/src/pending-tasks/`: one Nest module/use case/controller
+  composed with existing tenant context and request operation signal. A small paginated audience
+  discovery returns active member IDs/names/roles for workflow editors, without
+  exposing the privileged team directory or email addresses.
+- Worker/execution: existing coordinator and scanner ownership, no sleeping
+  attempt, new queue or separate task polling service.
+- `apps/web/src/features/approvals/`: API/query/mutation ownership, list/detail and
+  decision form, narrow `public.ts` integrations. Authenticated workspace route;
+  inbox and run detail compose a small pending-task projection. Current failure
+  inbox permission stays separate from task audience, so named builders/viewers
+  can discover their own tasks without receiving privileged failure threads.
+- Editor uses existing inspector primitives and mapping controls. Approval shows
+  its audience, expiry and self-decision rule. Weft Status/thread language,
+  semantic labels, keyboard access, mobile width, reduced motion; no new visual
+  system or client mirror of authoritative task status.
 
-Approval node settings, assignee policy, review detail with safe context, approve/reject/comment and expired/reassigned/canceled states; inbox links to canonical task.
+## Verification and delivery
 
-## Backend work
+One focused F10 PR after Error workflows merges. No moves planned; any necessary
+moves stay in separate buildable commits. Commit gates are lint, typecheck and
+units; PR includes Moved/Removed/Lines, full mocked e2e, real database/worker/browser
+proof, green CI and rebase merge. Update this tracker with actual receipts.
 
-ADR: pending decision record, eligible audience, revision/expiry, one atomic decision winner, audit and outbox wakeup. Recheck authorization at decision, bind to exact run/invocation/version.
-
-## Delivery slices
-
-1. Specify authenticated workspace approvals first, rejection/expiry and self-approval policy.
-2. Implement persistence and worker resume under concurrent decisions/cancel/expiry.
-3. Deliver approval queue/detail and inbox event; add external one-time links only in a separate security-reviewed slice.
-
-Each slice ends in a usable, tested behavior; do not ship enabled placeholder
-controls backed by invented responses.
-
-## Acceptance evidence
-
-Approve/reject race, replayed link/command, revoked member, expiry versus approval, run canceled/deleted, restart while waiting, only one resume.
-
-Apply the shared completion checklist: contract/authorization tests, real
-persistence and restart/race tests when relevant, real browser/backend flow for
-visible behavior, and exact reviewed source/CI evidence. Mocks alone cannot close
-the live gate. Record unsupported environments explicitly.
-
-## Non-goals
-
-Treating mail delivery or notification mark-read as approval; anonymous approval by guessable ID.
+- [x] Reconcile current code; record choices and accepted ADR before building.
+- [ ] Catalog/model and pure engine task lifecycle, branch, expiry failure route.
+- [ ] Additive storage, authority/initiator binding, idempotent one-winner command,
+      cancellation/purge/retention and restart-safe ordinary outbox delivery.
+- [ ] Deadline and capacity behavior, including active siblings, capacity-one
+      resume and nested Calls; no work admitted while a slot is unavailable.
+- [ ] Editor, eligible approvals list/detail, inbox/run links and accessible
+      decision/comment feedback with unknown-response retry.
+- [ ] Real races: approve/reject, same-key duplicate, expiry/decision, cancellation,
+      role/member loss, cross-workspace IDs, process restart and exactly one resume.
+- [ ] Real browser/API/worker approve and reject paths; expiry handled by failure
+      route, starter refused; desktop/phone/keyboard and independent SQL checks.
+- [ ] Lint/types/units/build, contracts/schema/architecture/dependencies, mocked e2e,
+      changed React Doctor, owned fixture cleanup; record exact evidence.
+- [ ] PR green, rebase merged and natural main result inspected.
 
 ## Rollout and rollback
 
-Disable new approval publication; existing pending tasks remain decidable or explicitly canceled through supported operations.
+Deploy matching API and worker binaries before publishing the first Approval.
+Older workers must fail closed on the new definition/control facts. Rollback
+requires completing or canceling pending human runs and retaining compatible
+readers until their history is no longer served; do not imply an unimplemented
+feature flag can make old workers understand new checkpoints. No deployment or
+external service provisioning is part of this implementation request.
 
-No production rollout, paid provisioning or real external calls are authorized by
-this plan. New persistent behavior requires additive reader/writer rollout and
-retention/membership-deletion handling before enablement.
+## Later work
 
-## Competitor context
-
-Zapier Human in the Loop explicitly pauses workflows for review/intervention; match durable decision semantics, not just the dialog. Sources: [Zapier Human in the Loop](https://help.zapier.com/hc/en-us/sections/38731226552845-Human-in-the-Loop).
-
-Research checked 2026-09-28; product editions and availability can change.
-This context informs the outcome, not Pertexo's implementation or billing policy.
-
-## Delivery tracker
-
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
-- [ ] Contracts and failure/security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
-
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+Email/public approval links, multiple required votes, delegation/escalation,
+reassignment, approvals from outside the workspace and file fields remain out.
+F11 request-input reuses the pending-task mechanism in the next authorized feature.
