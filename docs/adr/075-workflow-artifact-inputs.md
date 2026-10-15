@@ -45,9 +45,11 @@ yields an ordered array of header-keyed records using a selected comma,
 semicolon or tab delimiter and RFC 4180 quoting. Do not infer format from MIME
 or filename, decompress, execute or parse files automatically on upload/download.
 
-CSV defaults to string values, strict headers/column counts and no trimming.
-Opt-in conversion recognizes only exact lowercase booleans and JSON decimal
-numbers representable as finite JavaScript numbers with safe integral values;
+CSV defaults to conservative value conversion on, strict headers/column counts
+and no trimming. Omitted conversion settings default to true; explicit false
+keeps all cells as strings. Conversion recognizes only exact lowercase booleans
+and JSON decimal numbers representable as finite JavaScript numbers with safe
+integral values;
 otherwise retain the string. Leading-zero identifiers, out-of-range numbers,
 null/date/currency-like text and whitespace are not silently converted. Quoting
 changes CSV syntax, not conversion semantics. Reuse the 4,998-item cap and SDK
@@ -61,19 +63,12 @@ the existing executor-failure/attempt-summary path; never expose raw exceptions
 or file content. Reuse the existing error-summary column and authorized detail
 reads; no diagnostic service or new failure stored-value format.
 
-To make recovery useful for this safe target, propose a **narrow exception to
-ADR 072's artifact-descriptor refusal**: only when the failed recovery target is
-Read file, admit complete descriptors inside otherwise bounded inline original
-input/completed-prefix snapshots. Preserve all other F09 eligibility rules,
-exact version/input, provenance, capacity, aggregate bounds and acknowledgements.
-Acceptance locks and verifies all referenced artifacts in stable order in the
-same transaction as copying owners and accepting the new run; preview is
-advisory. Copies keep files alive under existing retention even if source details
-expire. Foreign/deleted/corrupt metadata and expired preview references refuse.
-Artifact-backed whole stored-value hydration and general file-aware downstream
-recovery remain excluded. Do not broaden HTTP automatic retry or unknown-outcome
-semantics. This scoped exception must be reviewed with the plan, not inferred
-from the safe classification alone.
+Keep ADR 072 and F09’s artifact restrictions unchanged. The owner removed the
+proposed Read file recovery exception on 2026-10-15: existing same-run automatic
+retries already handle temporary storage failures for a safe step, and malformed
+files require corrected content in a new run. No recovery planner, prefix-copy
+or acceptance/locking changes are part of this slice. File-aware step recovery,
+including Read file, stays later work.
 
 Allow **multipart HTTP Request** under the current `http.request@1` identity.
 Part metadata/order live in optional HTTP configuration; each stable part key
@@ -83,6 +78,15 @@ order/duplicate names. Require bounded metadata, checked file reads and generate
 boundary/Content-Type; reject conflicting outer Content-Type and GET/HEAD bodies.
 Keep the 1 MiB **whole encoded body** ceiling, including part headers/framing,
 and existing secure transport, connection fences and unsafe HTTP recovery rules.
+
+Make the limits visible in controls, guides and failures: files up to 1 MB
+(the existing 1 MiB byte bound), roughly 4,996 narrow rows end to end with fewer
+for wide/large records, and no full 1 MB file in a multipart request because
+framing counts. These are guidance alongside the exact byte/member bounds, not
+larger quotas or guaranteed row counts. Size/envelope errors tell people to split
+the file and run/upload smaller files separately; malformed-content errors say
+what to correct. **Bigger files via streaming or paging are the next separately
+planned file improvement**, not part of this slice.
 
 An explicit multipart filename is durable **part metadata**, an exception to the
 first release's filename rule. It is not added to the artifact descriptor and
