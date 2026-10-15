@@ -1,3 +1,7 @@
+import { createNoticePreferencesStore } from '@pertexo/database/notifications';
+import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import type { ApiIdentityConfig } from '../config/identity.js';
+import { NoticePreferencesService } from '../../notifications/preferences/service.js';
 import {
   createWorkspaceInboxDatabase,
   type WorkspaceInboxDatabase,
@@ -16,6 +20,7 @@ import { WorkspaceInboxService } from '../../notifications/service.js';
 /** ADR 055: the inbox's database reader and its per-process hint hub. */
 export type ApiNotificationRuntime = Readonly<{
   service: WorkspaceInboxService;
+  preferences?: NoticePreferencesService;
   hints: InboxHintSource;
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
@@ -31,6 +36,7 @@ export function createApiNotificationRuntime(
   redisUrl: string,
   overrides: ApiNotificationRuntimeOverrides = {},
   runtime?: DatabaseRuntime,
+  mail?: ApiIdentityConfig['betterAuth']['durableMail'],
 ): ApiNotificationRuntime {
   const database =
     overrides.database ?? createWorkspaceInboxDatabase(config, runtime);
@@ -41,9 +47,21 @@ export function createApiNotificationRuntime(
     void database.close().catch(() => undefined);
     throw error;
   }
+  const preferences = createNoticePreferencesStore(
+    config,
+    mail !== undefined,
+    runtime,
+  );
+  const preferenceService = new NoticePreferencesService(
+    preferences,
+    mail === undefined
+      ? undefined
+      : createApplicationSecretEnvelope(mail.encryption),
+  );
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     service: new WorkspaceInboxService(database),
+    preferences: preferenceService,
     hints,
     checkReadiness: () => hints.checkReadiness(),
     close: () => {
@@ -51,6 +69,7 @@ export function createApiNotificationRuntime(
         const closed = await Promise.allSettled([
           hints.close(),
           database.close(),
+          preferences.close(),
         ]);
         const failures = closed.flatMap((result) =>
           result.status === 'rejected' ? [result.reason as unknown] : [],

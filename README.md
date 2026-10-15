@@ -201,3 +201,6 @@ Published member/public forms and durable input requests:
 
 Shared non-secret configuration with immutable run snapshots:
 [workspace variables guide](docs/variables.md).
+
+A personal Inbox, follow/mute and notification email schedules:
+[notification guide](docs/notifications.md).

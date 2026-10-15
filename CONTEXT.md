@@ -5,6 +5,17 @@ versions while preserving operational history.
 
 ## Language
 
+**Workspace notice**: A thread about a workflow failure or current operational
+attention: an auto-pause, connection health, workspace capacity, or waiting
+approval. Membership, the subject's audience and personal follow/mute choices
+shape each person's Inbox. _Avoid_: Run event, shared failure alert, pending
+task
+
+**Personal notification preference**: One member's email schedule and subject
+follow/mute choices. Following grants no extra access; muting changes neither
+shared workflow alerts nor the underlying human task. _Avoid_: Workspace alert
+destination, approval decision, credential
+
 **Workflow link**: A directed relationship from one step’s output to another
 step’s input, within a workflow or a loop body. Links determine when steps run;
 input mappings determine the data they receive. _Avoid_: Connection, credential

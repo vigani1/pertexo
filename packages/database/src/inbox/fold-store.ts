@@ -1,3 +1,4 @@
+import { createAttentionObserver } from './observations/store.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
@@ -22,6 +23,9 @@ export interface WorkspaceInboxFoldStore {
     limit: number,
     signal?: AbortSignal,
   ): Promise<readonly WorkspaceInboxChange[]>;
+  observeCurrent?(
+    signal?: AbortSignal,
+  ): Promise<readonly WorkspaceInboxChange[]>;
   close(): Promise<void>;
 }
 
@@ -38,14 +42,24 @@ const changeRowSchema = z
 export function createWorkspaceInboxFoldStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
+  maintenanceConfig?: DatabaseConfig,
 ): WorkspaceInboxFoldStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
+  const maintenance =
+    maintenanceConfig === undefined
+      ? undefined
+      : acquireDatabasePool(maintenanceConfig);
+  const observer =
+    maintenance === undefined
+      ? undefined
+      : createAttentionObserver(pool, maintenance.pool);
   const options = (signal: AbortSignal | undefined) => ({
     ...(signal === undefined ? {} : { signal }),
     statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS,
   });
   return Object.freeze({
+    ...(observer === undefined ? {} : { observeCurrent: observer }),
     checkReadiness: async (signal?: AbortSignal) => {
       signal?.throwIfAborted();
       await checkDatabaseReadiness(pool);
@@ -72,6 +86,9 @@ export function createWorkspaceInboxFoldStore(
         options(signal),
       );
     },
-    close: () => lease.close(),
+    close: async () => {
+      await lease.close();
+      await maintenance?.close();
+    },
   });
 }

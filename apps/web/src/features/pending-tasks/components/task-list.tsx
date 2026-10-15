@@ -76,7 +76,12 @@ export function TaskList({
 export function PendingTasks({
   scope,
   runId,
-}: Readonly<{ scope: TaskScope; runId?: string }>) {
+  kind,
+}: Readonly<{
+  scope: TaskScope;
+  runId?: string;
+  kind?: 'approval' | 'input_request';
+}>) {
   return (
     <section
       aria-label="Requests"
@@ -85,14 +90,20 @@ export function PendingTasks({
       <h2 className="font-medium">Requests</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {runId === undefined
-          ? 'Approvals and input waiting for your response.'
+          ? kind === 'input_request'
+            ? 'Input waiting for your response.'
+            : 'Approvals and input waiting for your response.'
           : 'Approvals and requested input for this run.'}
       </p>
       <TaskList
         scope={scope}
         filters={
           runId === undefined
-            ? { view: 'mine', status: 'pending' }
+            ? {
+                view: 'mine',
+                status: 'pending',
+                ...(kind === undefined ? {} : { kind }),
+              }
             : { view: 'all', status: 'all', runId }
         }
         compact

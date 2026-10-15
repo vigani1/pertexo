@@ -1,3 +1,4 @@
+import { verifyNotificationEvidence } from './editor/evidence/notifications/verify.js';
 import { verifyVariableEvidence } from './editor/evidence/variables/verify.js';
 import { verifyFormEvidence } from './editor/evidence/forms/verify.js';
 import { verifyApprovalEvidence } from './editor/evidence/approvals/verify.js';
@@ -118,6 +119,7 @@ const scenario = z
     'approvals',
     'forms',
     'variables',
+    'notifications',
     'transforms',
     'artifact-inputs',
     'api-tokens',
@@ -157,6 +159,9 @@ function ownChild<T extends ChildProcess>(
 let collectionEvidence: z.infer<typeof collectionEvidenceSchema> | undefined;
 let dateEvidence: z.infer<typeof dateEvidenceSchema> | undefined;
 let apiTokensEvidence: z.infer<typeof apiTokensEvidenceSchema> | undefined;
+const noticeMailKey =
+  scenario === 'notifications' ? randomBytes(32).toString('base64') : undefined;
+const noticeMessages: string[] = [];
 let worker: ChildProcess;
 const controlledHttpScenario =
   scenario === 'webhook-controlled-http' ||
@@ -349,7 +354,15 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       fork('test/support/editor-browser/worker-process.fixture.ts', [], {
         cwd: workerDirectory,
         execArgv: ['--import', 'tsx'],
-        env: { ...process.env },
+        env: {
+          ...process.env,
+          ...(noticeMailKey === undefined
+            ? {}
+            : {
+                EDITOR_BROWSER_NOTICE_MAIL_KEY: noticeMailKey,
+                EDITOR_BROWSER_NOTICE_PUBLIC_ORIGIN: webOrigin,
+              }),
+        },
         stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
         detached: true,
       }),
@@ -357,6 +370,23 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     );
     // Register the startup observer synchronously before the child can do work.
     worker.on('message', (value: unknown) => {
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        'phase' in value &&
+        value.phase === 'notice-mail' &&
+        scenario === 'notifications'
+      ) {
+        const parsed = z
+          .object({
+            phase: z.literal('notice-mail'),
+            text: z.string().max(32768),
+          })
+          .strict()
+          .parse(value);
+        noticeMessages.push(parsed.text);
+        return;
+      }
       const curatedObservation = curatedTemplateEffectsSchema.safeParse(value);
       if (curatedObservation.success) {
         curatedEffects = curatedObservation.data;
@@ -395,7 +425,23 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   const api = useBetterAuthRealApi('editor_browser', {
     publicWebOrigin: webOrigin,
     automationTokens: scenario === 'api-tokens',
-    notifications: ['forms', 'approvals', 'variables'].includes(scenario),
+    notifications: [
+      'forms',
+      'approvals',
+      'variables',
+      'notifications',
+    ].includes(scenario),
+    ...(noticeMailKey === undefined
+      ? {}
+      : {
+          notificationMail: {
+            fromEmail: 'security@example.test',
+            encryption: {
+              current: { version: 'notice-browser-v1', key: noticeMailKey },
+              previous: [],
+            },
+          },
+        }),
     ...(scenario === 'artifact-inputs'
       ? { artifacts: parseArtifactStoreConfig() }
       : {}),
@@ -893,6 +939,19 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         });
         return;
       }
+      if (
+        request.method === 'GET' &&
+        url.pathname === '/notice-mail' &&
+        scenario === 'notifications'
+      ) {
+        response
+          .writeHead(200, {
+            'content-type': 'application/json',
+            'cache-control': 'no-store',
+          })
+          .end(JSON.stringify({ messages: noticeMessages }));
+        return;
+      }
       response.writeHead(404).end();
     });
     owner.acquire(
@@ -986,45 +1045,47 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'variables'
-              ? 'editor/variables/snapshots.spec.ts'
-              : scenario === 'forms'
-                ? 'editor/forms/submission.spec.ts'
-                : scenario === 'approvals'
-                  ? 'editor/approvals.spec.ts'
-                  : scenario === 'error-workflows'
-                    ? 'editor/error-workflows.spec.ts'
-                    : scenario === 'artifact-inputs'
-                      ? 'editor/files/'
-                      : scenario === 'api-tokens'
-                        ? 'api-tokens.spec.ts'
-                        : scenario === 'callable'
-                          ? 'editor/callable.spec.ts'
-                          : scenario === 'curated-templates'
-                            ? 'curated-templates.spec.ts'
-                            : scenario === 'portability'
-                              ? 'workflow-portability.spec.ts'
-                              : scenario === 'input-cases'
-                                ? 'workflow-input-cases.spec.ts'
-                                : scenario === 'duplication'
-                                  ? 'workflow-duplication.spec.ts'
-                                  : scenario === 'nested-conflict'
-                                    ? 'editor/execution.spec.ts'
-                                    : scenario === 'receipts'
-                                      ? 'editor/receipts.spec.ts'
-                                      : scenario === 'run-recovery'
-                                        ? 'editor/run-recovery.spec.ts'
-                                        : scenario === 'expression-admission'
-                                          ? 'editor/expression-admission.spec.ts'
-                                          : scenario === 'readonly'
-                                            ? 'editor/readonly.spec.ts'
-                                            : scenario === 'schedule'
-                                              ? 'editor/schedule.spec.ts'
-                                              : scenario === 'failure-routing'
-                                                ? 'editor/failure-routing.spec.ts'
-                                                : scenario === 'transforms'
-                                                  ? 'editor/transforms.spec.ts'
-                                                  : 'editor/webhook-controlled-http.spec.ts',
+            scenario === 'notifications'
+              ? 'editor/notifications/attention.spec.ts'
+              : scenario === 'variables'
+                ? 'editor/variables/snapshots.spec.ts'
+                : scenario === 'forms'
+                  ? 'editor/forms/submission.spec.ts'
+                  : scenario === 'approvals'
+                    ? 'editor/approvals.spec.ts'
+                    : scenario === 'error-workflows'
+                      ? 'editor/error-workflows.spec.ts'
+                      : scenario === 'artifact-inputs'
+                        ? 'editor/files/'
+                        : scenario === 'api-tokens'
+                          ? 'api-tokens.spec.ts'
+                          : scenario === 'callable'
+                            ? 'editor/callable.spec.ts'
+                            : scenario === 'curated-templates'
+                              ? 'curated-templates.spec.ts'
+                              : scenario === 'portability'
+                                ? 'workflow-portability.spec.ts'
+                                : scenario === 'input-cases'
+                                  ? 'workflow-input-cases.spec.ts'
+                                  : scenario === 'duplication'
+                                    ? 'workflow-duplication.spec.ts'
+                                    : scenario === 'nested-conflict'
+                                      ? 'editor/execution.spec.ts'
+                                      : scenario === 'receipts'
+                                        ? 'editor/receipts.spec.ts'
+                                        : scenario === 'run-recovery'
+                                          ? 'editor/run-recovery.spec.ts'
+                                          : scenario === 'expression-admission'
+                                            ? 'editor/expression-admission.spec.ts'
+                                            : scenario === 'readonly'
+                                              ? 'editor/readonly.spec.ts'
+                                              : scenario === 'schedule'
+                                                ? 'editor/schedule.spec.ts'
+                                                : scenario === 'failure-routing'
+                                                  ? 'editor/failure-routing.spec.ts'
+                                                  : scenario === 'transforms'
+                                                    ? 'editor/transforms.spec.ts'
+                                                    : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1044,6 +1105,10 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'notifications') {
+      await verifyNotificationEvidence(api.database(), noticeMessages);
+      return;
+    }
     if (scenario === 'variables') {
       await verifyVariableEvidence(api.database());
       return;

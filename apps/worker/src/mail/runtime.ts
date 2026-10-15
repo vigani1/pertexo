@@ -12,12 +12,12 @@ export const SYSTEM_MAIL_RUNTIME = Symbol('SYSTEM_MAIL_RUNTIME');
 
 export function createSystemMailRuntime(
   handler: SystemMailDeliveryHandler,
-  store: SystemMailDeliveryStore,
+  store: Pick<SystemMailDeliveryStore, 'close'>,
   pollIntervalMillis: number,
   onFailure: () => void,
 ): SystemMailRuntime {
   return createPollingRuntime({
-    name: 'Authentication mail',
+    name: 'System mail',
     pollMillis: pollIntervalMillis,
     cycle: async (signal) => {
       await handler.runOnce(signal);

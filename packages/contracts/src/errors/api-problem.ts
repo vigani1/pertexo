@@ -1,3 +1,4 @@
+import { notificationProblems } from './notifications.js';
 import { variableProblems } from './variables.js';
 import { formProblems } from './forms.js';
 import { pendingTaskProblems } from './pending-tasks.js';
@@ -64,6 +65,9 @@ export const API_PROBLEM_CODES = [
   'pending_task.run_closed',
   'pending_task.self_decision',
   'pending_task.not_eligible',
+  'notifications.changed',
+  'notifications.unavailable',
+  'notifications.unsubscribe_unavailable',
   'variables.changed',
   'variables.usage_changed',
   'workflow.variable_snapshot_unavailable',
@@ -364,6 +368,7 @@ const apiProblemDetails = {
   ...workflowConcurrencyProblems,
   ...workflowErrorProblems,
   ...pendingTaskProblems,
+  ...notificationProblems,
   ...variableProblems,
   ...formProblems,
   ...workflowInputCaseProblems,

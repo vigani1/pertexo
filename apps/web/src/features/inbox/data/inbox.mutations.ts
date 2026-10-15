@@ -21,11 +21,11 @@ function useInboxInvalidation(scope: InboxScope) {
 export function useMarkThreadReadMutation(scope: InboxScope) {
   const invalidate = useInboxInvalidation(scope);
   return useMutation({
-    mutationFn: (thread: Readonly<{ workflowId: string; revision: string }>) =>
+    mutationFn: (thread: Readonly<{ threadId: string; revision: string }>) =>
       markInboxThreadRead(
         scope.apiClient,
         scope.workspaceId,
-        thread.workflowId,
+        thread.threadId,
         thread.revision,
       ),
     onSettled: invalidate,

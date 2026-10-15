@@ -239,9 +239,14 @@ export async function updateMembership(
   );
   // Favorites are private to a membership; a member who comes back starts
   // without them.
-  if (change.status === 'removed')
+  if (change.status === 'removed') {
+    await client.query('select app.clear_removed_member_notices($1,$2)', [
+      workspaceId,
+      change.userId,
+    ]);
     await client.query(
       'delete from app.workflow_favorites where workspace_id=$1 and actor_id=$2',
       [workspaceId, change.userId],
     );
+  }
 }

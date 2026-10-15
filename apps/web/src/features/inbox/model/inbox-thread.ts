@@ -1,4 +1,4 @@
-import type { WorkspaceInboxThread } from '@pertexo/contracts';
+import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { describeListedFailure } from '@/features/workflow-runs/failure.public';
 import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
 import { formatDateTime } from '@/lib/format/time';
@@ -14,7 +14,7 @@ export type InboxThreadView = Readonly<{
 }>;
 
 export function describeInboxThread(
-  thread: WorkspaceInboxThread,
+  thread: WorkspaceInboxFailureThread,
 ): InboxThreadView {
   const failure = describeListedFailure(thread.latestFailedStep);
   return {

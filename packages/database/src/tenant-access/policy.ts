@@ -36,6 +36,7 @@ export const AUTHORIZATION_CAPABILITIES = Object.freeze([
   'member:read',
   'member:manage',
   'notification:read',
+  'notification:manage_defaults',
 ] as const);
 
 export type AuthorizationCapability =
@@ -68,6 +69,7 @@ const adminCapabilities = Object.freeze([
   'member:read',
   'member:manage',
   'notification:read',
+  'notification:manage_defaults',
 ] as const satisfies readonly AuthorizationCapability[]);
 
 const builderCapabilities = Object.freeze([

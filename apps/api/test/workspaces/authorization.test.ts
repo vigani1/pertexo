@@ -70,6 +70,7 @@ describe('workspace authorization policy', () => {
       'member:read',
       'member:manage',
       'notification:read',
+      'notification:manage_defaults',
     ]);
   });
 
@@ -117,6 +118,7 @@ describe('workspace authorization policy', () => {
       'member:read',
       'member:manage',
       'notification:read',
+      'notification:manage_defaults',
     ]);
     expect(capabilitiesForRole('builder')).toEqual([
       'artifact:read',

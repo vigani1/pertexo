@@ -7,6 +7,7 @@ import {
   workspaceInboxReadResponseSchema,
   workspaceInboxSummaryResponseSchema,
   type WorkspaceInboxFilter,
+  type WorkspaceNoticeKind,
   type WorkspaceInboxListResponse,
   type WorkspaceInboxReadAllResponse,
   type WorkspaceInboxReadResponse,
@@ -24,12 +25,14 @@ export function getInboxThreads(
   workspaceId: string,
   input: Readonly<{
     filter: WorkspaceInboxFilter;
+    noticeKind?: WorkspaceNoticeKind;
     after?: string;
     signal?: AbortSignal;
   }>,
 ): Promise<WorkspaceInboxListResponse> {
   const query = workspaceInboxListQuerySchema.parse({
     filter: input.filter,
+    ...(input.noticeKind === undefined ? {} : { noticeKind: input.noticeKind }),
     limit: 25,
     ...(input.after === undefined ? {} : { after: input.after }),
   });
@@ -62,11 +65,11 @@ export function getInboxSummary(
 export function markInboxThreadRead(
   apiClient: ApiClient,
   workspaceId: string,
-  workflowId: string,
+  threadId: string,
   revision: string,
 ): Promise<WorkspaceInboxReadResponse> {
   return apiClient.request({
-    path: `${inboxPath(workspaceId)}/${encodeURIComponent(workflowId)}/read`,
+    path: `${inboxPath(workspaceId)}/${encodeURIComponent(threadId)}/read`,
     method: 'POST',
     body: workspaceInboxReadRequestSchema.parse({ revision }),
     response: {

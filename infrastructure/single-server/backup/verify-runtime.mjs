@@ -175,7 +175,7 @@ try {
         "import {parseWorkerConfig} from './apps/worker/dist/config/worker.js';",
         "import {createSystemMailClient} from './packages/integrations/dist/server.js';",
         "const config=parseWorkerConfig({...process.env,WORKER_INSTANCE_ID:'fixture'});",
-        'for(const delivery of [config.authenticationMailDelivery,config.invitationDelivery]) {',
+        'for(const delivery of [config.systemMailDelivery,config.invitationDelivery]) {',
         ' assert.equal(delivery.delivery.mode,process.env.SYSTEM_MAIL_TRANSPORT);',
         ' const client=createSystemMailClient(delivery.delivery);',
         " assert.equal(client.deduplicates,process.env.SYSTEM_MAIL_TRANSPORT==='resend');",

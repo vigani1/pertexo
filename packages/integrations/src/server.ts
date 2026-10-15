@@ -135,3 +135,9 @@ export type {
   SystemMailMessage,
   SystemMailResult,
 } from './system-mail/contracts.js';
+
+export {
+  sealNoticeUnsubscribe,
+  openNoticeUnsubscribe,
+  type NoticeUnsubscribeClaims,
+} from './system-mail/unsubscribe.js';

@@ -9,19 +9,19 @@ import {
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const position = {
   latestOccurredAt: '2026-09-28T11:00:00.000900Z',
-  workflowId: '22222222-2222-4222-8222-222222222222',
+  threadId: '22222222-2222-4222-8222-222222222222',
 };
 const context = { workspaceId, filter: 'unread' as const };
 
 describe('workspace inbox cursor', () => {
   it('round-trips an opaque keyset position', () => {
     const cursor = encodeWorkspaceInboxCursor(context, position);
-    expect(cursor).not.toContain(position.workflowId);
+    expect(cursor).not.toContain(position.threadId);
     expect(decodeWorkspaceInboxCursor(cursor, context)).toEqual(position);
   });
 
   it.each([
-    ['another workspace', { ...context, workspaceId: position.workflowId }],
+    ['another workspace', { ...context, workspaceId: position.threadId }],
     ['another filter', { ...context, filter: 'all' as const }],
   ])('refuses a cursor reused for %s', (_case, other) => {
     const cursor = encodeWorkspaceInboxCursor(context, position);

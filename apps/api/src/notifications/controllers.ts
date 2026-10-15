@@ -90,6 +90,9 @@ export class NotificationsController {
         workspaceId,
         actorId: authenticatedSession(request).userId,
         ...(input.filter === undefined ? {} : { filter: input.filter }),
+        ...(input.noticeKind === undefined
+          ? {}
+          : { noticeKind: input.noticeKind }),
         ...(input.limit === undefined ? {} : { limit: input.limit }),
         ...(input.after === undefined ? {} : { after: input.after }),
       }),
@@ -135,7 +138,7 @@ export class NotificationsController {
     );
   }
 
-  @Post(':workflowId/read')
+  @Post(':threadId/read')
   @HttpCode(200)
   @RateLimit('ordinary_mutation')
   @UseGuards(
@@ -154,7 +157,7 @@ export class NotificationsController {
       this.service.markRead({
         workspaceId: route.workspaceId,
         actorId: authenticatedSession(request).userId,
-        workflowId: route.workflowId,
+        threadId: route.threadId,
         revision,
       }),
     );
@@ -185,7 +188,7 @@ export class NotificationsController {
           actor: projectAuthenticatedWorkspaceContext(request, workspaceId)
             .actor,
           routeWorkspaceId: workspaceId,
-          capability: 'notification:read',
+          capability: 'workspace:read',
           allowedWorkspaceStatuses: ['active'],
           sessionExpiresAt: authenticatedSession(request).expiresAt,
           reauthorizeSession: sessionReauthorization(request),

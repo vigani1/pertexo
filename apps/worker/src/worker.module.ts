@@ -1,3 +1,4 @@
+import { sealNoticeMail } from './mail/notice-content.js';
 import 'reflect-metadata';
 
 import { Module } from '@nestjs/common';
@@ -8,7 +9,10 @@ import type {
   WorkspaceDatabase,
 } from '@pertexo/database/platform';
 import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
-import { createWorkspaceInboxFoldStore } from '@pertexo/database/notifications';
+import {
+  createNoticeMailStore,
+  createWorkspaceInboxFoldStore,
+} from '@pertexo/database/notifications';
 import {
   createApplicationSecretEnvelope,
   createSystemMailClient,
@@ -127,21 +131,42 @@ export class WorkerModule {
               config.database,
               dependencies.databaseRuntime,
             );
+            const envelope = createApplicationSecretEnvelope(mail.encryption);
+            const sender = mail.noticeSender;
+            const notices =
+              sender === undefined
+                ? undefined
+                : createNoticeMailStore(
+                    config.database,
+                    config.retention.maintenanceDatabase,
+                    (input) =>
+                      sealNoticeMail(
+                        envelope,
+                        sender.fromEmail,
+                        sender.publicWebOrigin,
+                        input,
+                      ),
+                    dependencies.databaseRuntime,
+                  );
             const handler = createSystemMailDeliveryHandler({
+              ...(notices === undefined ? {} : { notices }),
               store,
-              envelope: createApplicationSecretEnvelope(mail.encryption),
+              envelope,
               email: createSystemMailClient(mail.delivery),
               timeoutMillis: mail.timeoutMillis,
               workerId: mail.workerId,
             });
             return createSystemMailRuntime(
               handler,
-              store,
+              {
+                close: async () => {
+                  await store.close();
+                  await notices?.close();
+                },
+              },
               mail.pollIntervalMillis,
               () => {
-                dependencies.logger.error(
-                  'authentication_mail.delivery_cycle_failed',
-                );
+                dependencies.logger.error('system_mail.delivery_cycle_failed');
               },
             );
           },
@@ -154,6 +179,7 @@ export class WorkerModule {
               createWorkspaceInboxFoldStore(
                 config.database,
                 dependencies.databaseRuntime,
+                config.retention.maintenanceDatabase,
               ),
               new RedisWorkspaceInboxHintPublisher({
                 redisUrl: config.redisUrl,
@@ -217,21 +243,21 @@ export class WorkerModule {
             shutdown: WorkerShutdownCoordinator,
             transport: OutboxDispatcherLifecycle,
             database: WorkspaceDatabase,
-            authenticationMail: SystemMailRuntime | undefined,
+            systemMail: SystemMailRuntime | undefined,
             workspaceInbox: WorkspaceInboxRuntime,
             autoPause: WorkflowAutoPauseRuntime,
             retention: RetentionRuntime,
           ) => {
-            authenticationMail?.start();
+            systemMail?.start();
             workspaceInbox.start();
             autoPause.start();
             retention.start();
             shutdown.register('retention', () => retention.close());
             shutdown.register('workspace-inbox', () => workspaceInbox.close());
             shutdown.register('workflow-auto-pause', () => autoPause.close());
-            if (authenticationMail !== undefined)
+            if (systemMail !== undefined)
               shutdown.register('authentication-mail', () =>
-                authenticationMail.close(),
+                systemMail.close(),
               );
             shutdown.register('transport', () => transport.close());
             shutdown.register('database', () => database.close());

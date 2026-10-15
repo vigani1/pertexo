@@ -55,6 +55,7 @@ const SECRET_NORMALIZED_NAMES = new Set([
   'cookie',
   'setcookie',
   'xpertexoformkey',
+  'xpertexounsubscribekey',
 ]);
 
 const SECRET_PATHS = SECRET_NAMES.flatMap((name) => [

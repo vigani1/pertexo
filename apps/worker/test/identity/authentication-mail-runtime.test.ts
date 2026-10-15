@@ -30,7 +30,7 @@ describe('authentication mail runtime', () => {
       await vi.advanceTimersByTimeAsync(100);
       expect(onFailure).toHaveBeenCalledOnce();
       await expect(runtime.checkReadiness()).rejects.toThrow(
-        'Authentication mail latest cycle failed',
+        'System mail latest cycle failed',
       );
 
       await vi.advanceTimersByTimeAsync(100);
@@ -62,7 +62,7 @@ describe('authentication mail runtime', () => {
     expect(runOnce).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
     await expect(runtime.checkReadiness()).rejects.toThrow(
-      'Authentication mail runtime is closed',
+      'System mail runtime is closed',
     );
   });
 

@@ -1,4 +1,7 @@
-import type { WorkspaceInboxThread } from '@pertexo/contracts';
+import type {
+  WorkspaceInboxThread,
+  WorkspaceInboxFailureThread,
+} from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
 import { describeInboxThread } from './inbox-thread';
@@ -15,9 +18,12 @@ export function isLaterRevision(revision: string, than: string): boolean {
 export function arrivedThreads(
   threads: readonly WorkspaceInboxThread[],
   since: string,
-): WorkspaceInboxThread[] {
+): WorkspaceInboxFailureThread[] {
   return threads.filter(
-    (thread) => thread.unread && isLaterRevision(thread.revision, since),
+    (thread): thread is WorkspaceInboxFailureThread =>
+      thread.noticeKind === 'workflow_failure' &&
+      thread.unread &&
+      isLaterRevision(thread.revision, since),
   );
 }
 
@@ -26,9 +32,9 @@ export function arrivedThreads(
  * newest failure, newest first.
  */
 export function mergeArrivals(
-  showing: readonly WorkspaceInboxThread[],
-  arrived: readonly WorkspaceInboxThread[],
-): WorkspaceInboxThread[] {
+  showing: readonly WorkspaceInboxFailureThread[],
+  arrived: readonly WorkspaceInboxFailureThread[],
+): WorkspaceInboxFailureThread[] {
   const byWorkflow = new Map(
     showing.map((thread) => [thread.workflowId, thread]),
   );
@@ -46,7 +52,10 @@ export function mergeArrivals(
 export type InboxArrivalSide = 'right' | 'top';
 
 export type InboxArrivalData = Readonly<{
-  threads: readonly [WorkspaceInboxThread, ...WorkspaceInboxThread[]];
+  threads: readonly [
+    WorkspaceInboxFailureThread,
+    ...WorkspaceInboxFailureThread[],
+  ];
   /** Changes when more failures join, restarting the timer thread. */
   sequence: number;
   side?: InboxArrivalSide;
@@ -86,10 +95,10 @@ export type InboxArrivalView = Readonly<{
   marks: readonly StatusTone[];
   more: number;
   /** The single thread, or undefined when the notice groups several. */
-  thread?: WorkspaceInboxThread;
+  thread?: WorkspaceInboxFailureThread;
 }>;
 
-function listNames(threads: readonly WorkspaceInboxThread[]): string {
+function listNames(threads: readonly WorkspaceInboxFailureThread[]): string {
   const [first, second, ...rest] = threads.map((thread) => thread.workflowName);
   if (second === undefined) return first ?? '';
   if (rest.length === 0) return `${first ?? ''} and ${second}`;
@@ -97,7 +106,10 @@ function listNames(threads: readonly WorkspaceInboxThread[]): string {
 }
 
 export function describeInboxArrival(
-  threads: readonly [WorkspaceInboxThread, ...WorkspaceInboxThread[]],
+  threads: readonly [
+    WorkspaceInboxFailureThread,
+    ...WorkspaceInboxFailureThread[],
+  ],
 ): InboxArrivalView {
   const [newest] = threads;
   const look = describeRunStatus(newest.kind);

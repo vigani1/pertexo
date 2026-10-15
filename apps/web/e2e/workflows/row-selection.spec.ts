@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator } from '../support/fixtures';
 import {
   addCsrfCookie,
   installEditorRoutes,

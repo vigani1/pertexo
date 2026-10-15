@@ -1,6 +1,12 @@
+import {
+  notificationPreferencePaths,
+  notificationPreferenceRoutes,
+  notificationPreferenceSchemas,
+} from './notification-preferences.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
   workspaceInboxCursorSchema,
+  workspaceNoticeKindSchema,
   workspaceInboxFilterSchema,
   workspaceInboxLimitSchema,
   workspaceInboxListResponseSchema,
@@ -26,6 +32,7 @@ import {
 const workspace = simpleUuidPathParameter('workspaceId');
 const security = [{ cookieSession: [] }] as const;
 const schemas = Object.freeze({
+  ...notificationPreferenceSchemas,
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WorkspaceInboxListResponse: jsonSchema(
     workspaceInboxListResponseSchema,
@@ -79,6 +86,7 @@ const commandProblems = {
 /** ADR 055: failure threads read on demand, with private read state. */
 export const workspaceInboxClientContract = Object.freeze({
   routes: Object.freeze([
+    ...notificationPreferenceRoutes,
     { method: 'GET', path: '/v1/workspaces/:workspaceId/notifications' },
     {
       method: 'GET',
@@ -86,7 +94,7 @@ export const workspaceInboxClientContract = Object.freeze({
     },
     {
       method: 'POST',
-      path: '/v1/workspaces/:workspaceId/notifications/:workflowId/read',
+      path: '/v1/workspaces/:workspaceId/notifications/:threadId/read',
       requiredHeaders: ['X-CSRF-Token'],
     },
     {
@@ -106,6 +114,7 @@ export const workspaceInboxOpenApiDocument = Object.freeze({
   info: { title: 'Pertexo Workspace Inbox API', version: '2.0.0' },
   components: authenticatedComponents(schemas, responses),
   paths: {
+    ...notificationPreferencePaths,
     '/v1/workspaces/{workspaceId}/notifications': {
       get: {
         operationId: 'listWorkspaceInbox',
@@ -113,6 +122,7 @@ export const workspaceInboxOpenApiDocument = Object.freeze({
         parameters: [
           workspace,
           queryParameter('filter', workspaceInboxFilterSchema),
+          queryParameter('noticeKind', workspaceNoticeKindSchema),
           queryParameter('limit', workspaceInboxLimitSchema),
           queryParameter('after', workspaceInboxCursorSchema),
         ],
@@ -139,13 +149,13 @@ export const workspaceInboxOpenApiDocument = Object.freeze({
         },
       },
     },
-    '/v1/workspaces/{workspaceId}/notifications/{workflowId}/read': {
+    '/v1/workspaces/{workspaceId}/notifications/{threadId}/read': {
       post: {
         operationId: 'markWorkspaceInboxThreadRead',
         security,
         parameters: [
           workspace,
-          simpleUuidPathParameter('workflowId'),
+          simpleUuidPathParameter('threadId'),
           csrfHeaderParameter('X-CSRF-Token'),
         ],
         requestBody: jsonRequest('WorkspaceInboxReadRequest'),

@@ -1,4 +1,5 @@
 export const RATE_LIMIT_ENDPOINT_CLASSES = [
+  'notice_unsubscribe',
   'form_read',
   'form_submission',
   'form_workspace_submission',
@@ -65,6 +66,12 @@ type EndpointRule = Readonly<{
 }>;
 
 const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
+  notice_unsubscribe: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'client_address', subject: 'clientAddress', limit: 30 },
+    ],
+  },
   form_read: {
     failureMode: 'closed',
     dimensions: [

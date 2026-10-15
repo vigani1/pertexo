@@ -94,7 +94,7 @@ export function WorkspaceShellFrame({
     ...liveRunCountQueryOptions(apiClient, user.id, workspace.id),
     enabled: canReadRuns,
   });
-  const canReadInbox = workspace.capabilities.includes('notification:read');
+  const canReadInbox = workspace.capabilities.includes('workspace:read');
   const inboxSummary = useQuery({
     ...inboxSummaryQueryOptions(apiClient, user.id, workspace.id),
     enabled: canReadInbox,

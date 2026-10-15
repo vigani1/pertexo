@@ -1,7 +1,8 @@
 # F27 — Personal notification preferences and notice kinds
 
-Status: implementation authorized; recommendations below accepted under the
-owner's instruction to choose, document and continue without a plan approval.
+Status: implemented and locally qualified. Recommendations below were accepted
+under the owner's instruction to choose, document and continue. GitHub PR checks
+and natural-main image publication remain the release gates.
 Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 Decision: [ADR 079](../adr/079-personal-notices-and-mail.md).
 
@@ -18,15 +19,15 @@ needed. ADR 022's shared workflow alerts remain independent of personal choices.
 Current anchors:
 
 - `database/src/inbox/{producer,fold-store,read-store,failure-days}.ts` and
-  `schema/workspace-inbox.ts`; accepted F03 SQL fold/recipient policies.
+  `schema/inbox/core.ts`; accepted F03 SQL fold/recipient policies.
 - `runs/pending-tasks/queries.ts`: one audience/blocked predicate for tasks.
 - `triggers/pause/fold-store.ts`, `connections/health/`, and
   `runs/queries/usage-capacity.ts`: authoritative source facts.
-- `database/src/identity/authentication-mail.ts`, worker
-  `identity/authentication-mail-{delivery,runtime}.ts`, and integrations
+- `database/src/platform/mail/store.ts`, worker
+  `mail/{delivery,runtime}.ts`, and integrations
   `system-mail/`: durable encrypted mail and existing SMTP/Resend delivery.
 - API `notifications/`; web `features/inbox/`, the workspace Inbox route and
-  workflow row/header menus. Extend these; do not introduce a parallel inbox.
+  workflow Settings and connection detail. Extend these; do not introduce a parallel inbox.
 
 ## Product decisions
 
@@ -149,8 +150,8 @@ life, so deleting old witnesses cannot resurrect old mail.
 
 Each cycle prepares at most 10 recipients. A batch witnesses at most 100 subjects,
 renders at most 25 bounded lines plus an Inbox link/more count, and fits the
-existing 32 KiB mail envelope. Excess work continues in later bounded passes and
-windows. There is at most one pending batch per person/workspace. Do not allocate
+existing 12 KiB application-envelope plaintext bound (within the 32 KiB mail
+payload schema). Excess work continues in later bounded passes and windows. There is at most one pending batch per person/workspace. Do not allocate
 one message per failure, scan an unbounded population or wait for a noisy workflow
 to become quiet before sending.
 
@@ -235,13 +236,15 @@ history table. Email action links lead to normal authenticated screens.
 ## Tracker
 
 - [x] Reconciled current code and recorded recommended decisions.
-- [ ] ADR, contracts and rollout complete.
-- [ ] Mechanical ownership moves gated separately.
-- [ ] Persistence, observation, delivery and lifecycle implemented.
-- [ ] Settings, subscriptions, notice rows and unsubscribe implemented.
-- [ ] Independent integrated evidence and required checks passed.
-- [ ] Guide, roadmap and limitations truthful.
-- [ ] PR green and rebase merged; natural main/ARM inspected.
+- [x] ADR, contracts and rollout complete.
+- [x] Mechanical ownership moves gated separately.
+- [x] Persistence, observation, delivery and lifecycle implemented.
+- [x] Settings, subscriptions, notice rows and unsubscribe implemented.
+- [x] Independent integrated evidence and required checks passed.
+- [x] Guide, roadmap and limitations truthful.
+Release requires green PR checks, a rebase merge and inspection of natural-main
+CI/ARM publication. The PR is the source of current merge/publication receipts;
+the code tracker above records implementation and local qualification.
 
 ## Rollout and later work
 
@@ -255,3 +258,72 @@ No mobile push, new chat transport, public approval action, incident management,
 per-app email frequency, marketing mail, tracking pixels or environment-specific
 preferences. Notification delivery is best effort; the Inbox/task remains the
 source of attention when mail is rejected or needs reconciliation.
+
+## Implementation refinements — 2026-10-15
+
+- The shared application envelope accepts 12 KiB plaintext. Keep that tighter
+  existing bound: at most 25 lines, names capped at 64 Unicode code points, at
+  most 100 revision witnesses, and a bounded Inbox/more link. No format or crypto
+  limit expansion.
+- Open personal follow/mute choices from workflow Settings and connection detail.
+  The query exists only while its sheet is open. This reuses current detail
+  ownership without adding list-row requests; focused public entries preserve
+  lazy page boundaries.
+- Maintenance discovery reads only workspace/membership IDs and scheduling state.
+  User status and verified recipient email are checked with scoped app authority,
+  retaining the existing maintenance role's lack of user-table access. Current
+  source/audience predicates filter before the 100-item limit, so irrelevant
+  subjects cannot starve a followed workflow.
+- Optional notice preparation runs when the shared mail queue has no claimable
+  message, preserving queued security-mail priority and availability if preparation
+  fails. A scoped source check still immediately precedes dispatch.
+- Public unsubscribe uses a dedicated existing-rate-limiter policy: fail closed,
+  30 requests/minute/client address, no Form identifier or shared Form allowance.
+- The removal boundary invokes a narrow database cleanup fence only after the
+  membership has become removed in that same transaction. This permits private
+  state cleanup without allowing another member to select private choices.
+- New thread IDs use PostgreSQL 18's native UUIDv7 inside the existing SQL fold
+  and migration; the application observer uses the existing persisted-ID owner.
+  Read cuts, timestamps and old failure aggregation survive the additive upgrade.
+
+Evidence is recorded after the corresponding checks pass; unfinished tracker
+items remain open. The personal notification guide is [notifications.md](../notifications.md).
+
+
+## Local qualification receipts — 2026-10-15
+
+- Populated additive upgrade, existing Inbox behavior, preferences/audiences,
+  observations and batch tests pass through PostgreSQL 18 with the actual app
+  and maintenance roles. Persisted hourly/daily boundaries survive worker restart;
+  downtime produces one current batch. A 101-subject workload produces 100
+  witnesses followed by the remaining subject in a later window. A queued-mail
+  purge removes its sealed delivery and private state before membership removal.
+- Actual worker/SMTP qualification covers security mail and personal notice mail,
+  safe content, authorization revoked before DATA, post-DATA acknowledgement loss
+  and recovered uncertain leases without repeating delivery. The maximum Unicode
+  notice body fits the existing 12 KiB plaintext envelope.
+- The real API/worker/browser/SMTP journey exercises exact retry after a committed
+  save loses its response, daily/immediate choices, a failed run, private follow
+  and mute, scanner-inert unsubscribe and an explicit anonymous confirmation.
+  Independent SQL checks verify receipts, revisions, coverage and run state.
+  The existing named-decider Approval browser journey also passes with one notice.
+- Inspected synthetic screenshots at desktop and phone widths with reduced motion:
+  [settings](../media/notifications/settings-desktop.png),
+  [phone settings](../media/notifications/settings-phone.png), and
+  [Inbox](../media/notifications/inbox-desktop.png). React Doctor: 100/100,
+  no suppressions. Unsubscribe invalidates schedules already cached in its tab.
+- Single-server configuration/credential isolation passes for KMS/self-managed
+  encryption and SMTP/Resend. Storage preparation and restore verification use
+  the shared system-mail configuration owner too.
+
+Local gates: 9,184 Vitest unit tests plus native runtime checks, 176 mocked
+browser cases (including Firefox/WebKit smoke), full build/lint/strict types,
+format, Knip, contracts, schema ownership and boundaries. Single-server tests:
+42/42. PostgreSQL: all 32 Inbox cases plus the added queued-mail purge case,
+40 lifecycle/task-retention cases (the broad purge test also passed in isolation),
+and the existing real Inbox API cases. Real SMTP: 3/3. Both owned notification
+and named-decider Approval browser journeys passed.
+
+The PR records CI receipts. GitHub's PR checks and
+natural-main image publication are the rollout authority; local qualification
+alone is not a deployment receipt.

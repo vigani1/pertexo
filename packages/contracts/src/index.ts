@@ -91,3 +91,30 @@ export {
   type WorkspaceVariableUsageResponse,
   type WorkflowRunVariablesResponse,
 } from './schemas/identity/variables.js';
+
+export {
+  noticePreferencesRequestSchema,
+  noticeDefaultsRequestSchema,
+  noticePreferencesResponseSchema,
+  noticeSubjectParamsSchema,
+  noticeSubscriptionSchema,
+  noticeSubscriptionRequestSchema,
+  noticeCommandResponseSchema,
+  noticeUnsubscribeResponseSchema,
+  type NoticeEmailMode,
+  type NoticeSchedule,
+  type NoticePreferencesRequest,
+  type NoticeDefaultsRequest,
+  type NoticePreferencesResponse,
+  type NoticeSubscription,
+  type NoticeSubscriptionRequest,
+  type NoticeCommandResponse,
+  type NoticeSubjectParams,
+} from './schemas/notifications/preferences.js';
+
+export {
+  workspaceNoticeKindSchema,
+  type WorkspaceInboxFailureThread,
+  type WorkspaceInboxAttentionThread,
+  type WorkspaceNoticeKind,
+} from './schemas/identity/inbox.js';

@@ -1,8 +1,17 @@
-/** The inbox URL: `?filter=unread` narrows to what this person hasn't read. */
-export type InboxSearch = Readonly<{ filter?: 'unread' }>;
-
+import {
+  workspaceNoticeKindSchema,
+  type WorkspaceNoticeKind,
+} from '@pertexo/contracts';
+export type InboxSearch = Readonly<{
+  filter?: 'unread';
+  noticeKind?: WorkspaceNoticeKind;
+}>;
 export function parseInboxSearch(
   search: Readonly<Record<string, unknown>>,
 ): InboxSearch {
-  return search.filter === 'unread' ? { filter: 'unread' } : {};
+  const kind = workspaceNoticeKindSchema.safeParse(search.noticeKind);
+  return {
+    ...(search.filter === 'unread' ? { filter: 'unread' as const } : {}),
+    ...(kind.success ? { noticeKind: kind.data } : {}),
+  };
 }

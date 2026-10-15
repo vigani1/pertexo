@@ -14,6 +14,7 @@ export type SystemMailDeliveryConfig = Readonly<{
   pollIntervalMillis: number;
   workerId: string;
   encryption: ApplicationKeyRing;
+  noticeSender?: Readonly<{ fromEmail: string; publicWebOrigin: string }>;
 }>;
 
 const credentialNames = [
@@ -21,9 +22,10 @@ const credentialNames = [
   'AUTH_MAIL_EMAIL_API_KEY',
   'AUTH_MAIL_KEY',
   'AUTH_MAIL_KEY_VERSION',
+  'AUTH_MAIL_FROM',
 ] as const;
 
-const authenticationMailSchema = z
+const systemMailSchema = z
   .object({
     key: z.string().min(1),
     version: applicationKeyVersionSchema,
@@ -40,7 +42,7 @@ const authenticationMailSchema = z
   .strict();
 
 /**
- * Parses authentication-mail delivery when any of its credentials is present;
+ * Parses system-mail delivery when any of its credentials is present;
  * without them a local worker does not deliver it. Deployed workers must.
  */
 export function parseSystemMailDeliveryConfig(
@@ -49,10 +51,10 @@ export function parseSystemMailDeliveryConfig(
 ): SystemMailDeliveryConfig | undefined {
   if (credentialNames.every((name) => environment[name] === undefined)) {
     if (deployed)
-      throw new Error('Deployed workers require authentication mail delivery');
+      throw new Error('Deployed workers require system mail delivery');
     return undefined;
   }
-  const parsed = authenticationMailSchema.parse({
+  const parsed = systemMailSchema.parse({
     key: environment.AUTH_MAIL_KEY,
     version: environment.AUTH_MAIL_KEY_VERSION,
     previous: environment.AUTH_MAIL_PREVIOUS_KEYS,
@@ -60,7 +62,32 @@ export function parseSystemMailDeliveryConfig(
     pollIntervalMillis: environment.AUTH_MAIL_POLL_MILLIS,
     workerId: `auth-mail:${environment.WORKER_INSTANCE_ID ?? 'worker-local'}`,
   });
+  if (deployed && environment.AUTH_MAIL_FROM === undefined)
+    throw new Error(
+      'Deployed workers require AUTH_MAIL_FROM for system notifications',
+    );
+  const noticeSender =
+    environment.AUTH_MAIL_FROM === undefined
+      ? undefined
+      : {
+          fromEmail: z.email().max(320).parse(environment.AUTH_MAIL_FROM),
+          publicWebOrigin: z.url().parse(environment.PUBLIC_WEB_ORIGIN),
+        };
+  if (noticeSender !== undefined) {
+    const origin = new URL(noticeSender.publicWebOrigin);
+    if (
+      origin.username ||
+      origin.password ||
+      origin.pathname !== '/' ||
+      origin.search ||
+      origin.hash ||
+      (deployed && origin.protocol !== 'https:') ||
+      !['http:', 'https:'].includes(origin.protocol)
+    )
+      throw new Error('Notification mail requires a public web origin');
+  }
   return Object.freeze({
+    ...(noticeSender === undefined ? {} : { noticeSender }),
     delivery: parseSystemMailConfig(
       environment,
       'AUTH_MAIL_EMAIL_API_KEY',

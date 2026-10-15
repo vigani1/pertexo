@@ -269,13 +269,13 @@ export const RETENTION_RULES = Object.freeze([
     name: 'workspace_inbox_threads',
     statement: `
       with page as (
-        select workspace_id, workflow_id from app.workspace_inbox_threads
-        where latest_occurred_at <= statement_timestamp() - interval '720 hours'
-        order by latest_occurred_at, workspace_id, workflow_id limit $1
+        select workspace_id, id from app.workspace_inbox_threads
+        where latest_occurred_at <= statement_timestamp() - interval '720 hours' AND (notice_kind='workflow_failure' OR NOT active)
+        order by latest_occurred_at, workspace_id, id limit $1
       )
       delete from app.workspace_inbox_threads thread using page
-      where (thread.workspace_id, thread.workflow_id)
-        = (page.workspace_id, page.workflow_id)`,
+      where (thread.workspace_id, thread.id)
+        = (page.workspace_id, page.id)`,
   },
   {
     name: 'identity_security_audit_facts',

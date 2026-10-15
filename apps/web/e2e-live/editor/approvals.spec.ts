@@ -187,15 +187,18 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       await decider.setViewportSize({ width, height: 768 });
       await decider.emulateMedia({ reducedMotion: 'reduce' });
       await decider.goto(`/w/${workspaceId}/inbox`);
-      const section = decider.getByRole('region', {
-        name: 'Requests',
+      const notices = decider.getByRole('list', {
+        name: 'Notices',
         exact: true,
       });
       await expect(
-        section.getByRole('link', { name: 'Review the request', exact: true }),
+        notices.getByText('Approval waiting', { exact: true }),
       ).toBeVisible();
-      await section
-        .getByRole('link', { name: 'Review the request', exact: true })
+      await expect(
+        notices.getByRole('link', { name: 'Review approval', exact: true }),
+      ).toHaveCount(1);
+      await notices
+        .getByRole('link', { name: 'Review approval', exact: true })
         .click();
       await expect(
         decider.getByRole('heading', {

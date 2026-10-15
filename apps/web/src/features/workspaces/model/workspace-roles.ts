@@ -62,7 +62,12 @@ export const ROLE_MATRIX: readonly Readonly<{
     roles: ['owner', 'admin', 'operator'],
   },
   {
-    ability: 'Get notified when workflows fail',
+    ability: 'Manage notification email defaults',
+    capabilities: ['notification:manage_defaults'],
+    roles: ['owner', 'admin'],
+  },
+  {
+    ability: 'Get operational notices by default',
     capabilities: ['notification:read'],
     roles: ['owner', 'admin', 'operator'],
   },

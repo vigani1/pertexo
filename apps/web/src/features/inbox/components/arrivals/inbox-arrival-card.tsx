@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { WorkspaceInboxThread } from '@pertexo/contracts';
+import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { Toast } from '@base-ui/react/toast';
 import { Link } from '@tanstack/react-router';
 import { XIcon } from 'lucide-react';
@@ -92,7 +92,7 @@ export function InboxArrivalCard({
 }: Readonly<{
   workspaceId: string;
   toast: Toast.Root.ToastObject<InboxArrivalData>;
-  onOpenRun: (thread: WorkspaceInboxThread) => void;
+  onOpenRun: (thread: WorkspaceInboxFailureThread) => void;
   onOpenInbox: () => void;
 }>) {
   const nowMs = useNow(30_000);

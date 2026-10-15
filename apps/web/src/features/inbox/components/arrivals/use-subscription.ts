@@ -1,6 +1,6 @@
 import type {
   WorkspaceInboxSummaryResponse,
-  WorkspaceInboxThread,
+  WorkspaceInboxFailureThread,
 } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useEffectEvent, useRef } from 'react';
@@ -20,7 +20,7 @@ type Seen = Readonly<{ scope: string; revision: string }>;
 export function useInboxArrivals(
   scope: InboxScope,
   summary: WorkspaceInboxSummaryResponse | undefined,
-  onArrive: (threads: readonly WorkspaceInboxThread[]) => void,
+  onArrive: (threads: readonly WorkspaceInboxFailureThread[]) => void,
 ): void {
   const queryClient = useQueryClient();
   const arrive = useEffectEvent(onArrive);

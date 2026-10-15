@@ -73,6 +73,7 @@
         "WORKER_RESOURCE_UNHEALTHY_SAMPLES": "3"
       },
       "configuration": [
+        "AUTH_MAIL_FROM",
         "ARTIFACT_STORE_BUCKET",
         "ARTIFACT_STORE_ENDPOINT",
         "ARTIFACT_STORE_FORCE_PATH_STYLE",

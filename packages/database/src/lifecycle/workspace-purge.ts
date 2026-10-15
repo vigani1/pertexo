@@ -71,6 +71,17 @@ export const PURGE_PRESERVED_TABLES = Object.freeze([
  * one page; a later step runs only once every earlier one has nothing left.
  */
 export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
+  {
+    name: 'personal_notice_mail',
+    statement: `with page as (select delivery.id from app.authentication_mail_deliveries delivery join app.notice_mail_batches batch on batch.id=delivery.id where batch.workspace_id=$1 limit $2) delete from app.authentication_mail_deliveries delivery using page where delivery.id=page.id`,
+  },
+  ...[
+    'notice_mail_items',
+    'notice_mail_batches',
+    'notice_subscriptions',
+    'notice_preferences',
+    'notice_workspace_settings',
+  ].map(deleteRows),
   deleteRows('api_tokens'),
   deleteRows('workflow_forms'),
   deleteRows('pending_run_tasks'),

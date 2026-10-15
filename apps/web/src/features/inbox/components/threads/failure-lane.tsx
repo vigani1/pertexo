@@ -1,4 +1,4 @@
-import type { WorkspaceInboxThread } from '@pertexo/contracts';
+import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { cn } from '@/lib/utils';
 
 const DAY_MILLIS = 86_400_000;
@@ -13,7 +13,7 @@ export function FailureLane({
   nowMs,
   unread = false,
 }: Readonly<{
-  days: WorkspaceInboxThread['failureDays'];
+  days: WorkspaceInboxFailureThread['failureDays'];
   nowMs: number;
   /** An unread notice's thread reads a little brighter. */
   unread?: boolean;

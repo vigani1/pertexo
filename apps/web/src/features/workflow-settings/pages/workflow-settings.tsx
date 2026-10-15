@@ -1,3 +1,5 @@
+import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
+import { SettingsSection } from '@/components/patterns/settings-section';
 import { ErrorWorkflowSection } from '../components/settings/error-workflow-section';
 import type {
   AccessibleWorkspace,
@@ -52,6 +54,16 @@ function SettingsSession({
         workspace={workspace}
         query={summary}
       />
+      <SettingsSection
+        title="Personal notifications"
+        description="Follow or mute this workflow for your Inbox and email."
+      >
+        <NoticeSubjectActions
+          scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
+          subject={{ subjectKind: 'workflow', subjectId: workflowId }}
+          name={visibleSettingsData(summary)?.name ?? 'this workflow'}
+        />
+      </SettingsSection>
       <FailureAlertsSection
         apiClient={apiClient}
         userId={user.id}

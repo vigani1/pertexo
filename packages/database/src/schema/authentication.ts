@@ -341,7 +341,7 @@ export const authenticationMailDeliveries = appSchema.table(
     ),
     check(
       'authentication_mail_purpose_valid',
-      sql`((purpose)::text = ANY (ARRAY[('verification'::character varying)::text, ('password_reset'::character varying)::text, ('email_change_confirmation'::character varying)::text]))`,
+      sql`((purpose)::text = ANY (ARRAY[('verification'::character varying)::text, ('password_reset'::character varying)::text, ('email_change_confirmation'::character varying)::text, ('workspace_notice'::character varying)::text]))`,
     ),
     check(
       'authentication_mail_status_valid',
