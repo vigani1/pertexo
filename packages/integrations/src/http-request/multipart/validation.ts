@@ -9,7 +9,7 @@ export const HTTP_MULTIPART_MAX_PARTS = 64;
 function noControls(value: string): boolean {
   return Array.from(value).every((character) => {
     const code = character.charCodeAt(0);
-    return code >= 32 && code !== 127;
+    return code >= 32 && (code < 127 || code > 159);
   });
 }
 const bytes = (value: string) => new TextEncoder().encode(value).byteLength;
