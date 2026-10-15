@@ -813,6 +813,8 @@ describeIntegration('For Each cancellation recovery', () => {
                 'cancel while canonical body attempt is running',
               );
             } else {
+              // The child also scans deadlines; stop it before asserting this scanner owns the wakeup.
+              await stopWorkers();
               await ownerQuery(
                 `update app.workflow_runs
                     set deadline_at=clock_timestamp()-interval '1 second',
