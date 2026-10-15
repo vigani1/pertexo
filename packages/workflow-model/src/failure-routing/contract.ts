@@ -1,3 +1,5 @@
+import { isWorkflowTriggerKey } from '../graph/triggers.js';
+
 /** Engine-owned alternative path, never a provider's successful output. */
 export const WORKFLOW_FAILURE_PORT = '__failure';
 
@@ -14,11 +16,6 @@ export const WORKFLOW_FAILURE_PATHS: readonly string[] = [
 ];
 
 const excludedSources = new Set([
-  'core.workflow_error',
-  'core.manual',
-  'core.form',
-  'core.webhook',
-  'core.schedule',
   'core.condition',
   'core.switch',
   'core.parallel',
@@ -31,7 +28,10 @@ const excludedSources = new Set([
 export function isWorkflowFailureSource(
   definition: Readonly<{ key: string; version: number }>,
 ): boolean {
-  return !excludedSources.has(definition.key);
+  return (
+    !isWorkflowTriggerKey(definition.key) &&
+    !excludedSources.has(definition.key)
+  );
 }
 
 export type WorkflowFailureRoute = Readonly<{

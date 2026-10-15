@@ -88,6 +88,17 @@ describe('error workflow target', () => {
       }),
     ).toBe(true);
   });
+  it.each(['core.manual', 'core.webhook', 'core.schedule', 'core.form'])(
+    'refuses a mixed target containing %s even at an unsupported version',
+    (key) => {
+      for (const version of [1, 2])
+        expect(
+          isWorkflowErrorTarget({
+            nodes: [node('core.workflow_error'), node(key, version)],
+          }),
+        ).toBe(false);
+    },
+  );
   it.each([
     undefined,
     {},

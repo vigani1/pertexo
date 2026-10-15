@@ -290,3 +290,9 @@ PR #302 rebase merged as `0eaa5ac4409a7bafe15b91445f7adb9952fad083`.
 CI 38732419684 passed all required jobs, including the real browser batch;
 CodeQL 38732419735 passed. Natural main CI 38735773347 passed every job, including ARM image publication;
 CodeQL 38735773344 also passed.
+
+## Shared trigger ownership (2026-10-15)
+
+Form is part of the single supported-trigger definition in
+`workflow-model/src/graph/triggers.ts`; model graph checks and engine input
+handling consume it. Form admission, replay and submission behavior is unchanged.

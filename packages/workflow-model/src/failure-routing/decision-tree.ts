@@ -1,3 +1,4 @@
+import { isWorkflowTriggerKey } from '../graph/triggers.js';
 import type { WorkflowEdge } from '../graph/contract.js';
 
 export type DecisionTreeNode = Readonly<{
@@ -77,13 +78,7 @@ export function inspectWorkflowDecisionTree(
   if (
     roots.length !== 1 ||
     root === undefined ||
-    ![
-      'core.workflow_error',
-      'core.manual',
-      'core.form',
-      'core.webhook',
-      'core.schedule',
-    ].includes(root.definition.key)
+    !isWorkflowTriggerKey(root.definition.key)
   )
     return undefined;
 

@@ -13,15 +13,3 @@ export function isCoreParallelDefinition(
 ): boolean {
   return workflowControlOutputKind(definition) === 'parallel';
 }
-
-export function isTriggerSourceDefinition(
-  definition: DefinitionIdentity,
-): boolean {
-  return (
-    (definition.key === 'core.workflow_error' && definition.version === 1) ||
-    (definition.key === 'core.form' && definition.version === 1) ||
-    (definition.key === 'core.manual' && definition.version === 1) ||
-    (definition.key === 'core.webhook' && definition.version === 1) ||
-    (definition.key === 'core.schedule' && definition.version === 1)
-  );
-}
