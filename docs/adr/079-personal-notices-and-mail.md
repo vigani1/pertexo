@@ -1,0 +1,70 @@
+# ADR 079: Personal views of subject notices and durable system mail
+
+- **Status:** accepted under the owner's autonomous feature instruction
+- **Date:** 2026-10-15
+- **Plan:** [F27](../feature-plans/27-notification-preferences-and-channels.md)
+- **Amends:** ADR 055's workflow-only thread identity/audience and ADR 040's
+  authentication-only use of the existing system mail queue
+
+## Context
+
+Per-person preferences must not multiply every failed run by every recipient or
+create another inbox. Existing durable mail already owns encrypted content,
+claims, retries and uncertain SMTP outcomes. Current pause, connection, capacity
+and human-task facts already provide durable attention sources.
+
+## Decision
+
+Generalize the existing inbox thread/read identity to one UUID thread per
+workspace, notice kind and UUID subject. Preserve F03 failure aggregation and
+private reads. Keep its failure-event input; new operational notices are bounded
+observations of current authoritative attention, including resolution. They are
+not an exhaustive event history. Active slots being occupied is normal queueing;
+queue and artifact byte/count saturation are capacity attention.
+
+Compute each person's current view from membership, the notice's audience,
+workflow follow and private mute. Following adds only that workflow's notices
+through run-read access. Mutes never change another person's view, a human task or
+shared ADR 022 alerts. Approval waiting uses the pending-task eligibility owner,
+including starter exclusion. Resolved operational notices leave current attention;
+failure threads retain F03's window. Inbox guards allow current workspace members,
+with precise row eligibility and private read state under forced RLS.
+
+Personal email inherits an Off workspace default unless overridden. Owners/admins
+manage that default through an explicit capability. Modes are Off, immediate,
+hourly or daily with IANA timezone/hour. Immediate is bounded to one batch per
+person/workspace/minute; digests coalesce current unseen thread changes. Gaps use
+the first valid later local time; repeated hours send once; downtime causes one
+catch-up, not one email per missed window. Enabling/changing a subscription does
+not email old history. All loops, scans, recipients and mail bodies are bounded.
+
+Reuse one system mail queue, lease/settlement protocol and worker delivery owner
+for authentication and workspace notices. Preserve existing physical queue/AAD
+identities and pending ciphertexts; give security mail priority. One pending batch
+and a window reservation prevent duplicate preparation. Witness revisions per
+thread instead of relying on a global sequence's commit order. Only a definitive
+pre-dispatch supersession releases a reservation. SMTP possible-delivery outcomes
+stay in reconciliation and are never automatically repeated.
+
+Notice mail contains bounded safe summaries and own-origin links only. Recheck
+current workspace/user/membership incarnation, verified email, preferences/default
+and every included subject immediately before dispatch. Refuse obsolete content
+before the transport sends it and rebuild eligible content later. No run data,
+variable values, provider errors or task instructions/comments enter notice mail.
+
+Unsubscribe uses the existing versioned application envelope/key ring, scoped to
+one person/workspace/preference revision/membership incarnation and expiry. The
+capability is carried in a fragment and redacted header. GET confirms, POST turns
+only personal email Off. Old links cannot undo a later opt-in or rejoined
+membership. Approval actions remain authenticated. Removal/departure clears
+private state; workspace purge also removes linked pending mail.
+
+## Consequences
+
+One inbox, one mail delivery algorithm and the existing worker/transport serve
+these behaviors. No new service, account, role, package or CI job. The additive
+migration preserves populated private reads and matching readers precede writers.
+Email starts Off and remains best effort; Inbox/task facts are authoritative.
+Current-attention polling may coalesce brief transitions. Shared alerts remain
+independent. Push, chat channels, public decisions and incident management remain
+later work, without placeholder subsystems.

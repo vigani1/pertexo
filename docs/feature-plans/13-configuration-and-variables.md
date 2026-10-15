@@ -1,6 +1,6 @@
 # F13 — Workspace variables
 
-Status: implemented; final qualification and PR merge pending.
+Status: merged in #303; natural main/ARM qualification pending.
 Updated: 2026-10-15. Parent: [product roadmap](../product-roadmap.md).
 
 ## Outcome and current code
@@ -234,3 +234,11 @@ Reproduced locally (16/17 passing), then updated that exact assertion to require
 `variables: {}` for a run with no configured values. Keep the strict equality;
 this proves the additive empty snapshot rather than hiding it with a partial
 match. No runtime change or history rewrite.
+
+## Merge receipt
+
+PR #303 rebase merged as `170adcae79109f3e0299c7e797a5ae2dc8a88f06`.
+Corrected-head CI 38752254074 passed every required job, including 824 database
+integration tests and the real browser batch; CodeQL 38752254073 passed. The
+five source commits preserve history and the owner author, with no co-author.
+Natural main CI 38755884223 and CodeQL 38755884421 are being inspected separately.

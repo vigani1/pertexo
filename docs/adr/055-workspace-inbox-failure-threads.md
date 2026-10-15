@@ -13,6 +13,9 @@
 - **Related:** ADR 004 (session and authorization), ADR 013 (retention, legal
   hold and purge), ADR 022 (external failure alerts)
 
+> **Amendment (2026-10-15, ADR 079).** F27 generalizes subject identity and
+> personal audience. Existing failure aggregation and read behavior remain.
+
 ## Context
 
 ADR 054 delivers a failed run as one entry per eligible person. Every failure
