@@ -20,7 +20,7 @@ Owners and admins can decide by default. In Setup, choose roles, named workspace
 members, or both. At least one must remain; up to 50 named members fit. Publication
 checks that named members are active in the workspace. Membership and roles are
 checked again when deciding, so removing a member takes effect immediately. The
-person who started the run cannot approve or reject it, including tasks reached
+person who started the run cannot approve or reject it by default, including tasks reached
 through a Call. Automated starts have no initiating person. A named audience
 member does not gain additional workflow-editing or run-reading permissions.
 
@@ -62,3 +62,16 @@ Full replay starts fresh tasks. Retry-from-step remains unavailable for workflow
 containing human tasks until recovery can prove a durable decision prefix. There
 are no email or public approval links, escalations, delegation, or multi-person
 voting in this release.
+
+In Approval setup, **Allow the person who started the run to decide** is an optional
+per-step choice, off by default. It is saved when each task opens. The editor
+checks the whole current audience and warns when a run you start would leave no
+other decider. Allowing the starter still requires current membership, run-read
+access and the selected audience; expiry and cancellation still close the task.
+
+Approval output includes `decidedByName`, recorded when the decision is accepted.
+Later profile edits do not change it. Use `decidedBy` for stable user identity and
+the recorded name for display. Earlier decisions may not contain this field.
+
+[Desktop setup](media/approvals/starter-desktop.png) ·
+[Phone setup](media/approvals/starter-phone.png)

@@ -146,7 +146,7 @@ new rate-limit service. Existing workspace queue/capacity fences still apply.
 `core.request_input@1` in `nodes-core/src/flow/request-input/` has the same form
 fields, title/instructions, expiry (default seven days; 1 hour–30 days), and F10's
 roles/named-member audience. Default owners/admins. The initiating person **may**
-respond to a Request input task; Approval's self-decision prohibition stays intact.
+respond to a Request input task; Approval retains its captured starter choice (default off; ADR 076).
 
 Extend the closed pending-task kind with `input_request` and terminal status
 `submitted`, with a typed captured form schema/result. No generic plugin payload.

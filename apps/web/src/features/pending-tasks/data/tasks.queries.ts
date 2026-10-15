@@ -1,6 +1,15 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import type { PendingTaskListQuery } from '@pertexo/contracts';
-import { listTasks, getTask, listAudience, type TaskScope } from './tasks.api';
+import type {
+  ApprovalAudienceInspectionRequest,
+  PendingTaskListQuery,
+} from '@pertexo/contracts';
+import {
+  listTasks,
+  getTask,
+  listAudience,
+  inspectAudience,
+  type TaskScope,
+} from './tasks.api';
 export const taskKeys = {
   scope: (userId: string, workspaceId: string) =>
     ['identity', userId, 'workspace', workspaceId, 'pending-tasks'] as const,
@@ -52,5 +61,22 @@ export function audienceQueryOptions(scope: TaskScope, q: string) {
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     staleTime: 30_000,
+  });
+}
+
+export function audienceInspectionQueryOptions(
+  scope: TaskScope,
+  audience: ApprovalAudienceInspectionRequest['audience'],
+) {
+  return queryOptions({
+    queryKey: [
+      ...taskKeys.scope(scope.userId, scope.workspaceId),
+      'audience-inspection',
+      audience,
+    ],
+    queryFn: ({ signal }) => inspectAudience(scope, audience, signal),
+    staleTime: 10_000,
+    gcTime: 0,
+    retry: false,
   });
 }

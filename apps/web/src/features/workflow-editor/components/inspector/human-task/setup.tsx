@@ -16,6 +16,7 @@ import { ConfigJsonEditor } from '../fields/config-json-editor';
 import { TaskTextField } from './text';
 import { ExpiryField } from './expiry';
 import { AudienceField } from './audience';
+import { StarterDecisionField } from './starter-decision';
 import { FormFields } from './fields';
 type Setup =
   | Readonly<{ definitionKey: 'core.form'; config: FormConfig }>
@@ -111,9 +112,19 @@ export function HumanFormSetup({
         audience={captured.audience}
         onChange={changeAudience}
       />
+      {kind === 'core.approval' ? (
+        <StarterDecisionField
+          scope={scope}
+          form={form}
+          audience={captured.audience}
+          allowed={captured.allowStarterToDecide}
+        />
+      ) : null}
       <Notice glyph="waiting">
         {kind === 'core.approval'
-          ? 'One eligible person approves or rejects. The person who started the run cannot decide.'
+          ? captured.allowStarterToDecide
+            ? 'One eligible person approves or rejects, including the starter if they belong to the audience.'
+            : 'One eligible person approves or rejects. The person who started the run cannot decide.'
           : 'One eligible member fills in this form. The person who started the run may respond.'}{' '}
         Human waiting releases the active slot and pauses the execution budget;
         an explicit absolute deadline still applies.

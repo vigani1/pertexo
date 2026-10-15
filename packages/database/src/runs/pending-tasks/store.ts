@@ -13,6 +13,7 @@ import {
 } from '../../tenant-access/workspaces/authority.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
 import { respondToTask } from './respond.js';
+import { inspectAudience } from './inspect-audience.js';
 import { listTasks, projectTask, readTaskRow } from './queries.js';
 import type { PendingTaskStore } from './contract.js';
 
@@ -89,6 +90,21 @@ export function createPendingTaskStore(
             { ...input, kind: 'input_request' },
             role,
           );
+        },
+        input.signal === undefined ? {} : { signal: input.signal },
+      ),
+    inspectAudience: (input) =>
+      withTenantScopedReadClient(
+        lease.pool,
+        { workspaceId: input.workspaceId, actorId: input.actorId },
+        async (client) => {
+          await readWorkspaceAuthority(
+            client,
+            input.workspaceId,
+            input.actorId,
+            rolesForCapability('workflow:update'),
+          );
+          return inspectAudience(client, input);
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),

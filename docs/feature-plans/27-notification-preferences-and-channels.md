@@ -100,7 +100,7 @@ The worker needs the existing sender/origin values to prepare notice mail.
 | Auto-paused workflow | Workflow; actual current trigger-pause revision | Same workflow audience |
 | Connection needs attention | Connection; actual reauthorization-required health revision | Owners/admins |
 | Limit reached | Workspace; current queue/artifact byte/count capacity episode | Owners/admins/operators |
-| Approval waiting | Pending approval task | Current eligible deciders, excluding starter |
+| Approval waiting | Pending approval task | Current eligible deciders; starter excluded unless the captured step permits |
 
 Canceled runs and failures handled by a route do not become workflow failure
 notices. Existing unknown-outcome behavior stays. Active-run slots being full is

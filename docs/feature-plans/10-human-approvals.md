@@ -294,3 +294,71 @@ checks. Desktop and 375px screenshots are in `docs/media/task-context/`.
 Email/public approval links, multiple required votes, delegation/escalation,
 reassignment, approvals from outside the workspace and file fields remain out.
 F11 request-input reuses the pending-task mechanism in the next authorized feature.
+
+## Follow-up: starter choice and recorded decider (2026-10-16)
+
+The owner approved a per-step choice. Add `allowStarterToDecide` to Approval setup with a false default; an absent
+stored value stays off. Capture it with the existing
+immutable task setup, so editing a workflow never changes an open task. An
+explicit true value removes only starter exclusion: current workspace, user,
+membership, run-read capability, captured role/member audience, run state,
+cancellation, expiry and one-winner/idempotency fences still apply. Request input
+keeps its existing self-response behavior. Amend ADR 076; no new stored format,
+table, role, service or queue is needed.
+
+Keep `runs/pending-tasks/eligibility.ts` as the only audience/starter owner used
+by task discovery, decisions and personal notice/mail eligibility. Factor its
+role-or-named-member selection expression so a prospective audience inspection
+uses exactly the same selection rule. Build SQL with the supplied internal
+expressions directly rather than sequential placeholder replacement. Existing
+callers and aliases stay scoped; there is no SQL policy audience copy.
+
+Add a read-only authenticated POST
+`/v1/workspaces/:workspaceId/pending-tasks/audience/inspect`. Its bounded body is
+`{ audience }` using the existing task audience schema; response is
+`{ matchingMemberCount, actorMatchesAudience }`. Require the existing
+`workflow:update` capability, active workspace authority, CSRF and authenticated
+read rate limit. Count all current active matching members who can read runs,
+independently of member-directory search/cursors/page size. Reuse the existing
+repeatable-read scoped transaction; return no names, email or run data. Keep this
+aggregate query in private `pending-tasks/inspect-audience.ts`, wired through the existing
+store, service and controller; the folder remains below ten files.
+
+The existing editor human-task setup composes a small starter field using the
+existing Checkbox/Field/Notice patterns. TanStack Query owns the inspection;
+keys include identity, workspace and selected audience, and the request is
+cancelable. Do not mirror its data in local state or infer anything from the
+first fifty directory rows. The checkbox defaults off. When the actor is the
+only matching member and starter decisions are off, warn that a run they start
+will have no decider and suggest allowing the starter or another member. Also
+explain an empty current audience without preventing deliberate configuration.
+This is advisory: automated or another member's start can have a different
+initiator, and all decisions still recheck current authority. Read-only editors
+show captured setup without issuing an authoring-only inspection request.
+
+Record `decidedByName` for each new approval output, read from the user already
+locked by the current authority fence, with the existing database-time query.
+Keep one transactional decision, comment, user ID, display name, timestamp, audit
+and wake. A later profile edit cannot rewrite output or its displayed completed
+name. The display name is bounded to 256 characters. Existing stored outputs may lack this field; accept them without inventing
+a historical name, preserving the current-name display fallback only for legacy
+history. Input-request output stays unchanged. The engine consumes a task result
+reference; final task output is projected from the recorded result, so the
+ordinary declaration attempt remains immutable and no executor identity bump is
+needed for this additive output field.
+
+Verification: default-off and opt-in starters, named/role audiences, explicit
+false and legacy missing flags, independent steps, once-only decisions, current
+membership/role/run/expiry/cancel checks, fixed captured name after profile
+changes, and legacy stored output. Prove audience counting beyond fifty members,
+foreign-workspace isolation and current authority. Prove Inbox uses the same
+opt-in rule. Qualify a real API/worker run that opts into self-decision, including
+captured output, and browser setup at desktop/phone widths with keyboard and
+reduced motion. Run all release gates, mocked e2e and React Doctor, update this
+tracker and the guide, then merge only after green CI.
+
+- [x] Shared rule, optional setup, transactional output and audience inspection.
+- [x] Editor checkbox, exact advisory and user guide.
+- [x] Local qualification: 9,221 units, 17 focused PostgreSQL tests, 183 mocked
+      browser checks, real API/worker decisions with independent SQL evidence,
+      and React Doctor 100/100. PR CI must be green before merge.

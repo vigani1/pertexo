@@ -152,3 +152,19 @@ export type ApprovalAudienceQuery = z.output<
   typeof approvalAudienceQuerySchema
 >;
 export type ApprovalAudiencePage = z.output<typeof approvalAudiencePageSchema>;
+
+export const approvalAudienceInspectionRequestSchema = z
+  .object({ audience: taskAudienceSchema })
+  .strict();
+export const approvalAudienceInspectionResponseSchema = z
+  .object({
+    matchingMemberCount: z.number().int().nonnegative(),
+    actorMatchesAudience: z.boolean(),
+  })
+  .strict();
+export type ApprovalAudienceInspectionRequest = z.output<
+  typeof approvalAudienceInspectionRequestSchema
+>;
+export type ApprovalAudienceInspectionResponse = z.output<
+  typeof approvalAudienceInspectionResponseSchema
+>;

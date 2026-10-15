@@ -5,6 +5,7 @@ import { approvalConfigSchema } from '@pertexo/workflow-model';
 import {
   apiProblemSchema,
   pendingTaskListResponseSchema,
+  pendingTaskDecisionResponseSchema,
 } from '@pertexo/contracts';
 import { test } from '../support/browser-fixture';
 import {
@@ -255,6 +256,94 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
         fullPage: true,
       });
     }
+    await page.setViewportSize({ width: 1280, height: 768 });
+    await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
+    await page.getByTestId('rf__node-approval').focus();
+    await page.keyboard.press('Enter');
+    await page
+      .getByRole('group', { name: 'Who can decide' })
+      .getByRole('checkbox', { name: 'owner', exact: true })
+      .check();
+    await page
+      .getByRole('button', {
+        name: 'Remove Approval viewer from audience',
+        exact: true,
+      })
+      .click();
+    const hint =
+      'If you start this run, nobody else in this audience can decide. Allow the starter or choose another member.';
+    await expect(page.getByText(hint, { exact: true })).toBeVisible();
+    await page.screenshot({
+      path: '/tmp/pertexo-approval-screenshots/starter-settings-1280.png',
+      fullPage: true,
+    });
+    const starter = page.getByRole('checkbox', {
+      name: 'Allow the person who started the run to decide',
+      exact: true,
+    });
+    await starter.focus();
+    await page.keyboard.press('Space');
+    await expect(starter).toBeChecked();
+    await expect(page.getByText(hint, { exact: true })).toHaveCount(0);
+    await expect
+      .poll(
+        async () =>
+          (await readEditorDraft(page, workflowPath)).graph.nodes.find(
+            (item) => item.id === 'approval',
+          )?.config.allowStarterToDecide,
+      )
+      .toBe(true);
+    await page.setViewportSize({ width: 375, height: 768 });
+    await page
+      .getByRole('navigation', { name: 'Editor panels' })
+      .getByRole('button', { name: 'Step', exact: true })
+      .click();
+    await starter.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: '/tmp/pertexo-approval-screenshots/starter-settings-375.png',
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.getByRole('button', { name: 'Publish v2', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Publish v2', exact: true })
+      .getByRole('button', { name: 'Publish v2', exact: true })
+      .click();
+    await expect(page.getByText('v2 is live', { exact: true })).toBeVisible();
+    const runId = await startSingleStep(page, {
+      review: { Amount: 120, Customer: 'Captured customer', Ready: false },
+    });
+    await waitForRun(page, workspaceId, runId, 'waiting');
+    await page.goto(`/w/${workspaceId}/inbox`);
+    await page
+      .getByRole('list', { name: 'Notices', exact: true })
+      .getByRole('link', { name: 'Review approval', exact: true })
+      .click();
+    await page
+      .getByLabel('Comment (optional)', { exact: true })
+      .fill('Self-approved by configured starter');
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/decide') &&
+        response.request().method() === 'POST',
+    );
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const response = await responsePromise;
+    expect(response.status()).toBe(200);
+    expect(
+      pendingTaskDecisionResponseSchema.parse(await response.json()).task
+        .output,
+    ).toMatchObject({ decidedByName: 'Approval owner' });
+    await expect(
+      page.getByRole('heading', {
+        name: /Approval owner approved this request/u,
+      }),
+    ).toBeVisible();
+    await waitForRun(page, workspaceId, runId, 'succeeded');
   } finally {
     await context.close();
   }

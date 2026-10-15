@@ -58,7 +58,7 @@ starter restriction must apply to the person sending it.
 Add **Request input** after any step. It captures its title, instructions, fields
 and eligible roles or named members when it starts. Owners and admins can respond
 by default; expiry defaults to seven days. The person who started the run may
-respond. This differs from Approval, where the starter cannot decide.
+respond. Approval excludes the starter by default; its per-step opt-in can allow them.
 
 Eligible members find it in **Inbox → Requests** and the **Requests** list. One
 response wins, even if two people send at the same time. Its output contains

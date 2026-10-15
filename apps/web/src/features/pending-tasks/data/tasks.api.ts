@@ -3,6 +3,8 @@ import {
   pendingTaskResponseSchema,
   pendingTaskDecisionResponseSchema,
   approvalAudiencePageSchema,
+  approvalAudienceInspectionResponseSchema,
+  type ApprovalAudienceInspectionRequest,
   type PendingTaskListQuery,
   type PendingTaskDecisionRequest,
 } from '@pertexo/contracts';
@@ -90,6 +92,23 @@ export function submitTask(
     response: {
       kind: 'json',
       decode: (value) => pendingTaskDecisionResponseSchema.parse(value),
+    },
+  });
+}
+
+export function inspectAudience(
+  scope: TaskScope,
+  audience: ApprovalAudienceInspectionRequest['audience'],
+  signal?: AbortSignal,
+) {
+  return scope.apiClient.request({
+    path: `${path(scope.workspaceId)}/audience/inspect`,
+    method: 'POST',
+    body: { audience },
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => approvalAudienceInspectionResponseSchema.parse(value),
     },
   });
 }

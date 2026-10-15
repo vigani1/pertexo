@@ -1,5 +1,7 @@
 import {
   approvalAudiencePageSchema,
+  approvalAudienceInspectionRequestSchema,
+  approvalAudienceInspectionResponseSchema,
   approvalAudienceQuerySchema,
   pendingTaskDecisionRequestSchema,
   pendingTaskSubmitRequestSchema,
@@ -35,6 +37,14 @@ export const pendingTaskSchemas = {
   ),
   PendingTaskSubmitRequest: jsonSchema(pendingTaskSubmitRequestSchema, 'input'),
   ApprovalAudiencePage: jsonSchema(approvalAudiencePageSchema, 'output'),
+  ApprovalAudienceInspectionRequest: jsonSchema(
+    approvalAudienceInspectionRequestSchema,
+    'input',
+  ),
+  ApprovalAudienceInspectionResponse: jsonSchema(
+    approvalAudienceInspectionResponseSchema,
+    'output',
+  ),
 };
 const workspace = uuidPathParameter('workspaceId', 'Workspace identifier');
 const task = uuidPathParameter('taskId', 'Pending task identifier');
@@ -47,6 +57,21 @@ const errors = {
   '500': responseReference('Unexpected'),
 };
 export const pendingTaskPaths = {
+  '/v1/workspaces/{workspaceId}/pending-tasks/audience/inspect': {
+    post: {
+      operationId: 'inspectApprovalAudience',
+      security,
+      parameters: [workspace, csrfHeaderParameter()],
+      requestBody: jsonRequest('ApprovalAudienceInspectionRequest'),
+      responses: {
+        '200': jsonResponse(
+          'Whole current audience for an advisory editor check',
+          'ApprovalAudienceInspectionResponse',
+        ),
+        ...errors,
+      },
+    },
+  },
   '/v1/workspaces/{workspaceId}/pending-tasks/{taskId}/submit': {
     post: {
       operationId: 'submitPendingTask',

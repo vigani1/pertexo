@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { storageTextSchema } from '../json/text.js';
 import { PENDING_TASK_LIMITS, taskAudienceSchema } from './audience.js';
 
 export const approvalConfigSchema = z
@@ -19,6 +20,7 @@ export const approvalConfigSchema = z
       .min(PENDING_TASK_LIMITS.minimumExpirySeconds)
       .max(PENDING_TASK_LIMITS.maximumExpirySeconds)
       .default(PENDING_TASK_LIMITS.defaultExpirySeconds),
+    allowStarterToDecide: z.boolean().default(false),
     audience: taskAudienceSchema.default({
       roles: ['owner', 'admin'],
       memberIds: [],
@@ -32,6 +34,7 @@ export const approvalOutputSchema = z
     decision: approvalDecisionSchema,
     comment: z.string().max(PENDING_TASK_LIMITS.commentCharacters).nullable(),
     decidedBy: z.uuid(),
+    decidedByName: storageTextSchema.max(256).optional(),
     decidedAt: z.iso.datetime(),
   })
   .strict();

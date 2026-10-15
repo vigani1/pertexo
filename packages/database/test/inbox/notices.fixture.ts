@@ -131,6 +131,7 @@ export async function seedApproval(
   workflowId: string,
   starter: string,
   named?: string,
+  allowStarterToDecide?: boolean,
 ) {
   const runId = randomUUID(),
     versionId = randomUUID(),
@@ -147,9 +148,12 @@ export async function seedApproval(
     "insert into app.node_runs(id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,status,side_effect_class,control_kind,resume_at) values($1,$2,$3,'approval',$4,'{}','waiting','safe','human_task',clock_timestamp()+interval '7 days')",
     [nodeId, workspaceId, runId, invocation],
   );
-  const cfg = approvalConfigSchema.parse(
-    named === undefined ? {} : { audience: { roles: [], memberIds: [named] } },
-  );
+  const cfg = approvalConfigSchema.parse({
+    ...(named === undefined
+      ? {}
+      : { audience: { roles: [], memberIds: [named] } }),
+    ...(allowStarterToDecide === undefined ? {} : { allowStarterToDecide }),
+  });
   await execution(
     workspaceId,
     "insert into app.pending_run_tasks(id,workspace_id,run_id,workflow_version_id,node_run_id,invocation_key,kind,config,expires_at) values($1,$2,$3,$4,$5,$6,'approval',$7::jsonb,clock_timestamp()+interval '7 days')",

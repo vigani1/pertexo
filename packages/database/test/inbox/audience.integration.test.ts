@@ -195,3 +195,28 @@ it('keeps muted approvals in the task list and immediately hides resolved notice
     await read.markAllRead({ ...scope, revision: '9223372036854775807' }),
   ).toEqual({ marked: 0 });
 });
+
+it('shows approval notices to starters only when the captured step permits it', async () => {
+  const f = await seedNoticeWorkspace();
+  await seedApproval(f.workspaceId, f.workflowId, f.members.owner);
+  await observer().observeCurrent?.();
+  const scope = { workspaceId: f.workspaceId, actorId: f.members.owner };
+  expect(
+    (
+      await inbox().listThreads({ ...scope, filter: 'all', limit: 50 })
+    ).items.filter((item) => item.noticeKind === 'approval_waiting'),
+  ).toHaveLength(0);
+  await seedApproval(
+    f.workspaceId,
+    f.workflowId,
+    f.members.owner,
+    undefined,
+    true,
+  );
+  await observer().observeCurrent?.();
+  expect(
+    (
+      await inbox().listThreads({ ...scope, filter: 'all', limit: 50 })
+    ).items.filter((item) => item.noticeKind === 'approval_waiting'),
+  ).toHaveLength(1);
+});

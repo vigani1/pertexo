@@ -93,25 +93,25 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
     canRespond: row.blocked_reason === null,
     blockedReason: row.blocked_reason,
   };
-  return captured.kind === 'input_request'
-    ? {
-        ...common,
-        kind: 'input_request',
-        fields: captured.config.fields,
-        prefill: context.prefill ?? {},
-        output:
-          stored?.kind === 'inline'
-            ? formSubmissionSchema.parse(stored.value)
-            : null,
-      }
-    : {
-        ...common,
-        kind: 'approval',
-        output:
-          stored?.kind === 'inline'
-            ? approvalOutputSchema.parse(stored.value)
-            : null,
-      };
+  if (captured.kind === 'input_request')
+    return {
+      ...common,
+      kind: 'input_request',
+      fields: captured.config.fields,
+      prefill: context.prefill ?? {},
+      output:
+        stored?.kind === 'inline'
+          ? formSubmissionSchema.parse(stored.value)
+          : null,
+    };
+  const output =
+    stored?.kind === 'inline' ? approvalOutputSchema.parse(stored.value) : null;
+  return {
+    ...common,
+    kind: 'approval',
+    completedByName: output?.decidedByName ?? row.decided_by_name,
+    output,
+  };
 }
 export async function readTaskRow(
   client: PoolClient,
