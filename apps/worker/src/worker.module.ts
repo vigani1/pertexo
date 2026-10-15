@@ -7,7 +7,7 @@ import type {
   DatabaseRuntime,
   WorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { createAuthenticationMailDeliveryStore } from '@pertexo/database/tenant-access';
+import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
 import { createWorkspaceInboxFoldStore } from '@pertexo/database/notifications';
 import {
   createApplicationSecretEnvelope,
@@ -28,12 +28,12 @@ import type { CoordinatorRuntime } from './runs/runtime.js';
 import type { NodeAttemptRuntime } from './attempts/runtime.js';
 import type { MaintenanceRuntime } from './maintenance/runtime.js';
 import type { TriggerRuntime } from './triggers/runtime.js';
-import { createAuthenticationMailDeliveryHandler } from './identity/authentication-mail-delivery.js';
+import { createSystemMailDeliveryHandler } from './mail/delivery.js';
 import {
-  AUTHENTICATION_MAIL_RUNTIME,
-  createAuthenticationMailRuntime,
-  type AuthenticationMailRuntime,
-} from './identity/authentication-mail-runtime.js';
+  SYSTEM_MAIL_RUNTIME,
+  createSystemMailRuntime,
+  type SystemMailRuntime,
+} from './mail/runtime.js';
 import {
   createWorkspaceInboxRuntime,
   WORKSPACE_INBOX_RUNTIME,
@@ -119,22 +119,22 @@ export class WorkerModule {
         WorkerProcessKeepalive,
         WorkerShutdownCoordinator,
         {
-          provide: AUTHENTICATION_MAIL_RUNTIME,
-          useFactory: (): AuthenticationMailRuntime | undefined => {
-            const mail = config.authenticationMailDelivery;
+          provide: SYSTEM_MAIL_RUNTIME,
+          useFactory: (): SystemMailRuntime | undefined => {
+            const mail = config.systemMailDelivery;
             if (mail === undefined) return undefined;
-            const store = createAuthenticationMailDeliveryStore(
+            const store = createSystemMailDeliveryStore(
               config.database,
               dependencies.databaseRuntime,
             );
-            const handler = createAuthenticationMailDeliveryHandler({
+            const handler = createSystemMailDeliveryHandler({
               store,
               envelope: createApplicationSecretEnvelope(mail.encryption),
               email: createSystemMailClient(mail.delivery),
               timeoutMillis: mail.timeoutMillis,
               workerId: mail.workerId,
             });
-            return createAuthenticationMailRuntime(
+            return createSystemMailRuntime(
               handler,
               store,
               mail.pollIntervalMillis,
@@ -208,7 +208,7 @@ export class WorkerModule {
             WorkerShutdownCoordinator,
             OutboxDispatcherLifecycle,
             WORKSPACE_DATABASE,
-            AUTHENTICATION_MAIL_RUNTIME,
+            SYSTEM_MAIL_RUNTIME,
             WORKSPACE_INBOX_RUNTIME,
             WORKFLOW_AUTO_PAUSE_RUNTIME,
             RETENTION_RUNTIME,
@@ -217,7 +217,7 @@ export class WorkerModule {
             shutdown: WorkerShutdownCoordinator,
             transport: OutboxDispatcherLifecycle,
             database: WorkspaceDatabase,
-            authenticationMail: AuthenticationMailRuntime | undefined,
+            authenticationMail: SystemMailRuntime | undefined,
             workspaceInbox: WorkspaceInboxRuntime,
             autoPause: WorkflowAutoPauseRuntime,
             retention: RetentionRuntime,

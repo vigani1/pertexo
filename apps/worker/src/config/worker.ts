@@ -14,9 +14,9 @@ import {
 import { parseObservabilityConfig } from '@pertexo/observability/startup';
 
 import {
-  parseAuthenticationMailDeliveryConfig,
-  type AuthenticationMailDeliveryConfig,
-} from './authentication-mail.js';
+  parseSystemMailDeliveryConfig,
+  type SystemMailDeliveryConfig,
+} from './system-mail.js';
 import {
   parseInvitationDeliveryConfig,
   type InvitationDeliveryConfig,
@@ -359,7 +359,7 @@ export type WorkerConfig = Readonly<
     retention: RetentionConfig;
     connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
-    authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
+    systemMailDelivery?: SystemMailDeliveryConfig;
   }
 >;
 
@@ -406,10 +406,7 @@ export function parseWorkerConfig(
     const connectionEncryption = parseConnectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
     const invitationDelivery = parseInvitationDeliveryConfig(raw, deployed);
-    const authenticationMailDelivery = parseAuthenticationMailDeliveryConfig(
-      raw,
-      deployed,
-    );
+    const systemMailDelivery = parseSystemMailDeliveryConfig(raw, deployed);
     if (deployed && connectionEncryption === undefined)
       throw new Error('A deployed worker requires connection encryption');
     return Object.freeze({
@@ -420,9 +417,7 @@ export function parseWorkerConfig(
         maintenanceDatabase: parseMaintenanceDatabaseConfig(raw),
       }),
       ...(invitationDelivery === undefined ? {} : { invitationDelivery }),
-      ...(authenticationMailDelivery === undefined
-        ? {}
-        : { authenticationMailDelivery }),
+      ...(systemMailDelivery === undefined ? {} : { systemMailDelivery }),
       database: Object.freeze(result.data.database),
       dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
       workflowAutoPause: Object.freeze(result.data.workflowAutoPause),

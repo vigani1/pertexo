@@ -8,7 +8,7 @@ import {
   type ApplicationKeyRing,
 } from '@pertexo/integrations/server';
 
-export type AuthenticationMailDeliveryConfig = Readonly<{
+export type SystemMailDeliveryConfig = Readonly<{
   delivery: SystemMailConfig;
   timeoutMillis: number;
   pollIntervalMillis: number;
@@ -43,10 +43,10 @@ const authenticationMailSchema = z
  * Parses authentication-mail delivery when any of its credentials is present;
  * without them a local worker does not deliver it. Deployed workers must.
  */
-export function parseAuthenticationMailDeliveryConfig(
+export function parseSystemMailDeliveryConfig(
   environment: Readonly<Record<string, string | undefined>>,
   deployed: boolean,
-): AuthenticationMailDeliveryConfig | undefined {
+): SystemMailDeliveryConfig | undefined {
   if (credentialNames.every((name) => environment[name] === undefined)) {
     if (deployed)
       throw new Error('Deployed workers require authentication mail delivery');

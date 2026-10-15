@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  AuthenticationMailEnqueueStore,
-  SealedAuthenticationMailPayload,
-} from '@pertexo/database/tenant-access';
+  SystemMailEnqueueStore,
+  SealedSystemMailPayload,
+} from '@pertexo/database/platform';
 import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
 
 export type PreparedAuthenticationProofMail = Readonly<{
   id: string;
   purpose: 'verification' | 'email_change_confirmation' | 'password_reset';
   expiresAt: Date;
-  sealedPayload: SealedAuthenticationMailPayload;
+  sealedPayload: SealedSystemMailPayload;
 }>;
 
 export type AuthenticationMail = Readonly<{
@@ -119,7 +119,7 @@ export function printLocalAuthenticationMail(
 
 export class DurableAuthenticationMail implements AuthenticationMail {
   public constructor(
-    private readonly store: AuthenticationMailEnqueueStore,
+    private readonly store: SystemMailEnqueueStore,
     private readonly envelope: Pick<ApplicationSecretEnvelope, 'seal'>,
     private readonly fromEmail: string,
     private readonly now: () => Date = () => new Date(),

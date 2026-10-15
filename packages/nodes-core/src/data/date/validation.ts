@@ -1,26 +1,6 @@
 import { z } from 'zod';
-const timeZoneSchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .superRefine((zone, context) => {
-    try {
-      if (!/^[A-Za-z_]+(?:\/[A-Za-z0-9_+.-]+)*$/u.test(zone))
-        throw new RangeError();
-      new Intl.DateTimeFormat('en-US', { timeZone: zone });
-    } catch {
-      context.addIssue({
-        code: 'custom',
-        message:
-          'Use an IANA timezone such as Europe/Paris, America/New_York or UTC',
-      });
-    }
-  })
-  .meta({
-    title: 'Time zone',
-    description:
-      'IANA name, such as Europe/Paris or America/New_York. UTC is explicit; the host timezone is never used.',
-  });
+import { ianaTimeZoneSchema as timeZoneSchema } from '@pertexo/workflow-model';
+
 export const CORE_DATE_CONFIG_SCHEMA = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('to_iso') }).strict(),
   z.object({ operation: z.literal('to_epoch_millis') }).strict(),

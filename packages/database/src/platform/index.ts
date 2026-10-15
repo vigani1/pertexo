@@ -24,3 +24,17 @@ export type { WorkspaceDatabase } from '../database.js';
 
 export { createEncryptionKeyRepository } from './encryption/keys.repository.js';
 export type { EncryptionKeyRepository } from './encryption/keys.repository.js';
+
+export {
+  createSystemMailDeliveryStore,
+  createSystemMailEnqueueStore,
+} from './mail/store.js';
+
+export type {
+  SystemMailDeliveryClaim,
+  SystemMailDeliveryStore,
+  SystemMailEnqueueStore,
+  SystemMailInput,
+  SystemMailPurpose,
+  SealedSystemMailPayload,
+} from './mail/store.js';

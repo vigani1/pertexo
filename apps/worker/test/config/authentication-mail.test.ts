@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAuthenticationMailDeliveryConfig } from '../../src/config/authentication-mail.js';
+import { parseSystemMailDeliveryConfig } from '../../src/config/system-mail.js';
 
 const mailKey = Buffer.alloc(32, 4).toString('base64');
 const configuredEnvironment = {
@@ -9,16 +9,13 @@ const configuredEnvironment = {
   AUTH_MAIL_KEY_VERSION: 'mail-v1',
 } as const;
 
-describe('parseAuthenticationMailDeliveryConfig', () => {
+describe('parseSystemMailDeliveryConfig', () => {
   it('stays absent for a local worker without authentication mail', () => {
-    expect(parseAuthenticationMailDeliveryConfig({}, false)).toBeUndefined();
+    expect(parseSystemMailDeliveryConfig({}, false)).toBeUndefined();
   });
 
   it('applies bounded defaults and derives a dedicated worker identity', () => {
-    const config = parseAuthenticationMailDeliveryConfig(
-      configuredEnvironment,
-      false,
-    );
+    const config = parseSystemMailDeliveryConfig(configuredEnvironment, false);
 
     expect(config).toEqual({
       delivery: { mode: 'resend', apiKey: 'provider-key' },
@@ -37,7 +34,7 @@ describe('parseAuthenticationMailDeliveryConfig', () => {
 
   it('parses explicit timing, worker identity and retired keys when deployed', () => {
     expect(
-      parseAuthenticationMailDeliveryConfig(
+      parseSystemMailDeliveryConfig(
         {
           ...configuredEnvironment,
           AUTH_MAIL_EMAIL_TIMEOUT_MILLIS: '2500',
@@ -60,7 +57,7 @@ describe('parseAuthenticationMailDeliveryConfig', () => {
   });
 
   it('requires authentication mail delivery in a deployed worker', () => {
-    expect(() => parseAuthenticationMailDeliveryConfig({}, true)).toThrow(
+    expect(() => parseSystemMailDeliveryConfig({}, true)).toThrow(
       'Deployed workers require authentication mail delivery',
     );
   });
@@ -71,7 +68,7 @@ describe('parseAuthenticationMailDeliveryConfig', () => {
     'AUTH_MAIL_KEY_VERSION',
   ] as const)('rejects a partial configuration with only %s', (name) => {
     expect(() =>
-      parseAuthenticationMailDeliveryConfig(
+      parseSystemMailDeliveryConfig(
         { [name]: configuredEnvironment[name] },
         false,
       ),
@@ -91,7 +88,7 @@ describe('parseAuthenticationMailDeliveryConfig', () => {
     ],
   ])('rejects delivery with %s', (_label, override) => {
     expect(() =>
-      parseAuthenticationMailDeliveryConfig(
+      parseSystemMailDeliveryConfig(
         { ...configuredEnvironment, ...override },
         false,
       ),

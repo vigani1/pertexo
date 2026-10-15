@@ -1,9 +1,9 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import {
-  AUTHENTICATION_MAIL_RUNTIME,
-  type AuthenticationMailRuntime,
-} from '../../identity/authentication-mail-runtime.js';
+  SYSTEM_MAIL_RUNTIME,
+  type SystemMailRuntime,
+} from '../../mail/runtime.js';
 
 import {
   WORKSPACE_INBOX_RUNTIME,
@@ -63,8 +63,8 @@ export class WorkerReadiness {
     private readonly retentionRuntime: RetentionRuntime,
     // Absent until authentication mail is configured.
     @Optional()
-    @Inject(AUTHENTICATION_MAIL_RUNTIME)
-    private readonly authenticationMailRuntime?: AuthenticationMailRuntime,
+    @Inject(SYSTEM_MAIL_RUNTIME)
+    private readonly authenticationMailRuntime?: SystemMailRuntime,
   ) {}
 
   public assertCanAcceptWork(): void {

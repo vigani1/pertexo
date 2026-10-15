@@ -1,11 +1,11 @@
-import type { AuthenticationMailDeliveryStore } from '@pertexo/database/tenant-access';
+import type { SystemMailDeliveryStore } from '@pertexo/database/platform';
 import {
   createApplicationSecretEnvelope,
   createSystemMailClient,
 } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAuthenticationMailDeliveryHandler } from '../../src/identity/authentication-mail-delivery.js';
+import { createSystemMailDeliveryHandler } from '../../src/mail/delivery.js';
 
 const claim = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -28,7 +28,7 @@ function store() {
     claim: vi.fn().mockResolvedValue([claim]),
     settle: vi.fn().mockResolvedValue(true),
     close: vi.fn().mockResolvedValue(undefined),
-  } satisfies AuthenticationMailDeliveryStore;
+  } satisfies SystemMailDeliveryStore;
 }
 
 function dependencies(result: unknown) {
@@ -37,7 +37,7 @@ function dependencies(result: unknown) {
   return {
     deliveryStore,
     sendNotification,
-    handler: createAuthenticationMailDeliveryHandler({
+    handler: createSystemMailDeliveryHandler({
       store: deliveryStore,
       envelope: {
         open: vi.fn().mockReturnValue(
@@ -200,10 +200,10 @@ describe('authentication mail delivery', () => {
       now: () => new Date('2026-09-23T00:00:00.000Z'),
       random: () => 0,
     };
-    await createAuthenticationMailDeliveryHandler({
+    await createSystemMailDeliveryHandler({
       ...common,
     }).runOnce();
-    await createAuthenticationMailDeliveryHandler({
+    await createSystemMailDeliveryHandler({
       ...common,
     }).runOnce();
     expect(requests).toHaveLength(2);
@@ -228,7 +228,7 @@ describe('non-idempotent SMTP recovery', () => {
     vi.mocked(fixture.deliveryStore.claim).mockResolvedValue([
       { ...claim, recoveredUnknown: true },
     ]);
-    const handler = createAuthenticationMailDeliveryHandler({
+    const handler = createSystemMailDeliveryHandler({
       store: fixture.deliveryStore,
       envelope: { open: vi.fn() },
       email: {
@@ -249,7 +249,7 @@ describe('non-idempotent SMTP recovery', () => {
   });
   it('settles an unknown SMTP result without scheduling a retry', async () => {
     const fixture = dependencies({ kind: 'unknown' });
-    const handler = createAuthenticationMailDeliveryHandler({
+    const handler = createSystemMailDeliveryHandler({
       store: fixture.deliveryStore,
       envelope: {
         open: () =>

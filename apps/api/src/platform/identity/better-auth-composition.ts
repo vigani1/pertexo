@@ -1,4 +1,4 @@
-import { createAuthenticationMailEnqueueStore } from '@pertexo/database/tenant-access';
+import { createSystemMailEnqueueStore } from '@pertexo/database/platform';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -74,7 +74,7 @@ function selectAuthenticationMail(
     throw new TypeError('Durable authentication mail is not configured');
   return new DurableAuthenticationMail(
     input.acquire(
-      createAuthenticationMailEnqueueStore(input.databaseConfig, input.runtime),
+      createSystemMailEnqueueStore(input.databaseConfig, input.runtime),
     ),
     createApplicationSecretEnvelope(durable.encryption),
     durable.fromEmail,
