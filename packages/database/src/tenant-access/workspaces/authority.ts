@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
-import type { Role } from '../../tenant-access/policy.js';
-import { WorkflowNotFoundError } from './errors.js';
+import type { Role } from '../policy.js';
+import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';
 
 /** Ordered current authority fence shared by authoring writes and organization
  * readers. Call only inside the same tenant transaction as the protected work. */
