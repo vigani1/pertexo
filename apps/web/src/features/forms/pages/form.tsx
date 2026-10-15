@@ -13,7 +13,7 @@ import { isApiError } from '@/lib/api/error';
 import { FormResponse } from '../components/response';
 import { sendForm, type FormScope } from '../data/forms.api';
 import { formQueryOptions } from '../data/forms.queries';
-import { useRetainedCommand } from '@/lib/api/use-retained-command';
+import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
   const query = useQuery(formQueryOptions(scope));
   if (query.isPending) return <Skeleton className="h-72 w-full" />;

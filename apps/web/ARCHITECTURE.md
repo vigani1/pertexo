@@ -1497,8 +1497,16 @@ input.
 
 ### Canonical request identity
 
-`lib/api/use-retained-command.ts` owns exact command identity across uncertain
+`lib/api/commands/use-retained.ts` owns exact command identity across uncertain
 responses. Shared utilities may import only `canonicalJson` from the
 browser-safe model for this generic JSON rule; ESLint still rejects other model
 exports and all backend/feature imports there. Forms and workspace variables
 share the same algorithm instead of carrying another sorted-JSON implementation.
+
+The pure `lib/api/commands/contract.ts` owns the shared command retry window and
+uncertain-outcome classification. The run-command model re-exports its existing
+names; neither pure command consumers nor shared transport depend on React
+hooks. `lib/api/workspace-scope.ts` names the authenticated
+client/user/workspace tuple used by both file uploads and variable mappings.
+Generic inspector props call it `workspaceScope`; file-only body controls keep
+their upload vocabulary.

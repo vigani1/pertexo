@@ -12,17 +12,13 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { Status, type StatusTone } from '@/components/ui/status';
-import type { ApiClient } from '@/lib/api/client';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { formatByteLength } from '@/lib/format/bytes';
 import { useUpload } from '../hooks/use-upload';
 import type { FileReference, UploadPhase } from '../model/upload';
 
-export type FileUploadScope = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-}>;
+export type FileUploadScope = WorkspaceApiScope;
 type Props = Readonly<{
   scope: FileUploadScope;
   /** A target change cancels this session while keeping its opener mounted. */

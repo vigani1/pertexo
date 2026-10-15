@@ -11,7 +11,7 @@ import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { formAccessQueryOptions } from '../data/forms.queries';
 import { setFormAccess, type MemberFormScope } from '../data/forms.api';
-import { useRetainedCommand } from '@/lib/api/use-retained-command';
+import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 function newCapability() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes))

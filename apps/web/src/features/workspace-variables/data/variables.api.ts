@@ -4,12 +4,8 @@ import {
   workspaceVariableUsageResponseSchema,
   type WorkspaceVariablesRequest,
 } from '@pertexo/contracts';
-import type { ApiClient } from '@/lib/api/client';
-export type VariablesScope = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-}>;
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
+export type VariablesScope = WorkspaceApiScope;
 function path(scope: VariablesScope): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(scope.workspaceId)}/variables`;
 }

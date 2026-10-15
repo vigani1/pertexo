@@ -1,10 +1,9 @@
 import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { canonicalJson } from '@pertexo/workflow-model';
-import { describeCommandError, isUncertainOutcome } from './error-copy';
-import { isApiError } from './error';
-import { useNow } from '../hooks/use-now';
-const COMMAND_RETRY_WINDOW_MS = 86_400_000;
+import { describeCommandError } from '../error-copy';
+import { COMMAND_RETRY_WINDOW_MS, isUnconfirmedCommand } from './contract';
+import { useNow } from '../../hooks/use-now';
 type Command<Input> = Readonly<{
   body: Input;
   key: string;
@@ -36,11 +35,7 @@ export function useRetainedCommand<Input, Output>(
       await onSuccess?.(result, command.body);
     },
     onError: (error, command) => {
-      if (
-        command.uncertain ||
-        isUncertainOutcome(error) ||
-        (isApiError(error) && (error.status ?? 0) >= 500)
-      ) {
+      if (command.uncertain || isUnconfirmedCommand(error)) {
         intent.current = { ...command, uncertain: true };
         setUncertainSince(command.createdAt);
       } else intent.current = undefined;

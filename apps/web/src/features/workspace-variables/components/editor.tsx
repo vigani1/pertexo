@@ -11,7 +11,7 @@ import type {
   WorkspaceVariablesRequest,
 } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { useRetainedCommand } from '@/lib/api/use-retained-command';
+import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { replaceVariables, type VariablesScope } from '../data/variables.api';
 import { variableKeys, variablesQueryOptions } from '../data/variables.queries';
 import {
