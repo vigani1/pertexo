@@ -1,3 +1,4 @@
+import type { CodeSettings } from '@pertexo/node-sdk';
 import {
   stepSampleIdentity,
   WORKFLOW_FAILURE_PORT,
@@ -46,6 +47,7 @@ export function EditorInspector({
   workspaceName,
   workflowId,
   definitions,
+  codeSettings,
   connections,
   userId,
   lookUpChannels,
@@ -72,6 +74,7 @@ export function EditorInspector({
   workspaceName: string;
   workflowId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
+  codeSettings?: CodeSettings | undefined;
   connections: readonly ConnectionResponse[];
   userId: string;
   /** A step's record in real runs, for the Runs tab. */
@@ -128,6 +131,7 @@ export function EditorInspector({
   const panel = (
     <InspectorPanel
       definitions={definitions}
+      codeSettings={codeSettings}
       connections={connections}
       channelLookup={channelLookup}
       callScope={{ apiClient, userId, workspaceId, workflowId }}

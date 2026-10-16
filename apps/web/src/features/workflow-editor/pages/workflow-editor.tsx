@@ -1,3 +1,4 @@
+import type { CodeSettings } from '@pertexo/node-sdk';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import type {
   NodeDefinitionCatalogItem,
@@ -96,6 +97,7 @@ export function WorkflowEditorPage({
           workspace={workspace}
           workflowId={workflowId}
           definitions={catalog.data.definitions.items}
+          codeSettings={catalog.data.definitions.codeSettings}
           connections={connections.data?.items ?? NO_CONNECTIONS}
           connectionsAvailable={connections.data !== null}
           onRunAccepted={onRunAccepted}
@@ -118,6 +120,7 @@ function WorkflowEditorSession({
   workspace,
   workflowId,
   definitions,
+  codeSettings,
   connections,
   connectionsAvailable,
   onRunAccepted,
@@ -129,6 +132,7 @@ function WorkflowEditorSession({
   workspace: AccessibleWorkspace;
   workflowId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
+  codeSettings?: CodeSettings | undefined;
   connections: readonly ConnectionResponse[];
   connectionsAvailable: boolean;
   onRunAccepted: (runId: string) => void;
@@ -246,6 +250,7 @@ function WorkflowEditorSession({
           workspace={workspace}
           workflowId={workflowId}
           definitions={definitions}
+          codeSettings={codeSettings}
           connections={connections}
           connectionsAvailable={connectionsAvailable}
           canUpdate={canUpdate}

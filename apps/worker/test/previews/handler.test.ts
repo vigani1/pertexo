@@ -163,6 +163,43 @@ function deps(
 }
 
 describe('preview attempt handler', () => {
+  it('retains Code diagnostics for a safe preview without an external dispatch', async () => {
+    const { store, calls } = fakeStore({
+      lease: {
+        ...leaseFixture(),
+        definitionKey: 'core.code',
+        mayContactProvider: false,
+      },
+    });
+    const diagnostics = {
+      logs: [{ level: 'info' as const, message: 'private preview log' }],
+      truncated: false,
+    };
+    const complete = vi.fn(
+      (input: Parameters<PreviewAttemptRunStore['complete']>[0]) =>
+        store.complete(input),
+    );
+    const invoker: PreviewNodeInvoker = {
+      invoke: ({ runtime }) => {
+        runtime?.observeCodeDiagnostics?.(diagnostics);
+        return Promise.resolve({ status: 'succeeded', output: { value: 7 } });
+      },
+    };
+    await createPreviewAttemptHandler(
+      deps({ ...store, complete }, invoker),
+    ).handle(deliveryFixture(), context());
+    expect(calls.dispatches).toBe(0);
+    expect(complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        codeDiagnostics: diagnostics,
+        outcome: {
+          status: 'succeeded',
+          output: { kind: 'inline', value: { value: 7 } },
+        },
+      }),
+    );
+  });
+
   it('claims the exact transport identity and checksum', async () => {
     const { store } = fakeStore();
     const claim = vi.fn(

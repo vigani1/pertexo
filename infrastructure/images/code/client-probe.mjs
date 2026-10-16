@@ -81,7 +81,9 @@ try {
   ];
   for (const [name, code, expected] of hostile) {
     const [bad, healthy] = await Promise.all([
-      task(code, 1),
+      // Memory qualification needs time to reach the heap/RSS fence; the
+      // independent loop probe still verifies the one-second deadline.
+      task(code, expected === 'code.memory_limit' ? 10 : 1),
       task('return 42;'),
     ]);
     assert.equal(bad.kind, 'failed', name);

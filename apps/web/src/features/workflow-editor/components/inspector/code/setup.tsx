@@ -1,10 +1,16 @@
 import {
+  inspectCodeSource,
+  CODE_LIMITS,
+  type CodeSettings,
+} from '@pertexo/node-sdk';
+import { CodeField } from './field';
+import { formatByteLength } from '@/lib/format/bytes';
+import {
   Field,
   FieldControl,
   FieldDescription,
-  FieldLabel,
+  FieldError,
 } from '@/components/ui/field';
-import { Textarea } from '@/components/ui/textarea';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import {
   fieldControlId,
@@ -12,28 +18,40 @@ import {
 } from '../../../model/inspector/node-form';
 import { SchemaField } from '../fields/schema-field';
 
-/** The initial plain field shares the normal draft and scoped test controls. */
+/** Syntax checks never execute code; previews use the ordinary worker path. */
 export function CodeSetup({
   config,
   form,
-}: Readonly<{ config: NodeConfig; form: NodeFormApi }>) {
+  settings,
+}: Readonly<{
+  config: NodeConfig;
+  form: NodeFormApi;
+  settings: CodeSettings | undefined;
+}>) {
   const id = fieldControlId(form.nodeId, 'code');
+  const source = typeof config.code === 'string' ? config.code : '';
+  const issue = inspectCodeSource(source);
+  const defaultSeconds =
+    settings === undefined
+      ? undefined
+      : Math.min(CODE_LIMITS.defaultTimeoutSeconds, settings.maximumSeconds);
   return (
     <>
-      <Field>
-        <FieldLabel htmlFor={id}>JavaScript</FieldLabel>
+      <Field data-invalid={issue !== undefined}>
+        <p
+          id={`${id}-label`}
+          className="text-[0.8rem] font-semibold text-foreground/85"
+        >
+          JavaScript
+        </p>
         <FieldControl>
-          <Textarea
+          <CodeField
             id={id}
-            name="code"
-            value={typeof config.code === 'string' ? config.code : ''}
-            disabled={!form.editable}
-            spellCheck={false}
-            autoComplete="off"
-            className="min-h-56 font-mono text-xs"
-            aria-describedby={`${id}-hint`}
-            onChange={(event) => {
-              const code = event.currentTarget.value;
+            value={source}
+            editable={form.editable}
+            invalid={issue !== undefined}
+            describedBy={`${id}-hint${issue === undefined ? '' : ` ${id}-error`}`}
+            onChange={(code) => {
               form.commit(
                 (node) => ({ config: { ...node.config, code } }),
                 `${form.nodeId}:config:code`,
@@ -46,6 +64,15 @@ export function CodeSetup({
           isolated process without network access. Use HTTP Request to contact a
           service.
         </FieldDescription>
+        {issue === undefined ? null : (
+          <FieldError id={`${id}-error`}>
+            Line {issue.line}, column {issue.column}: {issue.message}
+          </FieldError>
+        )}
+        <p className="font-mono text-[0.7rem] text-subtle-foreground">
+          {formatByteLength(new TextEncoder().encode(source).byteLength)} /{' '}
+          {formatByteLength(CODE_LIMITS.sourceBytes)} · Tab moves focus
+        </p>
       </Field>
       <SchemaField
         config={config}
@@ -53,12 +80,25 @@ export function CodeSetup({
         field={{
           key: 'timeoutSeconds',
           label: 'Time limit (seconds)',
-          kind: 'number',
+          kind: 'integer',
+          minimum: 1,
+          ...(settings === undefined
+            ? {}
+            : { maximum: settings.maximumSeconds }),
           required: false,
           description:
-            'Defaults to 5 seconds, within the administrator’s maximum.',
+            defaultSeconds === undefined
+              ? 'Instance time limits are unavailable.'
+              : `Defaults to ${String(defaultSeconds)} seconds. Maximum ${String(settings?.maximumSeconds)} seconds.`,
         }}
       />
+      <p className="text-xs text-muted-foreground">
+        {settings === undefined
+          ? 'Instance limits are unavailable. Reload to try again.'
+          : !settings.enabled
+            ? 'Code steps are disabled on this instance.'
+            : `${String(settings.memoryMiB)} MB heap · ${String(settings.concurrency)} Code tasks at once. No network or credentials.`}
+      </p>
     </>
   );
 }

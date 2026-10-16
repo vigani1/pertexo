@@ -1,6 +1,6 @@
 # F20 — Code step
 
-Status: slice 1 implemented; slice 2 next; owner decisions approved on 2026-10-16.
+Status: slice 1 merged (#321); slice 2 implemented; owner decisions approved on 2026-10-16.
 Updated: 2026-10-16. [Roadmap](../product-roadmap.md).
 Decision: [ADR 082](../adr/082-isolated-code-tasks.md).
 
@@ -219,15 +219,36 @@ error-workflow summaries.
 - A user guide at `docs/guides/code.md`: contract, allowed modules, limits,
   examples, and what Code steps can't do (network; use HTTP Request instead).
 
+Slice 2 implementation choices (2026-10-16):
+
+- Lazy-load the Code setup and CodeMirror 6 only for a selected Code step.
+  Keep source in the existing draft; the editor owns selection and view state.
+  External undo, node switches and read-only mode synchronize without remounting
+  on each keystroke. Tab keeps its normal focus behavior.
+- Use the browser-safe `node-sdk` source parser and limits through its reviewed
+  root entry only; the Node-only server entry remains forbidden in the browser.
+  Show syntax errors from the same parser used by publication, without evaluation.
+- Pass the existing catalog's instance settings to setup controls. Show the
+  effective default timeout, maximum, heap and concurrency, and constrain the
+  timeout field to that maximum. An unavailable snapshot is stated plainly.
+- Share one plain-text diagnostics view between previews and run step details.
+  Safe preview diagnostics attach at fenced completion without requiring an
+  external-dispatch marker; Code does not contact a provider. Run readers fetch
+  the existing scoped endpoint only for completed Code
+  attempts; cache by attempt and status. Pinned/reused outputs do not invent logs.
+- Give memory-bomb probes a separate ten-second budget so slow ARM garbage
+  collection reaches the memory fence; the loop probe retains its one-second
+  deadline and the memory-code assertion remains strict.
+- Qualify editing, live syntax errors, keyboard focus, external undo, previews,
+  pins, published execution, private logs/errors and narrow-screen layout through
+  the existing browser tests. Keep tests and documentation within this slice.
+
 ## Slices and status
 
 | Slice | Status |
 | --- | --- |
-| 1. ADR, runner app and Compose service, protocol, `core.code@1` runtime through the worker, settings, hostile-code and isolation suite | Implemented (runtime PR) |
-| 2. Editor: code field, syntax errors, test with previews and pinned data, logs, limits display, guide | Planned |
-
-Slice 1 is usable through the API and import before the full editor lands; a
-plain code field is acceptable until slice 2.
+| 1. ADR, runner app and Compose service, protocol, `core.code@1` runtime through the worker, settings, hostile-code and isolation suite | Merged (#321) |
+| 2. Editor: code field, syntax errors, test with previews and pinned data, logs, limits display, guide | Implemented (editor PR) |
 
 ## Acceptance
 

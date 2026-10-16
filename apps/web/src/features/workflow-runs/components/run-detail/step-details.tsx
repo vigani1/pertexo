@@ -1,3 +1,4 @@
+import { StepCodeDiagnostics } from './code/diagnostics';
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
 import { ChevronDownIcon } from 'lucide-react';
@@ -122,6 +123,11 @@ export function RunStepDetails({
           title={`Data out of ${row.label}`}
         />
       </StepDetailsSection>
+      {row.definitionKey === 'core.code' ? (
+        <StepDetailsSection title="Code diagnostics">
+          <StepCodeDiagnostics row={row} scope={scope} />
+        </StepDetailsSection>
+      ) : null}
       <details className="group mt-6">
         <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-subtle-foreground outline-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
           Details

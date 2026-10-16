@@ -207,7 +207,7 @@ only after its gate is resolved.
 | [F17](feature-plans/17-environments-and-promotion.md) | Development/production environments and safe promotion | New enterprise-oriented lifecycle | XL | Proposed |
 | [F18](feature-plans/18-governance-and-audit.md) | Audit visibility, publishing approval and advanced access | Existing tenancy foundation + new governance UX | XL | Proposed |
 | [F19](feature-plans/19-collaboration.md) | Comments and editing presence, then multiplayer | New frontend + coordination backend | XL | Proposed |
-| [F20](feature-plans/20-sandboxed-code.md) | JavaScript Code step in an isolated runner | Real Node in single-use processes inside a hardened runner container | XL | Slice 1 implemented: real Node in the isolated runner; slice 2 editor and guide next |
+| [F20](feature-plans/20-sandboxed-code.md) | JavaScript Code step in an isolated runner | Real Node in single-use processes inside a hardened runner container | XL | Slices 1–2 implemented: isolated Node runner, JavaScript editor, pinned previews, private console diagnostics and guide |
 | [F21](feature-plans/21-integrations-and-polling.md) | Provider expansion and durable polling/subscriptions | Later integration program | XL per provider family | Proposed |
 | [F22](feature-plans/22-ai-assistance-and-ai-nodes.md) | AI authoring assistance, model nodes and controlled tools | Later optional capability | XL | Proposed |
 | [F23](feature-plans/23-billing-and-commercialization.md) | Billing and commercial entitlements | Explicitly deferred optional business slice | XL | Proposed |
