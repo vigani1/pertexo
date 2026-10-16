@@ -251,6 +251,7 @@ export const webhooksOpenApiDocument = Object.freeze({
           },
           '401': responseReference('Unauthenticated'),
           '429': responseReference('RateLimited'),
+          '503': responseReference('Unavailable'),
         },
       },
       post: {

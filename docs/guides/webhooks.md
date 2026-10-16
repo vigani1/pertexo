@@ -42,8 +42,9 @@ wildcards, credentials or `null` origins. An empty list allows no browser origin
 Server callers without an Origin header keep working.
 
 Use `fetch` with `credentials: 'omit'`. Pertexo answers the endpoint's OPTIONS
-preflight without starting a run. Allowed request headers are Content-Type,
-Idempotency-Key and the configured secret header. Allowed origins receive an
+preflight without starting a run. Preflight allows 60 attempts/minute per client
+address and does not consume the endpoint POST allowance. Allowed request
+headers are Content-Type, Idempotency-Key and the configured secret header. Allowed origins receive an
 explicit Access-Control-Allow-Origin on the accepted receipt or workflow reply;
 Pertexo never enables cookies or wildcard browser access. A configured origin
 is a browser restriction, not a secret: a public page containing an endpoint URL
@@ -55,8 +56,7 @@ Use the same `Idempotency-Key` (1–128 visible ASCII characters, no comma) for 
 same event. It deduplicates exact body bytes for 24 hours. Without one, exact
 body bytes deduplicate for five minutes. Different whitespace counts as
 different bytes. A reused key with changed bytes returns 409. All modes share
-these rules, the 60-attempt/minute endpoint allowance (including preflight),
-workspace capacity and the metadata-only delivery log. Authentication failures
+these rules, the 60-POST-attempt/minute endpoint allowance, workspace capacity and the metadata-only delivery log. Authentication failures
 don't disclose whether an endpoint exists.
 
 For a workflow-controlled response, see [Respond to webhook](webhook-responses.md).

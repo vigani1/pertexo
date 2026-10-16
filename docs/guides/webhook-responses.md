@@ -36,7 +36,8 @@ Status 204, 205 or 304 requires a text response with an empty body.
   It does not execute the workflow again.
 
 Signed mode keeps its signature and timestamp checks. Every authentication mode
-uses the same deduplication and endpoint-attempt limits, including preflight.
+uses the same deduplication and POST-attempt limits. Preflight has a separate
+60-attempt/minute client-address guard.
 The delivery history’s **Admission** status records acceptance/rejection, not
 whether a caller later received a workflow response. The Respond step’s output
 records the winning response status.

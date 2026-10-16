@@ -4,7 +4,7 @@ Status: implemented and locally qualified. Updated: 2026-10-17. Decision: [ADR 0
 
 ## Current code and outcome
 
-`api/webhooks/ingress` authenticates exact JSON bytes with Pertexo HMAC.
+`api/webhooks/ingress` authenticates exact JSON bytes using the endpoint policy.
 Materialized endpoints hold a hashed address and current/previous encrypted
 32-byte secrets. `database/triggers/webhooks` owns management, endpoint fences,
 60/minute ingress allowance, delivery history and transactional admission.
@@ -47,9 +47,10 @@ and durable multi-instance response record.
 - Browser origins are optional, default empty, and available only in URL/header
   modes. OPTIONS verifies endpoint, exact Origin, POST and an explicit supported
   request-header set; returns 204 without decrypting, admitting a run or creating
-  a delivery. Each resolved preflight consumes the existing 60-attempt/minute
-  endpoint allowance before origin/method/header authorization. POST and OPTIONS
-  share that guard; no separate limiter or unmetered authorization path.
+  a delivery. The native Nest public-route limiter guards preflight before the
+  endpoint lookup: 60 attempts/minute per client address, fail closed, using the
+  existing Redis runtime. It does not consume the 60-POST-attempt/minute endpoint
+  allowance. Raw POST stays on Fastify to preserve signed body bytes.
   Unsupported endpoints/origins/preflights share the authentication failure.
 - For URL/header POST with Origin, reject unlisted origins before acceptance.
   Requests without Origin remain server-to-server. Only configured origins receive
@@ -88,7 +89,7 @@ are planned. Required moves, if discovered, remain separate buildable commits.
 ## Verification and status
 
 Qualified locally on 2026-10-17: root build/lint/types/dependency/contracts/schema/
-boundary checks; 9,471 unit tests; 196 mocked browser tests; 26 PostgreSQL tests
+boundary checks; 9,473 unit tests; 196 mocked browser tests; 26 PostgreSQL tests
 including populated upgrades; 10 real HTTP tests; two browser/API/worker journeys.
 The latter preserve the original Signed flow and author a CSV reply, configure
 URL mode at 375px, prove validation focus, make a real browser CORS request,

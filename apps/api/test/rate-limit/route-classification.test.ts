@@ -1,3 +1,4 @@
+import { WebhookPreflightController } from '../../src/webhooks/authentication/preflight.controller.js';
 import { UnconfiguredConnectionsController } from '../../src/connections/http/unavailable.js';
 import { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
@@ -34,6 +35,7 @@ const routes: readonly (readonly [
   string,
   ExpectedClassification,
 ])[] = [
+  [WebhookPreflightController, 'handle', 'webhook_preflight'],
   [SessionController, 'logout', 'actor_mutation'],
   [UserController, 'me', 'authenticated_read'],
   [UserController, 'updateMe', 'actor_mutation'],

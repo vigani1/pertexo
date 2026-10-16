@@ -1,3 +1,5 @@
+import { WebhookPreflightController } from '../../src/webhooks/authentication/preflight.controller.js';
+import type { WebhookIngressDependencies } from '../../src/webhooks/ingress.js';
 import { Module } from '@nestjs/common';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
@@ -49,28 +51,34 @@ const webhookOperations = {
   rotateSecret: vi.fn(),
 };
 const service = webhookOperations as unknown as WebhookManagementService;
+const runtime = { service, ingress: {} as WebhookIngressDependencies };
 const authorization = { findAccess: vi.fn().mockResolvedValue(undefined) };
 
 describe('webhook Nest module', () => {
   it('registers one supplied service, authorization source, and guard pair', () => {
-    const dynamic = WebhookModule.register(service, authorization, {
+    const dynamic = WebhookModule.register(runtime, authorization, {
       module: FakeIdentityModule,
     });
 
-    expect(dynamic.controllers).toEqual([WebhookManagementController]);
-    expect(dynamic.imports).toEqual([{ module: FakeIdentityModule }]);
-    expect(dynamic.providers).toEqual([
-      { provide: WebhookManagementService, useValue: service },
-      { provide: WEBHOOK_AUTHORIZATION, useValue: authorization },
-      WebhookReadGuard,
-      WebhookUpdateGuard,
+    expect(dynamic.controllers).toEqual([
+      WebhookManagementController,
+      WebhookPreflightController,
     ]);
+    expect(dynamic.imports).toEqual([{ module: FakeIdentityModule }]);
+    expect(dynamic.providers).toEqual(
+      expect.arrayContaining([
+        { provide: WebhookManagementService, useValue: service },
+        { provide: WEBHOOK_AUTHORIZATION, useValue: authorization },
+        WebhookReadGuard,
+        WebhookUpdateGuard,
+      ]),
+    );
   });
 
   it('resolves the controller and both guards through Nest injection', async () => {
     const testing = await Test.createTestingModule({
       imports: [
-        WebhookModule.register(service, authorization, {
+        WebhookModule.register(runtime, authorization, {
           module: FakeIdentityModule,
         }),
       ],
@@ -78,6 +86,9 @@ describe('webhook Nest module', () => {
     try {
       expect(testing.get(WebhookManagementController)).toBeInstanceOf(
         WebhookManagementController,
+      );
+      expect(testing.get(WebhookPreflightController)).toBeInstanceOf(
+        WebhookPreflightController,
       );
       expect(testing.get(WebhookReadGuard)).toBeInstanceOf(WebhookReadGuard);
       expect(testing.get(WebhookUpdateGuard)).toBeInstanceOf(
@@ -93,7 +104,7 @@ describe('webhook Nest module', () => {
     webhookOperations.provision.mockClear();
     const testing = await Test.createTestingModule({
       imports: [
-        WebhookModule.register(service, authorization, {
+        WebhookModule.register(runtime, authorization, {
           module: FakeIdentityModule,
         }),
       ],

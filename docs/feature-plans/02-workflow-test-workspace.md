@@ -1,7 +1,7 @@
 # F02 — Run-input cases and pinned samples
 
-Status: slices 1 and 2 implemented; whole-draft tests in progress. Slice 3 stays later.
-Updated: 2026-10-16. [Roadmap](../product-roadmap.md).
+Status: slices 1 and 2 and whole-draft tests implemented (#324). Slice 3 stays later.
+Updated: 2026-10-17. [Roadmap](../product-roadmap.md).
 Decisions: [ADR 061](../adr/061-workflow-input-cases-and-checked-manual-start.md)
 and [ADR 080](../adr/080-draft-step-samples.md). History stays in git.
 
@@ -107,9 +107,9 @@ hold, release-cohort and production-enablement machinery.
 ## Whole-draft tests (2026-10-16)
 
 The owner now authorizes **Test workflow**, separate from the published Run
-command. Current code has single-step previews and shared pins, but no durable
-whole-draft execution. Reuse the engine, coordinator, attempt workers, run events
-and admission counters; never run a workflow in the API or browser.
+command. Whole-draft execution extends single-step previews and shared pins,
+reusing the engine, coordinator, attempt workers, run events and admission
+counters. The API and browser never execute the workflow.
 
 ### Admission and ownership
 

@@ -20,7 +20,10 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { registerWebhookIngress } from '../../src/webhooks/ingress.js';
+import {
+  registerWebhookIngress,
+  createWebhookPreflight,
+} from '../../src/webhooks/ingress.js';
 import type { WebhookIngressTelemetry } from '../../src/webhooks/telemetry.js';
 
 const endpointKey = 'a'.repeat(43);
@@ -179,7 +182,26 @@ describe('generic webhook ingress', () => {
     expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
     expect(f.openedSecrets).toHaveLength(0);
   });
-  it('rate-limits preflight and refuses unknown endpoints, origins, methods and unsupported headers', async () => {
+  it('returns a safe unavailable response when preflight discovery fails', async () => {
+    const f = setup();
+    f.database.resolveVerification.mockRejectedValueOnce(
+      new Error('private database failure'),
+    );
+    const result = await f.application.inject({
+      method: 'OPTIONS',
+      url: `/hooks/${endpointKey}`,
+      headers: {
+        origin: 'https://app.example',
+        'access-control-request-method': 'POST',
+      },
+    });
+    expect(result.statusCode).toBe(503);
+    expect(result.json()).toMatchObject({ code: 'webhook.unavailable' });
+    expect(result.body).not.toContain('private database failure');
+    expect(result.headers['access-control-allow-origin']).toBeUndefined();
+    expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+  it('keeps preflight storage read-only and refuses unknown endpoints, origins, methods and unsupported headers', async () => {
     const f = setup({
       ...verification,
       authentication: {
@@ -208,14 +230,7 @@ describe('generic webhook ingress', () => {
       expect(result.statusCode).toBe(401);
       expect(result.headers['access-control-allow-origin']).toBeUndefined();
     }
-    expect(f.database.consumeIngressLimit).toHaveBeenCalledTimes(4);
-    f.database.consumeIngressLimit.mockRejectedValueOnce(
-      new WebhookIngressRateLimitExceededError(5),
-    );
-    const limited = await f.application.inject(base);
-    expect(limited.statusCode).toBe(429);
-    expect(limited.headers['retry-after']).toBe('5');
-    expect(limited.headers['access-control-allow-origin']).toBeUndefined();
+    expect(f.database.consumeIngressLimit).not.toHaveBeenCalled();
     f.database.resolveVerification.mockResolvedValueOnce(null);
     expect((await f.application.inject(base)).statusCode).toBe(401);
     expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
@@ -1313,12 +1328,17 @@ describe('generic webhook ingress', () => {
     };
     const application = Fastify();
     applications.push(application);
-    registerWebhookIngress(application, {
+    const dependencies = {
       database: database as unknown as WebhookTriggerDatabase,
       encryption,
       checkpointFactory: () => ({ checkpoint: {} }),
       telemetry,
-    });
+    };
+    registerWebhookIngress(application, dependencies);
+    application.options(
+      '/hooks/:endpointKey',
+      createWebhookPreflight(dependencies),
+    );
     return {
       application,
       database,
