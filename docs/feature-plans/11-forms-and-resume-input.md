@@ -296,3 +296,51 @@ CodeQL 38735773344 also passed.
 Form is part of the single supported-trigger definition in
 `workflow-model/src/graph/triggers.ts`; model graph checks and engine input
 handling consume it. Form admission, replay and submission behavior is unchanged.
+
+## Follow-up: configurable receipts and multiple choices (2026-10-16)
+
+Decisions:
+
+- Form triggers accept a static, plain-text `thankYouMessage`, at most 1,000
+  characters; the default is “Thanks for your response.” Preserve absence in older
+  graph configuration using the existing exact-optional schema primitive, so
+  strict portable export/import does not insert a new default. Apply the shared
+  default at receipt/editor presentation. It confirms acceptance,
+  not completion of the run. Request input does not acquire this setting.
+- The submission response carries the message from the accepted immutable
+  workflow version. Same-key retries after publication changes retain that
+  version's message. Reuse the existing run acceptance receipt and request hash;
+  do not create a second receipt or change its stored format. Public responses
+  continue to omit run IDs and do not disclose the message before acceptance.
+- `multi_select` shares the existing bounded select options: 1–50 unique
+  single-line choices. A response is an ordered array of unique configured
+  strings, at most 50. API order is retained; the UI submits configured option
+  order. Required means at least one. Optional empty arrays are
+  omitted. Values are not coerced; ordinary field validation owns these rules.
+- Multi-select is available on member/public Form triggers and request-input
+  tasks, including immutable mapped prefills. Existing definition, response,
+  task-context and execution limits remain in place.
+- Existing Weft fields and labelled checkbox groups render the choices. Keyboard
+  and phone behavior use the existing controls; no new design system.
+- Retained form submission commands belong to the identity/link-scoped page,
+  while editable fields belong to their published version. Background schema
+  changes or read failures cannot discard an uncertain command or its receipt.
+
+Placement and delivery:
+
+1. Move-only commit: extract form definition projection from database
+   `triggers/forms/read.ts` into `definition.ts`, and existing scalar response
+   controls into web `features/forms/components/field-control.tsx`. Update imports
+   without changing behavior; verify before committing.
+2. Logic commit: shared workflow-model fields/values and public contracts; use
+   the projection for historical receipt messages; extend existing editor and
+   response components; preserve command identity; regenerate contract artifacts.
+3. Update the forms guide, ADR 077 and tracker. Qualify typed values, limits,
+   legacy defaults, exact-version retries, access revocation and request-input
+   prefills, including real runs and desktop/phone browser behavior.
+
+Status:
+
+- [x] Buildable move-only extraction; full repository checks and 9,222 units pass.
+- [ ] Shared schema, acceptance receipts, editor and response controls.
+- [ ] Behavioral, PostgreSQL, worker, browser and React Doctor verification.

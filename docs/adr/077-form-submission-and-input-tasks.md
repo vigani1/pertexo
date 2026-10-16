@@ -61,3 +61,21 @@ waiting without another service or task mechanism. Public links are shown once;
 losing one requires regeneration. Schema and capability readers require additive
 migration and matching API/worker rollout. No files, email, anonymous mid-run
 response, arbitrary HTML/scripts, CAPTCHA or new infrastructure is introduced.
+
+### Amendment: acceptance messages and multiple choices (2026-10-16)
+
+A Form trigger may configure a plain thank-you message of 1–1,000 characters;
+absence uses “Thanks for your response.” Preserve absence in older graph setup
+so portable export/import remains exact. Submission responses carry the accepted
+immutable version's message, including same-key retries after publication changes.
+Reuse the existing acceptance receipt and its version-bound request hash; no
+second receipt, submission table or receipt-format change. Public responses still
+omit run identity. The message confirms acceptance, not successful execution.
+
+`multi_select` extends the shared bounded choice field with arrays of unique
+configured strings. Required means at least one choice; an optional empty array
+is omitted. API order is retained and the UI submits configured option order.
+The same validator serves Form admission and Request input, including captured
+prefills. Existing field, definition, response and task-context budgets remain.
+Only Form triggers have the thank-you setting. Matching API/worker readers must
+precede publishing new setup or field types; old graphs and outputs remain valid.
