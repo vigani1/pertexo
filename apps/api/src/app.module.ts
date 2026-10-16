@@ -255,7 +255,7 @@ function registerFeatureModules(
     );
   modules.push(
     WebhookModule.register(
-      dependencies.webhookRuntime?.service,
+      dependencies.webhookRuntime,
       authorization,
       identityModule,
     ),

@@ -27,6 +27,7 @@ describe('abuse rate-limit policy', () => {
 
   it('locks every endpoint class to the reviewed one-minute policy table', () => {
     const expected = {
+      webhook_preflight: ['closed', [['client_address', 60]]],
       notice_unsubscribe: ['closed', [['client_address', 30]]],
       form_read: [
         'closed',

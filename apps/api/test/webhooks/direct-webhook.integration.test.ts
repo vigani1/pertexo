@@ -1,3 +1,4 @@
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { qualifyWebhookResponseWaiting } from './responses/qualify.js';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
@@ -23,7 +24,7 @@ import type {
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { Pool, type QueryResultRow } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
 import { createInitialCheckpoint } from '@pertexo/execution';
@@ -168,6 +169,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   let ingressDatabase!: WebhookTriggerDatabase;
   let application!: Awaited<ReturnType<typeof createApiApplication>>;
   let fixtureOwner: FixtureResourceOwner | undefined;
+  const consume = vi.fn<RedisRateLimitRuntime['consume']>();
   let failVerification = false;
   let origin = '';
   let workspaceId = '';
@@ -327,10 +329,17 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         port: 3000,
         redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379/0',
       };
+      const rateLimiter = resources.acquire(
+        'rate limiter',
+        new RedisRateLimitRuntime(config.redisUrl),
+        (value) => value.close(),
+      );
+      consume.mockImplementation((decision) => rateLimiter.consume(decision));
       application = resources.acquire(
         'API application',
         await createApiApplication(config, {
           database: workspaceDatabase,
+          rateLimitConsumer: { consume },
           identityRuntime,
           webhookRuntime: {
             service,
@@ -559,6 +568,33 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       preflight.headers.get('access-control-allow-credentials'),
     ).toBeNull();
     await preflight.arrayBuffer();
+    expect(
+      consume.mock.calls.some(
+        ([decision]) =>
+          decision.endpointClass === 'webhook_preflight' &&
+          decision.dimensions.some(
+            (dimension) =>
+              dimension.kind === 'client_address' && dimension.limit === 60,
+          ),
+      ),
+    ).toBe(true);
+    consume.mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 5,
+      limitedDimension: 'client_address',
+    });
+    const limitedPreflight = await fetch(endpoint, {
+      method: 'OPTIONS',
+      headers: {
+        origin: browserOrigin,
+        'access-control-request-method': 'POST',
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+    expect(limitedPreflight.status).toBe(429);
+    expect(limitedPreflight.headers.get('retry-after')).toBe('5');
+    await limitedPreflight.arrayBuffer();
+
     const key = randomUUID();
     const send = (target: URL, extra: Record<string, string> = {}) =>
       fetch(target, {
@@ -642,7 +678,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
        where endpoint.trigger_id=$1`,
       [seeded.trigger.id],
     );
-    expect(allowance.rows[0]?.request_count).toBe(7);
+    expect(allowance.rows[0]?.request_count).toBe(6);
   });
 
   it('proves atomic acceptance, exact replay, and replay conflict', async () => {

@@ -163,10 +163,10 @@ now denotes authentication by the selected mode; its stored shape is unchanged.
 
 URL/header modes may allow exact browser origins, with endpoint-only preflight
 and explicit CORS response headers, never credentials or wildcards. Preflight
-consumes the existing endpoint ingress allowance before origin/method/header
-authorization, without decryption, a run or a delivery row. Origin is
-a browser restriction, not a substitute for the endpoint's credential. It does
-not grant Pertexo session access. URL credentials must be excluded from logs
+uses the existing Nest public-route limiter before endpoint discovery (60/minute
+per client address, fail closed). It does not consume the POST endpoint allowance,
+decrypt a secret, create a run or write a delivery row. Origin is a browser
+restriction, not a substitute for the endpoint's credential. It does not grant Pertexo session access. URL credentials must be excluded from logs
 and telemetry. Provider-specific signatures remain F21.
 
 ADR 081 already supersedes the original prohibition on synchronous replies.

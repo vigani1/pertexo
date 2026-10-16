@@ -111,9 +111,6 @@ export function registerWebhookIngress(
         parsed(null, body);
       },
     );
-    scope.options('/hooks/:endpointKey', { bodyLimit: 1 }, (request, reply) =>
-      preflightWebhook(request, reply, dependencies, telemetry),
-    );
     scope.post(
       '/hooks/:endpointKey',
       { bodyLimit: MAX_BODY + 1 },
@@ -475,10 +472,29 @@ function sha256(value: string | Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+export function createWebhookPreflight(
+  dependencies: Pick<WebhookIngressDependencies, 'database' | 'telemetry'>,
+): (request: FastifyRequest, reply: FastifyReply) => Promise<void> {
+  const telemetry = dependencies.telemetry ?? createWebhookIngressTelemetry();
+  return async (request, reply) => {
+    try {
+      await preflightWebhook(request, reply, dependencies, telemetry);
+    } catch {
+      record(() => {
+        telemetry.delivery('unavailable');
+      });
+      record(() => {
+        telemetry.health('degraded');
+      });
+      await problem(reply, 503, 'webhook.unavailable', randomUUID());
+    }
+  };
+}
+
 async function preflightWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
-  dependencies: WebhookIngressDependencies,
+  dependencies: Pick<WebhookIngressDependencies, 'database'>,
   telemetry: WebhookIngressTelemetry,
 ): Promise<void> {
   const requestId = randomUUID();
@@ -489,16 +505,6 @@ async function preflightWebhook(
     : null;
   if (verification === null) {
     await authenticationFailed(reply, requestId, telemetry);
-    return;
-  }
-  try {
-    await dependencies.database.consumeIngressLimit(
-      verification.endpointKeyHash,
-    );
-  } catch (error) {
-    if (!(error instanceof WebhookIngressRateLimitExceededError)) throw error;
-    reply.header('retry-after', String(error.retryAfterSeconds));
-    await problem(reply, 429, 'webhook.rate_limited', requestId);
     return;
   }
   if (

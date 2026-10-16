@@ -152,9 +152,10 @@ const webhookKeys: WebhookEnvelopeKeyProvider = {
     .mockRejectedValue(new Error('webhook business layer must not be called')),
 };
 const scheduleService = new ScheduleManagementService(scheduleDatabase);
+const webhookEncryption = new WebhookTriggerEnvelopeEncryption(webhookKeys);
 const webhookService = new WebhookManagementService(
   webhookDatabase,
-  new WebhookTriggerEnvelopeEncryption(webhookKeys),
+  webhookEncryption,
 );
 
 const identityModule = IdentityWorkspaceModule.register(identityDependencies);
@@ -164,7 +165,16 @@ const scheduleModule = ScheduleModule.register(
   identityModule,
 );
 const webhookModule = WebhookModule.register(
-  webhookService,
+  {
+    service: webhookService,
+    ingress: {
+      database: webhookDatabase,
+      encryption: webhookEncryption,
+      checkpointFactory: () => {
+        throw new Error('webhook business layer must not be called');
+      },
+    },
+  },
   identityDependencies.authorization,
   identityModule,
 );

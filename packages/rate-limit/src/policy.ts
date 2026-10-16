@@ -1,4 +1,5 @@
 export const RATE_LIMIT_ENDPOINT_CLASSES = [
+  'webhook_preflight',
   'notice_unsubscribe',
   'form_read',
   'form_submission',
@@ -66,6 +67,12 @@ type EndpointRule = Readonly<{
 }>;
 
 const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
+  webhook_preflight: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'client_address', subject: 'clientAddress', limit: 60 },
+    ],
+  },
   notice_unsubscribe: {
     failureMode: 'closed',
     dimensions: [
