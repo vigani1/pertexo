@@ -36,7 +36,11 @@ export async function verifyFormEvidence(database: Pool) {
       status: 'submitted',
       consumed: true,
       context: {
-        details: { amount: 0, request_message: `${kind} request` },
+        details: {
+          amount: 0,
+          request_message: `${kind} request`,
+          channels: ['Email', 'SMS'],
+        },
         prefill: { answer: `${kind} request`, channels: ['Email', 'SMS'] },
       },
     })),

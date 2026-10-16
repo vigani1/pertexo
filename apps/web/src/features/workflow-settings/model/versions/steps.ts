@@ -25,7 +25,7 @@ export function versionSteps(
       id: node.id,
       label: stepLabel(node),
       kind: definitionName(node.definition.key),
-      trigger: triggerKindOf(node.definition.key) !== undefined,
+      trigger: triggerKindOf(node.definition) !== undefined,
       x: node.position.x,
       y: node.position.y,
     }))

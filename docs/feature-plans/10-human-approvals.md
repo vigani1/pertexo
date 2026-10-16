@@ -1,6 +1,7 @@
 # F10 — Durable human approvals
 
-Status: delivered, including captured context and starter-choice follow-ups.
+Status: delivered baseline, including captured context and starter choice.
+Requested editor/list follow-ups are implemented; release is gated on PR CI.
 Updated: 2026-10-16. [Roadmap](../product-roadmap.md).
 Decision: [ADR 076](../adr/076-durable-human-tasks.md), with the dated amendments.
 History stays in git and PRs.
@@ -34,7 +35,8 @@ not current authority, audience, lifecycle or one-winner checks.
 - The editor's current all-member audience count warns when an excluded starter
   would be the only eligible decider; it also explains an empty current audience.
   This is advisory. Do not infer eligibility from a directory's first page.
-- Map at most 20 scalar detail fields from earlier steps, within 8 KiB. Capture
+- Map at most 20 named details from earlier steps, within 8 KiB. Each value
+  is a plain scalar or a list of at most 20 plain scalars; no nested values. Capture
   details once when the task opens, separately from its static instructions.
   Show them only on eligible authenticated task/Inbox reads; never notice email,
   stream hints, audits or error-workflow summaries. Plain text, no HTML.
@@ -81,6 +83,21 @@ Qualification covers one-winner/idempotency races, expiry/cancel, changed roles,
 legacy configuration/output, capacity-one and nested Calls, retained context,
 more than 50 audience members and real desktop/phone approve/reject journeys.
 Full checks, mocked e2e, React Doctor and green CI precede rebase merge.
+
+## Follow-up decisions (2026-10-16)
+
+Approval and Request input share Setup label/value rows, normal Insert data/source
+controls and advanced expressions. Literal lists use the normal JSON value
+control. Whole-object mappings remain editable in Inputs, preserved unchanged.
+Store ordinary literal objects or JSONata, using the already pinned parser for
+browser syntax/object recognition only, never browser evaluation or editor-only
+stored metadata. Run input, linked step output and captured variables retain the
+normal expression context; evaluation and immutable bounds stay server-owned.
+
+Qualification covers add/edit/remove, typed and mapped values, advanced mapping
+preservation, reload, keyboard/phone layout, captured lists and authorization.
+No new service, role, package or mapping format. Matching readers precede list
+writers. [F11](11-forms-and-resume-input.md) shares the controls for prefills.
 
 ## Rollout and later work
 

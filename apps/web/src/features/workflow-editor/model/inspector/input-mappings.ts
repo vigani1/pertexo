@@ -1,4 +1,7 @@
-import { workspaceVariableNameSchema } from '@pertexo/workflow-model';
+import {
+  isWorkflowTriggerDefinition,
+  workspaceVariableNameSchema,
+} from '@pertexo/workflow-model';
 import {
   WORKFLOW_FAILURE_PORT,
   WORKFLOW_FAILURE_PATHS,
@@ -347,9 +350,9 @@ export function outputFieldsOf(
 
 /** A JSON path for one top-level property: `$.amount` or `$['a-b']`. */
 export function propertyPath(key: string): string {
-  return /^[A-Za-z_$][\w$]*$/u.test(key)
+  return /^[A-Za-z_][A-Za-z0-9_]*$/u.test(key)
     ? `$.${key}`
-    : `$[${JSON.stringify(key).replaceAll('"', "'")}]`;
+    : `$['${key.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}']`;
 }
 
 export function directPredecessorOptions(
@@ -374,13 +377,7 @@ export function directPredecessorOptions(
 export function nodeUsesRunInputDirectly(
   definition: WorkflowNode['definition'],
 ): boolean {
-  return (
-    (definition.key === 'core.form' && definition.version === 1) ||
-    (definition.key === 'core.workflow_error' && definition.version === 1) ||
-    (definition.key === 'core.manual' && definition.version === 1) ||
-    (definition.key === 'core.webhook' && definition.version === 1) ||
-    (definition.key === 'core.schedule' && definition.version === 1)
-  );
+  return isWorkflowTriggerDefinition(definition);
 }
 
 export function inputMappingKeyControlId(

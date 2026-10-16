@@ -353,6 +353,15 @@ describe('workflow editor mapping sources and fields', () => {
     expect(nodeUsesRunInputDirectly({ key: 'core.manual', version: 1 })).toBe(
       true,
     );
+    expect(nodeUsesRunInputDirectly({ key: 'core.form', version: 1 })).toBe(
+      true,
+    );
+    expect(
+      nodeUsesRunInputDirectly({ key: 'core.workflow_error', version: 1 }),
+    ).toBe(true);
+    expect(nodeUsesRunInputDirectly({ key: 'core.form', version: 99 })).toBe(
+      false,
+    );
     expect(nodeUsesRunInputDirectly({ key: 'core.set', version: 1 })).toBe(
       false,
     );

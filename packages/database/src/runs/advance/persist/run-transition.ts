@@ -1,3 +1,4 @@
+import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.js';
 import { synchronizeHumanWait } from '../../pending-tasks/time-capacity.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.js';
 import type { PoolClient } from 'pg';
@@ -207,6 +208,8 @@ export async function persistCoordinatorRunTransition(
       'committed',
       row.human_resume_deferred === true,
     );
+  if (row.status === 'queued' && plan.checkpoint.runStatus !== 'queued')
+    await wakeErrorWorkflowsForCapacity(client, workspaceId);
   await persistCallCompletion(client, input);
   const scheduleDueAt = scheduledOccurrence(row, plan);
   await persistDerivedContinuation(client, input);

@@ -44,6 +44,7 @@ const SCHEDULE_KEY = 'core.schedule';
  * model. Nothing a schema allows is dropped.
  */
 type SetupTabProps = Readonly<{
+  definitions?: readonly NodeDefinitionCatalogItem[];
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
   connections: readonly ConnectionResponse[];
@@ -73,6 +74,7 @@ export function SetupTab(props: SetupTabProps) {
 }
 
 function CatalogSetupTab({
+  definitions = [],
   node,
   definition,
   connections,
@@ -154,6 +156,7 @@ function CatalogSetupTab({
         />
       ) : (
         <SetupControls
+          definitions={definitions}
           {...(callScope === undefined ? {} : { callScope })}
           node={node}
           graph={graph}
@@ -178,6 +181,7 @@ function CatalogSetupTab({
 
 /** The controls for a catalog step's setup, when it isn't shown as JSON. */
 function SetupControls({
+  definitions,
   node,
   graph,
   configSchema,
@@ -186,6 +190,7 @@ function SetupControls({
   form,
   callScope,
 }: Readonly<{
+  definitions: readonly NodeDefinitionCatalogItem[];
   node: WorkflowNode;
   graph: GraphLevel;
   callScope?: CallTargetScope;
@@ -204,8 +209,10 @@ function SetupControls({
   )
     return (
       <HumanFormSetup
+        definitions={definitions}
         definitionKey={formKey}
-        config={config}
+        node={node}
+        graph={graph}
         form={form}
         scope={callScope}
       />

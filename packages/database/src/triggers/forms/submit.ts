@@ -105,6 +105,9 @@ function submissionReceipt(
   return {
     accepted: true as const,
     thankYouMessage: form.thankYouMessage ?? DEFAULT_FORM_THANK_YOU_MESSAGE,
+    ...(form.redirectUrl === undefined
+      ? {}
+      : { redirectUrl: form.redirectUrl }),
     replayed: result.replayed,
     ...(publicAccess ? {} : { runId: result.runId }),
   };

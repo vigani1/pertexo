@@ -207,6 +207,9 @@ importers:
       clsx:
         specifier: 2.1.1
         version: 2.1.1
+      jsonata:
+        specifier: 2.2.2
+        version: 2.2.2
       lucide-react:
         specifier: 1.53.0
         version: 1.53.0(@types/react@19.3.0)(react@19.3.0)

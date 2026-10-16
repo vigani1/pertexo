@@ -1,3 +1,7 @@
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import { TaskContextEditor } from './context-editor';
+import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
+import { FormDestination } from './destination';
 import { FormAccessControl } from '@/features/forms/sharing.public';
 import type { MemberFormScope } from '@/features/forms/queries.public';
 import {
@@ -42,16 +46,21 @@ function readSetup(
   return parsed.success ? { definitionKey, config: parsed.data } : null;
 }
 export function HumanFormSetup({
-  config,
+  node,
+  graph,
+  definitions,
   definitionKey,
   form,
   scope,
 }: Readonly<{
-  config: NodeConfig;
+  definitions: readonly NodeDefinitionCatalogItem[];
+  node: WorkflowNode;
+  graph: GraphLevel;
   definitionKey: 'core.form' | 'core.approval' | 'core.request_input';
   form: NodeFormApi;
   scope: MemberFormScope;
 }>) {
+  const config = node.config;
   const parsed = readSetup(definitionKey, config);
   if (parsed === null)
     return (
@@ -81,6 +90,7 @@ export function HumanFormSetup({
           value={captured.thankYouMessage ?? DEFAULT_FORM_THANK_YOU_MESSAGE}
           form={form}
         />
+        <FormDestination value={captured.redirectUrl} form={form} />
         <FormFields fields={captured.fields} form={form} />
         <FormAccessControl scope={scope} editable={form.editable} />
       </>
@@ -100,13 +110,25 @@ export function HumanFormSetup({
   return (
     <>
       {text}
-      <Notice>
-        In Inputs, map a details object with named text, number or boolean facts
-        (up to 20 fields, 8 KB). They are saved when the request opens.
-        {kind === 'core.request_input'
-          ? ' Map prefill to an object keyed by field name to supply editable starting values.'
-          : ''}
-      </Notice>
+      <TaskContextEditor
+        definitions={definitions}
+        variableScope={scope}
+        node={node}
+        graph={graph}
+        form={form}
+        group="details"
+      />
+      {kind === 'core.request_input' ? (
+        <TaskContextEditor
+          definitions={definitions}
+          variableScope={scope}
+          node={node}
+          graph={graph}
+          form={form}
+          group="prefill"
+          fields={captured.fields}
+        />
+      ) : null}
       {kind === 'core.request_input' ? (
         <FormFields fields={captured.fields} form={form} />
       ) : null}

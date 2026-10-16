@@ -86,6 +86,7 @@ test('published member and public forms start real runs; captured member input c
               label: 'Channels',
               type: 'multi_select',
               options: ['Email', 'SMS'],
+              maxSelections: 2,
             },
           ],
         }),
@@ -94,7 +95,7 @@ test('published member and public forms start real runs; captured member input c
             kind: 'expression',
             language: 'jsonata',
             expression:
-              '{"amount": nodeOutputs.form.values.amount, "request_message": nodeOutputs.form.values.request_message}',
+              '{"amount": nodeOutputs.form.values.amount, "request_message": nodeOutputs.form.values.request_message,"channels": nodeOutputs.form.values.channels}',
           },
           prefill: {
             kind: 'expression',
@@ -194,6 +195,20 @@ test('published member and public forms start real runs; captured member input c
       { name: 'amount' },
       { name: 'request_message' },
       { name: 'channels', type: 'multi_select', options: ['Email', 'SMS'] },
+    ]);
+  await choices.getByLabel('Minimum selections', { exact: true }).fill('1');
+  await choices.getByLabel('Maximum selections', { exact: true }).fill('2');
+  await page.keyboard.press('Tab');
+  await expect
+    .poll(
+      async () =>
+        (await readEditorDraft(page, workflowPath)).graph.nodes[0]?.config
+          .fields,
+    )
+    .toMatchObject([
+      { name: 'amount' },
+      { name: 'request_message' },
+      { minSelections: 1, maxSelections: 2 },
     ]);
   const version = await publishSingleStep(page, workflowPath);
   // Manual start cannot forge server-owned Form metadata.
@@ -353,6 +368,7 @@ test('published member and public forms start real runs; captured member input c
       await expect(
         requests.getByText(`${kind} request`, { exact: true }),
       ).toBeVisible();
+      await expect(requests.getByText('Email', { exact: true })).toBeVisible();
       await requests
         .getByRole('link', { name: 'Complete the request', exact: true })
         .click();

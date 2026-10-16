@@ -80,6 +80,7 @@ it('renames populated mail without changing row, grant, index or referenced rela
     const before = await catalog('app.authentication_mail_deliveries');
     expect(await migrateDatabase(migration)).toEqual([
       '0017_system_mail_deliveries.sql',
+      '0018_workflow_polish.sql',
     ]);
     expect(await catalog('app.system_mail_deliveries')).toEqual(before);
     expect(

@@ -11,7 +11,7 @@ export const taskDetailsSchema = z
       .min(1)
       .max(160)
       .refine((value) => value.trim().length > 0, 'Give each detail a name.'),
-    scalar,
+    z.union([scalar, z.array(scalar).max(20)]),
   )
   .refine(
     (value) => Object.keys(value).length <= 20,
@@ -33,10 +33,14 @@ export const taskContextSchema = z
     return bytes + 2 * members <= 73_728;
   }, 'Keep task context within 72 KB; shorten the details or prefilled values.');
 
-/** Prefills are partial responses; every supplied value uses the submission rule. */
+/** Responders finish partial selections; prefills still enforce choices and maxima. */
 export function parseTaskPrefill(fields: readonly FormField[], input: unknown) {
   return parseFormValues(
-    fields.map((field) => ({ ...field, required: false })),
+    fields.map((field) =>
+      field.type === 'multi_select'
+        ? { ...field, required: false, minSelections: 0 }
+        : { ...field, required: false },
+    ),
     input,
   );
 }

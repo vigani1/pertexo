@@ -61,11 +61,14 @@ error workflow. If a failure route itself fails, the final run failure does.
 
 The target publication is captured when the source fails. Later changes to the
 setting or publication affect later failures. Error runs use the normal run
-queue, limits and current credentials. An archived or incompatible target,
-unavailable workspace can refuse admission. A full queue keeps the intent pending
-and retries every 30 seconds for up to 15 minutes from its first capacity refusal.
+queue, limits and current credentials. A target with no publication, an archived
+or incompatible target, or an unavailable workspace leaves a visible refusal on
+the original run. A full queue keeps the intent pending for up to 15 minutes
+from its first capacity refusal. When a queued run starts or settles, waiting
+error workflows can start without a 30-second polling delay.
 The deadline is shown in run detail and survives restarts; it never resets on a
-retry. If capacity stays unavailable, run detail records the refusal. The original
+retry. Once the deadline passes, run detail records the refusal; the wait cannot be
+extended by a retry or a late capacity release. The original
 failure remains recorded. Target history expires under the normal retention policy.
 
 An error workflow's own failure never starts another error workflow. Child

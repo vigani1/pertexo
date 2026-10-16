@@ -4,6 +4,7 @@ import { Notice } from '@/components/ui/notice';
 import { formatDateTime } from '@/lib/format/time';
 
 const refusals = {
+  target_not_published: 'The selected error workflow has no published version.',
   target_unavailable: 'The selected error workflow is archived or unavailable.',
   invalid_target:
     'The selected version cannot run as an error workflow. Publish it with When a workflow fails.',

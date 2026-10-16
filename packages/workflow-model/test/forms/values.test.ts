@@ -244,3 +244,69 @@ it('retains the response budget with multiple choices and otherwise valid text',
     }),
   ).toThrow('Check the form fields');
 });
+
+it('enforces per-field selection bounds while allowing partial requested prefills', () => {
+  const bounded = formFieldsSchema.parse([
+    {
+      id: 'choices',
+      name: 'choices',
+      label: 'Choices',
+      type: 'multi_select',
+      options: ['A', 'B', 'C'],
+      minSelections: 2,
+      maxSelections: 2,
+    },
+  ]);
+  expect(parseFormValues(bounded, { choices: ['B', 'A'] })).toEqual({
+    choices: ['B', 'A'],
+  });
+  for (const value of [[], ['A'], ['A', 'B', 'C'], ['A', 'A']])
+    expect(() => parseFormValues(bounded, { choices: value })).toThrow(
+      FormValuesInvalidError,
+    );
+  expect(parseTaskPrefill(bounded, { choices: ['A'] })).toEqual({
+    choices: ['A'],
+  });
+  expect(() =>
+    parseTaskPrefill(bounded, { choices: ['A', 'B', 'C'] }),
+  ).toThrow();
+  const optional = bounded.map((field) => ({ ...field, required: false }));
+  expect(parseFormValues(optional, { choices: [] })).toEqual({});
+  expect(() => parseFormValues(optional, { choices: ['A'] })).toThrow();
+  for (const overrides of [
+    { minSelections: 3, maxSelections: 1 },
+    { minSelections: 4 },
+    { maxSelections: 4 },
+    { minSelections: -1 },
+    { maxSelections: 0 },
+    { maxSelections: 1.5 },
+  ])
+    expect(
+      formFieldsSchema.safeParse([{ ...bounded[0], ...overrides }]).success,
+    ).toBe(false);
+});
+it('retains old form configuration exactly and accepts only credential-free HTTPS redirects', () => {
+  const legacy = formConfigSchema.parse({});
+  expect(legacy).not.toHaveProperty('redirectUrl');
+  expect(
+    formConfigSchema.parse({
+      redirectUrl: 'https://example.test/thanks?campaign=form',
+    }).redirectUrl,
+  ).toBe('https://example.test/thanks?campaign=form');
+  for (const url of [
+    'http://example.test/',
+    'javascript:alert(1)',
+    'data:text/html,bad',
+    '//example.test/',
+    'https://user:pass@example.test/',
+    'https://example.test/\0',
+    'https://example.test/\uD800',
+  ])
+    expect(formConfigSchema.safeParse({ redirectUrl: url }).success).toBe(
+      false,
+    );
+  expect(
+    inputRequestConfigSchema.safeParse({ redirectUrl: 'https://example.test/' })
+      .success,
+  ).toBe(false);
+});

@@ -35,7 +35,8 @@ function valueSchema(field: FormField): z.ZodType {
       return z.iso.date();
     case 'multi_select':
       return selectionSchema
-        .min(1)
+        .min(Math.max(1, field.minSelections ?? 1))
+        .max(field.maxSelections ?? field.options.length)
         .refine(
           (values) => values.every((value) => field.options.includes(value)),
           'Choose available options.',
@@ -94,13 +95,18 @@ export function parseFormValues(
   const result = z.object(shape).strict().safeParse(input);
   if (!result.success)
     throw new FormValuesInvalidError(
-      result.error.issues.slice(0, FORM_LIMITS.fields).map((issue) => ({
-        name: typeof issue.path[0] === 'string' ? issue.path[0] : '',
-        message:
-          issue.code === 'unrecognized_keys'
-            ? 'Remove fields that are not in this form.'
-            : 'Enter a valid value for this field.',
-      })),
+      result.error.issues.slice(0, FORM_LIMITS.fields).map((issue) => {
+        const field = fields.find((field) => field.name === issue.path[0]);
+        return {
+          name: typeof issue.path[0] === 'string' ? issue.path[0] : '',
+          message:
+            issue.code === 'unrecognized_keys'
+              ? 'Remove fields that are not in this form.'
+              : field?.type === 'multi_select'
+                ? selectionMessage(field)
+                : 'Enter a valid value for this field.',
+        };
+      }),
     );
   return Object.fromEntries(
     Object.entries(result.data).filter(([, value]) => value !== undefined),
@@ -114,3 +120,11 @@ export const formSubmissionSchema = z
   })
   .strict();
 export type FormSubmission = z.output<typeof formSubmissionSchema>;
+
+function selectionMessage(
+  field: Extract<FormField, { type: 'multi_select' }>,
+): string {
+  const min = Math.max(1, field.minSelections ?? 1);
+  const max = field.maxSelections ?? field.options.length;
+  return `Choose ${min === max ? String(min) : `${String(min)}–${String(max)}`} different available options.${field.required ? '' : ' You may leave this field empty.'}`;
+}

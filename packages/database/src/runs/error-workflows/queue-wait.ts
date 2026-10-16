@@ -7,7 +7,6 @@ import {
 } from './contract.js';
 
 const waitSeconds = 15 * 60;
-const retrySeconds = 30;
 
 /** The locked intent and claimed receipt make replacement delivery atomic. */
 export async function deferErrorWorkflowForQueue(
@@ -34,14 +33,13 @@ export async function deferErrorWorkflowForQueue(
   };
   await client.query(
     `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum,available_at)
-    values($1,$2,'start-error-workflow','workflow-run',$3,$4::jsonb,$5,least(clock_timestamp()+make_interval(secs=>$6),$7::timestamptz))`,
+    values($1,$2,'start-error-workflow','workflow-run',$3,$4::jsonb,$5,$6::timestamptz)`,
     [
       outboxEventId,
       input.workspaceId,
       input.sourceRunId,
       JSON.stringify(payload),
       canonicalOutboxPayloadChecksum(payload),
-      retrySeconds,
       observation.expires_at,
     ],
   );
@@ -51,4 +49,24 @@ export async function deferErrorWorkflowForQueue(
   );
   if (updated.rowCount !== 1) throw new ErrorWorkflowDeliveryMismatchError();
   return true;
+}
+
+/** The run transition holds the execution counter until these wakeups commit. */
+export async function wakeErrorWorkflowsForCapacity(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  await client.query(
+    `with ready as (
+    select event.id from app.outbox_events event
+    join app.run_error_workflow_intents intent on intent.workspace_id=event.workspace_id and intent.outbox_event_id=event.id
+    where intent.workspace_id=$1 and intent.status='pending'
+      and intent.queue_wait_expires_at > clock_timestamp()
+      and event.available_at > clock_timestamp() and event.published_at is null and event.failed_at is null
+      and (event.lease_expires_at is null or event.lease_expires_at <= clock_timestamp())
+    order by intent.created_at,intent.source_run_id limit 100
+  ) update app.outbox_events event set available_at=clock_timestamp(),updated_at=clock_timestamp()
+    from ready where event.workspace_id=$1 and event.id=ready.id`,
+    [workspaceId],
+  );
 }

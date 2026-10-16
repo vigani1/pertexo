@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0017_system_mail_deliveries.sql';
+export const EXPECTED_MIGRATION_HEAD = '0018_workflow_polish.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

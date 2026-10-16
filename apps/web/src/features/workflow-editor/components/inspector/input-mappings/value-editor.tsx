@@ -36,7 +36,9 @@ export function MappingValueEditor({
   error,
   disabled,
   onChange,
+  allowedKinds,
 }: Readonly<{
+  allowedKinds?: readonly EditableInputMappingKind[];
   nodeId: string;
   row: InputMappingDraftRow;
   graph: GraphLevel;
@@ -61,6 +63,8 @@ export function MappingValueEditor({
     loopPorts.length > 0 || row.kind === 'structured_input'
       ? [...baseKinds, loopItemKind]
       : baseKinds;
+  const permittedKinds =
+    allowedKinds === undefined ? undefined : new Set(allowedKinds);
   return (
     <>
       <ToggleGroup
@@ -81,11 +85,16 @@ export function MappingValueEditor({
           );
         }}
       >
-        {options.map((option) => (
-          <ToggleGroupItem key={option.kind} value={option.kind}>
-            {option.label}
-          </ToggleGroupItem>
-        ))}
+        {options
+          .filter(
+            (option) =>
+              permittedKinds === undefined || permittedKinds.has(option.kind),
+          )
+          .map((option) => (
+            <ToggleGroupItem key={option.kind} value={option.kind}>
+              {option.label}
+            </ToggleGroupItem>
+          ))}
       </ToggleGroup>
       <MappingSourceEditor
         nodeId={nodeId}

@@ -7,6 +7,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   CalendarClockIcon,
+  ClipboardListIcon,
+  TriangleAlertIcon,
   MousePointerClickIcon,
   PlayIcon,
   WebhookIcon,
@@ -47,9 +49,14 @@ export const WORKFLOW_ROW_COLUMNS =
 const TRIGGERS: Readonly<
   Record<TriggerKind, Readonly<{ label: string; Icon: LucideIcon }>>
 > = {
-  webhook: { label: 'Webhook', Icon: WebhookIcon },
-  schedule: { label: 'Schedule', Icon: CalendarClockIcon },
-  manual: { label: 'Manual', Icon: MousePointerClickIcon },
+  'core.webhook': { label: 'Webhook', Icon: WebhookIcon },
+  'core.schedule': { label: 'Schedule', Icon: CalendarClockIcon },
+  'core.manual': { label: 'Manual', Icon: MousePointerClickIcon },
+  'core.form': { label: 'Form', Icon: ClipboardListIcon },
+  'core.workflow_error': {
+    label: 'When a workflow fails',
+    Icon: TriangleAlertIcon,
+  },
 };
 
 function TriggerIcons({

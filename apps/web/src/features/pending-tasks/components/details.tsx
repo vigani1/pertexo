@@ -13,10 +13,39 @@ export function TaskDetails({
             {name}
           </dt>
           <dd className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">
-            {value === null ? '—' : String(value)}
+            {Array.isArray(value) ? (
+              <PlainDetailList values={value} />
+            ) : value === null ? (
+              '—'
+            ) : (
+              String(value)
+            )}
           </dd>
         </div>
       ))}
     </dl>
+  );
+}
+
+function PlainDetailList({
+  values,
+}: Readonly<{ values: readonly (string | number | boolean | null)[] }>) {
+  if (values.length === 0) return <>—</>;
+  const occurrences = new Map<string, number>();
+  const items = values.map((value) => {
+    const identity = JSON.stringify(value);
+    const occurrence = occurrences.get(identity) ?? 0;
+    occurrences.set(identity, occurrence + 1);
+    return {
+      key: `${identity}:${String(occurrence)}`,
+      text: value === null ? '—' : String(value),
+    };
+  });
+  return (
+    <ul className="list-disc pl-5">
+      {items.map((item) => (
+        <li key={item.key}>{item.text}</li>
+      ))}
+    </ul>
   );
 }
