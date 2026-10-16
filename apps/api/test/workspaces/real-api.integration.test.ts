@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { captureLocalAuthenticationMail } from '../support/better-auth/mail-capture.js';
 import { randomUUID } from 'node:crypto';
 import {
@@ -1572,6 +1573,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
 
 function config(): ApiConfig {
   return {
+    codeSettings: DEFAULT_CODE_SETTINGS,
     database: databaseConfig,
     host: '127.0.0.1',
     identity: {

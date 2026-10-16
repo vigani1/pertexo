@@ -1,8 +1,8 @@
 # F20 — Code step
 
-Status: decided by the owner on 2026-10-16; approved for implementation.
+Status: slice 1 implemented; slice 2 next; owner decisions approved on 2026-10-16.
 Updated: 2026-10-16. [Roadmap](../product-roadmap.md).
-Decision record: write the ADR (next free number) in slice 1 from this plan.
+Decision: [ADR 082](../adr/082-isolated-code-tasks.md).
 
 ## Outcome
 
@@ -18,8 +18,9 @@ and it can't reach the database, Redis, secrets, the network or other runs.
 - **Isolation comes from a dedicated runner container**, never from a
   language sandbox inside an existing process. Code never runs in the API or
   worker process. Node's `vm` module is not a security boundary.
-- **One runner design for every install.** Self-hosters get the same hardened
-  runner the default Compose setup ships; there is no weaker mode.
+- **One runner design for every install.** Production self-hosters get the same hardened
+  runner the default Compose setup ships. Development-only process mode is
+  explicitly weaker and refused by deployed workers before sending run data.
 - **Hosted direction.** A future paid cloud gives each customer their own
   instance, like n8n Cloud, so customers never share a runner.
 - **Rejected alternatives**, recorded in the ADR:
@@ -34,19 +35,29 @@ and it can't reach the database, Redis, secrets, the network or other runs.
 ## Runner
 
 - A new app, `apps/code-runner`, built into the existing image and started by
-  its own command. It must not depend on the database, queue, integrations or
+  its own command. A small Linux launcher is compiled in the existing image
+  build; the application otherwise keeps the current TypeScript build. It must not depend on the database, queue, integrations or
   any credential code; extend the module-import check to enforce this.
 - A Compose service `code-runner`:
   - `network_mode: none`;
   - read-only root filesystem, tmpfs `/tmp` (noexec);
   - `no-new-privileges`, all capabilities dropped except those needed to start
-    run processes as other users;
+    run processes as other users and terminate them (`SETUID`, `SETGID`, `KILL`);
   - memory and CPU limits derived from the code-step settings;
+  - `ipc: none`, a protected manager OOM priority, bounded descriptors and
+    per-slot thread limits;
   - no shared secret environment: it must not use the shared environment
     anchor; it gets only its own limit settings.
 - The worker talks to it over a Unix socket on a volume shared only by the
   worker and the runner. The protocol uses bounded JSON messages: task in, one
-  result out. The socket is reachable by the worker, not by run processes.
+  result out, after a small ready/busy greeting. The worker checks hardened
+  mode before sending input; busy clients wait within the attempt budget.
+  Task messages have a 3 MiB wire ceiling (two separately bounded input/variable
+  values plus escaped code); result messages have a 2 MiB wire ceiling. Each
+  protocol input/output stays within the SDK 1 MiB, depth-64, 10,000-member
+  envelope. The worker additionally enforces the existing retained inline JSON
+  limit of 256 KiB, using the existing storage validator; this is not a new format.
+  The socket is reachable by the worker, not by run processes.
 - The runner's managing process keeps a small pool of pre-started, unused run
   processes. Each run process executes exactly one task and is then discarded,
   so no state, module cache or memory crosses runs or workspaces.
@@ -54,6 +65,11 @@ and it can't reach the database, Redis, secrets, the network or other runs.
   - run as a different unprivileged user from the managing process, one per
     concurrency slot, so a run can't read, signal or trace the manager or
     another run;
+  - the Linux launcher permanently drops UID/GID, supplementary groups and
+    capabilities before exec. It installs an inherited seccomp allowlist:
+    no new sockets (including loopback/abstract Unix sockets), filesystem
+    writes/mutations, IPC, tracing or child processes; only Node runtime threads
+    are allowed. Missing enforcement refuses hardened startup;
   - start with Node's permission model: no file writes, no child processes,
     workers, addons, WASI or inspector; reads only the runner code and allowed
     packages;
@@ -106,11 +122,79 @@ Instance settings, with safe defaults the server admin can raise:
 - Enforcement: the heap cap comes from the memory setting, and the container
   limit bounds the total; the manager kills the run process at the deadline.
   Input, output and captured console output stay within the existing run value
-  limits; console output also has a line cap.
+  limits; console output also has a line cap (64 KiB and 200 lines, with visible
+  truncation). Logs and bounded error details are separate private attempt
+  diagnostics, not step output. Preserve them for successful and failed
+  runs/previews under existing reader authorization, detail expiry and purge.
+  No diagnostics enter safe failure summaries, notices, audit or email.
 - When Code steps are off, publishing a workflow with one is refused, and a run
   that reaches one fails with `code.disabled`.
 - When no slot is free, the attempt waits within its lease and otherwise
   retries through the normal safe retry path.
+
+## Implementation owners and qualification decisions
+
+- `node-sdk/code` owns the browser-safe source parser, bounds, protocol and
+  diagnostics contract; `nodes-core/data/code` owns `core.code@1`. Pin acorn
+  8.19.0, lodash 4.18.1 and dayjs 1.11.23; check production advisories.
+- `apps/code-runner/{process,execution,transport}` owns single-use processes,
+  module policy, hostile-value encoding, console capture and the socket. It
+  imports no application, credential, database, queue or integration module.
+  Register Docker-executed probe entries and the two deliberately dynamic npm
+  dependencies in the existing Knip configuration; real-process tests load both
+  packages and the production advisory check still covers them.
+- Worker attempt and preview capability factories use their already captured
+  variable values. Never read the current workspace variables at execution.
+  A retry/recovery/replay therefore keeps its immutable revision.
+- Extend existing authoring validation for syntax, enabled state and maximum
+  timeout; expose public instance limits through the existing catalog response.
+  No code executes during authoring. The worker enforces the same settings.
+- Private diagnostics use the existing attempt/preview persistence and reader
+  paths, with an additive migration. Use existing fenced completion and
+  retention; no logging subsystem or new stored value format.
+- The production image's worker is UID/GID **10001**. Its group owns access to
+  the root-owned socket directory; run slots use separate IDs 20000–20015 and
+  no supplementary groups. A slot is reused only after its old process exits.
+- Docker's `none` network keeps loopback, and Node explicitly does not guarantee
+  safety against malicious code. The launcher closes those gaps at the kernel
+  layer; the permission model and clean globals are defense in depth. This is
+  the closest implementation preserving every Acceptance guarantee, in the
+  same approved runner service. The cached-image prototype refused network,
+  filesystem writes, fork, manager signaling and manager files/memory/environment
+  even with Node's permission model deliberately absent.
+- A data-memory rlimit at the heap setting alone prevented Node from booting
+  in the pinned ARM image. Reserve 384 MiB of virtual data headroom in addition
+  to the configured heap, and enforce that sum as a hard `RLIMIT_DATA` before
+  Node starts. Keep the planned heap plus container bounds,
+  supplement them with active-task RSS checks, reserve headroom and protect the
+  manager from OOM selection. Each child has OOM priority 1000; kernel write
+  fences prevent lowering it. Qualify buffer/ArrayBuffer, heap and stack bombs
+  beside a healthy task. Do not claim the heap flag alone bounds native memory.
+- Use the existing development launcher, beta preparation/deploy/rollback/
+  restore owners and image CI jobs. Derive container memory, CPU and PID limits
+  from settings; validate hardening before marking a runner ready. Qualify the
+  native launcher and production image on both existing image architectures.
+- Qualification keeps the approved development/CI browser path separate from
+  the hardened image proof: the live browser authors, previews, publishes and
+  runs through a real worker and separate runner process. Both existing image
+  jobs exercise the production worker client against the hardened service,
+  hostile tasks beside healthy tasks, independent OS probes without Node
+  permissions, cancellation and a hard manager restart. The Compose test resolves
+  the actual service configuration and verifies its isolation and secret fence.
+- Retained outputs keep the database’s existing 256 KiB limit and Unicode rules;
+  an oversized result or unsupported text fails with `code.output_invalid` and
+  a useful private diagnostic. The runner's 1 MiB transport ceiling does not
+  expand persisted run data. Private logs/error messages show NUL as a visible
+  escape and replace lone surrogates, staying inside the same log/line bounds.
+  The Linux filter also refuses shared memory mappings so `RLIMIT_DATA` cannot
+  be bypassed through shared writable pages.
+- Existing publications whose explicit timeout exceeds a subsequently lowered
+  instance maximum fail with `code.disabled` until the step limit is lowered.
+  Workers refuse mismatched runner settings before transmitting private input.
+
+Sources: [Node permissions](https://nodejs.org/download/release/v24.19.0/docs/api/permissions.html),
+[Docker none network](https://docs.docker.com/engine/network/drivers/none/),
+[Linux seccomp](https://docs.kernel.org/userspace-api/seccomp_filter.html).
 
 ## Errors
 
@@ -136,7 +220,7 @@ error-workflow summaries.
 
 | Slice | Status |
 | --- | --- |
-| 1. ADR, runner app and Compose service, protocol, `core.code@1` runtime through the worker, settings, hostile-code and isolation suite | Planned |
+| 1. ADR, runner app and Compose service, protocol, `core.code@1` runtime through the worker, settings, hostile-code and isolation suite | Implemented (runtime PR) |
 | 2. Editor: code field, syntax errors, test with previews and pinned data, logs, limits display, guide | Planned |
 
 Slice 1 is usable through the API and import before the full editor lands; a

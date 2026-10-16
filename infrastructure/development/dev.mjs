@@ -123,6 +123,17 @@ await run('pnpm', ['db:migrate'], environment);
 const shutdown = new AbortController();
 const apps = [
   start('api', ['--filter', '@pertexo/api', 'dev'], environment),
+  start(
+    'code-runner',
+    ['--filter', '@pertexo/code-runner', 'dev'],
+    Object.fromEntries(
+      Object.entries(environment).filter(
+        ([name]) =>
+          name.startsWith('CODE_') ||
+          ['PATH', 'HOME', 'PNPM_HOME', 'NODE_ENV'].includes(name),
+      ),
+    ),
+  ),
   start('worker', ['--filter', '@pertexo/worker', 'dev'], environment),
   start('web', ['--filter', '@pertexo/web', 'dev'], environment),
 ];

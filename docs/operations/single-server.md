@@ -31,6 +31,32 @@ scripts; `deploy.sh` extracts each chosen commit into `releases/<commit>`.
 Persistent Compose volumes belong to the stable `pertexo-beta` project. Never
 run `down -v` on a serving installation.
 
+## Code runner
+
+Code steps use the same runtime image in a separate `code-runner` service.
+Only the worker shares its Unix socket volume. The runner receives no database,
+Redis, storage, mail or encryption settings; it has no network, a read-only root
+and private noexec tmpfs. Its root manager has only SETUID, SETGID and KILL;
+single-use task processes drop to separate unprivileged users with an inherited
+syscall filter, Node permissions and hard resource limits. Linux cgroup v2 and
+the supported AMD64 or ARM64 image are required. A missing hardening prerequisite
+refuses startup; a deployed worker refuses a development process runner before
+sending run data.
+
+The example enables Code with a 128 MB V8 heap, 30-second instance maximum,
+5-second step default and two slots. `storage/prepare.mjs` derives container
+memory, CPU and PID bounds from the `CODE_*` settings; the default memory ceiling
+is 1,760 MiB, including native/V8 and manager headroom. This is a ceiling, not
+reserved idle memory. Each process also has a hard data-memory bound and active
+RSS monitoring; the heap setting alone does not bound native allocations.
+Change settings through the normal deployment procedure so the API, worker and
+runner agree. `CODE_STEPS_ENABLED=false` blocks publication and execution of
+Code steps. Runner unavailability follows the ordinary safe retry path.
+
+`pnpm dev` starts the development-only separate-process runner, which is weaker
+than the deployed container and must not be used for untrusted production code.
+The runtime and isolation decision is [ADR 082](../adr/082-isolated-code-tasks.md).
+
 ## Configure once
 
 Copy `infrastructure/single-server/.env.production.example` to

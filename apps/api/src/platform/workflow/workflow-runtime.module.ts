@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import { WorkspaceVariablesModule } from '../../workspace-variables/module.js';
 import type { WorkspaceVariablesStore } from '@pertexo/database/variables';
 import { createFormStore, type FormStore } from '@pertexo/database/triggers';
@@ -115,6 +116,7 @@ export async function createApiWorkflowRuntime(
   redisUrl: string,
   overrides: ApiWorkflowRuntimeOverrides = {},
   runtime?: DatabaseRuntime,
+  codeSettings: CodeSettings = DEFAULT_CODE_SETTINGS,
 ): Promise<ApiWorkflowRuntime> {
   const authoring = overrides.authoring ?? {};
   const persistence = overrides.persistence ?? {};
@@ -142,7 +144,7 @@ export async function createApiWorkflowRuntime(
       database = (authoring.databaseFactory ?? createWorkflowAuthoringDatabase)(
         databaseConfig,
         {
-          ...createCoreAuthoringOptions(compatibility, validator),
+          ...createCoreAuthoringOptions(compatibility, validator, codeSettings),
           ...(runtime === undefined ? {} : { runtime }),
         },
       );

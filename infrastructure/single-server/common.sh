@@ -17,6 +17,12 @@ select_release() {
   export SERVICE_VERSION=$1
   release="$beta_root/releases/$SERVICE_VERSION"
   [[ -f "$release/infrastructure/single-server/compose.yaml" ]] || { echo 'Release sources missing' >&2; exit 1; }
+  runtime_services=(api worker web proxy)
+  writer_services=(api worker proxy)
+  if [[ -f "$release/apps/code-runner/package.json" ]]; then
+    runtime_services+=(code-runner)
+    writer_services+=(code-runner)
+  fi
 }
 compose() {
   docker compose --project-name pertexo-beta --env-file "$config" --env-file "$BETA_STATE_DIR/hosts.env" \

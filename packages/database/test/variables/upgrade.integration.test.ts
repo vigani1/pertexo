@@ -115,6 +115,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0018_workflow_polish.sql',
         '0019_pinned_step_samples.sql',
         '0020_webhook_responses.sql',
+        '0021_code_diagnostics.sql',
       ]);
       expect(
         (

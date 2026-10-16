@@ -1,3 +1,4 @@
+import { CodeSetup } from '../code/setup';
 import { WebhookTriggerSetup } from '../webhook/trigger-setup';
 import { WebhookResponseSetup } from '../webhook/response-setup';
 import { HumanFormSetup } from '../human-task/setup';
@@ -219,6 +220,8 @@ function SetupControls({
         scope={callScope}
       />
     );
+  if (node.definition.key === 'core.code')
+    return <CodeSetup config={config} form={form} />;
   if (node.definition.key === 'core.webhook')
     return <WebhookTriggerSetup config={config} form={form} />;
   if (node.definition.key === 'core.respond_webhook')

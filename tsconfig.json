@@ -58,6 +58,9 @@
     },
     {
       "path": "./apps/cli/tsconfig.json"
+    },
+    {
+      "path": "./apps/code-runner/tsconfig.json"
     }
   ]
 }

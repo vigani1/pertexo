@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type {
   OutboxDispatcherDatabase,
   WorkspaceDatabase,
@@ -40,6 +41,11 @@ const database: WorkspaceDatabase = {
 };
 
 const workerConfig = {
+  codeRunner: {
+    settings: DEFAULT_CODE_SETTINGS,
+    socketPath: '/tmp/unused-code.sock',
+    requireHardened: false,
+  },
   coordinator: {
     dueWakeupBatchSize: 25,
     dueWakeupPollIntervalMillis: 250,

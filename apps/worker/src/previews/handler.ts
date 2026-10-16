@@ -1,3 +1,4 @@
+import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import {
   isValidStoredExecutionOutput,
@@ -98,6 +99,7 @@ async function completeOutcome(
   delivery: { outboxEventId: string; payloadChecksum: string },
   dispatched: boolean,
   completionSignal: AbortSignal,
+  codeDiagnostics?: CodeDiagnostics,
 ): Promise<PreviewAttemptHandlerResult> {
   let terminalOutcome: PreviewTerminalOutcome;
   if (
@@ -125,6 +127,7 @@ async function completeOutcome(
     delivery,
     lease,
     outcome: terminalOutcome,
+    ...(codeDiagnostics === undefined ? {} : { codeDiagnostics }),
     signal: completionSignal,
     workerId: dependencies.workerId,
   });
@@ -175,6 +178,7 @@ function committedTerminal(
 type PreviewExecutionEnvironment = Readonly<{
   runtime: NodeExecutionRuntime;
   wasDispatched(): boolean;
+  codeDiagnostics(): CodeDiagnostics | undefined;
 }>;
 
 function createPreviewExecutionEnvironment(
@@ -202,8 +206,17 @@ function createPreviewExecutionEnvironment(
     dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
   const webhookResponse =
     dependencies.runtimeCapabilities?.webhookResponse?.(capabilityContext);
+  const code = dependencies.runtimeCapabilities?.code?.({
+    ...capabilityContext,
+    variables: lease.variables ?? {},
+  });
+  let diagnostics: CodeDiagnostics | undefined;
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const runtime: NodeExecutionRuntime = Object.freeze({
+    ...(code === undefined ? {} : { code }),
+    observeCodeDiagnostics: (value: CodeDiagnostics) => {
+      if (dispatchState === 'marked') diagnostics ??= value;
+    },
     workspaceId: lease.workspaceId,
     runId: lease.previewRunId,
     nodeRunId: lease.previewRunId,
@@ -255,6 +268,7 @@ function createPreviewExecutionEnvironment(
   return Object.freeze({
     runtime,
     wasDispatched: () => dispatchState === 'marked',
+    codeDiagnostics: () => diagnostics,
   });
 }
 
@@ -355,6 +369,7 @@ export function createPreviewAttemptHandler(
           claimDelivery,
           dispatched,
           context.signal,
+          environment.codeDiagnostics(),
         );
       } finally {
         await supervisor.stop();

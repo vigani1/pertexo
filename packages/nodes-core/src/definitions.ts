@@ -1,4 +1,10 @@
 import {
+  CORE_CODE_MANIFEST,
+  CORE_CODE_CONFIG_SCHEMA,
+  CORE_CODE_INPUT_SCHEMA,
+  CORE_CODE_OUTPUT_SCHEMA,
+} from './data/code/index.js';
+import {
   CORE_RESPOND_WEBHOOK_MANIFEST,
   CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA,
   CORE_RESPOND_WEBHOOK_INPUT_SCHEMA,
@@ -166,6 +172,12 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_CODE_MANIFEST,
+      configSchema: CORE_CODE_CONFIG_SCHEMA,
+      inputSchema: CORE_CODE_INPUT_SCHEMA,
+      outputSchema: CORE_CODE_OUTPUT_SCHEMA,
+    }),
     {
       manifest: CORE_RESPOND_WEBHOOK_MANIFEST,
       configSchema: CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA,

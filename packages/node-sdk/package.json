@@ -23,6 +23,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "acorn": "8.19.0",
     "zod": "4.6.5"
   }
 }

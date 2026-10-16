@@ -73,6 +73,7 @@ describe('workflow-run public contracts', () => {
       '/v1/workspaces/{workspaceId}/runs/{runId}',
       '/v1/workspaces/{workspaceId}/runs/{runId}/input',
       '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/output',
+      '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/diagnostics',
       '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/input',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/step-health',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/steps/{nodeId}/runs',

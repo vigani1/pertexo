@@ -8,6 +8,7 @@ type Phase =
   | 'notifications'
   | 'maintenance'
   | 'triggers'
+  | 'code-runner'
   | 'capabilities'
   | 'controlled-http'
   | 'envelope-keys'
@@ -25,6 +26,7 @@ export type EditorBrowserWorkerRuntimes = Readonly<{
   maintenance?: Closable | undefined;
   notifications?: Closable | undefined;
   capabilities?: Closable | undefined;
+  codeRunner?: Closable | undefined;
   controlledHttp?: Closable | undefined;
   envelopeKeys?: Closable | undefined;
 }>;
@@ -64,13 +66,19 @@ export async function closeEditorBrowserWorkerRuntimes(
     ['attempts', resources.attempts],
     ['coordinator', resources.coordinator],
     ['capabilities', resources.capabilities],
+    ['code-runner', resources.codeRunner],
     ['controlled-http', resources.controlledHttp],
     ['envelope-keys', resources.envelopeKeys],
   ];
   for (const [phase, resource] of owned) {
     if (
       !attemptsDrained &&
-      ['capabilities', 'controlled-http', 'envelope-keys'].includes(phase)
+      [
+        'capabilities',
+        'code-runner',
+        'controlled-http',
+        'envelope-keys',
+      ].includes(phase)
     )
       continue;
     try {

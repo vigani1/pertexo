@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import {
   integrationListResponseSchema,
@@ -14,13 +15,17 @@ import {
 export class ListNodeDefinitionsUseCase {
   private readonly catalog: PlatformNodeDefinitionBrowserCatalog;
 
-  public constructor(catalog: PlatformNodeDefinitionBrowserCatalog) {
+  public constructor(
+    catalog: PlatformNodeDefinitionBrowserCatalog,
+    private readonly codeSettings: CodeSettings = DEFAULT_CODE_SETTINGS,
+  ) {
     this.catalog = catalog;
   }
 
   public execute(): NodeDefinitionListResponse {
     return nodeDefinitionListResponseSchema.parse({
       items: this.catalog.definitions,
+      codeSettings: this.codeSettings,
     });
   }
 }
@@ -92,13 +97,15 @@ function compareDefinition(
 }
 
 /** Construct the immutable browser catalog once during module registration. */
-export function createCatalogUseCases(): Readonly<{
+export function createCatalogUseCases(
+  codeSettings: CodeSettings = DEFAULT_CODE_SETTINGS,
+): Readonly<{
   readonly listNodeDefinitions: ListNodeDefinitionsUseCase;
   readonly listIntegrations: ListIntegrationsUseCase;
 }> {
   const catalog = platformBrowserNodeDefinitionCatalog();
   return Object.freeze({
-    listNodeDefinitions: new ListNodeDefinitionsUseCase(catalog),
+    listNodeDefinitions: new ListNodeDefinitionsUseCase(catalog, codeSettings),
     listIntegrations: new ListIntegrationsUseCase(catalog),
   });
 }

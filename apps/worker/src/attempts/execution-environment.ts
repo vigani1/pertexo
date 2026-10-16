@@ -1,3 +1,4 @@
+import type { CodeDiagnostics, JsonValue } from '@pertexo/node-sdk/server';
 import {
   NodeAttemptConnectionFenceError,
   NodeAttemptDispatchBindingMismatchError,
@@ -20,11 +21,13 @@ export type NodeExecutionEnvironment = Readonly<{
   runtime: NodeExecutionRuntime;
   wasDispatched(): boolean;
   connectionHealthObservation(): NodeConnectionHealthObservation | undefined;
+  codeDiagnostics(): CodeDiagnostics | undefined;
 }>;
 
 export function createNodeExecutionEnvironment(
   input: Readonly<{
     executionSignal: AbortSignal;
+    variables?: Readonly<Record<string, JsonValue>>;
     lease: NodeAttemptLease;
     registry: NodeExecutionRegistry;
     runStore: NodeAttemptRunStore;
@@ -52,7 +55,16 @@ export function createNodeExecutionEnvironment(
   const artifacts = input.runtimeCapabilities?.artifacts?.(capabilityContext);
   const webhookResponse =
     input.runtimeCapabilities?.webhookResponse?.(capabilityContext);
+  const code = input.runtimeCapabilities?.code?.({
+    ...capabilityContext,
+    variables: input.variables ?? {},
+  });
+  let diagnostics: CodeDiagnostics | undefined;
   const runtime: NodeExecutionRuntime = Object.freeze({
+    ...(code === undefined ? {} : { code }),
+    observeCodeDiagnostics: (value: CodeDiagnostics) => {
+      if (dispatchState === 'marked') diagnostics ??= value;
+    },
     workspaceId: lease.workspaceId,
     runId: lease.runId,
     nodeRunId: lease.nodeRunId,
@@ -119,5 +131,6 @@ export function createNodeExecutionEnvironment(
     runtime,
     wasDispatched: () => dispatchState === 'marked',
     connectionHealthObservation: healthCapture.read,
+    codeDiagnostics: () => diagnostics,
   });
 }

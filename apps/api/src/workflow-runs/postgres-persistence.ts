@@ -135,6 +135,15 @@ export function createPostgresWorkflowRunPersistence(
         return mapPersistenceError(error);
       }
     },
+    readNodeRunDiagnostics: async (
+      input: Parameters<WorkflowRunPersistence['readNodeRunDiagnostics']>[0],
+    ) => {
+      try {
+        return await database.readNodeRunDiagnostics(input);
+      } catch (error: unknown) {
+        return mapPersistenceError(error);
+      }
+    },
     readNodeRunOutput: async (
       input: Parameters<WorkflowRunPersistence['readNodeRunOutput']>[0],
     ) => {

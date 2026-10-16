@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -570,6 +571,7 @@ async function resolveIdentity(
 
 function artifactApiConfig(): ApiConfig {
   return {
+    codeSettings: DEFAULT_CODE_SETTINGS,
     artifacts: artifactStoreConfig(),
     database: artifactTransferDatabaseConfig,
     host: '127.0.0.1',

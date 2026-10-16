@@ -74,6 +74,16 @@ export function validateModuleImports(sources) {
       ].find((candidate) => Object.hasOwn(sources, candidate));
     };
     const inspectSpecifier = (specifier, runtime) => {
+      if (
+        file.startsWith('apps/code-runner/src/') &&
+        specifier.startsWith('@pertexo/') &&
+        specifier !== '@pertexo/node-sdk' &&
+        specifier !== '@pertexo/node-sdk/server'
+      )
+        errors.push(
+          `${file}: Code runner may depend only on the credential-free node SDK`,
+        );
+
       if (file.startsWith('apps/web/src/')) {
         const featureImport = specifier.match(/^@\/features\/([^/]+)\/(.+)$/u);
         const owner = file.match(/^apps\/web\/src\/features\/([^/]+)\//u)?.[1];

@@ -1,3 +1,4 @@
+import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
@@ -9,7 +10,7 @@ import {
   readExistingAcceptance,
   type PreviewStatus,
 } from './acceptance.js';
-import { previewRuns } from '../../schema.js';
+import { previewRuns, previewAttempts } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
@@ -21,6 +22,7 @@ export type ResolvePreviewReplayInput = Readonly<{
 }>;
 
 export type PreviewReplayRecord = Readonly<{
+  codeDiagnostics?: CodeDiagnostics;
   id: string;
   workspaceId: string;
   workflowId: string;
@@ -80,9 +82,17 @@ export async function resolvePreviewReplay(
       outputRef: previewRuns.outputRef,
       createdAt: previewRuns.createdAt,
       completedAt: previewRuns.completedAt,
+      codeDiagnostics: previewAttempts.codeDiagnostics,
       expiresAt: previewRuns.expiresAt,
     })
     .from(previewRuns)
+    .leftJoin(
+      previewAttempts,
+      and(
+        eq(previewAttempts.workspaceId, previewRuns.workspaceId),
+        eq(previewAttempts.previewRunId, previewRuns.id),
+      ),
+    )
     .where(
       and(
         eq(previewRuns.workspaceId, transaction.workspaceId),
@@ -95,9 +105,18 @@ export async function resolvePreviewReplay(
   if (replay === undefined) return null;
   if (replay.workflowId !== parsed.workflowId)
     throw new PreviewAcceptanceCorruptError();
-  const { outputRef, pinnedSampleId, completedAt, ...summary } = replay;
+  const {
+    outputRef,
+    pinnedSampleId,
+    completedAt,
+    codeDiagnostics,
+    ...summary
+  } = replay;
   return Object.freeze({
     ...summary,
+    ...(codeDiagnostics === null
+      ? {}
+      : { codeDiagnostics: codeDiagnosticsSchema.parse(codeDiagnostics) }),
     ...(pinnedSampleId === null
       ? {}
       : {

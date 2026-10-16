@@ -1,3 +1,9 @@
+import { retainCodeOutput } from './code/output.js';
+import {
+  createCodeRunnerClient,
+  type WorkerCodeRunnerConfig,
+} from './code/client.js';
+import { CODE_LIMITS } from '@pertexo/node-sdk';
 import {
   createWebhookResponseStore,
   type WebhookResponseStore,
@@ -51,6 +57,7 @@ function assertCapabilityRuntimeOpen(lifecycle: { terminal: boolean }): void {
 
 export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   database: DatabaseConfig;
+  codeRunner?: WorkerCodeRunnerConfig;
   connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
   artifactStore?: ArtifactStoreConfig;
   artifactRetentionMillis?: number;
@@ -172,7 +179,12 @@ export async function createWorkerNodeRuntimeCapabilities(
     dependencies.artifactPersistence !== undefined ||
     dependencies.artifactStore !== undefined;
 
+  const codeClient =
+    options.codeRunner === undefined
+      ? undefined
+      : createCodeRunnerClient(options.codeRunner);
   const factories: {
+    code?: NonNullable<NodeExecutionCapabilityFactories['code']>;
     connections?: NonNullable<NodeExecutionCapabilityFactories['connections']>;
     artifacts?: NonNullable<NodeExecutionCapabilityFactories['artifacts']>;
     webhookResponse?: NonNullable<
@@ -186,6 +198,7 @@ export async function createWorkerNodeRuntimeCapabilities(
     if (closePromise === undefined) {
       lifecycle.terminal = true;
       closePromise = (async (): Promise<void> => {
+        codeClient?.close();
         const closeOperations = [
           ownedWebhookResponses?.close.bind(ownedWebhookResponses),
           ownedConnectionDatabase?.close.bind(ownedConnectionDatabase),
@@ -210,6 +223,30 @@ export async function createWorkerNodeRuntimeCapabilities(
     return closePromise;
   };
   try {
+    if (codeClient !== undefined && options.codeRunner !== undefined) {
+      const settings = options.codeRunner.settings;
+      factories.code = (context) => ({
+        execute: async ({ code, timeoutSeconds, input, signal }) => {
+          assertCapabilityRuntimeOpen(lifecycle);
+          return retainCodeOutput(
+            await codeClient.execute(
+              {
+                code,
+                timeoutSeconds:
+                  timeoutSeconds ??
+                  Math.min(
+                    CODE_LIMITS.defaultTimeoutSeconds,
+                    settings.maximumSeconds,
+                  ),
+                input,
+                variables: context.variables,
+              },
+              signal,
+            ),
+          );
+        },
+      });
+    }
     const webhookResponses =
       dependencies.webhookResponses ??
       (ownedWebhookResponses = createWebhookResponseStore(

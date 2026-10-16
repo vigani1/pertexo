@@ -44,6 +44,7 @@ const persistence = {
   cancel: () => Promise.reject(new Error('not exercised')),
   readVariables: () => Promise.resolve({ revision: 0, values: {} }),
   readInput: () => Promise.resolve(undefined),
+  readNodeRunDiagnostics: () => Promise.resolve(undefined),
   readNodeRunOutput: () => Promise.resolve(undefined),
   readNodeRunInput: () => Promise.resolve(undefined),
   stepHealth: () => Promise.resolve(undefined),

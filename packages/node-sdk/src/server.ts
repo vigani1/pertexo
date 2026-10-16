@@ -424,3 +424,12 @@ export type {
   NodeWebhookResponse,
   NodeWebhookResponseReceipt,
 } from './webhooks.js';
+
+export { NodeCodeFailure } from './code/failure.js';
+export type {
+  NodeCodeRuntime,
+  CodeDiagnostics,
+  CodeResult,
+} from './code/contract.js';
+
+export { readCodeFrame, writeCodeFrame } from './code/framing.js';

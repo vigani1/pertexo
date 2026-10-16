@@ -28,10 +28,10 @@ if grep -qx "$prefix/" "$work/points"; then
   echo 'That recovery point already exists; refusing overwrite' >&2; exit 1
 fi
 running=$(compose ps --services --status running)
-for service in api worker proxy; do
+for service in "${writer_services[@]}"; do
   if grep -qx "$service" <<< "$running"; then serving+=("$service"); fi
 done
-compose stop api worker proxy
+compose stop "${writer_services[@]}"
 # No serving writer or public presigned upload can change the matched snapshot.
 compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dump --no-password --format=custom --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"' > "$work/database.dump"
 printf '%s\n' "$SERVICE_VERSION" > "$work/release.txt"

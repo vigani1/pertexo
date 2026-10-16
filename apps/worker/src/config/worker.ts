@@ -1,3 +1,5 @@
+import { parseCodeSettings, codeRunnerSocketPath } from '@pertexo/node-sdk';
+import type { WorkerCodeRunnerConfig } from '../attempts/code/client.js';
 import { z } from 'zod';
 import {
   parseArtifactStoreConfig,
@@ -356,6 +358,7 @@ const workerConfigSchema = z
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     artifactStore: ArtifactStoreConfig;
+    codeRunner: WorkerCodeRunnerConfig;
     retention: RetentionConfig;
     connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
@@ -411,6 +414,15 @@ export function parseWorkerConfig(
       throw new Error('A deployed worker requires connection encryption');
     return Object.freeze({
       ...result.data,
+      codeRunner: {
+        settings: parseCodeSettings(raw),
+        socketPath: codeRunnerSocketPath(
+          raw.CODE_RUNNER_SOCKET,
+          deployed,
+          process.getuid?.() ?? 'local',
+        ),
+        requireHardened: deployed,
+      },
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),
       artifactStore,
       retention: Object.freeze({

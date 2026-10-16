@@ -1,3 +1,4 @@
+import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 import { apiProblemIssueSchema } from '../../errors/api-problem.js';
@@ -109,6 +110,7 @@ const previewOutputSchema = z.discriminatedUnion('kind', [
 
 export const previewRunSummarySchema = z
   .object({
+    codeDiagnostics: codeDiagnosticsSchema.optional(),
     id: z.uuid(),
     workspaceId: z.uuid(),
     workflowId: z.uuid(),

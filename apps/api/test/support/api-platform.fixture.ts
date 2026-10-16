@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type {
   StructuredLogger,
@@ -30,6 +31,7 @@ export function createApiPlatformFixture(migrationHead: string) {
     close: () => Promise.resolve(),
   };
   const config: ApiConfig = {
+    codeSettings: DEFAULT_CODE_SETTINGS,
     database: {
       connectionString:
         'postgresql://pertexo_app:secret@localhost:5432/pertexo',
@@ -125,6 +127,7 @@ export function createStubApiWorkflowRuntime(
         list: () => Promise.resolve({ items: [] }),
         readVariables: () => Promise.resolve({ revision: 0, values: {} }),
         readInput: () => Promise.resolve(undefined),
+        readNodeRunDiagnostics: () => Promise.resolve(undefined),
         readNodeRunOutput: () => Promise.resolve(undefined),
         readNodeRunInput: () => Promise.resolve(undefined),
         stepHealth: () => Promise.resolve(undefined),

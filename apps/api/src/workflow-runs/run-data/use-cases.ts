@@ -1,4 +1,8 @@
 import {
+  workflowNodeRunDiagnosticsResponseSchema,
+  type WorkflowNodeRunDiagnosticsResponse,
+} from '@pertexo/contracts';
+import {
   workflowRunVariablesResponseSchema,
   type WorkflowRunVariablesResponse,
 } from '@pertexo/contracts';
@@ -198,5 +202,27 @@ export class GetWorkflowRunVariablesUseCase {
     });
     if (snapshot === undefined) throw new WorkflowRunNotFoundError();
     return workflowRunVariablesResponseSchema.parse({ snapshot });
+  }
+}
+
+export class GetWorkflowNodeRunDiagnosticsUseCase {
+  constructor(
+    private readonly persistence: Pick<
+      WorkflowRunPersistence,
+      'readNodeRunDiagnostics'
+    >,
+    private readonly authorization: WorkspaceAuthorizationSource,
+  ) {}
+  async execute(
+    input: GetWorkflowNodeRunOutputInput,
+  ): Promise<WorkflowNodeRunDiagnosticsResponse> {
+    await authorizeRunData(input, this.authorization);
+    const diagnostics = await this.persistence.readNodeRunDiagnostics({
+      workspaceId: input.routeWorkspaceId,
+      runId: input.runId,
+      nodeRunId: input.nodeRunId,
+    });
+    if (diagnostics === undefined) throw new WorkflowRunNotFoundError();
+    return workflowNodeRunDiagnosticsResponseSchema.parse({ diagnostics });
   }
 }

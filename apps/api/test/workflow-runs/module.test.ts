@@ -21,6 +21,7 @@ const dependencies = {
     list: () => Promise.resolve({ items: [] }),
     readVariables: () => Promise.resolve({ revision: 0, values: {} }),
     readInput: () => Promise.resolve(undefined),
+    readNodeRunDiagnostics: () => Promise.resolve(undefined),
     readNodeRunOutput: () => Promise.resolve(undefined),
     readNodeRunInput: () => Promise.resolve(undefined),
     stepHealth: () => Promise.resolve(undefined),

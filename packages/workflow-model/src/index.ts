@@ -100,6 +100,7 @@ export {
   WORKFLOW_GRAPH_LIMITS,
   WorkflowGraphContractError,
   type GraphValidationResult,
+  type GraphValidationIssue,
 } from './graph/validation/contract.js';
 export {
   CANONICAL_JSON_MAX_DEPTH,

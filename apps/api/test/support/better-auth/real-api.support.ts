@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { ApiIdentityConfig } from '../../../src/platform/config/identity.js';
 import { captureLocalAuthenticationMail } from './mail-capture.js';
 import { randomUUID } from 'node:crypto';
@@ -381,6 +382,7 @@ export function useBetterAuthRealApi(
 
 function apiConfig(database: DatabaseConfig): ApiConfig {
   return {
+    codeSettings: DEFAULT_CODE_SETTINGS,
     database,
     host: '127.0.0.1',
     identity: {

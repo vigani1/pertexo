@@ -344,3 +344,35 @@ test('compatible rollback validates its own configuration before restarting', (t
     ),
   );
 });
+
+test('starts the Code service with its release and omits it when returning to a pre-Code release', (t) => {
+  const f = fixture(t);
+  const app = join(f.directory, 'releases', newCommit, 'apps/code-runner');
+  mkdirSync(app, { recursive: true });
+  writeFileSync(join(app, 'package.json'), '{}');
+  const failed = f.run({ FIXTURE_UNHEALTHY: 'true' });
+  assert.equal(failed.status, 1);
+  const commands = f.commands();
+  assert.ok(
+    commands.some(
+      (command) =>
+        command.commit === newCommit &&
+        command.args.includes('stop') &&
+        command.args.includes('code-runner'),
+    ),
+  );
+  assert.ok(
+    commands.some(
+      (command) =>
+        command.commit === newCommit &&
+        command.args.includes('--wait') &&
+        command.args.includes('code-runner'),
+    ),
+  );
+  const restored = commands.filter(
+    (command) =>
+      command.commit === oldCommit && command.args.includes('--wait'),
+  );
+  assert.equal(restored.length, 1);
+  assert.ok(!restored[0].args.includes('code-runner'));
+});
