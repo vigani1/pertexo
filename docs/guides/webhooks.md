@@ -55,7 +55,7 @@ Use the same `Idempotency-Key` (1–128 visible ASCII characters, no comma) for 
 same event. It deduplicates exact body bytes for 24 hours. Without one, exact
 body bytes deduplicate for five minutes. Different whitespace counts as
 different bytes. A reused key with changed bytes returns 409. All modes share
-these rules, the 60-POST-attempt/minute endpoint allowance (preflight is read-only),
+these rules, the 60-attempt/minute endpoint allowance (including preflight),
 workspace capacity and the metadata-only delivery log. Authentication failures
 don't disclose whether an endpoint exists.
 

@@ -179,7 +179,7 @@ describe('generic webhook ingress', () => {
     expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
     expect(f.openedSecrets).toHaveLength(0);
   });
-  it('keeps preflight read-only and refuses unknown endpoints, origins, methods and unsupported headers', async () => {
+  it('rate-limits preflight and refuses unknown endpoints, origins, methods and unsupported headers', async () => {
     const f = setup({
       ...verification,
       authentication: {
@@ -208,7 +208,14 @@ describe('generic webhook ingress', () => {
       expect(result.statusCode).toBe(401);
       expect(result.headers['access-control-allow-origin']).toBeUndefined();
     }
-    expect(f.database.consumeIngressLimit).not.toHaveBeenCalled();
+    expect(f.database.consumeIngressLimit).toHaveBeenCalledTimes(4);
+    f.database.consumeIngressLimit.mockRejectedValueOnce(
+      new WebhookIngressRateLimitExceededError(5),
+    );
+    const limited = await f.application.inject(base);
+    expect(limited.statusCode).toBe(429);
+    expect(limited.headers['retry-after']).toBe('5');
+    expect(limited.headers['access-control-allow-origin']).toBeUndefined();
     f.database.resolveVerification.mockResolvedValueOnce(null);
     expect((await f.application.inject(base)).statusCode).toBe(401);
     expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();

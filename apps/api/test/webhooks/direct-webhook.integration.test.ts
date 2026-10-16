@@ -636,6 +636,13 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       [seeded.workflowId],
     );
     expect(counts.rows[0]?.count).toBe(1);
+    const allowance = await ownerQuery<{ request_count: number }>(
+      `select allowance.request_count from app.webhook_endpoint_ingress_limits allowance
+       join app.webhook_trigger_endpoints endpoint on endpoint.id=allowance.endpoint_id
+       where endpoint.trigger_id=$1`,
+      [seeded.trigger.id],
+    );
+    expect(allowance.rows[0]?.request_count).toBe(7);
   });
 
   it('proves atomic acceptance, exact replay, and replay conflict', async () => {
