@@ -421,7 +421,7 @@ All three real token API cases pass with their integration flag explicitly enabl
 Repository-wide format/build/lint/types/dependency/contracts/schema/architecture
 checks pass. Sequential unit suites pass, including web 1,152, API 1,982, worker
 720, database 536 and ops 119. The final owned live journey passed after transport
-privacy hardening. The [automation guide](../automation.md) documents all commands,
+privacy hardening. The [automation guide](../guides/automation.md) documents all commands,
 curl equivalents, scoped ownership/expiry/replacement, safe environment storage,
 reviewed digest/ETag/body preparation, paging, cancellation and exact retry rules.
 PR and natural main checks remain the release gate recorded on the delivery PR.

@@ -300,7 +300,7 @@ The editor uses schema fields, explicit new-step defaults and private display
 words. Examples fill editable source in the existing input row. Keyboard,
 375 × 768 reduced-motion scrolling and read-only behavior are checked in mocked
 browser journeys. Changed-code React Doctor is 100/100 with no diagnostics or
-suppressions. [User guide](../data-transforms.md) records semantics and limits.
+suppressions. [User guide](../guides/data-transforms.md) records semantics and limits.
 Synthetic-fixture screenshots: [desktop](../media/data-transforms/editor-desktop.png)
 and [375 px phone](../media/data-transforms/expressions-phone.png).
 Live authentication traces/screenshots remain disabled.

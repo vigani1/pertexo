@@ -269,7 +269,7 @@ owned automation-token browser journey; CodeQL 38629982957 passed. The exact
 journey passed twice locally. Its credential-safe diagnostics now retain only
 allowlisted operation names/public problem codes; redaction regressions pass.
 The intermittent failure has not been reproduced or claimed fixed. Consumer
-CI and its natural postmerge result must be inspected independently. See [file behavior](../files.md).
+CI and its natural postmerge result must be inspected independently. See [file behavior](../guides/files.md).
 
 Upload UI evidence (2026-10-14): consumer/lifecycle PR [#292](https://github.com/vigani1/pertexo/pull/292)
 merged green at `d6ca647cfba69f269179f9094336c7d165a63aa8`. Both ordinary-browser
@@ -292,7 +292,7 @@ browser journeys and both real browser cases pass. The final web build/lint/type
 and changed React Doctor scan also pass after the keyboard/lifecycle fixes.
 Backend natural main CI 38641937383 (including ARM publication) and CodeQL
 38641937323 pass. Upload UI PR [#293](https://github.com/vigani1/pertexo/pull/293) merged green at `e9139241f1504a51ba176fde000a5b4310b25fac`. Latest-head PR CI 38649971227 and CodeQL 38649971228 passed. Natural main CI 38652300620 and CodeQL 38652300536 passed. Screenshots and
-usage examples are in [the file guide](../files.md).
+usage examples are in [the file guide](../guides/files.md).
 
 The upload dialog keeps its opener mounted while target changes close/cancel
 the local session. Desktop and phone keyboard insertion/focus return are checked
@@ -351,7 +351,7 @@ approved implementation of the revised plan on 2026-10-15.
 Use **1 MB** in human-facing copy, with the exact existing **1 MiB (1,048,576
 bytes)** bound in help/details. No byte or item limits change.
 
-- Beside Read file’s upload/configuration controls and in `docs/files.md`, say:
+- Beside Read file’s upload/configuration controls and in `docs/guides/files.md`, say:
   “Files up to 1 MB. About 4,996 rows through Filter and Summarize, fewer for
   wide rows.” This is a rough end-to-end guide, not a guaranteed CSV row count;
   long cells, column count and downstream configuration also consume the value
@@ -622,7 +622,7 @@ run-input and prior HTTP-response files. No real provider account or service.
 
 ### Part 3 — Guides and closure
 
-Update `docs/files.md` with the currency CSV pipeline, JSON object/array examples,
+Update `docs/guides/files.md` with the currency CSV pipeline, JSON object/array examples,
 conversion/strict-header/error rules, and an API form with a text field plus
 file part. Show the normal mapping paths and named upload workflow. Explain the
 full multipart wire budget, explicit filename metadata, no scanning guarantee,
@@ -848,7 +848,7 @@ rebase-merged after all PR checks passed. Part 2's CI is
 [CodeQL 38674995543](https://github.com/vigani1/pertexo/actions/runs/38674995543).
 Its natural main is `410823a652a181014b6274f6e302cc794b4a2cbc`.
 
-`docs/files.md` now documents raw files, Read file JSON/CSV and multipart forms,
+`docs/guides/files.md` now documents raw files, Read file JSON/CSV and multipart forms,
 including executable currency-summary and API-upload examples, mapping paths,
 default conversion, blank-line/header rules, budgets and split-file advice.
 The guide retains upload/finalize, access, signature and lifetime instructions.

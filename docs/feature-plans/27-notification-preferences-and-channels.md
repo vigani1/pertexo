@@ -326,7 +326,7 @@ source of attention when mail is rejected or needs reconciliation.
   Read cuts, timestamps and old failure aggregation survive the additive upgrade.
 
 Evidence is recorded after the corresponding checks pass; unfinished tracker
-items remain open. The personal notification guide is [notifications.md](../notifications.md).
+items remain open. The personal notification guide is [notifications.md](../guides/notifications.md).
 
 
 ## Local qualification receipts — 2026-10-15

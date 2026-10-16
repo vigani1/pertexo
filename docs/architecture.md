@@ -193,4 +193,4 @@ admits the captured version through ordinary run admission. Only a strict safe
 summary crosses that interface. Error-origin flags propagate through Calls,
 replays and recovery to prevent notification loops. Settings belong to authoring,
 intent production/admission to database `/runs`, and delivery to the worker’s
-existing maintenance runtime. See [the guide](error-workflows.md).
+existing maintenance runtime. See [the guide](guides/error-workflows.md).

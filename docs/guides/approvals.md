@@ -73,5 +73,5 @@ Approval output includes `decidedByName`, recorded when the decision is accepted
 Later profile edits do not change it. Use `decidedBy` for stable user identity and
 the recorded name for display. Earlier decisions may not contain this field.
 
-[Desktop setup](media/approvals/starter-desktop.png) ·
-[Phone setup](media/approvals/starter-phone.png)
+[Desktop setup](../media/approvals/starter-desktop.png) ·
+[Phone setup](../media/approvals/starter-phone.png)

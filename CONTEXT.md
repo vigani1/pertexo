@@ -142,5 +142,5 @@ nested child workflows retain their source or parent's set. An error workflow is
 independent and captures current values. Workers never look up mutable
 configuration while executing. Snapshots expire with execution details; missing
 historical snapshots refuse replay rather than substitute current values. See
-[the guide](docs/variables.md) and
+[the guide](docs/guides/variables.md) and
 [ADR 078](docs/adr/078-run-variable-snapshots.md).

@@ -382,4 +382,4 @@ The supplied Caddyfile routes RFC 8058 one-click unsubscribe directly to the API
 and redacts tokens/headers in runtime errors. Keep that route and filter when
 customizing the proxy; nginx request/error logs must not see its query token.
 Configure the external relay to DKIM-sign both unsubscribe headers. See the
-[notification guide](../notifications.md#mail-operator-requirements).
+[notification guide](../guides/notifications.md#mail-operator-requirements).
