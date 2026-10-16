@@ -1,4 +1,7 @@
-import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import {
+  stepSampleIdentity,
+  WORKFLOW_FAILURE_PORT,
+} from '@pertexo/workflow-model';
 import { FailureSetup } from '../failure-routing/setup';
 import type { ReactNode } from 'react';
 import type {
@@ -179,49 +182,34 @@ export function EditorInspector({
           if (selectedNodeId !== null) onAddToBody(selectedNodeId, opener);
         },
       }}
-      renderTest={(nodeId, stepSideEffect) =>
-        findStep(graph, nodeId)?.definition.key === 'core.approval' ? (
-          <p className="p-4 text-sm text-muted-foreground">
-            Run the workflow to create an approval, then decide it in Approvals.
-            A preview cannot pause for a human decision.
-          </p>
-        ) : findStep(graph, nodeId)?.definition.key === 'core.call' ? (
-          <p className="p-4 text-sm text-muted-foreground">
-            Run this workflow to test the Call with its child. A single-step
-            preview cannot return a child result.
-          </p>
-        ) : Object.values(findStep(graph, nodeId)?.inputMappings ?? {}).some(
-            (source) => source.kind === 'node_failure',
-          ) ? (
-          <p className="p-4 text-sm text-muted-foreground">
-            This handler reads an actual failure. Run the workflow to verify its
-            failure path; a single-step preview cannot supply that evidence.
-          </p>
-        ) : (
-          <NodeTestPanel
-            apiClient={apiClient}
-            workspaceId={workspaceId}
-            workflowId={workflowId}
-            nodeId={nodeId}
-            stepSideEffect={stepSideEffect}
-            priorPreview={priorTestFor(graph, passedTest, nodeId)}
-            rememberedPreview={
-              rememberedTest?.nodeId === nodeId
-                ? rememberedTest.preview
-                : undefined
-            }
-            ensureSaved={ensureSaved}
-            actionRef={testRef}
-            onFinished={(preview) => {
-              onTestFinished({ nodeId, preview });
-            }}
-            onSucceeded={(preview) => {
-              setPassedTest({ previewId: preview.id, nodeId });
-              onTestPassed(nodeId, inlineOutputBytes(preview.output));
-            }}
-          />
-        )
-      }
+      renderTest={(nodeId, stepSideEffect) => (
+        <NodeTestPanel
+          apiClient={apiClient}
+          userId={userId}
+          editable={editable}
+          stepBinding={sampleBinding(findStep(graph, nodeId))}
+          liveTestUnavailable={previewUnavailable(findStep(graph, nodeId))}
+          workspaceId={workspaceId}
+          workflowId={workflowId}
+          nodeId={nodeId}
+          stepSideEffect={stepSideEffect}
+          priorPreview={priorTestFor(graph, passedTest, nodeId)}
+          rememberedPreview={
+            rememberedTest?.nodeId === nodeId
+              ? rememberedTest.preview
+              : undefined
+          }
+          ensureSaved={ensureSaved}
+          actionRef={testRef}
+          onFinished={(preview) => {
+            onTestFinished({ nodeId, preview });
+          }}
+          onSucceeded={(preview) => {
+            setPassedTest({ previewId: preview.id, nodeId });
+            onTestPassed(nodeId, inlineOutputBytes(preview.output));
+          }}
+        />
+      )}
     />
   );
   // The Schedule step's builder previews its rule against this workflow, and
@@ -252,4 +240,23 @@ function priorTestFor(
   return wired === true && source !== undefined
     ? { id: passed.previewId, stepName: stepTitle(source) }
     : undefined;
+}
+
+function sampleBinding(node: ReturnType<typeof findStep>): string | undefined {
+  return node === undefined ? undefined : stepSampleIdentity(node);
+}
+function previewUnavailable(
+  node: ReturnType<typeof findStep>,
+): string | undefined {
+  if (node?.definition.key === 'core.approval')
+    return 'Run the workflow to create an approval, then decide it in Approvals. A real preview cannot pause for a human decision.';
+  if (node?.definition.key === 'core.call')
+    return 'Run this workflow to test the Call with its child. A real single-step preview cannot return a child result.';
+  if (
+    Object.values(node?.inputMappings ?? {}).some(
+      (source) => source.kind === 'node_failure',
+    )
+  )
+    return 'This handler reads an actual failure. Run the workflow to verify its failure path; a real single-step preview cannot supply that evidence.';
+  return undefined;
 }

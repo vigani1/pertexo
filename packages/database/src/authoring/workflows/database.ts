@@ -1,3 +1,4 @@
+import { createWorkflowStepSampleStore } from '../step-samples/store.js';
 import { createWorkflowErrorStore } from '../settings/error-workflow.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 
@@ -227,6 +228,7 @@ export function createWorkflowAuthoringDatabase(
     transact,
   });
   return Object.freeze({
+    stepSamples: createWorkflowStepSampleStore(pool),
     autoPause: createWorkflowAutoPauseStore(transact),
     concurrency: createWorkflowConcurrencyStore(transact),
     errorWorkflow: createWorkflowErrorStore(transact),

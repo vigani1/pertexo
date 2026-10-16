@@ -17,6 +17,11 @@ import type {
   WorkflowIssuesView,
   WorkflowValidationTarget,
 } from '@/features/workflow-publish/public';
+import { useQuery } from '@tanstack/react-query';
+import {
+  PinRecordedOutputButton,
+  stepSamplesQueryOptions,
+} from '@/features/workflow-publish/step-samples.public';
 import type { ApiClient } from '@/lib/api/client';
 import { useEditorStore, useEditorStoreApi } from '../model/state/context';
 import type { useCanvasEffects } from '../hooks/use-canvas-effects';
@@ -140,6 +145,16 @@ export function EditorWorkspace({
     () => paused,
   );
 
+  const sampleScope = {
+    apiClient,
+    userId,
+    workspaceId: workspace.id,
+    workflowId,
+  };
+  const samples = useQuery({
+    ...stepSamplesQueryOptions(sampleScope),
+    enabled: !paused && workspace.capabilities.includes('run:read'),
+  });
   const overlays = useCanvasOverlays(issues, effects);
   const chrome: EditorChrome = {
     shortcutsOpen,
@@ -173,6 +188,7 @@ export function EditorWorkspace({
           definitions={definitions}
           editable={editable}
           overlays={overlays}
+          samples={samples.isError ? undefined : samples.data?.items}
           containerRef={canvasRef}
           onSelectNodes={selectNodes}
           onRemoveEdge={removeEdge}
@@ -217,7 +233,7 @@ export function EditorWorkspace({
             connectionsAvailable &&
             workspace.capabilities.includes('connection:manage')
           }
-          editable={editable}
+          editable={editable && !paused}
           tab={navigation.tab}
           onTabChange={navigation.setTab}
           actions={actions}
@@ -234,6 +250,17 @@ export function EditorWorkspace({
               workflowId={workflowId}
               nodeId={nodeId}
               stepLabel={stepLabel}
+              renderActions={(run) =>
+                editable && !paused && run.status === 'succeeded' ? (
+                  <PinRecordedOutputButton
+                    scope={sampleScope}
+                    nodeId={nodeId}
+                    runId={run.runId}
+                    nodeRunId={run.nodeRunId}
+                    ensureSaved={ensureSaved}
+                  />
+                ) : null
+              }
             />
           )}
           onClose={() => {

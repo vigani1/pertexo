@@ -26,6 +26,7 @@ import {
   nodeTestingExpiresAt,
   nodeTestingIds,
   nodeTestingPreview,
+  nodeTestingSamples,
 } from './fixture.js';
 
 const { actorId, workspaceId, workflowId, connectionId } = nodeTestingIds;
@@ -94,11 +95,12 @@ function accepted(): AcceptedPreviewRun {
 
 type TestNodePersistence = Pick<
   NodeTestingPersistence,
-  'acceptPreview' | 'getDraft' | 'resolvePreviewReplay'
+  'acceptPreview' | 'getDraft' | 'resolvePreviewReplay' | 'stepSamples'
 >;
 
 function persistence(overrides: Partial<TestNodePersistence> = {}) {
   return {
+    stepSamples: nodeTestingSamples(),
     getDraft: vi.fn().mockResolvedValue(draft()),
     acceptPreview: vi.fn().mockResolvedValue(accepted()),
     resolvePreviewReplay: vi.fn().mockResolvedValue(null),
@@ -128,6 +130,93 @@ function requestInput() {
 }
 
 describe('node test application use case', () => {
+  it('uses pinned output without evaluating mappings or authorizing credentials, while setup validation stays real', async () => {
+    const store = persistence({
+      getDraft: vi
+        .fn()
+        .mockResolvedValue(draft({ graphJson: graphWithConfig({}) })),
+    });
+    const sampleId = randomUUID();
+    vi.spyOn(store.stepSamples, 'get').mockResolvedValue({
+      sample: {
+        id: sampleId,
+        nodeId: 'http',
+        binding: 'server-checked',
+        state: 'pinned',
+        source: { kind: 'json' },
+        createdAt: acceptedAt,
+        expiresAt,
+      },
+      output: { kind: 'inline', value: { example: true } },
+      draftRevision: 3,
+    });
+    vi.spyOn(store, 'acceptPreview').mockResolvedValue({
+      ...accepted(),
+      status: 'succeeded',
+      outboxEventId: null,
+      previewAttemptId: null,
+      pinnedSampleId: sampleId,
+      pinnedOutput: { kind: 'inline', value: { example: true } },
+      completedAt: acceptedAt,
+    });
+    const access = authorization();
+    const evaluate = vi
+      .fn()
+      .mockRejectedValue(new Error('Unused mapping must not execute'));
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      access,
+      () => acceptedAt,
+      { evaluate },
+    );
+    const response = await useCase.execute({
+      ...requestInput(),
+      idempotencyKey: randomUUID(),
+      request: {
+        mode: 'test_execute',
+        expectedRevision: 3,
+        expectedSampleId: sampleId,
+        acknowledgeSideEffects: true,
+        input: { kind: 'manual', value: {} },
+      },
+    });
+    expect(response).toMatchObject({
+      mode: 'test_execute',
+      preview: {
+        status: 'succeeded',
+        pinnedSampleId: sampleId,
+        startedAt: null,
+        output: { kind: 'inline', value: { example: true } },
+        disclosure: {
+          mayContactProvider: false,
+          mayCauseExternalSideEffect: false,
+        },
+      },
+    });
+    expect(evaluate).not.toHaveBeenCalled();
+    expect(access.findAccess).toHaveBeenCalledTimes(1);
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        request: { mode: 'validate', expectedRevision: 3, sampleInput: {} },
+      }),
+    ).resolves.toMatchObject({ valid: false });
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        idempotencyKey: randomUUID(),
+        request: {
+          mode: 'test_execute',
+          expectedRevision: 3,
+          expectedSampleId: null,
+          acknowledgeSideEffects: true,
+          input: { kind: 'manual', value: {} },
+        },
+      }),
+    ).rejects.toMatchObject({ reason: 'changed' });
+    expect(store.acceptPreview).toHaveBeenCalledOnce();
+  });
+
   it('uses the composition-owned evaluator for expression mappings', async () => {
     const evaluate = vi.fn().mockResolvedValue({
       kind: 'value',
@@ -691,6 +780,7 @@ describe('node test application use case', () => {
     expect(store.acceptPreview).toHaveBeenCalledWith({
       workspaceId,
       workflowId,
+      expectedSampleId: null,
       actorUserId: actorId,
       draftRevision: 3,
       draftFingerprint:

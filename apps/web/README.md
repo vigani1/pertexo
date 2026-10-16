@@ -45,12 +45,12 @@ with no execution time or attempt. The copy remains available through the new
 run's normal retention window even when source details expire.
 
 A definite failure that reached a service requires an unchecked acknowledgement
-before **Retry anyway**. Unknown outcomes cannot use step recovery; check the
-service before a full replay, which starts from the beginning and can repeat
-effects. Initial recovery supports a root decision tree with Condition and leaf
-Stop run. It explains refusal for joins, loops, Wait, Calls, failure links,
-missing evidence, expired values, stored files and size limits. Changing the
-input requires the separate Replay action.
+before **Retry anyway**. An unknown outcome requires a stronger acknowledgement
+because the service may already have applied its effect. Full replay starts from
+the beginning and can repeat earlier effects. Initial recovery supports a root
+decision tree with Condition and leaf Stop run. It explains refusal for joins,
+loops, Wait, Calls, failure links, missing evidence, expired values, stored
+files and size limits. Changing the input requires the separate Replay action.
 
 If acceptance cannot be confirmed, **Retry same request** retains the exact
 request and key while this run page stays open. It checks the original request
@@ -61,6 +61,10 @@ stops rather than risk accepting another run.
 For bounded collection preparation, UTC date conversion and editable expression
 examples, read
 [Prepare data in a workflow](../../docs/guides/data-transforms.md).
+
+Draft step tests can use shared, bounded
+[pinned sample output](../../docs/guides/pinned-samples.md). Pins are visibly
+separate from real published execution.
 
 Read [Frontend architecture](ARCHITECTURE.md) for folder ownership, shared
 contracts, state, forms, saving conflicts, auth, SSE, Weft and verification.

@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+import type { WorkflowStepSampleStore } from '@pertexo/database/authoring';
 import type {
   PreviewRunRecord,
   WorkflowDraftRecord,
@@ -82,5 +84,16 @@ export function nodeTestingPreview(
     completedAt: null,
     expiresAt: nodeTestingExpiresAt,
     ...overrides,
+  };
+}
+
+export function nodeTestingSamples(): WorkflowStepSampleStore {
+  return {
+    get: vi
+      .fn()
+      .mockResolvedValue({ sample: null, output: null, draftRevision: 3 }),
+    list: vi.fn().mockResolvedValue({ items: [], draftRevision: 3 }),
+    put: vi.fn().mockRejectedValue(new Error('Unexpected sample write')),
+    remove: vi.fn().mockRejectedValue(new Error('Unexpected sample removal')),
   };
 }

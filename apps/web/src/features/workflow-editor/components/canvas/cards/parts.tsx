@@ -1,10 +1,16 @@
 import { Handle, Position } from '@xyflow/react';
-import { ArrowRightToLineIcon, PlugIcon, PowerOffIcon } from 'lucide-react';
+import {
+  ArrowRightToLineIcon,
+  PinIcon,
+  PlugIcon,
+  PowerOffIcon,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   StepTile,
   type StepPresentation,
 } from '@/features/catalog/presentation.public';
+import { sampleStateLabel } from '@/features/workflow-publish/step-samples.public';
 import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/utils';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
@@ -83,6 +89,16 @@ export function NodeMarks({
 
 function stepMarks(data: WorkflowFlowNode['data']): ReactNode[] {
   const marks: ReactNode[] = [];
+  if (data.sampleState !== undefined)
+    marks.push(
+      <Mark
+        key="sample"
+        tone={data.sampleState === 'pinned' ? 'neutral' : 'warning'}
+      >
+        <PinIcon aria-hidden="true" />
+        {sampleStateLabel[data.sampleState]}
+      </Mark>,
+    );
   if (data.bodyResult)
     marks.push(
       <Mark key="result">

@@ -35,6 +35,7 @@ export async function readPreviewRun(
       mayCauseExternalSideEffect: previewRuns.mayCauseExternalSideEffect,
       nodeId: previewRuns.nodeId,
       outputRef: previewRuns.outputRef,
+      pinnedSampleId: previewRuns.pinnedSampleId,
       safeErrorCode: previewRuns.safeErrorCode,
       sideEffectClass: previewRuns.sideEffectClass,
       startedAt: previewRuns.startedAt,
@@ -68,6 +69,7 @@ export async function readPreviewRun(
     dryRun: z.enum(['not_supported', 'provider_supported']).parse(row.dryRun),
     output:
       row.outputRef === null ? null : parseStoredExecutionValue(row.outputRef),
+    pinnedSampleId: row.pinnedSampleId,
     safeErrorCode: row.safeErrorCode,
     createdAt: row.createdAt,
     startedAt: row.startedAt,

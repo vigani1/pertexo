@@ -1,3 +1,4 @@
+import type { WorkflowStepSampleStore } from '../step-samples/contract.js';
 import type { WorkflowErrorDatabase } from '../settings/error-workflow.js';
 import type {
   AcceptedPreviewRun,
@@ -188,6 +189,7 @@ export type RenameWorkflowResult = Readonly<{
 }>;
 
 export type WorkflowAuthoringDatabase = Readonly<{
+  stepSamples: WorkflowStepSampleStore;
   exportWorkflow(input: ExportWorkflowInput): Promise<WorkflowPortableManifest>;
   previewWorkflowImport(
     input: PreviewWorkflowImportInput,

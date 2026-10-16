@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
@@ -27,6 +27,40 @@ import {
 // The lazy editor route and React Flow are slow to start on a busy machine.
 
 describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
+  it('closes portaled pinned-data dialogs when the signed-in account changes', async () => {
+    let currentUser = user;
+    let writes = 0;
+    mockServer.use(
+      ...editorHandlers(() => undefined, { graph: oneStepGraph }),
+      validHandler(),
+      http.put(`${workflowApi}/draft/nodes/:nodeId/sample`, () => {
+        writes += 1;
+        return HttpResponse.json({}, { status: 500 });
+      }),
+    );
+    mockServer.use(identityHandler(() => currentUser));
+    const { queryClient } = renderApp(editorPath, { strict: true });
+    const event = userEvent.setup();
+    const canvas = await findCanvas();
+    fireEvent.click(canvas.getByText('Numbers'));
+    await event.click(screen.getByRole('tab', { name: 'Test' }));
+    await event.click(
+      await screen.findByRole('button', { name: 'Paste JSON…' }),
+    );
+    expect(
+      await screen.findByRole('dialog', { name: 'Pin sample output' }),
+    ).toBeVisible();
+    currentUser = otherUser;
+    await queryClient.refetchQueries({
+      queryKey: ['identity', 'current-user'],
+    });
+    expect(await findPaused()).toBeVisible();
+    expect(
+      screen.queryByRole('dialog', { name: 'Pin sample output' }),
+    ).toBeNull();
+    expect(writes).toBe(0);
+  });
+
   it('freezes saving and checks when the signed-in account changes', async () => {
     let currentUser = user;
     let saveCalls = 0;

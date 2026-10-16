@@ -222,3 +222,6 @@ export {
 } from './pending-tasks/context.js';
 
 export { formRedirectUrlSchema, formLinkUrlSchema } from './forms/links.js';
+
+export { stepSampleIdentity, stepSampleBindings } from './samples/identity.js';
+export type { StepSampleSource } from './samples/contract.js';

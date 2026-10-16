@@ -79,6 +79,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0016_variable_set_revisions.sql',
       '0017_system_mail_deliveries.sql',
       '0018_workflow_polish.sql',
+      '0019_pinned_step_samples.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

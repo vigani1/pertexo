@@ -15,3 +15,14 @@ export class NodeTestingUpdateGuard extends WorkspaceCapabilityGuard {
     super('workflow:update', authorization, contexts, 'not_found', ['active']);
   }
 }
+
+@Injectable()
+export class NodeSamplesReadGuard extends WorkspaceCapabilityGuard {
+  constructor(
+    @Inject(NODE_TESTING_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('workflow:read', authorization, contexts, 'not_found', ['active']);
+  }
+}
