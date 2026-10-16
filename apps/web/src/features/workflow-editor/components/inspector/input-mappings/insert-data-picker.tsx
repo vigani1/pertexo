@@ -56,8 +56,10 @@ export function InsertDataPicker({
   definitions,
   disabled,
   onInsert,
+  allowFailure = true,
 }: Readonly<{
   /** The level the step is on: the workflow, or the body it's in. */
+  allowFailure?: boolean;
   graph: GraphLevel;
   variableScope?: VariablesScope;
   nodeId: string;
@@ -76,11 +78,13 @@ export function InsertDataPicker({
         : [],
     ),
   );
-  const failureSource = graph.edges.find(
-    (edge) =>
-      edge.target.nodeId === nodeId &&
-      edge.source.port === WORKFLOW_FAILURE_PORT,
-  )?.source.nodeId;
+  const failureSource = allowFailure
+    ? graph.edges.find(
+        (edge) =>
+          edge.target.nodeId === nodeId &&
+          edge.source.port === WORKFLOW_FAILURE_PORT,
+      )?.source.nodeId
+    : undefined;
   const sources = graph.nodes.filter((node) => sourceIds.has(node.id));
   function pick(source: InsertedSource, fieldName: string) {
     setOpen(false);

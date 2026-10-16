@@ -1,6 +1,6 @@
 # F09 — Failure paths, recovery and error workflows
 
-Status: delivered for the bounded scope below, including the ordered follow-ups.
+Status: baseline delivered; requested follow-ups implemented; release is gated on PR CI.
 Updated: 2026-10-16. [Roadmap](../product-roadmap.md).
 Decisions: [ADR 072](../adr/072-failed-step-recovery.md) and
 [ADR 073](../adr/073-workflow-failure-routing.md). History stays in git and PRs.
@@ -83,7 +83,9 @@ independent run after final run failure, rather than another in-run handler.
   both workflows; clearing requires source edit access.
 - Policy is operational metadata, outside graph/export/checksum. Final `failed`,
   `timed_out` or `outcome_unknown` captures one intent, exact target publication
-  and safe summary per source run. Handled success and cancellation create none.
+  and safe summary per source run. An unpublished target instead records visible
+  `target_not_published`, with no version or outbox job. Handled success and
+  cancellation create none.
 - Summary contains workflow/version/run identity and relative run link, terminal
   status, failed step identity/name/node type, and allowlisted safe error
   kind/code plus fixed description. Missing legacy step facts remain null.
@@ -92,8 +94,12 @@ independent run after final run failure, rather than another in-run handler.
   that origin, preventing indirect chains while preserving normal notices.
 - The existing outbox/transport receipt owns once-only admission. First queue
   saturation starts a fixed database-time 15-minute window; keep intent pending
-  and retry every 30 seconds without extending it. Free capacity starts exactly
-  one captured-version run; expiry records visible `queue_full`. Lifecycle
+  and schedule the existing outbox at its deadline. A queued run starting or
+  settling wakes up to 100 pending deliveries immediately, oldest first. Hold
+  the existing counter fence through admission/deferral commit to prevent lost
+  releases. Check expiry against database time after acquiring that fence. Free
+  capacity starts exactly one captured-version run; expiry records
+  visible `queue_full`, without extending the deadline. Lifecycle
   refusals remain current and visible. No extra queue/scanner/service.
 - Error workflows are independent admissions and capture current workspace
   variables, never source-run data. Normal queue/capacity/credential rules apply.
@@ -107,7 +113,7 @@ independent run after final run failure, rather than another in-run handler.
 | Failure-route runtime, authoring and handled history | Complete |
 | Explicit unknown-target acknowledgement | Complete |
 | Error workflows, safe step facts and bounded queue waiting | Complete |
-| Shared trigger definition | Complete |
+| Shared trigger definition, including web recognition/icons | Implemented; PR CI gates release |
 
 Qualification covers real HTTP 5xx/network loss, missing acknowledgements,
 Conditions, restart/redelivery, provider-effect counts, expired values, handler
@@ -115,6 +121,24 @@ outcomes, queue full/free/expired races and sanitized summaries. Required local
 checks, mocked browser tests and real API/worker/browser/SQL evidence precede
 green CI and rebase merge. The per-step dispatch baseline was measured before
 engine changes; avoid restoring polling delay between ready steps.
+
+## Follow-up decisions (2026-10-16)
+
+- Web shape and direct-run-input recognition use the shared versioned
+  `isWorkflowTriggerDefinition`; the canonical tuple also supplies ordering.
+  Web labels/icons cover Form and When a workflow fails, without another list.
+  The earlier “shared trigger definition complete” status omitted these consumers.
+- Missing publications create a safe recorded refusal, not a silent return.
+  Migration 0018 permits null target version/outbox only for that refusal.
+- Capacity release promotes the existing outbox; a deadline delivery preserves
+  refusal after 15 minutes across restart. The existing app role gets only
+  scheduling-column updates for same-workspace pending error jobs. No new role.
+
+Qualification: trigger icons/version checks; unpublished target readback; ordinary
+coordinator release, duplicate/replacement races, expiry with newly free capacity,
+expiry during a counter-lock wait, and workspace/job/payload fences. Local qualification is complete; the pull request records CI and merge receipts.
+Human-task authoring and forms are tracked in [F10](10-human-approvals.md) and
+[F11](11-forms-and-resume-input.md).
 
 ## Later work
 

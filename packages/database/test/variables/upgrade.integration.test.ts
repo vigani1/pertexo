@@ -112,6 +112,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
       expect(await upgrade()).toEqual([
         '0016_variable_set_revisions.sql',
         '0017_system_mail_deliveries.sql',
+        '0018_workflow_polish.sql',
       ]);
       expect(
         (

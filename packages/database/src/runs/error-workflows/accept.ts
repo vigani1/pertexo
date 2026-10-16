@@ -48,9 +48,8 @@ export async function acceptErrorWorkflow(
     context: unknown;
     outbox_event_id: string;
     queue_wait_expires_at: Date | null;
-    now: Date;
   }>(
-    'select status,context,outbox_event_id,queue_wait_expires_at,clock_timestamp() now from app.run_error_workflow_intents where workspace_id=$1 and source_run_id=$2 for update',
+    'select status,context,outbox_event_id,queue_wait_expires_at from app.run_error_workflow_intents where workspace_id=$1 and source_run_id=$2 for update',
     [input.workspaceId, input.sourceRunId],
   );
   const row = locked.rows[0];
@@ -68,9 +67,19 @@ export async function acceptErrorWorkflow(
     await refuse('target_unavailable');
     return;
   }
+  // Keep the capacity fence outside the savepoint: a refusal and its deferred
+  // wakeup must commit before a releasing run can observe the pending intent.
+  await client.query('select app.lock_workspace_execution_counter($1)', [
+    input.workspaceId,
+  ]);
   if (
     row.queue_wait_expires_at !== null &&
-    row.queue_wait_expires_at <= row.now
+    (
+      await client.query(
+        'select 1 from app.run_error_workflow_intents where workspace_id=$1 and source_run_id=$2 and queue_wait_expires_at <= clock_timestamp()',
+        [input.workspaceId, input.sourceRunId],
+      )
+    ).rowCount === 1
   ) {
     await refuse('queue_full');
     return;

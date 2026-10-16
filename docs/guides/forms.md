@@ -20,7 +20,10 @@ blank fields are omitted. Multiple-choice values are arrays such as
 `{"channels":["Email","SMS"]}`. Required fields need at least one choice; each
 choice must be configured and selected only once. Optional empty selections are
 omitted. The form submits choices in their configured order; API submissions keep
-their supplied order.
+their supplied order. For **Choose multiple**, set optional **Minimum selections**
+and **Maximum selections**. Both must fit the option count, and minimum cannot
+exceed maximum. Optional fields may still be left empty. The responder sees the
+limits and cannot add more than the maximum; the API enforces them too.
 
 For example, define `message` (long text), `amount` (number) and `currency`
 (choice: EUR or USD). The next step can map `runInput.values.amount` or the Form
@@ -45,8 +48,16 @@ The default receipt says **Thanks for your response.** In the Form trigger's
 that Pertexo accepted the response; the workflow may still be waiting or running.
 The message comes from the published version that accepted that response. Retrying
 the same response after a publication change keeps its original message and cannot
-start another run. HTML is displayed as text. Request input has no separate
-thank-you setting.
+start another run. Plain HTTP/HTTPS URLs become safe clickable links; embedded
+credentials and other schemes are not linked. HTML is displayed as text.
+
+Optionally set **Redirect after submission** to a fixed HTTPS address, without
+embedded credentials, for example `https://example.com/thanks`. After confirmed
+acceptance, the form continues there. A failed or uncertain response stays on
+the form. Exact retries keep the accepting version’s destination, even after a
+new publication. Pertexo never appends responses, run IDs or the public-link key.
+Leave the destination empty to keep the receipt and its links. Request input
+has neither redirect nor thank-you settings.
 
 [Member form](../media/forms/member-1280-before.png) ·
 [Member receipt](../media/forms/member-1280-after.png) ·
@@ -84,14 +95,16 @@ response wins, even if two people send at the same time. Its output contains
 `values`, `submittedBy` and `submittedAt`, with the same types as a Form trigger.
 Map the Request input step's `values.answer` into a later step.
 
-In **Inputs**, map `details` to named facts the responder needs, as for
-[Approval details](approvals.md). Map `prefill` to an object keyed by your field
-names, such as `{"answer":"Suggested response","amount":0,"ready":false}`.
-Details stay scalar; put choice arrays in prefills.
+In **Setup**, add label/value details for the responder, as for
+[Approval details](approvals.md). Use **Add prefill**, choose a field, and enter
+a value or use the normal picker; advanced expressions are also available.
+Existing whole-object mappings stay editable in **Inputs**, such as `{"answer":"Suggested response","amount":0,"ready":false}`.
+A detail may also be a short list of plain values, under the shared 8 KB limit.
 A multiple-choice prefill is a choice array, for example `{"channels":["Email"]}`.
 Only fields present in this request are accepted; values must already have their
 field's type and choice options. Required fields may be missing from prefills,
-but must be completed before sending. Prefills fit the existing 64 KB response
+but must be completed before sending. A prefill may have fewer than the minimum
+choices, so the responder can finish it; it cannot exceed the maximum. Prefills fit the existing 64 KB response
 budget. Both details and prefills are captured once when the task opens. The
 responder can edit prefills, and refreshing task data never replaces unsent edits.
 

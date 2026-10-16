@@ -708,11 +708,27 @@
                         "maxLength": 160
                       },
                       "additionalProperties": {
-                        "type": [
-                          "string",
-                          "number",
-                          "boolean",
-                          "null"
+                        "anyOf": [
+                          {
+                            "type": [
+                              "string",
+                              "number",
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          {
+                            "maxItems": 20,
+                            "type": "array",
+                            "items": {
+                              "type": [
+                                "string",
+                                "number",
+                                "boolean",
+                                "null"
+                              ]
+                            }
+                          }
                         ]
                       }
                     },

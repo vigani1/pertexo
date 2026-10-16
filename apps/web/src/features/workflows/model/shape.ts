@@ -1,20 +1,15 @@
+import {
+  WORKFLOW_TRIGGER_DEFINITIONS,
+  isWorkflowTriggerDefinition,
+} from '@pertexo/workflow-model';
 import { describeStep } from '@/features/catalog/presentation.public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 type StepSource = Pick<WorkflowNode, 'definition' | 'label'>;
 
-export type TriggerKind = 'webhook' | 'schedule' | 'manual';
+export type TriggerKind = (typeof WORKFLOW_TRIGGER_DEFINITIONS)[number]['key'];
 
-const TRIGGER_KINDS: ReadonlyMap<string, TriggerKind> = new Map([
-  ['core.webhook', 'webhook'],
-  ['core.schedule', 'schedule'],
-  ['core.manual', 'manual'],
-]);
-const TRIGGER_ORDER: readonly TriggerKind[] = ['webhook', 'schedule', 'manual'];
-
-// A client registry of readable step names until the catalog carries display
-// names. Unknown definitions fall back to their key's last segment.
 /** A definition's readable name: the catalog's, as the editor shows it. */
 export function definitionName(key: string): string {
   return describeStep(key).name;
@@ -28,8 +23,10 @@ export function stepLabel(node: StepSource): string {
     : label;
 }
 
-export function triggerKindOf(definitionKey: string): TriggerKind | undefined {
-  return TRIGGER_KINDS.get(definitionKey);
+export function triggerKindOf(
+  definition: WorkflowNode['definition'],
+): TriggerKind | undefined {
+  return isWorkflowTriggerDefinition(definition) ? definition.key : undefined;
 }
 
 /** Distinct trigger kinds in the graph, in a stable display order. */
@@ -38,11 +35,13 @@ export function workflowTriggerKinds(
 ): readonly TriggerKind[] {
   const present = new Set(
     graph.nodes.flatMap((node) => {
-      const kind = triggerKindOf(node.definition.key);
+      const kind = triggerKindOf(node.definition);
       return kind === undefined ? [] : [kind];
     }),
   );
-  return TRIGGER_ORDER.filter((kind) => present.has(kind));
+  return WORKFLOW_TRIGGER_DEFINITIONS.flatMap(({ key }) =>
+    present.has(key) ? [key] : [],
+  );
 }
 
 type Adjacency = Readonly<{
@@ -77,7 +76,7 @@ function entryNode(
 ): WorkflowNode | undefined {
   const sources = graph.nodes.filter((node) => incoming.get(node.id) === 0);
   return (
-    sources.find((node) => triggerKindOf(node.definition.key) !== undefined) ??
+    sources.find((node) => triggerKindOf(node.definition) !== undefined) ??
     sources[0] ??
     graph.nodes[0]
   );
@@ -264,7 +263,7 @@ export function layoutPatternGlyph(
           id: node.id,
           trigger:
             node.id === entry?.id &&
-            triggerKindOf(node.definition.key) !== undefined,
+            triggerKindOf(node.definition) !== undefined,
           loop: node.structured !== undefined,
         };
       }),

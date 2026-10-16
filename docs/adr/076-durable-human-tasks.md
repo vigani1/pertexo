@@ -125,3 +125,19 @@ authority, using the decision's database-time query. Later profile edits do not
 rewrite the recorded output or its displayed name. Earlier output may omit the
 field; retain its existing current-name display fallback without fabricating a
 historical value. No new table, role, service or executor identity is introduced.
+
+### Amendment: context authoring and short lists (2026-10-16)
+
+A named detail may be a plain scalar or a list of at most 20 plain scalars.
+Nested lists and objects remain invalid. Keep the existing maximum of 20 named
+details, 8 KiB total, immutable capture, authorized reads and email exclusions.
+Deploy matching context readers before publishing list-valued mappings.
+
+Approval and Request input share label/value authoring rows in the existing
+inspector, with the normal value picker and advanced expressions. Persist the
+existing literal-object or JSONata mapping, never a second mapping format or
+editor metadata. Reuse the already pinned JSONata parser to recognize simple
+object expressions without evaluating them in the browser. Imported whole-object
+or dynamic-key mappings remain unchanged and editable in Inputs. Each row can
+read a literal, run input, earlier step output, workspace variable or expression;
+the JSONata runtime's existing context and server evaluation bounds still apply.

@@ -53,3 +53,21 @@ it('validates partial typed prefills without requiring a complete response', () 
       'Check the form fields',
     );
 });
+
+it('captures bounded lists of plain facts without accepting nested data', () => {
+  const details = { Items: ['A', 0, false, null, 'Café 🧵'], Empty: [] };
+  expect(taskDetailsSchema.parse(details)).toEqual(details);
+  expect(
+    taskDetailsSchema.safeParse({
+      Items: Array.from({ length: 20 }, () => 'x'),
+    }).success,
+  ).toBe(true);
+  for (const invalid of [
+    Array.from({ length: 21 }, () => 1),
+    [[1]],
+    [{ value: 1 }],
+    ['\0'],
+    ['x'.repeat(8192)],
+  ])
+    expect(taskDetailsSchema.safeParse({ Items: invalid }).success).toBe(false);
+});

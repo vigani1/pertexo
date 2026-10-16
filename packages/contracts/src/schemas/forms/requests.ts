@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   formConfigSchema,
   formThankYouMessageSchema,
+  formRedirectUrlSchema,
 } from '@pertexo/workflow-model';
 export const formParamsSchema = z
   .object({ workspaceId: z.uuid(), workflowId: z.uuid() })
@@ -11,7 +12,7 @@ export const formCapabilitySchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
 export const formSchemaResponseSchema = z
   .object({
     versionId: z.uuid(),
-    form: formConfigSchema.omit({ thankYouMessage: true }),
+    form: formConfigSchema.omit({ thankYouMessage: true, redirectUrl: true }),
   })
   .strict();
 export const formSubmissionRequestSchema = z
@@ -21,6 +22,7 @@ export const formSubmissionResponseSchema = z
   .object({
     accepted: z.literal(true),
     thankYouMessage: formThankYouMessageSchema,
+    redirectUrl: formRedirectUrlSchema.exactOptional(),
     runId: z.uuid().optional(),
     replayed: z.boolean(),
   })

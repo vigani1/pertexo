@@ -135,3 +135,85 @@ test('preserves typed fields when publication changes, and reloads only on reque
   ).toBeVisible();
   await expect(page.getByLabel('Message', { exact: true })).toHaveValue('');
 });
+
+for (const width of [1280, 375])
+  test(`redirects to the accepted fixed HTTPS destination only after confirmed response at ${String(width)}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await installEditorRoutes(page, remoteDraft());
+    const path = `**/v1/forms/${publicId}`;
+    await page.route(path, (route) =>
+      route.fulfill({ json: { versionId, form } }),
+    );
+    const commands: unknown[] = [];
+    await page.route(`${path}/submit`, (route) => {
+      commands.push(route.request().postDataJSON() as unknown);
+      if (commands.length === 1) return route.abort('failed');
+      return route.fulfill({
+        json: {
+          accepted: true,
+          replayed: true,
+          thankYouMessage: 'Received.',
+          redirectUrl: 'https://destination.example.test/thanks',
+        },
+      });
+    });
+    await page.route('https://destination.example.test/thanks', (route) => {
+      expect(route.request().headers().referer).toBeUndefined();
+      return route.fulfill({
+        contentType: 'text/html',
+        body: '<h1>Destination</h1>',
+      });
+    });
+    await page.goto(`/forms/${publicId}#${capability}`);
+    await page.getByLabel('Message', { exact: true }).fill('Private response');
+    await page
+      .getByRole('button', { name: 'Send response', exact: true })
+      .click();
+    await expect(
+      page.getByRole('button', { name: 'Retry same response', exact: true }),
+    ).toBeVisible();
+    expect(page.url()).toContain(`/forms/${publicId}`);
+    await page
+      .getByRole('button', { name: 'Retry same response', exact: true })
+      .click();
+    await expect(page).toHaveURL('https://destination.example.test/thanks');
+    await expect(
+      page.getByRole('heading', { name: 'Destination', exact: true }),
+    ).toBeVisible();
+    expect(commands[1]).toEqual(commands[0]);
+  });
+
+test('keeps thank-you text escaped while linking safe plain URLs', async ({
+  page,
+}) => {
+  await installEditorRoutes(page, remoteDraft());
+  const path = `**/v1/forms/${publicId}`;
+  await page.route(path, (route) =>
+    route.fulfill({ json: { versionId, form } }),
+  );
+  await page.route(`${path}/submit`, (route) =>
+    route.fulfill({
+      json: {
+        accepted: true,
+        replayed: false,
+        thankYouMessage:
+          'Thanks. Visit https://example.test/help. <img src=x> javascript:alert(1)',
+      },
+    }),
+  );
+  await page.goto(`/forms/${publicId}#${capability}`);
+  await page.getByLabel('Message', { exact: true }).fill('Hello');
+  await page
+    .getByRole('button', { name: 'Send response', exact: true })
+    .click();
+  const link = page.getByRole('link', {
+    name: 'https://example.test/help',
+    exact: true,
+  });
+  await expect(link).toHaveAttribute('href', 'https://example.test/help');
+  await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(page.getByText(/<img src=x>/u)).toBeVisible();
+  await expect(page.locator('img[src=x]')).toHaveCount(0);
+});

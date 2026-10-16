@@ -31,10 +31,15 @@ comment, then Approve or Reject. One decision wins. If a response is lost, use
 **Retry same decision** to recover that same command rather than sending a new
 choice. A competing decision refreshes the recorded result.
 
-In the step's **Inputs**, map `details` to an object of named facts, for example
+In the step's **Setup**, use **Add detail** for a label and value. Use **Insert
+data** to choose run input, an earlier step output or a workspace variable; the
+**Expression** option supports advanced mappings. Whole-object mappings remain
+editable in **Inputs**, for example
 `{"Customer":"Ada","Amount":120,"Ready":false}`. Use earlier step output or a
 normal expression mapping. Up to 20 fields fit in 8 KB; values are text, numbers,
-booleans or null. These facts are captured when the task opens and appear on the
+booleans or null, or a list of up to 20 such values (no nested lists/objects).
+Choose **List of plain values** for a fixed JSON array such as `["EUR",0,false]`.
+These facts are captured when the task opens and appear on the
 request and in Inbox. Later workflow edits do not change an open request. Include
 only what the person needs to decide; details are retained run data, visible to
 authorized run readers. They are never included in notification emails.

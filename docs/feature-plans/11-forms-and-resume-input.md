@@ -1,7 +1,7 @@
 # F11 — Forms and requested member input
 
-Status: delivered, including immutable mapped prefills, thank-you messages and
-multiple choices. Updated: 2026-10-16. [Roadmap](../product-roadmap.md).
+Status: delivered baseline, including immutable mapped prefills, thank-you messages
+and multiple choices. Requested follow-ups implemented; release is gated on PR CI. Updated: 2026-10-16. [Roadmap](../product-roadmap.md).
 Decision: [ADR 077](../adr/077-form-submission-and-input-tasks.md).
 History stays in git and PRs.
 
@@ -26,7 +26,9 @@ store, worker, public mid-run response, email link or file field.
   arbitrary strings; false and zero remain values. Optional blank values omit.
 - Select types share 1–50 unique nonempty single-line options, up to 160
   characters each. Multi-select values are arrays of unique configured strings,
-  at most 50; required means at least one. Optional empty arrays omit. API order
+  at most 50, with optional min/max selections bounded by the option count.
+  Required means at least one; optional empty arrays omit. Missing bounds keep
+  their existing behavior. API order
   is retained; the UI sends configured option order. Switching select types
   retains configured choices.
 - Text values are at most 10,000 characters, with valid Unicode and no NUL.
@@ -71,7 +73,8 @@ store, worker, public mid-run response, email link or file field.
 ### Requested input
 
 - `core.request_input@1` shares fields, audience and expiry with F10; its starter
-  may respond. Capture schema and up to 20 mapped scalar details/8 KiB once when
+  may respond. Capture schema and up to 20 named plain details (including bounded
+  scalar lists), within 8 KiB, once when
   opening. Capture mapped typed prefills within 64 KiB, total context 72 KiB.
   Captured context is immutable; the responder may edit the form before submitting.
 - Current eligible members submit against the captured schema before expiry.
@@ -106,6 +109,27 @@ exact-version receipts, malformed typed values, restart/expiry and immutable
 multi-select prefills through real API/worker/browser and SQL. Full checks,
 mocked e2e, React Doctor and green CI precede rebase merge. Start matching readers
 before publishing new field/configuration shapes.
+
+## Follow-up decisions (2026-10-16)
+
+- Setup uses F10's label/value rows for details and field-labelled prefills,
+  normal value pickers and advanced expressions. Details permit short lists under
+  F10's bounds. Existing whole-object mappings stay unchanged in Inputs.
+- Optional `minSelections` (0–50) and `maxSelections` (1–50) must fit the options
+  and each other. Server/browser response validation shares the model rule.
+  Prefills may be below minimum because responders finish them, never over max.
+- A Form's optional redirect is a fixed credential-free HTTPS URL, at most 2,048
+  characters. Discovery omits it; only an accepted receipt returns it from the
+  exact accepting version, including retries after republication. No navigation
+  on failure/uncertainty, interpolation or appended run/capability/submitted data.
+- Thank-you text auto-links validated credential-free HTTP(S) URLs as plain safe
+  anchors, with no opener/referrer. HTML and other schemes remain escaped text.
+  Omit a redirect to keep the receipt. Request input has neither setting.
+
+Qualification: min/max configuration/submission/prefill boundaries;
+accepted-version redirects and uncertain retries; safe links and escaped markup;
+desktop/phone authoring and responses. Matching readers precede new configuration
+writers. Shared trigger recognition/icons are tracked in [F09](09-failure-paths-and-recovery.md).
 
 ## Later work
 

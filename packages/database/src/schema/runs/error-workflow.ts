@@ -19,9 +19,9 @@ export const runErrorWorkflowIntents = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     sourceRunId: uuid('source_run_id').notNull(),
     targetWorkflowId: uuid('target_workflow_id').notNull(),
-    targetVersionId: uuid('target_version_id').notNull(),
+    targetVersionId: uuid('target_version_id'),
     context: jsonb().notNull(),
-    outboxEventId: uuid('outbox_event_id').notNull(),
+    outboxEventId: uuid('outbox_event_id'),
     status: varchar({ length: 16 }).notNull().default('pending'),
     acceptedRunId: uuid('accepted_run_id'),
     refusalCode: varchar('refusal_code', { length: 64 }),
@@ -45,7 +45,11 @@ export const runErrorWorkflowIntents = appSchema.table(
     ),
     check(
       'run_error_workflow_intents_state_valid',
-      sql`((status = 'pending' AND accepted_run_id IS NULL AND refusal_code IS NULL AND completed_at IS NULL) OR (status = 'accepted' AND accepted_run_id IS NOT NULL AND refusal_code IS NULL AND completed_at IS NOT NULL) OR (status = 'refused' AND accepted_run_id IS NULL AND refusal_code IN ('target_unavailable','workspace_unavailable','queue_full','invalid_target') AND completed_at IS NOT NULL)) IS TRUE`,
+      sql`((status = 'pending' AND accepted_run_id IS NULL AND refusal_code IS NULL AND completed_at IS NULL) OR (status = 'accepted' AND accepted_run_id IS NOT NULL AND refusal_code IS NULL AND completed_at IS NOT NULL) OR (status = 'refused' AND accepted_run_id IS NULL AND refusal_code IN ('target_unavailable','workspace_unavailable','queue_full','invalid_target','target_not_published') AND completed_at IS NOT NULL)) IS TRUE`,
+    ),
+    check(
+      'run_error_workflow_intents_target_valid',
+      sql`(CASE WHEN refusal_code = 'target_not_published' THEN status = 'refused' AND target_version_id IS NULL AND outbox_event_id IS NULL ELSE target_version_id IS NOT NULL AND outbox_event_id IS NOT NULL END) IS TRUE`,
     ),
     foreignKey({
       name: 'run_error_workflow_intents_source_fk',
