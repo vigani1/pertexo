@@ -49,6 +49,15 @@ type OwnedChild = Readonly<{
   exit: Promise<ChildExit>;
 }>;
 
+type ChildStage = 'loaded' | 'ready';
+
+type StartableChild = OwnedChild &
+  Readonly<{
+    start: () => Promise<void>;
+  }>;
+
+const SPARE_WORKERS = 2;
+
 async function bounded<T>(
   operation: Promise<T>,
   timeoutMs: number,
@@ -111,6 +120,30 @@ function childIsRunning(child: ChildProcess): boolean {
   return child.exitCode === null && child.signalCode === null;
 }
 
+async function discardSpares(spares: Promise<StartableChild>[]): Promise<void> {
+  const errors: unknown[] = [];
+  for (const spare of spares.splice(0)) {
+    const owner = await spare.catch(() => undefined);
+    if (owner === undefined || !childIsRunning(owner.child)) continue;
+    // An unstarted spare exits when its start signal can never arrive.
+    owner.child.stdin?.end();
+    await bounded(owner.exit, 5_000, 'For Each spare did not exit')
+      .then((exited) => {
+        if (exited.error !== undefined) throw exited.error;
+        if (exited.code !== 0)
+          throw new Error(
+            `For Each spare stopped unsuccessfully (${String(exited.code)}, ${String(exited.signal)})`,
+          );
+      })
+      .catch(async (error: unknown) => {
+        errors.push(error);
+        await stopOwnedChild(owner).catch(() => undefined);
+      });
+  }
+  if (errors.length > 0)
+    throw new AggregateError(errors, 'For Each spare cleanup failed');
+}
+
 describeIntegration('For Each cancellation recovery', () => {
   beforeAll(setup, 60_000);
   afterAll(restoreServicesAndClose);
@@ -120,6 +153,7 @@ describeIntegration('For Each cancellation recovery', () => {
     let coordinatorQueue: Queue | undefined;
     let attemptQueue: Queue | undefined;
     let workers: OwnedChild | undefined;
+    const spares: Promise<StartableChild>[] = [];
     try {
       producer = createQueueProducer({ redisUrl });
       coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
@@ -131,7 +165,38 @@ describeIntegration('For Each cancellation recovery', () => {
       const ownedProducer = producer;
       const ownedCoordinatorQueue = coordinatorQueue;
       const ownedAttemptQueue = attemptQueue;
+      // Every restart still uses a new process; loading one ahead hides the
+      // module loading that otherwise dominated this test's runtime.
+      const refillSpares = () => {
+        while (spares.length < SPARE_WORKERS) {
+          const spare = loadWorkers();
+          // A spare that fails to load is reported when it is taken.
+          spare.catch(() => undefined);
+          spares.push(spare);
+        }
+      };
       const startWorkers = async (): Promise<OwnedChild> => {
+        refillSpares();
+        const next = spares.shift();
+        refillSpares();
+        if (next === undefined) throw new Error('For Each spare is missing');
+        const owner = await next;
+        try {
+          await owner.start();
+          return owner;
+        } catch (startupError: unknown) {
+          let cleanupError: unknown;
+          await stopOwnedChild(owner).catch((error: unknown) => {
+            cleanupError = error;
+          });
+          if (cleanupError === undefined) throw startupError;
+          throw new AggregateError(
+            [startupError, cleanupError],
+            'For Each child startup failed',
+          );
+        }
+      };
+      const loadWorkers = async (): Promise<StartableChild> => {
         const child = spawn(
           process.execPath,
           [
@@ -149,9 +214,11 @@ describeIntegration('For Each cancellation recovery', () => {
               FOR_EACH_MAINTENANCE_DATABASE_URL: databaseUrl(dispatcherUrl),
               FOR_EACH_REDIS_URL: redisUrl,
             },
-            stdio: ['ignore', 'pipe', 'pipe'],
+            stdio: ['pipe', 'pipe', 'pipe'],
           },
         );
+        // The child closes its input after starting; a late close is harmless.
+        child.stdin.on('error', () => undefined);
         const exit = new Promise<ChildExit>((resolve) => {
           let settled = false;
           const settle = (result: ChildExit): void => {
@@ -167,70 +234,83 @@ describeIntegration('For Each cancellation recovery', () => {
           });
         });
         const owner = Object.freeze({ child, exit });
-        let stdout = '';
         let pendingLine = '';
         let stderr = '';
-        let ready = false;
-        const readiness = new Promise<void>((resolve, reject) => {
-          let settled = false;
-          const timer = setTimeout(() => {
-            settle(new Error(`For Each child startup timed out: ${stderr}`));
-          }, 10_000);
-          timer.unref();
-          const settle = (error?: Error): void => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            if (error === undefined) resolve();
-            else reject(error);
-          };
-          child.stdout.on('data', (chunk: Buffer) => {
-            stdout = (stdout + chunk.toString()).slice(
-              -MAXIMUM_CHILD_OUTPUT_BYTES,
+        let outputFailure: Error | undefined;
+        const reached = new Set<ChildStage>();
+        const observers = new Set<() => void>();
+        child.stdout.on('data', (chunk: Buffer) => {
+          pendingLine += chunk.toString();
+          if (Buffer.byteLength(pendingLine) > MAXIMUM_CHILD_OUTPUT_BYTES)
+            outputFailure = new Error(
+              'For Each child stdout frame is too large',
             );
-            pendingLine += chunk.toString();
-            if (Buffer.byteLength(pendingLine) > MAXIMUM_CHILD_OUTPUT_BYTES) {
-              settle(new Error('For Each child stdout frame is too large'));
-              return;
+          const lines = pendingLine.split('\n');
+          pendingLine = lines.pop() ?? '';
+          for (const line of lines) {
+            let parsed: unknown;
+            try {
+              parsed = JSON.parse(line);
+            } catch {
+              continue;
             }
-            const lines = pendingLine.split('\n');
-            pendingLine = lines.pop() ?? '';
-            for (const line of lines) {
-              let parsed: unknown;
-              try {
-                parsed = JSON.parse(line);
-              } catch {
-                continue;
-              }
-              if (
-                typeof parsed === 'object' &&
-                parsed !== null &&
-                (parsed as { ready?: unknown }).ready === true &&
-                (parsed as { pid?: unknown }).pid === child.pid
-              ) {
-                ready = true;
-                settle();
-              }
-            }
-          });
-          child.stderr.on('data', (chunk: Buffer) => {
-            stderr = (stderr + chunk.toString()).slice(
-              -MAXIMUM_CHILD_OUTPUT_BYTES,
-            );
-          });
-          void exit.then((result) => {
-            if (!ready)
-              settle(
-                result.error ??
-                  new Error(
-                    `For Each child exited during startup (${String(result.code)}, ${String(result.signal)}): ${stderr}`,
-                  ),
-              );
-          });
+            if (
+              typeof parsed !== 'object' ||
+              parsed === null ||
+              (parsed as { pid?: unknown }).pid !== child.pid
+            )
+              continue;
+            for (const stage of ['loaded', 'ready'] as const)
+              if ((parsed as Record<string, unknown>)[stage] === true)
+                reached.add(stage);
+          }
+          for (const observe of observers) observe();
         });
+        child.stderr.on('data', (chunk: Buffer) => {
+          stderr = (stderr + chunk.toString()).slice(
+            -MAXIMUM_CHILD_OUTPUT_BYTES,
+          );
+        });
+        const reach = (stage: ChildStage) =>
+          new Promise<void>((resolve, reject) => {
+            let settled = false;
+            const timer = setTimeout(() => {
+              settle(new Error(`For Each child ${stage} timed out: ${stderr}`));
+            }, 10_000);
+            timer.unref();
+            const settle = (error?: Error): void => {
+              if (settled) return;
+              settled = true;
+              observers.delete(observe);
+              clearTimeout(timer);
+              if (error === undefined) resolve();
+              else reject(error);
+            };
+            const observe = (): void => {
+              if (outputFailure !== undefined) settle(outputFailure);
+              else if (reached.has(stage)) settle();
+            };
+            observers.add(observe);
+            observe();
+            void exit.then((result) => {
+              if (!reached.has(stage))
+                settle(
+                  result.error ??
+                    new Error(
+                      `For Each child exited before ${stage} (${String(result.code)}, ${String(result.signal)}): ${stderr}`,
+                    ),
+                );
+            });
+          });
         try {
-          await readiness;
-          return owner;
+          await reach('loaded');
+          return Object.freeze({
+            ...owner,
+            start: () => {
+              child.stdin.write('start\n');
+              return reach('ready');
+            },
+          });
         } catch (startupError: unknown) {
           let cleanupError: unknown;
           await stopOwnedChild(owner).catch((error: unknown) => {
@@ -815,9 +895,10 @@ describeIntegration('For Each cancellation recovery', () => {
             } else {
               // The child also scans deadlines; stop it before asserting this scanner owns the wakeup.
               await stopWorkers();
+              // Already passed, yet after creation: the run may be under a second old.
               await ownerQuery(
                 `update app.workflow_runs
-                    set deadline_at=clock_timestamp()-interval '1 second',
+                    set deadline_at=created_at+interval '1 millisecond',
                         deadline_wakeup_at=null,
                         updated_at=clock_timestamp()
                   where workspace_id=$1 and id=$2`,
@@ -1105,6 +1186,7 @@ describeIntegration('For Each cancellation recovery', () => {
         await stopOwnedChild(activeWorkers).catch((error: unknown) =>
           errors.push(error),
         );
+      await discardSpares(spares).catch((error: unknown) => errors.push(error));
       await producer?.close().catch((error: unknown) => errors.push(error));
       await coordinatorQueue
         ?.close()

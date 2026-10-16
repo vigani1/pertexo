@@ -388,6 +388,10 @@ describeIntegration('preview dispatch crash boundaries', () => {
             );
             await lockRedis.del(`${queue.toKey(terminal.jobId)}:lock`);
             await lockRedis.sadd(queue.toKey('stalled'), terminal.jobId);
+            // The crash children already ran BullMQ's once-per-interval stalled
+            // check. Expiring that marker lets the fresh consumer's startup
+            // check redeliver now instead of a full production interval later.
+            await lockRedis.del(queue.toKey('stalled-check'));
             const redeliveryStore = createDatabasePreviewAttemptRunStore(
               parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
             );
