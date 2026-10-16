@@ -3290,7 +3290,10 @@
                         },
                         "type": {
                           "type": "string",
-                          "const": "select"
+                          "enum": [
+                            "select",
+                            "multi_select"
+                          ]
                         },
                         "options": {
                           "minItems": 1,
@@ -3325,10 +3328,23 @@
                   "type": "string"
                 },
                 "additionalProperties": {
-                  "type": [
-                    "string",
-                    "number",
-                    "boolean"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
                   ]
                 }
               },
@@ -3343,10 +3359,23 @@
                           "type": "string"
                         },
                         "additionalProperties": {
-                          "type": [
-                            "string",
-                            "number",
-                            "boolean"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "maxItems": 50,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
                           ]
                         }
                       },
@@ -3969,7 +3998,10 @@
                             },
                             "type": {
                               "type": "string",
-                              "const": "select"
+                              "enum": [
+                                "select",
+                                "multi_select"
+                              ]
                             },
                             "options": {
                               "minItems": 1,
@@ -4004,10 +4036,23 @@
                       "type": "string"
                     },
                     "additionalProperties": {
-                      "type": [
-                        "string",
-                        "number",
-                        "boolean"
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
                       ]
                     }
                   },
@@ -4022,10 +4067,23 @@
                               "type": "string"
                             },
                             "additionalProperties": {
-                              "type": [
-                                "string",
-                                "number",
-                                "boolean"
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "maxItems": 50,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
                               ]
                             }
                           },
@@ -4884,7 +4942,10 @@
                             },
                             "type": {
                               "type": "string",
-                              "const": "select"
+                              "enum": [
+                                "select",
+                                "multi_select"
+                              ]
                             },
                             "options": {
                               "minItems": 1,
@@ -4919,10 +4980,23 @@
                       "type": "string"
                     },
                     "additionalProperties": {
-                      "type": [
-                        "string",
-                        "number",
-                        "boolean"
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
                       ]
                     }
                   },
@@ -4937,10 +5011,23 @@
                               "type": "string"
                             },
                             "additionalProperties": {
-                              "type": [
-                                "string",
-                                "number",
-                                "boolean"
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "maxItems": 50,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
                               ]
                             }
                           },
@@ -5265,7 +5352,10 @@
                         },
                         "type": {
                           "type": "string",
-                          "const": "select"
+                          "enum": [
+                            "select",
+                            "multi_select"
+                          ]
                         },
                         "options": {
                           "minItems": 1,
@@ -5339,6 +5429,11 @@
             "type": "boolean",
             "const": true
           },
+          "thankYouMessage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
           "runId": {
             "type": "string",
             "format": "uuid",
@@ -5350,6 +5445,7 @@
         },
         "required": [
           "accepted",
+          "thankYouMessage",
           "replayed"
         ],
         "additionalProperties": false
@@ -5362,12 +5458,18 @@
             "type": "boolean",
             "const": true
           },
+          "thankYouMessage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
           "replayed": {
             "type": "boolean"
           }
         },
         "required": [
           "accepted",
+          "thankYouMessage",
           "replayed"
         ],
         "additionalProperties": false

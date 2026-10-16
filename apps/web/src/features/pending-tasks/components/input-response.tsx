@@ -33,7 +33,15 @@ export function InputResponse({
                     {field.label}
                   </dt>
                   <dd className="whitespace-pre-wrap break-words">
-                    {String(value)}
+                    {Array.isArray(value) ? (
+                      <ul className="list-inside list-disc">
+                        {value.map((option) => (
+                          <li key={option}>{option}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      String(value)
+                    )}
                   </dd>
                 </div>
               );

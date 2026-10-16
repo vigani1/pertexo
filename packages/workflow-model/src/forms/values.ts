@@ -3,7 +3,18 @@ import { z } from 'zod';
 import { inspectJsonValue } from '../json/canonical.js';
 import { FORM_LIMITS, type FormField } from './fields.js';
 
-export type FormValues = Readonly<Record<string, string | number | boolean>>;
+const selectionSchema = z
+  .array(storageTextSchema)
+  .max(FORM_LIMITS.options)
+  .refine(
+    (values) => new Set(values).size === values.length,
+    'Choose each option once.',
+  );
+export const formValuesSchema = z.record(
+  z.string(),
+  z.union([storageTextSchema, z.number(), z.boolean(), selectionSchema]),
+);
+export type FormValues = Readonly<z.output<typeof formValuesSchema>>;
 export class FormValuesInvalidError extends Error {
   override readonly name = 'FormValuesInvalidError';
   constructor(
@@ -22,6 +33,13 @@ function valueSchema(field: FormField): z.ZodType {
       return storageTextSchema.pipe(z.email().max(FORM_LIMITS.textCharacters));
     case 'date':
       return z.iso.date();
+    case 'multi_select':
+      return selectionSchema
+        .min(1)
+        .refine(
+          (values) => values.every((value) => field.options.includes(value)),
+          'Choose available options.',
+        );
     case 'select':
       return z
         .string()
@@ -60,7 +78,12 @@ export function parseFormValues(
           ? schema
           : z.preprocess(
               (value) =>
-                typeof value === 'string' && value.trim() === ''
+                (field.type !== 'multi_select' &&
+                  typeof value === 'string' &&
+                  value.trim() === '') ||
+                (field.type === 'multi_select' &&
+                  Array.isArray(value) &&
+                  value.length === 0)
                   ? undefined
                   : value,
               schema.optional(),
@@ -85,10 +108,7 @@ export function parseFormValues(
 }
 export const formSubmissionSchema = z
   .object({
-    values: z.record(
-      z.string(),
-      z.union([z.string(), z.number(), z.boolean()]),
-    ),
+    values: formValuesSchema,
     submittedBy: z.uuid().nullable(),
     submittedAt: z.iso.datetime(),
   })

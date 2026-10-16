@@ -4,6 +4,7 @@ import {
   approvalConfigSchema,
   inputRequestConfigSchema,
   formConfigSchema,
+  DEFAULT_FORM_THANK_YOU_MESSAGE,
   type TaskAudience,
   type FormConfig,
   type ApprovalConfig,
@@ -75,6 +76,11 @@ export function HumanFormSetup({
     return (
       <>
         {text}
+        <TaskTextField
+          name="thankYouMessage"
+          value={captured.thankYouMessage ?? DEFAULT_FORM_THANK_YOU_MESSAGE}
+          form={form}
+        />
         <FormFields fields={captured.fields} form={form} />
         <FormAccessControl scope={scope} editable={form.editable} />
       </>

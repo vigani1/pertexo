@@ -1,3 +1,4 @@
+import type { FormValues } from '@pertexo/workflow-model';
 import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PendingTaskDecisionRequest } from '@pertexo/contracts';
@@ -6,8 +7,7 @@ import { isApiError } from '@/lib/api/error';
 import { decideTask, submitTask, type TaskScope } from './tasks.api';
 import { taskKeys, taskQueryOptions } from './tasks.queries';
 type TaskResponse =
-  | PendingTaskDecisionRequest
-  | Readonly<{ values: Readonly<Record<string, string | number | boolean>> }>;
+  PendingTaskDecisionRequest | Readonly<{ values: FormValues }>;
 export function useTaskResponse(scope: TaskScope, taskId: string) {
   const cache = useQueryClient();
   const intent = useRef<

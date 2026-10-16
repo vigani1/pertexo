@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 export const FORM_LIMITS = Object.freeze({
   fields: 20,
+  thankYouCharacters: 1_000,
   schemaBytes: 10_240,
   options: 50,
   textCharacters: 10_000,
@@ -30,7 +31,7 @@ export const formFieldSchema = z.discriminatedUnion('type', [
     .strict(),
   field
     .extend({
-      type: z.literal('select'),
+      type: z.enum(['select', 'multi_select']),
       options: z
         .array(
           storageTextSchema
@@ -64,10 +65,16 @@ export const formFieldsSchema = z
     (fields) => inspectJsonValue(fields).bytes <= FORM_LIMITS.schemaBytes,
     'Keep field definitions within 10 KB; shorten help text or options.',
   );
+export const DEFAULT_FORM_THANK_YOU_MESSAGE = 'Thanks for your response.';
+export const formThankYouMessageSchema = storageTextSchema
+  .trim()
+  .min(1)
+  .max(FORM_LIMITS.thankYouCharacters);
 export const formConfigSchema = z
   .object({
     title: storageTextSchema.trim().min(1).max(160).default('Send a request'),
     instructions: storageTextSchema.max(2_000).default(''),
+    thankYouMessage: formThankYouMessageSchema.exactOptional(),
     fields: formFieldsSchema.default([
       {
         id: 'field-1',

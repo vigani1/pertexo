@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { inspectJsonValue } from '../json/canonical.js';
 import { storageTextSchema } from '../json/text.js';
-import { parseFormValues } from '../forms/values.js';
+import { parseFormValues, formValuesSchema } from '../forms/values.js';
 import type { FormField } from '../forms/fields.js';
 
 const scalar = z.union([storageTextSchema, z.number(), z.boolean(), z.null()]);
@@ -22,14 +22,10 @@ export const taskDetailsSchema = z
     return bytes + 2 * members <= 8_192;
   }, 'Keep task details within 8 KB; include only the facts needed to respond.');
 
-const prefillSchema = z.record(
-  z.string(),
-  z.union([storageTextSchema, z.number(), z.boolean()]),
-);
 export const taskContextSchema = z
   .object({
     details: taskDetailsSchema.optional(),
-    prefill: prefillSchema.optional(),
+    prefill: formValuesSchema.optional(),
   })
   .strict()
   .refine((value) => {

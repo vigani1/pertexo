@@ -1,5 +1,7 @@
+import { MultipleChoices } from './multiple-choices';
 import type { FormField } from '@pertexo/workflow-model';
 import { LabelledField } from '@/components/ui/field';
+import type { FormDraftValue } from '../model/values';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,14 +11,27 @@ export function FormFieldControl({
   id,
   value,
   error,
+  disabled,
   onChange,
 }: Readonly<{
   field: FormField;
   id: string;
-  value: string | boolean | undefined;
+  value: FormDraftValue | undefined;
   error: string | undefined;
-  onChange: (value: string | boolean) => void;
+  disabled: boolean;
+  onChange: (value: FormDraftValue) => void;
 }>) {
+  if (field.type === 'multi_select')
+    return (
+      <MultipleChoices
+        field={field}
+        id={id}
+        value={typeof value === 'object' ? value : []}
+        error={error}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    );
   const text = typeof value === 'string' ? value : '';
   return (
     <LabelledField
@@ -30,6 +45,7 @@ export function FormFieldControl({
           <Checkbox
             {...control}
             checked={value === true}
+            disabled={disabled}
             onCheckedChange={(checked) => {
               onChange(checked);
             }}

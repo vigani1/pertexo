@@ -8,7 +8,11 @@ import {
 } from '@pertexo/workflow-model';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
-import { valuesFromDraft } from '../model/values';
+import {
+  valuesFromDraft,
+  type FormDraft,
+  type FormDraftValue,
+} from '../model/values';
 export function FormResponse({
   fields,
   onSubmit,
@@ -25,13 +29,11 @@ export function FormResponse({
   initialValues?: FormValues;
 }>) {
   const id = useId();
-  const [draft, setDraft] = useState<
-    Readonly<Record<string, string | boolean>>
-  >(() =>
+  const [draft, setDraft] = useState<FormDraft>(() =>
     Object.fromEntries(
       Object.entries(initialValues ?? {}).map(([name, value]) => [
         name,
-        typeof value === 'boolean' ? value : String(value),
+        typeof value === 'number' ? String(value) : value,
       ]),
     ),
   );
@@ -57,7 +59,7 @@ export function FormResponse({
   const errorByName = new Map(
     errors.map((issue) => [issue.name, issue.message]),
   );
-  function change(name: string, value: string | boolean) {
+  function change(name: string, value: FormDraftValue) {
     setDraft((previous) => ({ ...previous, [name]: value }));
     setErrors((previous) =>
       previous.filter((issue) => issue.name !== name && issue.name !== ''),
@@ -79,6 +81,7 @@ export function FormResponse({
             field={field}
             id={`${id}-${field.name}`}
             value={draft[field.name]}
+            disabled={disabled || pending}
             error={errorByName.get(field.name)}
             onChange={(value) => {
               change(field.name, value);

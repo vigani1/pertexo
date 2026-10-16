@@ -5,6 +5,10 @@ import {
   parseFormValues,
   FormValuesInvalidError,
   inputRequestConfigSchema,
+  formThankYouMessageSchema,
+  formSubmissionSchema,
+  parseTaskPrefill,
+  DEFAULT_FORM_THANK_YOU_MESSAGE,
 } from '../../src/index.js';
 const fields = formFieldsSchema.parse(
   [
@@ -137,4 +141,106 @@ it('accepts emoji and refuses text PostgreSQL JSON cannot store before admission
     expect(() => parseFormValues(fields, { ...values, name })).toThrow(
       FormValuesInvalidError,
     );
+});
+
+it('preserves legacy setup and bounds an optional plain acceptance message', () => {
+  expect(DEFAULT_FORM_THANK_YOU_MESSAGE).toBe('Thanks for your response.');
+  expect(formConfigSchema.parse({})).not.toHaveProperty('thankYouMessage');
+  expect(
+    formConfigSchema.parse({ thankYouMessage: '  Thanks 🧵  ' })
+      .thankYouMessage,
+  ).toBe('Thanks 🧵');
+  expect(formThankYouMessageSchema.parse('x'.repeat(1000))).toHaveLength(1000);
+  for (const message of ['', ' ', 'x'.repeat(1001), 'bad\0text', '\ud800'])
+    expect(formThankYouMessageSchema.safeParse(message).success).toBe(false);
+  expect(
+    inputRequestConfigSchema.safeParse({ thankYouMessage: 'Not for tasks' })
+      .success,
+  ).toBe(false);
+});
+const multiple = formFieldsSchema.parse([
+  {
+    id: 'required',
+    name: 'channels',
+    label: 'Channels',
+    type: 'multi_select',
+    options: ['Email', 'SMS'],
+  },
+  {
+    id: 'optional',
+    name: 'extras',
+    label: 'Extras',
+    type: 'multi_select',
+    required: false,
+    options: ['A', 'B'],
+  },
+  { id: 'text', name: 'note', label: 'Note', type: 'text', required: false },
+]);
+it('keeps ordered unique choices and omits optional empty arrays, including partial prefills', () => {
+  const values = { channels: ['SMS', 'Email'] };
+  expect(parseFormValues(multiple, { ...values, extras: [] })).toEqual(values);
+  expect(parseTaskPrefill(multiple, { channels: [], extras: ['B'] })).toEqual({
+    extras: ['B'],
+  });
+  expect(
+    formSubmissionSchema.parse({
+      values,
+      submittedBy: null,
+      submittedAt: '2026-10-16T00:00:00.000Z',
+    }).values,
+  ).toEqual(values);
+});
+it.each([
+  [],
+  ['Email', 'Email'],
+  ['Other'],
+  'Email',
+  '',
+  false,
+  [1],
+  Array.from({ length: 51 }, () => 'Email'),
+])('refuses malformed or unavailable multiple choices (%j)', (value) => {
+  expect(() => parseFormValues(multiple, { channels: value })).toThrow(
+    FormValuesInvalidError,
+  );
+});
+it('does not coerce arrays into empty optional text or strings into optional choices', () => {
+  expect(() =>
+    parseFormValues(multiple, { channels: ['Email'], note: [] }),
+  ).toThrow(FormValuesInvalidError);
+  expect(() =>
+    parseFormValues(multiple, { channels: ['Email'], extras: '' }),
+  ).toThrow(FormValuesInvalidError);
+});
+it('retains the response budget with multiple choices and otherwise valid text', () => {
+  const options = Array.from(
+    { length: 50 },
+    (_, i) => `${String(i)}${'x'.repeat(158)}`,
+  );
+  const fields = formFieldsSchema.parse([
+    {
+      id: 'choices',
+      name: 'choices',
+      label: 'Choices',
+      type: 'multi_select',
+      options,
+    },
+    ...Array.from({ length: 7 }, (_, i) => ({
+      id: `f${String(i)}`,
+      name: `f${String(i)}`,
+      label: 'Text',
+      type: 'text',
+    })),
+  ]);
+  expect(() =>
+    parseFormValues(fields, {
+      choices: options,
+      ...Object.fromEntries(
+        Array.from({ length: 7 }, (_, i) => [
+          `f${String(i)}`,
+          'x'.repeat(9000),
+        ]),
+      ),
+    }),
+  ).toThrow('Check the form fields');
 });

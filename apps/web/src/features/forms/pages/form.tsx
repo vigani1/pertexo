@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import type {
   FormSchemaResponse,
   FormSubmissionResponse,
+  FormSubmissionRequest,
 } from '@pertexo/contracts';
 import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
 import { Status } from '@/components/ui/status';
@@ -16,17 +17,22 @@ import { formQueryOptions } from '../data/forms.queries';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
   const query = useQuery(formQueryOptions(scope));
+  const command = useRetainedCommand(
+    (body: FormSubmissionRequest, key: string) => sendForm(scope, body, key),
+  );
+  async function reload() {
+    const loaded = await query.refetch();
+    if (loaded.isSuccess) command.reset();
+  }
+  if (command.data !== undefined)
+    return <SubmissionReceipt scope={scope} receipt={command.data} />;
   if (query.isPending) return <Skeleton className="h-72 w-full" />;
   if (query.isError)
     return (
       <Notice
         tone="warning"
         action={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void query.refetch()}
-          >
+          <Button type="button" variant="outline" onClick={() => void reload()}>
             Try again
           </Button>
         }
@@ -40,9 +46,9 @@ export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
   return (
     <PublishedForm
       key={query.data.versionId}
-      scope={scope}
+      command={command}
       schema={query.data}
-      reload={() => void query.refetch()}
+      reload={reload}
     />
   );
 }
@@ -54,7 +60,12 @@ function SubmissionReceipt({
     <section className="flex flex-col gap-4">
       <FinishedThread />
       <h1 className="font-heading text-3xl font-semibold">Response sent</h1>
-      <Status tone="success">The workflow accepted your response.</Status>
+      <Status
+        tone="success"
+        className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
+      >
+        {receipt.thankYouMessage}
+      </Status>
       {scope.target.kind === 'member' && receipt.runId !== undefined ? (
         <Link
           to="/w/$workspaceId/runs/$runId"
@@ -70,21 +81,18 @@ function SubmissionReceipt({
     </section>
   );
 }
+type SubmissionCommand = ReturnType<
+  typeof useRetainedCommand<FormSubmissionRequest, FormSubmissionResponse>
+>;
 function PublishedForm({
-  scope,
+  command,
   schema,
   reload,
 }: Readonly<{
-  scope: FormScope;
+  command: SubmissionCommand;
   schema: FormSchemaResponse;
-  reload: () => void;
+  reload: () => Promise<void>;
 }>) {
-  const command = useRetainedCommand(
-    (body: Parameters<typeof sendForm>[1], key: string) =>
-      sendForm(scope, body, key),
-  );
-  if (command.data !== undefined)
-    return <SubmissionReceipt scope={scope} receipt={command.data} />;
   const changed =
     isApiError(command.cause) && command.cause.problem?.code === 'form.changed';
   const { versionId, form } = schema;
@@ -121,7 +129,11 @@ function PublishedForm({
                 Retry same response
               </Button>
             ) : changed ? (
-              <Button type="button" variant="outline" onClick={reload}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void reload()}
+              >
                 Reload form
               </Button>
             ) : undefined

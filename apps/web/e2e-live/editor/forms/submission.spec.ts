@@ -61,6 +61,13 @@ test('published member and public forms start real runs; captured member input c
     fields: [
       { id: 'message', name: 'message', label: 'Message', type: 'textarea' },
       { id: 'amount', name: 'amount', label: 'Amount', type: 'number' },
+      {
+        id: 'channels',
+        name: 'channels',
+        label: 'Channels',
+        type: 'multi_select',
+        options: ['Email', 'SMS'],
+      },
     ],
   });
   const graph = {
@@ -73,14 +80,27 @@ test('published member and public forms start real runs; captured member input c
           title: 'Complete the request',
           fields: [
             { id: 'answer', name: 'answer', label: 'Answer', type: 'text' },
+            {
+              id: 'channels',
+              name: 'channels',
+              label: 'Channels',
+              type: 'multi_select',
+              options: ['Email', 'SMS'],
+            },
           ],
         }),
         inputMappings: {
-          details: { kind: 'node_output', nodeId: 'form', path: '$.values' },
+          details: {
+            kind: 'expression',
+            language: 'jsonata',
+            expression:
+              '{"amount": nodeOutputs.form.values.amount, "request_message": nodeOutputs.form.values.request_message}',
+          },
           prefill: {
             kind: 'expression',
             language: 'jsonata',
-            expression: '{"answer": nodeOutputs.form.values.request_message}',
+            expression:
+              '{"answer": nodeOutputs.form.values.request_message, "channels": nodeOutputs.form.values.channels}',
           },
         },
       },
@@ -91,6 +111,11 @@ test('published member and public forms start real runs; captured member input c
             kind: 'node_output',
             nodeId: 'input',
             path: '$.values.answer',
+          },
+          channels: {
+            kind: 'node_output',
+            nodeId: 'input',
+            path: '$.values.channels',
           },
         },
       },
@@ -109,6 +134,17 @@ test('published member and public forms start real runs; captured member input c
   await page.reload();
   await page.getByTestId('rf__node-form').focus();
   await page.keyboard.press('Enter');
+  await page
+    .getByLabel('Thank-you message', { exact: true })
+    .fill('Thanks — we will review your request.');
+  await page.keyboard.press('Tab');
+  await expect
+    .poll(
+      async () =>
+        (await readEditorDraft(page, workflowPath)).graph.nodes[0]?.config
+          .thankYouMessage,
+    )
+    .toBe('Thanks — we will review your request.');
   const first = page.getByRole('region', { name: 'Field 1', exact: true });
   await expect(first).toBeVisible({ timeout: 5000 });
   const name = first.getByLabel('Data name', { exact: true });
@@ -121,7 +157,11 @@ test('published member and public forms start real runs; captured member input c
         (await readEditorDraft(page, workflowPath)).graph.nodes[0]?.config
           .fields,
     )
-    .toMatchObject([{ name: 'request_message' }, { name: 'amount' }]);
+    .toMatchObject([
+      { name: 'request_message' },
+      { name: 'amount' },
+      { name: 'channels' },
+    ]);
   await page
     .getByRole('button', { name: 'Move field 1 down', exact: true })
     .click();
@@ -132,6 +172,29 @@ test('published member and public forms start real runs; captured member input c
       return Array.isArray(fields) ? (fields[0] as unknown) : null;
     })
     .toMatchObject({ name: 'amount' });
+  const choices = page.getByRole('region', { name: 'Field 3', exact: true });
+  await choices.getByLabel('Type', { exact: true }).focus();
+  await choices.getByLabel('Type', { exact: true }).selectOption('select');
+  await page.keyboard.press('Tab');
+  await expect(choices.getByLabel('Options', { exact: true })).toHaveValue(
+    'Email\nSMS',
+  );
+  await choices.getByLabel('Type', { exact: true }).focus();
+  await choices
+    .getByLabel('Type', { exact: true })
+    .selectOption('multi_select');
+  await page.keyboard.press('Tab');
+  await expect
+    .poll(
+      async () =>
+        (await readEditorDraft(page, workflowPath)).graph.nodes[0]?.config
+          .fields,
+    )
+    .toMatchObject([
+      { name: 'amount' },
+      { name: 'request_message' },
+      { name: 'channels', type: 'multi_select', options: ['Email', 'SMS'] },
+    ]);
   const version = await publishSingleStep(page, workflowPath);
   // Manual start cannot forge server-owned Form metadata.
   const manual = await page.request.post(`${workflowPath}/runs`, {
@@ -215,6 +278,14 @@ test('published member and public forms start real runs; captured member input c
         .getByLabel('Message', { exact: true })
         .fill(`${kind} request`);
       await responder.getByLabel('Amount', { exact: true }).fill('0');
+      await responder
+        .getByRole('group', { name: 'Channels', exact: true })
+        .getByRole('checkbox', { name: 'SMS', exact: true })
+        .check();
+      await responder
+        .getByRole('group', { name: 'Channels', exact: true })
+        .getByRole('checkbox', { name: 'Email', exact: true })
+        .check();
       await responder.screenshot({
         path: `/tmp/pertexo-form-screenshots/${kind}-${String(width)}-before.png`,
         fullPage: true,
@@ -236,11 +307,20 @@ test('published member and public forms start real runs; captured member input c
         responder.getByRole('heading', { name: 'Response sent', exact: true }),
       ).toBeVisible();
       if (kind === 'public') {
-        expect(accepted).toEqual({ accepted: true, replayed: false });
+        expect(accepted).toEqual({
+          accepted: true,
+          replayed: false,
+          thankYouMessage: 'Thanks — we will review your request.',
+        });
         await expect(
           responder.getByRole('link', { name: 'Open run', exact: true }),
         ).toHaveCount(0);
       }
+      await expect(
+        responder.getByText('Thanks — we will review your request.', {
+          exact: true,
+        }),
+      ).toBeVisible();
       await responder.screenshot({
         path: `/tmp/pertexo-form-screenshots/${kind}-${String(width)}-after.png`,
         fullPage: true,
@@ -279,6 +359,15 @@ test('published member and public forms start real runs; captured member input c
       await expect(page.getByLabel('Answer', { exact: true })).toHaveValue(
         `${kind} request`,
       );
+      await expect(
+        page.getByRole('checkbox', { name: 'Email', exact: true }),
+      ).toBeChecked();
+      await expect(
+        page.getByRole('checkbox', { name: 'SMS', exact: true }),
+      ).toBeChecked();
+      await page
+        .getByRole('checkbox', { name: 'Email', exact: true })
+        .uncheck();
       await page.screenshot({
         path: `/tmp/pertexo-form-screenshots/${kind}-${String(width)}-request-context.png`,
         fullPage: true,

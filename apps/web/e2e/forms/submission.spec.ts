@@ -29,7 +29,13 @@ for (const width of [1280, 375])
       });
       expect(route.request().headers()['x-pertexo-form-key']).toBe(capability);
       if (writes.length === 1) return route.abort('failed');
-      return route.fulfill({ json: { accepted: true, replayed: true } });
+      return route.fulfill({
+        json: {
+          accepted: true,
+          replayed: true,
+          thankYouMessage: 'Thanks for your response.',
+        },
+      });
     });
     await page.goto(`/forms/${publicId}#${capability}`);
     await page
@@ -50,6 +56,9 @@ for (const width of [1280, 375])
       .click();
     await expect(
       page.getByRole('heading', { name: 'Response sent', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('Thanks for your response.', { exact: true }),
     ).toBeVisible();
     expect(writes).toHaveLength(2);
     expect(writes[1]).toEqual(writes[0]);

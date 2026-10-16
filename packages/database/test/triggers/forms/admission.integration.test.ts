@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
 import { RunRequiresFormError } from '../../../src/runs/commands/forms.js';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -36,7 +37,7 @@ beforeAll(() => {
   );
 });
 afterAll(() => store.close());
-async function fixture() {
+async function fixture(config: z.input<typeof formConfigSchema> = {}) {
   const family = await createFamily({ childDays: 0, consumed: true });
   const workflowId = randomUUID(),
     versionId = randomUUID(),
@@ -83,6 +84,7 @@ async function fixture() {
               required: false,
             },
           ],
+          ...config,
         }),
       },
       node('finish', 'core.terminate'),
@@ -193,7 +195,11 @@ it('keeps public keys out of receipts and audit; rotates and disables them immed
     },
     grant,
   );
-  expect(submitted).toEqual({ accepted: true, replayed: false });
+  expect(submitted).toEqual({
+    accepted: true,
+    replayed: false,
+    thankYouMessage: 'Thanks for your response.',
+  });
   const run = await admin.query(
     `select started_by,input_ref from app.workflow_runs where workspace_id=$1 and workflow_id=$2`,
     [f.workspaceId, f.workflowId],
@@ -381,8 +387,8 @@ it('revokes a public grant when publication replaces the form entry, and never r
   });
 });
 
-it('keeps the accepted receipt through republication but refuses a new response from the old schema', async () => {
-  const f = await fixture();
+it('keeps the accepted receipt and message through republication but refuses a new response from the old schema', async () => {
+  const f = await fixture({ thankYouMessage: 'Original acceptance.' });
   const command = {
     ...f,
     versionId: f.versionId,
@@ -390,6 +396,7 @@ it('keeps the accepted receipt through republication but refuses a new response 
     idempotencyKey: 'before-publication',
   };
   const accepted = await store.submit(command);
+  expect(accepted.thankYouMessage).toBe('Original acceptance.');
   const row = await admin.query<{ graph_json: WorkflowGraph }>(
     'select graph_json from app.workflow_versions where id=$1',
     [f.versionId],
@@ -400,7 +407,14 @@ it('keeps the accepted receipt through republication but refuses a new response 
     ...previous,
     nodes: previous.nodes.map((node) =>
       node.id === 'form'
-        ? { ...node, config: { ...node.config, title: 'A newer form' } }
+        ? {
+            ...node,
+            config: {
+              ...node.config,
+              title: 'A newer form',
+              thankYouMessage: 'A newer message.',
+            },
+          }
         : node,
     ),
   };
@@ -429,10 +443,9 @@ it('keeps the accepted receipt through republication but refuses a new response 
   await expect(
     store.submit({ ...command, idempotencyKey: 'new-stale-response' }),
   ).rejects.toBeInstanceOf(FormChangedError);
-  expect(await store.read(f)).toMatchObject({
-    versionId,
-    form: { title: 'A newer form' },
-  });
+  const shown = await store.read(f);
+  expect(shown).toMatchObject({ versionId, form: { title: 'A newer form' } });
+  expect(shown.form).not.toHaveProperty('thankYouMessage');
 });
 
 it('replays only the exact captured Form submission and refuses invented metadata', async () => {
@@ -498,4 +511,49 @@ it('replays only the exact captured Form submission and refuses invented metadat
   } finally {
     await runs.close();
   }
+});
+
+it('admits typed multiple choices once and refuses malformed choices before admission', async () => {
+  const f = await fixture({
+    fields: [
+      {
+        id: 'channels',
+        name: 'channels',
+        label: 'Channels',
+        type: 'multi_select',
+        options: ['Email', 'SMS'],
+      },
+    ],
+  });
+  const command = {
+    ...f,
+    versionId: f.versionId,
+    idempotencyKey: 'choices',
+    values: { channels: ['SMS', 'Email'] },
+  };
+  const accepted = await store.submit(command);
+  expect(accepted.thankYouMessage).toBe('Thanks for your response.');
+  expect(
+    (
+      await admin.query('select input_ref from app.workflow_runs where id=$1', [
+        accepted.runId,
+      ])
+    ).rows[0],
+  ).toMatchObject({ input_ref: { value: { values: command.values } } });
+  for (const channels of [[], ['Email', 'Email'], ['Other'], 'Email'])
+    await expect(
+      store.submit({
+        ...command,
+        idempotencyKey: randomUUID(),
+        values: { channels },
+      }),
+    ).rejects.toBeInstanceOf(FormValuesInvalidError);
+  expect(
+    (
+      await admin.query(
+        'select count(*)::int n from app.workflow_runs where workflow_id=$1',
+        [f.workflowId],
+      )
+    ).rows,
+  ).toEqual([{ n: 1 }]);
 });

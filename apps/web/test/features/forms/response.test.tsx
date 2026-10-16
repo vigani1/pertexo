@@ -67,3 +67,66 @@ it('initializes typed prefills once without replacing local edits on refetch', a
     });
   });
 });
+
+const choices = formFieldsSchema.parse([
+  {
+    id: 'channels',
+    name: 'channels',
+    label: 'Channels',
+    help: 'Choose the channels to use.',
+    type: 'multi_select',
+    options: ['Email', 'SMS'],
+  },
+]);
+it('renders labelled multiple choices, requires a choice and submits configured order', async () => {
+  const send = vi.fn().mockResolvedValue(undefined),
+    user = userEvent.setup();
+  render(<FormResponse fields={choices} onSubmit={send} />);
+  expect(
+    screen.getByRole('group', { name: 'Channels' }),
+  ).toHaveAccessibleDescription('Choose the channels to use.');
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  expect(send).not.toHaveBeenCalled();
+  await screen.findByText('Enter a valid value for this field.');
+  await user.click(screen.getByRole('checkbox', { name: 'SMS' }));
+  await user.click(screen.getByRole('checkbox', { name: 'Email' }));
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  await waitFor(() => {
+    expect(send).toHaveBeenCalledWith({ channels: ['Email', 'SMS'] });
+  });
+});
+it('keeps editable array prefills once and prevents disabled checkbox changes', async () => {
+  const send = vi.fn().mockResolvedValue(undefined),
+    user = userEvent.setup();
+  const view = render(
+    <FormResponse
+      fields={choices}
+      initialValues={{ channels: ['Email'] }}
+      onSubmit={send}
+    />,
+  );
+  const email = screen.getByRole('checkbox', { name: 'Email' }),
+    sms = screen.getByRole('checkbox', { name: 'SMS' });
+  expect(email).toBeChecked();
+  await user.click(sms);
+  view.rerender(
+    <FormResponse
+      fields={choices}
+      initialValues={{ channels: [] }}
+      onSubmit={send}
+    />,
+  );
+  expect(email).toBeChecked();
+  expect(sms).toBeChecked();
+  view.rerender(
+    <FormResponse
+      fields={choices}
+      initialValues={{ channels: [] }}
+      disabled
+      onSubmit={send}
+    />,
+  );
+  expect(email).toHaveAttribute('aria-disabled', 'true');
+  await user.click(email);
+  expect(email).toBeChecked();
+});
