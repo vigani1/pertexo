@@ -12,8 +12,8 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
-export const authenticationMailDeliveries = appSchema.table(
-  'authentication_mail_deliveries',
+export const systemMailDeliveries = appSchema.table(
+  'system_mail_deliveries',
   {
     id: uuid().primaryKey().notNull(),
     purpose: varchar({ length: 32 }).notNull(),
@@ -57,39 +57,36 @@ export const authenticationMailDeliveries = appSchema.table(
   },
   (table): PgTableExtraConfigValue[] => [
     check(
-      'authentication_mail_active_has_payload',
+      'system_mail_active_has_payload',
       sql`(((status)::text <> ALL (ARRAY[('queued'::character varying)::text, ('outcome_unknown'::character varying)::text, ('retry'::character varying)::text])) OR (payload_ciphertext IS NOT NULL))`,
     ),
     check(
-      'authentication_mail_attempts_bounded',
+      'system_mail_attempts_bounded',
       sql`((attempt_count >= 0) AND (attempt_count <= 12))`,
     ),
+    check('system_mail_expiry_after_creation', sql`(expires_at > created_at)`),
     check(
-      'authentication_mail_expiry_after_creation',
-      sql`(expires_at > created_at)`,
-    ),
-    check(
-      'authentication_mail_lease_complete',
+      'system_mail_lease_complete',
       sql`(((lease_owner IS NULL) AND (lease_token IS NULL) AND (lease_expires_at IS NULL)) OR ((lease_owner IS NOT NULL) AND (lease_token IS NOT NULL) AND (lease_expires_at IS NOT NULL)))`,
     ),
     check(
-      'authentication_mail_payload_complete',
+      'system_mail_payload_complete',
       sql`(((payload_ciphertext IS NULL) AND (payload_nonce IS NULL) AND (payload_tag IS NULL) AND (payload_key_version IS NULL)) OR ((payload_ciphertext IS NOT NULL) AND (payload_nonce IS NOT NULL) AND (payload_tag IS NOT NULL) AND (payload_key_version IS NOT NULL)))`,
     ),
     check(
-      'authentication_mail_purpose_valid',
+      'system_mail_purpose_valid',
       sql`((purpose)::text = ANY (ARRAY[('verification'::character varying)::text, ('password_reset'::character varying)::text, ('email_change_confirmation'::character varying)::text, ('workspace_notice'::character varying)::text]))`,
     ),
     check(
-      'authentication_mail_status_valid',
+      'system_mail_status_valid',
       sql`((status)::text = ANY (ARRAY[('queued'::character varying)::text, ('outcome_unknown'::character varying)::text, ('retry'::character varying)::text, ('submitted'::character varying)::text, ('failed'::character varying)::text, ('reconciliation_required'::character varying)::text, ('expired'::character varying)::text]))`,
     ),
-    index('authentication_mail_due_idx')
+    index('system_mail_due_idx')
       .on(table.nextAttemptAt, table.id)
       .where(
         sql`((status)::text = ANY (ARRAY[('queued'::character varying)::text, ('outcome_unknown'::character varying)::text, ('retry'::character varying)::text]))`,
       ),
-    index('authentication_mail_retention_idx')
+    index('system_mail_retention_idx')
       .on(table.completedAt, table.id)
       .where(
         sql`((status)::text = ANY (ARRAY[('submitted'::character varying)::text, ('failed'::character varying)::text, ('reconciliation_required'::character varying)::text, ('expired'::character varying)::text]))`,

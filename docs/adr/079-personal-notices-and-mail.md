@@ -105,12 +105,14 @@ the 12 KiB envelope remain. The shared delivery table becomes
 claim state. Existing cryptographic AAD and provider identities retain their old
 strings so queued messages remain readable and retry the identical command.
 
-Reuse the existing revision-bound capability for RFC 8058 one-click POST, with
-exactly `List-Unsubscribe=One-Click` in either standard form MIME type. No cookie,
+Reuse the existing revision-bound capability for RFC 8058 one-click POST, accepting
+`application/x-www-form-urlencoded` or `multipart/form-data` within 8 KiB. The
+URL token authorizes the command; ignore the body without parsing it. No new
+parser dependency or custom multipart decoder. No cookie,
 session, CSRF secret or redirect is required for POST. A manual GET only redirects
 to the existing same-origin fragment confirmation page; it never opts out. Keep
-that human confirmation and its header-authorized command. The bounded parser
-applies only to the new endpoint. Both transports add the two fixed headers only
+that human confirmation and its header-authorized command. The body ceiling and MIME restriction
+apply to the new endpoint; authentication still forwards form bytes to Better Auth. Both transports add the two fixed headers only
 when the sealed payload contains its optional unsubscribe URL; legacy payloads
 and security mail keep their behavior.
 

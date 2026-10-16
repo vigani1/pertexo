@@ -241,6 +241,31 @@ test('personal schedules survive exact retry, real failures reach Inbox and SMTP
         await (await page.request.get(preferencePath)).json(),
       ),
     ).toMatchObject({ revision: 2, mode: 'immediate' });
+    const capability = new URL(link).hash.slice(1);
+    const oneClick = `/v1/notifications/unsubscribe/one-click?token=${capability}`;
+    const scanner = await anonymous.request.get(oneClick, { maxRedirects: 0 });
+    expect(scanner.status()).toBe(303);
+    expect(scanner.headers().location).toBe(
+      `/notifications/unsubscribe#${capability}`,
+    );
+    expect(
+      noticePreferencesResponseSchema.parse(
+        await (await page.request.get(preferencePath)).json(),
+      ),
+    ).toMatchObject({ revision: 2, mode: 'immediate' });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const optOut = await anonymous.request.post(oneClick, {
+        form: { 'List-Unsubscribe': 'One-Click' },
+        maxRedirects: 0,
+      });
+      expect(optOut.status(), await optOut.text()).toBe(200);
+      expect(optOut.headers().location).toBeUndefined();
+    }
+    expect(
+      noticePreferencesResponseSchema.parse(
+        await (await page.request.get(preferencePath)).json(),
+      ),
+    ).toMatchObject({ revision: 3, mode: 'off' });
     await confirmation
       .getByRole('button', { name: 'Turn off personal email', exact: true })
       .click();

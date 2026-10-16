@@ -14,6 +14,7 @@ export type NoticeMailToSeal = Readonly<{
   expiresAt: Date;
   toEmail: string;
   workspaceId: string;
+  workspaceName: string;
   actorId: string;
   revision: number;
   memberRevision: number;

@@ -29,16 +29,12 @@ export function sealNoticeMail(
   });
   const unsubscribe = new URL('/notifications/unsubscribe', publicWebOrigin);
   unsubscribe.hash = token;
-  const lines = input.items.slice(0, 25).map(
-    (item) =>
-      `${labels[item.noticeKind]}: ${Array.from(
-        item.name.replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, ' '),
-      )
-        .slice(0, 64)
-        .join(
-          '',
-        )}${item.noticeKind === 'workflow_failure' ? ` (${String(item.count)})` : ''}`,
-  );
+  const lines = input.items
+    .slice(0, 25)
+    .map(
+      (item) =>
+        `${labels[item.noticeKind]}: ${noticeName(item.name)}${item.noticeKind === 'workflow_failure' ? ` (${String(item.count)})` : ''}`,
+    );
   const text = [
     ...lines,
     ...(input.items.length > 25
@@ -49,13 +45,16 @@ export function sealNoticeMail(
     '',
     `Turn off personal email notifications: ${unsubscribe.href}`,
   ].join('\n');
+  const oneClick = new URL(
+    '/v1/notifications/unsubscribe/one-click',
+    publicWebOrigin,
+  );
+  oneClick.searchParams.set('token', token);
   const message = {
     fromEmail,
     toEmail: input.toEmail,
-    subject:
-      input.items.length === 1
-        ? labels[input.items[0]?.noticeKind ?? 'workflow_failure']
-        : `${String(input.items.length)} workspace notices`,
+    subject: noticeSubject(input),
+    unsubscribeUrl: oneClick.href,
     text,
   };
   const serialized = JSON.stringify(message);
@@ -65,4 +64,22 @@ export function sealNoticeMail(
     serialized,
     `pertexo/authentication-mail/workspace_notice/${input.id}/${input.expiresAt.toISOString()}`,
   );
+}
+
+function noticeName(name: string): string {
+  return Array.from(name.replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, ' '))
+    .slice(0, 64)
+    .join('')
+    .trim();
+}
+function noticeSubject(input: NoticeMailToSeal): string {
+  const workspace = noticeName(input.workspaceName);
+  const subject = input.items.find(
+    (item) => item.noticeKind !== 'limit_reached',
+  );
+  if (input.items.length === 1)
+    return subject === undefined
+      ? `${labels.limit_reached} — ${workspace}`
+      : `${labels[subject.noticeKind]}: ${noticeName(subject.name)} — ${workspace}`;
+  return `${String(input.items.length)} notices${subject === undefined ? '' : `: ${noticeName(subject.name)}`} — ${workspace}`;
 }

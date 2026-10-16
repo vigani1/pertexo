@@ -1,4 +1,4 @@
-import { authenticationMailDeliveries } from './schema/mail/deliveries.js';
+import { systemMailDeliveries } from './schema/mail/deliveries.js';
 import {
   noticeWorkspaceSettings,
   noticePreferences,
@@ -205,7 +205,7 @@ export const databaseSchema = {
   userProfileCommandReceipts,
   authMethodLinkAttempts,
   authEmailProofs,
-  authenticationMailDeliveries,
+  systemMailDeliveries,
   identitySecurityAuditFacts,
   failureNotificationDestinations,
   failureNotificationDestinationVersions,

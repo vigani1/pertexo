@@ -10,23 +10,29 @@ import { sealNoticeMail } from '../../src/mail/notice-content.js';
 it('bounds a maximum batch with Unicode names and seals an independently scoped unsubscribe link', () => {
   const envelope = createApplicationSecretEnvelope({
     current: {
-      version: 'notice-test',
+      version: 'v'.repeat(64),
       key: Buffer.alloc(32, 8).toString('base64'),
     },
   });
   const input: NoticeMailToSeal = {
     id: randomUUID(),
     expiresAt: new Date(Date.now() + 86_400_000),
-    toEmail: 'member@example.test',
+    toEmail:
+      'm'.repeat(64) +
+      '@' +
+      ['a'.repeat(63), 'b'.repeat(63), 'c'.repeat(63), 'd'.repeat(61)].join(
+        '.',
+      ),
+    workspaceName: '🧵'.repeat(70),
     workspaceId: randomUUID(),
     actorId: randomUUID(),
-    revision: 7,
-    memberRevision: 3,
+    revision: Number.MAX_SAFE_INTEGER,
+    memberRevision: Number.MAX_SAFE_INTEGER,
     items: Array.from({ length: 100 }, () => ({
       id: randomUUID(),
       revision: '9223372036854775807',
       noticeKind: 'workflow_failure',
-      name: '\n\r\u2028' + '🧵'.repeat(70) + 'NOT_DISPLAYED',
+      name: '🧵'.repeat(70) + 'NOT_DISPLAYED',
       count: 2_147_483_647,
       subjectId: randomUUID(),
       workflowId: randomUUID(),
@@ -34,8 +40,11 @@ it('bounds a maximum batch with Unicode names and seals an independently scoped 
   };
   const sealed = sealNoticeMail(
     envelope,
-    'security@example.test',
-    'https://app.example.test',
+    input.toEmail,
+    'https://' +
+      ['a'.repeat(63), 'b'.repeat(63), 'c'.repeat(63), 'd'.repeat(61)].join(
+        '.',
+      ),
     input,
   );
   const serialized = envelope.open(
@@ -43,8 +52,16 @@ it('bounds a maximum batch with Unicode names and seals an independently scoped 
     `pertexo/authentication-mail/workspace_notice/${input.id}/${input.expiresAt.toISOString()}`,
   );
   expect(Buffer.byteLength(serialized, 'utf8')).toBeLessThanOrEqual(12_288);
-  const message = JSON.parse(serialized) as { text: string; subject: string };
-  expect(message.subject).toBe('100 workspace notices');
+  const message = JSON.parse(serialized) as {
+    text: string;
+    subject: string;
+    unsubscribeUrl: string;
+  };
+  expect(message.subject).toMatch(/^100 notices:.* — 🧵/u);
+  expect(message.subject).not.toMatch(/[\r\n\u2028\u2029]/u);
+  expect(new URL(message.unsubscribeUrl).searchParams.get('token')).toBe(
+    /unsubscribe#([A-Za-z0-9_-]+)/u.exec(message.text)?.[1],
+  );
   expect(message.text.match(/^Workflow failed:/gmu)).toHaveLength(25);
   expect(message.text).toContain('75 more notices');
   expect(message.text).not.toMatch(/NOT_DISPLAYED|[\r\u2028]/u);
@@ -55,8 +72,64 @@ it('bounds a maximum batch with Unicode names and seals an independently scoped 
     {
       workspaceId: input.workspaceId,
       actorId: input.actorId,
-      revision: 7,
-      memberRevision: 3,
+      revision: Number.MAX_SAFE_INTEGER,
+      memberRevision: Number.MAX_SAFE_INTEGER,
     },
   );
 });
+
+it.each([
+  [
+    'workflow_failure',
+    '\nImport\r\u2028',
+    'Workflow failed: Import — Operations',
+  ],
+  [
+    'connection_attention',
+    'Billing key',
+    'Connection needs attention: Billing key — Operations',
+  ],
+  ['limit_reached', 'Operations', 'Workspace limit reached — Operations'],
+] as const)(
+  'names the %s subject and workspace',
+  (noticeKind, name, subject) => {
+    const envelope = createApplicationSecretEnvelope({
+      current: { version: 'v1', key: Buffer.alloc(32, 8).toString('base64') },
+    });
+    const input: NoticeMailToSeal = {
+      id: randomUUID(),
+      expiresAt: new Date(Date.now() + 86400000),
+      toEmail: 'member@example.test',
+      workspaceId: randomUUID(),
+      workspaceName: '\nOperations\r\u2029',
+      actorId: randomUUID(),
+      revision: 1,
+      memberRevision: 1,
+      items: [
+        {
+          id: randomUUID(),
+          revision: '1',
+          noticeKind,
+          name,
+          count: 1,
+          subjectId: randomUUID(),
+          workflowId: null,
+        },
+      ],
+    };
+    const sealed = sealNoticeMail(
+      envelope,
+      'security@example.test',
+      'https://app.example.test',
+      input,
+    );
+    expect(
+      JSON.parse(
+        envelope.open(
+          sealed,
+          `pertexo/authentication-mail/workspace_notice/${input.id}/${input.expiresAt.toISOString()}`,
+        ),
+      ),
+    ).toMatchObject({ subject });
+  },
+);

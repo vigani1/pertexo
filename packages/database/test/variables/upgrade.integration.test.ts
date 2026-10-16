@@ -109,7 +109,10 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         `insert into app.preview_runs(id,workspace_id,workflow_id,draft_revision,draft_fingerprint,node_id,definition_key,definition_version,executor_key,executor_version,actor_user_id,idempotency_key_hash,request_hash,executable_node_json,input_ref,side_effect_class,may_contact_provider,may_cause_external_side_effect,dry_run,execution_deadline_at,expires_at,variable_snapshot) values($1,$2,$3,1,$4,'step','core.set',1,'core.set',1,$5,$4,$4,'{}','{"kind":"inline","value":null}','safe',false,false,'not_supported',clock_timestamp()+interval '1 hour',clock_timestamp()+interval '2 days','{"revision":1,"values":{"RATE":10}}')`,
         [preview, workspaceId, workflowId, 'a'.repeat(64), owner],
       );
-      expect(await upgrade()).toEqual(['0016_variable_set_revisions.sql']);
+      expect(await upgrade()).toEqual([
+        '0016_variable_set_revisions.sql',
+        '0017_system_mail_deliveries.sql',
+      ]);
       expect(
         (
           await admin.query(

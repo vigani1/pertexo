@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { FastifyAdapter } from '@nestjs/platform-fastify';
+import { registerNoticeUnsubscribeTransport } from '../../src/notifications/preferences/transport.js';
 
 import { betterAuth } from 'better-auth';
 import { memoryAdapter } from 'better-auth/adapters/memory';
@@ -82,6 +84,36 @@ describe('Better Auth Fastify bridge', () => {
     }>();
     expect(acceptedBody.user.email).toBe('ada@example.test');
     expect(acceptedBody.user.id).toMatch(/^[0-9a-f-]{36}$/u);
+  });
+
+  it('preserves authentication form bytes with the opaque unsubscribe transport registered', async () => {
+    const adapter = new FastifyAdapter();
+    const application = adapter.getInstance();
+    applications.push(application);
+    registerNoticeUnsubscribeTransport(adapter);
+    const received: string[] = [];
+    registerBetterAuthHandler(application, {
+      publicOrigin: 'https://pertexo.test',
+      rateLimitConsumer: allowingRateLimit,
+      sessionCookie: { secure: true, sameSite: 'lax', maxAgeSeconds: 3_600 },
+      handler: async (request) => {
+        received.push(await request.text());
+        return new Response(null, { status: 204 });
+      },
+    });
+    const payload =
+      'email=ada%2Btest%40example.test&password=with+spaces%26symbols&state=one&state=two';
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/auth/sign-in/email',
+      headers: {
+        origin: 'https://pertexo.test',
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload,
+    });
+    expect(response.statusCode, response.payload).toBe(204);
+    expect(received).toEqual([payload]);
   });
 
   it('forwards multiple Set-Cookie response fields independently', async () => {

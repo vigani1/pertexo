@@ -30,7 +30,7 @@ export async function readMailSubjects(
  and (sub.changed_at is null or thread.latest_occurred_at>sub.changed_at)
  and ($4::uuid[] is null or thread.id=any($4))
  and (thread.notice_kind='workflow_failure' or (thread.notice_kind='workflow_auto_paused' and workflow.trigger_pause_state='paused') or (thread.notice_kind='connection_attention' and connection.status='reauthorization_required') or thread.notice_kind='limit_reached' or thread.notice_kind='approval_waiting')
- and ($4::uuid[] is not null or not exists(select 1 from app.notice_mail_items item join app.notice_mail_batches batch on batch.workspace_id=item.workspace_id and batch.id=item.batch_id join app.authentication_mail_deliveries delivery on delivery.id=batch.id where item.workspace_id=thread.workspace_id and item.thread_id=thread.id and item.revision>=thread.revision and batch.user_id=$2 and batch.released_at is null))
+ and ($4::uuid[] is not null or not exists(select 1 from app.notice_mail_items item join app.notice_mail_batches batch on batch.workspace_id=item.workspace_id and batch.id=item.batch_id join app.system_mail_deliveries delivery on delivery.id=batch.id where item.workspace_id=thread.workspace_id and item.thread_id=thread.id and item.revision>=thread.revision and batch.user_id=$2 and batch.released_at is null))
  order by thread.latest_occurred_at,thread.id limit 100`,
     [workspaceId, actorId, cut, onlyIds ?? null],
   );

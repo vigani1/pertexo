@@ -53,7 +53,7 @@ export async function verifyNotificationEvidence(
       async () =>
         (
           await database.query<{ status: string }>(
-            'select delivery.status from app.notice_mail_batches batch join app.authentication_mail_deliveries delivery on delivery.id=batch.id where batch.workspace_id=$1',
+            'select delivery.status from app.notice_mail_batches batch join app.system_mail_deliveries delivery on delivery.id=batch.id where batch.workspace_id=$1',
             [person.workspace_id],
           )
         ).rows,

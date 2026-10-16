@@ -6,6 +6,7 @@ import {
   noticeSubscriptionRequestSchema,
   noticeCommandResponseSchema,
   noticeUnsubscribeResponseSchema,
+  noticeOneClickQuerySchema,
 } from '../../schemas/notifications/preferences.js';
 import {
   jsonSchema,
@@ -140,6 +141,66 @@ export const notificationPreferencePaths = {
         },
       },
     },
+  '/v1/notifications/unsubscribe/one-click': {
+    get: {
+      operationId: 'confirmOneClickNotificationUnsubscribe',
+      description:
+        'Manual clients only: non-mutating redirect to the existing same-origin confirmation page.',
+      security: [],
+      parameters: [
+        {
+          in: 'query',
+          name: 'token',
+          required: true,
+          schema: jsonSchema(noticeOneClickQuerySchema.shape.token, 'input'),
+        },
+      ],
+      responses: {
+        '303': {
+          description: 'Open confirmation without changing email',
+          headers: { Location: { required: true, schema: { type: 'string' } } },
+        },
+        '400': problems['400'],
+        '429': problems['429'],
+        default: problemResponse('Unexpected or unavailable service'),
+      },
+    },
+    post: {
+      operationId: 'oneClickNotificationUnsubscribe',
+      description:
+        'RFC 8058 capability-authorized opt-out. The URL token authorizes the request. Form contents are ignored within 8 KiB. No session, cookies, CSRF header or redirect. Only turns personal email Off.',
+      security: [],
+      parameters: [
+        {
+          in: 'query',
+          name: 'token',
+          required: true,
+          schema: jsonSchema(noticeOneClickQuerySchema.shape.token, 'input'),
+        },
+      ],
+      requestBody: {
+        required: false,
+        description:
+          'Opaque body, ignored. Mail clients normally send List-Unsubscribe=One-Click. Maximum 8 KiB.',
+        content: {
+          'application/x-www-form-urlencoded': { schema: {} },
+          'multipart/form-data': { schema: {} },
+        },
+      },
+      responses: {
+        '200': jsonResponse(
+          'Personal email is Off',
+          'NoticeUnsubscribeResponse',
+        ),
+        '400': problems['400'],
+        '404': problems['404'],
+        '413': problemResponse('Form exceeds 8 KiB'),
+        '415': problemResponse('Expected a standard form MIME type'),
+        '429': problems['429'],
+        '500': problems['500'],
+      },
+    },
+  },
   '/v1/notifications/unsubscribe': {
     post: {
       operationId: 'unsubscribeNotificationEmail',
@@ -173,6 +234,8 @@ export const notificationPreferencePaths = {
   },
 };
 export const notificationPreferenceRoutes = [
+  { method: 'GET', path: '/v1/notifications/unsubscribe/one-click' },
+  { method: 'POST', path: '/v1/notifications/unsubscribe/one-click' },
   {
     method: 'GET',
     path: '/v1/workspaces/:workspaceId/notifications/preferences',
