@@ -59,7 +59,8 @@ intent, so check run history first. After the window, the same-request control
 stops rather than risk accepting another run.
 
 For bounded collection preparation, UTC date conversion and editable expression
-examples, read [Prepare data in a workflow](../../docs/data-transforms.md).
+examples, read
+[Prepare data in a workflow](../../docs/guides/data-transforms.md).
 
 Read [Frontend architecture](ARCHITECTURE.md) for folder ownership, shared
 contracts, state, forms, saving conflicts, auth, SSE, Weft and verification.

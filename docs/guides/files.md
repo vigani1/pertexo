@@ -226,7 +226,7 @@ HTTP uploads are unsafe external operations: a failed response or lost
 connection may still have taken effect. Existing unknown-outcome attention and
 explicit recovery acknowledgements apply unchanged. This release adds no special
 Read file recovery exception and does not relax F09's artifact/reused-prefix
-restrictions. See [failure paths and recovery](feature-plans/09-failure-paths-and-recovery.md).
+restrictions. See [failure paths and recovery](../feature-plans/09-failure-paths-and-recovery.md).
 
 ## How long files stay
 
@@ -256,11 +256,11 @@ reference; do not substitute a signed download URL for the descriptor.
 
 Synthetic local fixtures exercise the ordinary browser, API, compiled worker and
 signature-validating storage; no real destination service is used. See
-[Read file desktop](images/f04/read-desktop.png),
-[Read file phone](images/f04/read-phone.png),
-[HTTP raw mode](images/f04/multipart-raw.png),
-[multipart desktop](images/f04/multipart-desktop.png) and
-[multipart phone](images/f04/multipart-phone.png).
+[Read file desktop](../images/f04/read-desktop.png),
+[Read file phone](../images/f04/read-phone.png),
+[HTTP raw mode](../images/f04/multipart-raw.png),
+[multipart desktop](../images/f04/multipart-desktop.png) and
+[multipart phone](../images/f04/multipart-phone.png).
 
 Later work: larger files via streaming or paging first, then separately planned
 email attachments, webhook file ingestion, Excel/other formats, a file browser,

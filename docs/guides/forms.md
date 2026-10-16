@@ -48,10 +48,10 @@ the same response after a publication change keeps its original message and cann
 start another run. HTML is displayed as text. Request input has no separate
 thank-you setting.
 
-[Member form](media/forms/member-1280-before.png) ·
-[Member receipt](media/forms/member-1280-after.png) ·
-[Phone form](media/forms/public-375-before.png) ·
-[Phone receipt](media/forms/public-375-after.png)
+[Member form](../media/forms/member-1280-before.png) ·
+[Member receipt](../media/forms/member-1280-after.png) ·
+[Phone form](../media/forms/public-375-before.png) ·
+[Phone receipt](../media/forms/public-375-after.png)
 
 ## Public links
 

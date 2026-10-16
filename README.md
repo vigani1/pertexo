@@ -189,18 +189,19 @@ credentials. See
 for configuration, delivery uncertainty and switching providers safely. Workflow
 Email steps and workspace Alerts still use their workspace Resend connections.
 
-Human decisions in workflows: [approvals guide](docs/approvals.md).
+Human decisions in workflows: [approvals guide](docs/guides/approvals.md).
 
-Personal API tokens and the HTTP CLI: [automation guide](docs/automation.md).
+Personal API tokens and the HTTP CLI:
+[automation guide](docs/guides/automation.md).
 
 Run a separate workflow after a failure:
-[error workflow guide](docs/error-workflows.md).
+[error workflow guide](docs/guides/error-workflows.md).
 
 Published member/public forms and durable input requests:
-[forms guide](docs/forms.md).
+[forms guide](docs/guides/forms.md).
 
 Shared non-secret configuration with immutable run snapshots:
-[workspace variables guide](docs/variables.md).
+[workspace variables guide](docs/guides/variables.md).
 
 A personal Inbox, follow/mute and notification email schedules:
-[notification guide](docs/notifications.md).
+[notification guide](docs/guides/notifications.md).
