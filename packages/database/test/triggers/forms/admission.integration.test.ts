@@ -2,7 +2,8 @@ import type { z } from 'zod';
 import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
 import { RunRequiresFormError } from '../../../src/runs/commands/forms.js';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { Client } from 'pg';
+import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutable,
@@ -22,7 +23,12 @@ import {
 } from '../../../src/triggers/forms/contract.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
-import { apiUrl, userId } from '../../lifecycle/retention.support.js';
+import {
+  adminUrl,
+  apiUrl,
+  userId,
+  withDatabase,
+} from '../../lifecycle/retention.support.js';
 let store: ReturnType<typeof createFormStore>;
 beforeAll(() => {
   store = createFormStore(
@@ -128,6 +134,44 @@ async function fixture(config: z.input<typeof formConfigSchema> = {}) {
     viewerId,
     actorId: userId,
   };
+}
+/** Stores, without publishing, a second version with a changed Form config. */
+async function insertFormRevision(
+  f: Readonly<{ workspaceId: string; workflowId: string; versionId: string }>,
+  config: Readonly<Record<string, string>>,
+): Promise<string> {
+  const row = await admin.query<{ graph_json: WorkflowGraph }>(
+    'select graph_json from app.workflow_versions where id=$1',
+    [f.versionId],
+  );
+  const previous = row.rows[0]?.graph_json;
+  if (previous === undefined) throw new Error('Missing graph');
+  const graph: WorkflowGraph = {
+    ...previous,
+    nodes: previous.nodes.map((node) =>
+      node.id === 'form'
+        ? { ...node, config: { ...node.config, ...config } }
+        : node,
+    ),
+  };
+  const compiled = buildWorkflowExecutable({
+    graph,
+    catalog: composeExecutableCatalog(CORE_NODE_CATALOG),
+  });
+  const versionId = randomUUID();
+  await admin.query(
+    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) values($1,$2,$3,2,$4::jsonb,$5::jsonb,$6,$7)`,
+    [
+      versionId,
+      f.workspaceId,
+      f.workflowId,
+      JSON.stringify(graph),
+      JSON.stringify(compiled.envelope),
+      compiled.checksum,
+      userId,
+    ],
+  );
+  return versionId;
 }
 it('admits a member form once with trusted starter and output metadata, without granting arbitrary start access', async () => {
   const f = await fixture();
@@ -397,44 +441,10 @@ it('keeps the accepted receipt and message through republication but refuses a n
   };
   const accepted = await store.submit(command);
   expect(accepted.thankYouMessage).toBe('Original acceptance.');
-  const row = await admin.query<{ graph_json: WorkflowGraph }>(
-    'select graph_json from app.workflow_versions where id=$1',
-    [f.versionId],
-  );
-  const previous = row.rows[0]?.graph_json;
-  if (previous === undefined) throw new Error('Missing graph');
-  const graph: WorkflowGraph = {
-    ...previous,
-    nodes: previous.nodes.map((node) =>
-      node.id === 'form'
-        ? {
-            ...node,
-            config: {
-              ...node.config,
-              title: 'A newer form',
-              thankYouMessage: 'A newer message.',
-            },
-          }
-        : node,
-    ),
-  };
-  const compiled = buildWorkflowExecutable({
-    graph,
-    catalog: composeExecutableCatalog(CORE_NODE_CATALOG),
+  const versionId = await insertFormRevision(f, {
+    title: 'A newer form',
+    thankYouMessage: 'A newer message.',
   });
-  const versionId = randomUUID();
-  await admin.query(
-    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) values($1,$2,$3,2,$4::jsonb,$5::jsonb,$6,$7)`,
-    [
-      versionId,
-      f.workspaceId,
-      f.workflowId,
-      JSON.stringify(graph),
-      JSON.stringify(compiled.envelope),
-      compiled.checksum,
-      userId,
-    ],
-  );
   await admin.query(
     'update app.workflows set published_version_id=$2 where id=$1',
     [f.workflowId, versionId],
@@ -446,6 +456,45 @@ it('keeps the accepted receipt and message through republication but refuses a n
   const shown = await store.read(f);
   expect(shown).toMatchObject({ versionId, form: { title: 'A newer form' } });
   expect(shown.form).not.toHaveProperty('thankYouMessage');
+});
+
+it('reports a changed form, not an unavailable one, when publication commits while a response waits for its lock', async () => {
+  const f = await fixture();
+  const versionId = await insertFormRevision(f, {
+    title: 'A republished form',
+  });
+  const publisher = new Client({ connectionString: withDatabase(adminUrl) });
+  await publisher.connect();
+  let response: Promise<unknown> | undefined;
+  try {
+    await publisher.query('begin');
+    await publisher.query(
+      'update app.workflows set published_version_id=$2 where id=$1',
+      [f.workflowId, versionId],
+    );
+    response = store.submit({
+      ...f,
+      versionId: f.versionId,
+      values: { amount: 1 },
+      idempotencyKey: 'waits-for-publication',
+    });
+    const refused = expect(response).rejects.toBeInstanceOf(FormChangedError);
+    await vi.waitFor(
+      async () => {
+        const waiting = await admin.query<{ count: number }>(
+          "select count(*)::int count from pg_stat_activity where datname=current_database() and usename='pertexo_app' and wait_event_type='Lock'",
+        );
+        expect(waiting.rows[0]?.count).toBeGreaterThanOrEqual(1);
+      },
+      { timeout: 3000 },
+    );
+    await publisher.query('commit');
+    await refused;
+  } finally {
+    await publisher.query('rollback').catch(() => undefined);
+    await response?.catch(() => undefined);
+    await publisher.end();
+  }
 });
 
 it('replays only the exact captured Form submission and refuses invented metadata', async () => {

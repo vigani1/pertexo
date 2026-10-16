@@ -439,25 +439,28 @@ async function lockPublishedExecution(
   transaction: WorkspaceTransaction,
   workflowId: string,
 ): Promise<PublishedWorkflow> {
-  const result = await transaction.db.execute(sql<Record<string, unknown>>`
-    select
-      v.id,
-      v.workspace_id,
-      v.workflow_id,
-      v.version_number,
-      v.checksum,
-      v.executable_json
-    from app.workflows w
-    join app.workflow_versions v
-      on v.workspace_id = w.workspace_id
-     and v.workflow_id = w.id
-     and v.id = w.published_version_id
-    where w.workspace_id = ${transaction.workspaceId}
-      and w.id = ${workflowId}
-      and w.lifecycle_status = 'active'
-    for share of w
+  // Lock the workflow on its own. A locked join that waits on a concurrent
+  // publication re-checks the new workflow row against the old version row,
+  // finds nothing and would report an executable workflow as unavailable.
+  const locked = await transaction.db.execute(sql<Record<string, unknown>>`
+    select published_version_id
+    from app.workflows
+    where workspace_id = ${transaction.workspaceId}
+      and id = ${workflowId}
+      and lifecycle_status = 'active'
+    for share
   `);
+  const publishedVersionId = locked.rows[0]?.published_version_id;
   // No published version (or an archived workflow) leaves nothing to run.
+  if (typeof publishedVersionId !== 'string')
+    throw new WorkflowRunNotExecutableError();
+  const result = await transaction.db.execute(sql<Record<string, unknown>>`
+    select id, workspace_id, workflow_id, version_number, checksum, executable_json
+    from app.workflow_versions
+    where workspace_id = ${transaction.workspaceId}
+      and workflow_id = ${workflowId}
+      and id = ${publishedVersionId}
+  `);
   const version = parsePublishedWorkflowRow(result.rows[0]);
   if (
     version?.workflowId !== workflowId ||
