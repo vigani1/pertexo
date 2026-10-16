@@ -163,9 +163,11 @@ Instance settings, with safe defaults the server admin can raise:
   filesystem writes, fork, manager signaling and manager files/memory/environment
   even with Node's permission model deliberately absent.
 - A data-memory rlimit at the heap setting alone prevented Node from booting
-  in the pinned ARM image. Reserve 384 MiB of virtual data headroom in addition
+  in the pinned ARM image. Reserve 768 MiB of virtual data headroom in addition
   to the configured heap, and enforce that sum as a hard `RLIMIT_DATA` before
-  Node starts. Keep the planned heap plus container bounds,
+  Node starts. AMD64 V8 precommits a 512 MiB executable code range (ARM64
+  uses 256 MiB), so the shared headroom accommodates both. The default
+  container ceiling is 2,912 MiB; idle memory is not reserved. Keep the planned heap plus container bounds,
   supplement them with active-task RSS checks, reserve headroom and protect the
   manager from OOM selection. Each child has OOM priority 1000; kernel write
   fences prevent lowering it. Qualify buffer/ArrayBuffer, heap and stack bombs
@@ -175,7 +177,8 @@ Instance settings, with safe defaults the server admin can raise:
   from settings; validate hardening before marking a runner ready. Qualify the
   native launcher and production image on both existing image architectures.
 - Qualification keeps the approved development/CI browser path separate from
-  the hardened image proof: the live browser authors, previews, publishes and
+  the hardened image proof: the live browser job builds the runner alongside its
+  API/worker dependencies, then authors, previews, publishes and
   runs through a real worker and separate runner process. Both existing image
   jobs exercise the production worker client against the hardened service,
   hostile tasks beside healthy tasks, independent OS probes without Node

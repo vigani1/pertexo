@@ -269,8 +269,8 @@ jobs:
         if: matrix.journeys != ''
         run:
           pnpm --filter @pertexo/api... --filter @pertexo/worker... --filter
-          @pertexo/ops... --filter @pertexo/cli... --filter '@pertexo/web^...'
-          build
+          @pertexo/ops... --filter @pertexo/cli... --filter
+          @pertexo/code-runner... --filter '@pertexo/web^...' build
       - name: Start services
         if: matrix.journeys != ''
         run: docker compose up -d --wait postgres redis artifact-store

@@ -30,8 +30,10 @@ before sending any task data.
 Heap and container limits, native-memory monitoring, per-UID thread limits,
 manager OOM protection and task termination isolate resource failures. A data
 rlimit equal to the heap cap prevented startup; a hard data limit instead adds
-384 MiB of virtual-memory headroom to the heap setting. Container capacity
+768 MiB of virtual-memory headroom to the heap setting. Container capacity
 reserves that full per-process bound plus manager and replacement headroom.
+AMD64 V8 precommits a 512 MiB executable code range during startup, twice the
+ARM64 reservation; the common bound must accommodate both architectures.
 Concurrent heap, Buffer and ArrayBuffer bombs must leave healthy tasks intact. Cancellation, disconnect, timeout and
 shutdown reap children; a retry gets another process. No credentials, external
 I/O or network broker is exposed, so Code is safe to repeat. Only closed safe
