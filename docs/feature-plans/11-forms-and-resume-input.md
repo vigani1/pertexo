@@ -342,5 +342,8 @@ Placement and delivery:
 Status:
 
 - [x] Buildable move-only extraction; full repository checks and 9,222 units pass.
-- [ ] Shared schema, acceptance receipts, editor and response controls.
-- [ ] Behavioral, PostgreSQL, worker, browser and React Doctor verification.
+- [x] Shared schema, acceptance receipts, editor and response controls.
+- [x] 9,241 units, 12 PostgreSQL cases, two real-worker restart/expiry cases,
+      183 mocked browser cases and the real member/public API/worker journey
+      with independent SQL evidence. Final frontend checks pass all 1,201 units;
+      React Doctor includes new files and reports 100/100 with no findings.

@@ -15,7 +15,14 @@ export function PublicFormRoute() {
             link.
           </Notice>
         ) : (
-          <FormPage scope={publicForm} />
+          <FormPage
+            key={
+              publicForm.target.kind === 'public'
+                ? `${publicForm.target.publicId}:${publicForm.target.authority}`
+                : `${publicForm.target.userId}:${publicForm.target.workspaceId}:${publicForm.target.workflowId}`
+            }
+            scope={publicForm}
+          />
         )}
       </div>
     </main>

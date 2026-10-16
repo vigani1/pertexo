@@ -11,12 +11,19 @@ export async function verifyFormEvidence(database: Pool) {
       input_ref: {
         kind: 'inline',
         value: {
-          values: { amount: 0, request_message: `${kind} request` },
+          values: {
+            amount: 0,
+            request_message: `${kind} request`,
+            channels: ['Email', 'SMS'],
+          },
           submittedBy: index === 0 ? (expect.any(String) as unknown) : null,
           submittedAt: expect.any(String) as unknown,
         },
       },
-      output_ref: { kind: 'inline', value: { result: `${kind} answer` } },
+      output_ref: {
+        kind: 'inline',
+        value: { result: `${kind} answer`, channels: ['SMS'] },
+      },
     });
   expect(
     (
@@ -30,7 +37,7 @@ export async function verifyFormEvidence(database: Pool) {
       consumed: true,
       context: {
         details: { amount: 0, request_message: `${kind} request` },
-        prefill: { answer: `${kind} request` },
+        prefill: { answer: `${kind} request`, channels: ['Email', 'SMS'] },
       },
     })),
   );

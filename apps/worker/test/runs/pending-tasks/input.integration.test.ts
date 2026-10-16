@@ -25,10 +25,37 @@ function graph(handler = false): WorkflowGraph {
   return {
     settings: { maxRunDurationMs: 60000 },
     nodes: [
-      { ...node('form', 'core.form'), config: formConfigSchema.parse({}) },
+      {
+        ...node('form', 'core.form'),
+        config: formConfigSchema.parse({
+          fields: [
+            { id: 'message', name: 'message', label: 'Message', type: 'text' },
+            {
+              id: 'channels',
+              name: 'channels',
+              label: 'Channels',
+              type: 'multi_select',
+              options: ['Email', 'SMS'],
+              required: false,
+            },
+          ],
+        }),
+      },
       {
         ...node('input', 'core.request_input'),
-        config: inputRequestConfigSchema.parse({}),
+        config: inputRequestConfigSchema.parse({
+          fields: [
+            { id: 'message', name: 'message', label: 'Message', type: 'text' },
+            {
+              id: 'channels',
+              name: 'channels',
+              label: 'Channels',
+              type: 'multi_select',
+              options: ['Email', 'SMS'],
+              required: false,
+            },
+          ],
+        }),
         inputMappings: {
           details: {
             kind: 'expression',
@@ -44,7 +71,7 @@ function graph(handler = false): WorkflowGraph {
           result: {
             kind: 'node_output',
             nodeId: 'input',
-            path: '$.values.message',
+            path: '$.values',
           },
         },
       },
@@ -88,7 +115,7 @@ describe.runIf(fixture.enabled)(
           workflowId: version.workflowId,
           actorId: fixture.actorId,
           versionId: version.workflowVersionId,
-          values: { message: 'Original' },
+          values: { message: 'Original', channels: ['SMS', 'Email'] },
           idempotencyKey: randomUUID(),
         });
         let taskId = '';
@@ -108,13 +135,13 @@ describe.runIf(fixture.enabled)(
         });
         expect(captured).toMatchObject({
           details: { 'Original message': 'Original' },
-          prefill: { message: 'Original' },
+          prefill: { message: 'Original', channels: ['SMS', 'Email'] },
         });
         const command = {
           workspaceId: fixture.workspaceId,
           taskId,
           actorId: fixture.actorId,
-          values: { message: 'Member response' },
+          values: { message: 'Member response', channels: ['Email'] },
           idempotencyKey: randomUUID(),
         };
         await tasks.submit(command);
@@ -127,7 +154,7 @@ describe.runIf(fixture.enabled)(
           }),
         ).toMatchObject({
           details: { 'Original message': 'Original' },
-          prefill: { message: 'Original' },
+          prefill: { message: 'Original', channels: ['SMS', 'Email'] },
         });
         await workers.until(async () => {
           expect(
@@ -146,7 +173,9 @@ describe.runIf(fixture.enabled)(
           {
             output_ref: {
               kind: 'inline',
-              value: { result: 'Member response' },
+              value: {
+                result: { message: 'Member response', channels: ['Email'] },
+              },
             },
           },
         ]);

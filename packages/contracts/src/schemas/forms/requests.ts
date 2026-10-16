@@ -1,12 +1,18 @@
 import { z } from 'zod';
-import { formConfigSchema } from '@pertexo/workflow-model';
+import {
+  formConfigSchema,
+  formThankYouMessageSchema,
+} from '@pertexo/workflow-model';
 export const formParamsSchema = z
   .object({ workspaceId: z.uuid(), workflowId: z.uuid() })
   .strict();
 export const publicFormParamsSchema = z.object({ publicId: z.uuid() }).strict();
 export const formCapabilitySchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
 export const formSchemaResponseSchema = z
-  .object({ versionId: z.uuid(), form: formConfigSchema })
+  .object({
+    versionId: z.uuid(),
+    form: formConfigSchema.omit({ thankYouMessage: true }),
+  })
   .strict();
 export const formSubmissionRequestSchema = z
   .object({ versionId: z.uuid(), values: z.record(z.string(), z.unknown()) })
@@ -14,6 +20,7 @@ export const formSubmissionRequestSchema = z
 export const formSubmissionResponseSchema = z
   .object({
     accepted: z.literal(true),
+    thankYouMessage: formThankYouMessageSchema,
     runId: z.uuid().optional(),
     replayed: z.boolean(),
   })

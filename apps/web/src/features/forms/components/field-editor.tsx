@@ -15,6 +15,7 @@ const fieldTypes: readonly Readonly<{
   { value: 'number', label: 'Number' },
   { value: 'boolean', label: 'True or false' },
   { value: 'select', label: 'Choose one' },
+  { value: 'multi_select', label: 'Choose multiple' },
   { value: 'date', label: 'Date' },
 ];
 export function FormFieldsEditor({
@@ -155,12 +156,13 @@ export function FormFieldsEditor({
                       help: current.help,
                       required: current.required,
                     };
-                    return type === 'select'
+                    return type === 'select' || type === 'multi_select'
                       ? {
                           ...base,
                           type,
                           options:
-                            current.type === 'select'
+                            current.type === 'select' ||
+                            current.type === 'multi_select'
                               ? current.options
                               : ['Option 1'],
                         }
@@ -194,7 +196,7 @@ export function FormFieldsEditor({
               />
             )}
           </LabelledField>
-          {field.type === 'select' ? (
+          {field.type === 'select' || field.type === 'multi_select' ? (
             <LabelledField
               id={`${id}-${field.id}-options`}
               label="Options"
@@ -208,7 +210,7 @@ export function FormFieldsEditor({
                   onChange={(event) => {
                     update(index, (current) => ({
                       ...current,
-                      type: 'select',
+                      type: field.type,
                       options: event.target.value.split('\n'),
                     }));
                   }}

@@ -1,12 +1,20 @@
 import type { FormField } from '@pertexo/workflow-model';
+export type FormDraftValue = string | boolean | readonly string[];
+export type FormDraft = Readonly<Record<string, FormDraftValue>>;
 /** Controls retain editable text; only complete finite numbers become JSON numbers. */
 export function valuesFromDraft(
   fields: readonly FormField[],
-  draft: Readonly<Record<string, string | boolean>>,
-): Record<string, string | number | boolean> {
+  draft: FormDraft,
+): Readonly<Record<string, FormDraftValue | number>> {
   return Object.fromEntries(
-    fields.map((field): [string, string | number | boolean] => {
-      const raw = draft[field.name] ?? (field.type === 'boolean' ? false : '');
+    fields.map((field): [string, FormDraftValue | number] => {
+      const raw =
+        draft[field.name] ??
+        (field.type === 'boolean'
+          ? false
+          : field.type === 'multi_select'
+            ? []
+            : '');
       if (
         field.type === 'number' &&
         typeof raw === 'string' &&

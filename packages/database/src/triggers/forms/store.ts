@@ -53,7 +53,14 @@ export function createFormStore(
           );
           if (grant !== undefined && grant.nodeId !== nodeId)
             throw new FormUnavailableError();
-          return { versionId: version.id, form };
+          return {
+            versionId: version.id,
+            form: {
+              title: form.title,
+              instructions: form.instructions,
+              fields: form.fields,
+            },
+          };
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),

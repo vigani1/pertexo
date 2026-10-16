@@ -1,7 +1,13 @@
+import { readFormDefinition } from './definition.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { canonicalJson, parseFormValues } from '@pertexo/workflow-model';
+import {
+  canonicalJson,
+  parseFormValues,
+  DEFAULT_FORM_THANK_YOU_MESSAGE,
+  type FormConfig,
+} from '@pertexo/workflow-model';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 import {
@@ -9,7 +15,11 @@ import {
   readWorkflowRunAcceptanceReplay,
 } from '../../runs/commands/acceptance.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
-import { FormChangedError, type FormStore } from './contract.js';
+import {
+  FormChangedError,
+  FormUnavailableError,
+  type FormStore,
+} from './contract.js';
 import type { readFormVersion } from './read.js';
 
 export async function submitForm(
@@ -41,12 +51,24 @@ export async function submitForm(
     workspaceId: parseWorkspaceId(input.workspaceId),
   };
   const replay = await readWorkflowRunAcceptanceReplay(transaction, identity);
-  if (replay !== null)
-    return {
-      accepted: true as const,
-      replayed: true,
-      ...(publicAccess ? {} : { runId: replay.runId }),
-    };
+  if (replay !== null) {
+    let acceptedForm = form;
+    // The confirmed request hash binds the original version after republication.
+    if (version.id !== input.versionId) {
+      const original = await client.query<{ graph_json: unknown }>(
+        'select graph_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3',
+        [input.workspaceId, input.workflowId, input.versionId],
+      );
+      const row = original.rows[0];
+      if (row === undefined) throw new FormUnavailableError();
+      acceptedForm = readFormDefinition(row.graph_json).form;
+    }
+    return submissionReceipt(
+      acceptedForm,
+      { runId: replay.runId, replayed: true },
+      publicAccess,
+    );
+  }
   if (version.id !== input.versionId) throw new FormChangedError();
   const values = parseFormValues(form.fields, input.values);
   const now = await client.query<{ now: Date }>('select clock_timestamp() now');
@@ -69,9 +91,21 @@ export async function submitForm(
       submittedAt: at.toISOString(),
     },
   });
+  return submissionReceipt(
+    form,
+    { runId: accepted.runId, replayed: accepted.duplicate },
+    publicAccess,
+  );
+}
+function submissionReceipt(
+  form: FormConfig,
+  result: Readonly<{ runId: string; replayed: boolean }>,
+  publicAccess: boolean,
+) {
   return {
     accepted: true as const,
-    replayed: accepted.duplicate,
-    ...(publicAccess ? {} : { runId: accepted.runId }),
+    thankYouMessage: form.thankYouMessage ?? DEFAULT_FORM_THANK_YOU_MESSAGE,
+    replayed: result.replayed,
+    ...(publicAccess ? {} : { runId: result.runId }),
   };
 }

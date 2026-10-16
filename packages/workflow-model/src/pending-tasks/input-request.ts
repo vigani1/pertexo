@@ -5,6 +5,7 @@ import { formConfigSchema } from '../forms/fields.js';
 import { approvalConfigSchema } from './approval.js';
 
 export const inputRequestConfigSchema = formConfigSchema
+  .omit({ thankYouMessage: true })
   .extend({
     title: formConfigSchema.shape.title.default('Input needed'),
     audience: approvalConfigSchema.shape.audience,

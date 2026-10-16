@@ -1,6 +1,8 @@
 import {
   approvalConfigSchema,
   PENDING_TASK_LIMITS,
+  FORM_LIMITS,
+  formThankYouMessageSchema,
 } from '@pertexo/workflow-model';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +14,7 @@ export function TaskTextField({
   value,
   form,
 }: Readonly<{
-  name: 'title' | 'instructions';
+  name: 'title' | 'instructions' | 'thankYouMessage';
   value: string;
   form: NodeFormApi;
 }>) {
@@ -20,7 +22,11 @@ export function TaskTextField({
     value,
     format: (current) => current,
     parse: (text) => {
-      const parsed = approvalConfigSchema.shape[name].safeParse(text);
+      const schema =
+        name === 'thankYouMessage'
+          ? formThankYouMessageSchema
+          : approvalConfigSchema.shape[name];
+      const parsed = schema.safeParse(text);
       return parsed.success
         ? { ok: true, value: parsed.data }
         : {
@@ -28,7 +34,9 @@ export function TaskTextField({
             error:
               name === 'title'
                 ? 'Enter a title up to 160 characters.'
-                : 'Use at most 2,000 characters.',
+                : name === 'thankYouMessage'
+                  ? 'Use 1–1,000 characters.'
+                  : 'Use at most 2,000 characters.',
           };
     },
     commit: (next) => {
@@ -44,11 +52,22 @@ export function TaskTextField({
   return (
     <LabelledField
       id={`${form.nodeId}-approval-${name}`}
-      label={name === 'title' ? 'Request title' : 'Instructions'}
+      label={
+        name === 'title'
+          ? 'Request title'
+          : name === 'thankYouMessage'
+            ? 'Thank-you message'
+            : 'Instructions'
+      }
       error={field.error}
       {...(name === 'instructions'
         ? { description: 'Optional context for the person responding.' }
-        : {})}
+        : name === 'thankYouMessage'
+          ? {
+              description:
+                'Plain text shown when a response is accepted. The run may still be waiting or running.',
+            }
+          : {})}
     >
       {(control) =>
         name === 'title' ? (
@@ -66,7 +85,11 @@ export function TaskTextField({
           <Textarea
             {...control}
             value={field.text}
-            maxLength={PENDING_TASK_LIMITS.instructionsCharacters}
+            maxLength={
+              name === 'thankYouMessage'
+                ? FORM_LIMITS.thankYouCharacters
+                : PENDING_TASK_LIMITS.instructionsCharacters
+            }
             rows={4}
             disabled={!form.editable}
             onChange={(event) => {

@@ -120,3 +120,28 @@ it('preserves legacy approval setup without inserting a new starter default', ()
     definition?.validateConfig({ ...legacy, allowStarterToDecide: 'true' }),
   ).toBe(false);
 });
+
+it('exports old Form setup and explicit acceptance messages and multi-selects without rewriting them', () => {
+  const definition = platformPortableDefinitionPolicy().definitions.find(
+    ({ key }) => key === 'core.form',
+  );
+  const field = {
+    id: 'message',
+    name: 'message',
+    label: 'Message',
+    type: 'text',
+    help: '',
+    required: true,
+  };
+  const config = { title: 'Send a request', instructions: '', fields: [field] };
+  expect(definition?.validateConfig(config)).toBe(true);
+  expect(
+    definition?.validateConfig({ ...config, thankYouMessage: 'Received.' }),
+  ).toBe(true);
+  expect(
+    definition?.validateConfig({
+      ...config,
+      fields: [{ ...field, type: 'multi_select', options: ['A', 'B'] }],
+    }),
+  ).toBe(true);
+});

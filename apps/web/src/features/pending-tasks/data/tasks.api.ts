@@ -1,3 +1,4 @@
+import type { FormValues } from '@pertexo/workflow-model';
 import {
   pendingTaskListResponseSchema,
   pendingTaskResponseSchema,
@@ -81,7 +82,7 @@ export function listAudience(
 export function submitTask(
   scope: TaskScope,
   taskId: string,
-  values: Readonly<Record<string, string | number | boolean>>,
+  values: FormValues,
   key: string,
 ) {
   return scope.apiClient.request({

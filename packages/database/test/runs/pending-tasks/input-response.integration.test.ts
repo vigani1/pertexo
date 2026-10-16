@@ -68,3 +68,37 @@ it('captures one winning response under a race and excludes values from receipts
   );
   expect(JSON.stringify(receipts.rows)).not.toContain('private-response');
 });
+
+it('accepts one typed multi-select input response and preserves captured prefill', async () => {
+  const f = await taskFixture();
+  const config = inputRequestConfigSchema.parse({
+    fields: [
+      {
+        id: 'channels',
+        name: 'channels',
+        label: 'Channels',
+        type: 'multi_select',
+        options: ['Email', 'SMS'],
+      },
+    ],
+  });
+  await admin.query(
+    "update app.pending_run_tasks set kind='input_request',config=$2::jsonb,context=$3::jsonb where id=$1",
+    [
+      f.taskId,
+      JSON.stringify(config),
+      JSON.stringify({ prefill: { channels: ['Email'] } }),
+    ],
+  );
+  const command = {
+    ...f.scope,
+    values: { channels: ['SMS'] },
+    idempotencyKey: 'multiple',
+  };
+  const first = await store.submit(command);
+  expect(first.task).toMatchObject({
+    prefill: { channels: ['Email'] },
+    output: { values: { channels: ['SMS'] } },
+  });
+  expect((await store.submit(command)).replayed).toBe(true);
+});

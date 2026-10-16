@@ -181,12 +181,15 @@ export {
   formFieldSchema,
   formFieldsSchema,
   formConfigSchema,
+  formThankYouMessageSchema,
+  DEFAULT_FORM_THANK_YOU_MESSAGE,
   type FormField,
   type FormConfig,
 } from './forms/fields.js';
 export {
   parseFormValues,
   formSubmissionSchema,
+  formValuesSchema,
   FormValuesInvalidError,
   type FormValues,
   type FormSubmission,

@@ -10,13 +10,17 @@ Workspace members, including viewers, can submit the member form. This does not
 give viewers permission to edit the workflow or start arbitrary runs. Existing run
 history permissions apply to the member's **Open run** link.
 
-Supported fields are short/long text, email, number, true/false, one choice and date.
+Supported fields are short/long text, email, number, true/false, one choice, multiple choices and date.
 Names are stable mapping keys: letters first, then letters, numbers or underscores.
-Use up to 20 fields, with unique names. Choice options are single-line text. Text
+Use up to 20 fields, with unique names. Choice fields allow 1–50 unique single-line options. Text
 is plain text; no HTML, files, scripts, calculations or conditional fields.
 Responses fit 64 KB; field definitions fit 10 KB. Number and boolean fields
 produce real JSON numbers and booleans. Zero and false are valid values. Optional
-blank fields are omitted.
+blank fields are omitted. Multiple-choice values are arrays such as
+`{"channels":["Email","SMS"]}`. Required fields need at least one choice; each
+choice must be configured and selected only once. Optional empty selections are
+omitted. The form submits choices in their configured order; API submissions keep
+their supplied order.
 
 For example, define `message` (long text), `amount` (number) and `currency`
 (choice: EUR or USD). The next step can map `runInput.values.amount` or the Form
@@ -34,6 +38,21 @@ The server supplies the person and timestamp. Ordinary Manual/API starts refuse
 Form versions; use the form submission endpoint. Replay reuses the original
 submission input and source version. To change either, send a new form response.
 
+## After submission
+
+The default receipt says **Thanks for your response.** In the Form trigger's
+**Thank-you message**, configure plain text up to 1,000 characters. This confirms
+that Pertexo accepted the response; the workflow may still be waiting or running.
+The message comes from the published version that accepted that response. Retrying
+the same response after a publication change keeps its original message and cannot
+start another run. HTML is displayed as text. Request input has no separate
+thank-you setting.
+
+[Member form](media/forms/member-1280-before.png) ·
+[Member receipt](media/forms/member-1280-after.png) ·
+[Phone form](media/forms/public-375-before.png) ·
+[Phone receipt](media/forms/public-375-after.png)
+
 ## Public links
 
 An editor can **Enable public link** in the published Form setup. Anyone holding
@@ -45,7 +64,7 @@ Form entry revokes its old grant; adding a Form again does not revive old links.
 
 The key is in the URL fragment and travels to the API in a redacted header. Public
 pages use no-referrer/no-store behavior. A public response confirms acceptance
-without exposing a run link, run ID, workflow graph or workspace information.
+without exposing a run link, run ID, workflow graph or workspace membership.
 Public reads and submissions have IP/form/workspace rate limits and refuse writes
 when rate limiting is unavailable. Paused, archived and unpublished forms reject
 new submissions. Existing workspace admission and automatic pause limits apply.
@@ -68,6 +87,8 @@ Map the Request input step's `values.answer` into a later step.
 In **Inputs**, map `details` to named facts the responder needs, as for
 [Approval details](approvals.md). Map `prefill` to an object keyed by your field
 names, such as `{"answer":"Suggested response","amount":0,"ready":false}`.
+Details stay scalar; put choice arrays in prefills.
+A multiple-choice prefill is a choice array, for example `{"channels":["Email"]}`.
 Only fields present in this request are accepted; values must already have their
 field's type and choice options. Required fields may be missing from prefills,
 but must be completed before sending. Prefills fit the existing 64 KB response
