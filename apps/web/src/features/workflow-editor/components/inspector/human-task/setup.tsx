@@ -117,12 +117,12 @@ export function HumanFormSetup({
           scope={scope}
           form={form}
           audience={captured.audience}
-          allowed={captured.allowStarterToDecide}
+          allowed={captured.allowStarterToDecide === true}
         />
       ) : null}
       <Notice glyph="waiting">
         {kind === 'core.approval'
-          ? captured.allowStarterToDecide
+          ? captured.allowStarterToDecide === true
             ? 'One eligible person approves or rejects, including the starter if they belong to the audience.'
             : 'One eligible person approves or rejects. The person who started the run cannot decide.'
           : 'One eligible member fills in this form. The person who started the run may respond.'}{' '}

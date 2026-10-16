@@ -20,7 +20,7 @@ export const approvalConfigSchema = z
       .min(PENDING_TASK_LIMITS.minimumExpirySeconds)
       .max(PENDING_TASK_LIMITS.maximumExpirySeconds)
       .default(PENDING_TASK_LIMITS.defaultExpirySeconds),
-    allowStarterToDecide: z.boolean().default(false),
+    allowStarterToDecide: z.boolean().exactOptional(),
     audience: taskAudienceSchema.default({
       roles: ['owner', 'admin'],
       memberIds: [],

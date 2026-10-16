@@ -1,7 +1,9 @@
 import { expect, it } from 'vitest';
 import { approvalConfigSchema, approvalOutputSchema } from '../../src/index.js';
 it('keeps absent and explicit false starter permission off, requiring an actual boolean', () => {
-  expect(approvalConfigSchema.parse({}).allowStarterToDecide).toBe(false);
+  expect(approvalConfigSchema.parse({})).not.toHaveProperty(
+    'allowStarterToDecide',
+  );
   for (const allowed of [false, true])
     expect(
       approvalConfigSchema.parse({ allowStarterToDecide: allowed })
