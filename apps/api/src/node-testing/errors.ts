@@ -1,3 +1,10 @@
+import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
+import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import {
+  WorkspaceRunQuotaExceededError,
+  WorkspaceRunAdmissionDeniedError,
+} from '@pertexo/database/runs';
+import { WorkflowTestError } from '@pertexo/database/authoring';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { sampleApplicationError } from './samples/errors.js';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
@@ -43,6 +50,47 @@ export class NodeTestInvalidError extends Error {
 }
 
 export function mapNodeTestingError(error: unknown): ApplicationError {
+  if (error instanceof StoredExecutionValueInvalidError)
+    return applicationError('workflow.invalid', {
+      safeDetail:
+        'Keep test input within 256 KB, depth 64 and 10,000 values. Split larger input before testing.',
+    });
+  if (error instanceof WorkflowEngineError)
+    return applicationError('workflow.invalid', {
+      safeDetail:
+        'The saved draft cannot be tested. Check its step setup and links.',
+    });
+  if (error instanceof WorkspaceRunQuotaExceededError)
+    return applicationError('workspace.quota_exceeded', {
+      safeDetail: 'The workspace queued-run limit has been reached.',
+      details: { retryAfterSeconds: error.retryAfterSeconds },
+    });
+  if (error instanceof WorkspaceRunAdmissionDeniedError)
+    return applicationError('workspace.conflict', {
+      safeDetail: 'The workspace is not accepting new runs.',
+    });
+  if (error instanceof WorkflowTestError) {
+    const messages: Record<WorkflowTestError['reason'], string> = {
+      draft_changed: 'The draft changed. Save and prepare the test again.',
+      samples_changed: 'The pins changed. Review them before testing again.',
+      not_supported: 'Workflow testing is unavailable on this server.',
+      pin_invalid:
+        'A branching step’s pin must select a valid output path. Pin a successful result or correct its selectedPort before testing.',
+      stale_sample:
+        'A pin is stale or expired. Confirm, replace or remove it before testing.',
+      effects_changed:
+        'The steps with external effects changed. Prepare the test again and review the current list.',
+      effects_acknowledgement_required:
+        'Confirm the listed steps may cause real external effects before testing.',
+      already_running:
+        'You already have a test running for this workflow. Cancel it or wait for it to finish.',
+      not_found: 'That retained workflow test is unavailable.',
+    };
+    return applicationError(
+      error.reason === 'not_found' ? 'resource.not_found' : 'workflow.invalid',
+      { safeDetail: messages[error.reason] },
+    );
+  }
   if (error instanceof WorkflowStepSampleError)
     return sampleApplicationError(error);
   if (error instanceof IdempotencyConflictError)

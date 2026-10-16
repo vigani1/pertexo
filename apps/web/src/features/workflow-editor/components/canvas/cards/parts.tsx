@@ -1,3 +1,5 @@
+import { Status } from '@/components/ui/status';
+import { describeNodeStatus } from '@/features/workflow-runs/run-labels.public';
 import { Handle, Position } from '@xyflow/react';
 import {
   ArrowRightToLineIcon,
@@ -65,6 +67,14 @@ export function NodeMarks({
   data,
 }: Readonly<{ data: WorkflowFlowNode['data'] }>) {
   const facts: ReactNode[] = [];
+  if (data.testStatus !== undefined) {
+    const look = describeNodeStatus(data.testStatus);
+    facts.push(
+      <Status key="workflow-test" tone={look.tone}>
+        Test · {look.label}
+      </Status>,
+    );
+  }
   if (data.testOutputBytes !== undefined)
     facts.push(
       <Mark key="test">

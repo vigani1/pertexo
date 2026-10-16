@@ -174,6 +174,13 @@ function workflowAuthoringDatabase(
   close = vi.fn().mockResolvedValue(undefined),
 ): WorkflowAuthoringDatabase {
   return {
+    workflowTests: {
+      prepare: vi.fn(),
+      start: vi.fn(),
+      list: vi.fn(),
+      get: vi.fn(),
+      cancel: vi.fn(),
+    },
     stepSamples: nodeTestingSamples(),
     acceptPreview: () => Promise.reject(new Error('not used')),
     resolvePreviewReplay: () => Promise.resolve(null),

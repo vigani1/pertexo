@@ -1,3 +1,4 @@
+import { workflowTestSnapshots } from './schema/runs/tests.js';
 import { webhookRunResponses } from './schema/triggers/responses.js';
 export { workflowStepSamples } from './schema/authoring/step-samples.js';
 import { workflowStepSamples } from './schema/authoring/step-samples.js';
@@ -184,6 +185,7 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  workflowTestSnapshots,
   webhookRunResponses,
   workflowStepSamples,
   noticeWorkspaceSettings,

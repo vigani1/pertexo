@@ -1,3 +1,7 @@
+import {
+  workflowTestPaths,
+  workflowTestContractSchemas,
+} from './workflow-tests.js';
 import { stepSampleContractSchemas, stepSamplePaths } from './step-samples.js';
 import { z } from 'zod';
 
@@ -27,6 +31,7 @@ import { projectContractSchema } from '../schema-projection.js';
 function contractSchemas(target: 'client' | 'openapi') {
   return Object.freeze({
     ...stepSampleContractSchemas(target),
+    ...workflowTestContractSchemas(target),
     ApiProblem: projectContractSchema(
       'ApiProblem',
       apiProblemSchema,
@@ -110,6 +115,7 @@ export const nodeTestingOpenApiDocument = Object.freeze({
   info: { title: 'Pertexo Node Testing API', version: '1.0.0' },
   paths: {
     ...stepSamplePaths,
+    ...workflowTestPaths,
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test':
       {
         post: {

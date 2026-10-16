@@ -1,6 +1,8 @@
+import { verifyDraftTestEvidence } from './draft-tests.js';
 import type { Pool } from 'pg';
 import { expect } from 'vitest';
 export async function verifySampleEvidence(database: Pool) {
+  await verifyDraftTestEvidence(database);
   const previews = await database.query<{
     id: string;
     pinned_sample_id: string | null;

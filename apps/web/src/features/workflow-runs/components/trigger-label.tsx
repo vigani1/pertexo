@@ -1,6 +1,7 @@
 import { ListChecksIcon } from 'lucide-react';
 import {
   BracesIcon,
+  PlayIcon,
   CalendarClockIcon,
   MousePointerClickIcon,
   RotateCcwIcon,
@@ -16,6 +17,7 @@ import {
 } from '../model/presentation/run-status';
 
 const triggerIcons: Readonly<Record<RunTriggerType, LucideIcon>> = {
+  test: PlayIcon,
   api: BracesIcon,
   manual: MousePointerClickIcon,
   replay: RotateCcwIcon,

@@ -1,3 +1,4 @@
+import './draft-tests/journey.case';
 import { expect, type Page } from '@playwright/test';
 import {
   stepSampleResponseSchema,

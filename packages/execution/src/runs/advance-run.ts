@@ -67,6 +67,9 @@ export async function advanceRun(
       hasExecutionSlot: state.hasExecutionSlot,
       occurredAt: dependencies.now(),
       maximumAdmissions: dependencies.maximumAdmissions,
+      ...(state.workflow.test === undefined
+        ? {}
+        : { test: state.workflow.test }),
       signal: input.signal,
     });
     const callable = executable.envelope.graph.callable;

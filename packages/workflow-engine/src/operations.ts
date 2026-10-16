@@ -1,3 +1,12 @@
+import type { WorkflowTestPolicy } from './testing/policy.js';
+import {
+  testStepDisposition,
+  applyWorkflowTestPolicy,
+} from './testing/policy.js';
+import {
+  isHumanTaskDefinition,
+  isWorkflowCallDefinition,
+} from '@pertexo/workflow-model';
 import {
   isWorkflowTriggerDefinition,
   workspaceVariableValuesSchema,
@@ -74,6 +83,7 @@ export type {
 } from './observation/persisted.js';
 
 export interface AdvanceWorkflowInput {
+  readonly test?: WorkflowTestPolicy;
   readonly runId: string;
   readonly executable: CompiledWorkflowExecutable;
   readonly workflowVersionId: string;
@@ -171,6 +181,7 @@ export async function advanceWorkflow(
     );
   const executableNodeList = executableNodes(input.executable.envelope.graph);
   const nodesById = new Map(executableNodeList.map((node) => [node.id, node]));
+  const test = input.test;
   const invocationsByKey = new Map(
     checkpoint.invocations.map((invocation) => [
       invocation.invocationKey,
@@ -197,6 +208,7 @@ export async function advanceWorkflow(
     successfulOutcomes,
     invocationsByKey,
     nodesById,
+    input.test !== undefined,
   );
   const controlCanceled =
     checkpoint.cancelRequested ||
@@ -215,10 +227,21 @@ export async function advanceWorkflow(
     controlCanceled,
     controlDeadline,
   });
+  // Test human/Call outputs are final samples, never declarations of work.
+  const declarationNodes =
+    test === undefined
+      ? nodesById
+      : new Map(
+          [...nodesById].filter(
+            ([, node]) =>
+              !isHumanTaskDefinition(node.definition) &&
+              !isWorkflowCallDefinition(node.definition),
+          ),
+        );
   const calls = callDeclarationObservations(
     successfulOutcomes,
     checkpoint,
-    nodesById,
+    declarationNodes,
   );
   const callOutcomes = callOutcomeObservations(
     input.callOutcomes,
@@ -230,7 +253,7 @@ export async function advanceWorkflow(
     completedOutputItems,
     successfulOutcomes,
     invocationsByKey,
-    nodesById,
+    declarationNodes,
   );
   const taskOutcomes = taskOutcomeObservations(
     input.taskOutcomes,
@@ -251,7 +274,15 @@ export async function advanceWorkflow(
     successfulOutcomes,
     checkpoint,
     invocationsByKey,
-    nodesById,
+    test === undefined
+      ? nodesById
+      : new Map(
+          [...nodesById].filter(
+            ([, node]) =>
+              node.structured === undefined ||
+              testStepDisposition(node, test).kind !== 'pinned',
+          ),
+        ),
     [...resolvedFailures, ...callOutcomes, ...taskOutcomes],
   );
   const executionObservations = persistedObservations.observations.map(
@@ -276,7 +307,11 @@ export async function advanceWorkflow(
   );
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
-    schedulerState: schedulerState(input.executable),
+    schedulerState: applyWorkflowTestPolicy(
+      schedulerState(input.executable),
+      executableNodeList,
+      input.test,
+    ),
     observations: [
       ...executionObservations,
       ...branchSelections,

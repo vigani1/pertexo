@@ -192,7 +192,7 @@ export const workflowRuns = appSchema.table(
     ),
     check(
       'workflow_runs_trigger_type_valid',
-      sql`((trigger_type)::text = ANY (ARRAY[('form'::character varying)::text, ('workflow_error'::character varying)::text, ('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))`,
+      sql`((trigger_type)::text = ANY (ARRAY[('test'::character varying)::text,('form'::character varying)::text, ('workflow_error'::character varying)::text, ('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))`,
     ),
     unique('workflow_runs_failure_notification_pin_unique').on(
       table.workspaceId,
@@ -238,6 +238,11 @@ export const workflowRuns = appSchema.table(
       columns: [table.workspaceId, table.replaySourceRunId],
       foreignColumns: [table.workspaceId, table.id],
     }),
+    uniqueIndex('workflow_runs_one_active_test')
+      .on(table.workspaceId, table.workflowId, table.startedBy)
+      .where(
+        sql`trigger_type='test' AND status IN ('queued','running','waiting')`,
+      ),
     index('workflow_runs_detail_retention_idx')
       .on(table.workspaceId, table.completedAt, table.id)
       .where(sql`((completed_at IS NOT NULL) AND (details_purged_at IS NULL))`),

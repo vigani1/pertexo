@@ -108,6 +108,11 @@ run for its waiting caller. Sending it does not end the run; a bounded wait can
 instead return the accepted run reference. _Avoid_: Run result, Call result,
 trigger admission
 
+**Draft workflow test**: An execution of a saved draft using captured pins for
+pinned steps and real execution for other steps. Its history stays in the
+editor; it never publishes the draft or sends normal run notifications. _Avoid_:
+Published run, simulation, test suite
+
 **Pinned sample**: Shared output attached to one draft step for editor tests. It
 replaces that step's execution during a test and becomes stale when its setup
 changes. _Avoid_: Published output, execution cache, run-input case

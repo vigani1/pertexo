@@ -132,6 +132,10 @@ export async function installEditorRoutes(
   }> = {},
 ) {
   await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/tests`,
+    (route) => route.fulfill({ json: { items: [] } }),
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/samples`,
     (route) =>
       route.fulfill({

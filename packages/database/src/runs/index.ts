@@ -127,3 +127,9 @@ export {
 } from './pending-tasks/store.js';
 
 export { RunVariableSnapshotUnavailableError } from './commands/variables.js';
+
+export { createWorkflowExecutionReader } from './queries/execution-source.js';
+export type {
+  WorkflowExecutionReader,
+  WorkflowExecutionProjection,
+} from './queries/execution-source.js';

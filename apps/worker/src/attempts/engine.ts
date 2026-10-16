@@ -1,6 +1,7 @@
+import { testStepDisposition } from '@pertexo/workflow-engine';
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeAttemptLease } from '@pertexo/database/attempts';
-import type { PublishedWorkflow } from '@pertexo/database/runs';
+import type { WorkflowExecutionProjection } from '@pertexo/database/runs';
 import type {
   ExecuteNodeAttemptInput,
   NodeExecutionRegistry,
@@ -105,7 +106,7 @@ function deriveUpstreamNodeOutputs(
 }
 
 function prepareNode(
-  projection: PublishedWorkflow,
+  projection: WorkflowExecutionProjection,
   lease: NodeAttemptLease,
   options: NodeAttemptExecutionEngineOptions,
 ): PreparedNodeAttempt {
@@ -116,7 +117,19 @@ function prepareNode(
   if (located === undefined)
     throw new TypeError('Node attempt is not in workflow');
   const { graph, node } = located;
-  const upstreamNodeOutputs = deriveUpstreamNodeOutputs(graph, node, lease);
+  const disposition =
+    projection.test === undefined
+      ? undefined
+      : testStepDisposition(node, projection.test);
+  const substituted =
+    disposition?.kind === 'pinned' || disposition?.kind === 'pin_required';
+  const pinnedSample =
+    disposition?.kind === 'pinned' ? projection.testSample : undefined;
+  if (disposition?.kind === 'pinned' && pinnedSample === undefined)
+    throw new TypeError('Frozen test sample is unavailable');
+  const upstreamNodeOutputs = substituted
+    ? []
+    : deriveUpstreamNodeOutputs(graph, node, lease);
   const failureEdge = graph.edges.find(
     ({ source, target }) =>
       source.port === WORKFLOW_FAILURE_PORT && target.nodeId === node.id,
@@ -140,7 +153,11 @@ function prepareNode(
   // steps record their input (ADR 052).
   const recordsInput = Object.keys(node.connectionRefs).length === 0;
   return Object.freeze({
-    ...(node.definition.key === 'core.wait' && node.definition.version === 1
+    ...(substituted ? { testSubstitution: true } : {}),
+    ...(disposition?.kind === 'pin_required' ? { testPinRequired: true } : {}),
+    ...(node.definition.key === 'core.wait' &&
+    node.definition.version === 1 &&
+    projection.test === undefined
       ? {
           suspensionDurationSeconds: Number(
             Reflect.get(node.config, 'durationSeconds'),
@@ -161,6 +178,19 @@ function prepareNode(
     ) => {
       if (input.abortRequested)
         throw new DOMException('The operation was aborted', 'AbortError');
+      if (pinnedSample !== undefined)
+        return {
+          runId: lease.runId,
+          nodeRunId: lease.nodeRunId,
+          attemptId: lease.attemptId,
+          invocationKey: lease.invocationKey,
+          nodeId: node.id,
+          kind:
+            node.definition.key === 'core.terminate'
+              ? ('terminal_success' as const)
+              : ('succeeded' as const),
+          output: pinnedSample.output,
+        };
       return executeNodeAttempt({
         runId: lease.runId,
         nodeRunId: lease.nodeRunId,
@@ -209,7 +239,7 @@ export function createNodeAttemptExecutionEngine(
   return Object.freeze({
     prepare: (
       input: Readonly<{
-        projection: PublishedWorkflow;
+        projection: WorkflowExecutionProjection;
         lease: NodeAttemptLease;
       }>,
     ) => prepareNode(input.projection, input.lease, options),

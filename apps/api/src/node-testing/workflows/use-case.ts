@@ -1,0 +1,91 @@
+import {
+  workflowTestPreparationSchema,
+  workflowTestStartRequestSchema,
+  workflowTestAcceptedSchema,
+  workflowTestListSchema,
+  workflowTestDetailSchema,
+} from '@pertexo/contracts';
+import type { WorkflowTestStore } from '@pertexo/database/authoring';
+import { authorizeWorkspaceOperation } from '../../authorization/index.js';
+import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
+import type { NodeTestUseCaseInput } from '../use-case.js';
+
+type Input = Pick<
+  NodeTestUseCaseInput,
+  'actor' | 'routeWorkspaceId' | 'authorizedWorkspace' | 'workflowId'
+> & { signal?: AbortSignal };
+export class WorkflowTestsUseCase {
+  constructor(
+    private readonly store: WorkflowTestStore,
+    private readonly authorization: WorkspaceAuthorizationSource,
+  ) {}
+  async prepare(input: Input) {
+    await this.authorize(input);
+    return workflowTestPreparationSchema.parse(
+      await this.store.prepare(this.scope(input)),
+    );
+  }
+  async list(input: Input) {
+    await this.authorize(input);
+    return workflowTestListSchema.parse(
+      await this.store.list(this.scope(input)),
+    );
+  }
+  async get(input: Input & { runId: string }) {
+    await this.authorize(input);
+    return workflowTestDetailSchema.parse(
+      await this.store.get({ ...this.scope(input), runId: input.runId }),
+    );
+  }
+  async start(input: Input & { request: unknown; idempotencyKey: string }) {
+    await this.authorize(input);
+    return workflowTestAcceptedSchema.parse(
+      await this.store.start({
+        ...this.scope(input),
+        idempotencyKey: input.idempotencyKey,
+        request: workflowTestStartRequestSchema.parse(input.request),
+      }),
+    );
+  }
+  async cancel(input: Input & { runId: string }) {
+    await this.authorize(input);
+    await authorizeWorkspaceOperation({
+      access: this.authorization,
+      actor: input.actor,
+      routeWorkspaceId: input.routeWorkspaceId,
+      capability: 'run:cancel',
+      allowedWorkspaceStatuses: ['active'],
+      disclosure: 'not_found',
+    });
+    await this.store.cancel({ ...this.scope(input), runId: input.runId });
+    return { canceled: true };
+  }
+  private scope(input: Input) {
+    return {
+      workspaceId: input.routeWorkspaceId,
+      workflowId: input.workflowId,
+      actorId: input.actor.actorId,
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
+    };
+  }
+  private async authorize(input: Input) {
+    for (const capability of [
+      'workflow:update',
+      'run:read',
+      'run:start',
+    ] as const)
+      await authorizeWorkspaceOperation({
+        access: this.authorization,
+        actor: input.actor,
+        routeWorkspaceId: input.routeWorkspaceId,
+        ...(capability !== 'workflow:update' ||
+        input.authorizedWorkspace === undefined
+          ? {}
+          : { authorizedWorkspace: input.authorizedWorkspace }),
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+        capability,
+        allowedWorkspaceStatuses: ['active'],
+        disclosure: 'not_found',
+      });
+  }
+}

@@ -6,8 +6,8 @@ import {
   NodeAttemptStateCorruptError,
 } from '@pertexo/database/attempts';
 import {
-  createPublishedWorkflowReader,
-  type PublishedWorkflowReader,
+  createWorkflowExecutionReader,
+  type WorkflowExecutionReader,
 } from '@pertexo/database/runs';
 import type {
   DatabaseConfig,
@@ -108,7 +108,7 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   consumerFactory?: typeof createQueueConsumer;
   engine?: NodeAttemptExecutionEngine;
   notifications?: RunEventNotificationPublisher;
-  reader?: PublishedWorkflowReader;
+  reader?: WorkflowExecutionReader;
   registry?: NodeExecutionRegistry;
   runStore?: NodeAttemptRunStore;
   runtimeCapabilities?: NodeExecutionCapabilityFactories;
@@ -240,7 +240,7 @@ async function createProductionNodeAttemptRuntime(
   own('node-attempt run store', runStore.close.bind(runStore));
   const reader =
     dependencies.reader ??
-    createPublishedWorkflowReader(options.database, options.databaseRuntime);
+    createWorkflowExecutionReader(options.database, options.databaseRuntime);
   own('published workflow reader', reader.close.bind(reader));
   const notifications =
     dependencies.notifications ??

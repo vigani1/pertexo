@@ -17,6 +17,7 @@ export type AuthoringCatalogs = Readonly<{
   /** New nodes must come from it; without one, any node may be placed. */
   placementDefinitionCatalog: WorkflowDefinitionCatalog | undefined;
   executableCompiler: WorkflowExecutableCompiler;
+  workflowTestCompiler: WorkflowAuthoringDatabaseOptions['workflowTestCompiler'];
   validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
 }>;
 
@@ -28,6 +29,7 @@ export function authoringCatalogs(
     definitionCatalog: options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG,
     placementDefinitionCatalog: options.definitionCatalog,
     executableCompiler: options.executableCompiler,
+    workflowTestCompiler: options.workflowTestCompiler,
     validateAuthoringGraph: options.validateAuthoringGraph,
   });
 }

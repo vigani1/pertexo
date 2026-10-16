@@ -62,7 +62,9 @@ For bounded collection preparation, UTC date conversion and editable expression
 examples, read
 [Prepare data in a workflow](../../docs/guides/data-transforms.md).
 
-Draft step tests can use shared, bounded
+**Test workflow** runs a saved draft on the worker with live canvas progress,
+cancellation and a separate seven-day test history. Draft and single-step tests
+can use shared, bounded
 [pinned sample output](../../docs/guides/pinned-samples.md). Pins are visibly
 separate from real published execution.
 

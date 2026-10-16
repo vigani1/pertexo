@@ -26,6 +26,7 @@ export const runStatusSchema = z.enum([
   'outcome_unknown',
 ]);
 const triggerTypeSchema = z.enum([
+  'test',
   'api',
   'manual',
   'replay',
@@ -149,6 +150,7 @@ export async function readWorkflowRunReadRecord(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
         eq(workflowRuns.id, runId),
+        sql`(${workflowRuns.triggerType} <> 'test' OR ${workflowRuns.createdAt} > statement_timestamp()-interval '7 days')`,
       ),
     )
     .limit(1);

@@ -503,7 +503,7 @@ export async function requestActiveRunCancellations(
   return active.rows.length;
 }
 
-async function cancelInTransaction(
+export async function cancelInTransaction(
   transaction: WorkspaceTransaction,
   input: z.output<typeof cancelInputSchema>,
 ): Promise<

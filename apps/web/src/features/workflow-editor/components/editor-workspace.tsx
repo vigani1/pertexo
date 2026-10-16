@@ -1,6 +1,8 @@
 import type { CodeSettings } from '@pertexo/node-sdk';
 import type {
   NodeDefinitionCatalogItem,
+  WorkflowNodeRunSummary,
+  WorkflowSummary,
   ConnectionResponse,
   AccessibleWorkspace,
 } from '@pertexo/contracts';
@@ -41,9 +43,16 @@ import { ValidationSweep } from './canvas/validation-sweep';
 import { WorkflowCanvas } from './canvas/index';
 import { EditorLayout } from './editor-layout';
 import { EditorInspector } from './inspector/editor';
+import { useEditorWorkflowTests } from '../hooks/use-editor-workflow-tests';
+import {
+  WorkflowTestButton,
+  WorkflowTestHistory,
+  WorkflowTestDialog,
+} from '@/features/workflow-publish/workflow-tests.public';
 import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';
 
 export type EditorChrome = Readonly<{
+  workflowTestAction: ReactNode;
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;
   /** The bottom issues lens, opened from the command bar's chip. */
@@ -77,7 +86,11 @@ export function EditorWorkspace({
   bar,
   banner,
   bottomLens,
+  workflow,
+  verifyIdentity,
 }: Readonly<{
+  workflow: WorkflowSummary | undefined;
+  verifyIdentity: () => Promise<void>;
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
@@ -101,6 +114,15 @@ export function EditorWorkspace({
   bottomLens: (chrome: EditorChrome) => ReactNode;
 }>) {
   const store = useEditorStoreApi();
+  const { tests, testStatuses, revision, graph } = useEditorWorkflowTests({
+    apiClient,
+    userId,
+    workspace,
+    workflowId,
+    paused,
+    ensureSaved,
+    verifyIdentity,
+  });
   const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
   const inspectorOpen = useEditorStore(
     (state) => state.selectedNodeIds.length > 0,
@@ -158,8 +180,11 @@ export function EditorWorkspace({
     ...stepSamplesQueryOptions(sampleScope),
     enabled: !paused && workspace.capabilities.includes('run:read'),
   });
-  const overlays = useCanvasOverlays(issues, effects);
+  const overlays = useCanvasOverlays(issues, effects, testStatuses);
   const chrome: EditorChrome = {
+    workflowTestAction: (
+      <WorkflowTestButton tests={tests} className="hidden sm:inline-flex" />
+    ),
     shortcutsOpen,
     onShortcutsOpenChange: setShortcutsOpen,
     issuesOpen,
@@ -180,7 +205,17 @@ export function EditorWorkspace({
           )}
         </>
       }
-      banner={banner}
+      banner={
+        <>
+          {banner}
+          <WorkflowTestHistory
+            tests={tests}
+            ensureSaved={ensureSaved}
+            currentRevision={revision}
+            canCancel={workspace.capabilities.includes('run:cancel')}
+          />
+        </>
+      }
       editable={canUpdate}
       addStepCollapsed={addStep.collapsed}
       mobilePanel={navigation.mobilePanel}
@@ -280,6 +315,14 @@ export function EditorWorkspace({
       }
       overlay={
         <>
+          {paused || !tests.open ? null : (
+            <WorkflowTestDialog
+              tests={tests}
+              workspace={workspace}
+              workflow={workflow}
+              graph={graph}
+            />
+          )}
           <SelectionToolbar
             editable={editable}
             onDuplicate={duplicateSelection}
@@ -332,6 +375,8 @@ function useAddStepFold(
 function useCanvasOverlays(
   issues: WorkflowIssuesView,
   effects: ReturnType<typeof useCanvasEffects>,
+  testStatuses:
+    ReadonlyMap<string, WorkflowNodeRunSummary['status']> | undefined,
 ) {
   return useMemo(
     () => ({
@@ -339,8 +384,10 @@ function useCanvasOverlays(
       flowingEdgeIds: effects.flowingEdgeIds,
       weaveOrder: effects.weaveOrder,
       testOutputBytes: effects.testOutputBytes,
+      testStatuses,
     }),
     [
+      testStatuses,
       effects.flowingEdgeIds,
       effects.testOutputBytes,
       effects.weaveOrder,

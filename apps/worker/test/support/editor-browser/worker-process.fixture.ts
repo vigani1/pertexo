@@ -73,7 +73,9 @@ const namespace = createRedisTestNamespace(
     },
   },
 );
-const codeCase = process.env.EDITOR_BROWSER_CASE === 'code';
+const codeCase = ['code', 'pinned-samples'].includes(
+  process.env.EDITOR_BROWSER_CASE ?? '',
+);
 const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
 const errorWorkflowCase = process.env.EDITOR_BROWSER_CASE === 'error-workflows';
 const webhookResponseCase =

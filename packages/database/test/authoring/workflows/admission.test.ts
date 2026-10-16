@@ -387,6 +387,7 @@ describe('snapshot validation and publication ordering', () => {
         definitionCatalog: catalog,
         executableCompiler,
         placementDefinitionCatalog: undefined,
+        workflowTestCompiler: undefined,
         portableCatalog: undefined,
         validateAuthoringGraph: validator,
       },
