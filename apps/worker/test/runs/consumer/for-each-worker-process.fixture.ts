@@ -52,6 +52,23 @@ const handleSignal = (): void => {
 process.once('SIGTERM', handleSignal);
 process.once('SIGINT', handleSignal);
 
+// The test keeps loaded spares so each restart costs only connection setup.
+// A spare has opened no Redis or PostgreSQL connection until it is started.
+process.stdout.write(`${JSON.stringify({ loaded: true, pid: process.pid })}\n`);
+const started = await new Promise<boolean>((resolve) => {
+  let input = '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', (chunk: string) => {
+    input += chunk;
+    if (input.includes('\n')) resolve(input.startsWith('start\n'));
+  });
+  process.stdin.once('end', () => {
+    resolve(false);
+  });
+});
+process.stdin.destroy();
+if (!started) process.exit(0);
+
 try {
   coordinator = await createCoordinatorRuntime({
     maintenanceDatabase: parseDatabaseConfig({
