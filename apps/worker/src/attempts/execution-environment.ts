@@ -45,10 +45,13 @@ export function createNodeExecutionEnvironment(
     nodeId: lease.nodeId,
     invocationKey: lease.invocationKey,
     workerId: lease.workerId,
+    fenceToken: lease.fenceToken,
   });
   const connections =
     input.runtimeCapabilities?.connections?.(capabilityContext);
   const artifacts = input.runtimeCapabilities?.artifacts?.(capabilityContext);
+  const webhookResponse =
+    input.runtimeCapabilities?.webhookResponse?.(capabilityContext);
   const runtime: NodeExecutionRuntime = Object.freeze({
     workspaceId: lease.workspaceId,
     runId: lease.runId,
@@ -59,6 +62,7 @@ export function createNodeExecutionEnvironment(
     invocationKey: lease.invocationKey,
     sideEffectClass: lease.sideEffectClass,
     ...nodeExecutionOptionalFields(lease, connections, artifacts),
+    ...(webhookResponse === undefined ? {} : { webhookResponse }),
     observeConnectionHealth: healthCapture.observe,
     beforeDispatch: async (
       dispatchInput?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],

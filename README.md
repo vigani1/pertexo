@@ -208,3 +208,6 @@ A personal Inbox, follow/mute and notification email schedules:
 
 Shared sample output for isolated editor tests:
 [pinned samples guide](docs/guides/pinned-samples.md).
+
+Reply to a waiting webhook caller:
+[webhook responses](docs/guides/webhook-responses.md).

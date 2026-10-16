@@ -437,7 +437,7 @@ describe('workflow triggers tab', () => {
     expect(empty?.querySelector('[data-slot="status-glyph"]')).toBeNull();
   });
 
-  it('lists recent deliveries with what happened, the response and the run', async () => {
+  it('lists recent deliveries with what happened, admission status and the run', async () => {
     const runId = '77777777-7777-4777-8777-777777777777';
     const delivery = {
       receivedAt: new Date(Date.now() - 180_000).toISOString(),
@@ -506,7 +506,7 @@ describe('workflow triggers tab', () => {
     if (accepted === undefined || rejected === undefined)
       throw new Error('Expected two delivery rows');
     expect(within(accepted).getByText('Accepted')).toBeVisible();
-    expect(within(accepted).getByText('HTTP 202 · 321 B')).toBeVisible();
+    expect(within(accepted).getByText('Admission 202 · 321 B')).toBeVisible();
     expect(
       within(accepted).getByRole('link', { name: 'Open run' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/runs/${runId}`);
@@ -515,7 +515,7 @@ describe('workflow triggers tab', () => {
       delivery.receivedAt,
     );
     expect(within(rejected).getByText('Signature didn’t match')).toBeVisible();
-    expect(within(rejected).getByText('HTTP 401')).toBeVisible();
+    expect(within(rejected).getByText('Admission 401')).toBeVisible();
     expect(
       within(rejected).queryByRole('link', { name: 'Open run' }),
     ).not.toBeInTheDocument();

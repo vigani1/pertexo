@@ -135,6 +135,9 @@ const webhookDatabase = {
   recordRejectedDelivery: vi
     .fn<WebhookTriggerDatabase['recordRejectedDelivery']>()
     .mockResolvedValue(undefined),
+  readResponse: vi
+    .fn<WebhookTriggerDatabase['readResponse']>()
+    .mockResolvedValue({ state: 'finished' }),
   close: vi.fn<WebhookTriggerDatabase['close']>().mockResolvedValue(undefined),
 } satisfies WebhookTriggerDatabase;
 const webhookKeys: WebhookEnvelopeKeyProvider = {

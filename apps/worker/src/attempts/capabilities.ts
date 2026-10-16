@@ -1,6 +1,7 @@
 import type {
   NodeArtifactRuntime,
   NodeConnectionRuntime,
+  NodeWebhookResponseRuntime,
 } from '@pertexo/node-sdk/server';
 
 /** Identity and ownership supplied when constructing per-attempt capabilities. */
@@ -23,4 +24,7 @@ export type NodeExecutionCapabilityFactories = Readonly<{
     context: NodeExecutionCapabilityContext,
   ) => NodeConnectionRuntime;
   artifacts?: (context: NodeExecutionCapabilityContext) => NodeArtifactRuntime;
+  webhookResponse?: (
+    context: NodeExecutionCapabilityContext & Readonly<{ fenceToken: number }>,
+  ) => NodeWebhookResponseRuntime;
 }>;

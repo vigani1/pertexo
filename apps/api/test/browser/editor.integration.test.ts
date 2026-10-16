@@ -1,3 +1,4 @@
+import { verifyWebhookResponseEvidence } from './editor/evidence/webhook-responses.js';
 import { verifySampleEvidence } from './editor/evidence/samples/verify.js';
 import { verifyNotificationEvidence } from './editor/evidence/notifications/verify.js';
 import { verifyVariableEvidence } from './editor/evidence/variables/verify.js';
@@ -128,6 +129,7 @@ const scenario = z
     'portability',
     'input-cases',
     'pinned-samples',
+    'webhook-responses',
     'curated-templates',
     'callable',
   ])
@@ -172,7 +174,9 @@ const controlledHttpScenario =
 let failureRoutingEvidence:
   z.infer<typeof failureRoutingEvidenceSchema> | undefined;
 const httpMaster =
-  controlledHttpScenario || scenario === 'curated-templates'
+  controlledHttpScenario ||
+  scenario === 'curated-templates' ||
+  scenario === 'webhook-responses'
     ? randomBytes(32)
     : undefined;
 const httpAuthorization = controlledHttpScenario
@@ -1047,51 +1051,54 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'pinned-samples'
-              ? 'editor/pinned-samples.spec.ts'
-              : scenario === 'notifications'
-                ? 'editor/notifications/attention.spec.ts'
-                : scenario === 'variables'
-                  ? 'editor/variables/snapshots.spec.ts'
-                  : scenario === 'forms'
-                    ? 'editor/forms/submission.spec.ts'
-                    : scenario === 'approvals'
-                      ? 'editor/approvals.spec.ts'
-                      : scenario === 'error-workflows'
-                        ? 'editor/error-workflows.spec.ts'
-                        : scenario === 'artifact-inputs'
-                          ? 'editor/files/'
-                          : scenario === 'api-tokens'
-                            ? 'api-tokens.spec.ts'
-                            : scenario === 'callable'
-                              ? 'editor/callable.spec.ts'
-                              : scenario === 'curated-templates'
-                                ? 'curated-templates.spec.ts'
-                                : scenario === 'portability'
-                                  ? 'workflow-portability.spec.ts'
-                                  : scenario === 'input-cases'
-                                    ? 'workflow-input-cases.spec.ts'
-                                    : scenario === 'duplication'
-                                      ? 'workflow-duplication.spec.ts'
-                                      : scenario === 'nested-conflict'
-                                        ? 'editor/execution.spec.ts'
-                                        : scenario === 'receipts'
-                                          ? 'editor/receipts.spec.ts'
-                                          : scenario === 'run-recovery'
-                                            ? 'editor/run-recovery.spec.ts'
-                                            : scenario ===
-                                                'expression-admission'
-                                              ? 'editor/expression-admission.spec.ts'
-                                              : scenario === 'readonly'
-                                                ? 'editor/readonly.spec.ts'
-                                                : scenario === 'schedule'
-                                                  ? 'editor/schedule.spec.ts'
-                                                  : scenario ===
-                                                      'failure-routing'
-                                                    ? 'editor/failure-routing.spec.ts'
-                                                    : scenario === 'transforms'
-                                                      ? 'editor/transforms.spec.ts'
-                                                      : 'editor/webhook-controlled-http.spec.ts',
+            scenario === 'webhook-responses'
+              ? 'editor/webhook-responses.spec.ts'
+              : scenario === 'pinned-samples'
+                ? 'editor/pinned-samples.spec.ts'
+                : scenario === 'notifications'
+                  ? 'editor/notifications/attention.spec.ts'
+                  : scenario === 'variables'
+                    ? 'editor/variables/snapshots.spec.ts'
+                    : scenario === 'forms'
+                      ? 'editor/forms/submission.spec.ts'
+                      : scenario === 'approvals'
+                        ? 'editor/approvals.spec.ts'
+                        : scenario === 'error-workflows'
+                          ? 'editor/error-workflows.spec.ts'
+                          : scenario === 'artifact-inputs'
+                            ? 'editor/files/'
+                            : scenario === 'api-tokens'
+                              ? 'api-tokens.spec.ts'
+                              : scenario === 'callable'
+                                ? 'editor/callable.spec.ts'
+                                : scenario === 'curated-templates'
+                                  ? 'curated-templates.spec.ts'
+                                  : scenario === 'portability'
+                                    ? 'workflow-portability.spec.ts'
+                                    : scenario === 'input-cases'
+                                      ? 'workflow-input-cases.spec.ts'
+                                      : scenario === 'duplication'
+                                        ? 'workflow-duplication.spec.ts'
+                                        : scenario === 'nested-conflict'
+                                          ? 'editor/execution.spec.ts'
+                                          : scenario === 'receipts'
+                                            ? 'editor/receipts.spec.ts'
+                                            : scenario === 'run-recovery'
+                                              ? 'editor/run-recovery.spec.ts'
+                                              : scenario ===
+                                                  'expression-admission'
+                                                ? 'editor/expression-admission.spec.ts'
+                                                : scenario === 'readonly'
+                                                  ? 'editor/readonly.spec.ts'
+                                                  : scenario === 'schedule'
+                                                    ? 'editor/schedule.spec.ts'
+                                                    : scenario ===
+                                                        'failure-routing'
+                                                      ? 'editor/failure-routing.spec.ts'
+                                                      : scenario ===
+                                                          'transforms'
+                                                        ? 'editor/transforms.spec.ts'
+                                                        : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1111,6 +1118,10 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'webhook-responses') {
+      await verifyWebhookResponseEvidence(api.database());
+      return;
+    }
     if (scenario === 'pinned-samples') {
       await verifySampleEvidence(api.database());
       return;

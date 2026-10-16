@@ -363,6 +363,9 @@ function setup(original: boolean) {
       }),
     consumeIngressLimit: vi.fn().mockResolvedValue(undefined),
     acceptVerifiedDelivery: vi.fn(),
+    readResponse: vi
+      .fn<WebhookTriggerDatabase['readResponse']>()
+      .mockResolvedValue({ state: 'finished' }),
     listDeliveries: vi.fn<WebhookTriggerDatabase['listDeliveries']>(),
     recordRejectedDelivery: vi.fn(),
     close: vi.fn().mockResolvedValue(undefined),

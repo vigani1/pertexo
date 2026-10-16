@@ -1,3 +1,4 @@
+import { NODE_IDENTITY_KEY_PATTERN } from '@pertexo/node-sdk';
 import { workspaceVariableSetRevisions } from '../variables.js';
 import { workspaceExecutionEntitlementVersions } from './entitlements.js';
 import { failureNotificationDestinationVersions } from '../notifications.js';
@@ -757,7 +758,7 @@ export const previewRuns = appSchema.table(
     ),
     check(
       'preview_runs_definition_key_format',
-      sql`((definition_key)::text ~ '^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)*$'::text)`,
+      sql`definition_key ~ ${sql.raw('$node_key$' + NODE_IDENTITY_KEY_PATTERN + '$node_key$')}`,
     ),
     check(
       'preview_runs_disclosure_consistent',
@@ -777,7 +778,7 @@ export const previewRuns = appSchema.table(
     ),
     check(
       'preview_runs_executor_key_format',
-      sql`((executor_key)::text ~ '^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)*$'::text)`,
+      sql`executor_key ~ ${sql.raw('$node_key$' + NODE_IDENTITY_KEY_PATTERN + '$node_key$')}`,
     ),
     check(
       'preview_runs_idempotency_hashes_format',

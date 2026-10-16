@@ -1,3 +1,4 @@
+import { definitionIdentitySchema } from '@pertexo/node-sdk';
 import { resolvePreviewSample } from './samples.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
 import { captureWorkspaceVariableRevision } from '../../variables/read.js';
@@ -36,9 +37,7 @@ import {
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
-const identityKeySchema = z
-  .string()
-  .regex(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u);
+const identityKeySchema = definitionIdentitySchema.shape.key;
 const integrationKeySchema = z.string().regex(/^[a-z][a-z0-9._:-]*$/u);
 export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
 const PREVIEW_EXECUTION_TIMEOUT_MAX_MS = 5 * 60 * 1_000;

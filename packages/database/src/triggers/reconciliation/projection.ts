@@ -1,10 +1,11 @@
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 
-import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
+import {
+  CORE_SCHEDULE_CONFIG_SCHEMA,
+  CORE_WEBHOOK_CONFIG_SCHEMA,
+} from '@pertexo/nodes-core';
 import { z } from 'zod';
-
-const webhookConfigSchema = z.object({}).strict();
 
 function triggerKind(
   identity: string,
@@ -55,7 +56,7 @@ export function workflowTriggerProjection(
         // its own independent enable/disable lifecycle.
         const config: Readonly<Record<string, unknown>> =
           kind === 'webhook'
-            ? webhookConfigSchema.parse(node.config)
+            ? CORE_WEBHOOK_CONFIG_SCHEMA.parse(node.config)
             : CORE_SCHEDULE_CONFIG_SCHEMA.parse(node.config);
         const digest = createHash('sha256')
           .update(canonicalJson({ config, kind }))

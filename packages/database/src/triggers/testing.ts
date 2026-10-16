@@ -50,3 +50,11 @@ export {
   type ScheduleRecurrence,
 } from './schedules/recurrence.js';
 export type { WorkflowTriggerProjection } from './reconciliation/projection.js';
+
+export { createWebhookResponseStore } from './webhooks/responses/write.js';
+export type {
+  WebhookResponseStore,
+  WebhookResponseScope,
+  WebhookResponseSnapshot,
+  WriteWebhookResponse,
+} from './webhooks/responses/contract.js';

@@ -103,6 +103,11 @@ version context. Loading it supplies editable input for a separately confirmed
 real manual run; it is not an execution or a substitute for provider effects.
 _Avoid_: Replay, preview, mock, pinned sample
 
+**Webhook reply**: A JSON or text response chosen once by an original webhook
+run for its waiting caller. Sending it does not end the run; a bounded wait can
+instead return the accepted run reference. _Avoid_: Run result, Call result,
+trigger admission
+
 **Pinned sample**: Shared output attached to one draft step for editor tests. It
 replaces that step's execution during a test and becomes stale when its setup
 changes. _Avoid_: Published output, execution cache, run-input case

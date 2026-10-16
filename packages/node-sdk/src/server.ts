@@ -418,3 +418,9 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
 }
 
 export { FileInputFailure } from './artifacts/failure.js';
+
+export type {
+  NodeWebhookResponseRuntime,
+  NodeWebhookResponse,
+  NodeWebhookResponseReceipt,
+} from './webhooks.js';

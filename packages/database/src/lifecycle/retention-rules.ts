@@ -18,6 +18,14 @@ import {
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
   {
+    name: 'webhook_responses',
+    statement: `with page as (
+      select response.run_id from app.webhook_run_responses response
+      join app.workflow_runs run on run.workspace_id=response.workspace_id and run.id=response.run_id
+      where run.completed_at<=clock_timestamp()-interval '30 days' order by response.run_id limit $1
+    ) delete from app.webhook_run_responses response using page where response.run_id=page.run_id`,
+  },
+  {
     // Live human interactions may outlast the normal input window.
     name: 'run_inputs',
     statement: `

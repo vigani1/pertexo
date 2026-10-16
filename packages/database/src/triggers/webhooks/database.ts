@@ -1,3 +1,12 @@
+import {
+  openWebhookResponse,
+  webhookReplayWait,
+} from './responses/admission.js';
+import { readWebhookResponse } from './responses/read.js';
+import type {
+  WebhookResponseScope,
+  WebhookResponseSnapshot,
+} from './responses/contract.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
@@ -91,6 +100,7 @@ export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
 }>;
 
 export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
+  readResponse(input: WebhookResponseScope): Promise<WebhookResponseSnapshot>;
   provision(
     input: Command &
       Readonly<{
@@ -122,7 +132,9 @@ export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
   consumeIngressLimit(endpointKeyHash: string): Promise<void>;
   acceptVerifiedDelivery(
     input: AcceptVerifiedWebhookDeliveryInput,
-  ): Promise<Readonly<{ runId: string; replayed: boolean }>>;
+  ): Promise<
+    Readonly<{ runId: string; replayed: boolean; responseWaitSeconds?: number }>
+  >;
   close(): Promise<void>;
 }
 
@@ -304,6 +316,8 @@ export function createWebhookTriggerDatabase(
     );
 
   return Object.freeze({
+    readResponse: (input: WebhookResponseScope) =>
+      readWebhookResponse(pool, input),
     provision: (input: Parameters<WebhookTriggerDatabase['provision']>[0]) =>
       command(input, async (client) => {
         const operation = 'webhook.trigger.provision';
@@ -500,7 +514,16 @@ export function createWebhookTriggerDatabase(
               runId: replayed.runId,
               dedupeKind,
             });
-            return replayed;
+            const seconds = await webhookReplayWait(
+              transaction,
+              replayed.runId,
+            );
+            return {
+              ...replayed,
+              ...(seconds === undefined
+                ? {}
+                : { responseWaitSeconds: seconds }),
+            };
           }
           if (replay !== undefined)
             await deleteExpiredReplay(transaction, replayIdentity);
@@ -556,7 +579,16 @@ export function createWebhookTriggerDatabase(
             update app.webhook_trigger_replay_records set workflow_run_id=${accepted.runId}
              where workspace_id=${transaction.workspaceId} and delivery_id=${deliveryId}
           `);
-          return Object.freeze({ runId: accepted.runId, replayed: false });
+          const seconds = await openWebhookResponse(
+            transaction,
+            verification.triggerId,
+            accepted.runId,
+          );
+          return Object.freeze({
+            runId: accepted.runId,
+            replayed: false,
+            ...(seconds === undefined ? {} : { responseWaitSeconds: seconds }),
+          });
         },
       );
     },
