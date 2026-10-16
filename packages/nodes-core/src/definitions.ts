@@ -1,4 +1,10 @@
 import {
+  CORE_RESPOND_WEBHOOK_MANIFEST,
+  CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA,
+  CORE_RESPOND_WEBHOOK_INPUT_SCHEMA,
+  CORE_RESPOND_WEBHOOK_OUTPUT_SCHEMA,
+} from './flow/respond-webhook/index.js';
+import {
   CORE_REQUEST_INPUT_MANIFEST,
   CORE_REQUEST_INPUT_CONFIG_SCHEMA,
   CORE_REQUEST_INPUT_INPUT_SCHEMA,
@@ -160,6 +166,12 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    {
+      manifest: CORE_RESPOND_WEBHOOK_MANIFEST,
+      configSchema: CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA,
+      inputSchema: CORE_RESPOND_WEBHOOK_INPUT_SCHEMA,
+      outputSchema: CORE_RESPOND_WEBHOOK_OUTPUT_SCHEMA,
+    },
     Object.freeze({
       manifest: CORE_REQUEST_INPUT_MANIFEST,
       configSchema: CORE_REQUEST_INPUT_CONFIG_SCHEMA,

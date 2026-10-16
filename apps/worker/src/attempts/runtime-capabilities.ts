@@ -1,4 +1,8 @@
 import {
+  createWebhookResponseStore,
+  type WebhookResponseStore,
+} from '@pertexo/database/triggers';
+import {
   createArtifactStore,
   type ArtifactStore,
   type ArtifactStoreConfig,
@@ -55,6 +59,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
 
 export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   databaseRuntime?: DatabaseRuntime;
+  webhookResponses?: Pick<WebhookResponseStore, 'respond'>;
   connectionDatabase?: Parameters<
     typeof createProviderConnectionRuntimeFactory
   >[0];
@@ -151,6 +156,7 @@ export async function createWorkerNodeRuntimeCapabilities(
   const retentionMillis =
     options.artifactRetentionMillis ?? DEFAULT_ARTIFACT_RETENTION_MILLIS;
 
+  let ownedWebhookResponses: WebhookResponseStore | undefined;
   let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   let ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;
   let ownedArtifactDatabase: WorkspaceDatabase | undefined;
@@ -169,6 +175,9 @@ export async function createWorkerNodeRuntimeCapabilities(
   const factories: {
     connections?: NonNullable<NodeExecutionCapabilityFactories['connections']>;
     artifacts?: NonNullable<NodeExecutionCapabilityFactories['artifacts']>;
+    webhookResponse?: NonNullable<
+      NodeExecutionCapabilityFactories['webhookResponse']
+    >;
   } = {};
   let closePromise: Promise<void> | undefined;
   const lifecycle = { terminal: false };
@@ -178,6 +187,7 @@ export async function createWorkerNodeRuntimeCapabilities(
       lifecycle.terminal = true;
       closePromise = (async (): Promise<void> => {
         const closeOperations = [
+          ownedWebhookResponses?.close.bind(ownedWebhookResponses),
           ownedConnectionDatabase?.close.bind(ownedConnectionDatabase),
           ownedArtifactDatabase?.close.bind(ownedArtifactDatabase),
           encryptionRuntime?.close.bind(encryptionRuntime),
@@ -200,6 +210,33 @@ export async function createWorkerNodeRuntimeCapabilities(
     return closePromise;
   };
   try {
+    const webhookResponses =
+      dependencies.webhookResponses ??
+      (ownedWebhookResponses = createWebhookResponseStore(
+        options.database,
+        dependencies.databaseRuntime,
+      ));
+    factories.webhookResponse = (context) => ({
+      respond: async ({ response, signal }) => {
+        assertCapabilityRuntimeOpen(lifecycle);
+        signal.throwIfAborted();
+        if (context.previewRunId !== undefined)
+          return { outcome: 'preview', statusCode: response.statusCode };
+        return webhookResponses.respond({
+          workspaceId: context.workspaceId,
+          runId: context.runId,
+          nodeRunId: context.nodeRunId,
+          attemptId: context.attemptId,
+          attemptNumber: context.attemptNumber,
+          nodeId: context.nodeId,
+          invocationKey: context.invocationKey,
+          workerId: context.workerId,
+          fenceToken: context.fenceToken,
+          response,
+          signal,
+        });
+      },
+    });
     if (connectionConfigured) {
       const providerRateLimiter =
         dependencies.providerRateLimiter ??

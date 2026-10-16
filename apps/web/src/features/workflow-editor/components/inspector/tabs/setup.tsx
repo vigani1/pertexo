@@ -1,3 +1,5 @@
+import { WebhookTriggerSetup } from '../webhook/trigger-setup';
+import { WebhookResponseSetup } from '../webhook/response-setup';
 import { HumanFormSetup } from '../human-task/setup';
 import { ReadFileSetup } from '../builders/read-file-setup';
 import { DateSetup } from '../builders/date-setup';
@@ -217,6 +219,10 @@ function SetupControls({
         scope={callScope}
       />
     );
+  if (node.definition.key === 'core.webhook')
+    return <WebhookTriggerSetup config={config} form={form} />;
+  if (node.definition.key === 'core.respond_webhook')
+    return <WebhookResponseSetup config={config} form={form} />;
   if (node.definition.key === 'core.read_file')
     return <ReadFileSetup config={config} form={form} />;
   if (node.definition.key === 'core.date')

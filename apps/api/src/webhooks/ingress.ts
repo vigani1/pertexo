@@ -1,3 +1,5 @@
+import { createWebhookResponseWaiter } from './responses/wait.js';
+import { replyToAcceptedWebhook } from './responses/reply.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
@@ -52,6 +54,13 @@ export function registerWebhookIngress(
   dependencies: WebhookIngressDependencies,
 ): void {
   const telemetry = dependencies.telemetry ?? createWebhookIngressTelemetry();
+  const responseWaiter = createWebhookResponseWaiter((input) =>
+    dependencies.database.readResponse(input),
+  );
+  fastify.addHook('preClose', (done) => {
+    responseWaiter.close();
+    done();
+  });
   void fastify.register((scope, _options, done) => {
     scope.setErrorHandler(async (error, request, reply) => {
       const requestId =
@@ -102,7 +111,14 @@ export function registerWebhookIngress(
       (request, reply) =>
         traceAcceptance(telemetry, singleHeader(request, 'traceparent'), () =>
           withRequestOperationSignal(request, (signal) =>
-            acceptWebhook(request, reply, dependencies, telemetry, signal),
+            acceptWebhook(
+              request,
+              reply,
+              dependencies,
+              telemetry,
+              signal,
+              responseWaiter,
+            ),
           ),
         ),
     );
@@ -136,6 +152,7 @@ async function acceptWebhook(
   dependencies: WebhookIngressDependencies,
   telemetry: WebhookIngressTelemetry,
   encryptionSignal: AbortSignal,
+  responseWaiter: ReturnType<typeof createWebhookResponseWaiter>,
 ): Promise<void> {
   const requestId =
     parseRequestId(request.headers['x-request-id']) ?? randomUUID();
@@ -276,7 +293,14 @@ async function acceptWebhook(
     record(() => {
       telemetry.health('healthy');
     });
-    await reply.code(202).send(result);
+    await replyToAcceptedWebhook(
+      request,
+      reply,
+      verification.workspaceId,
+      result,
+      responseWaiter,
+      telemetry,
+    );
   } catch (error) {
     await rejectAcceptance(error, reply, requestId, telemetry, reject);
   }

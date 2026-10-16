@@ -1,3 +1,4 @@
+import { qualifyWebhookResponseWaiting } from './responses/qualify.js';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 
 import {
@@ -289,6 +290,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       );
       service = new WebhookManagementService(webhookDatabase, encryption);
       ingressDatabase = {
+        readResponse: (input) => webhookDatabase.readResponse(input),
         provision: (input) => webhookDatabase.provision(input),
         rotateEndpoint: (input) => webhookDatabase.rotateEndpoint(input),
         rotateSecret: (input) => webhookDatabase.rotateSecret(input),
@@ -352,7 +354,10 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     }
   }
 
-  async function seedWebhook(label: string) {
+  async function seedWebhook(
+    label: string,
+    responseConfig: Record<string, unknown> = {},
+  ) {
     const actorId = randomUUID();
     workspaceId = randomUUID();
     await identity.createUser({
@@ -383,7 +388,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
           definition: { key: 'core.webhook', version: 1 },
           position: { x: 0, y: 0 },
           configVersion: 1,
-          config: {},
+          config: responseConfig,
           inputMappings: {},
           connectionRefs: {},
         },
@@ -460,6 +465,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     const endpointKey = requireString(provisioned.endpointKey);
     const originalSecret = requireString(provisioned.signingSecret);
     return {
+      workspaceId,
       actorId,
       endpointKey,
       originalSecret,
@@ -468,6 +474,19 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       workflowId: created.workflowId,
     };
   }
+
+  it('qualifies durable response waiting across independent API listeners and restart', async () => {
+    await qualifyWebhookResponseWaiting({
+      ingress: {
+        database: webhookDatabase,
+        encryption,
+        checkpointFactory: (projection) =>
+          createInitialCheckpoint(projection, { catalog }),
+      },
+      seed: seedWebhook,
+      query: ownerQuery,
+    });
+  }, 20_000);
 
   it('proves atomic acceptance, exact replay, and replay conflict', async () => {
     const { actorId, endpointKey, originalSecret, trigger, workflowId } =

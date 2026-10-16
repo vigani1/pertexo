@@ -277,3 +277,7 @@ select a handler. Removing a failure path confirms its owned steps and supports
 undo. Run history keeps the original source failed and records whether the
 handler completed, including “Finished — 1 failure handled” for a successful
 run.
+
+Webhook Setup can opt into bounded replies through a Respond to webhook step.
+See [webhook responses](../../docs/guides/webhook-responses.md) for limits, safe
+headers, previews, timeout fallback and the admission log.

@@ -234,7 +234,7 @@ jobs:
           - suite: live-1
             journeys: >-
               usage failure-routing error-workflows approvals variables
-              notifications artifact-inputs
+              notifications artifact-inputs webhook-responses
           - suite: live-2
             journeys: >-
               workflow-concurrency connection-health input-cases callable

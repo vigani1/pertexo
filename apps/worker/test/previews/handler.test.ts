@@ -280,6 +280,7 @@ describe('preview attempt handler', () => {
 
     expect(artifactFactory).toHaveBeenCalledWith({
       artifactRetentionDeadline: lease.retentionExpiresAt,
+      fenceToken: lease.attemptFenceToken,
       attemptId: previewAttemptId,
       attemptNumber: 1,
       invocationKey: 'preview:node-1',

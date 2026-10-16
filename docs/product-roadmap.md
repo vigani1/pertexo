@@ -105,7 +105,7 @@ performance/reliability rankings are asserted. Editions differ.
 | Forms start workflows | [n8n Form Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger) | New product F11 |
 | File data in workflows | [n8n file and binary data](https://docs.n8n.io/build/work-with-data/handle-special-data-types/work-with-files-and-images) | Storage/output exists; complete input/consumer F04 |
 | Reusable configuration and records | [n8n custom variables](https://docs.n8n.io/build/code-in-n8n/define-custom-variables), [n8n data tables](https://docs.n8n.io/build/work-with-data/data-tables) | Optional F13/F14 |
-| Respond through a webhook | [n8n Respond to Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook) | Current 202 stays default; opt-in F15 |
+| Respond through a webhook | [n8n Respond to Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook) | 202 stays default; opt-in stored workflow response (F15) |
 | Promote between environments | [n8n source control and environments](https://docs.n8n.io/administer/use-source-control-and-environments) | Versioning exists, environment product F17 does not follow automatically |
 | Organize workflows | [Make scenario capabilities](https://help.make.com/scenarios) documents folders/labels | Existing search; proposed metadata F07 |
 | User code as a workflow step | [n8n Code node](https://docs.n8n.io/build/code-in-n8n/using-the-code-node) supports JavaScript/Python | Explicitly deferred; security-heavy F20 |
@@ -202,7 +202,7 @@ only after its gate is resolved.
 | [F12](feature-plans/12-usage-and-insights.md) | Usage, limits and workflow insights without billing | Backend projection + frontend reporting | L | First capacity/activity slice released (PR137) and redesigned in the Weft pass (2026-10-12); warnings/trends deferred |
 | [F13](feature-plans/13-configuration-and-variables.md) | Workspace variables and reusable non-secret configuration | New version-aware configuration | L | Merged #303 with green CI; immutable snapshots, typed mappings and scoped usage; natural main and ARM qualification green |
 | [F14](feature-plans/14-data-tables.md) | Workflow-owned lookup tables and durable records | New optional storage product | XL | Proposed |
-| [F15](feature-plans/15-synchronous-webhook-responses.md) | Bounded synchronous webhook responses | New opt-in trigger mode | XL | Proposed |
+| [F15](feature-plans/15-synchronous-webhook-responses.md) | Bounded synchronous webhook responses | Opt-in stored worker reply; 202 stays default | XL | Implemented |
 | [F16](feature-plans/16-automation-api-and-cli.md) | Scoped automation tokens, public API and CLI | Backend security product + developer UX | L–XL | Personal scoped tokens, supported HTTP methods, one-time Settings and CLI implemented after F09/F24; owned browser/CLI/worker/SQL qualification passed; final delivery PR carries release CI evidence |
 | [F17](feature-plans/17-environments-and-promotion.md) | Development/production environments and safe promotion | New enterprise-oriented lifecycle | XL | Proposed |
 | [F18](feature-plans/18-governance-and-audit.md) | Audit visibility, publishing approval and advanced access | Existing tenancy foundation + new governance UX | XL | Proposed |
