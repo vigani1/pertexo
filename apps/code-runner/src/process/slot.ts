@@ -126,8 +126,14 @@ export async function startTaskSlot(
   child.stdout?.on('data', (chunk: Buffer) => {
     logs.append(chunk);
   });
-  let stderr = '';
+  let stderr = '',
+    stderrBytes = 0;
   child.stderr?.on('data', (chunk: Buffer) => {
+    stderrBytes += chunk.length;
+    if (stderrBytes > CODE_LIMITS.logBytes) {
+      fail('code.output_invalid');
+      return;
+    }
     if (stderr.length < 8192)
       stderr += chunk.toString('utf8').slice(0, 8192 - stderr.length);
   });
@@ -243,7 +249,9 @@ export async function startTaskSlot(
                   ? 'Code reached its time limit.'
                   : code === 'code.memory_limit'
                     ? 'Code reached its memory limit.'
-                    : 'Code process ended without a valid JSON result.',
+                    : code === 'code.output_invalid'
+                      ? 'Code exceeded its bounded output or diagnostic stream. Return and log less data.'
+                      : 'Code process ended without a valid JSON result.',
             },
           },
         };

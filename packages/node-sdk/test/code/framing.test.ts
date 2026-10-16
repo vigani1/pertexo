@@ -30,6 +30,19 @@ describe('bounded Code frames', () => {
       stream.destroy();
     },
   );
+  it('accepts a highly fragmented maximum-size frame', async () => {
+    const stream = new PassThrough();
+    const wire = Buffer.from(JSON.stringify('x'.repeat(65533)) + '\n');
+    const result = readCodeFrame(
+      stream,
+      wire.length,
+      AbortSignal.timeout(2000),
+    );
+    for (let index = 0; index < wire.length; index++)
+      stream.write(wire.subarray(index, index + 1));
+    expect(await result).toBe('x'.repeat(65533));
+    stream.destroy();
+  });
   it('cleans up an aborted read and transports trusted writes', async () => {
     const stream = new PassThrough();
     const canceled = new AbortController();

@@ -8,7 +8,9 @@ export function readCodeFrame(
   signal: AbortSignal,
 ): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
+    // A byte ceiling must also bound fragmented-message bookkeeping. Never
+    // retain one Buffer/object per attacker-controlled chunk.
+    const body = Buffer.allocUnsafe(maximum);
     let bytes = 0;
     const cleanup = () => {
       stream.off('data', data);
@@ -27,6 +29,7 @@ export function readCodeFrame(
       error(new Error('Code protocol aborted', { cause: signal.reason }));
     };
     const data = (chunk: Buffer) => {
+      const previous = bytes;
       bytes += chunk.length;
       if (bytes > maximum) {
         error(new Error('Code protocol exceeds its byte bound'));
@@ -34,21 +37,21 @@ export function readCodeFrame(
       }
       const end = chunk.indexOf(10);
       if (end === -1) {
-        chunks.push(chunk);
+        chunk.copy(body, previous);
         return;
       }
       if (end !== chunk.length - 1) {
         error(new Error('Code protocol has trailing data'));
         return;
       }
-      chunks.push(chunk.subarray(0, end));
+      chunk.copy(body, previous, 0, end);
       cleanup();
       stream.pause();
       try {
         resolve(
           JSON.parse(
             new TextDecoder('utf8', { fatal: true }).decode(
-              Buffer.concat(chunks),
+              body.subarray(0, bytes - 1),
             ),
           ) as unknown,
         );
