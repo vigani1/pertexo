@@ -5,6 +5,7 @@ import type {
   WebhookDeliveryResponse,
   WebhookManagementCommandResponse,
   WebhookTriggerHealthResponse,
+  WebhookAuthentication,
 } from '@pertexo/contracts';
 import { webhookCredentialSchema } from '@pertexo/contracts';
 import {
@@ -118,6 +119,56 @@ export class WebhookManagementService {
     input: WebhookCommandInput,
   ): Promise<WebhookManagementCommandResponse> {
     return this.mapCommandErrors(() => this.provisionWebhook(input));
+  }
+
+  public configureAuthentication(
+    input: WebhookCommandInput &
+      Readonly<{ authentication: WebhookAuthentication }>,
+  ): Promise<WebhookManagementCommandResponse> {
+    return this.mapCommandErrors(async () => {
+      const signal = commandSignal(input);
+      const endpointBytes = this.generateMaterial();
+      const secretBytes = this.generateMaterial();
+      try {
+        signal.throwIfAborted();
+        const endpointKey = endpointBytes.toString('base64url');
+        const signingSecret = secretBytes.toString('base64url');
+        const id = this.generateId();
+        const sealed = await this.encryption.seal(
+          secretBytes,
+          secretContext(input, id),
+          signal,
+        );
+        signal.throwIfAborted();
+        const result = await this.database.configureAuthentication({
+          ...commandBase(
+            'configureAuthentication',
+            input,
+            JSON.stringify(input.authentication),
+          ),
+          authentication: input.authentication,
+          endpointKeyHash: sha256(endpointKey),
+          secret: { id, ...sealed },
+        });
+        const trigger = publicHealth(result.trigger);
+        if (result.replayed) return { trigger, replayed: true };
+        return {
+          trigger,
+          replayed: false,
+          ...(result.rotated
+            ? {
+                endpointKey,
+                ...(input.authentication.mode === 'secret_url'
+                  ? {}
+                  : { signingSecret }),
+              }
+            : {}),
+        };
+      } finally {
+        endpointBytes.fill(0);
+        secretBytes.fill(0);
+      }
+    });
   }
 
   public rotateEndpoint(
@@ -258,7 +309,8 @@ export class WebhookManagementService {
   }
 }
 
-type Operation = 'provision' | 'rotateEndpoint' | 'rotateSecret';
+type Operation =
+  'provision' | 'rotateEndpoint' | 'rotateSecret' | 'configureAuthentication';
 
 function commandSignal(input: WebhookCommandInput): AbortSignal {
   return input.signal ?? AbortSignal.timeout(30_000);
@@ -326,6 +378,10 @@ function publicHealth(
     healthStatus: trigger.healthStatus,
     lastErrorCode: trigger.lastErrorCode,
     endpointReady: trigger.endpointReady,
+    authentication: trigger.authentication ?? {
+      mode: 'signed',
+      allowedOrigins: [],
+    },
     reconciledAt: trigger.reconciledAt?.toISOString() ?? null,
   };
 }

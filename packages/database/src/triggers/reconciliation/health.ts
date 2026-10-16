@@ -1,3 +1,7 @@
+import {
+  webhookAuthenticationSchema,
+  type WebhookAuthentication,
+} from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -17,6 +21,7 @@ export type WorkflowTriggerHealth = Readonly<{
   healthStatus: 'pending' | 'healthy' | 'degraded' | 'unhealthy' | 'disabled';
   lastErrorCode: string | null;
   endpointReady: boolean;
+  authentication?: WebhookAuthentication;
   reconciledAt: Date | null;
 }>;
 
@@ -33,6 +38,13 @@ function mapHealth(row: Record<string, unknown>): WorkflowTriggerHealth {
       .parse(row.health_status),
     lastErrorCode: z.string().nullable().parse(row.last_error_code),
     endpointReady: z.boolean().parse(row.endpoint_ready),
+    ...(row.kind === 'webhook'
+      ? {
+          authentication: webhookAuthenticationSchema.parse(
+            row.authentication ?? { mode: 'signed', allowedOrigins: [] },
+          ),
+        }
+      : {}),
     reconciledAt: z.date().nullable().parse(row.reconciled_at),
   });
 }
@@ -88,6 +100,7 @@ export async function readHealth(
     `select trigger.id,trigger.workflow_id,trigger.workflow_version_id,
             trigger.node_id,trigger.kind,trigger.status,trigger.health_status,
             trigger.last_error_code,trigger.reconciled_at,
+            endpoint.authentication,
             (endpoint.id is not null and endpoint.status='active') endpoint_ready
        from app.workflow_triggers trigger
        left join app.webhook_trigger_endpoints endpoint

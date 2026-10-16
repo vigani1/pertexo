@@ -58,6 +58,71 @@ describe('Respond to webhook', () => {
           .success,
       ).toBe(false);
   });
+  it('accepts valid HTTP token characters in custom x- response names', async () => {
+    const f = fixture({
+      body: {},
+      headers: {
+        'X-Report_Count': '1',
+        'X-Report.Version': '2',
+        'X-Content-Hash': 'sha256:example',
+      },
+    });
+    await f.execute();
+    expect(sent(f).headers).toEqual({
+      'x-report_count': '1',
+      'x-report.version': '2',
+      'x-content-hash': 'sha256:example',
+    });
+  });
+  it.each(['text/csv', 'application/xml'] as const)(
+    'sends exact %s text and normalized safe custom headers',
+    async (textContentType) => {
+      const f = fixture(
+        { body: 'a,b\n1,2', headers: { 'X-Total-Count': '1' } },
+        { bodyType: 'text', textContentType },
+      );
+      expect((await f.execute()).kind).toBe('succeeded');
+      expect(sent(f)).toMatchObject({
+        contentType: textContentType,
+        body: 'a,b\n1,2',
+        headers: { 'x-total-count': '1' },
+      });
+    },
+  );
+  it.each([
+    'x-forwarded-for',
+    'x-forwarded-host',
+    'x-content-type-options',
+    'x-accel-redirect',
+    'x-sendfile',
+    'set-cookie',
+    'content-type',
+    'access-control-allow-origin',
+    'connection',
+    'location',
+  ])('refuses response-control header %s', async (name) => {
+    const f = fixture({ body: {}, headers: { [name]: 'unsafe' } });
+    await expect(f.execute()).rejects.toThrow('node input');
+    expect(f.respond).not.toHaveBeenCalled();
+  });
+  it('refuses case-insensitive duplicates, excess headers and HTML formats', async () => {
+    for (const input of [
+      { body: {}, headers: { 'X-Count': '1', 'x-count': '2' } },
+      {
+        body: {},
+        headers: Object.fromEntries(
+          Array.from({ length: 17 }, (_, i) => [`x-count-${String(i)}`, '1']),
+        ),
+      },
+    ])
+      await expect(fixture(input).execute()).rejects.toThrow('node input');
+    await expect(
+      fixture(
+        { body: '<p>hello</p>' },
+        { bodyType: 'text', textContentType: 'text/html' },
+      ).execute(),
+    ).rejects.toThrow('node config');
+  });
   it('serializes a JSON reply once and continues with a small receipt', async () => {
     const f = fixture({
       body: { message: 'hello', amount: 12 },

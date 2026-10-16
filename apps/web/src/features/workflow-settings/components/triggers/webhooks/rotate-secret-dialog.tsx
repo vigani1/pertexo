@@ -17,11 +17,13 @@ function endpointProblem(pasted: string): string | undefined {
  */
 export function RotateSecretDialog({
   open,
+  headerSecret = false,
   pending,
   onRotate,
   onClose,
 }: Readonly<{
   open: boolean;
+  headerSecret?: boolean;
   pending: boolean;
   onRotate: (endpointKey: string) => Promise<unknown>;
   onClose: () => void;
@@ -42,7 +44,9 @@ export function RotateSecretDialog({
         clear();
         onClose();
       }}
-      title="Rotate the signing secret"
+      title={
+        headerSecret ? 'Rotate the header secret' : 'Rotate the signing secret'
+      }
       description="Senders using the current secret keep working for 5 more minutes, then need the new one."
       confirmLabel="Rotate secret"
       pendingLabel="Rotating…"

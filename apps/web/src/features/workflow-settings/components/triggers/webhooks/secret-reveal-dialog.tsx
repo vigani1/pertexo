@@ -48,7 +48,14 @@ function RevealContent({
           </div>
         )}
         {credentials.signingSecret === undefined ? null : (
-          <CopyField label="Signing secret" value={credentials.signingSecret} />
+          <CopyField
+            label={
+              credentials.trigger.authentication.mode === 'header_secret'
+                ? 'Header secret'
+                : 'Signing secret'
+            }
+            value={credentials.signingSecret}
+          />
         )}
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">

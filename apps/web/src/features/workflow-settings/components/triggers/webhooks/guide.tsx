@@ -1,3 +1,4 @@
+import type { WebhookAuthentication } from '@pertexo/contracts';
 import { ChevronRightIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -32,7 +33,9 @@ function Snippet({ code }: Readonly<{ code: string }>) {
 }
 
 /** How to send an event: headers, limits, and signed curl and Node examples. */
-export function WebhookGuide() {
+export function WebhookGuide({
+  authentication,
+}: Readonly<{ authentication: WebhookAuthentication }>) {
   return (
     <details className="group/guide rounded-lg border border-border">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium text-muted-foreground outline-none select-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
@@ -47,26 +50,58 @@ export function WebhookGuide() {
           Send a POST with a JSON body of up to {WEBHOOK_MAX_BODY} to the
           endpoint address. Each delivery starts one run.
         </p>
-        <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-[11rem_minmax(0,1fr)]">
-          {HEADERS.map(([name, meaning]) => (
-            <div key={name} className="contents">
-              <dt className="font-mono text-xs text-foreground">{name}</dt>
-              <dd className="text-xs text-muted-foreground">{meaning}</dd>
-            </div>
-          ))}
-        </dl>
-        <Tabs defaultValue="curl">
-          <TabsList aria-label="Example language">
-            <TabsTrigger value="curl">curl</TabsTrigger>
-            <TabsTrigger value="node">Node</TabsTrigger>
-          </TabsList>
-          <TabsContent value="curl" className="pt-3">
-            <Snippet code={CURL_SNIPPET} />
-          </TabsContent>
-          <TabsContent value="node" className="pt-3">
-            <Snippet code={NODE_SNIPPET} />
-          </TabsContent>
-        </Tabs>
+        {authentication.mode === 'signed' ? (
+          <>
+            <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-[11rem_minmax(0,1fr)]">
+              {HEADERS.map(([name, meaning]) => (
+                <div key={name} className="contents">
+                  <dt className="font-mono text-xs text-foreground">{name}</dt>
+                  <dd className="text-xs text-muted-foreground">{meaning}</dd>
+                </div>
+              ))}
+            </dl>
+            <Tabs defaultValue="curl">
+              <TabsList aria-label="Example language">
+                <TabsTrigger value="curl">curl</TabsTrigger>
+                <TabsTrigger value="node">Node</TabsTrigger>
+              </TabsList>
+              <TabsContent value="curl" className="pt-3">
+                <Snippet code={CURL_SNIPPET} />
+              </TabsContent>
+              <TabsContent value="node" className="pt-3">
+                <Snippet code={NODE_SNIPPET} />
+              </TabsContent>
+            </Tabs>
+          </>
+        ) : (
+          <>
+            <p className="text-muted-foreground">
+              {authentication.mode === 'secret_url'
+                ? 'Keep the entire address private: anyone with this URL can start runs.'
+                : `Send the generated secret in ${authentication.headerName === 'authorization' ? 'Authorization: Bearer <header secret>' : `${authentication.headerName}: <header secret>`}. No Pertexo signature or timestamp is needed.`}
+            </p>
+            <Snippet
+              code={[
+                `curl -X POST '<your Pertexo API address>/hooks/<endpoint key>' \\`,
+                `  -H 'Content-Type: application/json' \\`,
+                ...(authentication.mode === 'header_secret'
+                  ? [
+                      `  -H '${authentication.headerName}: ${authentication.headerName === 'authorization' ? 'Bearer ' : ''}<header secret>' \\`,
+                    ]
+                  : []),
+                `  --data '{"event":"order.created"}'`,
+              ].join('\n')}
+            />
+            <p className="text-xs text-muted-foreground">
+              Send the same Idempotency-Key for retries. Browser origins
+              allowed:{' '}
+              {authentication.allowedOrigins.length === 0
+                ? 'none'
+                : authentication.allowedOrigins.join(', ')}
+              . Browser callers use credentials: omit.
+            </p>
+          </>
+        )}
       </div>
     </details>
   );

@@ -198,3 +198,163 @@ test('a browser-authored response reaches its original signed caller and work co
   const manualId = await startSingleStep(page, {});
   await waitForRun(page, workspaceId, manualId, 'succeeded');
 });
+
+test('changes authentication through settings and answers a real browser caller with CSV', async ({
+  page,
+  request,
+}) => {
+  const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
+  const origin = process.env.PERTEXO_API_PROXY_TARGET;
+  if (mail === undefined || origin === undefined)
+    throw new Error('Use the owned response fixture');
+  await registerEditorUser(page, request, mail, 'Webhook authentication owner');
+  const workspaceId = await createEditorWorkspace(
+    page,
+    'Webhook authentication',
+  );
+  const path = await createEditorWorkflow(
+    page,
+    workspaceId,
+    'Webhook authentication qualification',
+  );
+  const editorUrl = new URL(page.url()).pathname;
+  await add(page, path, /^Webhook\b/u, 'Browser request');
+  await page.getByLabel('Respond to caller', { exact: true }).click();
+  await page
+    .getByRole('option', { name: 'When the workflow responds', exact: true })
+    .click();
+  await add(page, path, /^Respond to webhook\b/u, 'CSV reply');
+  await page.getByLabel('Response body', { exact: true }).click();
+  await page.getByRole('option', { name: 'Plain text', exact: true }).click();
+  await page.getByLabel('Text format', { exact: true }).click();
+  await page.getByRole('option', { name: 'CSV', exact: true }).click();
+  await literal(page, 'body', 'currency,total\nEUR,42');
+  await literal(page, 'headers', { 'X-Total-Count': '1' });
+  await publishSingleStep(page, path);
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(`${path}/triggers`);
+      return webhookTriggerListResponseSchema.parse(await response.json())
+        .items[0]?.status;
+    })
+    .toBe('configuration_required');
+  await page.goto(`${editorUrl}/triggers`);
+  const card = page.getByRole('article', {
+    name: 'Webhook: Browser request',
+    exact: true,
+  });
+  await card
+    .getByRole('button', { name: 'Create endpoint', exact: true })
+    .click();
+  const reveal = page.getByRole('dialog', {
+    name: 'Store these now',
+    exact: true,
+  });
+  await expect(reveal).toBeVisible();
+  const firstEndpoint = (await reveal.locator('code').allTextContents())[0];
+  if (firstEndpoint === undefined) throw new Error('Endpoint reveal missing');
+  await reveal.getByRole('switch', { name: 'I’ve stored these' }).click();
+  await reveal.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.setViewportSize({ width: 375, height: 768 });
+  await card
+    .getByRole('button', { name: 'Authentication…', exact: true })
+    .click();
+  const settings = page.getByRole('dialog', {
+    name: 'Webhook authentication',
+    exact: true,
+  });
+  await settings.getByLabel('Authentication mode', { exact: true }).click();
+  await page.getByRole('option', { name: 'Secret URL', exact: true }).click();
+  await expect(
+    settings.getByText(/The URL is the only credential/u),
+  ).toBeVisible();
+  await settings
+    .getByLabel('Allowed browser origins', { exact: true })
+    .fill('https://example.com/path');
+  await settings
+    .getByRole('button', { name: 'Save and rotate credentials', exact: true })
+    .click();
+  await expect(
+    settings.getByLabel('Allowed browser origins', { exact: true }),
+  ).toBeFocused();
+  await expect(
+    settings.getByText(/Use an exact http or https origin/u),
+  ).toBeVisible();
+  await settings
+    .getByLabel('Allowed browser origins', { exact: true })
+    .fill(new URL(page.url()).origin);
+  await expect(
+    settings.getByText(/Use an exact http or https origin/u),
+  ).toHaveCount(0);
+  await settings
+    .getByRole('button', { name: 'Save and rotate credentials', exact: true })
+    .click();
+  await expect(reveal).toBeVisible();
+  const endpoint = (await reveal.locator('code').allTextContents())[0];
+  if (endpoint === undefined || endpoint === firstEndpoint)
+    throw new Error('Authentication change did not rotate URL');
+  await expect(reveal.getByText('Signing secret', { exact: true })).toHaveCount(
+    0,
+  );
+  await reveal.getByRole('switch', { name: 'I’ve stored these' }).click();
+  await reveal.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(card).toContainText('Authentication: Secret URL');
+  await expect(
+    card.getByRole('button', { name: 'Rotate secret', exact: true }),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  const key = randomUUID();
+  const response = await page.evaluate(
+    async ({ url, key }) => {
+      const result = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': key },
+        credentials: 'omit',
+        body: '{}',
+      });
+      return {
+        status: result.status,
+        body: await result.text(),
+        contentType: result.headers.get('content-type'),
+      };
+    },
+    { url: new URL(`/hooks/${endpoint}`, origin).toString(), key },
+  );
+  expect(response).toEqual({
+    status: 200,
+    body: 'currency,total\nEUR,42',
+    contentType: 'text/csv; charset=utf-8',
+  });
+  const duplicate = await fetch(new URL(`/hooks/${endpoint}`, origin), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'idempotency-key': key },
+    body: '{}',
+    signal: AbortSignal.timeout(15_000),
+  });
+  expect(duplicate.status).toBe(200);
+  expect(await duplicate.text()).toBe('currency,total\nEUR,42');
+  expect(duplicate.headers.get('x-total-count')).toBe('1');
+  const old = await fetch(new URL(`/hooks/${firstEndpoint}`, origin), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
+    signal: AbortSignal.timeout(5000),
+  });
+  expect(old.status).toBe(401);
+  await old.arrayBuffer();
+  await page.reload();
+  await expect(card).toContainText('Authentication: Secret URL');
+  await page.screenshot({
+    path: '/tmp/pertexo-webhook-auth-phone.png',
+    animations: 'disabled',
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.screenshot({
+    path: '/tmp/pertexo-webhook-auth-desktop.png',
+    animations: 'disabled',
+  });
+});

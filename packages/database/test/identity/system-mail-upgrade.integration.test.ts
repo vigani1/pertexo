@@ -85,6 +85,7 @@ it('renames populated mail without changing row, grant, index or referenced rela
       '0020_webhook_responses.sql',
       '0021_code_diagnostics.sql',
       '0022_draft_workflow_tests.sql',
+      '0023_webhook_authentication.sql',
     ]);
     expect(await catalog('app.system_mail_deliveries')).toEqual(before);
     expect(

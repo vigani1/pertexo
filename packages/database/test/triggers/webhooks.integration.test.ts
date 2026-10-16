@@ -2028,6 +2028,121 @@ describe('generic webhook database seam', () => {
     ).resolves.toMatchObject({ replayed: false });
   });
 
+  it('configures authentication atomically, rotates across modes and fences stale proof even for retries', async () => {
+    const { published, resources, verification } =
+      await createWebhookScenario();
+    const nextKey = hash(randomUUID());
+    const nextSecret = secret();
+    const authentication = {
+      mode: 'secret_url' as const,
+      allowedOrigins: ['https://app.example'],
+    };
+    const command = {
+      workspaceId,
+      actorId,
+      workflowId: published.created.workflowId,
+      triggerId: resources.webhookId,
+      authentication,
+      endpointKeyHash: nextKey,
+      secret: nextSecret,
+      idempotencyKey: randomUUID(),
+      requestHash: hash('url-mode'),
+    };
+    const old = {
+      verification,
+      verifiedSecretVersionId: verification.currentSecret.id,
+      requestFingerprint: hash('auth-before'),
+      idempotencyKeyHash: hash('auth-before'),
+      payload: {},
+      bodyBytes: 2,
+      checkpointFactory,
+    };
+    await webhook.acceptVerifiedDelivery(old);
+    await expect(
+      webhook.configureAuthentication({ ...command, workflowId: randomUUID() }),
+    ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
+    expect(await webhook.configureAuthentication(command)).toMatchObject({
+      replayed: false,
+      rotated: true,
+      trigger: { authentication },
+    });
+    expect(
+      await webhook.configureAuthentication({ ...command, secret: secret() }),
+    ).toMatchObject({ replayed: true, rotated: false });
+    await expect(
+      webhook.resolveVerification(resources.endpointKeyHash),
+    ).resolves.toBeNull();
+    await expect(webhook.acceptVerifiedDelivery(old)).rejects.toBeInstanceOf(
+      WebhookDeliveryIneligibleError,
+    );
+    const url = await webhook.resolveVerification(nextKey);
+    expect(url).toMatchObject({
+      authentication,
+      currentSecret: { id: nextSecret.id },
+    });
+    expect(url?.previousSecret).toBeUndefined();
+    if (url === null) throw new Error('URL endpoint unavailable');
+    const input = {
+      ...old,
+      verification: url,
+      verifiedSecretVersionId: nextSecret.id,
+      requestFingerprint: hash('url-body'),
+      idempotencyKeyHash: hash('url-body'),
+    };
+    const accepted = await webhook.acceptVerifiedDelivery(input);
+    expect(await webhook.acceptVerifiedDelivery(input)).toEqual({
+      ...accepted,
+      replayed: true,
+    });
+    await expect(
+      webhook.rotateSecret({
+        ...command,
+        endpointKeyHash: nextKey,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
+    const origins = {
+      ...authentication,
+      allowedOrigins: ['https://other.example'],
+    };
+    expect(
+      await webhook.configureAuthentication({
+        ...command,
+        authentication: origins,
+        idempotencyKey: randomUUID(),
+        requestHash: hash('origins-only'),
+        endpointKeyHash: hash(randomUUID()),
+        secret: secret(),
+      }),
+    ).toMatchObject({ rotated: false });
+    expect(await webhook.resolveVerification(nextKey)).toMatchObject({
+      authentication: origins,
+      currentSecret: { id: nextSecret.id },
+    });
+    await expect(webhook.acceptVerifiedDelivery(input)).rejects.toBeInstanceOf(
+      WebhookDeliveryIneligibleError,
+    );
+    const headerKey = hash(randomUUID());
+    expect(
+      await webhook.configureAuthentication({
+        ...command,
+        authentication: {
+          mode: 'header_secret',
+          headerName: 'authorization',
+          allowedOrigins: [],
+        },
+        endpointKeyHash: headerKey,
+        secret: secret(),
+        idempotencyKey: randomUUID(),
+        requestHash: hash('header-mode'),
+      }),
+    ).toMatchObject({ rotated: true });
+    await expect(webhook.resolveVerification(nextKey)).resolves.toBeNull();
+    expect(
+      (await webhook.resolveVerification(headerKey))?.previousSecret,
+    ).toBeUndefined();
+  });
+
   it('enforces the endpoint ingress boundary atomically under concurrency', async () => {
     const { resources } = await createWebhookScenario();
     const attempts = await Promise.allSettled(
@@ -2062,9 +2177,7 @@ describe('generic webhook database seam', () => {
       bodyBytes: 64,
       checkpointFactory,
     } as const;
-    const accepted = await webhook.acceptVerifiedDelivery(
-      acceptedBeforeRotation,
-    );
+    await webhook.acceptVerifiedDelivery(acceptedBeforeRotation);
     await webhook.rotateEndpoint({
       workspaceId,
       workflowId: scenarioWorkflowId,
@@ -2079,13 +2192,13 @@ describe('generic webhook database seam', () => {
     ).resolves.toBeNull();
     await expect(
       webhook.acceptVerifiedDelivery(acceptedBeforeRotation),
-    ).resolves.toEqual({ runId: accepted.runId, replayed: true });
+    ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
     await expect(
       webhook.acceptVerifiedDelivery({
         ...acceptedBeforeRotation,
         requestFingerprint: hash('changed-after-rotation'),
       }),
-    ).rejects.toBeInstanceOf(WebhookDeliveryReplayMismatchError);
+    ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
     await expect(
       webhook.acceptVerifiedDelivery({
         verification: oldVerification,

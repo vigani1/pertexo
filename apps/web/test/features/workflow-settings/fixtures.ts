@@ -93,6 +93,7 @@ export const webhook = {
   status: 'configuration_required',
   healthStatus: 'pending',
   lastErrorCode: null,
+  authentication: { mode: 'signed' as const, allowedOrigins: [] },
   endpointReady: false,
   reconciledAt: null,
 };

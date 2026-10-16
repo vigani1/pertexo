@@ -30,7 +30,7 @@ export async function replyToAcceptedWebhook(
         reply
           .header('cache-control', 'no-store')
           .header('x-content-type-options', 'nosniff')
-          .type(response.contentType)
+          .type(`${response.contentType}; charset=utf-8`)
           .code(response.statusCode);
         for (const [name, value] of Object.entries(response.headers))
           reply.header(name, value);

@@ -168,6 +168,7 @@ function boundText(value: string): string {
 
 export function redactLogText(value: string): string {
   return redactUrlUserInfo(boundText(value))
+    .replace(/(\/hooks\/)[^\s/\x22\x27?#]+/gu, `$1${REDACTED}`)
     .replace(
       /(authorization\s*[:=]\s*(?:(?:basic|bearer)\s+)?)[^\s,;]+/giu,
       `$1${REDACTED}`,

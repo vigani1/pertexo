@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { webhookAuthenticationSchema } from './authentication.js';
 
 export const webhookCredentialSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
 const webhookTriggerStatusSchema = z.enum([
@@ -28,6 +29,7 @@ export const webhookTriggerHealthSchema = z
     healthStatus: webhookTriggerHealthStatusSchema,
     lastErrorCode: z.string().max(128).nullable(),
     endpointReady: z.boolean(),
+    authentication: webhookAuthenticationSchema,
     reconciledAt: z.iso.datetime().nullable(),
   })
   .strict();

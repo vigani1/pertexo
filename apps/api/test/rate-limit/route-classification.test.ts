@@ -101,6 +101,7 @@ const routes: readonly (readonly [
   [WebhookManagementController, 'list', 'authenticated_read'],
   [WebhookManagementController, 'deliveries', 'authenticated_read'],
   [WebhookManagementController, 'provision', 'trigger_mutation'],
+  [WebhookManagementController, 'configureAuthentication', 'trigger_mutation'],
   [WebhookManagementController, 'rotateEndpoint', 'trigger_mutation'],
   [WebhookManagementController, 'rotateSecret', 'trigger_mutation'],
   [ScheduleManagementController, 'list', 'authenticated_read'],

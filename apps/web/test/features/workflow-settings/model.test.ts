@@ -140,7 +140,7 @@ describe('webhook delivery outcomes', () => {
       'mismatch',
       'not_checked',
       'failure',
-      'Signature didn’t match',
+      'Authentication failed',
     ],
     [
       'authentication_failed',

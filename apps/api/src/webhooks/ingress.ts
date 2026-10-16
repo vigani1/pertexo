@@ -1,3 +1,9 @@
+import { verifyWebhookHeaderSecret } from './authentication/header-secret.js';
+import {
+  allowWebhookOrigin,
+  webhookOriginAllowed,
+  webhookPreflightHeaders,
+} from './authentication/cors.js';
 import { createWebhookResponseWaiter } from './responses/wait.js';
 import { replyToAcceptedWebhook } from './responses/reply.js';
 import { createHash, randomUUID } from 'node:crypto';
@@ -105,6 +111,9 @@ export function registerWebhookIngress(
         parsed(null, body);
       },
     );
+    scope.options('/hooks/:endpointKey', { bodyLimit: 1 }, (request, reply) =>
+      preflightWebhook(request, reply, dependencies, telemetry),
+    );
     scope.post(
       '/hooks/:endpointKey',
       { bodyLimit: MAX_BODY + 1 },
@@ -189,9 +198,7 @@ async function acceptWebhook(
   const endpointKey = (request.params as { endpointKey?: unknown }).endpointKey;
   if (
     typeof endpointKey !== 'string' ||
-    !/^[A-Za-z0-9_-]{43}$/u.test(endpointKey) ||
-    timestamp === undefined ||
-    signature === undefined
+    !/^[A-Za-z0-9_-]{43}$/u.test(endpointKey)
   ) {
     await authenticationFailed(reply, requestId, telemetry);
     return;
@@ -199,7 +206,7 @@ async function acceptWebhook(
   const verification = await dependencies.database.resolveVerification(
     sha256(endpointKey),
   );
-  if (verification === null || !/^\d{1,16}$/u.test(timestamp)) {
+  if (verification === null) {
     await authenticationFailed(reply, requestId, telemetry);
     return;
   }
@@ -221,23 +228,66 @@ async function acceptWebhook(
   // ADR 045: from here on every rejection is attributed to this endpoint.
   const reject = (attempt: RejectedAttempt) =>
     recordRejectedAttempt(dependencies.database, verification, body, attempt);
-  const seconds = Number(timestamp);
+  const origin = singleHeader(request, 'origin');
   if (
-    !Number.isSafeInteger(seconds) ||
-    Math.abs(verification.databaseTime.getTime() / 1000 - seconds) >
-      WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS
+    verification.authentication.mode !== 'signed' &&
+    headerPresent(request, 'origin')
   ) {
-    await reject(REJECTED_ATTEMPT.staleTimestamp);
-    await authenticationFailed(reply, requestId, telemetry);
-    return;
+    if (
+      origin === undefined ||
+      !webhookOriginAllowed(verification.authentication, origin)
+    ) {
+      await reject(REJECTED_ATTEMPT.signatureMismatch);
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
+    allowWebhookOrigin(reply, origin);
+  }
+  const policy = verification.authentication;
+  let verifiedSecretVersionId: string | undefined;
+  if (policy.mode === 'secret_url')
+    verifiedSecretVersionId = verification.currentSecret.id;
+  else if (policy.mode === 'header_secret') {
+    const header = singleHeader(request, policy.headerName);
+    const supplied =
+      policy.headerName === 'authorization'
+        ? header?.match(/^Bearer ([A-Za-z0-9_-]{43})$/iu)?.[1]
+        : header;
+    if (supplied !== undefined && /^[A-Za-z0-9_-]{43}$/u.test(supplied))
+      verifiedSecretVersionId = await verifyWebhookSecrets(
+        dependencies.encryption,
+        verification,
+        { headerSecret: supplied },
+        encryptionSignal,
+      );
+  } else {
+    if (
+      timestamp === undefined ||
+      signature === undefined ||
+      !/^\d{1,16}$/u.test(timestamp)
+    ) {
+      await reject(REJECTED_ATTEMPT.signatureMismatch);
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
+    const seconds = Number(timestamp);
+    if (
+      !Number.isSafeInteger(seconds) ||
+      Math.abs(verification.databaseTime.getTime() / 1000 - seconds) >
+        WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS
+    ) {
+      await reject(REJECTED_ATTEMPT.staleTimestamp);
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
+    verifiedSecretVersionId = await verifyWebhookSecrets(
+      dependencies.encryption,
+      verification,
+      { body, signature, timestamp },
+      encryptionSignal,
+    );
   }
 
-  const verifiedSecretVersionId = await verifyWebhookSecrets(
-    dependencies.encryption,
-    verification,
-    { body, signature, timestamp },
-    encryptionSignal,
-  );
   if (verifiedSecretVersionId === undefined) {
     await reject(REJECTED_ATTEMPT.signatureMismatch);
     await authenticationFailed(reply, requestId, telemetry);
@@ -319,11 +369,9 @@ function diagnosticTraceparent(
 async function verifyWebhookSecrets(
   encryption: WebhookTriggerEnvelopeEncryption,
   verification: WebhookVerificationReference,
-  request: Readonly<{
-    body: Uint8Array;
-    signature: string;
-    timestamp: string;
-  }>,
+  request:
+    | Readonly<{ body: Uint8Array; signature: string; timestamp: string }>
+    | Readonly<{ headerSecret: string }>,
   signal: AbortSignal,
 ): Promise<string | undefined> {
   let current: Uint8Array | undefined;
@@ -335,12 +383,16 @@ async function verifyWebhookSecrets(
       verification,
       signal,
     );
-    const currentValid = verifyWebhookSignature({
-      secret: current,
-      timestamp: request.timestamp,
-      signature: request.signature,
-      rawBody: request.body,
-    });
+    const valid = (secret: Uint8Array) =>
+      'headerSecret' in request
+        ? verifyWebhookHeaderSecret(secret, request.headerSecret)
+        : verifyWebhookSignature({
+            secret,
+            timestamp: request.timestamp,
+            signature: request.signature,
+            rawBody: request.body,
+          });
+    const currentValid = valid(current);
     const previousReference = verification.previousSecret;
     const previousEligible =
       previousReference !== undefined &&
@@ -354,12 +406,7 @@ async function verifyWebhookSecrets(
         verification,
         signal,
       );
-      previousValid = verifyWebhookSignature({
-        secret: previous,
-        timestamp: request.timestamp,
-        signature: request.signature,
-        rawBody: request.body,
-      });
+      previousValid = valid(previous);
     }
     if (currentValid) return verification.currentSecret.id;
     return previousValid ? previousReference?.id : undefined;
@@ -426,4 +473,47 @@ function optionalIdempotencyKey(
 
 function sha256(value: string | Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+async function preflightWebhook(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  dependencies: WebhookIngressDependencies,
+  telemetry: WebhookIngressTelemetry,
+): Promise<void> {
+  const requestId = randomUUID();
+  const key = (request.params as { endpointKey: string }).endpointKey;
+  const origin = singleHeader(request, 'origin');
+  const verification = /^[A-Za-z0-9_-]{43}$/u.test(key)
+    ? await dependencies.database.resolveVerification(sha256(key))
+    : null;
+  if (
+    verification === null ||
+    origin === undefined ||
+    !webhookOriginAllowed(verification.authentication, origin) ||
+    singleHeader(request, 'access-control-request-method') !== 'POST'
+  ) {
+    await authenticationFailed(reply, requestId, telemetry);
+    return;
+  }
+  // Unlike credential inputs this is an HTTP comma-separated header-name list.
+  const rawHeaders = request.headers['access-control-request-headers'];
+  const headers = webhookPreflightHeaders(
+    verification.authentication,
+    typeof rawHeaders === 'string' ? rawHeaders : undefined,
+  );
+  if (headers === undefined) {
+    await authenticationFailed(reply, requestId, telemetry);
+    return;
+  }
+  allowWebhookOrigin(reply, origin);
+  reply
+    .header(
+      'vary',
+      'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
+    )
+    .header('access-control-allow-methods', 'POST');
+  if (headers.length > 0)
+    reply.header('access-control-allow-headers', headers.join(', '));
+  await reply.code(204).send();
 }

@@ -65,6 +65,77 @@ describe('workflow triggers tab', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('validates authentication settings inline and reveals a rotated header credential once', async () => {
+    installQueries();
+    const current = {
+      ...webhook,
+      endpointReady: true,
+      status: 'active',
+      authentication: { mode: 'signed' as const, allowedOrigins: [] },
+    };
+    const bodies: unknown[] = [];
+    mockServer.use(
+      http.get(`${workflowApi}/triggers`, () =>
+        HttpResponse.json({ items: [current] }),
+      ),
+      http.post(
+        `${workflowApi}/triggers/${webhookId}/webhook/authentication`,
+        async ({ request }) => {
+          const authentication = await request.json();
+          bodies.push(authentication);
+          return HttpResponse.json({
+            trigger: { ...current, authentication },
+            replayed: false,
+            endpointKey: 'e'.repeat(43),
+            signingSecret: 's'.repeat(43),
+          });
+        },
+      ),
+    );
+    renderApp(triggersPath);
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Authentication…' }),
+    );
+    const dialog = screen.getByRole('dialog', {
+      name: 'Webhook authentication',
+    });
+    await event.click(within(dialog).getByLabelText('Authentication mode'));
+    await event.click(
+      await screen.findByRole('option', { name: 'Header secret' }),
+    );
+    const header = await within(dialog).findByLabelText('Secret header');
+    await event.clear(header);
+    await event.type(header, 'x-forwarded-for');
+    await event.click(
+      within(dialog).getByRole('button', {
+        name: 'Save and rotate credentials',
+      }),
+    );
+    expect(header).toHaveFocus();
+    expect(bodies).toHaveLength(0);
+    await event.clear(header);
+    await event.type(header, 'x-webhook-secret');
+    await event.click(
+      within(dialog).getByRole('button', {
+        name: 'Save and rotate credentials',
+      }),
+    );
+    expect(
+      within(
+        await screen.findByRole('dialog', { name: 'Store these now' }),
+      ).getByText('Header secret', { exact: true }),
+    ).toBeVisible();
+    expect(bodies).toEqual([
+      {
+        mode: 'header_secret',
+        headerName: 'x-webhook-secret',
+        allowedOrigins: [],
+      },
+    ]);
+    await acknowledgeCredentials(event);
+  });
+
   it('names triggers by their step and describes schedules in words', async () => {
     installQueries();
     renderApp(triggersPath);
@@ -514,7 +585,7 @@ describe('workflow triggers tab', () => {
       'dateTime',
       delivery.receivedAt,
     );
-    expect(within(rejected).getByText('Signature didn’t match')).toBeVisible();
+    expect(within(rejected).getByText('Authentication failed')).toBeVisible();
     expect(within(rejected).getByText('Admission 401')).toBeVisible();
     expect(
       within(rejected).queryByRole('link', { name: 'Open run' }),

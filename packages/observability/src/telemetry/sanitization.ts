@@ -9,7 +9,10 @@ function safePath(value: unknown): string {
   const candidate = typeof value === 'string' && value.length > 0 ? value : '/';
 
   try {
-    return new URL(candidate, 'http://localhost').pathname || '/';
+    return (new URL(candidate, 'http://localhost').pathname || '/').replace(
+      /(\/hooks\/)[^/]+/gu,
+      '$1[Redacted]',
+    );
   } catch {
     return '/';
   }

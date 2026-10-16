@@ -1,4 +1,8 @@
 import {
+  webhookAuthenticationSchema,
+  type WebhookAuthentication,
+} from '@pertexo/contracts';
+import {
   openWebhookResponse,
   webhookReplayWait,
 } from './responses/admission.js';
@@ -84,6 +88,7 @@ export type WebhookVerificationReference = Readonly<{
   workflowVersionId: string;
   nodeId: string;
   databaseTime: Date;
+  authentication: WebhookAuthentication;
   currentSecret: SealedWebhookTriggerSecret;
   previousSecret?: SealedWebhookTriggerSecret & Readonly<{ validUntil: Date }>;
 }>;
@@ -101,6 +106,20 @@ export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
 
 export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
   readResponse(input: WebhookResponseScope): Promise<WebhookResponseSnapshot>;
+  configureAuthentication(
+    input: Command &
+      Readonly<{
+        authentication: WebhookAuthentication;
+        endpointKeyHash: string;
+        secret: SealedWebhookTriggerSecret;
+      }>,
+  ): Promise<
+    Readonly<{
+      trigger: WorkflowTriggerHealth;
+      replayed: boolean;
+      rotated: boolean;
+    }>
+  >;
   provision(
     input: Command &
       Readonly<{
@@ -258,6 +277,7 @@ async function lockEligibleEndpoint(
   transaction: WorkspaceTransaction,
   verification: WebhookVerificationReference,
   verifiedSecretVersionId: string,
+  replaying = false,
 ): Promise<void> {
   const eligible = await transaction.db.execute<{
     workflow_version_id: string;
@@ -274,6 +294,7 @@ async function lockEligibleEndpoint(
        and endpoint.id=${verification.endpointId}
        and endpoint.endpoint_key_hash=${verification.endpointKeyHash}
        and endpoint.trigger_id=${verification.triggerId}
+       and endpoint.authentication=${JSON.stringify(verification.authentication)}::jsonb
        and endpoint.status='active' and trigger.status='active'
        and trigger.workflow_id=${verification.workflowId}
        and trigger.workflow_version_id=${verification.workflowVersionId}
@@ -289,7 +310,7 @@ async function lockEligibleEndpoint(
   const row = eligible.rows[0];
   if (row === undefined) throw new WebhookDeliveryIneligibleError();
   // ADR 056: the shared workflow lock orders this admission against a pause.
-  if (row.trigger_pause_state === 'paused')
+  if (!replaying && row.trigger_pause_state === 'paused')
     throw new WebhookWorkflowPausedError();
 }
 
@@ -318,6 +339,65 @@ export function createWebhookTriggerDatabase(
   return Object.freeze({
     readResponse: (input: WebhookResponseScope) =>
       readWebhookResponse(pool, input),
+    configureAuthentication: (
+      input: Parameters<WebhookTriggerDatabase['configureAuthentication']>[0],
+    ) =>
+      command(input, async (client) => {
+        const operation = 'webhook.trigger.authentication.configure';
+        if (await claimWebhookCommand(client, input, operation))
+          return {
+            trigger: await oneHealth(
+              client,
+              input.workspaceId,
+              input.triggerId,
+            ),
+            replayed: true,
+            rotated: false,
+          };
+        const result = await client.query<{
+          authentication: WebhookAuthentication;
+        }>(
+          `select authentication from app.webhook_trigger_endpoints
+            where workspace_id=$1 and trigger_id=$2 and status='active' for update`,
+          [input.workspaceId, input.triggerId],
+        );
+        const current = result.rows[0]?.authentication;
+        if (current === undefined) throw new WebhookTriggerNotFoundError();
+        const next = input.authentication;
+        const rotated =
+          current.mode !== next.mode ||
+          (current.mode === 'header_secret' &&
+            next.mode === 'header_secret' &&
+            current.headerName !== next.headerName);
+        if (rotated) {
+          const secret = await insertSecret(client, input, input.secret);
+          await client.query(
+            `update app.webhook_trigger_endpoints
+            set authentication=$3,endpoint_key_hash=$4,current_secret_version_id=$5,
+                previous_secret_version_id=null,previous_secret_valid_until=null,updated_at=clock_timestamp()
+            where workspace_id=$1 and trigger_id=$2`,
+            [
+              input.workspaceId,
+              input.triggerId,
+              JSON.stringify(next),
+              input.endpointKeyHash,
+              secret.id,
+            ],
+          );
+        } else {
+          await client.query(
+            `update app.webhook_trigger_endpoints set authentication=$3,updated_at=clock_timestamp()
+            where workspace_id=$1 and trigger_id=$2`,
+            [input.workspaceId, input.triggerId, JSON.stringify(next)],
+          );
+        }
+        await completeWebhookCommand(client, input, operation);
+        return {
+          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+          replayed: false,
+          rotated,
+        };
+      }),
     provision: (input: Parameters<WebhookTriggerDatabase['provision']>[0]) =>
       command(input, async (client) => {
         const operation = 'webhook.trigger.provision';
@@ -392,8 +472,9 @@ export function createWebhookTriggerDatabase(
           return oneHealth(client, input.workspaceId, input.triggerId);
         const endpoint = await client.query<{
           current_secret_version_id: string;
+          authentication: WebhookAuthentication;
         }>(
-          `select current_secret_version_id from app.webhook_trigger_endpoints
+          `select current_secret_version_id,authentication from app.webhook_trigger_endpoints
              where workspace_id=$1 and trigger_id=$2 and endpoint_key_hash=$3
                and status='active' for update`,
           [
@@ -402,8 +483,10 @@ export function createWebhookTriggerDatabase(
             digestSchema.parse(input.endpointKeyHash),
           ],
         );
-        const current = endpoint.rows[0]?.current_secret_version_id;
-        if (current === undefined) throw new WebhookTriggerNotFoundError();
+        const row = endpoint.rows[0];
+        if (row === undefined || row.authentication.mode === 'secret_url')
+          throw new WebhookTriggerNotFoundError();
+        const current = row.current_secret_version_id;
         const secret = await insertSecret(client, input, input.secret);
         await client.query(
           `update app.webhook_trigger_endpoints set current_secret_version_id=$3,
@@ -459,6 +542,7 @@ export function createWebhookTriggerDatabase(
         workflowVersionId: uuidSchema.parse(row.workflow_version_id),
         nodeId: z.string().parse(row.node_id),
         databaseTime: z.date().parse(row.database_time),
+        authentication: webhookAuthenticationSchema.parse(row.authentication),
         currentSecret,
         ...(previousSecret === undefined
           ? {}
@@ -504,6 +588,12 @@ export function createWebhookTriggerDatabase(
         async (transaction) => {
           await lockEndpointDedupeKey(transaction, replayIdentity);
           const replay = await readLockedReplay(transaction, replayIdentity);
+          await lockEligibleEndpoint(
+            transaction,
+            verification,
+            input.verifiedSecretVersionId,
+            replay?.active === true,
+          );
           if (replay?.active === true) {
             const replayed = resolveExactReplay(replay, requestFingerprint);
             await insertWebhookDelivery(transaction, verification, {
@@ -527,12 +617,6 @@ export function createWebhookTriggerDatabase(
           }
           if (replay !== undefined)
             await deleteExpiredReplay(transaction, replayIdentity);
-
-          await lockEligibleEndpoint(
-            transaction,
-            verification,
-            input.verifiedSecretVersionId,
-          );
 
           const deliveryId = generatePersistedId();
           await transaction.db.execute(sql`
