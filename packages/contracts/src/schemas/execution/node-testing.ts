@@ -67,6 +67,7 @@ const nodeValidateRequestSchema = z
 const nodeTestExecuteRequestSchema = z
   .object({
     mode: z.literal('test_execute'),
+    expectedSampleId: z.uuid().nullable().optional(),
     expectedRevision: z.number().int().positive(),
     input: nodeTestInputSourceSchema,
     acknowledgeSideEffects: z.literal(true),
@@ -114,6 +115,7 @@ export const previewRunSummarySchema = z
     draftRevision: z.number().int().positive(),
     nodeId: z.string().min(1).max(NODE_TEST_LIMITS.nodeIdLength),
     status: previewRunStatusSchema,
+    pinnedSampleId: z.uuid().optional(),
     disclosure: nodeSideEffectDisclosureSchema,
     output: previewOutputSchema.nullable(),
     safeErrorCode: z

@@ -309,7 +309,7 @@ export function acceptanceInput(
 }
 
 export interface AcceptedDelivery {
-  accepted: Awaited<ReturnType<typeof acceptPreviewRun>>;
+  accepted: Awaited<ReturnType<typeof withTenantAccept>>;
   job: {
     data: {
       outboxEventId: string;
@@ -409,16 +409,26 @@ export async function withPublishedPreviewDelivery<T>(
   );
 }
 
-export function withTenantAccept(input: AcceptPreviewRunInput) {
-  return withTenantScopedClient(apiPool, { workspaceId }, async (client) =>
-    acceptPreviewRun(
-      {
-        db: drizzle(client, { schema: databaseSchema }),
-        workspaceId: parseWorkspaceId(workspaceId),
-      },
-      input,
-    ),
+export async function withTenantAccept(input: AcceptPreviewRunInput) {
+  const accepted = await withTenantScopedClient(
+    apiPool,
+    { workspaceId },
+    async (client) =>
+      acceptPreviewRun(
+        {
+          db: drizzle(client, { schema: databaseSchema }),
+          workspaceId: parseWorkspaceId(workspaceId),
+        },
+        input,
+      ),
   );
+  if (accepted.outboxEventId === null || accepted.previewAttemptId === null)
+    throw new Error('Consumer fixture requires a dispatched preview');
+  return {
+    ...accepted,
+    outboxEventId: accepted.outboxEventId,
+    previewAttemptId: accepted.previewAttemptId,
+  };
 }
 
 export interface AcceptedWorkflowDelivery {

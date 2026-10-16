@@ -716,6 +716,7 @@ export const previewRuns = appSchema.table(
     dryRun: varchar('dry_run', { length: 32 }).notNull(),
     status: varchar('status', { length: 32 }).default('queued').notNull(),
     outputRef: jsonb('output_ref'),
+    pinnedSampleId: uuid('pinned_sample_id'),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     traceparent: varchar('traceparent', { length: 55 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -750,6 +751,10 @@ export const previewRuns = appSchema.table(
     index('preview_runs_variable_set_idx')
       .on(table.workspaceId, table.variableSetRevision)
       .where(sql`variable_set_revision IS NOT NULL`),
+    check(
+      'preview_runs_pinned_sample_valid',
+      sql`pinned_sample_id IS NULL OR (status='succeeded' AND side_effect_class='safe' AND may_contact_provider=false AND may_cause_external_side_effect=false AND started_at IS NULL AND completed_at IS NOT NULL)`,
+    ),
     check(
       'preview_runs_definition_key_format',
       sql`((definition_key)::text ~ '^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)*$'::text)`,
@@ -826,7 +831,7 @@ export const previewRuns = appSchema.table(
     ),
     check(
       'preview_runs_time_order',
-      sql`(((started_at IS NULL) OR (started_at >= created_at)) AND ((completed_at IS NULL) OR (completed_at >= created_at)) AND ((completed_at IS NULL) OR (started_at IS NOT NULL)))`,
+      sql`(((started_at IS NULL) OR (started_at >= created_at)) AND ((completed_at IS NULL) OR (completed_at >= created_at)) AND ((completed_at IS NULL) OR (started_at IS NOT NULL) OR (pinned_sample_id IS NOT NULL)))`,
     ),
     check(
       'preview_runs_traceparent_format',

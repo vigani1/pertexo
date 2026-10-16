@@ -143,6 +143,21 @@ export function editorHandlers(
     capabilities: options.capabilities ?? workspace.capabilities,
   };
   return [
+    http.get(`${workflowApi}/draft/samples`, () =>
+      HttpResponse.json({
+        items: [],
+        draftRevision: 1,
+        limits: { inlineBytes: 262144, depth: 64, members: 10000 },
+      }),
+    ),
+    http.get(`${workflowApi}/draft/nodes/:nodeId/sample`, () =>
+      HttpResponse.json({
+        sample: null,
+        output: null,
+        draftRevision: 1,
+        limits: { inlineBytes: 262144, depth: 64, members: 10000 },
+      }),
+    ),
     http.get(`${api}/users/me`, () => HttpResponse.json(user)),
     http.get(`${api}/workspaces`, () =>
       HttpResponse.json({ items: [scoped], nextCursor: null }),

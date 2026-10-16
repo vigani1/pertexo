@@ -131,6 +131,29 @@ export async function installEditorRoutes(
     workflowName?: string;
   }> = {},
 ) {
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/samples`,
+    (route) =>
+      route.fulfill({
+        json: {
+          items: [],
+          draftRevision: remote.revision,
+          limits: { inlineBytes: 262144, depth: 64, members: 10000 },
+        },
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/nodes/*/sample`,
+    (route) =>
+      route.fulfill({
+        json: {
+          sample: null,
+          output: null,
+          draftRevision: remote.revision,
+          limits: { inlineBytes: 262144, depth: 64, members: 10000 },
+        },
+      }),
+  );
   const accessibleWorkspace = options.accessibleWorkspace ?? workspace;
   const definitions = options.definitions ?? [definition];
   await page.route(

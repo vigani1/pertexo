@@ -74,7 +74,12 @@ const previewWords: Readonly<Record<PreviewRunSummary['status'], string>> = {
   outcome_unknown: 'Outcome unknown',
 };
 
-export function describePreviewStatus(status: PreviewRunSummary['status']) {
+export function describePreviewStatus(
+  status: PreviewRunSummary['status'],
+  pinnedSampleId?: string | null,
+) {
+  if (pinnedSampleId != null)
+    return { tone: 'success', label: 'Pinned' } as const;
   return { tone: previewTones[status], label: previewWords[status] } as const;
 }
 
@@ -94,4 +99,37 @@ export function sideEffectSentence(
   return disclosure === undefined
     ? 'A test runs this step for real, so anything it does outside Pertexo really happens.'
     : 'This test can change things outside Pertexo.';
+}
+
+export function isHarmlessSetup(
+  check: NodeValidationResponse | undefined,
+): boolean {
+  return check?.disclosure.mayCauseExternalSideEffect === false;
+}
+/** A display decision only; admission repeats the authoritative checks under locks. */
+export function canOfferStepTest(
+  input: Readonly<{
+    editable: boolean;
+    test: Readonly<{
+      pending: 'check' | 'run' | undefined;
+      observing: boolean;
+      recoveryPending: boolean;
+      check: NodeValidationResponse | undefined;
+    }>;
+    ready: boolean;
+    sampleState: 'pinned' | 'stale' | 'expired' | undefined;
+    liveTestUnavailable: string | undefined;
+    acknowledged: boolean;
+  }>,
+): boolean {
+  if (!input.editable || input.test.pending !== undefined) return false;
+  if (input.test.observing || input.test.recoveryPending) return true;
+  if (!input.ready) return false;
+  if (input.sampleState === 'pinned') return true;
+  if (
+    input.sampleState !== undefined ||
+    input.liveTestUnavailable !== undefined
+  )
+    return false;
+  return input.acknowledged || isHarmlessSetup(input.test.check);
 }

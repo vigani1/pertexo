@@ -123,6 +123,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
         and payload.revision = page.revision and page.bytes <= 1048576`,
   },
   deleteRows('workflow_input_cases'),
+  deleteRows('workflow_step_samples'),
   {
     // A node run points at its current attempt; clear it before attempts go.
     name: 'node_run_current_attempts',

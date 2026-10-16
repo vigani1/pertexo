@@ -1,3 +1,5 @@
+export { workflowStepSamples } from './schema/authoring/step-samples.js';
+import { workflowStepSamples } from './schema/authoring/step-samples.js';
 import { systemMailDeliveries } from './schema/mail/deliveries.js';
 import {
   noticeWorkspaceSettings,
@@ -181,6 +183,7 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  workflowStepSamples,
   noticeWorkspaceSettings,
   noticePreferences,
   noticeSubscriptions,

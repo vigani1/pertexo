@@ -1,4 +1,5 @@
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { sampleErrorDetail } from '../../model/step-samples';
 import { isApiError } from '@/lib/api/error';
 
 export function parseCommandJson(value: string, message: string): unknown {
@@ -14,6 +15,8 @@ export function parseCommandJson(value: string, message: string): unknown {
  * such as "publishing" or "this run", used as "Your role doesn’t allow …".
  */
 export function commandErrorMessage(error: unknown, action: string): string {
+  const sampleDetail = sampleErrorDetail(error);
+  if (sampleDetail !== undefined) return sampleDetail;
   if (error instanceof Error && !isApiError(error)) return error.message;
   if (
     isApiError(error) &&

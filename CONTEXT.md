@@ -103,6 +103,10 @@ version context. Loading it supplies editable input for a separately confirmed
 real manual run; it is not an execution or a substitute for provider effects.
 _Avoid_: Replay, preview, mock, pinned sample
 
+**Pinned sample**: Shared output attached to one draft step for editor tests. It
+replaces that step's execution during a test and becomes stale when its setup
+changes. _Avoid_: Published output, execution cache, run-input case
+
 **Pertexo account**: A person's stable identity across their workspace
 memberships, independent of which sign-in method they use. _Avoid_: Workspace,
 provider account

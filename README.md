@@ -205,3 +205,6 @@ Shared non-secret configuration with immutable run snapshots:
 
 A personal Inbox, follow/mute and notification email schedules:
 [notification guide](docs/guides/notifications.md).
+
+Shared sample output for isolated editor tests:
+[pinned samples guide](docs/guides/pinned-samples.md).

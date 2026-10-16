@@ -1,3 +1,4 @@
+import { nodeTestingSamples } from './fixture.js';
 import type { AcceptedPreviewRun } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -34,6 +35,7 @@ function controller() {
     status: 'queued',
   };
   const persistence = {
+    stepSamples: nodeTestingSamples(),
     getDraft: vi.fn().mockResolvedValue(draft()),
     acceptPreview: vi.fn().mockResolvedValue(accepted),
     resolvePreviewReplay: vi.fn().mockResolvedValue(null),

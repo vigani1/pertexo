@@ -100,6 +100,7 @@ export async function prepareNodeValidation(
     nodeId: string;
     sampleInput?: JsonValue;
     deferInput?: boolean;
+    pinnedSample?: boolean;
     expressionEvaluator?: ExpressionEvaluator;
   }>,
 ): Promise<
@@ -128,85 +129,96 @@ export async function prepareNodeValidation(
     return Object.freeze({ issues: Object.freeze(issues) });
   }
 
-  if (node.configVersion !== definition.manifest.configVersion)
-    issue(issues, {
-      path: '$.configVersion',
-      code: 'node.config_version_incompatible',
-      message: 'Selected node configuration version is incompatible',
-    });
-
-  const parsedConfig = definition.configSchema.safeParse(node.config);
-  if (!parsedConfig.success)
-    for (const problem of parsedConfig.error.issues)
-      issue(issues, {
-        path: zodPath('$.config', problem.path),
-        code: 'node.config_invalid',
-        message: problem.message,
-      });
-
-  const requiredSlots = new Set(definition.manifest.connectionRequirements);
-  for (const slot of [...requiredSlots].sort()) {
-    const reference = node.connectionRefs[slot];
-    if (reference === undefined || !UUID_PATTERN.test(reference))
-      issue(issues, {
-        path: `$.connectionRefs.${slot}`,
-        code: 'node.connection_required',
-        message: 'Required connection reference is missing or invalid',
-      });
-  }
-  for (const slot of Object.keys(node.connectionRefs).sort())
-    if (!requiredSlots.has(slot))
-      issue(issues, {
-        path: `$.connectionRefs.${slot}`,
-        code: 'node.connection_unexpected',
-        message: 'Connection reference is not declared by this definition',
-      });
-
   const mapped: Record<string, JsonValue> = {};
-  if (input.deferInput !== true) {
-    const runInput = canonicalizeJson(input.sampleInput ?? {});
-    for (const key of Object.keys(node.inputMappings).sort()) {
-      const source = node.inputMappings[key];
-      if (source === undefined) continue;
-      const resolution = await resolveValueSource(
-        source,
-        { runInput, nodeOutputs: {} },
-        input.expressionEvaluator,
-      );
-      if (resolution.kind === 'value') mapped[key] = resolution.value;
-      else
+  if (input.pinnedSample !== true) {
+    if (node.configVersion !== definition.manifest.configVersion)
+      issue(issues, {
+        path: '$.configVersion',
+        code: 'node.config_version_incompatible',
+        message: 'Selected node configuration version is incompatible',
+      });
+
+    const parsedConfig = definition.configSchema.safeParse(node.config);
+    if (!parsedConfig.success)
+      for (const problem of parsedConfig.error.issues)
         issue(issues, {
-          path: `$.inputMappings.${key}`,
-          code:
-            resolution.kind === 'missing'
-              ? 'node.mapping_missing'
-              : 'node.mapping_invalid',
-          message:
-            resolution.kind === 'error'
-              ? resolution.message
-              : 'Sample input does not resolve this mapping',
+          path: zodPath('$.config', problem.path),
+          code: 'node.config_invalid',
+          message: problem.message,
         });
+
+    const requiredSlots = new Set(definition.manifest.connectionRequirements);
+    for (const slot of [...requiredSlots].sort()) {
+      const reference = node.connectionRefs[slot];
+      if (reference === undefined || !UUID_PATTERN.test(reference))
+        issue(issues, {
+          path: `$.connectionRefs.${slot}`,
+          code: 'node.connection_required',
+          message: 'Required connection reference is missing or invalid',
+        });
+    }
+    for (const slot of Object.keys(node.connectionRefs).sort())
+      if (!requiredSlots.has(slot))
+        issue(issues, {
+          path: `$.connectionRefs.${slot}`,
+          code: 'node.connection_unexpected',
+          message: 'Connection reference is not declared by this definition',
+        });
+
+    if (input.deferInput !== true) {
+      const runInput = canonicalizeJson(input.sampleInput ?? {});
+      for (const key of Object.keys(node.inputMappings).sort()) {
+        const source = node.inputMappings[key];
+        if (source === undefined) continue;
+        const resolution = await resolveValueSource(
+          source,
+          { runInput, nodeOutputs: {} },
+          input.expressionEvaluator,
+        );
+        if (resolution.kind === 'value') mapped[key] = resolution.value;
+        else
+          issue(issues, {
+            path: `$.inputMappings.${key}`,
+            code:
+              resolution.kind === 'missing'
+                ? 'node.mapping_missing'
+                : 'node.mapping_invalid',
+            message:
+              resolution.kind === 'error'
+                ? resolution.message
+                : 'Sample input does not resolve this mapping',
+          });
+      }
+    }
+    const resolvedInput = canonicalizeJson(mapped);
+    if (input.deferInput !== true) {
+      const parsedInput = definition.inputSchema.safeParse(resolvedInput);
+      if (!parsedInput.success)
+        for (const problem of parsedInput.error.issues)
+          issue(issues, {
+            path: zodPath('$.resolvedInput', problem.path),
+            code: 'node.input_invalid',
+            message: problem.message,
+          });
     }
   }
   const resolvedInput = canonicalizeJson(mapped);
-  if (input.deferInput !== true) {
-    const parsedInput = definition.inputSchema.safeParse(resolvedInput);
-    if (!parsedInput.success)
-      for (const problem of parsedInput.error.issues)
-        issue(issues, {
-          path: zodPath('$.resolvedInput', problem.path),
-          code: 'node.input_invalid',
-          message: problem.message,
-        });
-  }
 
   return Object.freeze({
     definition: Object.freeze({ ...definition.manifest.definition }),
-    disclosure: disclosure(
-      definition.manifest.retryClass,
-      definition.manifest.integration,
-      definition.manifest.capabilities,
-    ),
+    disclosure:
+      input.pinnedSample === true
+        ? {
+            sideEffectClass: 'safe',
+            mayContactProvider: false,
+            mayCauseExternalSideEffect: false,
+            dryRun: 'not_supported',
+          }
+        : disclosure(
+            definition.manifest.retryClass,
+            definition.manifest.integration,
+            definition.manifest.capabilities,
+          ),
     executableNode: Object.freeze(
       canonicalizeJson({
         id: node.id,
@@ -218,7 +230,8 @@ export async function prepareNodeValidation(
       }) as Readonly<Record<string, JsonValue>>,
     ),
     executor: Object.freeze({ ...definition.manifest.executor }),
-    ...(definition.manifest.integration === undefined
+    ...(input.pinnedSample === true ||
+    definition.manifest.integration === undefined
       ? {}
       : { integration: Object.freeze({ ...definition.manifest.integration }) }),
     issues: Object.freeze(issues),

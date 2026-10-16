@@ -1,3 +1,4 @@
+import { pruneStepSamples } from '../../step-samples/records.js';
 import { lockArtifactReferences } from '../../../artifacts/references.js';
 import { z } from 'zod';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -122,6 +123,12 @@ async function restoreWorkflowVersion(
         currentTag,
       );
     const restoredDraft = mapDraft(updatedRow, definitionCatalog);
+    await pruneStepSamples(
+      client,
+      workspaceId,
+      workflowId,
+      sourceVersion.graphJson,
+    );
 
     await client.query(
       `insert into app.audit_events

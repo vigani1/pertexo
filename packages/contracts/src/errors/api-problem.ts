@@ -1,3 +1,4 @@
+import { stepSampleProblems } from './step-samples.js';
 import { notificationProblems } from './notifications.js';
 import { variableProblems } from './variables.js';
 import { formProblems } from './forms.js';
@@ -77,6 +78,9 @@ export const API_PROBLEM_CODES = [
   'form.invalid',
   'form.required',
 
+  'workflow.sample_conflict',
+  'workflow.sample_invalid',
+  'workflow.sample_limit',
   'workflow.input_case_revision_conflict',
   'workflow.input_case_limit_exceeded',
   ...WORKFLOW_ORGANIZATION_PROBLEM_CODES,
@@ -371,6 +375,7 @@ const apiProblemDetails = {
   ...notificationProblems,
   ...variableProblems,
   ...formProblems,
+  ...stepSampleProblems,
   ...workflowInputCaseProblems,
   ...workflowOrganizationProblems,
   'workspace.auto_pause_settings_conflict': {

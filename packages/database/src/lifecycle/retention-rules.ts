@@ -435,6 +435,10 @@ export const RETENTION_RULES = Object.freeze([
       delete from app.workflow_input_cases input_case using page
       where input_case.workspace_id = page.workspace_id and input_case.id = page.id`,
   },
+  {
+    name: 'workflow_step_samples',
+    statement: `with page as (select workspace_id,id from app.workflow_step_samples where expires_at <= clock_timestamp() order by expires_at,id limit $1 for update skip locked) delete from app.workflow_step_samples sample using page where sample.workspace_id=page.workspace_id and sample.id=page.id`,
+  },
   VARIABLE_SET_RETENTION_RULE,
 ] as const);
 

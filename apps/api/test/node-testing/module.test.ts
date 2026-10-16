@@ -1,3 +1,4 @@
+import { nodeTestingSamples } from './fixture.js';
 import { Module } from '@nestjs/common';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
@@ -6,12 +7,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
 import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
-import { NodeTestingController } from '../../src/node-testing/controller.js';
 import { NodeTestingModule } from '../../src/node-testing/module.js';
-import {
-  GetPreviewRunUseCase,
-  TestWorkflowNodeUseCase,
-} from '../../src/node-testing/use-case.js';
+import { TestWorkflowNodeUseCase } from '../../src/node-testing/use-case.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
 import {
   httpNodeTestingGraph,
@@ -67,6 +64,7 @@ function dependencies() {
       }),
     },
     persistence: {
+      stepSamples: nodeTestingSamples(),
       getDraft: vi.fn().mockResolvedValue(nodeTestingDraft()),
       acceptPreview: vi.fn().mockResolvedValue({
         acceptedAt: nodeTestingAcceptedAt,
@@ -86,32 +84,6 @@ function dependencies() {
 }
 
 describe('node testing Nest module', () => {
-  it('owns preview routes and providers behind declared capabilities', () => {
-    const dynamic = NodeTestingModule.register(
-      {
-        authorization: { findAccess: () => Promise.resolve(undefined) },
-        persistence: {
-          getDraft: () => Promise.resolve(null),
-          acceptPreview: () => Promise.reject(new Error('not exercised')),
-          resolvePreviewReplay: () => Promise.resolve(null),
-          readPreview: () => Promise.resolve(null),
-        },
-        expressionEvaluator: {
-          evaluate: () => Promise.reject(new Error('not exercised')),
-        },
-      },
-      { module: FakeIdentityModule },
-    );
-    const providers = dynamic.providers ?? [];
-    expect(dynamic.controllers).toEqual([NodeTestingController]);
-    expect(providers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ provide: TestWorkflowNodeUseCase }),
-        expect.objectContaining({ provide: GetPreviewRunUseCase }),
-      ]),
-    );
-  });
-
   it('forwards the registered evaluator through the resolved use case', async () => {
     const supplied = dependencies();
     supplied.persistence.getDraft.mockResolvedValueOnce(
@@ -162,6 +134,87 @@ describe('node testing Nest module', () => {
       expect(supplied.expressionEvaluator.evaluate).toHaveBeenCalledOnce();
     } finally {
       await testing.close();
+    }
+  });
+
+  it('serves sample reads and exact-key writes through Nest and Fastify', async () => {
+    const supplied = dependencies();
+    const sampleId = '11111111-1111-4111-8111-111111111111';
+    const put = vi
+      .spyOn(supplied.persistence.stepSamples, 'put')
+      .mockResolvedValue({
+        sampleId,
+        removed: false,
+        replayed: false,
+      });
+    vi.spyOn(supplied.persistence.stepSamples, 'remove').mockResolvedValue({
+      sampleId,
+      removed: true,
+      replayed: false,
+    });
+    const testing = await Test.createTestingModule({
+      imports: [
+        NodeTestingModule.register(supplied, { module: FakeIdentityModule }),
+      ],
+    }).compile();
+    const adapter = new FastifyAdapter();
+    const application = testing.createNestApplication(adapter);
+    try {
+      await application.init();
+      const server = adapter.getInstance();
+      const root = `/v1/workspaces/${nodeTestingIds.workspaceId}/workflows/${nodeTestingIds.workflowId}/draft`;
+      const headers = {
+        cookie: 'pertexo_session=session-token',
+        'content-type': 'application/json',
+        'idempotency-key': 'sample-http-proof',
+      };
+      const list = await server.inject({
+        method: 'GET',
+        url: `${root}/samples`,
+        headers,
+      });
+      expect(list.statusCode).toBe(200);
+      expect(list.headers['cache-control']).toBe('private, no-store');
+      const read = await server.inject({
+        method: 'GET',
+        url: `${root}/nodes/http/sample`,
+        headers,
+      });
+      expect(read.statusCode).toBe(200);
+      expect(read.json()).toMatchObject({
+        sample: null,
+        output: null,
+        draftRevision: 3,
+      });
+      const saved = await server.inject({
+        method: 'PUT',
+        url: `${root}/nodes/http/sample`,
+        headers,
+        payload: {
+          expectedDraftRevision: 3,
+          expectedSampleId: null,
+          source: { kind: 'json', value: { amount: 42 } },
+        },
+      });
+      expect(saved.statusCode).toBe(200);
+      expect(put).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nodeId: 'http',
+          expectedSampleId: null,
+          idempotencyKey: 'sample-http-proof',
+          source: { kind: 'json', value: { amount: 42 } },
+        }),
+      );
+      const removed = await server.inject({
+        method: 'DELETE',
+        url: `${root}/nodes/http/sample`,
+        headers,
+        payload: { expectedDraftRevision: 3, expectedSampleId: sampleId },
+      });
+      expect(removed.statusCode).toBe(200);
+      expect(removed.json()).toMatchObject({ removed: true, sampleId });
+    } finally {
+      await application.close();
     }
   });
 

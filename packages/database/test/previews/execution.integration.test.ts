@@ -827,6 +827,9 @@ describe('durable preview acceptance', () => {
       workspaceA,
       (transaction) => acceptPreviewRun(transaction, input()),
     );
+    const attemptId = accepted.previewAttemptId;
+    if (attemptId === null)
+      throw new Error('Fixture requires a real preview attempt');
     await workerDatabase.withWorkspace(workspaceA, async ({ db }) => {
       expect(await db.select().from(previewRuns)).toHaveLength(1);
     });
@@ -835,7 +838,7 @@ describe('durable preview acceptance', () => {
         db
           .update(previewAttempts)
           .set({ providerIdempotencyKey: 'changed' })
-          .where(eq(previewAttempts.id, accepted.previewAttemptId)),
+          .where(eq(previewAttempts.id, attemptId)),
       ).rejects.toThrow();
     });
   });

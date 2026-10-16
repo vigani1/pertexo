@@ -1,0 +1,116 @@
+import type { WorkflowGraph } from '@pertexo/workflow-model';
+import type { PoolClient } from 'pg';
+import {
+  parseWorkflowGraphDraft,
+  stepSampleBindings,
+} from '@pertexo/workflow-model';
+import { WorkflowNotFoundError } from '../workflows/errors.js';
+import {
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
+} from '../../platform/stored-execution-value.js';
+import { collectArtifactReferences } from '../../artifacts/references.js';
+import {
+  WorkflowStepSampleError,
+  type SampleMetadata,
+  type SampleMetadataRow,
+  type SampleScope,
+} from './contract.js';
+
+export async function sampleDraft(
+  client: PoolClient,
+  input: SampleScope,
+  write: boolean,
+) {
+  const workflow = await client.query<{ lifecycle_status: string }>(
+    'select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for share',
+    [input.workspaceId, input.workflowId],
+  );
+  if (
+    workflow.rows[0] === undefined ||
+    (write && workflow.rows[0].lifecycle_status !== 'active')
+  )
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  const result = await client.query<{ revision: number; graph_json: unknown }>(
+    `select revision,graph_json from app.workflow_drafts where workspace_id=$1 and workflow_id=$2 for ${write ? 'update' : 'share'}`,
+    [input.workspaceId, input.workflowId],
+  );
+  const row = result.rows[0];
+  if (row === undefined)
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  return {
+    revision: row.revision,
+    bindings: stepSampleBindings(parseWorkflowGraphDraft(row.graph_json)),
+  };
+}
+export async function sampleDatabaseTime(client: PoolClient): Promise<Date> {
+  const result = await client.query<{ now: Date }>(
+    'select clock_timestamp() now',
+  );
+  const row = result.rows[0];
+  if (row === undefined) throw new Error('Sample database time is unavailable');
+  return row.now;
+}
+export function sampleMetadata(
+  row: SampleMetadataRow,
+  binding: string | undefined,
+  now: Date,
+): SampleMetadata {
+  const state =
+    row.expires_at <= now
+      ? 'expired'
+      : binding !== row.binding
+        ? 'stale'
+        : 'pinned';
+  return {
+    id: row.id,
+    nodeId: row.node_id,
+    binding: state === 'expired' ? '' : row.binding,
+    state,
+    source:
+      row.source_kind === 'json'
+        ? { kind: 'json' }
+        : row.source_kind === 'preview'
+          ? {
+              kind: 'preview',
+              previewRunId: requiredSourceId(row.source_preview_id),
+            }
+          : {
+              kind: 'run',
+              runId: requiredSourceId(row.source_run_id),
+              nodeRunId: requiredSourceId(row.source_node_run_id),
+            },
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  };
+}
+function requiredSourceId(id: string | null): string {
+  if (id === null) throw new Error('Sample provenance is incomplete');
+  return id;
+}
+export function inlineSampleOutput(output: unknown): string {
+  let parsed;
+  try {
+    parsed = parseStoredExecutionValue(output);
+  } catch {
+    throw new WorkflowStepSampleError('value_invalid');
+  }
+  if (
+    parsed.kind !== 'inline' ||
+    collectArtifactReferences(parsed.value).length > 0
+  )
+    throw new WorkflowStepSampleError('file_output');
+  return serializeStoredExecutionValue(parsed);
+}
+
+export async function pruneStepSamples(
+  client: PoolClient,
+  workspaceId: string,
+  workflowId: string,
+  graph: WorkflowGraph,
+): Promise<void> {
+  await client.query(
+    'delete from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 and not (node_id=any($3::text[]))',
+    [workspaceId, workflowId, [...stepSampleBindings(graph).keys()]],
+  );
+}

@@ -134,6 +134,13 @@
       "when": 1792124277192,
       "tag": "0018_workflow_polish",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792133314754,
+      "tag": "0019_pinned_step_samples",
+      "breakpoints": true
     }
   ]
 }

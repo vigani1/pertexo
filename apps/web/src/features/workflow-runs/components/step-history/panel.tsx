@@ -114,7 +114,12 @@ function HealthTiles({ health }: Readonly<{ health: WorkflowStepHealth }>) {
 function RecentRun({
   run,
   workspaceId,
-}: Readonly<{ run: WorkflowStepRun; workspaceId: string }>) {
+  actions,
+}: Readonly<{
+  run: WorkflowStepRun;
+  workspaceId: string;
+  actions?: ReactNode;
+}>) {
   const look = describeNodeStatus(run.status);
   const item = loopItemOf(run.invocationKey);
   const took = durationOf(run);
@@ -146,6 +151,7 @@ function RecentRun({
           )}
         </span>
       </Link>
+      {actions}
     </li>
   );
 }
@@ -162,6 +168,7 @@ export function StepHistoryPanel({
   workflowId,
   nodeId,
   stepLabel,
+  renderActions,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -169,6 +176,7 @@ export function StepHistoryPanel({
   workflowId: string;
   nodeId: string;
   stepLabel: string;
+  renderActions?: (run: WorkflowStepRun) => ReactNode;
 }>) {
   const canRead = workspace.capabilities.includes('run:read');
   const health = useQuery({
@@ -261,6 +269,7 @@ export function StepHistoryPanel({
               key={run.nodeRunId}
               run={run}
               workspaceId={workspace.id}
+              actions={renderActions?.(run)}
             />
           ))}
         </ul>
