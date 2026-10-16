@@ -46,7 +46,7 @@ sending run data.
 The example enables Code with a 128 MB V8 heap, 30-second instance maximum,
 5-second step default and two slots. `storage/prepare.mjs` derives container
 memory, CPU and PID bounds from the `CODE_*` settings; the default memory ceiling
-is 1,760 MiB, including native/V8 and manager headroom. This is a ceiling, not
+is 2,912 MiB, including native/V8 and manager headroom. This is a ceiling, not
 reserved idle memory. Each process also has a hard data-memory bound and active
 RSS monitoring; the heap setting alone does not bound native allocations.
 Change settings through the normal deployment procedure so the API, worker and

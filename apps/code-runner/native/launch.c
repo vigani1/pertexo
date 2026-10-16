@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
   close(score);
   limit(RLIMIT_CORE,0); limit(RLIMIT_NOFILE,64); limit(RLIMIT_NPROC,16);
   limit(RLIMIT_CPU,(rlim_t)seconds+1); limit(RLIMIT_STACK,8*1024*1024);
-  limit(RLIMIT_DATA,((rlim_t)memory+384)*1024*1024);
+  limit(RLIMIT_DATA,((rlim_t)memory+768)*1024*1024);
   limit(RLIMIT_AS,((rlim_t)4096+2*(rlim_t)memory)*1024*1024);
   if (setgroups(0,NULL) || setresgid(uid,uid,uid) || setresuid(uid,uid,uid)) fail("Drop task identity");
   struct __user_cap_header_struct header = {_LINUX_CAPABILITY_VERSION_3,0};

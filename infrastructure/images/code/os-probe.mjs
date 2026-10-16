@@ -91,3 +91,28 @@ assert.equal(result.oom, '1000');
 console.log(
   'Kernel fences independently refused manager/other-run reads, protocol access, writes, forks, signals and all network destinations.',
 );
+
+const minimum = spawnSync(
+  '/workspace/apps/code-runner/dist/launch',
+  [
+    '20015',
+    '32',
+    '5',
+    process.execPath,
+    '--max-old-space-size=32',
+    '--disable-wasm-trap-handler',
+    '--v8-pool-size=1',
+    '-e',
+    'console.log(42)',
+  ],
+  {
+    encoding: 'utf8',
+    timeout: 10_000,
+    env: { PATH: '/usr/local/bin:/usr/bin:/bin', UV_THREADPOOL_SIZE: '1' },
+  },
+);
+assert.equal(minimum.status, 0, minimum.stderr);
+assert.equal(minimum.stdout.trim(), '42');
+console.log(
+  'The minimum 32 MiB heap boots under the same kernel resource bounds.',
+);

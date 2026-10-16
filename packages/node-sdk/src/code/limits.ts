@@ -86,7 +86,7 @@ export function parseCodeSettings(
 
 export function codeContainerLimits(settings: CodeSettings) {
   const managerMiB = 192 + settings.concurrency * 16;
-  const taskMiB = settings.memoryMiB + 384;
+  const taskMiB = settings.memoryMiB + 768;
   return Object.freeze({
     memoryMiB: managerMiB + (settings.concurrency + 1) * taskMiB,
     managerHeapMiB: 64 + settings.concurrency * 8,
