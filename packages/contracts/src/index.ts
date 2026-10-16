@@ -105,6 +105,7 @@ export {
   noticeSubscriptionRequestSchema,
   noticeCommandResponseSchema,
   noticeUnsubscribeResponseSchema,
+  noticeOneClickQuerySchema,
   type NoticeEmailMode,
   type NoticeSchedule,
   type NoticePreferencesRequest,

@@ -1,3 +1,4 @@
+import { verifyUnsubscribeProxy } from './verify-unsubscribe.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -7,35 +8,50 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);
-const [runtimeImage, webImage] = process.argv.slice(2);
+const [runtimeImage, webImage, caddyImage] = process.argv.slice(2);
 if (!runtimeImage || !webImage)
-  throw new Error('usage: node verify-web.mjs <runtime-image> <web-image>');
+  throw new Error(
+    'usage: node verify-web.mjs <runtime-image> <web-image> [cached-caddy-image]',
+  );
 if (
-  ![runtimeImage, webImage].every((image) =>
-    /^[a-z0-9][a-zA-Z0-9._/:@-]*$/u.test(image),
-  )
+  ![
+    runtimeImage,
+    webImage,
+    ...(caddyImage === undefined ? [] : [caddyImage]),
+  ].every((image) => /^[a-z0-9][a-zA-Z0-9._/:@-]*$/u.test(image))
 )
   throw new Error('Expected Docker image references');
-const docker = async (args) =>
-  (await execute('docker', args, { timeout: 30_000 })).stdout.trim();
+const docker = async (args) => {
+  const result = await execute('docker', args, { timeout: 30_000 });
+  return args[0] === 'logs'
+    ? result.stdout + result.stderr
+    : result.stdout.trim();
+};
 const network = `pertexo-web-${randomUUID()}`;
 const owned = [];
 let failure;
 
-async function readProbe(url, headers) {
+async function readProbe(url, headers, options = {}) {
   const response = await new Promise((resolve, reject) => {
-    const request = httpRequest(url, { headers }, resolve);
+    const request = httpRequest(
+      url,
+      { headers, method: options.method ?? 'GET' },
+      resolve,
+    );
     request.setTimeout(5_000, () =>
       request.destroy(new Error('Probe timed out')),
     );
     request.once('error', reject);
-    request.end();
+    request.end(options.body);
   });
   const chunks = [];
   for await (const chunk of response) chunks.push(chunk);
   return {
     status: response.statusCode,
-    value: JSON.parse(Buffer.concat(chunks).toString()),
+    headers: response.headers,
+    value: (response.headers['content-type'] ?? '').includes('application/json')
+      ? JSON.parse(Buffer.concat(chunks).toString())
+      : Buffer.concat(chunks).toString(),
   };
 }
 
@@ -68,6 +84,8 @@ try {
     'never',
     '--network',
     network,
+    '--network-alias',
+    'web',
     '--read-only',
     '--tmpfs',
     '/tmp',
@@ -167,6 +185,16 @@ try {
     clearTimeout(timer);
     controller.abort();
   }
+  if (caddyImage !== undefined)
+    await verifyUnsubscribeProxy({
+      docker,
+      probe: readProbe,
+      network,
+      backend,
+      web,
+      caddyImage,
+      owned,
+    });
   console.log(
     'Web image: non-root, read-only, proxy schemes, SPA boundary, icons and unbuffered SSE passed.',
   );

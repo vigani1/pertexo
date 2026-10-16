@@ -106,8 +106,28 @@ describe('real SMTP system mail sessions', () => {
     expect(mime).toContain('To: ada@example.test');
     expect(mime).toContain('Content-Type: text/plain; charset=utf-8');
     expect(mime).toContain('Subject: =?UTF-8?');
+    expect(mime).not.toContain('List-Unsubscribe');
     const second = await client.sendNotification(input);
     expect(second).toEqual(result);
+  });
+  it('writes both standard one-click headers through MIME composition', async () => {
+    const fixture = await server();
+    const unsubscribeUrl =
+      'https://app.example.test/v1/notifications/unsubscribe/one-click?token=' +
+      'a'.repeat(877);
+    expect(
+      (
+        await createSystemMailClient(fixture.config).sendNotification(
+          message({ unsubscribeUrl }),
+        )
+      ).kind,
+    ).toBe('submitted');
+    const raw = fixture.messages[0]?.toString() ?? '';
+    const unfolded = raw.replace(/\r\n[ \t]+/gu, ' ');
+    expect(unfolded).toContain(`List-Unsubscribe: <${unsubscribeUrl}>`);
+    expect(unfolded).toContain(
+      'List-Unsubscribe-Post: List-Unsubscribe=One-Click',
+    );
   });
   it.each(['starttls', 'implicit'] as const)(
     'uses authenticated verified %s TLS',

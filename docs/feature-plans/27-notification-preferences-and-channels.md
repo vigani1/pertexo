@@ -378,12 +378,13 @@ Decisions and rules:
   names the workspace once. Header names use one sanitizing/clipping owner,
   remove control/line separator characters and retain both name budgets.
   Keep the existing 25 visible body items and 12,288-byte plaintext envelope.
-  A maximum-input prototype with the new URL/subject used 10,573 bytes; add the
-  equivalent production-code regression test rather than increasing the limit.
+  A maximum-input production-code regression measures 10,573 bytes, leaving
+  1,715 bytes; the existing limit stays unchanged.
 - Add a closed optional `unsubscribeUrl` to the system mail message and sealed
-  payload reader. No arbitrary-header facility. Nodemailer builds its standard
-  List-Unsubscribe field through MailComposer's list option, together with the
-  fixed List-Unsubscribe-Post: List-Unsubscribe=One-Click field. Resend sends the
+  payload reader. No arbitrary-header facility. MailComposer receives the two
+  fixed List-Unsubscribe and List-Unsubscribe-Post fields through its documented
+  headers option. Its low-level composer does not emit the higher-level transport's
+  list option, verified by a real SMTP regression. Resend sends the
   same two fields through its existing JSON headers property. Auth mail and old
   queued payloads without the optional URL keep their existing delivery behavior.
 - Reuse the existing encrypted person/workspace/preference-revision/membership
@@ -392,14 +393,13 @@ Decisions and rules:
   command; it only turns personal email Off. Repeated exact opt-out is idempotent;
   expired tokens, a later preference change or a changed membership incarnation
   remain unavailable. No session, cookie, CSRF secret, redirect or new key.
-- Decode application/x-www-form-urlencoded and multipart/form-data only for that
-  exact POST route, within 8 KiB. The body must contain exactly the single literal
-  List-Unsubscribe=One-Click field. Preserve duplicate entries during decoding so
-  the one public contract validation rejects duplicates, extra fields and files.
-  GET never mutates preferences: redirect only a manual GET to the existing
-  same-origin fragment confirmation page, preserving older List-Unsubscribe
-  clients. The automatic POST never redirects. Other API endpoints do not gain
-  form body parsing.
+- Owner decision (2026-10-16): accept application/x-www-form-urlencoded or
+  multipart/form-data within 8 KiB and ignore the body. The URL capability alone
+  authorizes opt-out; do not add Busboy or a custom multipart parser. Fastify's
+  native bounded raw-body reader owns collection. Better Auth continues to
+  receive its original form bytes through the existing bridge. Other API
+  endpoints gain no multipart support. GET only redirects to the existing
+  same-origin fragment confirmation page; POST never redirects.
 - Use query parameter `token`, which the existing API log redactor already owns.
   The beta Caddy edge routes only this canonical endpoint directly to the existing
   API, preventing the capability reaching nginx request/error logs. Other traffic
@@ -416,8 +416,9 @@ Decisions and rules:
 - RFC 8058 requires the provider's DKIM signature to cover both unsubscribe
   headers. Document that relay configuration; local SMTP proves raw headers and
   the anonymous command, not a third party's signature. No DKIM subsystem/account
-  is added. Production origins remain HTTPS; local loopback testing uses the
-  existing development configuration.
+  is added. Production origins remain HTTPS; sealed URL readers also accept the existing
+  development HTTP loopback/IP origin. No DNS-only URL shortcut may disable local
+  delivery. Local testing uses the existing development configuration.
 
 Placement and slices:
 
@@ -426,29 +427,30 @@ Placement and slices:
    commit before changing its physical or TypeScript name.
 2. Existing inbox/mail owns recipient projection; worker/mail owns content;
    integrations/system-mail and its shared Resend client own the closed headers.
-   Existing notifications/preferences owns the public command and narrow parser.
+   Existing notifications/preferences owns the public command and bounded transport.
    Contracts publish both form MIME types. Extend the existing web image probe
    with an optional cached Caddy argument using its owned containers/cleanup;
    retain its current two-argument qualification and CI job unchanged.
-3. Generate migration 0017 normally, with the explicit table rename, and adjust
-   index/constraint names where required. Teach the existing schema ownership
+3. Generate migration 0017 normally, with the explicit table rename, and use
+   PostgreSQL index/constraint renames instead of rebuilding equivalent objects. Teach the existing schema ownership
    checker ALTER TABLE RENAME evolution with behavior tests; no new check job.
    Stop old API/workers, migrate once, then start matching readers/writers through
    the existing coordinated deployment. No downgrade to old table/payload readers.
 4. Update ADR 079, the F27 tracker and notification/operator guidance. Qualify
    populated upgrade, grants/isolation, legacy sealed delivery, workspace purge,
    named subjects and maximum Unicode bounds, raw SMTP/Resend headers, anonymous
-   opt-out, invalid/stale/duplicate/oversized bodies, non-mutating manual GET/confirmation and proxy log privacy.
+   opt-out, invalid/stale tokens, ignored empty/arbitrary bodies and oversized bodies, non-mutating manual GET/confirmation and proxy log privacy.
 
 Status:
 
-- [ ] Buildable move-only extraction.
-- [ ] Named subjects, closed transport metadata and standards endpoint.
-- [ ] Table rename, populated upgrade, compatibility and proxy qualification.
-- [ ] Full checks and green PR CI before merge.
+- [x] Buildable move-only extraction.
+- [x] Named subjects, closed transport metadata and standards endpoint.
+- [x] Table rename, populated upgrade, compatibility and proxy qualification.
+- [x] Full local checks, 9,252 units, 183 mocked browser cases and real
+      API/worker/browser/SMTP/SQL qualification. Merge only after green PR CI.
 
 References: [RFC 8058](https://www.rfc-editor.org/rfc/rfc8058.html),
-[Nodemailer list fields](https://nodemailer.com/message/list-headers),
+[MailComposer headers](https://nodemailer.com/extras/mailcomposer),
 [Caddy runtime log configuration](https://caddyserver.com/docs/caddyfile/options#log)
 and [query filters](https://caddyserver.com/docs/caddyfile/directives/log#query).
 

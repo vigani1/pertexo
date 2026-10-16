@@ -370,3 +370,16 @@ command to SMTP and assume its Message-ID prevents duplicate delivery. Restores
 remain fenced and stopped; supply mail credentials separately from backups and
 verify the selected relay before reopening serving. Actual mail accounts and
 real-server launch remain beta slice 6.
+
+### Personal notification email upgrades
+
+Migration 0017 renames the existing delivery queue to `system_mail_deliveries`
+without rewriting its messages or permissions. Stop old API/workers before
+migrating and start the matching release afterwards. Keep encrypted payloads and
+the application key ring; uncertain SMTP deliveries remain in reconciliation.
+
+The supplied Caddyfile routes RFC 8058 one-click unsubscribe directly to the API
+and redacts tokens/headers in runtime errors. Keep that route and filter when
+customizing the proxy; nginx request/error logs must not see its query token.
+Configure the external relay to DKIM-sign both unsubscribe headers. See the
+[notification guide](../notifications.md#mail-operator-requirements).

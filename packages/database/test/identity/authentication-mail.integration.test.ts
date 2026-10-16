@@ -128,7 +128,7 @@ describe('durable authentication mail', () => {
           attempt_count: number;
         }>(
           `select status,payload_ciphertext,attempt_count
-             from app.authentication_mail_deliveries where id=$1`,
+             from app.system_mail_deliveries where id=$1`,
           [id],
         );
         expect(stored.rows[0]).toEqual({
@@ -161,7 +161,7 @@ describe('durable authentication mail', () => {
     try {
       for (const id of expiredIds) {
         await owner.query(
-          `insert into app.authentication_mail_deliveries
+          `insert into app.system_mail_deliveries
              (id,purpose,expires_at,created_at,payload_ciphertext,
               payload_nonce,payload_tag,payload_key_version)
            values($1,'verification',clock_timestamp()-interval '1 hour',
@@ -170,7 +170,7 @@ describe('durable authentication mail', () => {
         );
       }
       await owner.query(
-        `insert into app.authentication_mail_deliveries
+        `insert into app.system_mail_deliveries
            (id,purpose,expires_at,attempt_count,payload_ciphertext,
             payload_nonce,payload_tag,payload_key_version)
          values($1,'password_reset',clock_timestamp()+interval '1 hour',
@@ -180,7 +180,7 @@ describe('durable authentication mail', () => {
 
       await worker.claim({ workerId: 'mail:bounded', limit: 1 });
       const before = await owner.query<{ count: string }>(
-        `select count(*) from app.authentication_mail_deliveries
+        `select count(*) from app.system_mail_deliveries
           where id=any($1::uuid[]) and status='queued'`,
         [expiredIds],
       );
@@ -198,7 +198,7 @@ describe('durable authentication mail', () => {
         payload_ciphertext: string | null;
       }>(
         `select id,status,payload_ciphertext
-           from app.authentication_mail_deliveries
+           from app.system_mail_deliveries
           where id=any($1::uuid[]) or id=$2`,
         [expiredIds, exhaustedId],
       );
@@ -248,7 +248,7 @@ it('exposes a crashed unknown claim without changing its immutable command', asy
     const [first] = await worker.claim({ workerId: 'mail:first', limit: 1 });
     expect(first?.recoveredUnknown).toBe(false);
     await owner.query(
-      "update app.authentication_mail_deliveries set lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
+      "update app.system_mail_deliveries set lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
       [id],
     );
     const [recovered] = await worker.claim({

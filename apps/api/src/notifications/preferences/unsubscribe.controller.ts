@@ -1,5 +1,16 @@
-import { Body, Controller, Header, HttpCode, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  Post,
+  Query,
+  Redirect,
+  Req,
+} from '@nestjs/common';
 import { z } from 'zod';
+import { noticeOneClickQuerySchema } from '@pertexo/contracts';
 import type { FastifyRequest } from 'fastify';
 import { firstRequestHeader } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
@@ -8,6 +19,18 @@ import { NoticePreferencesService } from './service.js';
 @RateLimit('notice_unsubscribe')
 export class NoticeUnsubscribeController {
   constructor(private readonly preferences: NoticePreferencesService) {}
+  @Post('one-click')
+  @HttpCode(200)
+  oneClick(@Query() query: unknown) {
+    const { token } = noticeOneClickQuerySchema.parse(query);
+    return this.preferences.unsubscribe(token);
+  }
+  @Get('one-click')
+  @Redirect(undefined, 303)
+  confirm(@Query() query: unknown) {
+    const { token } = noticeOneClickQuerySchema.parse(query);
+    return { url: `/notifications/unsubscribe#${encodeURIComponent(token)}` };
+  }
   @Post()
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')

@@ -685,7 +685,7 @@ describe('Better Auth on PostgreSQL', () => {
       }>(
         `select id,purpose,expires_at,payload_ciphertext,payload_nonce,
                 payload_tag,payload_key_version
-           from app.authentication_mail_deliveries
+           from app.system_mail_deliveries
           where purpose='password_reset'
           order by created_at desc limit 1`,
       );
@@ -775,7 +775,7 @@ describe('Better Auth on PostgreSQL', () => {
         payload_key_version: string;
       }>(`select mail.id,mail.expires_at,mail.payload_ciphertext,
                mail.payload_nonce,mail.payload_tag,mail.payload_key_version
-            from app.authentication_mail_deliveries mail
+            from app.system_mail_deliveries mail
            where mail.purpose='verification'
            order by mail.created_at desc limit 1`);
       const row = stored.rows[0];
@@ -851,7 +851,7 @@ describe('Better Auth on PostgreSQL', () => {
         const latest = await owner.query<NonNullable<typeof row>>(
           `select id,expires_at,payload_ciphertext,payload_nonce,
                   payload_tag,payload_key_version
-             from app.authentication_mail_deliveries
+             from app.system_mail_deliveries
             where purpose=$1 order by created_at desc limit 1`,
           [purpose],
         );
@@ -901,7 +901,7 @@ describe('Better Auth on PostgreSQL', () => {
         returns trigger language plpgsql as $$
         begin raise exception 'test proof mail failure'; end; $$`);
       await owner.query(`create trigger test_reject_proof_mail
-        before insert on app.authentication_mail_deliveries for each row
+        before insert on app.system_mail_deliveries for each row
         execute function app.test_reject_proof_mail()`);
       const failedEmail = `failed-durable-proof-${randomUUID()}@example.test`;
       try {
@@ -930,7 +930,7 @@ describe('Better Auth on PostgreSQL', () => {
         expect(failedProofs.rows).toEqual([{ count: 0 }]);
       } finally {
         await owner.query(
-          'drop trigger if exists test_reject_proof_mail on app.authentication_mail_deliveries',
+          'drop trigger if exists test_reject_proof_mail on app.system_mail_deliveries',
         );
         await owner.query(
           'drop function if exists app.test_reject_proof_mail()',

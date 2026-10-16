@@ -95,3 +95,19 @@ test('rejects untyped and missing tables and UUID defaults', () => {
     /Persisted UUID defaults must be generated explicitly/u,
   );
 });
+
+test('applies chained quoted and bare table renames in statement order without treating column renames as tables', () => {
+  assert.deepEqual(
+    validateDatabaseSchemaSources({
+      migrationSql: `CREATE TABLE app.old_table(id uuid primary key);
+      ALTER TABLE "app"."old_table" RENAME TO "intermediate";
+      ALTER TABLE app.intermediate RENAME COLUMN id TO entry_id;
+      ALTER TABLE "app".intermediate RENAME TO final_table;
+      CREATE TABLE app.retired(id uuid primary key);
+      ALTER TABLE app.retired RENAME TO dropped;
+      DROP TABLE app.dropped;`,
+      schemaSource: `export const finalTable = appSchema.table('final_table');`,
+    }),
+    { tableCount: 1 },
+  );
+});

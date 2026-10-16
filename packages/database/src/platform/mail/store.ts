@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { authenticationMailDeliveries } from '../../schema/mail/deliveries.js';
+import { systemMailDeliveries } from '../../schema/mail/deliveries.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -67,14 +67,14 @@ export type SystemMailInput = Readonly<{
   sealedPayload: SealedSystemMailPayload;
 }>;
 
-/** Queues one sealed authentication mail in the caller's transaction. */
+/** Queues one sealed system mail in the caller's transaction. */
 export async function insertSystemMail(
   client: Pool | PoolClient,
   input: SystemMailInput,
 ): Promise<void> {
   const sealed = sealedPayload.parse(input.sealedPayload);
   await drizzle(client)
-    .insert(authenticationMailDeliveries)
+    .insert(systemMailDeliveries)
     .values({
       id: z.uuid().parse(input.id),
       purpose: purpose.parse(input.purpose),
@@ -121,7 +121,7 @@ export function createSystemMailDeliveryStore(
         // A delivery is tried at most 12 times within 24 hours and before
         // its link expires; a claim holds it for 60 seconds.
         `with candidates as (
-           select id, status from app.authentication_mail_deliveries
+           select id, status from app.system_mail_deliveries
            where status in ('queued', 'outcome_unknown', 'retry')
              and expires_at > clock_timestamp()
              and created_at + interval '24 hours' > clock_timestamp()
@@ -132,7 +132,7 @@ export function createSystemMailDeliveryStore(
            limit $2
            for update skip locked
          )
-         update app.authentication_mail_deliveries delivery
+         update app.system_mail_deliveries delivery
          set status = 'outcome_unknown', lease_owner = $1, lease_token = $3,
              lease_generation = delivery.lease_generation + 1,
              lease_expires_at = clock_timestamp() + interval '60 seconds',
@@ -195,7 +195,7 @@ export function createSystemMailDeliveryStore(
       // A retry keeps its sealed payload only while another attempt is still
       // allowed; otherwise the delivery needs reconciliation.
       const result = await lease.pool.query(
-        `update app.authentication_mail_deliveries delivery
+        `update app.system_mail_deliveries delivery
          set status = case when $4 <> 'retry' then $4
                            when retry.allowed then 'retry'
                            else 'reconciliation_required' end,
@@ -214,7 +214,7 @@ export function createSystemMailDeliveryStore(
            select id, $4 = 'retry' and attempt_count < 12
                and $7::timestamptz < expires_at
                and $7::timestamptz < created_at + interval '24 hours' allowed
-           from app.authentication_mail_deliveries where id = $1
+           from app.system_mail_deliveries where id = $1
          ) retry
          where delivery.id = retry.id and delivery.status = 'outcome_unknown'
            and delivery.lease_token = $2 and delivery.lease_generation = $3`,

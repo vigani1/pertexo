@@ -191,7 +191,23 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
     expect(
       paths['/v1/workspaces/{workspaceId}/notifications'].get.responses,
     ).toHaveProperty('404');
-    expect(workspaceInboxClientContract.routes).toHaveLength(11);
+    const oneClick = paths['/v1/notifications/unsubscribe/one-click'];
+    expect(oneClick.get.security).toEqual([]);
+    expect(oneClick.get.responses).toHaveProperty('303');
+    expect(oneClick.post.security).toEqual([]);
+    expect(oneClick.post.responses).toHaveProperty('200');
+    expect(oneClick.post.requestBody.content).toHaveProperty(
+      'application/x-www-form-urlencoded',
+    );
+    expect(oneClick.post.requestBody.content).toHaveProperty(
+      'multipart/form-data',
+    );
+    expect(workspaceInboxClientContract.routes).toEqual(
+      expect.arrayContaining([
+        { method: 'GET', path: '/v1/notifications/unsubscribe/one-click' },
+        { method: 'POST', path: '/v1/notifications/unsubscribe/one-click' },
+      ]),
+    );
     expect(
       CONTRACT_ARTIFACTS.filter((artifact) =>
         artifact.fileName.startsWith('workspace-inbox.'),
