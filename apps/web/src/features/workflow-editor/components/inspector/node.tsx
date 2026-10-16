@@ -1,3 +1,4 @@
+import type { CodeSettings } from '@pertexo/node-sdk';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import type { CallTargetScope } from '../../data/call-targets.queries';
 import type {
@@ -60,6 +61,7 @@ export function NodeInspector({
   loopPorts,
   definition,
   definitions,
+  codeSettings,
   connections,
   channelLookup,
   callScope,
@@ -80,6 +82,7 @@ export function NodeInspector({
   loopPorts: readonly string[];
   definition: NodeDefinitionCatalogItem | undefined;
   definitions: readonly NodeDefinitionCatalogItem[];
+  codeSettings?: CodeSettings | undefined;
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
   callScope?: CallTargetScope;
@@ -184,6 +187,7 @@ export function NodeInspector({
               ) : null}
               <SetupTab
                 definitions={definitions}
+                codeSettings={codeSettings}
                 node={node}
                 {...(callScope === undefined ? {} : { callScope })}
                 definition={definition}

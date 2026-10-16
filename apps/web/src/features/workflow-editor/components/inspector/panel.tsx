@@ -1,3 +1,4 @@
+import type { CodeSettings } from '@pertexo/node-sdk';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import type { CallTargetScope } from '../../data/call-targets.queries';
 import type {
@@ -29,6 +30,7 @@ function stepName(
  */
 export function InspectorPanel({
   definitions,
+  codeSettings,
   connections,
   channelLookup,
   callScope,
@@ -44,6 +46,7 @@ export function InspectorPanel({
   actions,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
+  codeSettings?: CodeSettings | undefined;
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
   callScope?: CallTargetScope;
@@ -79,6 +82,7 @@ export function InspectorPanel({
         loopPorts={step.loopPorts}
         definition={definition}
         definitions={definitions}
+        codeSettings={codeSettings}
         connections={connections}
         channelLookup={channelLookup}
         {...(workspaceScope === undefined ? {} : { workspaceScope })}

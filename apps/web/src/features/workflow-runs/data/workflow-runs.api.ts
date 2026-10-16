@@ -5,6 +5,7 @@ import {
   workflowRunListResponseSchema,
   workflowRunReplayRequestSchema,
   workflowNodeRunInputResponseSchema,
+  workflowNodeRunDiagnosticsResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunInputResponseSchema,
   workflowRunVariablesResponseSchema,
@@ -321,4 +322,22 @@ export function getWorkflowRunVariables(
       decode: (value) => workflowRunVariablesResponseSchema.parse(value),
     },
   });
+}
+
+export async function getWorkflowNodeRunDiagnostics(
+  apiClient: ApiClient,
+  workspaceId: string,
+  runId: string,
+  nodeRunId: string,
+  signal?: AbortSignal,
+) {
+  const response = await apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/node-runs/${encodeURIComponent(nodeRunId)}/diagnostics`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowNodeRunDiagnosticsResponseSchema.parse(value),
+    },
+  });
+  return response.diagnostics;
 }

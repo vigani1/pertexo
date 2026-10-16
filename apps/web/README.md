@@ -281,3 +281,7 @@ run.
 Webhook Setup can opt into bounded replies through a Respond to webhook step.
 See [webhook responses](../../docs/guides/webhook-responses.md) for limits, safe
 headers, previews, timeout fallback and the admission log.
+
+Code steps have a lazily loaded JavaScript editor with shared-parser syntax
+errors, effective instance limits, pinned previews and private console/error
+diagnostics in tests and run details. See [Code](../../docs/guides/code.md).

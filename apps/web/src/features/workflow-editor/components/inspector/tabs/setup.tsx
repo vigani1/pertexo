@@ -1,4 +1,6 @@
-import { CodeSetup } from '../code/setup';
+import type { CodeSettings } from '@pertexo/node-sdk';
+import { lazy, Suspense } from 'react';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import { WebhookTriggerSetup } from '../webhook/trigger-setup';
 import { WebhookResponseSetup } from '../webhook/response-setup';
 import { HumanFormSetup } from '../human-task/setup';
@@ -37,6 +39,10 @@ import { ParallelBranches } from '../builders/parallel-branches';
 import { SwitchCases } from '../builders/switch-cases';
 import { ValidateRules } from '../builders/validate-rules';
 
+const CodeSetup = lazy(() =>
+  import('../code/setup').then((module) => ({ default: module.CodeSetup })),
+);
+
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
 const SCHEDULE_KEY = 'core.schedule';
@@ -48,6 +54,7 @@ const SCHEDULE_KEY = 'core.schedule';
  */
 type SetupTabProps = Readonly<{
   definitions?: readonly NodeDefinitionCatalogItem[];
+  codeSettings?: CodeSettings | undefined;
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
   connections: readonly ConnectionResponse[];
@@ -78,6 +85,7 @@ export function SetupTab(props: SetupTabProps) {
 
 function CatalogSetupTab({
   definitions = [],
+  codeSettings,
   node,
   definition,
   connections,
@@ -160,6 +168,7 @@ function CatalogSetupTab({
       ) : (
         <SetupControls
           definitions={definitions}
+          codeSettings={codeSettings}
           {...(callScope === undefined ? {} : { callScope })}
           node={node}
           graph={graph}
@@ -185,6 +194,7 @@ function CatalogSetupTab({
 /** The controls for a catalog step's setup, when it isn't shown as JSON. */
 function SetupControls({
   definitions,
+  codeSettings,
   node,
   graph,
   configSchema,
@@ -194,6 +204,7 @@ function SetupControls({
   callScope,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
+  codeSettings?: CodeSettings | undefined;
   node: WorkflowNode;
   graph: GraphLevel;
   callScope?: CallTargetScope;
@@ -221,7 +232,11 @@ function SetupControls({
       />
     );
   if (node.definition.key === 'core.code')
-    return <CodeSetup config={config} form={form} />;
+    return (
+      <Suspense fallback={<SkeletonLines label="Loading JavaScript editor" />}>
+        <CodeSetup config={config} form={form} settings={codeSettings} />
+      </Suspense>
+    );
   if (node.definition.key === 'core.webhook')
     return <WebhookTriggerSetup config={config} form={form} />;
   if (node.definition.key === 'core.respond_webhook')

@@ -211,3 +211,5 @@ Shared sample output for isolated editor tests:
 
 Reply to a waiting webhook caller:
 [webhook responses](docs/guides/webhook-responses.md).
+
+Write JavaScript transforms with the isolated [Code step](docs/guides/code.md).

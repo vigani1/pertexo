@@ -37,6 +37,16 @@ export async function verifyCodeEvidence(database: Pool) {
       },
     },
   ]);
+  const pinned = await database.query(
+    `select preview.output_ref,preview.pinned_sample_id,(select count(*)::int from app.preview_attempts attempt where attempt.preview_run_id=preview.id) as attempts from app.preview_runs preview join app.workflows workflow on workflow.id=preview.workflow_id where workflow.name='Code qualification' and preview.pinned_sample_id is not null`,
+  );
+  expect(pinned.rows).toEqual([
+    {
+      output_ref: { kind: 'inline', value: { total: 999 } },
+      pinned_sample_id: expect.any(String) as unknown,
+      attempts: 0,
+    },
+  ]);
   const audits = await database.query('select metadata from app.audit_events');
   expect(JSON.stringify(audits.rows)).not.toContain('private Code log');
   expect(JSON.stringify(audits.rows)).not.toContain('private Code failure');

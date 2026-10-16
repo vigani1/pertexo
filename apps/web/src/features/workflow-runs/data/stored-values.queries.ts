@@ -2,6 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import {
   getWorkflowNodeRunInput,
+  getWorkflowNodeRunDiagnostics,
   getWorkflowNodeRunOutput,
   getWorkflowRunInput,
   getWorkflowRunVariables,
@@ -126,5 +127,37 @@ export function workflowRunVariablesQueryOptions(
     staleTime: Infinity,
     gcTime: 0,
     retry: false,
+  });
+}
+
+/** A terminal attempt's private diagnostics; a new attempt or status reads again. */
+export function nodeRunDiagnosticsQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  runId: string,
+  step: Readonly<{
+    nodeRunId: string;
+    attemptNumber: number | undefined;
+    status: string;
+  }>,
+) {
+  return queryOptions({
+    queryKey: [
+      ...workflowRunKeys.data(userId, workspaceId, runId),
+      'diagnostics',
+      step.nodeRunId,
+      step.attemptNumber ?? null,
+      step.status,
+    ],
+    queryFn: ({ signal }) =>
+      getWorkflowNodeRunDiagnostics(
+        apiClient,
+        workspaceId,
+        runId,
+        step.nodeRunId,
+        signal,
+      ),
+    staleTime: Infinity,
   });
 }

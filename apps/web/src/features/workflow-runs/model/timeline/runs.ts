@@ -34,6 +34,7 @@ export type RunTimelineRow = Readonly<{
   label: string;
   /** What kind of step it is, when the graph names it separately. */
   kindLabel?: string;
+  definitionKey?: string;
   /** The step sends its input through a connection, so it isn't kept. */
   usesConnection?: boolean;
   status: RunTimelineStepStatus;
@@ -70,6 +71,7 @@ export type RunTimelineModel = Readonly<{
 type StepLabel = Readonly<{
   label: string;
   kindLabel?: string;
+  definitionKey?: string;
   usesConnection?: boolean;
 }>;
 
@@ -95,10 +97,12 @@ function graphLabels(
       // The catalog's name for the step type, the same words Build uses.
       const kind = describeStep(node.definition.key).name;
       const label = node.label?.trim();
-      const connected =
-        Object.keys(node.connectionRefs).length > 0
+      const connected = {
+        definitionKey: node.definition.key,
+        ...(Object.keys(node.connectionRefs).length > 0
           ? { usesConnection: true }
-          : {};
+          : {}),
+      };
       labels.set(node.id, {
         step:
           label === undefined || label === ''

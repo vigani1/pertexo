@@ -215,7 +215,9 @@ function createPreviewExecutionEnvironment(
   const runtime: NodeExecutionRuntime = Object.freeze({
     ...(code === undefined ? {} : { code }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {
-      if (dispatchState === 'marked') diagnostics ??= value;
+      // Safe previews do not need an external-dispatch marker. Completion
+      // still fences this private data to the claimed preview attempt.
+      diagnostics ??= value;
     },
     workspaceId: lease.workspaceId,
     runId: lease.previewRunId,

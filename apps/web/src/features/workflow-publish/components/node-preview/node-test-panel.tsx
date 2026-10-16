@@ -1,3 +1,4 @@
+import { CodeDiagnostics } from '@/components/patterns/code-diagnostics';
 import type { PreviewRunSummary } from '@pertexo/contracts';
 import { SampleAvailability } from '../samples/availability';
 import { PreviewInputFields, RealTestPermission } from './inputs';
@@ -263,6 +264,9 @@ function TestResult({
             {preview.safeErrorCode}
           </code>
         </p>
+      )}
+      {preview.codeDiagnostics === undefined ? null : (
+        <CodeDiagnostics diagnostics={preview.codeDiagnostics} />
       )}
       {preview.output?.kind === 'inline' ? (
         <JsonTree value={preview.output.value} label="Test output" />

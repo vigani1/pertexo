@@ -7,6 +7,7 @@ import ts from 'typescript';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const webAllowedWorkspaceImports = new Set([
+  '@pertexo/node-sdk',
   '@pertexo/contracts',
   '@pertexo/workflow-model',
   '@pertexo/templates',

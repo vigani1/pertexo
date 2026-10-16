@@ -1,3 +1,4 @@
+import type { CodeSettings } from '@pertexo/node-sdk';
 import type {
   NodeDefinitionCatalogItem,
   ConnectionResponse,
@@ -62,6 +63,7 @@ export function EditorWorkspace({
   workspace,
   workflowId,
   definitions,
+  codeSettings,
   connections,
   connectionsAvailable,
   canUpdate,
@@ -81,6 +83,7 @@ export function EditorWorkspace({
   workspace: AccessibleWorkspace;
   workflowId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
+  codeSettings?: CodeSettings | undefined;
   connections: readonly ConnectionResponse[];
   /** False when the workspace's connections can't be read here at all. */
   connectionsAvailable: boolean;
@@ -223,6 +226,7 @@ export function EditorWorkspace({
           workspaceName={workspace.name}
           workflowId={workflowId}
           definitions={definitions}
+          codeSettings={codeSettings}
           connections={connections}
           userId={userId}
           lookUpChannels={
