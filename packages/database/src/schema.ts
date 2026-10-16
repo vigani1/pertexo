@@ -1,3 +1,4 @@
+import { authenticationMailDeliveries } from './schema/mail/deliveries.js';
 import {
   noticeWorkspaceSettings,
   noticePreferences,
@@ -20,7 +21,6 @@ import {
   userProfileCommandReceipts,
   authMethodLinkAttempts,
   authEmailProofs,
-  authenticationMailDeliveries,
   identitySecurityAuditFacts,
 } from './schema/authentication.js';
 import { workflowTemplateOrigins } from './schema/authoring/template-origin.js';
