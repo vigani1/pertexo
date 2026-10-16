@@ -200,9 +200,33 @@ jobs:
         if: always()
         run: docker compose down -v --remove-orphans
 
-  e2e:
+  # The mocked suite and three shards of real-stack journeys run side by side
+  # on separate runners; one long sequential job had grown past 25 minutes.
+  browser:
+    name: browser (${{ matrix.suite }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Live shards are balanced by measured duration (about 5.5 minutes
+        # each) and keep the journeys' original order. Put a new journey on
+        # the lightest shard.
+        include:
+          - suite: mocked
+            journeys: ''
+          - suite: live-1
+            journeys: >-
+              usage failure-routing error-workflows approvals variables
+              notifications artifact-inputs
+          - suite: live-2
+            journeys: >-
+              workflow-concurrency connection-health input-cases callable
+              webhook-controlled-http api-tokens workflow-organization
+          - suite: live-3
+            journeys: >-
+              duplication portability curated-templates run-recovery forms
+              transforms
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
@@ -211,26 +235,54 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up workspace
         uses: ./.github/actions/setup
-      - name: Use the Docker Hub mirror
-        uses: ./.github/actions/docker-mirror
       - name: Install Playwright browsers
+        if: matrix.journeys == ''
         run: pnpm --filter @pertexo/web exec playwright install --with-deps
       - name: Browser tests against the mocked API
+        if: matrix.journeys == ''
         run: pnpm --filter @pertexo/web test:e2e
-      - name: Build API, worker and CLI
+      - name: Use the Docker Hub mirror
+        if: matrix.journeys != ''
+        uses: ./.github/actions/docker-mirror
+      - name: Install Chromium
+        if: matrix.journeys != ''
+        run:
+          pnpm --filter @pertexo/web exec playwright install --with-deps
+          chromium
+      - name: Build API, worker, CLI and web dependencies
+        if: matrix.journeys != ''
         run:
           pnpm --filter @pertexo/api... --filter @pertexo/worker... --filter
-          @pertexo/ops... --filter @pertexo/cli... build
+          @pertexo/ops... --filter @pertexo/cli... --filter '@pertexo/web^...'
+          build
       - name: Start services
+        if: matrix.journeys != ''
         run: docker compose up -d --wait postgres redis artifact-store
       - name: Browser journeys against the real stack
+        if: matrix.journeys != ''
         env:
+          JOURNEYS: ${{ matrix.journeys }}
           WORKFLOW_CONCURRENCY_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
           CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
         run: |
           set -euo pipefail
           live() {
             pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts "$@"
+          }
+          journey() {
+            case "$1" in
+              usage) USAGE_BROWSER_INTEGRATION=true live test/browser/usage.integration.test.ts ;;
+              workflow-concurrency)
+                WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/browser/workflow-concurrency.integration.test.ts ;;
+              connection-health)
+                CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/browser/connection-health.integration.test.ts ;;
+              workflow-organization)
+                EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F07_ORGANIZATION_BROWSER_INTEGRATION=true \
+                  live test/browser/workflow-organization.integration.test.ts ;;
+              *)
+                EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE="$1" EDITOR_BROWSER_OWNED_FIXTURE=true \
+                  live test/browser/editor.integration.test.ts ;;
+            esac
           }
           postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
           redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
@@ -239,25 +291,31 @@ jobs:
             --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" --arg artifact "$artifact_id" \
             --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" --argjson artifactPort "$ARTIFACT_STORE_PORT" \
             '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort},artifactStore:{id:$artifact,port:$artifactPort}}')
-          USAGE_BROWSER_INTEGRATION=true live test/browser/usage.integration.test.ts
-          WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/browser/workflow-concurrency.integration.test.ts
-          CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/browser/connection-health.integration.test.ts
-          for browser_case in duplication portability input-cases curated-templates callable run-recovery webhook-controlled-http failure-routing error-workflows approvals forms variables notifications transforms artifact-inputs api-tokens; do
-            EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE="$browser_case" EDITOR_BROWSER_OWNED_FIXTURE=true \
-              live test/browser/editor.integration.test.ts
+          for browser_journey in $JOURNEYS; do
+            journey "$browser_journey"
           done
-          EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F07_ORGANIZATION_BROWSER_INTEGRATION=true \
-            live test/browser/workflow-organization.integration.test.ts
       - name: Stop services
-        if: always()
+        if: always() && matrix.journeys != ''
         run: docker compose down -v --remove-orphans
       - name: Upload browser traces
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: browser-traces
+          name: browser-traces-${{ matrix.suite }}
           path: apps/web/test-results/
           if-no-files-found: ignore
+
+  # Branch protection requires `e2e`; it passes only when every browser leg did.
+  e2e:
+    if: ${{ !cancelled() }}
+    needs: browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every browser leg
+        env:
+          BROWSER_RESULT: ${{ needs.browser.result }}
+        run: test "$BROWSER_RESULT" = success
 
   image:
     runs-on: ubuntu-latest
