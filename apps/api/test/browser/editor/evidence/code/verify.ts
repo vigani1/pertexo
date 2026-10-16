@@ -24,6 +24,19 @@ export async function verifyCodeEvidence(database: Pool) {
     error_summary: null,
     code_diagnostics: { error: { message: 'private Code failure', line: 2 } },
   });
+  const values = await database.query(
+    `select run.variable_set_revision, variable_set.values_json,node.output_ref from app.workflow_runs run join app.workspace_variable_set_revisions variable_set on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision join app.node_runs node on node.workflow_run_id=run.id join app.workflows workflow on workflow.id=run.workflow_id where workflow.name='Code qualification' and run.status='succeeded'`,
+  );
+  expect(values.rows).toEqual([
+    {
+      variable_set_revision: 1,
+      values_json: { RATE: 4 },
+      output_ref: {
+        kind: 'inline',
+        value: { total: 7, year: 2026, process: 'undefined' },
+      },
+    },
+  ]);
   const audits = await database.query('select metadata from app.audit_events');
   expect(JSON.stringify(audits.rows)).not.toContain('private Code log');
   expect(JSON.stringify(audits.rows)).not.toContain('private Code failure');
