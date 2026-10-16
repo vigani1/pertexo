@@ -125,12 +125,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [database, services]
+        # The worker suite runs its files one at a time against shared
+        # services, so it is split across its own runners.
+        include:
+          - group: database
+          - group: services
+          - group: worker-1
+            shard: 1/2
+          - group: worker-2
+            shard: 2/2
     env:
       # Tests that own their fixtures expect the project suffix `-integration`.
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{
-        matrix.group == 'services' && 'integration' || 'database' }}
+        matrix.group == 'database' && 'database' || 'integration' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -139,7 +147,8 @@ jobs:
       - name: Use the Docker Hub mirror
         uses: ./.github/actions/docker-mirror
       - name: Build
-        run: pnpm build
+        # These tests never load the web bundle.
+        run: pnpm build:packages
       - name: Start services
         run: docker compose up -d --wait postgres redis artifact-store
       - name: Migrate
@@ -171,7 +180,6 @@ jobs:
           set -euo pipefail
           pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts
-          pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             --exclude 'test/browser/*.integration.test.ts' \
             --exclude test/workflow-authoring/organization/commands.integration.test.ts \
@@ -187,6 +195,14 @@ jobs:
             pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
           API_SSE_RESILIENCE_INTEGRATION=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
+      - name: Worker integration tests
+        if: startsWith(matrix.group, 'worker-')
+        env:
+          CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
+          SHARD: ${{ matrix.shard }}
+        run:
+          pnpm --filter @pertexo/worker exec vitest run --config
+          vitest.integration.config.ts --shard="$SHARD"
       - name: Qualify pinned beta storage
         if: matrix.group == 'services'
         run: node infrastructure/single-server/storage/qualify.mjs
