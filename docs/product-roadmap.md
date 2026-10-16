@@ -108,7 +108,7 @@ performance/reliability rankings are asserted. Editions differ.
 | Respond through a webhook | [n8n Respond to Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook) | 202 stays default; opt-in stored workflow response (F15) |
 | Promote between environments | [n8n source control and environments](https://docs.n8n.io/administer/use-source-control-and-environments) | Versioning exists, environment product F17 does not follow automatically |
 | Organize workflows | [Make scenario capabilities](https://help.make.com/scenarios) documents folders/labels | Existing search; proposed metadata F07 |
-| User code as a workflow step | [n8n Code node](https://docs.n8n.io/build/code-in-n8n/using-the-code-node) supports JavaScript/Python | Explicitly deferred; security-heavy F20 |
+| User code as a workflow step | [n8n Code node](https://docs.n8n.io/build/code-in-n8n/using-the-code-node) supports JavaScript/Python | F20: JavaScript in an isolated runner container; Python later |
 | Transform, review and AI breadth | [n8n current documentation index](https://docs.n8n.io/sitemap.md) lists transform nodes, reviews and AI features | Demand-driven F24, F18 and F22; not early parity blockers |
 
 The priority ordering below is a Pertexo product recommendation inferred from
@@ -207,7 +207,7 @@ only after its gate is resolved.
 | [F17](feature-plans/17-environments-and-promotion.md) | Development/production environments and safe promotion | New enterprise-oriented lifecycle | XL | Proposed |
 | [F18](feature-plans/18-governance-and-audit.md) | Audit visibility, publishing approval and advanced access | Existing tenancy foundation + new governance UX | XL | Proposed |
 | [F19](feature-plans/19-collaboration.md) | Comments and editing presence, then multiplayer | New frontend + coordination backend | XL | Proposed |
-| [F20](feature-plans/20-sandboxed-code.md) | Sandboxed custom code nodes | New isolated execution platform | XL | Proposed |
+| [F20](feature-plans/20-sandboxed-code.md) | JavaScript Code step in an isolated runner | Real Node in single-use processes inside a hardened runner container | XL | Decided and approved 2026-10-16: real Node, runner container with no network or secrets; two slices planned |
 | [F21](feature-plans/21-integrations-and-polling.md) | Provider expansion and durable polling/subscriptions | Later integration program | XL per provider family | Proposed |
 | [F22](feature-plans/22-ai-assistance-and-ai-nodes.md) | AI authoring assistance, model nodes and controlled tools | Later optional capability | XL | Proposed |
 | [F23](feature-plans/23-billing-and-commercialization.md) | Billing and commercial entitlements | Explicitly deferred optional business slice | XL | Proposed |
