@@ -81,6 +81,7 @@ type PreviewAcceptanceView = Pick<
   | 'pinnedSampleId'
   | 'output'
   | 'completedAt'
+  | 'codeDiagnostics'
 >;
 
 function validationInputFields(
@@ -374,6 +375,9 @@ export class GetPreviewRunUseCase {
           dryRun: preview.dryRun,
         },
         output: previewOutputResponse(preview.output),
+        ...(preview.codeDiagnostics === undefined
+          ? {}
+          : { codeDiagnostics: preview.codeDiagnostics }),
         ...(preview.pinnedSampleId == null
           ? {}
           : { pinnedSampleId: preview.pinnedSampleId }),
@@ -434,6 +438,9 @@ function previewAcceptanceResponse(
         preview.output === undefined || preview.output === null
           ? null
           : previewOutputResponse(preview.output),
+      ...(preview.codeDiagnostics === undefined
+        ? {}
+        : { codeDiagnostics: preview.codeDiagnostics }),
       ...(preview.pinnedSampleId == null
         ? {}
         : { pinnedSampleId: preview.pinnedSampleId }),

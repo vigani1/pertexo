@@ -16,7 +16,7 @@ if [[ -f "$BETA_STATE_DIR/restore-fence" && $(cat "$BETA_STATE_DIR/restore-fence
   echo 'A different restore is incomplete; use a fresh stack' >&2; exit 1
 fi
 running=$(compose ps --services --status running)
-for service in api worker web proxy; do
+for service in "${runtime_services[@]}"; do
   if grep -qx "$service" <<< "$running"; then echo 'Serving containers must be absent for a fresh restore' >&2; exit 1; fi
 done
 compose up -d --wait --wait-timeout 120 postgres redis storage

@@ -1,3 +1,4 @@
+import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import type {
   UsageCapacityResponse,
@@ -290,6 +291,9 @@ export interface WorkflowRunPersistence {
   readInput(
     input: Readonly<{ workspaceId: string; runId: string }>,
   ): Promise<WorkflowRunDataRecord | undefined>;
+  readNodeRunDiagnostics(
+    input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
+  ): Promise<CodeDiagnostics | null | undefined>;
   readNodeRunOutput(
     input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
   ): Promise<WorkflowRunDataRecord | undefined>;

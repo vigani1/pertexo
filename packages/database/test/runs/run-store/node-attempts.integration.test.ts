@@ -1,3 +1,5 @@
+import { Pool } from 'pg';
+import { readWorkflowNodeRunDiagnostics } from '../../../src/runs/queries/run-data.js';
 import { createHash } from 'node:crypto';
 
 import { describe, it, expect } from 'vitest';
@@ -245,6 +247,98 @@ async function seedSlackDispatchPublication(connectionId: string) {
 }
 
 describe('Coordinator node-attempt persistence invariants', () => {
+  it('commits private Code diagnostics with completion, compares duplicates and hides expired or foreign data', async () => {
+    const lease = await claimDispatchAttempt(
+      `code-diagnostic-${randomUUID()}`,
+      { sideEffectClass: 'safe' },
+    );
+    const codeDiagnostics = {
+      logs: [{ level: 'info' as const, message: 'private run data' }],
+      truncated: false,
+      error: { message: 'user-only diagnostic', line: 2 },
+    };
+    const outcome = {
+      status: 'executor_failure',
+      failureKind: 'failed',
+      errorKind: 'internal',
+      possiblyDispatched: false,
+      safeErrorCode: 'code.runtime_error',
+    } as const;
+    const signal = new AbortController().signal;
+    expect(
+      (
+        await nodeAttemptStore.complete({
+          lease,
+          outcome,
+          codeDiagnostics,
+          signal,
+        })
+      ).kind,
+    ).toBe('committed');
+    expect(
+      (
+        await nodeAttemptStore.complete({
+          lease,
+          outcome,
+          codeDiagnostics,
+          signal,
+        })
+      ).kind,
+    ).toBe('duplicate');
+    await expect(
+      nodeAttemptStore.complete({
+        lease,
+        outcome,
+        codeDiagnostics: { ...codeDiagnostics, logs: [] },
+        signal,
+      }),
+    ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
+    const pool = new Pool({
+      connectionString: databaseUrl(apiBaseUrl),
+      max: 1,
+    });
+    const read = {
+      workspaceId: workspaceA,
+      runId: lease.runId,
+      nodeRunId: lease.nodeRunId,
+    };
+    try {
+      expect(await readWorkflowNodeRunDiagnostics(pool, read)).toEqual(
+        codeDiagnostics,
+      );
+      expect(
+        await readWorkflowNodeRunDiagnostics(pool, {
+          ...read,
+          runId: randomUUID(),
+        }),
+      ).toBeUndefined();
+      expect(
+        await readWorkflowNodeRunDiagnostics(pool, {
+          ...read,
+          workspaceId: randomUUID(),
+        }),
+      ).toBeUndefined();
+      const summaries = await asRuntime(apiBaseUrl, workspaceA, (client) =>
+        client.query(
+          'select error_summary,safe_error_code from app.node_attempts where workspace_id=$1 and id=$2',
+          [workspaceA, lease.attemptId],
+        ),
+      );
+      expect(summaries.rows).toEqual([
+        { error_summary: null, safe_error_code: 'code.runtime_error' },
+      ]);
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          "update app.workflow_runs set status='failed',completed_at=clock_timestamp()-interval '31 days' where workspace_id=$1 and id=$2",
+          [workspaceA, lease.runId],
+        ),
+      );
+      expect(await readWorkflowNodeRunDiagnostics(pool, read)).toBeNull();
+    } finally {
+      await pool.end();
+    }
+  });
+
   it('reconciles durable unknown-outcome evidence exactly once and rejects mismatches and stale state', async () => {
     const workerDatabase = createWorkspaceDatabase(
       parseDatabaseConfig({

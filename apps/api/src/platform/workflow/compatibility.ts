@@ -1,3 +1,5 @@
+import { codeStepPublicationIssues } from './code-validation.js';
+import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import {
   createWorkflowAuthoringDatabase,
   type WorkflowAuthoringDatabase,
@@ -80,14 +82,29 @@ export function createCoreWorkflowCompatibility() {
 export function createCoreAuthoringOptions(
   compatibility: ReturnType<typeof createCoreWorkflowCompatibility>,
   validator: Pick<WorkflowAuthoringValidator, 'validate'>,
+  codeSettings: CodeSettings = DEFAULT_CODE_SETTINGS,
 ) {
   return {
     definitionCatalog: compatibility.definitionCatalog,
     portableCatalog: compatibility.portableCatalog,
-    validateAuthoringGraph: (
+    validateAuthoringGraph: async (
       graph: WorkflowGraph,
       options: WorkflowAuthoringValidationOptions,
-    ) => validator.validate(graph, compatibility.authoringPolicies, options),
+    ) => {
+      const result = await validator.validate(
+        graph,
+        compatibility.authoringPolicies,
+        options,
+      );
+      const issues = codeStepPublicationIssues(graph, codeSettings);
+      return issues.length === 0
+        ? result
+        : {
+            ...result,
+            ok: false as const,
+            issues: [...result.issues, ...issues].slice(0, 100),
+          };
+    },
     executableCompiler: (
       graph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
     ) => {

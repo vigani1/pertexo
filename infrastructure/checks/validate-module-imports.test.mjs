@@ -200,3 +200,24 @@ test('deferred and inline type imports cannot bypass workspace ownership', () =>
       /public workspace package export/u,
     );
 });
+
+test('Code runner can use only the credential-free SDK workspace dependency', () => {
+  for (const specifier of [
+    '@pertexo/database/platform',
+    '@pertexo/queue',
+    '@pertexo/integrations',
+    '@pertexo/execution',
+  ])
+    assert.match(
+      validateModuleImports({
+        'apps/code-runner/src/app.ts': `import '${specifier}';`,
+      }).join('\n'),
+      /Code runner may depend only/u,
+    );
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/code-runner/src/app.ts': "import '@pertexo/node-sdk/server';",
+    }),
+    [],
+  );
+});

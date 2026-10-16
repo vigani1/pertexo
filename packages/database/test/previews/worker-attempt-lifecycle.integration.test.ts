@@ -1,3 +1,5 @@
+import { withWorkspaceTransaction } from '../../src/tenant-access/transactions.js';
+import { readPreviewRun } from '../../src/previews/runs/read.js';
 import { randomUUID } from 'node:crypto';
 
 import { v7 as uuidv7 } from 'uuid';
@@ -31,6 +33,64 @@ import {
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 
 describe('preview worker attempt lifecycle', () => {
+  it('retains private Code diagnostics under the same completion fence and preview expiry', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture(),
+      'worker-code-preview',
+    );
+    const codeDiagnostics = {
+      logs: [{ level: 'warn' as const, message: 'private preview log' }],
+      truncated: false,
+      error: { message: 'user-only diagnostic', line: 1 },
+    };
+    const input = {
+      delivery: claimed.fixture.delivery,
+      lease: claimed.lease,
+      outcome: {
+        status: 'failed' as const,
+        safeErrorCode: 'code.runtime_error',
+      },
+      codeDiagnostics,
+      workerId: claimed.workerId,
+    };
+    expect((await completePreviewAttempt(workerPool, input)).kind).toBe(
+      'committed',
+    );
+    expect((await completePreviewAttempt(workerPool, input)).kind).toBe(
+      'duplicate',
+    );
+    await expect(
+      completePreviewAttempt(workerPool, {
+        ...input,
+        codeDiagnostics: { ...codeDiagnostics, logs: [] },
+      }),
+    ).rejects.toBeInstanceOf(PreviewAttemptStateError);
+    const preview = await withWorkspaceTransaction(
+      apiPool,
+      workspaceId,
+      (transaction) =>
+        readPreviewRun(transaction, {
+          actorUserId,
+          previewRunId: claimed.fixture.previewRunId,
+        }),
+    );
+    expect(preview?.codeDiagnostics).toEqual(codeDiagnostics);
+    const facts = await previewTerminalFacts(claimed.fixture.previewRunId);
+    expect(JSON.stringify(facts)).not.toContain('private preview log');
+    expect(JSON.stringify(facts)).not.toContain('user-only diagnostic');
+    const expired = await withWorkspaceTransaction(
+      apiPool,
+      workspaceId,
+      (transaction) =>
+        readPreviewRun(
+          transaction,
+          { actorUserId, previewRunId: claimed.fixture.previewRunId },
+          new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+        ),
+    );
+    expect(expired).toBeNull();
+  });
+
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),

@@ -11,6 +11,12 @@ x-runtime: &runtime
   read_only: true
   tmpfs: [/tmp]
   stop_grace_period: 1m
+x-code-settings: &code-settings
+  CODE_STEPS_ENABLED: ${CODE_STEPS_ENABLED:-true}
+  CODE_RUNNER_MEMORY_MB: ${CODE_RUNNER_MEMORY_MB:-128}
+  CODE_RUNNER_MAX_SECONDS: ${CODE_RUNNER_MAX_SECONDS:-30}
+  CODE_RUNNER_CONCURRENCY: ${CODE_RUNNER_CONCURRENCY:-2}
+  CODE_RUNNER_PACKAGES: ${CODE_RUNNER_PACKAGES:-[]}
 x-environment: &environment
   NODE_ENV: production
   SERVICE_VERSION: ${SERVICE_VERSION}
@@ -61,7 +67,7 @@ services:
     command: [node, apps/api/dist/main.js]
     env_file: ['${BETA_STATE_DIR}/api.env']
     environment:
-      <<: *environment
+      <<: [*environment, *code-settings]
       AUTOMATION_TOKENS_ENABLED: ${AUTOMATION_TOKENS_ENABLED:-false}
       AUTH_MAIL_MODE: durable
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
@@ -83,6 +89,39 @@ services:
       timeout: 3s
       retries: 24
       start_period: 15s
+  code-runner:
+    image: ghcr.io/vigani1/pertexo:${SERVICE_VERSION:?Full commit required}
+    restart: unless-stopped
+    command: [node, apps/code-runner/dist/main.js]
+    user: '0:10001'
+    network_mode: none
+    ipc: none
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=16m,mode=0700']
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, KILL]
+    oom_score_adj: -1000
+    mem_limit:
+      '${CODE_RUNNER_CONTAINER_MEMORY_MB:?Run storage/prepare.mjs first}m'
+    memswap_limit: '${CODE_RUNNER_CONTAINER_MEMORY_MB}m'
+    cpus: '${CODE_RUNNER_CONTAINER_CPUS:?}'
+    pids_limit: ${CODE_RUNNER_CONTAINER_PIDS:?}
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
+    environment:
+      <<: *code-settings
+      NODE_ENV: production
+      NODE_OPTIONS: '--max-old-space-size=${CODE_RUNNER_MANAGER_HEAP_MB:?}'
+    volumes: [code-socket:/run/pertexo-code]
+    healthcheck:
+      test: [CMD-SHELL, 'test -f /tmp/pertexo-code-runner-ready && kill -0 1']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
   worker:
     <<: *runtime
     env_file: ['${BETA_STATE_DIR}/worker.env']
@@ -94,9 +133,10 @@ services:
         apps/worker/dist/main.js',
       ]
     environment:
-      <<: *environment
+      <<: [*environment, *code-settings]
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
       INVITATION_EMAIL_FROM: ${INVITATION_EMAIL_FROM:?}
+    volumes: [code-socket:/run/pertexo-code]
     depends_on:
       migration: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
@@ -218,3 +258,4 @@ volumes:
   storage-data:
   caddy-data:
   caddy-config:
+  code-socket:

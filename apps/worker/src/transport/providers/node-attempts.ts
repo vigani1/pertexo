@@ -92,6 +92,7 @@ async function composeNodeAttemptRuntime(
 ): Promise<NodeAttemptRuntime> {
   return factories.createRuntime({
     artifactStore: config.artifactStore,
+    codeRunner: config.codeRunner,
     ...(config.connectionEncryption === undefined
       ? {}
       : { connectionEncryption: config.connectionEncryption }),

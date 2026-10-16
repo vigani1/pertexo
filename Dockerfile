@@ -3,7 +3,12 @@ FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm build
+RUN apt-get update && apt-get install --yes --no-install-recommends gcc libc6-dev linux-libc-dev \
+  && rm -rf /var/lib/apt/lists/*
+RUN pnpm install --frozen-lockfile && pnpm build \
+  && gcc -std=c11 -Wall -Wextra -Werror -O2 -fstack-protector-strong -fPIE -pie \
+    -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
+    -o apps/code-runner/dist/launch apps/code-runner/native/launch.c
 
 FROM nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:56b8272e43a0525f67aed68d1e0794a712d10e3e45a563e118e9a77c817e6f86 AS web
 ARG SOURCE_COMMIT=unknown
@@ -20,7 +25,8 @@ WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
 RUN pnpm install --prod --frozen-lockfile \
-  && find apps packages -type d \( -name src -o -name test -o -name coverage \) -prune -exec rm -rf '{}' +
+  && find apps packages -type d \( -name src -o -name test -o -name coverage \) -prune -exec rm -rf '{}' + \
+  && rm -rf apps/code-runner/native
 
 # Vendor package hashes come from Debian's signed Bookworm security metadata.
 FROM scratch AS runtime-security-patches
@@ -51,6 +57,7 @@ COPY --from=build --chown=10001:10001 /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=10001:10001 /workspace/apps/worker/dist ./apps/worker/dist
 COPY --from=build --chown=10001:10001 /workspace/apps/ops/dist ./apps/ops/dist
 COPY --from=build --chown=10001:10001 /workspace/apps/cli/dist ./apps/cli/dist
+COPY --from=build --chown=0:0 /workspace/apps/code-runner/dist ./apps/code-runner/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/artifact-store/dist ./packages/artifact-store/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/contracts/dist ./packages/contracts/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/database/dist ./packages/database/dist

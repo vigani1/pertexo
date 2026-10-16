@@ -1,3 +1,4 @@
+import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { variableSetSnapshotSql } from '../../variables/values.js';
 import {
   workspaceVariableSnapshotSchema,
@@ -246,6 +247,38 @@ export async function readWorkflowRunVariables(
       if (row === undefined) return undefined;
       if (!row.retained) return null;
       return workspaceVariableSnapshotSchema.parse(row.snapshot);
+    },
+    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  );
+}
+
+/** Private diagnostics follow the current attempt and the logical detail window. */
+export async function readWorkflowNodeRunDiagnostics(
+  pool: Pool,
+  input: ReadWorkflowNodeRunOutputInput,
+): Promise<CodeDiagnostics | null | undefined> {
+  const parsed = nodeRunDataInputSchema.parse(input);
+  return withWorkspaceReadTransaction(
+    pool,
+    parsed.workspaceId,
+    async (transaction) => {
+      const result = await transaction.db.execute<{ diagnostics: unknown }>(sql`
+      select case when run.details_purged_at is null
+        and (run.completed_at is null or run.completed_at > statement_timestamp() - interval '30 days')
+        then attempt.code_diagnostics else null end as diagnostics
+      from app.node_runs node
+      join app.workflow_runs run on run.workspace_id = node.workspace_id and run.id = node.workflow_run_id
+      left join app.node_attempts attempt on attempt.workspace_id = node.workspace_id
+        and attempt.node_run_id = node.id and attempt.id = node.current_attempt_id
+      where node.workspace_id = ${transaction.workspaceId}
+        and node.workflow_run_id = ${parsed.runId} and node.id = ${parsed.nodeRunId}
+      limit 1
+    `);
+      const row = result.rows[0];
+      if (row === undefined) return undefined;
+      return row.diagnostics === null
+        ? null
+        : codeDiagnosticsSchema.parse(row.diagnostics);
     },
     parsed.signal === undefined ? {} : { signal: parsed.signal },
   );

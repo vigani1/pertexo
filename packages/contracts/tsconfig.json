@@ -16,8 +16,15 @@
     "types": []
   },
   "references": [
-    { "path": "../templates/tsconfig.json" },
-    { "path": "../workflow-model/tsconfig.json" }
+    {
+      "path": "../templates/tsconfig.json"
+    },
+    {
+      "path": "../workflow-model/tsconfig.json"
+    },
+    {
+      "path": "../node-sdk/tsconfig.json"
+    }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "test"]

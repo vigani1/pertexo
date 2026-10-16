@@ -1,3 +1,5 @@
+import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
+import { canonicalJson } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
@@ -137,16 +139,18 @@ async function exactDuplicateCompletion(
   scope: PreviewCompletionScope,
   outcome: CanonicalCompletionOutcome,
   receipt: 'completed' | 'open',
+  diagnostics: CodeDiagnostics | undefined,
 ): Promise<PreviewCompletionResult> {
   const current = await client.query<{
     attempt_output_ref: unknown;
+    code_diagnostics: unknown;
     attempt_safe_error_code: string | null;
     attempt_status: string;
     run_output_ref: unknown;
     run_safe_error_code: string | null;
     run_status: string;
   }>(
-    `select attempt.status as attempt_status,
+    `select attempt.code_diagnostics,attempt.status as attempt_status,
           attempt.output_ref as attempt_output_ref,
           attempt.safe_error_code as attempt_safe_error_code,
           run.status as run_status,
@@ -188,7 +192,11 @@ async function exactDuplicateCompletion(
       row.attempt_safe_error_code === outcome.safeErrorCode &&
       row.run_safe_error_code === outcome.safeErrorCode;
   }
-  if (!statusesMatch || !valuesMatch)
+  if (
+    !statusesMatch ||
+    !valuesMatch ||
+    canonicalJson(row.code_diagnostics) !== canonicalJson(diagnostics ?? null)
+  )
     throw new PreviewAttemptStateError('completion_lost');
   return Object.freeze({ kind: 'duplicate' });
 }
@@ -202,6 +210,7 @@ export async function completePreviewAttempt(
       'attemptFenceToken' | 'previewAttemptId' | 'previewRunId' | 'workspaceId'
     >;
     outcome: PreviewTerminalOutcome;
+    codeDiagnostics?: CodeDiagnostics;
     signal?: AbortSignal;
     workerId: string;
   }>,
@@ -223,6 +232,10 @@ export async function completePreviewAttempt(
       delivery: input.delivery,
       workerId: input.workerId,
     });
+  const diagnostics =
+    input.codeDiagnostics === undefined
+      ? undefined
+      : codeDiagnosticsSchema.parse(input.codeDiagnostics);
   const outcome =
     input.outcome.status === PREVIEW_STATUS.succeeded
       ? ({
@@ -255,6 +268,7 @@ export async function completePreviewAttempt(
          set status=$6::varchar,
              output_ref=$7::jsonb,
              safe_error_code=$8::varchar,
+             code_diagnostics=$9::jsonb,
              completed_at=clock_timestamp(),
              lease_owner=null,
              lease_expires_at=null,
@@ -275,10 +289,17 @@ export async function completePreviewAttempt(
             outcome.status === PREVIEW_STATUS.succeeded
               ? null
               : outcome.safeErrorCode,
+            diagnostics === undefined ? null : canonicalJson(diagnostics),
           ],
         );
         if (terminal.rowCount !== 1)
-          return exactDuplicateCompletion(client, scope, outcome, receipt);
+          return exactDuplicateCompletion(
+            client,
+            scope,
+            outcome,
+            receipt,
+            diagnostics,
+          );
         if (receipt !== 'open')
           throw new PreviewAttemptStateError('receipt_already_completed');
         const syncedRuns = await client.query<{ id: string }>(

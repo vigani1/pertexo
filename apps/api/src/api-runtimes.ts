@@ -140,6 +140,7 @@ export async function acquireApiRuntimes(
         config.redisUrl,
         dependencies.workflowOverrides,
         databaseRuntime,
+        config.codeSettings,
       );
 
     connectionRuntime = dependencies.connectionRuntime;

@@ -1,3 +1,4 @@
+import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
@@ -259,6 +260,7 @@ export const connectionHealthObservationSchema = z.discriminatedUnion('kind', [
 export const completionSchema = ownedLeaseSchema
   .extend({
     outcome: completionOutcomeSchema,
+    codeDiagnostics: codeDiagnosticsSchema.optional(),
     traceparent: traceparentSchema,
     connectionHealthObservation: connectionHealthObservationSchema.optional(),
   })
@@ -372,6 +374,7 @@ export interface NodeAttemptRunStore {
     input: Readonly<{
       lease: NodeAttemptLease;
       outcome: NodeAttemptCompletion;
+      codeDiagnostics?: z.output<typeof codeDiagnosticsSchema>;
       connectionHealthObservation?: z.output<
         typeof connectionHealthObservationSchema
       >;

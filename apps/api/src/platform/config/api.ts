@@ -1,3 +1,4 @@
+import { parseCodeSettings, type CodeSettings } from '@pertexo/node-sdk';
 import { isIP } from 'node:net';
 import {
   parseConnectionEncryptionConfig,
@@ -90,6 +91,7 @@ const apiEnvironmentSchema = z.object({
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 
 export type ApiConfig = Readonly<{
+  codeSettings: CodeSettings;
   artifacts?: ArtifactStoreConfig;
   connections?:
     | SelfManagedConnectionEncryptionConfig
@@ -141,6 +143,7 @@ export function parseApiConfig(
   const artifacts = parseArtifactsConfig(parsed.NODE_ENV, environment);
 
   return Object.freeze({
+    codeSettings: parseCodeSettings(environment),
     ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),
     ...(connections === undefined ? {} : { webhooks: connections }),

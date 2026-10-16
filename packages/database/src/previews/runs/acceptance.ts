@@ -1,3 +1,4 @@
+import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import { definitionIdentitySchema } from '@pertexo/node-sdk';
 import { resolvePreviewSample } from './samples.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
@@ -127,6 +128,7 @@ export type AcceptedPreviewRun = Readonly<{
 }>;
 
 export type PreviewRunRecord = Readonly<{
+  codeDiagnostics?: CodeDiagnostics;
   id: string;
   workspaceId: string;
   workflowId: string;

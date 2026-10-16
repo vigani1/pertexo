@@ -1,3 +1,4 @@
+import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
 import { writeFile, chmod } from 'node:fs/promises';
 import { requireCompatibleRelease } from '../encryption/require-compatible-release.mjs';
 import { parseApiConfig } from '../../../apps/api/dist/platform/config/api.js';
@@ -152,7 +153,11 @@ await output(
     ],
   }),
 );
-await output('hosts.env', `APP_HOST=${app}\nFILES_HOST=${files}\n`);
+const codeLimits = codeContainerLimits(apiConfig.codeSettings);
+await output(
+  'hosts.env',
+  `APP_HOST=${app}\nFILES_HOST=${files}\nCODE_RUNNER_CONTAINER_MEMORY_MB=${codeLimits.memoryMiB}\nCODE_RUNNER_CONTAINER_CPUS=${codeLimits.cpus}\nCODE_RUNNER_CONTAINER_PIDS=${codeLimits.pids}\nCODE_RUNNER_MANAGER_HEAP_MB=${codeLimits.managerHeapMiB}\n`,
+);
 
 function optionalValues(names, source = environment) {
   return names

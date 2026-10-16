@@ -234,7 +234,7 @@ jobs:
           - suite: live-1
             journeys: >-
               usage failure-routing error-workflows approvals variables
-              notifications artifact-inputs webhook-responses
+              notifications artifact-inputs webhook-responses code
           - suite: live-2
             journeys: >-
               workflow-concurrency connection-health input-cases callable
@@ -366,6 +366,10 @@ jobs:
         run:
           node infrastructure/single-server/backup/verify-runtime.mjs
           pertexo-ci:${{ github.sha }}
+      - name: Qualify hardened Code isolation in the production image
+        run:
+          node infrastructure/images/code/verify.mjs pertexo-ci:${{ github.sha
+          }}
       - name: Build and qualify the web image
         run: |
           set -euo pipefail
@@ -409,6 +413,7 @@ jobs:
               import('./packages/database/dist/migrations.js')
             ])"
           node infrastructure/single-server/backup/verify-runtime.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA"
+          node infrastructure/images/code/verify.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA"
           node infrastructure/images/verify-web.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA" ghcr.io/vigani1/pertexo-web:"$GITHUB_SHA"
       - name: Publish commit tags to GHCR
         env:

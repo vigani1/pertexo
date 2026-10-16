@@ -1,3 +1,4 @@
+import type { NodeCodeRuntime, CodeDiagnostics } from './code/contract.js';
 import type { NodeWebhookResponseRuntime } from './webhooks.js';
 import type { NodeArtifactReference } from './artifacts.js';
 export type { NodeArtifactReference } from './artifacts.js';
@@ -101,6 +102,8 @@ export interface NodeExecutionRuntime {
   readonly connections?: NodeConnectionRuntime;
   readonly artifacts?: NodeArtifactRuntime;
   readonly webhookResponse?: NodeWebhookResponseRuntime;
+  readonly code?: NodeCodeRuntime;
+  readonly observeCodeDiagnostics?: (diagnostics: CodeDiagnostics) => void;
   /** Synchronous, nonthrowing capture only. Never performs persistence or I/O. */
   readonly observeConnectionHealth?: (
     observation: NodeConnectionHealthObservation,

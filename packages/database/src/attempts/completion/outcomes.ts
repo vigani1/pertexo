@@ -1,3 +1,4 @@
+import { canonicalJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
@@ -42,6 +43,7 @@ export interface LockedAttemptRow {
   readonly current_attempt: boolean;
   readonly attempt_status: string;
   readonly error_summary: string | null;
+  readonly code_diagnostics: unknown;
   readonly executor_error_kind: string | null;
   readonly executor_failure_kind: string | null;
   readonly executor_possibly_dispatched: boolean | null;
@@ -146,6 +148,8 @@ async function duplicateCompletion(
     persistedOutput !== serializedOutput ||
     row.safe_error_code !== fields.safeErrorCode ||
     row.error_summary !== fields.errorSummary ||
+    canonicalJson(row.code_diagnostics) !==
+      canonicalJson(input.codeDiagnostics ?? null) ||
     executorMismatch
   ) {
     throw new NodeAttemptStateCorruptError();
@@ -190,7 +194,7 @@ async function updateAttempt(
       set status=$3,lease_owner=null,lease_expires_at=null,
           output_ref=$4::jsonb,safe_error_code=$5,error_summary=$6,
           executor_failure_kind=$7,executor_error_kind=$8,
-          executor_possibly_dispatched=$9,retry_decision=$10,
+          executor_possibly_dispatched=$9,retry_decision=$10,code_diagnostics=$11::jsonb,
           completed_at=clock_timestamp(),updated_at=clock_timestamp()
       where workspace_id=$1 and id=$2`,
     [
@@ -204,6 +208,9 @@ async function updateAttempt(
       fields.executorOutcome?.errorKind ?? null,
       fields.executorOutcome?.possiblyDispatched ?? null,
       fields.executorOutcome === undefined ? null : 'pending',
+      input.codeDiagnostics === undefined
+        ? null
+        : canonicalJson(input.codeDiagnostics),
     ],
   );
 }

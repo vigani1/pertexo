@@ -1,3 +1,4 @@
+import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { workflowNameSchema } from '../workflows/authoring.js';
 import {
@@ -566,4 +567,11 @@ export type WorkflowRunStartResponse = z.output<
 export type WorkflowRunResponse = z.output<typeof workflowRunResponseSchema>;
 export type WorkflowRunCancelResponse = z.output<
   typeof workflowRunCancelResponseSchema
+>;
+
+export const workflowNodeRunDiagnosticsResponseSchema = z
+  .object({ diagnostics: codeDiagnosticsSchema.nullable() })
+  .strict();
+export type WorkflowNodeRunDiagnosticsResponse = z.output<
+  typeof workflowNodeRunDiagnosticsResponseSchema
 >;

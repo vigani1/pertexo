@@ -1,3 +1,4 @@
+import type { NodeCodeRuntime, JsonValue } from '@pertexo/node-sdk/server';
 import type {
   NodeArtifactRuntime,
   NodeConnectionRuntime,
@@ -20,6 +21,10 @@ export type NodeExecutionCapabilityContext = Readonly<{
 
 /** Per-attempt factories shared by production and preview execution modes. */
 export type NodeExecutionCapabilityFactories = Readonly<{
+  code?: (
+    context: NodeExecutionCapabilityContext &
+      Readonly<{ variables: Readonly<Record<string, JsonValue>> }>,
+  ) => NodeCodeRuntime;
   connections?: (
     context: NodeExecutionCapabilityContext,
   ) => NodeConnectionRuntime;

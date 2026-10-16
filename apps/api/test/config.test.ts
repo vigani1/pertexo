@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
@@ -167,6 +168,7 @@ describe('parseApiConfig', () => {
     });
 
     expect(config).toEqual({
+      codeSettings: DEFAULT_CODE_SETTINGS,
       database: {
         connectionString:
           'postgresql://pertexo_app:secret@localhost:5432/pertexo',
@@ -210,6 +212,7 @@ describe('parseApiConfig', () => {
     });
 
     expect(config).toEqual({
+      codeSettings: DEFAULT_CODE_SETTINGS,
       database: {
         connectionString:
           'postgresql://pertexo_app:secret@localhost:5432/pertexo',

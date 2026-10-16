@@ -10,7 +10,7 @@ import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import type { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import { NodeExecutorFailure, NodeCodeFailure } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
 
 import type {
@@ -116,6 +116,7 @@ export function createPlatformPreviewNodeInvoker(
           error.code === 'variable_missing'
         )
           return failedWith('preview.variable_missing');
+        if (error instanceof NodeCodeFailure) return failedWith(error.code);
         if (error instanceof z.ZodError)
           return failedWith('preview.executable_invalid');
         if (

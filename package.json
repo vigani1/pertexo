@@ -26,7 +26,8 @@
           "infrastructure/single-server/storage/prepare.mjs",
           "infrastructure/single-server/backup/prepare.mjs",
           "infrastructure/single-server/backup/copy-objects.mjs",
-          "infrastructure/single-server/backup/recovery-points.mjs"
+          "infrastructure/single-server/backup/recovery-points.mjs",
+          "infrastructure/images/code/*-probe.mjs"
         ]
       },
       "apps/web": {
@@ -52,6 +53,12 @@
             "drizzle.config.mjs"
           ]
         }
+      },
+      "apps/code-runner": {
+        "ignoreDependencies": [
+          "lodash",
+          "dayjs"
+        ]
       }
     }
   },
@@ -70,6 +77,7 @@
     "dev": "node infrastructure/development/dev.mjs",
     "dev:api": "pnpm --filter @pertexo/api dev",
     "dev:web": "pnpm --filter @pertexo/web dev",
+    "dev:code-runner": "pnpm --filter @pertexo/code-runner dev",
     "dev:worker": "pnpm --filter @pertexo/worker dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -1,3 +1,4 @@
+import { codeSettingsSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 const identityKey = z
@@ -76,6 +77,7 @@ export const nodeDefinitionCatalogItemSchema = z
 
 export const nodeDefinitionListResponseSchema = z
   .object({
+    codeSettings: codeSettingsSchema.optional(),
     items: z
       .array(nodeDefinitionCatalogItemSchema)
       .max(catalogLimits.definitions),

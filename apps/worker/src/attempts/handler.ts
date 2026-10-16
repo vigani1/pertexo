@@ -1,3 +1,5 @@
+import { codeCompletionFields } from './code/diagnostics.js';
+import { NodeCodeFailure } from '@pertexo/node-sdk/server';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import {
   NodeAttemptOutputInvalidError,
@@ -107,6 +109,7 @@ async function completeControlOutcome(
   const outcomeUnknown = lease.sideEffectClass !== 'safe' && dispatched;
   const completed = await dependencies.runStore.complete({
     ...connectionHealthCompletionFields(environment),
+    ...codeCompletionFields(environment),
     lease,
     outcome: {
       status: outcomeUnknown ? 'outcome_unknown' : reason,
@@ -249,6 +252,7 @@ async function executePreparedNodeAttempt(
     if (error instanceof NodeExecutorFailure) {
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
+        ...codeCompletionFields(environment),
         lease,
         outcome: {
           status: 'executor_failure',
@@ -256,9 +260,11 @@ async function executePreparedNodeAttempt(
           errorKind: error.errorKind,
           possiblyDispatched: error.possiblyDispatched,
           safeErrorCode:
-            error instanceof FileInputFailure
-              ? FILE_INPUT_ERROR_CODE
-              : `execution.${error.errorKind}`,
+            error instanceof NodeCodeFailure
+              ? error.code
+              : error instanceof FileInputFailure
+                ? FILE_INPUT_ERROR_CODE
+                : `execution.${error.errorKind}`,
           ...(error instanceof FileInputFailure
             ? { errorSummary: describeFileInputFailure(error.diagnostic) }
             : {}),
@@ -274,6 +280,7 @@ async function executePreparedNodeAttempt(
     ) {
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
+        ...codeCompletionFields(environment),
         lease,
         outcome: {
           status: 'failed',
@@ -346,6 +353,7 @@ async function persistPreparedOutcome(
   try {
     const completed = await dependencies.runStore.complete({
       ...connectionHealthCompletionFields(environment),
+      ...codeCompletionFields(environment),
       lease,
       outcome:
         prepared.suspensionDurationSeconds === undefined
@@ -363,6 +371,7 @@ async function persistPreparedOutcome(
     if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
     const completed = await dependencies.runStore.complete({
       ...connectionHealthCompletionFields(environment),
+      ...codeCompletionFields(environment),
       lease,
       outcome: {
         status: 'failed',
@@ -450,6 +459,7 @@ export function createNodeAttemptHandler(
       try {
         const environment = createNodeExecutionEnvironment({
           executionSignal: heartbeat.executionSignal,
+          variables: inputs.variables ?? {},
           lease: claimed.lease,
           registry: dependencies.registry,
           runStore: dependencies.runStore,

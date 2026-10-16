@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { qualifyWebhookResponseWaiting } from './responses/qualify.js';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 
@@ -310,6 +311,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         close: () => Promise.resolve(),
       };
       const config: ApiConfig = {
+        codeSettings: DEFAULT_CODE_SETTINGS,
         database: apiConfig,
         host: '127.0.0.1',
         nodeEnv: 'test',

@@ -227,7 +227,7 @@ function registerFeatureModules(
   admissionModule: DynamicModule,
 ): DynamicModule[] {
   if (identityModule === undefined) return [];
-  const modules = [CatalogModule.register(identityModule)];
+  const modules = [CatalogModule.register(identityModule, config.codeSettings)];
   if (dependencies.workflowRuntime === undefined) modules.push(identityModule);
   else
     modules.push(

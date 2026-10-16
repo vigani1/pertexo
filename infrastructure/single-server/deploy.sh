@@ -10,7 +10,7 @@ prepare_release "$1"
 previous=''
 [[ ! -f "$BETA_STATE_DIR/current" ]] || previous=$(cat "$BETA_STATE_DIR/current")
 compose up -d --wait --wait-timeout 120 postgres redis storage
-compose stop api worker proxy
+compose stop "${writer_services[@]}"
 # This ephemeral administration client is never a serving service.
 if ! docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
   --network pertexo-beta_private --env-file "$BETA_STATE_DIR/rc.env" \
@@ -20,7 +20,7 @@ if ! docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
     select_release "$previous"
     validate_rollback_configuration
     verify_encryption
-    compose up -d --no-deps --wait --wait-timeout 180 api worker web proxy
+    compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}"
   fi
   echo 'Storage setup failed before migration' >&2; exit 1
 fi
@@ -40,13 +40,13 @@ fi
 if ! verify_encryption; then
   echo 'Encryption verification failed: serving remains stopped; correct the configured keys' >&2; exit 1
 fi
-if ! compose up -d --no-deps --wait --wait-timeout 180 api worker web proxy; then
-  compose stop api worker web proxy
+if ! compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}"; then
+  compose stop "${runtime_services[@]}"
   if [[ $no_migration == true && -n "$previous" && "$previous" != "$commit" ]]; then
     select_release "$previous"
     validate_rollback_configuration
     verify_encryption
-    compose up -d --no-deps --wait --wait-timeout 180 api worker web proxy
+    compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}"
     echo "Unhealthy release returned to $previous" >&2
   else
     echo 'Unhealthy release: fix forward; serving remains stopped' >&2

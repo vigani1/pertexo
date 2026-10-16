@@ -1,4 +1,7 @@
-import { NODE_IDENTITY_KEY_PATTERN } from '@pertexo/node-sdk';
+import {
+  NODE_IDENTITY_KEY_PATTERN,
+  type CodeDiagnostics,
+} from '@pertexo/node-sdk';
 import { workspaceVariableSetRevisions } from '../variables.js';
 import { workspaceExecutionEntitlementVersions } from './entitlements.js';
 import { failureNotificationDestinationVersions } from '../notifications.js';
@@ -579,6 +582,7 @@ export const nodeAttempts = appSchema.table(
       mode: 'date',
     }),
     outputRef: jsonb('output_ref'),
+    codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     errorSummary: varchar('error_summary', { length: 2048 }),
     executorFailureKind: varchar('executor_failure_kind', { length: 32 }),
@@ -602,6 +606,10 @@ export const nodeAttempts = appSchema.table(
     }),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'node_attempts_code_diagnostics_bound',
+      sql`${table.codeDiagnostics} IS NULL OR (jsonb_typeof(${table.codeDiagnostics})='object' AND octet_length(${table.codeDiagnostics}::text)<=1048576)`,
+    ),
     check(
       'node_attempts_admission_kind_valid',
       sql`((admission_kind)::text = ANY (ARRAY[('execute'::character varying)::text, ('retry'::character varying)::text, ('wait_resume'::character varying)::text]))`,
@@ -905,6 +913,7 @@ export const previewAttempts = appSchema.table(
       mode: 'date',
     }),
     outputRef: jsonb('output_ref'),
+    codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     reconciliationRef: jsonb('reconciliation_ref'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -920,6 +929,10 @@ export const previewAttempts = appSchema.table(
     }),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'preview_attempts_code_diagnostics_bound',
+      sql`${table.codeDiagnostics} IS NULL OR (jsonb_typeof(${table.codeDiagnostics})='object' AND octet_length(${table.codeDiagnostics}::text)<=1048576)`,
+    ),
     check(
       'preview_attempts_error_code_format',
       sql`((safe_error_code IS NULL) OR ((safe_error_code)::text ~ '^[a-z][a-z0-9._:-]{0,127}$'::text))`,

@@ -47,6 +47,7 @@ import {
   workflowRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowNodeRunInputResponseSchema,
+  workflowNodeRunDiagnosticsResponseSchema,
   workflowStepHealthResponseSchema,
   workflowStepRunsResponseSchema,
   workflowStepRunsQuerySchema,
@@ -79,6 +80,10 @@ const schemas = Object.freeze({
   WorkflowRunListResponse: jsonSchema(workflowRunListResponseSchema, 'output'),
   WorkflowRunStatisticsResponse: jsonSchema(
     workflowRunStatisticsResponseSchema,
+    'output',
+  ),
+  WorkflowNodeRunDiagnosticsResponse: jsonSchema(
+    workflowNodeRunDiagnosticsResponseSchema,
     'output',
   ),
   WorkflowNodeRunSummary: jsonSchema(workflowNodeRunSummarySchema, 'output'),
@@ -349,6 +354,25 @@ export const workflowRunsOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/diagnostics':
+      {
+        get: {
+          operationId: 'getWorkflowNodeRunDiagnostics',
+          security: [{ cookieSession: [] }],
+          parameters: [workspaceParameter, runParameter, nodeRunParameter],
+          responses: {
+            '200': jsonResponse(
+              'Private Code diagnostics for the current step attempt',
+              'WorkflowNodeRunDiagnosticsResponse',
+            ),
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
     '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/input': {
       get: {
         operationId: 'getWorkflowNodeRunInput',

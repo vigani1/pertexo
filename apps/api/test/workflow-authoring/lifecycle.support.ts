@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { randomUUID } from 'node:crypto';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 
@@ -344,6 +345,7 @@ async function resolveIdentity(
 
 function apiConfig(): ApiConfig {
   return {
+    codeSettings: DEFAULT_CODE_SETTINGS,
     database: workflowLifecycleDatabaseConfig,
     host: '127.0.0.1',
     identity: {

@@ -1,3 +1,4 @@
+import type { WorkerCodeRunnerConfig } from './code/client.js';
 import {
   createNodeAttemptRunStore,
   NodeAttemptDeliveryMismatchError,
@@ -89,6 +90,7 @@ type PreviewAttemptRuntimeDependency = Readonly<{
 }>;
 
 export type NodeAttemptRuntimeOptions = Readonly<{
+  codeRunner?: WorkerCodeRunnerConfig;
   artifactStore?: ArtifactStoreConfig;
   connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
   database: DatabaseConfig;
@@ -249,7 +251,8 @@ async function createProductionNodeAttemptRuntime(
   let runtimeCapabilities = dependencies.runtimeCapabilities;
   if (
     runtimeCapabilities === undefined &&
-    (options.connectionEncryption !== undefined ||
+    (options.codeRunner !== undefined ||
+      options.connectionEncryption !== undefined ||
       options.artifactStore !== undefined)
   )
     capabilityRuntime = await (
@@ -257,6 +260,9 @@ async function createProductionNodeAttemptRuntime(
     )(
       {
         database: options.database,
+        ...(options.codeRunner === undefined
+          ? {}
+          : { codeRunner: options.codeRunner }),
         redisUrl: options.redisUrl,
         ...(options.connectionEncryption === undefined
           ? {}

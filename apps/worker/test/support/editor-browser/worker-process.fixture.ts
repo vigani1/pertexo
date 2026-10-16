@@ -1,3 +1,4 @@
+import { createEditorCodeRuntime } from './code/runtime.js';
 import { createEditorNotifications } from './notifications/runtime.js';
 import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
 import { withArtifactReadOutage } from './artifact-read-retry.js';
@@ -72,6 +73,7 @@ const namespace = createRedisTestNamespace(
     },
   },
 );
+const codeCase = process.env.EDITOR_BROWSER_CASE === 'code';
 const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
 const errorWorkflowCase = process.env.EDITOR_BROWSER_CASE === 'error-workflows';
 const webhookResponseCase =
@@ -79,7 +81,8 @@ const webhookResponseCase =
 const previewCase =
   process.env.EDITOR_BROWSER_CASE === 'transforms' ||
   process.env.EDITOR_BROWSER_CASE === 'pinned-samples' ||
-  webhookResponseCase;
+  webhookResponseCase ||
+  codeCase;
 const artifactInputs = process.env.EDITOR_BROWSER_CASE === 'artifact-inputs';
 let artifactTarget:
   Awaited<ReturnType<typeof createArtifactDestination>> | undefined;
@@ -419,6 +422,13 @@ async function constructRuntimes(
     await controlledCapabilities.checkReadiness();
     assertSetupActive();
   }
+  if (codeCase) {
+    const code = await createEditorCodeRuntime(database);
+    resources.codeRunner = code;
+    controlledCapabilities = code.capabilities;
+    resources.capabilities = controlledCapabilities;
+    assertSetupActive();
+  }
   if (webhookResponseCase) {
     controlledCapabilities = await createWorkerNodeRuntimeCapabilities({
       database,
@@ -452,6 +462,9 @@ async function constructRuntimes(
                     webhookResponse:
                       controlledCapabilities.factories.webhookResponse,
                   }),
+              ...(controlledCapabilities?.factories.code === undefined
+                ? {}
+                : { code: controlledCapabilities.factories.code }),
               connections: () => ({
                 resolve: () =>
                   Promise.reject(

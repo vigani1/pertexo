@@ -1,3 +1,4 @@
+import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
@@ -73,6 +74,7 @@ import {
 } from './queries/read.js';
 import {
   readWorkflowNodeRunInput,
+  readWorkflowNodeRunDiagnostics,
   readWorkflowNodeRunOutput,
   readWorkflowRunInput,
   readWorkflowRunVariables,
@@ -240,6 +242,9 @@ export interface WorkflowRunDatabase {
   readInput(
     input: ReadWorkflowRunInputInput,
   ): Promise<WorkflowRunData | undefined>;
+  readNodeRunDiagnostics(
+    input: ReadWorkflowNodeRunOutputInput,
+  ): Promise<CodeDiagnostics | null | undefined>;
   readNodeRunOutput(
     input: ReadWorkflowNodeRunOutputInput,
   ): Promise<WorkflowRunData | undefined>;
@@ -343,6 +348,8 @@ export function createWorkflowRunDatabase(
       readWorkflowRunVariables(pool, input),
     readInput: (input: ReadWorkflowRunInputInput) =>
       readWorkflowRunInput(pool, input),
+    readNodeRunDiagnostics: (input: ReadWorkflowNodeRunOutputInput) =>
+      readWorkflowNodeRunDiagnostics(pool, input),
     readNodeRunOutput: (input: ReadWorkflowNodeRunOutputInput) =>
       readWorkflowNodeRunOutput(pool, input),
     readNodeRunInput: (input: ReadWorkflowNodeRunOutputInput) =>

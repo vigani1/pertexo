@@ -1,3 +1,4 @@
+import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -8,7 +9,7 @@ import {
   type PreviewStatus,
 } from './acceptance.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
-import { previewRuns } from '../../schema.js';
+import { previewRuns, previewAttempts } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 const previewStatusSchema = z.enum(
@@ -26,6 +27,7 @@ export async function readPreviewRun(
   const rows = await transaction.db
     .select({
       completedAt: previewRuns.completedAt,
+      codeDiagnostics: previewAttempts.codeDiagnostics,
       createdAt: previewRuns.createdAt,
       draftRevision: previewRuns.draftRevision,
       dryRun: previewRuns.dryRun,
@@ -44,6 +46,13 @@ export async function readPreviewRun(
       workspaceId: previewRuns.workspaceId,
     })
     .from(previewRuns)
+    .leftJoin(
+      previewAttempts,
+      and(
+        eq(previewAttempts.workspaceId, previewRuns.workspaceId),
+        eq(previewAttempts.previewRunId, previewRuns.id),
+      ),
+    )
     .where(
       and(
         eq(previewRuns.workspaceId, transaction.workspaceId),
@@ -55,6 +64,9 @@ export async function readPreviewRun(
   const row = rows[0];
   if (row === undefined) return null;
   return Object.freeze({
+    ...(row.codeDiagnostics === null
+      ? {}
+      : { codeDiagnostics: codeDiagnosticsSchema.parse(row.codeDiagnostics) }),
     id: row.id,
     workspaceId: row.workspaceId,
     workflowId: row.workflowId,

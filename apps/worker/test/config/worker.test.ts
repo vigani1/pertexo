@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS, codeRunnerSocketPath } from '@pertexo/node-sdk';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
@@ -86,6 +87,15 @@ describe('parseWorkerConfig', () => {
         ...requiredEnvironment,
       }),
     ).toEqual({
+      codeRunner: {
+        settings: DEFAULT_CODE_SETTINGS,
+        socketPath: codeRunnerSocketPath(
+          undefined,
+          false,
+          process.getuid?.() ?? 'local',
+        ),
+        requireHardened: false,
+      },
       artifactStore: {
         accessKeyId: 'local-access',
         bucket: 'pertexo-artifacts',

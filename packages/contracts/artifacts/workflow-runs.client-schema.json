@@ -5669,6 +5669,87 @@
       ],
       "additionalProperties": false
     },
+    "WorkflowNodeRunDiagnosticsResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "diagnostics": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "logs": {
+                  "maxItems": 200,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "log",
+                          "info",
+                          "warn",
+                          "error",
+                          "debug"
+                        ]
+                      },
+                      "message": {
+                        "type": "string",
+                        "maxLength": 2048
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "truncated": {
+                  "type": "boolean"
+                },
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "maxLength": 2048
+                    },
+                    "line": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "column": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "logs",
+                "truncated"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "diagnostics"
+      ],
+      "additionalProperties": false
+    },
     "WorkflowNodeRunSummary": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",

@@ -17,6 +17,7 @@ import {
 import { WorkflowRunReadGuard } from '../http/guards.js';
 import {
   GetWorkflowNodeRunInputUseCase,
+  GetWorkflowNodeRunDiagnosticsUseCase,
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
   GetWorkflowRunVariablesUseCase,
@@ -35,6 +36,7 @@ export class WorkflowRunDataController {
     private readonly getRunInput: GetWorkflowRunInputUseCase,
     private readonly getRunVariables: GetWorkflowRunVariablesUseCase,
     private readonly getNodeRunOutput: GetWorkflowNodeRunOutputUseCase,
+    private readonly getNodeRunDiagnostics: GetWorkflowNodeRunDiagnosticsUseCase,
     private readonly getNodeRunInput: GetWorkflowNodeRunInputUseCase,
     private readonly getStepHealth: GetWorkflowStepHealthUseCase,
     private readonly listStepRuns: ListWorkflowStepRunsUseCase,
@@ -94,6 +96,22 @@ export class WorkflowRunDataController {
   ) {
     const route = workflowNodeRunParamsSchema.parse(params);
     return this.getNodeRunInput.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...optionalAuthorizedWorkspace(request),
+      runId: route.runId,
+      nodeRunId: route.nodeRunId,
+    });
+  }
+
+  @Get('runs/:runId/node-runs/:nodeRunId/diagnostics')
+  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  public async getDiagnostics(
+    @Req() request: WorkflowRunsRequest,
+    @Param() params: unknown,
+  ) {
+    const route = workflowNodeRunParamsSchema.parse(params);
+    return this.getNodeRunDiagnostics.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
       ...optionalAuthorizedWorkspace(request),

@@ -1,3 +1,4 @@
+import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
@@ -106,6 +107,53 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
     });
+    const runner = config.services['code-runner'];
+    const limits = codeContainerLimits(api.codeSettings);
+    assert.equal(runner.network_mode, 'none');
+    assert.equal(runner.networks, undefined);
+    assert.equal(runner.ipc, 'none');
+    assert.equal(runner.read_only, true);
+    assert.equal(runner.user, '0:10001');
+    assert.deepEqual(runner.cap_drop, ['ALL']);
+    assert.deepEqual(
+      new Set(runner.cap_add),
+      new Set(['SETUID', 'SETGID', 'KILL']),
+    );
+    assert.ok(runner.security_opt.includes('no-new-privileges:true'));
+    assert.equal(runner.oom_score_adj, -1000);
+    assert.equal(Number(runner.mem_limit), limits.memoryMiB * 1048576);
+    assert.equal(runner.memswap_limit, runner.mem_limit);
+    assert.equal(Number(runner.cpus), limits.cpus);
+    assert.equal(runner.pids_limit, limits.pids);
+    assert.ok(runner.tmpfs[0].includes('noexec'));
+    assert.ok(runner.tmpfs[0].includes('mode=0700'));
+    assert.deepEqual(
+      Object.keys(runner.environment)
+        .filter((name) => !name.startsWith('CODE_'))
+        .sort(),
+      ['NODE_ENV', 'NODE_OPTIONS'],
+    );
+    const socketVolume = runner.volumes[0].source;
+    assert.ok(
+      config.services.worker.volumes.some(
+        (volume) => volume.source === socketVolume,
+      ),
+    );
+    for (const name of [
+      'api',
+      'web',
+      'proxy',
+      'storage',
+      'postgres',
+      'redis',
+      'ops',
+      'migration',
+    ])
+      assert.ok(
+        !(config.services[name].volumes ?? []).some(
+          (volume) => volume.source === socketVolume,
+        ),
+      );
     assert.equal(worker.systemMailDelivery.delivery.mode, transport);
     assert.equal(worker.invitationDelivery.delivery.mode, transport);
     for (const name of ['api', 'ops', 'migration']) {
