@@ -1,3 +1,10 @@
+import type { INestApplication } from '@nestjs/common';
+import { FastifyAdapter } from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
+import { WebhookPreflightController } from '../../src/webhooks/authentication/preflight.controller.js';
+import { WEBHOOK_PREFLIGHT } from '../../src/webhooks/tokens.js';
+import { RateLimitModule } from '../../src/platform/rate-limit/rate-limit.module.js';
+import type { RateLimitConsumer } from '../../src/platform/rate-limit/admission.js';
 import { createHmac } from 'node:crypto';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
@@ -50,11 +57,15 @@ const verification: WebhookVerificationReference = {
 
 describe('generic webhook ingress', () => {
   const applications: FastifyInstance[] = [];
+  const nestApplications: INestApplication[] = [];
   beforeEach(() => {
     currentSecret.fill(4);
     previousSecret.fill(5);
   });
   afterEach(async () => {
+    await Promise.all(
+      nestApplications.splice(0).map((application) => application.close()),
+    );
     await Promise.all(
       applications.splice(0).map((application) => application.close()),
     );
@@ -150,7 +161,7 @@ describe('generic webhook ingress', () => {
     },
   );
   it('handles endpoint-only preflight without decrypting, logging a delivery or starting a run', async () => {
-    const f = setup({
+    const f = await setupPreflight({
       ...verification,
       authentication: {
         mode: 'header_secret',
@@ -168,6 +179,11 @@ describe('generic webhook ingress', () => {
           'Content-Type, X-Webhook-Secret, Idempotency-Key',
       },
     });
+    expect(f.consume).toHaveBeenCalledOnce();
+    expect(f.consume.mock.calls[0]?.[0]).toMatchObject({
+      endpointClass: 'webhook_preflight',
+      failureMode: 'closed',
+    });
     expect(response.statusCode).toBe(204);
     expect(response.headers).toMatchObject({
       'access-control-allow-origin': 'https://app.example',
@@ -183,7 +199,7 @@ describe('generic webhook ingress', () => {
     expect(f.openedSecrets).toHaveLength(0);
   });
   it('returns a safe unavailable response when preflight discovery fails', async () => {
-    const f = setup();
+    const f = await setupPreflight();
     f.database.resolveVerification.mockRejectedValueOnce(
       new Error('private database failure'),
     );
@@ -202,7 +218,7 @@ describe('generic webhook ingress', () => {
     expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
   it('keeps preflight storage read-only and refuses unknown endpoints, origins, methods and unsupported headers', async () => {
-    const f = setup({
+    const f = await setupPreflight({
       ...verification,
       authentication: {
         mode: 'secret_url',
@@ -1269,6 +1285,30 @@ describe('generic webhook ingress', () => {
     });
   });
 
+  async function setupPreflight(reference = verification) {
+    const fixture = setup(reference);
+    const consume = vi
+      .fn<RateLimitConsumer['consume']>()
+      .mockResolvedValue({ allowed: true });
+    const testing = await Test.createTestingModule({
+      imports: [RateLimitModule.register('redis://unused', { consume })],
+      controllers: [WebhookPreflightController],
+      providers: [
+        {
+          provide: WEBHOOK_PREFLIGHT,
+          useValue: createWebhookPreflight(fixture.dependencies),
+        },
+      ],
+    }).compile();
+    const application = testing.createNestApplication(
+      new FastifyAdapter(fixture.application),
+    );
+    nestApplications.push(application);
+    applications.splice(applications.indexOf(fixture.application), 1);
+    await application.init();
+    return { ...fixture, consume };
+  }
+
   function setup(
     reference = verification,
     acceptanceError?: Error,
@@ -1335,11 +1375,8 @@ describe('generic webhook ingress', () => {
       telemetry,
     };
     registerWebhookIngress(application, dependencies);
-    application.options(
-      '/hooks/:endpointKey',
-      createWebhookPreflight(dependencies),
-    );
     return {
+      dependencies,
       application,
       database,
       delivery,
