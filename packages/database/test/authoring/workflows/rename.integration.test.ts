@@ -341,15 +341,17 @@ describe('workflow rename command persistence (ADR 041)', () => {
         workflowId,
         workspaceId,
       });
+      // The loser can settle before the winner is checked; observe it now.
+      const lost = expect(loser).rejects.toMatchObject({
+        name: 'WorkflowNameRevisionConflictError',
+        currentRevision: 2,
+      });
       await waitForPostgresLock(secondApplication);
       await firstHold.release();
       await expect(winner).resolves.toMatchObject({
         workflow: { name: 'Racing first', nameRevision: 2 },
       });
-      await expect(loser).rejects.toMatchObject({
-        name: 'WorkflowNameRevisionConflictError',
-        currentRevision: 2,
-      });
+      await lost;
     } finally {
       await firstHold.release();
       await Promise.all([first.close(), second.close()]);

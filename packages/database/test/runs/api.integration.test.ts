@@ -943,6 +943,48 @@ describe('workflow run API persistence', () => {
     ).toEqual([{ count: 0 }]);
   });
 
+  it('reports a version conflict when publication commits while the command waits for its lock', async () => {
+    const publishing = await owner.connect();
+    let attempted: ReturnType<typeof database.start> | undefined;
+    try {
+      await publishing.query('begin');
+      await publishing.query('set local role pertexo_owner');
+      await publishing.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      await publishing.query(
+        'update app.workflows set published_version_id=$2 where id=$1',
+        [workflowId, retainedWorkflowVersionId],
+      );
+      attempted = database.start({
+        ...startInput(),
+        expectedPublishedVersionId: workflowVersionId,
+      });
+      const rejected = expect(attempted).rejects.toBeInstanceOf(
+        WorkflowPublishedVersionConflictError,
+      );
+      await vi.waitFor(
+        async () => {
+          const waiting = await apiQuery(
+            "select count(*)::int count from pg_stat_activity where usename='pertexo_app' and wait_event_type='Lock'",
+          );
+          expect(waiting.rows[0]?.count).toBeGreaterThanOrEqual(1);
+        },
+        { timeout: 3000 },
+      );
+      await publishing.query('commit');
+      await rejected;
+    } finally {
+      await publishing.query('rollback').catch(() => undefined);
+      if (attempted !== undefined) await attempted.catch(() => undefined);
+      publishing.release();
+    }
+    expect(
+      (await apiQuery('select count(*)::int count from app.workflow_runs'))
+        .rows,
+    ).toEqual([{ count: 0 }]);
+  });
+
   it('atomically starts, exactly replays, reads, and cancels one published run', async () => {
     const first = await database.start(startInput());
     expect(first.replayed).toBe(false);

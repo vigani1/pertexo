@@ -52,6 +52,17 @@ export async function readFormVersion(
   locking: 'read' | 'share' | 'update',
   allowPaused = false,
 ) {
+  // Lock before reading the version: a locked join waiting on a concurrent
+  // publication re-checks against the old version row and finds no form.
+  const workflow = await client.query<{ published_version_id: string | null }>(
+    `select workflow.published_version_id
+    from app.workflows workflow join app.workspaces workspace on workspace.id=workflow.workspace_id and workspace.status='active'
+    where workflow.workspace_id=$1 and workflow.id=$2 and workflow.lifecycle_status='active' and ($3::boolean or workflow.trigger_pause_state='none') ${locking === 'read' ? '' : `for ${locking} of workflow`}`,
+    [input.workspaceId, input.workflowId, allowPaused],
+  );
+  const publishedVersionId = workflow.rows[0]?.published_version_id;
+  if (publishedVersionId === undefined || publishedVersionId === null)
+    throw new FormUnavailableError();
   const result = await client.query<{
     id: string;
     workspace_id: string;
@@ -61,10 +72,9 @@ export async function readFormVersion(
     executable_json: unknown;
     graph_json: unknown;
   }>(
-    `select version.graph_json,version.id,version.workspace_id,version.workflow_id,version.version_number,version.checksum,version.executable_json
-    from app.workflows workflow join app.workspaces workspace on workspace.id=workflow.workspace_id and workspace.status='active' join app.workflow_versions version on version.workspace_id=workflow.workspace_id and version.workflow_id=workflow.id and version.id=workflow.published_version_id
-    where workflow.workspace_id=$1 and workflow.id=$2 and workflow.lifecycle_status='active' and ($3::boolean or workflow.trigger_pause_state='none') ${locking === 'read' ? '' : `for ${locking} of workflow`}`,
-    [input.workspaceId, input.workflowId, allowPaused],
+    `select graph_json,id,workspace_id,workflow_id,version_number,checksum,executable_json
+    from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3`,
+    [input.workspaceId, input.workflowId, publishedVersionId],
   );
   const row = result.rows[0];
   if (row === undefined) throw new FormUnavailableError();
