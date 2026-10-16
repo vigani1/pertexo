@@ -57,7 +57,8 @@
   },
   "scripts": {
     "architecture:check": "node --test infrastructure/checks/validate-project-references.test.mjs infrastructure/checks/validate-module-imports.test.mjs && node infrastructure/checks/validate-project-references.mjs && node infrastructure/checks/validate-module-imports.mjs",
-    "build": "tsc --build --pretty false && pnpm --filter @pertexo/web build",
+    "build": "pnpm build:packages && pnpm --filter @pertexo/web build",
+    "build:packages": "tsc --build --pretty false",
     "check": "pnpm format:check && pnpm build && pnpm lint && pnpm typecheck && pnpm dependencies:check && pnpm contracts:check && pnpm database:schema:check && pnpm architecture:check",
     "contracts:check": "pnpm --filter @pertexo/contracts contracts:check",
     "contracts:generate": "pnpm --filter @pertexo/contracts contracts:generate",
