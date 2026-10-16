@@ -213,27 +213,30 @@ describe('workflow lifecycle command persistence', () => {
         archive,
         'archive-first lifecycle command',
       );
-      const publish = archiveFirstPublisher.publishWorkflow({
-        actorId,
-        representationTag: await currentRepresentationTag(
-          authoring,
-          workspaceId,
-          archiveFirst.workflowId,
+      // Publishing may reject before the archive's assertion is awaited.
+      const publish = Promise.allSettled([
+        archiveFirstPublisher.publishWorkflow({
           actorId,
-        ),
-        idempotencyKey: 'lifecycle-archive-first-publish',
-        requestHash: 'a'.repeat(64),
-        workflowId: archiveFirst.workflowId,
-        workspaceId,
-      });
+          representationTag: await currentRepresentationTag(
+            authoring,
+            workspaceId,
+            archiveFirst.workflowId,
+            actorId,
+          ),
+          idempotencyKey: 'lifecycle-archive-first-publish',
+          requestHash: 'a'.repeat(64),
+          workflowId: archiveFirst.workflowId,
+          workspaceId,
+        }),
+      ]);
       await waitForPostgresLock(archiveFirstPublisherApplication);
       await archiveHold.release();
       await expect(archive).resolves.toMatchObject({
         workflow: { lifecycleStatus: 'archived', publishedVersionId: null },
       });
-      await expect(publish).rejects.toMatchObject({
-        name: 'WorkflowNotFoundError',
-      });
+      expect(await publish).toMatchObject([
+        { status: 'rejected', reason: { name: 'WorkflowNotFoundError' } },
+      ]);
       expect(await lifecycleFacts(archiveFirst.workflowId)).toMatchObject({
         lifecycleStatus: 'archived',
         lifecycleRevision: 2,
