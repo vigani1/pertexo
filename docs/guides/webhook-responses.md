@@ -35,7 +35,8 @@ Status 204, 205 or 304 requires a text response with an empty body.
   webhook retry refers to the same run and can retrieve its retained response.
   It does not execute the workflow again.
 
-Signing, timestamp freshness, deduplication and ingress rate limits are unchanged.
+Signed mode keeps its signature and timestamp checks. Every authentication mode
+uses the same deduplication and POST-attempt limits.
 The delivery history’s **Admission** status records acceptance/rejection, not
 whether a caller later received a workflow response. The Respond step’s output
 records the winning response status.

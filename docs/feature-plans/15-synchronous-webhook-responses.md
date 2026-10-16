@@ -1,6 +1,6 @@
 # F15 — Respond to webhook
 
-Status: implemented and locally qualified. Updated: 2026-10-16.
+Status: implemented and locally qualified. Updated: 2026-10-17.
 [Roadmap](../product-roadmap.md). Decision: [ADR 081](../adr/081-bounded-webhook-responses.md).
 
 ## Outcome and current code

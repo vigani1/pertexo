@@ -1,6 +1,6 @@
 # Webhook authentication modes
 
-Status: implemented and locally qualified; PR CI pending. Updated: 2026-10-17. Decision: [ADR 026](../adr/026-generic-webhook-signature-replay.md).
+Status: implemented and locally qualified. Updated: 2026-10-17. Decision: [ADR 026](../adr/026-generic-webhook-signature-replay.md).
 
 ## Current code and outcome
 
@@ -21,12 +21,13 @@ and durable multi-instance response record.
   only the existing random 256-bit address, never decrypts a signing secret,
   and explains that anyone possessing the URL can invoke it. Header mode uses
   the existing encrypted random secret, base64url encoded, in `Authorization:
-  Bearer …` or one configured HTTP header. Compare the fixed-size encoded credentials in constant
-  time. Refuse ambiguous duplicate/comma-folded authentication headers.
+  Bearer …` or one configured HTTP header. Reuse the existing 32-byte envelope
+  and once-only `signingSecret` wire field; the editor labels it **Header secret**.
+  Compare the fixed-size encoded credentials in constant time. Refuse ambiguous duplicate/comma-folded authentication headers.
 - One shared contract validates mode, safe header name and at most 20 distinct
   exact HTTP(S) origins (scheme, host, optional port; no credentials, paths,
-  wildcard or opaque `null`). Header names use lowercase letters, digits and hyphens, bounded
-  to 64 characters; transport, proxy, cookie, CORS, content, tracing and Pertexo
+  wildcard or opaque `null`). Header names use lowercase letters, digits and
+  hyphens, bounded to 64 characters; transport, proxy, cookie, CORS, content, tracing and Pertexo
   protocol headers cannot be credentials. Authorization is explicitly allowed.
 - Configuration is an authorized, CSRF-protected idempotent command. Changing
   mode or credential header rotates **both** URL and secret immediately and
@@ -46,11 +47,11 @@ and durable multi-instance response record.
 - Browser origins are optional, default empty, and available only in URL/header
   modes. OPTIONS verifies endpoint, exact Origin, POST and an explicit supported
   request-header set; returns 204 without decrypting, admitting a run or creating
-  a delivery or allowance write. Preflight is a bounded endpoint lookup, so browser
-  callers retain the same 60 POST attempts/minute as server callers.
+  a delivery or allowance write. Preflight is a bounded endpoint lookup, so
+  browser callers retain the same 60 POST attempts/minute as server callers.
   Unsupported endpoints/origins/preflights share the authentication failure.
-- For URL/header POST with Origin, reject unlisted origins before acceptance. Requests
-  without Origin remain server-to-server. Only configured origins receive
+- For URL/header POST with Origin, reject unlisted origins before acceptance.
+  Requests without Origin remain server-to-server. Only configured origins receive
   `Access-Control-Allow-Origin`, on accepted 202, workflow replies and attributed
   errors; append `Vary: Origin`. Never send Allow-Credentials or wildcard lists.
   Preflight allows Content-Type, Idempotency-Key and the configured credential
