@@ -487,8 +487,21 @@ async function preflightWebhook(
   const verification = /^[A-Za-z0-9_-]{43}$/u.test(key)
     ? await dependencies.database.resolveVerification(sha256(key))
     : null;
+  if (verification === null) {
+    await authenticationFailed(reply, requestId, telemetry);
+    return;
+  }
+  try {
+    await dependencies.database.consumeIngressLimit(
+      verification.endpointKeyHash,
+    );
+  } catch (error) {
+    if (!(error instanceof WebhookIngressRateLimitExceededError)) throw error;
+    reply.header('retry-after', String(error.retryAfterSeconds));
+    await problem(reply, 429, 'webhook.rate_limited', requestId);
+    return;
+  }
   if (
-    verification === null ||
     origin === undefined ||
     !webhookOriginAllowed(verification.authentication, origin) ||
     singleHeader(request, 'access-control-request-method') !== 'POST'

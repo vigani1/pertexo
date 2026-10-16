@@ -47,8 +47,9 @@ and durable multi-instance response record.
 - Browser origins are optional, default empty, and available only in URL/header
   modes. OPTIONS verifies endpoint, exact Origin, POST and an explicit supported
   request-header set; returns 204 without decrypting, admitting a run or creating
-  a delivery or allowance write. Preflight is a bounded endpoint lookup, so
-  browser callers retain the same 60 POST attempts/minute as server callers.
+  a delivery. Each resolved preflight consumes the existing 60-attempt/minute
+  endpoint allowance before origin/method/header authorization. POST and OPTIONS
+  share that guard; no separate limiter or unmetered authorization path.
   Unsupported endpoints/origins/preflights share the authentication failure.
 - For URL/header POST with Origin, reject unlisted origins before acceptance.
   Requests without Origin remain server-to-server. Only configured origins receive

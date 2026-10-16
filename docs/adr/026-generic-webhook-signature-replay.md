@@ -162,7 +162,9 @@ non-disclosing authentication failure. The historical `signatureCheck` field
 now denotes authentication by the selected mode; its stored shape is unchanged.
 
 URL/header modes may allow exact browser origins, with endpoint-only preflight
-and explicit CORS response headers, never credentials or wildcards. Origin is
+and explicit CORS response headers, never credentials or wildcards. Preflight
+consumes the existing endpoint ingress allowance before origin/method/header
+authorization, without decryption, a run or a delivery row. Origin is
 a browser restriction, not a substitute for the endpoint's credential. It does
 not grant Pertexo session access. URL credentials must be excluded from logs
 and telemetry. Provider-specific signatures remain F21.
