@@ -1,3 +1,4 @@
+import { useRunInput } from '@/features/workflow-runs/run-input.public';
 import { WorkflowTestActions } from './controls';
 import { useState } from 'react';
 import type {
@@ -14,7 +15,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { LabelledField } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
 import { Notice } from '@/components/ui/notice';
 import {
@@ -34,9 +35,8 @@ export function WorkflowTestDialog({
   workflow: WorkflowSummary | undefined;
   graph: WorkflowGraphContract;
 }>) {
-  const [input, setInput] = useState('{}');
+  const input = useRunInput();
   const [acknowledged, setAcknowledged] = useState(false);
-  const [error, setError] = useState<string>();
   const [editingCase, setEditingCase] = useState(false);
   const cases = useInputCases(
     tests.scope.apiClient,
@@ -53,12 +53,14 @@ export function WorkflowTestDialog({
       tests.preparation?.samples.some((pin) => pin.nodeId === node.id),
   );
   async function submit() {
+    const intent = input.read();
+    if (intent === undefined) return;
     try {
-      setError(undefined);
-      const value: unknown = JSON.parse(input);
-      await tests.submit(value, acknowledged);
+      await tests.submit(intent.value, acknowledged);
     } catch {
-      setError('Enter valid JSON within the run-data limits.');
+      input.validation.showErrors({
+        input: 'Enter valid JSON within the run-data limits.',
+      });
     }
   }
   return (
@@ -100,11 +102,10 @@ export function WorkflowTestDialog({
                 editing={editingCase}
                 onEditingChange={setEditingCase}
                 onLoad={(loaded) => {
-                  setInput(JSON.stringify(loaded.input, null, 2));
-                  setError(undefined);
+                  input.reset(JSON.stringify(loaded.input, null, 2));
                 }}
                 onAccessLost={() => {
-                  setInput('{}');
+                  input.reset();
                 }}
               />
             )}
@@ -116,28 +117,34 @@ export function WorkflowTestDialog({
                 onClick={() => {
                   void tests.loadTriggerInput(trigger.id).then((value) => {
                     if (value !== undefined)
-                      setInput(JSON.stringify(value, null, 2));
+                      input.reset(JSON.stringify(value, null, 2));
                   });
                 }}
               >
                 Use trigger’s pinned sample
               </Button>
             )}
-            <Field>
-              <FieldLabel htmlFor="workflow-test-input">
-                Test input (JSON)
-              </FieldLabel>
-              <Textarea
-                id="workflow-test-input"
-                value={input}
-                onChange={(event) => {
-                  setInput(event.target.value);
-                }}
-                disabled={locked}
-                spellCheck={false}
-                className="min-h-28 font-mono"
-              />
-            </Field>
+            <LabelledField
+              id="workflow-test-input"
+              label="Test input (JSON)"
+              error={input.validation.error('input')}
+              description="Use {} if the workflow doesn’t read any input."
+            >
+              {(control) => (
+                <Textarea
+                  {...control}
+                  ref={input.validation.register('input')}
+                  value={input.input}
+                  onChange={(event) => {
+                    input.changeInput(event.currentTarget.value);
+                  }}
+                  disabled={locked}
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="min-h-28 font-mono"
+                />
+              )}
+            </LabelledField>
             {tests.preparation.effectfulSteps.length === 0 ? null : (
               <section
                 aria-label="Steps with external effects"
@@ -151,20 +158,25 @@ export function WorkflowTestDialog({
                     <li key={step.nodeId}>{step.label}</li>
                   ))}
                 </ul>
-                <label className="flex items-center justify-between gap-3 text-sm">
-                  <span>I understand this test runs for real</span>
-                  <Switch
-                    checked={acknowledged}
-                    onCheckedChange={setAcknowledged}
-                    disabled={locked}
-                  />
-                </label>
+                <LabelledField
+                  id="workflow-test-effects"
+                  label="I understand this test runs for real"
+                >
+                  {(control) => (
+                    <Switch
+                      {...control}
+                      checked={acknowledged}
+                      onCheckedChange={setAcknowledged}
+                      disabled={locked}
+                    />
+                  )}
+                </LabelledField>
               </section>
             )}
           </>
         )}
-        {error === undefined && tests.start.error === undefined ? null : (
-          <Notice tone="destructive">{error ?? tests.start.error}</Notice>
+        {tests.start.error === undefined ? null : (
+          <Notice tone="destructive">{tests.start.error}</Notice>
         )}
         <WorkflowTestActions
           tests={tests}
@@ -173,7 +185,7 @@ export function WorkflowTestDialog({
           onSubmit={() => void submit()}
           onPrepare={() => {
             setAcknowledged(false);
-            setError(undefined);
+            input.validation.reset();
             void tests.prepare();
           }}
         />

@@ -68,6 +68,15 @@ for (const width of [375, 1280]) {
       .getByRole('switch', { name: 'I understand this test runs for real' })
       .click();
     await expect(start).toBeEnabled();
+    const input = dialog.getByLabel('Test input (JSON)', { exact: true });
+    await input.fill('{');
+    await start.click();
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    await expect(input).toBeFocused();
+    expect(commands).toEqual([]);
+    await input.fill('{"invoice":42}');
+    await expect(input).toHaveAttribute('aria-invalid', 'false');
+
     await start.click();
     const retry = dialog.getByRole('button', {
       name: 'Retry same test request',
