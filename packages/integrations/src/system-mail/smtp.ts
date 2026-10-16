@@ -29,6 +29,14 @@ async function send(
     subject: message.subject,
     text: message.text,
     messageId: reference,
+    ...(message.unsubscribeUrl === undefined
+      ? {}
+      : {
+          headers: {
+            'List-Unsubscribe': `<${message.unsubscribeUrl}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
+        }),
     disableFileAccess: true,
     disableUrlAccess: true,
   })

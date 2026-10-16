@@ -96,6 +96,9 @@
               "form.access_conflict",
               "form.invalid",
               "form.required",
+              "workflow.sample_conflict",
+              "workflow.sample_invalid",
+              "workflow.sample_limit",
               "workflow.input_case_revision_conflict",
               "workflow.input_case_limit_exceeded",
               "workflow.tag_key_conflict",
@@ -1255,38 +1258,191 @@
         },
         "responses": {
           "202": {
-            "description": "Workflow run accepted",
+            "description": "Immediate mode, timeout or wait overflow returns {runId,replayed}; an opt-in workflow may also choose status 202 with its configured JSON/text body.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WebhookIngressResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/WebhookIngressResponse"
+                    },
+                    {}
+                  ]
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
                 }
               }
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Invalid request before admission, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/Unauthenticated"
+            "description": "Signature authentication failed, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "description": "Idempotency conflict, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
+            "description": "Ingress body too large, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "415": {
-            "$ref": "#/components/responses/UnsupportedMediaType"
+            "description": "Unsupported ingress media type, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "429": {
-            "$ref": "#/components/responses/RateLimited"
+            "description": "Ingress rate limit, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "500": {
-            "$ref": "#/components/responses/Unexpected"
+            "description": "Failure before a workflow response returns only {code:\"webhook.workflow_failed\"}; a workflow may instead choose its own status 500 JSON/text body.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "description": "Unavailable before acceptance, or the configured workflow response.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MiB, no-store, nosniff and only the safe header allowlist. Work continues after responding.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }

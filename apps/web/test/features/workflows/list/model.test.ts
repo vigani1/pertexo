@@ -117,7 +117,7 @@ describe('workflow shape', () => {
           ]),
         ),
       ),
-    ).toEqual(['webhook', 'schedule']);
+    ).toEqual(['core.webhook', 'core.schedule']);
   });
 
   it('lays steps out in longest-path columns with the trigger marked', () => {
@@ -286,4 +286,29 @@ describe('run strips', () => {
     ).toHaveLength(20);
     expect(summarizeRunTicks(ticks)).toBe('1 succeeded, 1 running, 1 failed');
   });
+});
+
+it('recognizes Form and error triggers through the shared versioned definition', () => {
+  const input = graphOf([
+    { id: 'form', key: 'core.form', x: 0 },
+    { id: 'error', key: 'core.workflow_error', x: 280 },
+  ]);
+  expect(workflowTriggerKinds(input)).toEqual([
+    'core.workflow_error',
+    'core.form',
+  ]);
+  for (const node of input.nodes)
+    expect(
+      layoutPatternGlyph({ ...input, nodes: [node], edges: [] }).nodes[0]
+        ?.trigger,
+    ).toBe(true);
+  expect(
+    workflowTriggerKinds({
+      ...input,
+      nodes: input.nodes.map((node) => ({
+        ...node,
+        definition: { ...node.definition, version: 99 },
+      })),
+    }),
+  ).toEqual([]);
 });

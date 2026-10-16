@@ -10,8 +10,7 @@ export function MultipleChoices({
   disabled,
   onChange,
 }: Readonly<{
-  field: Pick<FormField, 'label' | 'required' | 'help'> &
-    Readonly<{ options: readonly string[] }>;
+  field: Extract<FormField, { type: 'multi_select' }>;
   id: string;
   value: readonly string[];
   error: string | undefined;
@@ -19,9 +18,13 @@ export function MultipleChoices({
   onChange: (value: readonly string[]) => void;
 }>) {
   const selected = new Set(value);
+  const maximum = field.maxSelections ?? field.options.length;
+  const minimum = Math.max(1, field.minSelections ?? 1);
+  const limitId = `${id}-limits`;
   const helpId = field.help === '' ? undefined : `${id}-help`;
   const errorId = error === undefined ? undefined : `${id}-error`;
-  const describedBy = [helpId, errorId].filter(Boolean).join(' ') || undefined;
+  const describedBy =
+    [limitId, helpId, errorId].filter(Boolean).join(' ') || undefined;
   return (
     <Field data-invalid={error === undefined ? undefined : true}>
       <fieldset
@@ -41,7 +44,9 @@ export function MultipleChoices({
           >
             <Checkbox
               checked={selected.has(option)}
-              disabled={disabled}
+              disabled={
+                disabled || (!selected.has(option) && value.length >= maximum)
+              }
               onCheckedChange={(checked) => {
                 const next = new Set(selected);
                 if (checked) next.add(option);
@@ -55,6 +60,10 @@ export function MultipleChoices({
           </label>
         ))}
       </fieldset>
+      <FieldDescription id={limitId}>
+        Choose {minimum}–{maximum} options.
+        {field.required ? '' : ' You may leave this blank.'}
+      </FieldDescription>
       {helpId === undefined ? null : (
         <FieldDescription id={helpId}>{field.help}</FieldDescription>
       )}

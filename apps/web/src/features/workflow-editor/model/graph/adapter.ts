@@ -70,6 +70,7 @@ interface WorkflowNodeData extends Record<string, unknown> {
   summary: string | undefined;
   /** Output size of this step's last passed test here, when it's known. */
   testOutputBytes: number | undefined;
+  sampleState?: 'pinned' | 'stale' | 'expired' | undefined;
   /** The latest check describes the draft on screen. */
   issueCount: number;
   missingConnections: number;
@@ -122,6 +123,7 @@ export type CanvasDecorations = Readonly<{
   measuredSizes?: ReadonlyMap<string, Size>;
   /** Output size of each step's last passed test, when known. */
   testOutputBytes?: ReadonlyMap<string, number>;
+  sampleStates?: ReadonlyMap<string, 'pinned' | 'stale' | 'expired'>;
 }>;
 
 const noCanvasDecorations: CanvasDecorations = Object.freeze({
@@ -299,6 +301,7 @@ function projectNode(
       },
       summary: stepSummary(node),
       testOutputBytes: decorations.testOutputBytes?.get(node.id),
+      sampleState: decorations.sampleStates?.get(node.id),
       issueCount: decorations.issuesByNode.get(node.id) ?? 0,
       missingConnections: (definition?.connectionRequirements ?? []).filter(
         (requirement) => node.connectionRefs[requirement] === undefined,

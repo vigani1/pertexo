@@ -103,6 +103,15 @@ version context. Loading it supplies editable input for a separately confirmed
 real manual run; it is not an execution or a substitute for provider effects.
 _Avoid_: Replay, preview, mock, pinned sample
 
+**Webhook reply**: A JSON or text response chosen once by an original webhook
+run for its waiting caller. Sending it does not end the run; a bounded wait can
+instead return the accepted run reference. _Avoid_: Run result, Call result,
+trigger admission
+
+**Pinned sample**: Shared output attached to one draft step for editor tests. It
+replaces that step's execution during a test and becomes stale when its setup
+changes. _Avoid_: Published output, execution cache, run-input case
+
 **Pertexo account**: A person's stable identity across their workspace
 memberships, independent of which sign-in method they use. _Avoid_: Workspace,
 provider account
@@ -142,5 +151,5 @@ nested child workflows retain their source or parent's set. An error workflow is
 independent and captures current values. Workers never look up mutable
 configuration while executing. Snapshots expire with execution details; missing
 historical snapshots refuse replay rather than substitute current values. See
-[the guide](docs/variables.md) and
+[the guide](docs/guides/variables.md) and
 [ADR 078](docs/adr/078-run-variable-snapshots.md).

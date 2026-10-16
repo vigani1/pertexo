@@ -93,6 +93,7 @@ export interface NodeCatalog {
 export const TERMINATES_RUN_CAPABILITY = 'terminates_run' as const;
 
 const identityKey = /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u;
+export const NODE_IDENTITY_KEY_PATTERN = identityKey.source;
 const identitySchema = z
   .object({
     key: z.string().regex(identityKey),

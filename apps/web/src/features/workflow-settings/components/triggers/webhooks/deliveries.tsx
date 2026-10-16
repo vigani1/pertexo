@@ -27,7 +27,7 @@ function DeliveryEntry({
         )
       }
       at={delivery.receivedAt}
-      meta={`HTTP ${String(delivery.httpStatus)}${size}`}
+      meta={`Admission ${String(delivery.httpStatus)}${size}`}
     />
   );
 }

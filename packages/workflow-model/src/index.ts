@@ -1,5 +1,7 @@
 // Safe anywhere, including the browser. Node-only parts are in ./server.ts.
 export {
+  WORKFLOW_TRIGGER_DEFINITIONS,
+  type WorkflowTriggerDefinition,
   isWorkflowTriggerKey,
   isWorkflowTriggerDefinition,
 } from './graph/triggers.js';
@@ -218,3 +220,8 @@ export {
   parseTaskPrefill,
   type TaskContext,
 } from './pending-tasks/context.js';
+
+export { formRedirectUrlSchema, formLinkUrlSchema } from './forms/links.js';
+
+export { stepSampleIdentity, stepSampleBindings } from './samples/identity.js';
+export type { StepSampleSource } from './samples/contract.js';

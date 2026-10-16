@@ -432,7 +432,10 @@ it('revokes a public grant when publication replaces the form entry, and never r
 });
 
 it('keeps the accepted receipt and message through republication but refuses a new response from the old schema', async () => {
-  const f = await fixture({ thankYouMessage: 'Original acceptance.' });
+  const f = await fixture({
+    thankYouMessage: 'Original acceptance.',
+    redirectUrl: 'https://example.test/original',
+  });
   const command = {
     ...f,
     versionId: f.versionId,
@@ -441,9 +444,11 @@ it('keeps the accepted receipt and message through republication but refuses a n
   };
   const accepted = await store.submit(command);
   expect(accepted.thankYouMessage).toBe('Original acceptance.');
+  expect(accepted.redirectUrl).toBe('https://example.test/original');
   const versionId = await insertFormRevision(f, {
     title: 'A newer form',
     thankYouMessage: 'A newer message.',
+    redirectUrl: 'https://example.test/newer',
   });
   await admin.query(
     'update app.workflows set published_version_id=$2 where id=$1',
@@ -456,6 +461,7 @@ it('keeps the accepted receipt and message through republication but refuses a n
   const shown = await store.read(f);
   expect(shown).toMatchObject({ versionId, form: { title: 'A newer form' } });
   expect(shown.form).not.toHaveProperty('thankYouMessage');
+  expect(shown.form).not.toHaveProperty('redirectUrl');
 });
 
 it('reports a changed form, not an unavailable one, when publication commits while a response waits for its lock', async () => {

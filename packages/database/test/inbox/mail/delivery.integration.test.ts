@@ -94,6 +94,7 @@ describe('durable personal notice batches', () => {
     const sealed = captured[0];
     if (sealed === undefined) throw new Error('Expected prepared mail');
     expect(sealed.items).toHaveLength(2);
+    expect(sealed.workspaceName).toBe('Notice proof');
     expect(sealed.toEmail).toContain('@example.test');
     expect(await first.authorize(sealed.id)).toBe(true);
     await preferences().replaceSubscription({
@@ -290,7 +291,7 @@ describe('durable personal notice batches', () => {
     if (notice === undefined) throw new Error('Expected notice');
     const authenticationId = randomUUID();
     await queryAsOwner(
-      "insert into app.authentication_mail_deliveries(id,purpose,expires_at,payload_ciphertext,payload_nonce,payload_tag,payload_key_version) values($1,'verification',clock_timestamp()+interval '1 hour','cipher','nonce','tag','v1')",
+      "insert into app.system_mail_deliveries(id,purpose,expires_at,payload_ciphertext,payload_nonce,payload_tag,payload_key_version) values($1,'verification',clock_timestamp()+interval '1 hour','cipher','nonce','tag','v1')",
       [authenticationId],
     );
     const deliveries = own(createSystemMailDeliveryStore(config()));
@@ -347,7 +348,7 @@ describe('durable personal notice batches', () => {
     expect(steps).toContain('personal_notice_mail');
     expect(
       await queryAsOwner(
-        'select id from app.authentication_mail_deliveries where id=$1',
+        'select id from app.system_mail_deliveries where id=$1',
         [batch.id],
       ),
     ).toHaveLength(0);

@@ -18,6 +18,14 @@ import {
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
   {
+    name: 'webhook_responses',
+    statement: `with page as (
+      select response.run_id from app.webhook_run_responses response
+      join app.workflow_runs run on run.workspace_id=response.workspace_id and run.id=response.run_id
+      where run.completed_at<=clock_timestamp()-interval '30 days' order by response.run_id limit $1
+    ) delete from app.webhook_run_responses response using page where response.run_id=page.run_id`,
+  },
+  {
     // Live human interactions may outlast the normal input window.
     name: 'run_inputs',
     statement: `
@@ -292,10 +300,11 @@ export const RETENTION_RULES = Object.freeze([
   {
     // Mail that was not sent within a day, or after 12 attempts, is given up:
     // its sealed payload is dropped and an operator reconciles it.
+    // These durable maintenance rule identities predate the system-mail table name.
     name: 'unsent_authentication_mail',
     statement: `
       with page as (
-        select id from app.authentication_mail_deliveries
+        select id from app.system_mail_deliveries
         where status in ('queued', 'outcome_unknown', 'retry')
           and (expires_at <= clock_timestamp()
             or created_at + interval '24 hours' <= clock_timestamp()
@@ -303,7 +312,7 @@ export const RETENTION_RULES = Object.freeze([
           and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
         order by created_at, id limit $1 for update skip locked
       )
-      update app.authentication_mail_deliveries delivery
+      update app.system_mail_deliveries delivery
       set status = case when delivery.expires_at <= clock_timestamp()
                         then 'expired' else 'reconciliation_required' end,
           payload_ciphertext = null, payload_nonce = null, payload_tag = null,
@@ -316,12 +325,12 @@ export const RETENTION_RULES = Object.freeze([
     name: 'authentication_mail',
     statement: `
       with page as (
-        select id from app.authentication_mail_deliveries
+        select id from app.system_mail_deliveries
         where status in ('submitted', 'failed', 'reconciliation_required', 'expired')
           and completed_at <= clock_timestamp() - interval '30 days'
         order by completed_at, id limit $1
       )
-      delete from app.authentication_mail_deliveries delivery using page
+      delete from app.system_mail_deliveries delivery using page
       where delivery.id = page.id`,
   },
   {
@@ -433,6 +442,10 @@ export const RETENTION_RULES = Object.freeze([
       )
       delete from app.workflow_input_cases input_case using page
       where input_case.workspace_id = page.workspace_id and input_case.id = page.id`,
+  },
+  {
+    name: 'workflow_step_samples',
+    statement: `with page as (select workspace_id,id from app.workflow_step_samples where expires_at <= clock_timestamp() order by expires_at,id limit $1 for update skip locked) delete from app.workflow_step_samples sample using page where sample.workspace_id=page.workspace_id and sample.id=page.id`,
   },
   VARIABLE_SET_RETENTION_RULE,
 ] as const);

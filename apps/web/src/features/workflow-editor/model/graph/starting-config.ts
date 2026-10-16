@@ -12,6 +12,7 @@ type NodeConfig = WorkflowNode['config'];
 // has no defaults). Authoring materializes these settings under ADR 069's
 // current pre-launch contract.
 const STARTING: Readonly<Record<string, NodeConfig>> = {
+  'core.respond_webhook': { bodyType: 'json' },
   'core.read_file': { format: 'csv', delimiter: ',', convertValues: true },
   'core.batch': { size: 100 },
   'core.take': { count: 100 },

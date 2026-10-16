@@ -714,7 +714,10 @@ describe('generic webhook database seam', () => {
     });
   }
 
-  async function publishTriggerWorkflow(graphDisabled = false) {
+  async function publishTriggerWorkflow(
+    graphDisabled = false,
+    responseConfig: Record<string, unknown> = {},
+  ) {
     const created = await authoring.createWorkflow({
       actorId,
       workspaceId,
@@ -723,6 +726,11 @@ describe('generic webhook database seam', () => {
       idempotencyKey: randomUUID(),
     });
     const graph = triggerGraph(15, graphDisabled);
+    const webhookNode = graph.nodes.find(
+      (node) => node.definition.key === 'core.webhook',
+    );
+    if (webhookNode === undefined) throw new Error('Webhook fixture missing');
+    webhookNode.config = responseConfig;
     const draft = await authoring.saveDraft({
       actorId,
       workspaceId,
@@ -852,8 +860,10 @@ describe('generic webhook database seam', () => {
     return Object.freeze({ endpointId, endpointKeyHash, health, ...ids });
   }
 
-  async function createWebhookScenario() {
-    const published = await publishTriggerWorkflow();
+  async function createWebhookScenario(
+    responseConfig: Record<string, unknown> = {},
+  ) {
+    const published = await publishTriggerWorkflow(false, responseConfig);
     await ownerQuery(
       `insert into app.workflow_failure_notification_policies
          (workspace_id,workflow_id,destination_id,updated_by)
@@ -1615,6 +1625,54 @@ describe('generic webhook database seam', () => {
       lifecycle_status: 'active',
       published_version_id: second.published.version.id,
     });
+  });
+
+  it('captures opt-in response policy atomically and preserves it for exact ingress retries', async () => {
+    const scenario = await createWebhookScenario({
+      responseMode: 'workflow',
+      responseWaitSeconds: 1,
+    });
+    const verification = scenario.verification;
+    const input = {
+      verification,
+      verifiedSecretVersionId: verification.currentSecret.id,
+      requestFingerprint: hash('response-policy'),
+      idempotencyKeyHash: hash(randomUUID()),
+      payload: {},
+      bodyBytes: 2,
+      checkpointFactory,
+    };
+    const first = await webhook.acceptVerifiedDelivery(input);
+    expect(first).toMatchObject({ replayed: false, responseWaitSeconds: 1 });
+    expect(
+      await webhook.readResponse({ workspaceId, runId: first.runId }),
+    ).toEqual({ state: 'pending' });
+    const duplicate = await webhook.acceptVerifiedDelivery(input);
+    expect(duplicate).toEqual({ ...first, replayed: true });
+    expect(
+      (
+        await ownerQuery(
+          'select run_id,wait_seconds,body from app.webhook_run_responses where run_id=$1',
+          [first.runId],
+        )
+      ).rows,
+    ).toEqual([{ run_id: first.runId, wait_seconds: 1, body: null }]);
+    const immediate = await createWebhookScenario();
+    const accepted = await webhook.acceptVerifiedDelivery({
+      ...input,
+      verification: immediate.verification,
+      verifiedSecretVersionId: immediate.verification.currentSecret.id,
+      idempotencyKeyHash: hash(randomUUID()),
+    });
+    expect(accepted.responseWaitSeconds).toBeUndefined();
+    expect(
+      (
+        await ownerQuery(
+          'select run_id from app.webhook_run_responses where run_id=$1',
+          [accepted.runId],
+        )
+      ).rows,
+    ).toEqual([]);
   });
 
   it('resolves eligible sealed references and atomically deduplicates concurrent delivery', async () => {

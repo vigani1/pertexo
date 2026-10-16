@@ -16,7 +16,12 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import { stepSampleBindings } from '@pertexo/workflow-model';
+import { currentSampleState } from '@/features/workflow-publish/step-samples.public';
+import type {
+  StepSampleMetadata,
+  NodeDefinitionCatalogItem,
+} from '@pertexo/contracts';
 import { levelPositions } from '../../model/graph/for-each-body-layout';
 import { forEachBodyIssues } from '../../model/graph/for-each-body-rules';
 import {
@@ -70,6 +75,7 @@ export function WorkflowCanvas({
   definitions,
   editable,
   overlays,
+  samples,
   containerRef,
   onSelectNodes,
   onRemoveEdge,
@@ -81,6 +87,7 @@ export function WorkflowCanvas({
   definitions: readonly NodeDefinitionCatalogItem[];
   editable: boolean;
   overlays: CanvasOverlays;
+  samples?: readonly StepSampleMetadata[] | undefined;
   containerRef: RefObject<HTMLDivElement | null>;
   onSelectNodes: (nodeIds: readonly string[]) => void;
   onRemoveEdge: (edgeId: string) => void;
@@ -96,6 +103,7 @@ export function WorkflowCanvas({
   const { projection, onNodesChange } = useCanvasProjection({
     definitions,
     overlays,
+    samples,
     editable,
     onSelectNodes,
   });
@@ -202,11 +210,13 @@ export function WorkflowCanvas({
 function useCanvasProjection({
   definitions,
   overlays,
+  samples,
   editable,
   onSelectNodes,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
   overlays: CanvasOverlays;
+  samples: readonly StepSampleMetadata[] | undefined;
   editable: boolean;
   onSelectNodes: (nodeIds: readonly string[]) => void;
 }>) {
@@ -226,10 +236,22 @@ function useCanvasProjection({
     () => new Map(),
   );
 
+  const sampleStates = useMemo(() => {
+    if (samples === undefined)
+      return new Map<string, StepSampleMetadata['state']>();
+    const bindings = stepSampleBindings(graph);
+    return new Map(
+      samples.map((sample) => [
+        sample.nodeId,
+        currentSampleState(sample, bindings.get(sample.nodeId)),
+      ]),
+    );
+  }, [graph, samples]);
   const projection = useMemo(
     () =>
       projectWorkflowGraph(graph, definitions, {
         ...overlays,
+        sampleStates,
         selectedNodeIds,
         selectedEdgeIds,
         dragPositions,
@@ -244,6 +266,7 @@ function useCanvasProjection({
       graph,
       measuredSizes,
       overlays,
+      sampleStates,
       selectedEdgeIds,
       selectedNodeIds,
       selectionResync,

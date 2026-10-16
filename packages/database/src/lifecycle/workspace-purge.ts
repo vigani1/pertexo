@@ -73,7 +73,7 @@ export const PURGE_PRESERVED_TABLES = Object.freeze([
 export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
   {
     name: 'personal_notice_mail',
-    statement: `with page as (select delivery.id from app.authentication_mail_deliveries delivery join app.notice_mail_batches batch on batch.id=delivery.id where batch.workspace_id=$1 limit $2) delete from app.authentication_mail_deliveries delivery using page where delivery.id=page.id`,
+    statement: `with page as (select delivery.id from app.system_mail_deliveries delivery join app.notice_mail_batches batch on batch.id=delivery.id where batch.workspace_id=$1 limit $2) delete from app.system_mail_deliveries delivery using page where delivery.id=page.id`,
   },
   ...[
     'notice_mail_items',
@@ -123,6 +123,8 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
         and payload.revision = page.revision and page.bytes <= 1048576`,
   },
   deleteRows('workflow_input_cases'),
+  deleteRows('workflow_step_samples'),
+  deleteRows('webhook_run_responses'),
   {
     // A node run points at its current attempt; clear it before attempts go.
     name: 'node_run_current_attempts',

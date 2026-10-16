@@ -30,6 +30,7 @@ const context = {
   nodeId: 'http-node',
   invocationKey: 'http-invocation',
   workerId: 'worker-1',
+  fenceToken: 1,
 } as const;
 
 const databaseConfig = {
@@ -51,6 +52,48 @@ afterEach(async () => {
 });
 
 describe('worker node runtime capabilities', () => {
+  it('binds webhook responses to the current attempt and keeps previews out of persistence', async () => {
+    const respond = vi
+      .fn()
+      .mockResolvedValue({ outcome: 'responded', statusCode: 200 });
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      { webhookResponses: { respond } },
+    );
+    const response = {
+      statusCode: 200,
+      contentType: 'application/json' as const,
+      headers: {},
+      body: '{"ok":true}',
+    };
+    const signal = new AbortController().signal;
+    try {
+      const real = runtime.factories.webhookResponse?.(context);
+      if (real === undefined) throw new Error('Webhook capability missing');
+      expect(await real.respond({ response, signal })).toEqual({
+        outcome: 'responded',
+        statusCode: 200,
+      });
+      expect(respond).toHaveBeenCalledWith({ ...context, response, signal });
+      const preview = runtime.factories.webhookResponse?.({
+        ...context,
+        previewRunId,
+      });
+      if (preview === undefined) throw new Error('Preview capability missing');
+      expect(await preview.respond({ response, signal })).toEqual({
+        outcome: 'preview',
+        statusCode: 200,
+      });
+      expect(respond).toHaveBeenCalledTimes(1);
+      await runtime.close();
+      await expect(real.respond({ response, signal })).rejects.toThrow(
+        'closed',
+      );
+    } finally {
+      await runtime.close();
+    }
+  });
+
   it('fails closed for partially configured runtime capabilities', async () => {
     await expect(
       createWorkerNodeRuntimeCapabilities(

@@ -112,3 +112,11 @@ export {
   WorkflowErrorTargetUnavailableError,
   type WorkflowErrorDatabase,
 } from './settings/error-workflow.js';
+
+export { WorkflowStepSampleError } from './step-samples/contract.js';
+export type {
+  WorkflowStepSampleStore,
+  SampleMetadata,
+  SampleRead,
+  SampleResult,
+} from './step-samples/contract.js';

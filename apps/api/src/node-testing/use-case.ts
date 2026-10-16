@@ -12,6 +12,7 @@ import {
 import { PreviewIdempotencyConflictError } from '@pertexo/database/previews';
 import {
   WorkflowNotFoundError,
+  WorkflowStepSampleError,
   WorkflowRevisionConflictError,
   type WorkflowDraftRecord,
 } from '@pertexo/database/authoring';
@@ -77,6 +78,9 @@ type PreviewAcceptanceView = Pick<
   | 'dryRun'
   | 'createdAt'
   | 'expiresAt'
+  | 'pinnedSampleId'
+  | 'output'
+  | 'completedAt'
 >;
 
 function validationInputFields(
@@ -102,7 +106,7 @@ export class TestWorkflowNodeUseCase {
   public constructor(
     private readonly persistence: Pick<
       NodeTestingPersistence,
-      'acceptPreview' | 'getDraft' | 'resolvePreviewReplay'
+      'acceptPreview' | 'getDraft' | 'resolvePreviewReplay' | 'stepSamples'
     >,
     private readonly authorization: Authorization,
     private readonly now: () => Date = () => new Date(),
@@ -146,6 +150,28 @@ export class TestWorkflowNodeUseCase {
         }),
       );
     const graph = parseWorkflowGraphDraft(draft.graphJson);
+    const sample =
+      request.mode === 'test_execute'
+        ? await this.persistence.stepSamples.get({
+            workspaceId: input.routeWorkspaceId,
+            workflowId: input.workflowId,
+            nodeId: input.nodeId,
+            actorId: input.actor.actorId,
+          })
+        : undefined;
+    if (sample !== undefined && sample.draftRevision !== draft.revision)
+      throw new WorkflowStepSampleError('draft_changed');
+    if (sample?.sample?.state === 'expired')
+      throw new WorkflowStepSampleError('expired');
+    if (sample?.sample?.state === 'stale')
+      throw new WorkflowStepSampleError('stale');
+    const pinnedSampleId = sample?.sample?.id;
+    if (
+      request.mode === 'test_execute' &&
+      request.expectedSampleId !== undefined &&
+      request.expectedSampleId !== (pinnedSampleId ?? null)
+    )
+      throw new WorkflowStepSampleError('changed');
     const prepared = await prepareNodeValidation({
       graph,
       nodeId: input.nodeId,
@@ -153,11 +179,15 @@ export class TestWorkflowNodeUseCase {
         ? {}
         : { expressionEvaluator: this.expressionEvaluator }),
       ...validationInputFields(request),
+      ...(pinnedSampleId === undefined ? {} : { pinnedSample: true }),
     });
     if (!('disclosure' in prepared))
       throw new NodeTestInvalidError(prepared.issues);
 
-    if (Object.keys(prepared.executableNode.connectionRefs ?? {}).length > 0)
+    if (
+      pinnedSampleId === undefined &&
+      Object.keys(prepared.executableNode.connectionRefs ?? {}).length > 0
+    )
       await this.authorize(input, 'connection:use');
 
     if (request.mode === 'validate')
@@ -183,6 +213,7 @@ export class TestWorkflowNodeUseCase {
         workflowId: input.workflowId,
         actorUserId: input.actor.actorId,
         draftRevision: draft.revision,
+        expectedSampleId: pinnedSampleId ?? null,
         draftFingerprint: digest(graph),
         nodeId: input.nodeId,
         definitionKey: prepared.definition.key,
@@ -236,11 +267,18 @@ export class TestWorkflowNodeUseCase {
           draftRevision: draft.revision,
           nodeId: input.nodeId,
           status: accepted.status,
+          ...(accepted.pinnedSampleId === undefined
+            ? {}
+            : {
+                pinnedSampleId: accepted.pinnedSampleId,
+                output: accepted.pinnedOutput,
+              }),
           sideEffectClass: prepared.disclosure.sideEffectClass,
           mayContactProvider: prepared.disclosure.mayContactProvider,
           mayCauseExternalSideEffect:
             prepared.disclosure.mayCauseExternalSideEffect,
           dryRun: prepared.disclosure.dryRun,
+          completedAt: accepted.completedAt ?? null,
           createdAt: accepted.acceptedAt,
           expiresAt: accepted.expiresAt,
         },
@@ -336,6 +374,9 @@ export class GetPreviewRunUseCase {
           dryRun: preview.dryRun,
         },
         output: previewOutputResponse(preview.output),
+        ...(preview.pinnedSampleId == null
+          ? {}
+          : { pinnedSampleId: preview.pinnedSampleId }),
         safeErrorCode: preview.safeErrorCode,
         createdAt: preview.createdAt.toISOString(),
         startedAt: preview.startedAt?.toISOString() ?? null,
@@ -389,11 +430,17 @@ function previewAcceptanceResponse(
         mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
         dryRun: preview.dryRun,
       },
-      output: null,
+      output:
+        preview.output === undefined || preview.output === null
+          ? null
+          : previewOutputResponse(preview.output),
+      ...(preview.pinnedSampleId == null
+        ? {}
+        : { pinnedSampleId: preview.pinnedSampleId }),
       safeErrorCode: null,
       createdAt: preview.createdAt.toISOString(),
       startedAt: null,
-      completedAt: null,
+      completedAt: preview.completedAt?.toISOString() ?? null,
       expiresAt: preview.expiresAt.toISOString(),
     },
   });

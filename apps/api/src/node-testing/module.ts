@@ -1,8 +1,10 @@
+import { StepSamplesController } from './samples/controller.js';
+import { StepSamplesUseCase } from './samples/use-case.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { NodeTestingController } from './controller.js';
-import { NodeTestingUpdateGuard } from './guards.js';
+import { NodeTestingUpdateGuard, NodeSamplesReadGuard } from './guards.js';
 import type { NodeTestingDependencies } from './ports.js';
 import { NODE_TESTING_AUTHORIZATION } from './tokens.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
@@ -21,6 +23,14 @@ export class NodeTestingModule {
         useValue: dependencies.authorization,
       },
       NodeTestingUpdateGuard,
+      NodeSamplesReadGuard,
+      {
+        provide: StepSamplesUseCase,
+        useValue: new StepSamplesUseCase(
+          dependencies.persistence.stepSamples,
+          dependencies.authorization,
+        ),
+      },
       {
         provide: TestWorkflowNodeUseCase,
         useValue: new TestWorkflowNodeUseCase(
@@ -41,7 +51,7 @@ export class NodeTestingModule {
     return {
       module: NodeTestingModule,
       imports: [identityModule],
-      controllers: [NodeTestingController],
+      controllers: [NodeTestingController, StepSamplesController],
       providers,
       exports: [TestWorkflowNodeUseCase, GetPreviewRunUseCase],
     };

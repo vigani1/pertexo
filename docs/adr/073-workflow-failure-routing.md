@@ -111,3 +111,32 @@ separate from provider/executor classifications and automatic retry. Approval ma
 own a failure link in the existing decision tree, with `approved` / `rejected`
 normal branches. It cannot branch inside a sequential handler. Broader join,
 loop, timed Wait and Call failure-route exclusions remain unchanged.
+
+### Amendment: missing publications and capacity wakeups (2026-10-16)
+
+If the selected error workflow has no current publication when the source fails,
+record a refused intent with `target_not_published` on that source run. Its target
+version and outbox ID are null; pending and accepted intents still require both.
+Do not enqueue a job without an immutable version or silently lose this refusal.
+
+Replace the 30-second retry schedule with promotion of the existing pending
+outbox delivery when a queued run starts or settles. The first queue refusal
+still fixes a database-time deadline 15 minutes later. Schedule the replacement
+at that deadline as the restart-safe fallback; reaching it records visible
+`queue_full`, even if capacity has since become available. A release promotes up
+to 100 same-workspace pending deliveries, oldest first, without changing their
+payload, checksum or receipt identity. Each later queue refusal retains the
+original deadline. There is no new queue, scanner or service.
+
+Hold the existing execution-counter lock outside the admission savepoint through
+commit. Check the persisted deadline against fresh database time after acquiring
+that fence, so waiting for it cannot admit an expired intent. A concurrent release
+then either precedes the capacity check or sees its committed deferred delivery. This prevents lost wakeups. Migration 0018 grants
+only scheduling-column updates to the existing app role, under an additional
+same-workspace, unpublished/unfailed `start-error-workflow` update policy.
+Payloads, other job kinds and other workspaces remain fenced.
+
+The shared trigger tuple also owns browser recognition, including version checks:
+`shape.ts` and `nodeUsesRunInputDirectly` use `isWorkflowTriggerDefinition`. The
+workflow-list label/icon map is presentation only, not another membership list.
+Matching run-summary readers must precede writers of unpublished-target refusals.

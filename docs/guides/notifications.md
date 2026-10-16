@@ -43,7 +43,9 @@ worker use the existing `AUTH_MAIL_FROM`, `AUTH_MAIL_KEY` versioned key ring,
 and deployment guides for transport configuration. Deployed workers require the
 shared sender/origin too; the single-server and ECS definitions pass them.
 
-Mail contains safe names, notice kinds and counts, plus links on your own Pertexo
+Subjects name the workflow or connection and the workspace. Digests name their
+first workflow/connection and the number of notices; a limit-only message names
+the workspace. Mail contains safe names, notice kinds and counts, plus links on your own Pertexo
 origin. It contains no run input/output, variable values, provider error messages,
 credentials, task instructions or comments. Messages show up to 25 lines with
 bounded names and link to the Inbox for more. A batch witnesses at most 100
@@ -63,9 +65,17 @@ Each notice email links to a plain confirmation page. Opening it has no side
 effect. The explicit button turns only your personal workspace email Off;
 authentication mail, invitations, shared alerts and pending tasks remain.
 
+Mail clients can also offer their own **Unsubscribe** action through the standard
+`List-Unsubscribe` and `List-Unsubscribe-Post` headers. That sends an anonymous
+one-click POST to your own Pertexo origin. A client that follows the header URL
+with GET only opens the same confirmation page; it never changes preferences.
+
 The encrypted capability expires after 90 days and is bound to your preference
-and membership revisions. It is carried in a URL fragment and a redacted header,
-not a query string or query-cache key. Invalid, expired, superseded or retired-key
+and membership revisions. The human link uses a URL fragment and a redacted
+header. The standards endpoint uses a query token, so reverse proxies must redact
+that parameter and avoid logging its redirect Location or request headers. The
+single-server Caddy configuration routes it directly to the API, bypassing nginx
+request/error logs. Never put that capability in analytics or a query-cache key. Invalid, expired, superseded or retired-key
 links explain that you can sign in and use Notification settings. Old links
 cannot undo a later opt-in or affect a new membership. Public unsubscribe has its
 own fail-closed limit of 30 requests per minute per client address.
@@ -77,3 +87,19 @@ also removes linked personal mail, and notice/mail retention remains bounded.
 Shared workflow alerts retain their existing destinations and behavior regardless
 of personal choices. Public approval actions, chat/push channels, marketing mail
 and per-application frequencies are outside this feature.
+
+## Mail operator requirements
+
+For mail-client one-click actions, configure your relay to DKIM-sign both
+`List-Unsubscribe` and `List-Unsubscribe-Post` headers, as required by
+[RFC 8058](https://www.rfc-editor.org/rfc/rfc8058.html). Pertexo supplies the
+headers; your relay owns its signature. A local SMTP test does not certify an
+external provider's signing configuration. Production uses your HTTPS public
+origin. If you use another proxy, protect both successful and error logs for
+`/v1/notifications/unsubscribe/one-click?token=...`, including any Location header.
+
+The shared durable mail table is `system_mail_deliveries`. Upgrade with the
+existing coordinated procedure: stop old API/workers, apply migration 0017,
+then start matching readers before producing new notification payloads. Queued
+ciphertext, lease/reconciliation state, role grants and provider retry identities
+are preserved. Do not restart older binaries against the renamed table.

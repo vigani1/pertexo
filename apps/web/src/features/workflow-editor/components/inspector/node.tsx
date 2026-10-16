@@ -183,6 +183,7 @@ export function NodeInspector({
                 />
               ) : null}
               <SetupTab
+                definitions={definitions}
                 node={node}
                 {...(callScope === undefined ? {} : { callScope })}
                 definition={definition}

@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../namespace.js';
 import { workspaceMemberships } from '../foundation.js';
-import { authenticationMailDeliveries } from '../authentication.js';
+import { systemMailDeliveries } from '../mail/deliveries.js';
 import { workspaceInboxThreads } from './core.js';
 export const noticeMailBatches = appSchema.table(
   'notice_mail_batches',
@@ -36,7 +36,7 @@ export const noticeMailBatches = appSchema.table(
     foreignKey({
       name: 'notice_mail_batches_delivery_fk',
       columns: [t.id],
-      foreignColumns: [authenticationMailDeliveries.id],
+      foreignColumns: [systemMailDeliveries.id],
     }).onDelete('cascade'),
     foreignKey({
       name: 'notice_mail_batches_member_fk',

@@ -114,7 +114,7 @@ it('delivers an API-sealed command through the real worker role and clears ciphe
       ),
     });
     const before = await owner.query<{ payload_ciphertext: string | null }>(
-      `select payload_ciphertext from app.authentication_mail_deliveries where id=$1`,
+      `select payload_ciphertext from app.system_mail_deliveries where id=$1`,
       [id],
     );
     expect(before.rows[0]?.payload_ciphertext).not.toContain(
@@ -143,7 +143,7 @@ it('delivers an API-sealed command through the real worker role and clears ciphe
       payload_ciphertext: string | null;
       provider_reference: string | null;
     }>(
-      `select status,payload_ciphertext,provider_reference from app.authentication_mail_deliveries where id=$1`,
+      `select status,payload_ciphertext,provider_reference from app.system_mail_deliveries where id=$1`,
       [id],
     );
     expect(after.rows[0]).toEqual({
@@ -226,7 +226,7 @@ it('delivers a sealed account command through a real SMTP session and fences los
     expect(
       (
         await owner.query(
-          'select status from app.authentication_mail_deliveries where id=$1',
+          'select status from app.system_mail_deliveries where id=$1',
           [first],
         )
       ).rows[0],
@@ -239,7 +239,7 @@ it('delivers a sealed account command through a real SMTP session and fences los
     expect(
       (
         await owner.query(
-          'select status from app.authentication_mail_deliveries where id=$1',
+          'select status from app.system_mail_deliveries where id=$1',
           [uncertain],
         )
       ).rows[0],
@@ -249,7 +249,7 @@ it('delivers a sealed account command through a real SMTP session and fences los
     const crashed = await enqueue();
     await worker.claim({ workerId: 'smtp:crashed', limit: 1 });
     await owner.query(
-      "update app.authentication_mail_deliveries set lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
+      "update app.system_mail_deliveries set lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
       [crashed],
     );
     await handler.runOnce();
@@ -257,7 +257,7 @@ it('delivers a sealed account command through a real SMTP session and fences los
     expect(
       (
         await owner.query(
-          'select status from app.authentication_mail_deliveries where id=$1',
+          'select status from app.system_mail_deliveries where id=$1',
           [crashed],
         )
       ).rows[0],
@@ -396,7 +396,7 @@ it('delivers real personal notice mail, refuses revoked content before DATA, and
         status: string;
         failure_code: string | null;
       }>(
-        'select delivery.id,delivery.status,delivery.failure_code from app.authentication_mail_deliveries delivery join app.notice_mail_batches batch on batch.id=delivery.id where batch.workspace_id=$1 order by batch.created_at desc limit 1',
+        'select delivery.id,delivery.status,delivery.failure_code from app.system_mail_deliveries delivery join app.notice_mail_batches batch on batch.id=delivery.id where batch.workspace_id=$1 order by batch.created_at desc limit 1',
         [workspaceId],
       )
     ).rows[0];
@@ -429,9 +429,17 @@ it('delivers real personal notice mail, refuses revoked content before DATA, and
       /https:\/\/app\.example\.test\/notifications\/unsubscribe#([A-Za-z0-9_-]+)/u.exec(
         body,
       )?.[1];
-    expect(token).toBeDefined();
-    const claims = openNoticeUnsubscribe(envelope, token ?? '', new Date());
+    if (token === undefined)
+      throw new Error('Notice unsubscribe capability missing');
+    const claims = openNoticeUnsubscribe(envelope, token, new Date());
     expect(claims).toMatchObject({ ...first, revision: 1, memberRevision: 1 });
+    const unfoldedHeaders = headers.replace(/\r\n[ \t]+/gu, ' ');
+    expect(unfoldedHeaders).toContain(
+      `List-Unsubscribe: <https://app.example.test/v1/notifications/unsubscribe/one-click?token=${token}>`,
+    );
+    expect(unfoldedHeaders).toContain(
+      'List-Unsubscribe-Post: List-Unsubscribe=One-Click',
+    );
     const revoked = await seed();
     beforeConnect = async () => {
       await preferences.replace({
@@ -470,7 +478,7 @@ it('delivers real personal notice mail, refuses revoked content before DATA, and
     if (claim === undefined) throw new Error('Missing crash claim');
     expect((await batch(crashed.workspaceId))?.id).toBe(claim.id);
     await owner.query(
-      "update app.authentication_mail_deliveries set lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
+      "update app.system_mail_deliveries set lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
       [claim.id],
     );
     await handler.runOnce();

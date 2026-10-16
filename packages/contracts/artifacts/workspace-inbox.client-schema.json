@@ -2,6 +2,14 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/v1/notifications/unsubscribe/one-click"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/notifications/unsubscribe/one-click"
+    },
+    {
+      "method": "GET",
       "path": "/v1/workspaces/:workspaceId/notifications/preferences"
     },
     {

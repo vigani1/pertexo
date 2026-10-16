@@ -83,6 +83,121 @@ describe('generic webhook ingress', () => {
     },
   );
 
+  it('returns the committed JSON response without serializing its bytes again', async () => {
+    const f = setup();
+    f.database.acceptVerifiedDelivery.mockResolvedValue({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+      responseWaitSeconds: 1,
+    });
+    f.database.readResponse.mockResolvedValue({
+      state: 'responded',
+      response: {
+        statusCode: 201,
+        contentType: 'application/json',
+        body: '{"message":"hello"}',
+        headers: { 'x-request-id': 'response-1' },
+      },
+    });
+    const result = await f.application.inject(request('{}', currentSecret));
+    expect(result.statusCode).toBe(201);
+    expect(result.body).toBe('{"message":"hello"}');
+    expect(result.headers).toMatchObject({
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+      'x-request-id': 'response-1',
+    });
+    expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+  });
+  it.each([
+    { statusCode: 200, body: 'hello 👋\n' },
+    { statusCode: 204, body: '' },
+  ])(
+    'returns exact text and empty-body responses ($statusCode)',
+    async ({ statusCode, body }) => {
+      const f = setup();
+      f.database.acceptVerifiedDelivery.mockResolvedValue({
+        runId: '99999999-9999-4999-8999-999999999999',
+        replayed: false,
+        responseWaitSeconds: 1,
+      });
+      f.database.readResponse.mockResolvedValue({
+        state: 'responded',
+        response: { statusCode, contentType: 'text/plain', body, headers: {} },
+      });
+      const result = await f.application.inject(request('{}', currentSecret));
+      expect(result.statusCode).toBe(statusCode);
+      expect(result.body).toBe(body);
+    },
+  );
+  it('returns only a safe code when the run fails before replying', async () => {
+    const f = setup();
+    f.database.acceptVerifiedDelivery.mockResolvedValue({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+      responseWaitSeconds: 1,
+    });
+    f.database.readResponse.mockResolvedValue({ state: 'failed' });
+    const result = await f.application.inject(request('{}', currentSecret));
+    expect(result.statusCode).toBe(500);
+    expect(result.json()).toEqual({ code: 'webhook.workflow_failed' });
+    expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
+  });
+  it('falls back to the accepted receipt on timeout without canceling or rejecting the run', async () => {
+    const f = setup();
+    f.database.acceptVerifiedDelivery.mockResolvedValue({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+      responseWaitSeconds: 1,
+    });
+    const result = await f.application.inject(request('{}', currentSecret));
+    expect(result.statusCode).toBe(202);
+    expect(result.json()).toEqual({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+    });
+    expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
+    expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+  });
+  it('keeps a committed admission when the response read fails', async () => {
+    const f = setup();
+    f.database.acceptVerifiedDelivery.mockResolvedValue({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+      responseWaitSeconds: 1,
+    });
+    f.database.readResponse.mockRejectedValue(
+      new Error('private stored response'),
+    );
+    const result = await f.application.inject(request('{}', currentSecret));
+    expect(result.statusCode).toBe(202);
+    expect(result.body).not.toContain('private');
+    expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
+    expect(f.health).toHaveBeenLastCalledWith('degraded');
+  });
+  it('does not truncate a one-MiB committed response', async () => {
+    const f = setup();
+    f.database.acceptVerifiedDelivery.mockResolvedValue({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: true,
+      responseWaitSeconds: 1,
+    });
+    const body = 'x'.repeat(1_048_576);
+    f.database.readResponse.mockResolvedValue({
+      state: 'responded',
+      response: {
+        statusCode: 200,
+        contentType: 'text/plain',
+        body,
+        headers: {},
+      },
+    });
+    const result = await f.application.inject(request('{}', currentSecret));
+    expect(result.statusCode).toBe(200);
+    expect(result.body).toBe(body);
+  });
+
   it('verifies exact raw bytes before parsing and returns strict 202', async () => {
     const { application, database, delivery, deduplication, health, trace } =
       setup();
@@ -101,6 +216,7 @@ describe('generic webhook ingress', () => {
       }),
     );
     expect(database.consumeIngressLimit).toHaveBeenCalledOnce();
+    expect(database.readResponse).not.toHaveBeenCalled();
     expect(delivery).toHaveBeenCalledWith('accepted');
     expect(deduplication).toHaveBeenCalledWith('new');
     expect(health).toHaveBeenCalledWith('healthy');
@@ -916,6 +1032,9 @@ describe('generic webhook ingress', () => {
     telemetryOverrides: Partial<WebhookIngressTelemetry> = {},
   ) {
     const database = {
+      readResponse: vi
+        .fn<WebhookTriggerDatabase['readResponse']>()
+        .mockResolvedValue({ state: 'pending' }),
       resolveVerification: vi.fn().mockResolvedValue(reference),
       consumeIngressLimit: vi.fn().mockResolvedValue(undefined),
       acceptVerifiedDelivery: acceptanceError

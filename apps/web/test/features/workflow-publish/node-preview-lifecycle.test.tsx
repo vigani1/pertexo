@@ -1,3 +1,4 @@
+import { stepSampleResponseSchema } from '@pertexo/contracts';
 import {
   act,
   fireEvent,
@@ -6,6 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { NotificationsProvider } from '@/components/ui/toast';
@@ -18,6 +20,158 @@ const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const previewId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 describe('node test panel', () => {
+  it('tests pinned output without an effects acknowledgement or invented duration', async () => {
+    const commands: unknown[] = [];
+    const apiClient = apiClientFor(
+      (input) => {
+        commands.push(input.body);
+        return Promise.resolve({
+          mode: 'test_execute',
+          replayed: false,
+          preview: {
+            ...previewSummary('succeeded'),
+            pinnedSampleId: sampleId,
+            startedAt: null,
+          },
+        });
+      },
+      () => sampleResponse('pinned'),
+    );
+    render(panel(apiClient, 'node-a'));
+    const run = await screen.findByRole('button', {
+      name: 'Test with pinned output',
+    });
+    expect(run).toBeEnabled();
+    expect(
+      screen.queryByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    ).toBeNull();
+    await userEvent.setup().click(run);
+    expect(
+      await screen.findByRole('region', { name: 'Test result' }),
+    ).toHaveTextContent('Pinned');
+    expect(commands).toEqual([
+      expect.objectContaining({
+        expectedSampleId: sampleId,
+        input: { kind: 'manual', value: {} },
+      }),
+    ]);
+  });
+
+  it.each(['stale', 'expired'] as const)(
+    'blocks a %s pin instead of executing the real step',
+    async (state) => {
+      const execute = vi.fn();
+      const apiClient = apiClientFor(execute, () => sampleResponse(state));
+      render(panel(apiClient, 'node-a'));
+      await screen.findByText(
+        state === 'stale' ? 'Pin needs review' : 'Pin expired',
+      );
+      await userEvent.setup().click(
+        screen.getByRole('switch', {
+          name: 'I understand this test runs for real',
+        }),
+      );
+      expect(screen.getByRole('button', { name: 'Run test' })).toBeDisabled();
+      expect(execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not restore an old real-effects acknowledgement after a pin is added and removed', async () => {
+    let current: unknown = {
+      sample: null,
+      output: null,
+      draftRevision: 1,
+      limits: { inlineBytes: 262144, depth: 64, members: 10000 },
+    };
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const execute = vi.fn();
+    render(
+      panel(
+        apiClientFor(execute, () => current),
+        'node-a',
+        undefined,
+        undefined,
+        client,
+      ),
+    );
+    const event = userEvent.setup();
+    await event.click(
+      screen.getByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Run test' })).toBeEnabled(),
+    );
+    current = sampleResponse('pinned');
+    await act(() => client.invalidateQueries());
+    expect(
+      await screen.findByRole('button', { name: 'Test with pinned output' }),
+    ).toBeEnabled();
+    current = {
+      sample: null,
+      output: null,
+      draftRevision: 1,
+      limits: { inlineBytes: 262144, depth: 64, members: 10000 },
+    };
+    await act(() => client.invalidateQueries());
+    expect(
+      await screen.findByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    ).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Run test' })).toBeDisabled();
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('keeps the exact pinned test after a lost response even when the pin is removed', async () => {
+    let current = sampleResponse('pinned');
+    const sends: unknown[] = [];
+    const apiClient = apiClientFor(
+      (input) => {
+        sends.push({ body: input.body, headers: input.headers });
+        if (sends.length === 1)
+          return Promise.reject(
+            new ApiError({ kind: 'network', message: 'response lost' }),
+          );
+        return Promise.resolve({
+          mode: 'test_execute',
+          replayed: true,
+          preview: {
+            ...previewSummary('succeeded'),
+            pinnedSampleId: sampleId,
+            startedAt: null,
+          },
+        });
+      },
+      () => current,
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(panel(apiClient, 'node-a', undefined, undefined, client));
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Test with pinned output' }),
+    );
+    const retry = await screen.findByRole('button', {
+      name: 'Retry the same test',
+    });
+    current = { ...current, sample: null, output: null };
+    await act(() => client.invalidateQueries());
+    expect(retry).toBeEnabled();
+    await event.click(retry);
+    expect(
+      await screen.findByRole('region', { name: 'Test result' }),
+    ).toHaveTextContent('Pinned');
+    expect(sends).toHaveLength(2);
+    expect(sends[1]).toEqual(sends[0]);
+  });
+
   it('resets input, check, result and acknowledgement when the step changes', async () => {
     let resolveValidation: ((value: unknown) => void) | undefined;
     const validation = new Promise((resolve) => {
@@ -202,29 +356,88 @@ function panel(
   nodeId: string,
   stepSideEffect?: string,
   onSucceeded?: () => void,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
 ): ReactNode {
   return (
-    <NotificationsProvider>
-      <NodeTestPanel
-        key={nodeId}
-        apiClient={apiClient}
-        workspaceId={workspaceId}
-        workflowId={workflowId}
-        nodeId={nodeId}
-        stepSideEffect={stepSideEffect}
-        priorPreview={undefined}
-        ensureSaved={() => Promise.resolve({ revision: 1 })}
-        {...(onSucceeded === undefined ? {} : { onSucceeded })}
-      />
-    </NotificationsProvider>
+    <QueryClientProvider client={client}>
+      <NotificationsProvider>
+        <NodeTestPanel
+          key={nodeId}
+          apiClient={apiClient}
+          userId="owner"
+          editable
+          workspaceId={workspaceId}
+          workflowId={workflowId}
+          nodeId={nodeId}
+          stepSideEffect={stepSideEffect}
+          priorPreview={undefined}
+          ensureSaved={() => Promise.resolve({ revision: 1 })}
+          {...(onSucceeded === undefined ? {} : { onSucceeded })}
+        />
+      </NotificationsProvider>
+    </QueryClientProvider>
   );
 }
 
 function apiClientFor(
   request: (input: ApiJsonRequest<unknown>) => Promise<unknown>,
+  sample: () => unknown = () => ({
+    sample: null,
+    output: null,
+    draftRevision: 1,
+    limits: { inlineBytes: 262144, depth: 64, members: 10000 },
+  }),
 ): ApiClient {
   return {
-    request,
+    request: (input: ApiJsonRequest<unknown>) => {
+      if (
+        (input.path.endsWith('/sample') || input.path.endsWith('/samples')) &&
+        (input.method === undefined || input.method === 'GET')
+      ) {
+        const response = stepSampleResponseSchema.parse(sample());
+        return Promise.resolve(
+          input.path.endsWith('/samples')
+            ? {
+                items: response.sample === null ? [] : [response.sample],
+                draftRevision: response.draftRevision,
+                limits: response.limits,
+              }
+            : response,
+        );
+      }
+      return request(input);
+    },
     stream: vi.fn(),
   } as unknown as ApiClient;
+}
+
+const sampleId = '11111111-1111-4111-8111-111111111111';
+function sampleResponse(state: 'pinned' | 'stale' | 'expired'): {
+  sample: {
+    id: string;
+    nodeId: string;
+    binding: string;
+    state: string;
+    source: { kind: 'json' };
+    createdAt: string;
+    expiresAt: string;
+  } | null;
+  output: unknown;
+  draftRevision: number;
+  limits: { inlineBytes: number; depth: number; members: number };
+} {
+  return {
+    sample: {
+      id: sampleId,
+      nodeId: 'node-a',
+      binding: 'sample-binding',
+      state,
+      source: { kind: 'json' },
+      createdAt: '2026-10-16T10:00:00.000Z',
+      expiresAt: '2026-11-15T10:00:00.000Z',
+    },
+    output: { accepted: true },
+    draftRevision: 1,
+    limits: { inlineBytes: 262144, depth: 64, members: 10000 },
+  };
 }

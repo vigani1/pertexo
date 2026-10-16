@@ -79,3 +79,30 @@ The same validator serves Form admission and Request input, including captured
 prefills. Existing field, definition, response and task-context budgets remain.
 Only Form triggers have the thank-you setting. Matching API/worker readers must
 precede publishing new setup or field types; old graphs and outputs remain valid.
+
+### Amendment: authoring, selection bounds and destinations (2026-10-16)
+
+Request input shares ADR 076's detail rows and adds field-labelled prefills with
+the same picker. Prefills are partial: supplied selections may be below the
+field's minimum, but must fit its maximum and configured choices. Final responses
+must meet both limits. Multi-select optionally configures `minSelections` (0–50)
+and `maxSelections` (1–50), with minimum no greater than maximum and maximum no
+greater than the option count. Required fields still need at least one choice;
+optional empty selections omit the field. Missing limits preserve legacy behavior
+and remain absent in old portable configuration. One shared form validator owns
+submission rules for browser and API.
+
+Only a Form trigger may configure `redirectUrl`: a fixed HTTPS URL up to 2,048
+characters, without embedded credentials. No expressions, submitted values,
+capabilities or run IDs are appended. Discovery omits it; the accepted receipt
+returns the URL from the exact version that accepted the command, including
+idempotent retries after republication. Navigate only after confirmed acceptance,
+using replacement navigation; uncertain or rejected submissions keep their form.
+Public pages retain their no-referrer policy and show no run identity.
+
+Thank-you messages remain escaped plain text. Auto-link only validated HTTP(S)
+URLs without credentials; use ordinary anchors with no opener or referrer.
+Never interpret HTML, markdown or other URL schemes. A form may omit a redirect
+and show its normal receipt and links. Request input has neither destination nor
+thank-you configuration. Start matching readers before publishing these optional
+configuration fields; no new stored-format version, service or role is required.

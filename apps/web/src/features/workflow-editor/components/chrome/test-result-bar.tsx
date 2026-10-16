@@ -38,7 +38,7 @@ function TestResult({
 }>) {
   const graph = useEditorStore((state) => state.graph);
   const { preview, nodeId } = test;
-  const status = describePreviewStatus(preview.status);
+  const status = describePreviewStatus(preview.status, preview.pinnedSampleId);
   const path = describeTestPath(levelOf(graph, nodeId) ?? graph, nodeId);
   const facts = [
     ...(preview.startedAt === null || preview.completedAt === null

@@ -25,6 +25,7 @@ type TestAttempt = Readonly<{
   nodeId: string;
   expectedRevision: number;
   source: NodeTestInputSource;
+  expectedSampleId: string | null;
 }>;
 
 const INPUT_ERROR = 'Sample input must be valid JSON, like {"amount": 1240}.';
@@ -40,26 +41,35 @@ export function useNodeTest({
   workflowId,
   nodeId,
   ensureSaved,
+  expectedSampleId,
+  checkContext,
   initialPreview,
   onFinished,
   onSucceeded,
+  onSampleConflict,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
   workflowId: string;
   nodeId: string;
+  expectedSampleId: string | null;
+  checkContext: string;
   ensureSaved: () => Promise<Readonly<{ revision: number }>>;
   /** A finished test of this step to show until the next one. */
   initialPreview?: PreviewRunSummary | undefined;
   /** Any test that finished, passed or not. */
-  onFinished?: (preview: PreviewRunSummary) => void;
-  onSucceeded?: (preview: PreviewRunSummary) => void;
+  onFinished?: ((preview: PreviewRunSummary) => void) | undefined;
+  onSucceeded?: ((preview: PreviewRunSummary) => void) | undefined;
+  onSampleConflict?: () => void;
 }>) {
   const [pending, setPending] = useState<'check' | 'run'>();
-  const [check, setCheck] = useState<NodeValidationResponse>();
+  const [checked, setChecked] =
+    useState<Readonly<{ context: string; result: NodeValidationResponse }>>();
   const [preview, setPreview] = useState<PreviewRunSummary | undefined>(
     initialPreview,
   );
+  if (checked !== undefined && checked.context !== checkContext)
+    setChecked(undefined);
   const [error, setError] = useState<string>();
   const [recoveryPending, setRecoveryPending] = useState(false);
   const attempt = useRef<TestAttempt | undefined>(undefined);
@@ -106,7 +116,7 @@ export function useNodeTest({
           signal: controller.signal,
         },
       );
-      if (isCurrent()) setCheck(response);
+      if (isCurrent()) setChecked({ context: checkContext, result: response });
     } catch (cause) {
       fail(isCurrent, cause, commandErrorMessage(cause, 'the check'));
     } finally {
@@ -122,10 +132,16 @@ export function useNodeTest({
       idempotencyKey: crypto.randomUUID(),
       nodeId,
       expectedRevision: revision,
+      expectedSampleId,
       source:
-        input.priorPreviewId === undefined
-          ? { kind: 'manual', value: parseCommandJson(input.text, INPUT_ERROR) }
-          : { kind: 'prior_preview', previewRunId: input.priorPreviewId },
+        expectedSampleId !== null
+          ? { kind: 'manual', value: {} }
+          : input.priorPreviewId === undefined
+            ? {
+                kind: 'manual',
+                value: parseCommandJson(input.text, INPUT_ERROR),
+              }
+            : { kind: 'prior_preview', previewRunId: input.priorPreviewId },
     };
   }
 
@@ -166,6 +182,12 @@ export function useNodeTest({
       accepted = true;
       await finish(response.preview, controller.signal, isCurrent);
     } catch (cause) {
+      if (
+        isCurrent() &&
+        isApiError(cause) &&
+        cause.problem?.code.startsWith('workflow.sample_')
+      )
+        onSampleConflict?.();
       fail(
         isCurrent,
         cause,
@@ -202,13 +224,13 @@ export function useNodeTest({
       activeRequest.current?.abort();
       setPending(undefined);
     }
-    setCheck(undefined);
+    setChecked(undefined);
     setError(undefined);
   }
 
   return {
     pending,
-    check,
+    check: checked?.context === checkContext ? checked.result : undefined,
     preview,
     error,
     recoveryPending,

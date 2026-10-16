@@ -22,6 +22,7 @@ import type { NoticeMailStore, NoticeMailSealer } from './contract.js';
 type Person = Readonly<{ workspace_id: string; user_id: string }>;
 type Recipient = Readonly<{
   email: string;
+  workspace_name: string;
   email_verified: boolean;
   role_revision: number;
   created_at: Date;
@@ -33,7 +34,7 @@ async function recipient(
   actorId: string,
 ): Promise<Recipient | undefined> {
   const found = await client.query<Recipient>(
-    "select person.email,person.email_verified,member.role_revision,member.created_at,clock_timestamp() now from app.users person join app.workspace_memberships member on member.user_id=person.id where member.workspace_id=$1 and member.user_id=$2 and member.status='active' and person.status='active' for share of person,member",
+    "select person.email,workspace.name workspace_name,person.email_verified,member.role_revision,member.created_at,clock_timestamp() now from app.users person join app.workspace_memberships member on member.user_id=person.id join app.workspaces workspace on workspace.id=member.workspace_id where member.workspace_id=$1 and member.user_id=$2 and member.status='active' and person.status='active' for share of person,member",
     [workspaceId, actorId],
   );
   return found.rows[0];
@@ -109,11 +110,11 @@ async function preparePerson(
   const pref = current.pref;
   if (pref === undefined || current.effective.mode === 'off') return 0;
   await client.query(
-    `update app.notice_mail_batches batch set released_at=clock_timestamp() from app.authentication_mail_deliveries delivery where batch.id=delivery.id and batch.workspace_id=$1 and batch.user_id=$2 and batch.released_at is null and delivery.status='failed' and delivery.failure_code='notice.superseded'`,
+    `update app.notice_mail_batches batch set released_at=clock_timestamp() from app.system_mail_deliveries delivery where batch.id=delivery.id and batch.workspace_id=$1 and batch.user_id=$2 and batch.released_at is null and delivery.status='failed' and delivery.failure_code='notice.superseded'`,
     [person.workspace_id, person.user_id],
   );
   const pending = await client.query(
-    `select 1 from app.notice_mail_batches batch join app.authentication_mail_deliveries delivery on delivery.id=batch.id where batch.workspace_id=$1 and batch.user_id=$2 and batch.released_at is null and delivery.status in ('queued','retry','outcome_unknown') limit 1`,
+    `select 1 from app.notice_mail_batches batch join app.system_mail_deliveries delivery on delivery.id=batch.id where batch.workspace_id=$1 and batch.user_id=$2 and batch.released_at is null and delivery.status in ('queued','retry','outcome_unknown') limit 1`,
     [person.workspace_id, person.user_id],
   );
   if (pending.rowCount !== 0) return 0;
@@ -176,6 +177,7 @@ async function preparePerson(
     id,
     expiresAt,
     toEmail: to.email,
+    workspaceName: to.workspace_name,
     workspaceId: person.workspace_id,
     actorId: person.user_id,
     revision: pref.revision,

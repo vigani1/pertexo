@@ -132,6 +132,21 @@ const managementPath = {
     },
   },
 } as const;
+function ingressWorkflowResponse(
+  description: string,
+  schema: Readonly<Record<string, unknown>> = {},
+) {
+  return {
+    description,
+    content: {
+      'application/json': { schema },
+      'text/plain': { schema: { type: 'string' } },
+      'application/problem+json': {
+        schema: { $ref: '#/components/schemas/ApiProblem' },
+      },
+    },
+  };
+}
 const rotateSecretPath = {
   post: {
     ...managementPath.post,
@@ -217,18 +232,42 @@ export const webhooksOpenApiDocument = Object.freeze({
           content: { 'application/json': { schema: {} } },
         },
         responses: {
-          '202': jsonResponse(
-            'Workflow run accepted',
-            'WebhookIngressResponse',
+          '202': ingressWorkflowResponse(
+            'Immediate mode, timeout or wait overflow returns {runId,replayed}; an opt-in workflow may also choose status 202 with its configured JSON/text body.',
+            {
+              anyOf: [
+                { $ref: '#/components/schemas/WebhookIngressResponse' },
+                {},
+              ],
+            },
           ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '409': responseReference('Conflict'),
-          '413': responseReference('PayloadTooLarge'),
-          '415': responseReference('UnsupportedMediaType'),
-          '429': responseReference('RateLimited'),
-          '503': responseReference('Unavailable'),
-          '500': responseReference('Unexpected'),
+          '400': ingressWorkflowResponse(
+            'Invalid request before admission, or the configured workflow response.',
+          ),
+          '401': ingressWorkflowResponse(
+            'Signature authentication failed, or the configured workflow response.',
+          ),
+          '409': ingressWorkflowResponse(
+            'Idempotency conflict, or the configured workflow response.',
+          ),
+          '413': ingressWorkflowResponse(
+            'Ingress body too large, or the configured workflow response.',
+          ),
+          '415': ingressWorkflowResponse(
+            'Unsupported ingress media type, or the configured workflow response.',
+          ),
+          '429': ingressWorkflowResponse(
+            'Ingress rate limit, or the configured workflow response.',
+          ),
+          '503': ingressWorkflowResponse(
+            'Unavailable before acceptance, or the configured workflow response.',
+          ),
+          '500': ingressWorkflowResponse(
+            'Failure before a workflow response returns only {code:"webhook.workflow_failed"}; a workflow may instead choose its own status 500 JSON/text body.',
+          ),
+          default: ingressWorkflowResponse(
+            'Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MiB, no-store, nosniff and only the safe header allowlist. Work continues after responding.',
+          ),
         },
       },
     },

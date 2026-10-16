@@ -191,6 +191,7 @@ function createPreviewExecutionEnvironment(
     nodeRunId: lease.previewRunId,
     previewAttemptId: lease.previewAttemptId,
     previewRunId: lease.previewRunId,
+    fenceToken: lease.attemptFenceToken,
     runId: lease.previewRunId,
     workerId: dependencies.workerId,
     workspaceId: lease.workspaceId,
@@ -199,6 +200,8 @@ function createPreviewExecutionEnvironment(
     dependencies.runtimeCapabilities?.connections?.(capabilityContext);
   const artifacts =
     dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
+  const webhookResponse =
+    dependencies.runtimeCapabilities?.webhookResponse?.(capabilityContext);
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const runtime: NodeExecutionRuntime = Object.freeze({
     workspaceId: lease.workspaceId,
@@ -210,6 +213,7 @@ function createPreviewExecutionEnvironment(
     invocationKey: `preview:${lease.nodeId}`,
     sideEffectClass: lease.sideEffectClass,
     ...nodeExecutionOptionalFields(lease, connections, artifacts),
+    ...(webhookResponse === undefined ? {} : { webhookResponse }),
     beforeDispatch: async (
       input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
     ): Promise<void> => {

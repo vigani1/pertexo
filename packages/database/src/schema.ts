@@ -1,3 +1,7 @@
+import { webhookRunResponses } from './schema/triggers/responses.js';
+export { workflowStepSamples } from './schema/authoring/step-samples.js';
+import { workflowStepSamples } from './schema/authoring/step-samples.js';
+import { systemMailDeliveries } from './schema/mail/deliveries.js';
 import {
   noticeWorkspaceSettings,
   noticePreferences,
@@ -20,7 +24,6 @@ import {
   userProfileCommandReceipts,
   authMethodLinkAttempts,
   authEmailProofs,
-  authenticationMailDeliveries,
   identitySecurityAuditFacts,
 } from './schema/authentication.js';
 import { workflowTemplateOrigins } from './schema/authoring/template-origin.js';
@@ -181,6 +184,8 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  webhookRunResponses,
+  workflowStepSamples,
   noticeWorkspaceSettings,
   noticePreferences,
   noticeSubscriptions,
@@ -205,7 +210,7 @@ export const databaseSchema = {
   userProfileCommandReceipts,
   authMethodLinkAttempts,
   authEmailProofs,
-  authenticationMailDeliveries,
+  systemMailDeliveries,
   identitySecurityAuditFacts,
   failureNotificationDestinations,
   failureNotificationDestinationVersions,

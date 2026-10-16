@@ -278,7 +278,7 @@ export const workflowTriggers = appSchema.table(
     ),
     check(
       'workflow_triggers_config_strict',
-      sql`((((kind)::text = 'webhook'::text) AND (desired_config = '{}'::jsonb)) OR (((kind)::text = 'schedule'::text) AND (jsonb_typeof(desired_config) = 'object'::text)))`,
+      sql`jsonb_typeof(desired_config) = 'object'`,
     ),
     check(
       'workflow_triggers_fingerprint_valid',

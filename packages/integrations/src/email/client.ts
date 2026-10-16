@@ -29,6 +29,7 @@ export type ResendClient = Readonly<{
       toEmail: string;
       subject: string;
       text: string;
+      unsubscribeUrl?: string;
       idempotencyKey: string;
       timeoutMillis: number;
       signal?: AbortSignal;
@@ -48,6 +49,14 @@ export function createResendClient(
           to: [input.toEmail],
           subject: input.subject,
           text: input.text,
+          ...(input.unsubscribeUrl === undefined
+            ? {}
+            : {
+                headers: {
+                  'List-Unsubscribe': `<${input.unsubscribeUrl}>`,
+                  'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+                },
+              }),
         }),
       );
       const request: SecureHttpRequest = {

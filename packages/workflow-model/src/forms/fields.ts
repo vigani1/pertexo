@@ -1,3 +1,4 @@
+import { formRedirectUrlSchema } from './links.js';
 import { storageTextSchema } from '../json/text.js';
 import { inspectJsonValue } from '../json/canonical.js';
 import { z } from 'zod';
@@ -23,32 +24,67 @@ const field = z.object({
   help: storageTextSchema.max(500).default(''),
   required: z.boolean().default(true),
 });
-export const formFieldSchema = z.discriminatedUnion('type', [
-  field
-    .extend({
-      type: z.enum(['text', 'textarea', 'email', 'number', 'boolean', 'date']),
-    })
-    .strict(),
-  field
-    .extend({
-      type: z.enum(['select', 'multi_select']),
-      options: z
-        .array(
-          storageTextSchema
-            .trim()
-            .min(1)
-            .max(160)
-            .regex(/^[^\r\n]*$/u, 'Keep each option on one line.'),
-        )
+const choices = field.extend({
+  options: z
+    .array(
+      storageTextSchema
+        .trim()
         .min(1)
-        .max(FORM_LIMITS.options)
-        .refine(
-          (options) => new Set(options).size === options.length,
-          'Choose each option once.',
-        ),
-    })
-    .strict(),
-]);
+        .max(160)
+        .regex(/^[^\r\n]*$/u, 'Keep each option on one line.'),
+    )
+    .min(1)
+    .max(FORM_LIMITS.options)
+    .refine(
+      (options) => new Set(options).size === options.length,
+      'Choose each option once.',
+    ),
+});
+export const formFieldSchema = z
+  .discriminatedUnion('type', [
+    field
+      .extend({
+        type: z.enum([
+          'text',
+          'textarea',
+          'email',
+          'number',
+          'boolean',
+          'date',
+        ]),
+      })
+      .strict(),
+    choices.extend({ type: z.literal('select') }).strict(),
+    choices
+      .extend({
+        type: z.literal('multi_select'),
+        minSelections: z
+          .number()
+          .int()
+          .min(0)
+          .max(FORM_LIMITS.options)
+          .exactOptional(),
+        maxSelections: z
+          .number()
+          .int()
+          .min(1)
+          .max(FORM_LIMITS.options)
+          .exactOptional(),
+      })
+      .strict(),
+  ])
+  .superRefine((value, context) => {
+    if (value.type !== 'multi_select') return;
+    const minimum = Math.max(value.required ? 1 : 0, value.minSelections ?? 0);
+    const maximum = value.maxSelections ?? value.options.length;
+    if (minimum > maximum || maximum > value.options.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['minSelections'],
+        message:
+          'Selection limits must fit the available options, with minimum no greater than maximum.',
+      });
+  });
 export const formFieldsSchema = z
   .array(formFieldSchema)
   .min(1)
@@ -75,6 +111,7 @@ export const formConfigSchema = z
     title: storageTextSchema.trim().min(1).max(160).default('Send a request'),
     instructions: storageTextSchema.max(2_000).default(''),
     thankYouMessage: formThankYouMessageSchema.exactOptional(),
+    redirectUrl: formRedirectUrlSchema.exactOptional(),
     fields: formFieldsSchema.default([
       {
         id: 'field-1',

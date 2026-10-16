@@ -5,7 +5,11 @@ import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 
 export type NodeTestingPersistence = Pick<
   WorkflowAuthoringDatabase,
-  'acceptPreview' | 'getDraft' | 'readPreview' | 'resolvePreviewReplay'
+  | 'acceptPreview'
+  | 'getDraft'
+  | 'readPreview'
+  | 'resolvePreviewReplay'
+  | 'stepSamples'
 >;
 
 export type NodeTestingDependencies = Readonly<{

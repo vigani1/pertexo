@@ -1,3 +1,6 @@
+import { definitionIdentitySchema } from '@pertexo/node-sdk';
+import { resolvePreviewSample } from './samples.js';
+import { rolesForCapability } from '../../tenant-access/policy.js';
 import { captureWorkspaceVariableRevision } from '../../variables/read.js';
 import { lockExecutionArtifactReferences } from '../../artifacts/references.js';
 import { and, eq, gt, sql } from 'drizzle-orm';
@@ -24,6 +27,8 @@ import {
   workflowDrafts,
   workspaceMemberships,
   workspaces,
+  users,
+  workflows,
 } from '../../schema.js';
 import {
   parseStoredExecutionValue,
@@ -32,9 +37,7 @@ import {
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
-const identityKeySchema = z
-  .string()
-  .regex(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u);
+const identityKeySchema = definitionIdentitySchema.shape.key;
 const integrationKeySchema = z.string().regex(/^[a-z][a-z0-9._:-]*$/u);
 export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
 const PREVIEW_EXECUTION_TIMEOUT_MAX_MS = 5 * 60 * 1_000;
@@ -57,6 +60,7 @@ const acceptPreviewRunInputSchema = z
     definitionVersion: z.number().int().positive(),
     draftFingerprint: sha256HexSchema,
     draftRevision: z.number().int().positive(),
+    expectedSampleId: z.uuid().nullable().optional(),
     dryRun: z.enum(['not_supported', 'provider_supported']),
     executableNode: executableNodeSchema,
     executorKey: identityKeySchema,
@@ -97,9 +101,10 @@ const acceptPreviewRunInputSchema = z
     'provider and operation classification must be supplied together',
   );
 
-const resultRefSchema = z
-  .object({ outboxEventId: z.uuid(), previewAttemptId: z.uuid() })
-  .strict();
+const resultRefSchema = z.union([
+  z.object({ outboxEventId: z.uuid(), previewAttemptId: z.uuid() }).strict(),
+  z.object({ pinnedSampleId: z.uuid() }).strict(),
+]);
 
 type ParsedPreviewRunInput = z.input<typeof acceptPreviewRunInputSchema>;
 export type AcceptPreviewRunInput = Readonly<
@@ -112,8 +117,11 @@ export type AcceptedPreviewRun = Readonly<{
   acceptedAt: Date;
   duplicate: boolean;
   expiresAt: Date;
-  outboxEventId: string;
-  previewAttemptId: string;
+  outboxEventId: string | null;
+  previewAttemptId: string | null;
+  pinnedSampleId?: string;
+  pinnedOutput?: ReturnType<typeof parseStoredExecutionValue>;
+  completedAt?: Date | null;
   previewRunId: string;
   status: PreviewStatus;
 }>;
@@ -130,6 +138,7 @@ export type PreviewRunRecord = Readonly<{
   mayCauseExternalSideEffect: boolean;
   dryRun: 'not_supported' | 'provider_supported';
   output: ReturnType<typeof parseStoredExecutionValue> | null;
+  pinnedSampleId?: string | null;
   safeErrorCode: string | null;
   createdAt: Date;
   startedAt: Date | null;
@@ -181,6 +190,9 @@ export async function readExistingAcceptance(
       acceptedAt: previewRuns.createdAt,
       expiresAt: previewRuns.expiresAt,
       previewStatus: previewRuns.status,
+      pinnedSampleId: previewRuns.pinnedSampleId,
+      outputRef: previewRuns.outputRef,
+      completedAt: previewRuns.completedAt,
     })
     .from(idempotencyRecords)
     .leftJoin(
@@ -213,12 +225,30 @@ export async function readExistingAcceptance(
     !status.success
   )
     throw new PreviewAcceptanceCorruptError();
+  if (
+    'pinnedSampleId' in resultRef.data &&
+    (row.pinnedSampleId !== resultRef.data.pinnedSampleId ||
+      status.data !== PREVIEW_STATUS.succeeded ||
+      row.outputRef === null)
+  )
+    throw new PreviewAcceptanceCorruptError();
   return Object.freeze({
     acceptedAt: row.acceptedAt,
+    completedAt: row.completedAt,
     duplicate: true,
     expiresAt: row.expiresAt,
-    outboxEventId: resultRef.data.outboxEventId,
-    previewAttemptId: resultRef.data.previewAttemptId,
+    outboxEventId:
+      'outboxEventId' in resultRef.data ? resultRef.data.outboxEventId : null,
+    previewAttemptId:
+      'previewAttemptId' in resultRef.data
+        ? resultRef.data.previewAttemptId
+        : null,
+    ...('pinnedSampleId' in resultRef.data
+      ? {
+          pinnedSampleId: resultRef.data.pinnedSampleId,
+          pinnedOutput: parseStoredExecutionValue(row.outputRef),
+        }
+      : {}),
     previewRunId: row.resourceId,
     status: status.data,
   });
@@ -226,14 +256,27 @@ export async function readExistingAcceptance(
 
 async function assertAdmission(
   transaction: WorkspaceTransaction,
-  actorUserId: string,
   workflowId: string,
   draftRevision: number,
-): Promise<void> {
-  await assertPreviewActor(transaction, actorUserId);
-
+) {
+  const workflow = await transaction.db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, transaction.workspaceId),
+        eq(workflows.id, workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .for('share')
+    .limit(1);
+  if (workflow.length !== 1) throw new PreviewAdmissionDeniedError('draft');
   const drafts = await transaction.db
-    .select({ revision: workflowDrafts.revision })
+    .select({
+      revision: workflowDrafts.revision,
+      graph: workflowDrafts.graphJson,
+    })
     .from(workflowDrafts)
     .where(
       and(
@@ -245,32 +288,49 @@ async function assertAdmission(
     .limit(1);
   if (drafts[0]?.revision !== draftRevision)
     throw new PreviewAdmissionDeniedError('draft');
+  return drafts[0].graph;
 }
 
 export async function assertPreviewActor(
   transaction: WorkspaceTransaction,
   actorUserId: string,
 ): Promise<void> {
-  const access = await transaction.db
-    .select({
-      membershipRole: workspaceMemberships.role,
-      membershipStatus: workspaceMemberships.status,
-      workspaceStatus: workspaces.status,
-    })
+  const workspace = await transaction.db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(
+      and(
+        eq(workspaces.id, transaction.workspaceId),
+        eq(workspaces.status, 'active'),
+      ),
+    )
+    .for('share')
+    .limit(1);
+  const actor = await transaction.db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.id, actorUserId), eq(users.status, 'active')))
+    .for('share')
+    .limit(1);
+  const membership = await transaction.db
+    .select({ role: workspaceMemberships.role })
     .from(workspaceMemberships)
-    .innerJoin(workspaces, eq(workspaces.id, workspaceMemberships.workspaceId))
     .where(
       and(
         eq(workspaceMemberships.workspaceId, transaction.workspaceId),
         eq(workspaceMemberships.userId, actorUserId),
+        eq(workspaceMemberships.status, 'active'),
       ),
     )
+    .for('share')
     .limit(1);
-  const row = access[0];
   if (
-    row?.workspaceStatus !== 'active' ||
-    row.membershipStatus !== 'active' ||
-    !['owner', 'admin', 'builder'].includes(row.membershipRole)
+    workspace.length !== 1 ||
+    actor.length !== 1 ||
+    membership[0] === undefined ||
+    !rolesForCapability('workflow:update').some(
+      (role) => role === membership[0]?.role,
+    )
   )
     throw new PreviewAdmissionDeniedError('actor');
 }
@@ -317,6 +377,10 @@ export async function acceptPreviewRun(
   input: AcceptPreviewRunInput,
 ): Promise<AcceptedPreviewRun> {
   const parsed = acceptPreviewRunInputSchema.parse(input);
+  await assertPreviewActor(transaction, parsed.actorUserId);
+  await transaction.db.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`preview:${transaction.workspaceId}:${parsed.scope}:${parsed.keyHash}`},0))`,
+  );
   const existing = await readExistingAcceptance(transaction, parsed);
   if (existing !== null) return existing;
 
@@ -333,34 +397,60 @@ export async function acceptPreviewRun(
     parsed.executionDeadlineAt.getTime() > parsed.expiresAt.getTime()
   )
     throw new PreviewAdmissionDeniedError('deadline');
-  await assertAdmission(
+  const draftGraph = await assertAdmission(
     transaction,
-    parsed.actorUserId,
     parsed.workflowId,
     parsed.draftRevision,
   );
-  const resolvedInput = await resolveInput(
+  const sample = await resolvePreviewSample(
     transaction,
-    parsed.workflowId,
-    parsed.input,
-    now,
+    {
+      workflowId: parsed.workflowId,
+      nodeId: parsed.nodeId,
+      ...(parsed.expectedSampleId === undefined
+        ? {}
+        : { expectedSampleId: parsed.expectedSampleId }),
+    },
+    draftGraph,
   );
+  const resolvedInput =
+    sample === undefined
+      ? await resolveInput(transaction, parsed.workflowId, parsed.input, now)
+      : {
+          priorPreviewRunId: null,
+          stored: serializeStoredExecutionValue({ kind: 'inline', value: {} }),
+        };
 
-  await lockExecutionArtifactReferences(
-    transaction,
-    JSON.parse(resolvedInput.stored) as unknown,
-    resolvedInput.priorPreviewRunId ?? undefined,
-  );
-  await lockExecutionArtifactReferences(
-    transaction,
-    parsed.executableNode,
-    resolvedInput.priorPreviewRunId ?? undefined,
-  );
+  if (sample === undefined) {
+    await lockExecutionArtifactReferences(
+      transaction,
+      JSON.parse(resolvedInput.stored) as unknown,
+      resolvedInput.priorPreviewRunId ?? undefined,
+    );
+    await lockExecutionArtifactReferences(
+      transaction,
+      parsed.executableNode,
+      resolvedInput.priorPreviewRunId ?? undefined,
+    );
+  }
   const idempotencyRecordId = uuidv7();
   const previewRunId = uuidv7();
-  const previewAttemptId = uuidv7();
-  const outboxEventId = uuidv7();
-  const resultRef = { outboxEventId, previewAttemptId } as const;
+  const dispatch =
+    sample === undefined
+      ? {
+          kind: 'execution' as const,
+          previewAttemptId: uuidv7(),
+          outboxEventId: uuidv7(),
+        }
+      : { kind: 'pinned' as const, ...sample };
+  const previewAttemptId =
+    dispatch.kind === 'execution' ? dispatch.previewAttemptId : null;
+  const outboxEventId =
+    dispatch.kind === 'execution' ? dispatch.outboxEventId : null;
+  const resultRef =
+    sample === undefined
+      ? { outboxEventId, previewAttemptId }
+      : { pinnedSampleId: sample.id };
 
   const claims = await transaction.db
     .insert(idempotencyRecords)
@@ -414,50 +504,64 @@ export async function acceptPreviewRun(
         (parsed.traceparent === undefined
           ? null
           : parsed.traceparent.slice(3, 35)),
-      providerKey: parsed.providerKey ?? null,
-      operationKey: parsed.operationKey ?? null,
+      providerKey: sample === undefined ? (parsed.providerKey ?? null) : null,
+      operationKey: sample === undefined ? (parsed.operationKey ?? null) : null,
       executableNodeJson: parsed.executableNode,
       variableSetRevision: await captureWorkspaceVariableRevision(transaction),
       inputRef: sql`${resolvedInput.stored}::jsonb`,
       priorPreviewRunId: resolvedInput.priorPreviewRunId,
-      sideEffectClass: parsed.sideEffectClass,
-      mayContactProvider: parsed.mayContactProvider,
-      mayCauseExternalSideEffect: parsed.mayCauseExternalSideEffect,
-      dryRun: parsed.dryRun,
-      status: PREVIEW_STATUS.queued,
+      sideEffectClass: sample === undefined ? parsed.sideEffectClass : 'safe',
+      mayContactProvider: sample === undefined && parsed.mayContactProvider,
+      mayCauseExternalSideEffect:
+        sample === undefined && parsed.mayCauseExternalSideEffect,
+      dryRun: sample === undefined ? parsed.dryRun : 'not_supported',
+      status:
+        sample === undefined ? PREVIEW_STATUS.queued : PREVIEW_STATUS.succeeded,
+      pinnedSampleId: sample?.id ?? null,
+      outputRef:
+        sample === undefined
+          ? null
+          : sql`${serializeStoredExecutionValue(sample.output)}::jsonb`,
+      completedAt: sample === undefined ? null : sql`clock_timestamp()`,
       traceparent: parsed.traceparent ?? null,
       expiresAt: parsed.expiresAt,
     })
-    .returning({ acceptedAt: previewRuns.createdAt });
+    .returning({
+      acceptedAt: previewRuns.createdAt,
+      completedAt: previewRuns.completedAt,
+    });
   const insertedRun = insertedRuns[0];
   if (insertedRun === undefined) throw new PreviewAcceptanceCorruptError();
 
-  await transaction.db.insert(previewAttempts).values({
-    id: previewAttemptId,
-    workspaceId: transaction.workspaceId,
-    previewRunId,
-    status: PREVIEW_STATUS.queued,
-    sideEffectClass: parsed.sideEffectClass,
-    providerIdempotencyKey: parsed.providerIdempotencyKey ?? null,
-  });
+  if (dispatch.kind === 'execution') {
+    const { previewAttemptId, outboxEventId } = dispatch;
+    await transaction.db.insert(previewAttempts).values({
+      id: previewAttemptId,
+      workspaceId: transaction.workspaceId,
+      previewRunId,
+      status: PREVIEW_STATUS.queued,
+      sideEffectClass: parsed.sideEffectClass,
+      providerIdempotencyKey: parsed.providerIdempotencyKey ?? null,
+    });
 
-  const payload = {
-    workspaceId: transaction.workspaceId,
-    outboxEventId,
-    previewRunId,
-    previewAttemptId,
-    ...(parsed.traceparent === undefined
-      ? {}
-      : { traceparent: parsed.traceparent }),
-  } as const;
-  await insertOutboxEvent(transaction, {
-    id: outboxEventId,
-    jobName: 'execute-preview-attempt',
-    aggregateType: 'preview-run',
-    aggregateId: previewRunId,
-    payload,
-    payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-  });
+    const payload = {
+      workspaceId: transaction.workspaceId,
+      outboxEventId,
+      previewRunId,
+      previewAttemptId,
+      ...(parsed.traceparent === undefined
+        ? {}
+        : { traceparent: parsed.traceparent }),
+    } as const;
+    await insertOutboxEvent(transaction, {
+      id: outboxEventId,
+      jobName: 'execute-preview-attempt',
+      aggregateType: 'preview-run',
+      aggregateId: previewRunId,
+      payload,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    });
+  }
   await transaction.db.insert(auditEvents).values({
     id: uuidv7(),
     workspaceId: transaction.workspaceId,
@@ -470,10 +574,12 @@ export async function acceptPreviewRun(
     metadata: {
       workflowId: parsed.workflowId,
       nodeId: parsed.nodeId,
-      sideEffectClass: parsed.sideEffectClass,
-      mayContactProvider: parsed.mayContactProvider,
-      mayCauseExternalSideEffect: parsed.mayCauseExternalSideEffect,
-      dryRun: parsed.dryRun,
+      sideEffectClass: sample === undefined ? parsed.sideEffectClass : 'safe',
+      mayContactProvider: sample === undefined && parsed.mayContactProvider,
+      mayCauseExternalSideEffect:
+        sample === undefined && parsed.mayCauseExternalSideEffect,
+      ...(sample === undefined ? {} : { pinnedSampleId: sample.id }),
+      dryRun: sample === undefined ? parsed.dryRun : 'not_supported',
       expiresAt: parsed.expiresAt.toISOString(),
     },
   });
@@ -492,11 +598,16 @@ export async function acceptPreviewRun(
 
   return Object.freeze({
     acceptedAt: insertedRun.acceptedAt,
+    completedAt: insertedRun.completedAt,
     duplicate: false,
     expiresAt: parsed.expiresAt,
     outboxEventId,
     previewAttemptId,
     previewRunId,
-    status: PREVIEW_STATUS.queued,
+    status:
+      sample === undefined ? PREVIEW_STATUS.queued : PREVIEW_STATUS.succeeded,
+    ...(sample === undefined
+      ? {}
+      : { pinnedSampleId: sample.id, pinnedOutput: sample.output }),
   });
 }

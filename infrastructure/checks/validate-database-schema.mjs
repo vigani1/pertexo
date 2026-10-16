@@ -72,15 +72,26 @@ export function validateDatabaseSchemaSources({ migrationSql, schemaSource }) {
   return Object.freeze({ tableCount: migrationTables.size });
 }
 
-/** Tables the migrations leave in place, applying creates and drops in order. */
+/** Apply creates, drops and table renames in migration order. */
 function liveTables(migrationSql) {
   const tables = new Set();
-  for (const [, command, quotedName, bareName] of migrationSql.matchAll(
-    /(CREATE|DROP)\s+TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:"app"|app)\s*\.\s*(?:"([a-z0-9_]+)"|([a-z0-9_]+))/giu,
+  for (const [
+    ,
+    command,
+    quotedName,
+    bareName,
+    quotedTarget,
+    bareTarget,
+  ] of migrationSql.matchAll(
+    /(CREATE|DROP|ALTER)\s+TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:"app"|app)\s*\.\s*(?:"([a-z0-9_]+)"|([a-z0-9_]+))(?:\s+RENAME\s+TO\s+(?:"([a-z0-9_]+)"|([a-z0-9_]+)))?/giu,
   )) {
     const name = quotedName ?? bareName;
     if (command.toUpperCase() === 'CREATE') tables.add(name);
-    else tables.delete(name);
+    else if (command.toUpperCase() === 'DROP') tables.delete(name);
+    else if (quotedTarget !== undefined || bareTarget !== undefined) {
+      tables.delete(name);
+      tables.add(quotedTarget ?? bareTarget);
+    }
   }
   return tables;
 }

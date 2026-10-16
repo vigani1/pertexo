@@ -1,3 +1,4 @@
+import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -30,6 +31,9 @@ export type PreviewReplayRecord = Readonly<{
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;
   dryRun: 'not_supported' | 'provider_supported';
+  pinnedSampleId?: string | null;
+  output?: ReturnType<typeof parseStoredExecutionValue> | null;
+  completedAt?: Date | null;
   createdAt: Date;
   expiresAt: Date;
 }>;
@@ -72,7 +76,10 @@ export async function resolvePreviewReplay(
       mayContactProvider: previewRuns.mayContactProvider,
       mayCauseExternalSideEffect: previewRuns.mayCauseExternalSideEffect,
       dryRun: previewRuns.dryRun,
+      pinnedSampleId: previewRuns.pinnedSampleId,
+      outputRef: previewRuns.outputRef,
       createdAt: previewRuns.createdAt,
+      completedAt: previewRuns.completedAt,
       expiresAt: previewRuns.expiresAt,
     })
     .from(previewRuns)
@@ -88,8 +95,16 @@ export async function resolvePreviewReplay(
   if (replay === undefined) return null;
   if (replay.workflowId !== parsed.workflowId)
     throw new PreviewAcceptanceCorruptError();
+  const { outputRef, pinnedSampleId, completedAt, ...summary } = replay;
   return Object.freeze({
-    ...replay,
+    ...summary,
+    ...(pinnedSampleId === null
+      ? {}
+      : {
+          pinnedSampleId,
+          completedAt,
+          output: parseStoredExecutionValue(outputRef),
+        }),
     status: previewStatusSchema.parse(replay.status),
     sideEffectClass: z
       .enum(['safe', 'idempotent_with_key', 'unsafe'])

@@ -1,7 +1,10 @@
+import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { sampleApplicationError } from './samples/errors.js';
 import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
 import { PriorPreviewInputUnavailableError } from '@pertexo/database/previews';
 import {
   WorkflowNotFoundError,
+  WorkflowStepSampleError,
   WorkflowRevisionConflictError,
 } from '@pertexo/database/authoring';
 import {
@@ -40,6 +43,10 @@ export class NodeTestInvalidError extends Error {
 }
 
 export function mapNodeTestingError(error: unknown): ApplicationError {
+  if (error instanceof WorkflowStepSampleError)
+    return sampleApplicationError(error);
+  if (error instanceof IdempotencyConflictError)
+    return applicationError('request.idempotency_conflict');
   if (error instanceof ArtifactMetadataNotFoundError)
     return applicationError('request.invalid', {
       safeDetail:

@@ -60,6 +60,7 @@ export function executeWorkflowNodePreview(
     expectedRevision: number;
     source: NodeTestInputSource;
     idempotencyKey: string;
+    expectedSampleId?: string | null;
     signal?: AbortSignal;
   }>,
 ): Promise<NodeTestExecuteAcceptedResponse> {
@@ -76,6 +77,9 @@ export function executeWorkflowNodePreview(
           ? { kind: 'manual', value: input.source.value }
           : { kind: 'prior_preview', previewRunId: input.source.previewRunId },
       acknowledgeSideEffects: true,
+      ...(input.expectedSampleId === undefined
+        ? {}
+        : { expectedSampleId: input.expectedSampleId }),
     }),
     response: {
       kind: 'json',

@@ -74,7 +74,12 @@ const namespace = createRedisTestNamespace(
 );
 const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
 const errorWorkflowCase = process.env.EDITOR_BROWSER_CASE === 'error-workflows';
-const transformCase = process.env.EDITOR_BROWSER_CASE === 'transforms';
+const webhookResponseCase =
+  process.env.EDITOR_BROWSER_CASE === 'webhook-responses';
+const previewCase =
+  process.env.EDITOR_BROWSER_CASE === 'transforms' ||
+  process.env.EDITOR_BROWSER_CASE === 'pinned-samples' ||
+  webhookResponseCase;
 const artifactInputs = process.env.EDITOR_BROWSER_CASE === 'artifact-inputs';
 let artifactTarget:
   Awaited<ReturnType<typeof createArtifactDestination>> | undefined;
@@ -414,6 +419,14 @@ async function constructRuntimes(
     await controlledCapabilities.checkReadiness();
     assertSetupActive();
   }
+  if (webhookResponseCase) {
+    controlledCapabilities = await createWorkerNodeRuntimeCapabilities({
+      database,
+    });
+    resources.capabilities = controlledCapabilities;
+    await controlledCapabilities.checkReadiness();
+    assertSetupActive();
+  }
   const controlledHttpClient = (artifactTarget ?? curatedTarget ?? httpTarget)
     ?.httpClient;
   const attempts = await createNodeAttemptRuntime(
@@ -423,9 +436,7 @@ async function constructRuntimes(
       leaseDurationSeconds: 10,
       redisUrl: namespace.redisUrl,
       workerId: `editor-browser-${randomUUID()}`,
-      ...(transformCase
-        ? { preview: await createEditorPreview(database) }
-        : {}),
+      ...(previewCase ? { preview: await createEditorPreview(database) } : {}),
     },
     {
       // These fail closed if a supposedly pure graph tries to use a provider.
@@ -434,6 +445,13 @@ async function constructRuntimes(
       controlledHttpClient === undefined
         ? {
             runtimeCapabilities: {
+              ...(controlledCapabilities?.factories.webhookResponse ===
+              undefined
+                ? {}
+                : {
+                    webhookResponse:
+                      controlledCapabilities.factories.webhookResponse,
+                  }),
               connections: () => ({
                 resolve: () =>
                   Promise.reject(
@@ -493,7 +511,13 @@ async function constructRuntimes(
   assertSetupActive();
   const triggers: TriggerRuntime[] = [];
   resources.triggers = triggers;
-  if (scheduleCase || controlledHttp || curatedTemplates || errorWorkflowCase) {
+  if (
+    scheduleCase ||
+    controlledHttp ||
+    curatedTemplates ||
+    errorWorkflowCase ||
+    webhookResponseCase
+  ) {
     for (const scanner of scheduleCase ? ['one', 'two'] : ['webhook']) {
       const trigger = await createTriggerRuntime({
         database,
@@ -534,7 +558,7 @@ async function constructRuntimes(
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.executeNodeAttempt,
         ...(errorWorkflowCase ? [JOB_NAME.startErrorWorkflow] : []),
-        ...(transformCase ? [JOB_NAME.executePreviewAttempt] : []),
+        ...(previewCase ? [JOB_NAME.executePreviewAttempt] : []),
         ...(triggers.length === 0 ? [] : [JOB_NAME.reconcileWorkflowTriggers]),
       ],
       batchSize: 25,

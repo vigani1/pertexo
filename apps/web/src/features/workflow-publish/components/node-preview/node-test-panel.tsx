@@ -1,22 +1,22 @@
 import type { PreviewRunSummary } from '@pertexo/contracts';
+import { SampleAvailability } from '../samples/availability';
+import { PreviewInputFields, RealTestPermission } from './inputs';
+import { useStepSample } from './use-step-sample';
 import { FlaskConicalIcon, ListChecksIcon } from 'lucide-react';
 import { useImperativeHandle, useState, type Ref } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { JsonTree } from '@/components/patterns/json-tree';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Status, StatusGlyph } from '@/components/ui/status';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { ArtifactDownload } from '@/features/artifacts/public';
 import { shortStepError } from '@/features/workflow-runs/failure.public';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
   describePreviewStatus,
-  sideEffectSentence,
+  canOfferStepTest,
 } from '../../model/preview-observation';
 import { describeValidationIssue } from '../../model/workflow-issues';
 import { useNodeTest } from './use-node-test';
@@ -24,11 +24,15 @@ import { useNodeTest } from './use-node-test';
 export type NodeTestHandle = Readonly<{ runTest: () => void }>;
 
 /**
- * The inspector's Test tab: check the step's setup (read-only), then run it
- * for real after acknowledging what that does outside Pertexo.
+ * Keep one command owner across pin changes, so an uncertain test retries
+ * its original intent while the sample controls follow the shared snapshot.
  */
 export function NodeTestPanel({
   apiClient,
+  userId,
+  editable,
+  stepBinding,
+  liveTestUnavailable,
   workspaceId,
   workflowId,
   nodeId,
@@ -41,6 +45,10 @@ export function NodeTestPanel({
   actionRef,
 }: Readonly<{
   apiClient: ApiClient;
+  userId: string;
+  editable: boolean;
+  stepBinding?: string | undefined;
+  liveTestUnavailable?: string | undefined;
   workspaceId: string;
   workflowId: string;
   nodeId: string;
@@ -56,28 +64,47 @@ export function NodeTestPanel({
 }>) {
   const [input, setInput] = useState('{}');
   const [usePrior, setUsePrior] = useState(false);
-  const [acknowledged, setAcknowledged] = useState(false);
+  const [acknowledgedContext, setAcknowledgedContext] = useState<string>();
+  const scope = { apiClient, userId, workspaceId, workflowId };
+  const {
+    query: sampleQuery,
+    sample,
+    state: sampleState,
+    expectedSampleId,
+  } = useStepSample(scope, nodeId, stepBinding, editable);
+  const pinned = sampleState === 'pinned';
+  const checkContext = `${stepBinding ?? ''}:${expectedSampleId ?? 'real'}`;
+  const acknowledged = acknowledgedContext === checkContext;
+  if (acknowledgedContext !== undefined && acknowledgedContext !== checkContext)
+    setAcknowledgedContext(undefined);
+  const realBlocked = !pinned && liveTestUnavailable !== undefined;
   const test = useNodeTest({
     apiClient,
     workspaceId,
     workflowId,
     nodeId,
     ensureSaved,
+    expectedSampleId,
+    checkContext,
     initialPreview: rememberedPreview,
-    ...(onFinished === undefined ? {} : { onFinished }),
-    ...(onSucceeded === undefined ? {} : { onSucceeded }),
+    onSampleConflict: () => {
+      void sampleQuery.refetch();
+    },
+    onFinished,
+    onSucceeded,
   });
-  const priorId = usePrior ? priorPreview?.id : undefined;
-  // The switch asks people to accept real effects; a checked setup that
-  // can't change anything outside Pertexo needs no such promise.
-  const harmless =
-    test.check?.disclosure !== undefined &&
-    !test.check.disclosure.mayCauseExternalSideEffect;
-  const canRun =
-    test.pending === undefined && (test.observing || acknowledged || harmless);
+  const canRun = canOfferStepTest({
+    editable,
+    test,
+    ready: sampleQuery.isSuccess,
+    sampleState,
+    liveTestUnavailable,
+    acknowledged,
+  });
 
   function run() {
     if (!canRun) return;
+    const priorId = usePrior ? priorPreview?.id : undefined;
     void (test.observing
       ? test.resume()
       : test.runTest({
@@ -94,31 +121,34 @@ export function NodeTestPanel({
         test.pending === 'run' && 'live-edge',
       )}
     >
-      {priorPreview === undefined ? null : (
-        <label className="flex items-center justify-between gap-3 text-sm">
-          <span>Use the output from testing {priorPreview.stepName}</span>
-          <Switch checked={usePrior} onCheckedChange={setUsePrior} />
-        </label>
+      {!editable ? null : (
+        <SampleAvailability
+          query={sampleQuery}
+          sample={sample}
+          scope={scope}
+          nodeId={nodeId}
+          state={sampleState}
+          preview={test.preview}
+          ensureSaved={ensureSaved}
+          disabled={
+            test.pending !== undefined || test.observing || test.recoveryPending
+          }
+        />
       )}
-      {usePrior ? null : (
-        <Field>
-          <FieldLabel htmlFor={`test-input-${nodeId}`}>
-            Sample input (JSON)
-          </FieldLabel>
-          <Textarea
-            id={`test-input-${nodeId}`}
-            name="previewInput"
-            autoComplete="off"
-            spellCheck={false}
-            className="min-h-24 font-mono"
-            value={input}
-            onChange={(event) => {
-              setInput(event.target.value);
-              setAcknowledged(false);
-              test.inputChanged();
-            }}
-          />
-        </Field>
+      {realBlocked ? <Notice>{liveTestUnavailable}</Notice> : null}
+      {pinned ? null : (
+        <PreviewInputFields
+          nodeId={nodeId}
+          priorPreview={priorPreview}
+          usePrior={usePrior}
+          onUsePriorChange={setUsePrior}
+          input={input}
+          onInputChange={(text) => {
+            setInput(text);
+            setAcknowledgedContext(undefined);
+            test.inputChanged();
+          }}
+        />
       )}
       <div className="flex flex-wrap gap-2">
         <ProgressButton
@@ -135,24 +165,23 @@ export function NodeTestPanel({
         </ProgressButton>
       </div>
       <SetupCheck check={test.check} />
-      <Field>
-        <FieldDescription>
-          {sideEffectSentence(stepSideEffect, test.check?.disclosure)}
-        </FieldDescription>
-        {harmless ? null : (
-          <label className="flex items-center justify-between gap-3 text-sm font-medium">
-            <span>I understand this test runs for real</span>
-            <Switch checked={acknowledged} onCheckedChange={setAcknowledged} />
-          </label>
-        )}
-      </Field>
+      {pinned ? null : (
+        <RealTestPermission
+          stepSideEffect={stepSideEffect}
+          check={test.check}
+          acknowledged={acknowledged}
+          onAcknowledgedChange={(checked) => {
+            setAcknowledgedContext(checked ? checkContext : undefined);
+          }}
+        />
+      )}
       <Button type="button" disabled={!canRun} onClick={run}>
         {test.pending === 'run' ? (
           <LoadingOrb />
         ) : (
           <FlaskConicalIcon data-icon="inline-start" />
         )}
-        {runLabel(test)}
+        {runLabel(test, pinned)}
       </Button>
       <TestResult
         preview={test.preview}
@@ -166,10 +195,14 @@ export function NodeTestPanel({
   );
 }
 
-function runLabel(test: ReturnType<typeof useNodeTest>): string {
+function runLabel(
+  test: ReturnType<typeof useNodeTest>,
+  pinned: boolean,
+): string {
   if (test.pending === 'run') return 'Testing…';
   if (test.observing) return 'Check test status';
   if (test.recoveryPending) return 'Retry the same test';
+  if (pinned) return 'Test with pinned output';
   return test.preview === undefined ? 'Run test' : 'Run another test';
 }
 
@@ -211,7 +244,7 @@ function TestResult({
   workspaceId: string;
 }>) {
   if (preview === undefined) return null;
-  const status = describePreviewStatus(preview.status);
+  const status = describePreviewStatus(preview.status, preview.pinnedSampleId);
   return (
     <section
       aria-label="Test result"

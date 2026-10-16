@@ -84,10 +84,12 @@ it('renders labelled multiple choices, requires a choice and submits configured 
   render(<FormResponse fields={choices} onSubmit={send} />);
   expect(
     screen.getByRole('group', { name: 'Channels' }),
-  ).toHaveAccessibleDescription('Choose the channels to use.');
+  ).toHaveAccessibleDescription(
+    'Choose 1–2 options. Choose the channels to use.',
+  );
   await user.click(screen.getByRole('button', { name: 'Send response' }));
   expect(send).not.toHaveBeenCalled();
-  await screen.findByText('Enter a valid value for this field.');
+  await screen.findByText('Choose 1–2 different available options.');
   await user.click(screen.getByRole('checkbox', { name: 'SMS' }));
   await user.click(screen.getByRole('checkbox', { name: 'Email' }));
   await user.click(screen.getByRole('button', { name: 'Send response' }));
@@ -129,4 +131,43 @@ it('keeps editable array prefills once and prevents disabled checkbox changes', 
   expect(email).toHaveAttribute('aria-disabled', 'true');
   await user.click(email);
   expect(email).toBeChecked();
+});
+
+it('enforces selection limits visibly without locking selected choices', async () => {
+  const bounded = formFieldsSchema.parse([
+    {
+      id: 'channels',
+      name: 'channels',
+      label: 'Channels',
+      type: 'multi_select',
+      options: ['Email', 'SMS', 'Chat'],
+      minSelections: 2,
+      maxSelections: 2,
+    },
+  ]);
+  const send = vi.fn().mockResolvedValue(undefined),
+    user = userEvent.setup();
+  render(
+    <FormResponse
+      fields={bounded}
+      onSubmit={send}
+      initialValues={{ channels: ['Email'] }}
+    />,
+  );
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  expect(send).not.toHaveBeenCalled();
+  await screen.findByText('Choose 2 different available options.');
+  await user.click(screen.getByRole('checkbox', { name: 'SMS' }));
+  expect(screen.getByRole('checkbox', { name: 'Chat' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await user.click(screen.getByRole('checkbox', { name: 'Email' }));
+  expect(screen.getByRole('checkbox', { name: 'Chat' })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await user.click(screen.getByRole('checkbox', { name: 'Chat' }));
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  expect(send).toHaveBeenCalledWith({ channels: ['SMS', 'Chat'] });
 });

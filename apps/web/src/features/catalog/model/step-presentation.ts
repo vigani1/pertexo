@@ -46,6 +46,12 @@ type RegistryEntry = Omit<StepPresentation, 'family'> &
   Readonly<{ family: StepFamily }>;
 
 const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
+  'core.respond_webhook': {
+    name: 'Respond to webhook',
+    description: 'Reply to the waiting webhook caller, then continue',
+    icon: WebhookIcon,
+    family: 'output',
+  },
   'core.read_file': {
     name: 'Read file',
     description: 'Turn a CSV or JSON file into data',

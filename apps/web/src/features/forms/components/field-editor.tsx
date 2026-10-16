@@ -218,6 +218,49 @@ export function FormFieldsEditor({
               )}
             </LabelledField>
           ) : null}
+          {field.type === 'multi_select' ? (
+            <div className="grid grid-cols-2 gap-3">
+              {(['minSelections', 'maxSelections'] as const).map((key) => (
+                <LabelledField
+                  key={key}
+                  id={`${id}-${field.id}-${key}`}
+                  label={
+                    key === 'minSelections'
+                      ? 'Minimum selections'
+                      : 'Maximum selections'
+                  }
+                >
+                  {(control) => (
+                    <Input
+                      {...control}
+                      type="number"
+                      min={key === 'minSelections' ? 0 : 1}
+                      max={field.options.length}
+                      value={field[key] ?? ''}
+                      placeholder={
+                        key === 'minSelections'
+                          ? field.required
+                            ? '1'
+                            : '0'
+                          : String(field.options.length)
+                      }
+                      onChange={(event) => {
+                        const text = event.currentTarget.value;
+                        update(index, (current) => {
+                          const copy = { ...current };
+                          if (text === '') {
+                            Reflect.deleteProperty(copy, key);
+                            return copy;
+                          }
+                          return { ...copy, [key]: Number(text) };
+                        });
+                      }}
+                    />
+                  )}
+                </LabelledField>
+              ))}
+            </div>
+          ) : null}
           <LabelledField id={`${id}-${field.id}-required`} label="Required">
             {(control) => (
               <Checkbox

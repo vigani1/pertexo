@@ -85,12 +85,12 @@ sets are later work.
 
 ## Screens
 
-![Variables on desktop](media/variables/settings-desktop.png)
+![Variables on desktop](../media/variables/settings-desktop.png)
 
-![Variables on a phone](media/variables/settings-phone.png)
+![Variables on a phone](../media/variables/settings-phone.png)
 
-![The captured values on a completed run](media/variables/captured-run-phone.png)
+![The captured values on a completed run](../media/variables/captured-run-phone.png)
 
-![A missing variable blocks publication with an actionable finding](media/variables/publish-desktop.png)
+![A missing variable blocks publication with an actionable finding](../media/variables/publish-desktop.png)
 
-![Long names wrap in the phone publication dialog](media/variables/publish-phone.png)
+![Long names wrap in the phone publication dialog](../media/variables/publish-phone.png)

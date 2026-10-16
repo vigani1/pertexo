@@ -201,7 +201,12 @@ function acceptanceInput(
   };
 }
 
-export type AcceptedFixture = Awaited<ReturnType<typeof acceptPreviewRun>> & {
+export type AcceptedFixture = Omit<
+  Awaited<ReturnType<typeof acceptPreviewRun>>,
+  'outboxEventId' | 'previewAttemptId'
+> & {
+  outboxEventId: string;
+  previewAttemptId: string;
   delivery: PreviewDelivery;
 };
 
@@ -221,6 +226,8 @@ export async function acceptFixture(
         input,
       ),
   );
+  if (accepted.outboxEventId === null || accepted.previewAttemptId === null)
+    throw new Error('Worker fixture requires a dispatched preview');
   // The transport payload mirrors acceptance exactly, including optional
   // trace context; the checksum must cover those same bytes.
   const payload = {
@@ -234,6 +241,8 @@ export async function acceptFixture(
   } as const;
   return Object.freeze({
     ...accepted,
+    outboxEventId: accepted.outboxEventId,
+    previewAttemptId: accepted.previewAttemptId,
     delivery: {
       outboxEventId: accepted.outboxEventId,
       payloadChecksum: canonicalOutboxPayloadChecksum(payload),

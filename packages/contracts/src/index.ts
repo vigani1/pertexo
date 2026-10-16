@@ -105,6 +105,7 @@ export {
   noticeSubscriptionRequestSchema,
   noticeCommandResponseSchema,
   noticeUnsubscribeResponseSchema,
+  noticeOneClickQuerySchema,
   type NoticeEmailMode,
   type NoticeSchedule,
   type NoticePreferencesRequest,
@@ -122,3 +123,5 @@ export {
   type WorkspaceInboxAttentionThread,
   type WorkspaceNoticeKind,
 } from './schemas/identity/inbox.js';
+
+export * from './schemas/workflows/step-samples.js';

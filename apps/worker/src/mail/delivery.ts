@@ -15,6 +15,10 @@ const payload = z
     toEmail: z.email().max(320),
     subject: z.string().min(1).max(998),
     text: z.string().min(1).max(32_768),
+    unsubscribeUrl: z
+      .url({ protocol: /^https?$/u })
+      .max(8192)
+      .optional(),
   })
   .strict();
 
@@ -84,6 +88,7 @@ async function deliverClaim(
     });
     return;
   }
+  // Durable ciphertext and provider identities predate the system-mail table name.
   const associatedData = `pertexo/authentication-mail/${claim.purpose}/${claim.id}/${claim.expiresAt.toISOString()}`;
   const message = payload.parse(
     JSON.parse(
@@ -98,6 +103,9 @@ async function deliverClaim(
       toEmail: message.toEmail,
       subject: message.subject,
       text: message.text,
+      ...(message.unsubscribeUrl === undefined
+        ? {}
+        : { unsubscribeUrl: message.unsubscribeUrl }),
       idempotencyKey: `authentication-mail:${claim.id}`,
       timeoutMillis: dependencies.timeoutMillis,
       beforeDispatch: async () => {

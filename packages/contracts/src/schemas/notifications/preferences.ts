@@ -48,6 +48,15 @@ export const noticeSubscriptionRequestSchema = noticeSubscriptionSchema
 export const noticeCommandResponseSchema = z
   .object({ revision, changed: z.boolean(), replayed: z.boolean() })
   .strict();
+export const noticeOneClickQuerySchema = z
+  .object({
+    token: z
+      .string()
+      .min(1)
+      .max(4096)
+      .regex(/^[A-Za-z0-9_-]+$/u),
+  })
+  .strict();
 export const noticeUnsubscribeResponseSchema = z
   .object({ unsubscribed: z.literal(true) })
   .strict();

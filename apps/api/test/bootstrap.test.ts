@@ -1,3 +1,4 @@
+import { nodeTestingSamples } from './node-testing/fixture.js';
 import { request as httpRequest } from 'node:http';
 
 import type {
@@ -173,6 +174,7 @@ function workflowAuthoringDatabase(
   close = vi.fn().mockResolvedValue(undefined),
 ): WorkflowAuthoringDatabase {
   return {
+    stepSamples: nodeTestingSamples(),
     acceptPreview: () => Promise.reject(new Error('not used')),
     resolvePreviewReplay: () => Promise.resolve(null),
     readPreview: () => Promise.resolve(null),

@@ -1,0 +1,140 @@
+import { randomUUID } from 'node:crypto';
+import { mkdtemp, readdir, copyFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Pool } from 'pg';
+import { expect, it } from 'vitest';
+import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
+import { createSystemMailDeliveryStore } from '../../src/platform/mail/store.js';
+import { parseDatabaseConfig } from '../../src/config.js';
+import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
+
+it('renames populated mail without changing row, grant, index or referenced relation identities', async () => {
+  const adminUrl =
+    process.env.DATABASE_ADMIN_URL ??
+    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const fixture = createDisposableDatabaseFixture({
+    adminUrl,
+    connectRoles: ['pertexo_app', 'pertexo_migration', 'pertexo_maintenance'],
+    databaseName: `pertexo_test_mail_upgrade_${randomUUID().replaceAll('-', '')}`,
+    ownerRole: 'pertexo_owner',
+  });
+  const directory = await mkdtemp(join(tmpdir(), 'pertexo-mail-upgrade-'));
+  let admin: Pool | undefined;
+  let worker: ReturnType<typeof createSystemMailDeliveryStore> | undefined;
+  try {
+    await fixture.create();
+    for (const name of await readdir(MIGRATIONS_DIRECTORY))
+      if (/^00(?:0[0-9]|1[0-6])_.*\.sql$/u.test(name))
+        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+    const migration = {
+      appRole: 'pertexo_app',
+      ownerRole: 'pertexo_owner',
+      maintenanceRole: 'pertexo_maintenance',
+      connectionString: fixture.databaseUrl(
+        process.env.DATABASE_MIGRATION_URL ??
+          'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+      ),
+    };
+    await migrateDatabase(migration, directory);
+    admin = new Pool({
+      connectionString: fixture.databaseUrl(adminUrl),
+      max: 1,
+    });
+    const id = randomUUID();
+    await admin.query(
+      "insert into app.authentication_mail_deliveries(id,purpose,expires_at,payload_ciphertext,payload_nonce,payload_tag,payload_key_version) values($1,'workspace_notice',clock_timestamp()+interval '1 day','preserved-ciphertext','nonce','tag','old-key')",
+      [id],
+    );
+    const row = await admin.query(
+      'select * from app.authentication_mail_deliveries where id=$1',
+      [id],
+    );
+    const inspector = admin;
+    const catalog = async (table: string) => ({
+      relation: (
+        await inspector.query(
+          'select oid,relowner,relacl,relrowsecurity,relforcerowsecurity from pg_class where oid=$1::regclass',
+          [table],
+        )
+      ).rows,
+      columns: (
+        await inspector.query(
+          'select attnum,attacl from pg_attribute where attrelid=$1::regclass and attnum>0 order by attnum',
+          [table],
+        )
+      ).rows,
+      indexes: (
+        await inspector.query(
+          'select indexrelid from pg_index where indrelid=$1::regclass order by indexrelid',
+          [table],
+        )
+      ).rows,
+      constraints: (
+        await inspector.query(
+          'select oid,contype,confrelid from pg_constraint where conrelid=$1::regclass or confrelid=$1::regclass order by oid',
+          [table],
+        )
+      ).rows,
+    });
+    const before = await catalog('app.authentication_mail_deliveries');
+    expect(await migrateDatabase(migration)).toEqual([
+      '0017_system_mail_deliveries.sql',
+      '0018_workflow_polish.sql',
+      '0019_pinned_step_samples.sql',
+      '0020_webhook_responses.sql',
+    ]);
+    expect(await catalog('app.system_mail_deliveries')).toEqual(before);
+    expect(
+      (
+        await admin.query(
+          'select * from app.system_mail_deliveries where id=$1',
+          [id],
+        )
+      ).rows,
+    ).toEqual(row.rows);
+    expect(
+      (
+        await admin.query(
+          "select to_regclass('app.authentication_mail_deliveries') old",
+        )
+      ).rows,
+    ).toEqual([{ old: null }]);
+    expect(
+      (
+        await admin.query(
+          "select has_table_privilege('pertexo_app','app.system_mail_deliveries','INSERT') enqueue,has_column_privilege('pertexo_app','app.system_mail_deliveries','status','UPDATE') settle,has_column_privilege('pertexo_app','app.system_mail_deliveries','purpose','UPDATE') rewrite,has_table_privilege('pertexo_maintenance','app.system_mail_deliveries','DELETE') retention",
+        )
+      ).rows,
+    ).toEqual([
+      { enqueue: true, settle: true, rewrite: false, retention: true },
+    ]);
+    worker = createSystemMailDeliveryStore(
+      parseDatabaseConfig({
+        connectionString: fixture.databaseUrl(
+          process.env.DATABASE_URL ??
+            'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+        ),
+        max: 1,
+      }),
+    );
+    const claims = await worker.claim({ workerId: 'upgrade-proof', limit: 1 });
+    expect(claims).toHaveLength(1);
+    expect(claims[0]).toMatchObject({
+      id,
+      purpose: 'workspace_notice',
+      sealedPayload: {
+        ciphertext: 'preserved-ciphertext',
+        nonce: 'nonce',
+        tag: 'tag',
+        keyVersion: 'old-key',
+      },
+    });
+    expect(await migrateDatabase(migration)).toEqual([]);
+  } finally {
+    await worker?.close();
+    await admin?.end();
+    await fixture.drop();
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 60000);

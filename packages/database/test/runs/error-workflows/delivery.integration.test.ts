@@ -1,3 +1,7 @@
+import { readErrorWorkflow } from '../../../src/runs/error-workflows/read.js';
+import { waitForApplicationLock } from '../../support/postgres/lock-coordination.js';
+import { createTestRunStore } from '../../support/run-advance-store.js';
+import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.js';
 import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/workspace-purge.js';
 import { maintenanceUrl } from '../../lifecycle/retention.support.js';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.js';
@@ -15,7 +19,11 @@ import {
 import { persistErrorWorkflowIntent } from '../../../src/runs/error-workflows/produce.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
-import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
+import {
+  admin,
+  createFamily,
+  insertHint,
+} from '../../lifecycle/calls/fixtures.js';
 import {
   createWorkflowErrorStore,
   WorkflowErrorSettingsConflictError,
@@ -424,6 +432,103 @@ async function fullQueue() {
   return { ...f, blocker };
 }
 
+async function cancelQueuedRun(f: Awaited<ReturnType<typeof fullQueue>>) {
+  const checkpoint = createCheckpoint({
+    workflowVersionId: f.childVersionId,
+    iterationBudget: 200,
+  });
+  const outboxEventId = crypto.randomUUID();
+  const payload = {
+    workspaceId: f.workspaceId,
+    runId: f.blocker,
+    outboxEventId,
+  };
+  const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
+  await admin.query(
+    `insert into app.run_checkpoints(workspace_id,workflow_run_id,workflow_version_id,revision,scheduler_state)
+    values($1,$2,$3,0,$4::jsonb)`,
+    [f.workspaceId, f.blocker, f.childVersionId, JSON.stringify(checkpoint)],
+  );
+  await admin.query(
+    `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum)
+    values($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5)`,
+    [
+      outboxEventId,
+      f.workspaceId,
+      f.blocker,
+      JSON.stringify(payload),
+      payloadChecksum,
+    ],
+  );
+  const coordinator = createTestRunStore(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
+  );
+  try {
+    expect(
+      await coordinator.commitAdvancePlan({
+        workspaceId: f.workspaceId,
+        runId: f.blocker,
+        delivery: { outboxEventId, payloadChecksum },
+        signal: new AbortController().signal,
+        plan: {
+          expectedRevision: 0,
+          expectedNextEventSequence: 1,
+          consumedThroughEventSequence: 0,
+          checkpoint: {
+            ...checkpoint,
+            revision: 1,
+            runStatus: 'canceled',
+            nextEventSequence: 2,
+          },
+          events: [
+            {
+              name: 'run.canceled',
+              sequence: 1,
+              occurredAt: new Date().toISOString(),
+            },
+          ],
+          nodeRunAdmissions: [],
+          attempts: [],
+        },
+      }),
+    ).toMatchObject({ kind: 'committed' });
+  } finally {
+    await coordinator.close();
+  }
+}
+
+it('records an unpublished target on the source run without creating a delivery', async () => {
+  const f = await fixture();
+  await admin.query(
+    'update app.workflows set published_version_id=null where id=$1',
+    [f.childWorkflowId],
+  );
+  await Promise.all([f.produce(), f.produce()]);
+  expect(await intent(f)).toMatchObject({
+    status: 'refused',
+    refusal_code: 'target_not_published',
+    accepted_run_id: null,
+    outbox_event_id: null,
+  });
+  const visible = await withWorkspaceTransaction(
+    pool,
+    f.workspaceId,
+    (transaction) => readErrorWorkflow(transaction, f.parentRunId),
+  );
+  expect(visible).toMatchObject({
+    errorWorkflow: {
+      status: 'refused',
+      refusalCode: 'target_not_published',
+      targetVersionId: null,
+    },
+  });
+  const deliveries = await admin.query(
+    "select id from app.outbox_events where workspace_id=$1 and aggregate_id=$2 and job_name='start-error-workflow'",
+    [f.workspaceId, f.parentRunId],
+  );
+  expect(deliveries.rows).toHaveLength(0);
+});
+
 it('keeps one bounded pending intent under duplicate delivery, then admits once after capacity frees', async () => {
   const f = await fullQueue();
   const original = await delivery(f);
@@ -437,20 +542,24 @@ it('keeps one bounded pending intent under duplicate delivery, then admits once 
   expect(pending?.queue_wait_expires_at).toBeInstanceOf(Date);
   expect(pending?.outbox_event_id).not.toBe(original.outboxEventId);
   const next = await delivery(f);
-  const scheduled = await admin.query<{ delay: number }>(
-    'select extract(epoch from available_at-clock_timestamp())::float8 delay from app.outbox_events where id=$1',
+  const scheduled = await admin.query<{ available_at: Date }>(
+    'select available_at from app.outbox_events where id=$1',
     [next.outboxEventId],
   );
-  expect(scheduled.rows[0]?.delay).toBeGreaterThan(0);
-  expect(scheduled.rows[0]?.delay).toBeLessThanOrEqual(30);
+  expect(scheduled.rows[0]?.available_at).toEqual(
+    pending?.queue_wait_expires_at,
+  );
   await store.dispatch(next);
   expect((await intent(f))?.queue_wait_expires_at).toEqual(
     pending?.queue_wait_expires_at,
   );
-  await admin.query(
-    "update app.workflow_runs set status='canceled',completed_at=clock_timestamp() where id=$1",
-    [f.blocker],
+  await cancelQueuedRun(f);
+  const awake = await delivery(f);
+  const due = await admin.query<{ due: boolean }>(
+    'select available_at <= clock_timestamp() due from app.outbox_events where id=$1',
+    [awake.outboxEventId],
   );
+  expect(due.rows[0]?.due).toBe(true);
   const ready = await delivery(f);
   await Promise.all([
     store.dispatch(original),
@@ -480,6 +589,7 @@ it('refuses visibly after the fixed capacity-wait deadline without losing the so
     "update app.run_error_workflow_intents set queue_wait_expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and source_run_id=$2",
     [f.workspaceId, f.parentRunId],
   );
+  await cancelQueuedRun(f);
   await store.dispatch(await delivery(f));
   expect(await intent(f)).toMatchObject({
     status: 'refused',
@@ -550,4 +660,128 @@ it('runs the version captured at failure even if a different publication becomes
     [result?.accepted_run_id],
   );
   expect(accepted.rows[0]?.workflow_version_id).toBe(f.childVersionId);
+});
+
+it('does not lose a release racing with replacement delivery', async () => {
+  const f = await fullQueue();
+  await store.dispatch(await delivery(f));
+  const next = await delivery(f);
+  await Promise.all([cancelQueuedRun(f), store.dispatch(next)]);
+  if ((await intent(f))?.status === 'pending') {
+    const ready = await delivery(f);
+    const due = await admin.query<{ due: boolean }>(
+      'select available_at <= clock_timestamp() due from app.outbox_events where id=$1',
+      [ready.outboxEventId],
+    );
+    expect(due.rows[0]?.due).toBe(true);
+    await store.dispatch(ready);
+  }
+  expect(await intent(f)).toMatchObject({ status: 'accepted' });
+});
+
+it('fences wakeup updates to same-workspace error deliveries and leaves payloads immutable', async () => {
+  const f = await fullQueue();
+  await store.dispatch(await delivery(f));
+  const next = await delivery(f);
+  const otherJob = await insertHint(f.workspaceId, f.blocker);
+  const other = await fixture();
+  await other.produce();
+  const otherDelivery = await delivery(other);
+  await withTenantScopedClient(
+    pool,
+    { workspaceId: f.workspaceId },
+    async (client) => {
+      expect(
+        (
+          await client.query(
+            'update app.outbox_events set available_at=clock_timestamp() where id=$1',
+            [next.outboxEventId],
+          )
+        ).rowCount,
+      ).toBe(1);
+      expect(
+        (
+          await client.query(
+            'update app.outbox_events set available_at=clock_timestamp() where id=$1',
+            [otherDelivery.outboxEventId],
+          )
+        ).rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await client.query(
+            'update app.outbox_events set available_at=clock_timestamp() where id=$1',
+            [otherJob],
+          )
+        ).rowCount,
+      ).toBe(0);
+    },
+  );
+  await expect(
+    withTenantScopedClient(pool, { workspaceId: f.workspaceId }, (client) =>
+      client.query(
+        "update app.outbox_events set payload='{}'::jsonb where id=$1",
+        [next.outboxEventId],
+      ),
+    ),
+  ).rejects.toMatchObject({ code: '42501' });
+});
+
+it('refuses a deadline that expires while admission waits for released capacity', async () => {
+  const f = await fullQueue();
+  await store.dispatch(await delivery(f));
+  const next = await delivery(f);
+  const connection = new URL(apiUrl);
+  const application = `error-deadline-${crypto.randomUUID()}`;
+  connection.searchParams.set('application_name', application);
+  const waitingStore = createErrorWorkflowStore(
+    parseDatabaseConfig({ connectionString: connection.toString(), max: 1 }),
+    (version) => ({
+      checkpoint: createCheckpoint({
+        workflowVersionId: version.id,
+        iterationBudget: 200,
+        nextEventSequence: 2,
+      }),
+    }),
+  );
+  const holder = await pool.connect();
+  let open = false;
+  let delivered: Promise<PromiseSettledResult<void>[]> | undefined;
+  try {
+    await holder.query('begin');
+    open = true;
+    await holder.query("select set_config('app.workspace_id',$1,true)", [
+      f.workspaceId,
+    ]);
+    // Free capacity in an uncommitted transaction, keeping its counter fenced.
+    await holder.query(
+      "update app.workflow_runs set status='canceled',completed_at=clock_timestamp() where id=$1",
+      [f.blocker],
+    );
+    await admin.query(
+      "update app.run_error_workflow_intents set queue_wait_expires_at=clock_timestamp()+interval '2 seconds' where workspace_id=$1 and source_run_id=$2",
+      [f.workspaceId, f.parentRunId],
+    );
+    delivered = Promise.allSettled([waitingStore.dispatch(next)]);
+    await waitForApplicationLock(admin, application);
+    await admin.query(
+      'select pg_sleep(greatest(0,extract(epoch from queue_wait_expires_at-clock_timestamp()))+0.001) from app.run_error_workflow_intents where workspace_id=$1 and source_run_id=$2',
+      [f.workspaceId, f.parentRunId],
+    );
+    await holder.query('commit');
+    open = false;
+    expect(await delivered).toEqual([
+      { status: 'fulfilled', value: undefined },
+    ]);
+    expect(await intent(f)).toMatchObject({
+      status: 'refused',
+      refusal_code: 'queue_full',
+      accepted_run_id: null,
+    });
+  } finally {
+    if (open) await holder.query('rollback');
+    holder.release();
+    if (delivered !== undefined) await delivered;
+    await waitingStore.close();
+  }
 });

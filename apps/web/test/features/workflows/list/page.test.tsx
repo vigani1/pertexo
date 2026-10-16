@@ -551,3 +551,30 @@ describe('workflow list', () => {
     expect(await screen.findByText('Daily intake')).toBeVisible();
   });
 });
+
+it('shows Form and error-workflow trigger icons with accessible names', async () => {
+  mockServer.use(
+    ...discoveryHandlers(),
+    draftHandler({
+      [workflowId]: graphOf([{ id: 'form', key: 'core.form', x: 0 }]),
+      [secondWorkflowId]: graphOf([
+        { id: 'error', key: 'core.workflow_error', x: 0 },
+      ]),
+    }),
+    listHandler(() => ({
+      items: [
+        summary(workflowId, 'Request form'),
+        summary(secondWorkflowId, 'Failure responder'),
+      ],
+      nextCursor: null,
+    })),
+  );
+  renderApp(`/w/${workspaceId}/workflows`);
+  const list = await screen.findByRole('list', { name: 'Workflows' });
+  expect(
+    (await within(list).findAllByText('Triggers: Form'))[0],
+  ).toBeInTheDocument();
+  expect(
+    (await within(list).findAllByText('Triggers: When a workflow fails'))[0],
+  ).toBeInTheDocument();
+});

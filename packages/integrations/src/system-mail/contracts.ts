@@ -13,6 +13,7 @@ export type SystemMailMessage = Readonly<{
   toEmail: string;
   subject: string;
   text: string;
+  unsubscribeUrl?: string;
   idempotencyKey: string;
   timeoutMillis: number;
   signal?: AbortSignal;

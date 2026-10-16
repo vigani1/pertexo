@@ -31,7 +31,7 @@ function store() {
   } satisfies SystemMailDeliveryStore;
 }
 
-function dependencies(result: unknown) {
+function dependencies(result: unknown, unsubscribeUrl?: string) {
   const deliveryStore = store();
   const sendNotification = vi.fn().mockResolvedValue(result);
   return {
@@ -46,6 +46,7 @@ function dependencies(result: unknown) {
             toEmail: 'ada@example.test',
             subject: 'Reset password',
             text: 'Exact immutable body',
+            ...(unsubscribeUrl === undefined ? {} : { unsubscribeUrl }),
           }),
         ),
       },
@@ -59,7 +60,7 @@ function dependencies(result: unknown) {
   };
 }
 
-describe('authentication mail delivery', () => {
+describe('system mail delivery', () => {
   it('submits the immutable encrypted command with a stable provider key', async () => {
     const fixture = dependencies({ kind: 'submitted', reference: 'email-1' });
     await expect(fixture.handler.runOnce()).resolves.toBe(1);
@@ -277,3 +278,86 @@ describe('non-idempotent SMTP recovery', () => {
     );
   });
 });
+
+it.each(['https://app.example.test', 'http://127.0.0.1:4174'])(
+  'keeps a sealed %s notice URL and both Resend headers identical across an uncertain retry',
+  async (origin) => {
+    const deliveryStore = store();
+    const envelope = createApplicationSecretEnvelope({
+      current: { version: 'v1', key: Buffer.alloc(32, 5).toString('base64') },
+    });
+    const unsubscribeUrl = `${origin}/v1/notifications/unsubscribe/one-click?token=immutable`;
+    const sealedPayload = envelope.seal(
+      JSON.stringify({
+        fromEmail: 'security@example.test',
+        toEmail: 'ada@example.test',
+        subject: 'Workflow failed: Import — Workspace',
+        text: 'Safe names only',
+        unsubscribeUrl,
+      }),
+      `pertexo/authentication-mail/workspace_notice/${claim.id}/${claim.expiresAt.toISOString()}`,
+    );
+    vi.mocked(deliveryStore.claim).mockResolvedValue([
+      { ...claim, purpose: 'workspace_notice', sealedPayload },
+    ]);
+    const requests: { key: string; body: string }[] = [];
+    const provider = createSystemMailClient(
+      { mode: 'resend', apiKey: 'provider-key' },
+      {
+        execute: async (request) => {
+          requests.push({
+            key: request.headers?.['idempotency-key'] ?? '',
+            body: new TextDecoder().decode(request.body),
+          });
+          await request.beforeDispatch();
+          return {
+            status: 503,
+            headers: {},
+            body: new TextEncoder().encode('{}'),
+            bodyEncoding: 'utf8',
+            finalUrl: request.url,
+            redirectCount: 0,
+          };
+        },
+      },
+    );
+    const handler = createSystemMailDeliveryHandler({
+      store: deliveryStore,
+      envelope,
+      email: provider,
+      timeoutMillis: 5000,
+      workerId: 'notice-test',
+      now: () => new Date('2026-09-23T00:00:00Z'),
+      notices: {
+        prepare: () => Promise.resolve(0),
+        authorize: () => Promise.resolve(true),
+      },
+    });
+    await handler.runOnce();
+    await handler.runOnce();
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toEqual(requests[1]);
+    expect(JSON.parse(requests[0]?.body ?? '{}')).toMatchObject({
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    });
+  },
+);
+
+it.each([
+  'file:///tmp/private',
+  'ftp://app.example.test',
+  'javascript:alert(1)',
+])(
+  'refuses a non-HTTP unsubscribe URL before dispatch: %s',
+  async (unsubscribeUrl) => {
+    const fixture = dependencies(
+      { kind: 'submitted', reference: 'must-not-send' },
+      unsubscribeUrl,
+    );
+    await expect(fixture.handler.runOnce()).rejects.toThrow();
+    expect(fixture.sendNotification).not.toHaveBeenCalled();
+  },
+);

@@ -1,5 +1,18 @@
 {
 	admin off
+	log default {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					replace token REDACTED
+				}
+				request>headers delete
+				resp_headers>Location delete
+			}
+		}
+	}
 }
 
 # Browsers keep to HTTPS for a year after their first visit.
@@ -9,8 +22,14 @@
 
 {$APP_HOST} {
 	import https_only
-	reverse_proxy web:8080 {
-		flush_interval -1
+	# Keep the one-click capability out of nginx request/error logs.
+	handle /v1/notifications/unsubscribe/one-click {
+		reverse_proxy api:3000
+	}
+	handle {
+		reverse_proxy web:8080 {
+			flush_interval -1
+		}
 	}
 }
 

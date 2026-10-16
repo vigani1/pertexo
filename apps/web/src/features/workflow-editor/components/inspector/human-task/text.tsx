@@ -65,7 +65,7 @@ export function TaskTextField({
         : name === 'thankYouMessage'
           ? {
               description:
-                'Plain text shown when a response is accepted. The run may still be waiting or running.',
+                'Shown after acceptance. HTTP and HTTPS URLs become links. The run may still be waiting or running.',
             }
           : {})}
     >

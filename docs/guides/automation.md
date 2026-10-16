@@ -16,7 +16,7 @@ triggers or other tokens, edit drafts, replay/recover runs or use operator comma
 Creation requires signing in within the previous five minutes. If automation is
 disabled, Settings explains that; metadata and revocation remain available. The
 server operator enables `AUTOMATION_TOKENS_ENABLED=true` after applying the
-matching migration and binaries. See [the implementation plan](feature-plans/16-automation-api-and-cli.md)
+matching migration and binaries. See [the implementation plan](../feature-plans/16-automation-api-and-cli.md)
 for rollout and rollback. Restored database backups contain hashes, never the
 recoverable raw tokens; keep script credentials separately in your secret manager.
 A lost creation response requires checking metadata, revoking that token and
@@ -71,7 +71,7 @@ retry or arbitrary endpoint passthrough.
 Paths below are relative to `/v1/workspaces/$WORKSPACE_ID`. Exactly one Bearer
 Authorization header authenticates supported calls; do not mix cookies with it.
 The server enforces scopes, validation, rate limits and preconditions shared with
-the browser. Request bodies use [the current contracts](../packages/contracts/src/schemas/).
+the browser. Request bodies use [the current contracts](../../packages/contracts/src/schemas).
 
 | CLI after `pnpm cli` | HTTP | Token scope |
 | --- | --- | --- |

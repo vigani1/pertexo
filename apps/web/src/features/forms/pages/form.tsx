@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { ThankYouMessage } from '../components/thank-you';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type {
@@ -56,6 +58,10 @@ function SubmissionReceipt({
   scope,
   receipt,
 }: Readonly<{ scope: FormScope; receipt: FormSubmissionResponse }>) {
+  useEffect(() => {
+    if (receipt.redirectUrl !== undefined)
+      window.location.replace(receipt.redirectUrl);
+  }, [receipt.redirectUrl]);
   return (
     <section className="flex flex-col gap-4">
       <FinishedThread />
@@ -64,8 +70,18 @@ function SubmissionReceipt({
         tone="success"
         className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
       >
-        {receipt.thankYouMessage}
+        <ThankYouMessage message={receipt.thankYouMessage} />
       </Status>
+      {receipt.redirectUrl === undefined ? null : (
+        <a
+          href={receipt.redirectUrl}
+          rel="noreferrer"
+          referrerPolicy="no-referrer"
+          className="text-sm underline underline-offset-4"
+        >
+          Continue
+        </a>
+      )}
       {scope.target.kind === 'member' && receipt.runId !== undefined ? (
         <Link
           to="/w/$workspaceId/runs/$runId"

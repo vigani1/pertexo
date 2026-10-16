@@ -1,3 +1,4 @@
+import type { NodeWebhookResponseRuntime } from './webhooks.js';
 import type { NodeArtifactReference } from './artifacts.js';
 export type { NodeArtifactReference } from './artifacts.js';
 import type { ZodType } from 'zod';
@@ -99,6 +100,7 @@ export interface NodeExecutionRuntime {
   readonly providerDispatchUnresolved?: true;
   readonly connections?: NodeConnectionRuntime;
   readonly artifacts?: NodeArtifactRuntime;
+  readonly webhookResponse?: NodeWebhookResponseRuntime;
   /** Synchronous, nonthrowing capture only. Never performs persistence or I/O. */
   readonly observeConnectionHealth?: (
     observation: NodeConnectionHealthObservation,
