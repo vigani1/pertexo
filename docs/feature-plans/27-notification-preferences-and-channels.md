@@ -366,3 +366,94 @@ and named-decider Approval browser journeys passed.
 The PR records CI receipts. GitHub's PR checks and
 natural-main image publication are the rollout authority; local qualification
 alone is not a deployment receipt.
+
+
+## Follow-up: named subjects, one-click unsubscribe and queue naming (2026-10-16)
+
+Decisions and rules:
+
+- Mail preparation reads the workspace name in its existing recipient query.
+  Subjects include the workflow/connection name and workspace name; a digest
+  names its first non-limit subject and total notice count. A limit-only subject
+  names the workspace once. Header names use one sanitizing/clipping owner,
+  remove control/line separator characters and retain both name budgets.
+  Keep the existing 25 visible body items and 12,288-byte plaintext envelope.
+  A maximum-input prototype with the new URL/subject used 10,573 bytes; add the
+  equivalent production-code regression test rather than increasing the limit.
+- Add a closed optional `unsubscribeUrl` to the system mail message and sealed
+  payload reader. No arbitrary-header facility. Nodemailer builds its standard
+  List-Unsubscribe field through MailComposer's list option, together with the
+  fixed List-Unsubscribe-Post: List-Unsubscribe=One-Click field. Resend sends the
+  same two fields through its existing JSON headers property. Auth mail and old
+  queued payloads without the optional URL keep their existing delivery behavior.
+- Reuse the existing encrypted person/workspace/preference-revision/membership
+  capability and expiry. Keep the human fragment/header confirmation route.
+  Add POST /v1/notifications/unsubscribe/one-click?token=... using the same service
+  command; it only turns personal email Off. Repeated exact opt-out is idempotent;
+  expired tokens, a later preference change or a changed membership incarnation
+  remain unavailable. No session, cookie, CSRF secret, redirect or new key.
+- Decode application/x-www-form-urlencoded and multipart/form-data only for that
+  exact POST route, within 8 KiB. The body must contain exactly the single literal
+  List-Unsubscribe=One-Click field. Preserve duplicate entries during decoding so
+  the one public contract validation rejects duplicates, extra fields and files.
+  GET never mutates preferences: redirect only a manual GET to the existing
+  same-origin fragment confirmation page, preserving older List-Unsubscribe
+  clients. The automatic POST never redirects. Other API endpoints do not gain
+  form body parsing.
+- Use query parameter `token`, which the existing API log redactor already owns.
+  The beta Caddy edge routes only this canonical endpoint directly to the existing
+  API, preventing the capability reaching nginx request/error logs. Other traffic
+  retains the current web proxy/SSE/HSTS behavior. Filter the default Caddy runtime
+  logger's request URI query token, request headers and secret-bearing redirect
+  Location response header, including upstream-error
+  logs. Qualify successful requests and a real upstream 502 with the actual pinned
+  cached Caddy/nginx images; no image downloads or new service/CI job.
+- Rename the physical authentication_mail_deliveries table and TypeScript table
+  symbol to system_mail_deliveries/systemMailDeliveries. Preserve row IDs, ACLs,
+  ownership, existing isolation fences, constraints, references, queued ciphertext, delivery state,
+  cryptographic AAD and provider idempotency identities. The last two deliberately
+  retain their old authentication-mail strings for existing durable messages.
+- RFC 8058 requires the provider's DKIM signature to cover both unsubscribe
+  headers. Document that relay configuration; local SMTP proves raw headers and
+  the anonymous command, not a third party's signature. No DKIM subsystem/account
+  is added. Production origins remain HTTPS; local loopback testing uses the
+  existing development configuration.
+
+Placement and slices:
+
+1. Move-only extraction: schema/authentication.ts mail table moves unchanged to
+   schema/mail/deliveries.ts; update aggregate and consumer imports. Verify and
+   commit before changing its physical or TypeScript name.
+2. Existing inbox/mail owns recipient projection; worker/mail owns content;
+   integrations/system-mail and its shared Resend client own the closed headers.
+   Existing notifications/preferences owns the public command and narrow parser.
+   Contracts publish both form MIME types. Extend the existing web image probe
+   with an optional cached Caddy argument using its owned containers/cleanup;
+   retain its current two-argument qualification and CI job unchanged.
+3. Generate migration 0017 normally, with the explicit table rename, and adjust
+   index/constraint names where required. Teach the existing schema ownership
+   checker ALTER TABLE RENAME evolution with behavior tests; no new check job.
+   Stop old API/workers, migrate once, then start matching readers/writers through
+   the existing coordinated deployment. No downgrade to old table/payload readers.
+4. Update ADR 079, the F27 tracker and notification/operator guidance. Qualify
+   populated upgrade, grants/isolation, legacy sealed delivery, workspace purge,
+   named subjects and maximum Unicode bounds, raw SMTP/Resend headers, anonymous
+   opt-out, invalid/stale/duplicate/oversized bodies, non-mutating manual GET/confirmation and proxy log privacy.
+
+Status:
+
+- [ ] Buildable move-only extraction.
+- [ ] Named subjects, closed transport metadata and standards endpoint.
+- [ ] Table rename, populated upgrade, compatibility and proxy qualification.
+- [ ] Full checks and green PR CI before merge.
+
+References: [RFC 8058](https://www.rfc-editor.org/rfc/rfc8058.html),
+[Nodemailer list fields](https://nodemailer.com/message/list-headers),
+[Caddy runtime log configuration](https://caddyserver.com/docs/caddyfile/options#log)
+and [query filters](https://caddyserver.com/docs/caddyfile/directives/log#query).
+
+The pinned, cached Caddy/nginx prototype passes actual POST forwarding, a
+non-mutating manual GET redirect and upstream-down 502 query/header log privacy.
+Keep the equivalent qualification in the existing image probe. The global system
+mail queue retains its existing role/column grants; workspace isolation remains
+on its linked notice batches and items, rather than inventing queue RLS.

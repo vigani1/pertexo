@@ -95,3 +95,31 @@ Email starts Off and remains best effort; Inbox/task facts are authoritative.
 Current-attention polling may coalesce brief transitions. Shared alerts remain
 independent. Push, chat channels, public decisions and incident management remain
 later work, without placeholder subsystems.
+
+### Amendment: named system mail and one-click opt-out (2026-10-16)
+
+Notice subjects include the workflow/connection and workspace names; digests name
+one subject and the total count. Existing safe projections, Unicode bounds and
+the 12 KiB envelope remain. The shared delivery table becomes
+`system_mail_deliveries`, retaining rows, grants, references, encrypted content and
+claim state. Existing cryptographic AAD and provider identities retain their old
+strings so queued messages remain readable and retry the identical command.
+
+Reuse the existing revision-bound capability for RFC 8058 one-click POST, with
+exactly `List-Unsubscribe=One-Click` in either standard form MIME type. No cookie,
+session, CSRF secret or redirect is required for POST. A manual GET only redirects
+to the existing same-origin fragment confirmation page; it never opts out. Keep
+that human confirmation and its header-authorized command. The bounded parser
+applies only to the new endpoint. Both transports add the two fixed headers only
+when the sealed payload contains its optional unsubscribe URL; legacy payloads
+and security mail keep their behavior.
+
+The beta edge routes the capability endpoint directly to the existing API,
+bypassing nginx request/error logs. Caddy filters query tokens, request headers
+and redirect Location from its runtime logs, including upstream failures. No new
+service, key, role or CI job. Stop old API/workers before the table migration,
+then start matching readers before new payload writers.
+
+The configured provider must DKIM-sign both unsubscribe headers as required by
+[RFC 8058](https://www.rfc-editor.org/rfc/rfc8058.html). Local SMTP qualification
+proves headers and capability behavior, not the external provider's signature.

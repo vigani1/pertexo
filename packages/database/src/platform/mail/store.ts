@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { authenticationMailDeliveries } from '../../schema/authentication.js';
+import { authenticationMailDeliveries } from '../../schema/mail/deliveries.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
