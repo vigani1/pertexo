@@ -46,7 +46,7 @@ export const webhookRunResponses = appSchema.table(
     ),
     check(
       'webhook_run_responses_complete',
-      sql`((responded_at IS NULL AND status_code IS NULL AND content_type IS NULL AND headers IS NULL AND body IS NULL AND node_run_id IS NULL AND invocation_key IS NULL) OR (responded_at IS NOT NULL AND status_code BETWEEN 200 AND 599 AND content_type IN ('application/json','text/plain') AND headers IS NOT NULL AND jsonb_typeof(headers)='object' AND body IS NOT NULL AND node_run_id IS NOT NULL AND invocation_key IS NOT NULL)) IS TRUE`,
+      sql`((responded_at IS NULL AND status_code IS NULL AND content_type IS NULL AND headers IS NULL AND body IS NULL AND node_run_id IS NULL AND invocation_key IS NULL) OR (responded_at IS NOT NULL AND status_code BETWEEN 200 AND 599 AND content_type IN ('application/json','text/plain','text/csv','application/xml') AND headers IS NOT NULL AND jsonb_typeof(headers)='object' AND body IS NOT NULL AND node_run_id IS NOT NULL AND invocation_key IS NOT NULL)) IS TRUE`,
     ),
   ],
 );

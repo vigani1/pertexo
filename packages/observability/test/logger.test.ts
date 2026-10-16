@@ -4,7 +4,7 @@ import type { DestinationStream } from 'pino';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { parseObservabilityConfig } from '../src/config.js';
-import { createStructuredLogger } from '../src/logger.js';
+import { createStructuredLogger, redactLogText } from '../src/logger.js';
 
 function captureDestination(): {
   destination: DestinationStream;
@@ -408,4 +408,17 @@ it('redacts public form capability headers and configuration at every nesting le
   expect(JSON.stringify(capture.records)).not.toContain(
     'public-command-secret',
   );
+});
+
+it('redacts URL-only webhook credentials in paths, URLs and errors', () => {
+  const secret = 'a'.repeat(43);
+  for (const text of [
+    `POST /hooks/${secret}`,
+    `https://api.example/hooks/${secret}?retry=1`,
+    `Request failed: /hooks/${secret}`,
+  ]) {
+    const safe = redactLogText(text);
+    expect(safe).not.toContain(secret);
+    expect(safe).toContain('/hooks/[Redacted]');
+  }
 });

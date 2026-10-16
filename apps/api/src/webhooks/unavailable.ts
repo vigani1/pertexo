@@ -21,6 +21,7 @@ export class UnconfiguredWebhooksController {
 
   @Post([
     ':triggerId/webhook/provision',
+    ':triggerId/webhook/authentication',
     ':triggerId/webhook/rotate-endpoint',
     ':triggerId/webhook/rotate-secret',
   ])

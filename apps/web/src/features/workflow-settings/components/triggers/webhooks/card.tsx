@@ -92,6 +92,14 @@ export function WebhookCard({
           through. Retry that first — it’s safe and won’t repeat the change.
         </Notice>
       )}
+      <p className="text-sm text-muted-foreground">
+        Authentication:{' '}
+        {trigger.authentication.mode === 'signed'
+          ? 'Signed'
+          : trigger.authentication.mode === 'secret_url'
+            ? 'Secret URL'
+            : `Header secret (${trigger.authentication.headerName})`}
+      </p>
       {editable ? (
         <div className="flex flex-wrap gap-2">
           {trigger.endpointReady ? (
@@ -112,22 +120,35 @@ export function WebhookCard({
               >
                 Rotate URL
               </ProgressButton>
-              <ProgressButton
+              <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                pendingLabel="Rotating…"
-                icon={
-                  <KeyRoundIcon aria-hidden="true" data-icon="inline-start" />
-                }
-                pending={pendingCommand === 'rotate-secret'}
                 disabled={blocked}
                 onClick={() => {
-                  onCommand('rotate-secret');
+                  onCommand('authentication');
                 }}
               >
-                Rotate secret
-              </ProgressButton>
+                Authentication…
+              </Button>
+              {trigger.authentication.mode === 'secret_url' ? null : (
+                <ProgressButton
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  pendingLabel="Rotating…"
+                  icon={
+                    <KeyRoundIcon aria-hidden="true" data-icon="inline-start" />
+                  }
+                  pending={pendingCommand === 'rotate-secret'}
+                  disabled={blocked}
+                  onClick={() => {
+                    onCommand('rotate-secret');
+                  }}
+                >
+                  Rotate secret
+                </ProgressButton>
+              )}
             </>
           ) : (
             <ProgressButton
@@ -152,7 +173,7 @@ export function WebhookCard({
         </Notice>
       )}
       {deliveries}
-      <WebhookGuide />
+      <WebhookGuide authentication={trigger.authentication} />
     </article>
   );
 }

@@ -40,8 +40,16 @@ export function serializeWebhookResponse(
     );
   return {
     statusCode,
-    contentType: bodyType === 'json' ? 'application/json' : 'text/plain',
-    headers: input.headers ?? {},
+    contentType:
+      bodyType === 'json'
+        ? 'application/json'
+        : (config.textContentType ?? 'text/plain'),
+    headers: Object.fromEntries(
+      Object.entries(input.headers ?? {}).map(([name, value]) => [
+        name.toLowerCase(),
+        value,
+      ]),
+    ),
     body,
   };
 }

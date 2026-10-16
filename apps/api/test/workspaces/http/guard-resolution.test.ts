@@ -114,6 +114,9 @@ const webhookDatabase = {
   rotateEndpoint: vi
     .fn<WebhookTriggerDatabase['rotateEndpoint']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
+  configureAuthentication: vi
+    .fn<WebhookTriggerDatabase['configureAuthentication']>()
+    .mockRejectedValue(new Error('webhook business layer must not be called')),
   rotateSecret: vi
     .fn<WebhookTriggerDatabase['rotateSecret']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),

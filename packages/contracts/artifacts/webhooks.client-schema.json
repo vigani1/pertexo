@@ -34,11 +34,21 @@
     },
     {
       "method": "POST",
+      "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/authentication",
+      "requiredHeaders": [
+        "Idempotency-Key",
+        "X-CSRF-Token"
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/hooks/:endpointKey"
+    },
+    {
+      "method": "POST",
       "path": "/hooks/:endpointKey",
       "requiredHeaders": [
-        "Content-Type",
-        "X-Pertexo-Timestamp",
-        "X-Pertexo-Signature"
+        "Content-Type"
       ],
       "maximumBodyBytes": 262144
     }

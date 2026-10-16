@@ -1,3 +1,4 @@
+import { webhookAuthenticationSchema } from '../../schemas/triggers/authentication.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
   webhookDeliveryCursorSchema,
@@ -44,6 +45,7 @@ const managementParameters = [
 const security = [{ cookieSession: [] }] as const;
 
 const schemas = Object.freeze({
+  WebhookAuthentication: jsonSchema(webhookAuthenticationSchema, 'input'),
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WebhookIngressResponse: jsonSchema(webhookIngressResponseSchema, 'output'),
   WebhookManagementCommandResponse: jsonSchema(
@@ -103,12 +105,14 @@ export const webhooksClientContract = Object.freeze({
     },
     {
       method: 'POST',
+      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/authentication',
+      requiredHeaders: ['Idempotency-Key', 'X-CSRF-Token'],
+    },
+    { method: 'OPTIONS', path: '/hooks/:endpointKey' },
+    {
+      method: 'POST',
       path: '/hooks/:endpointKey',
-      requiredHeaders: [
-        'Content-Type',
-        'X-Pertexo-Timestamp',
-        'X-Pertexo-Signature',
-      ],
+      requiredHeaders: ['Content-Type'],
       maximumBodyBytes: 262_144,
     },
   ]),
@@ -141,6 +145,8 @@ function ingressWorkflowResponse(
     content: {
       'application/json': { schema },
       'text/plain': { schema: { type: 'string' } },
+      'text/csv': { schema: { type: 'string' } },
+      'application/xml': { schema: { type: 'string' } },
       'application/problem+json': {
         schema: { $ref: '#/components/schemas/ApiProblem' },
       },
@@ -208,7 +214,45 @@ export const webhooksOpenApiDocument = Object.freeze({
       managementPath,
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/rotate-secret':
       rotateSecretPath,
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/authentication':
+      {
+        post: {
+          ...managementPath.post,
+          requestBody: jsonRequest('WebhookAuthentication'),
+        },
+      },
     '/hooks/{endpointKey}': {
+      options: {
+        operationId: 'preflightWebhook',
+        parameters: [
+          pathParameter('endpointKey', '^[A-Za-z0-9_-]{43}$'),
+          {
+            name: 'Origin',
+            in: 'header',
+            required: true,
+            schema: { type: 'string' },
+          },
+          {
+            name: 'Access-Control-Request-Method',
+            in: 'header',
+            required: true,
+            schema: { type: 'string', const: 'POST' },
+          },
+          {
+            name: 'Access-Control-Request-Headers',
+            in: 'header',
+            schema: { type: 'string' },
+          },
+        ],
+        responses: {
+          '204': {
+            description:
+              'Allowed endpoint origin and explicit request headers. No run starts; no credentials or wildcard origins.',
+          },
+          '401': responseReference('Unauthenticated'),
+          '429': responseReference('RateLimited'),
+        },
+      },
       post: {
         operationId: 'acceptWebhook',
         parameters: [
@@ -217,13 +261,16 @@ export const webhooksOpenApiDocument = Object.freeze({
           {
             name: 'X-Pertexo-Timestamp',
             in: 'header',
-            required: true,
+            description: 'Required only in Signed mode.',
+            required: false,
             schema: { type: 'string', pattern: '^\\d{1,16}$' },
           },
           {
             name: 'X-Pertexo-Signature',
             in: 'header',
-            required: true,
+            description:
+              'Required only in Signed mode. Header secret instead uses Authorization: Bearer or the configured named header. Secret URL authenticates with the address alone.',
+            required: false,
             schema: { type: 'string', pattern: '^v1=[0-9a-f]{64}$' },
           },
         ],
@@ -245,7 +292,7 @@ export const webhooksOpenApiDocument = Object.freeze({
             'Invalid request before admission, or the configured workflow response.',
           ),
           '401': ingressWorkflowResponse(
-            'Signature authentication failed, or the configured workflow response.',
+            'Webhook authentication failed, or the configured workflow response.',
           ),
           '409': ingressWorkflowResponse(
             'Idempotency conflict, or the configured workflow response.',

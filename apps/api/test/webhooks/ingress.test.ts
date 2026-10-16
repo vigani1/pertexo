@@ -37,6 +37,7 @@ const verification: WebhookVerificationReference = {
   workflowVersionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   nodeId: 'webhook',
   databaseTime: now,
+  authentication: { mode: 'signed', allowedOrigins: [] },
   currentSecret: sealed('11111111-1111-4111-8111-111111111111'),
   previousSecret: {
     ...sealed('22222222-2222-4222-8222-222222222222'),
@@ -56,6 +57,205 @@ describe('generic webhook ingress', () => {
     );
   });
 
+  it.each(['secret_url', 'header_secret'] as const)(
+    'authenticates %s without a Pertexo signature',
+    async (mode) => {
+      const policy =
+        mode === 'secret_url'
+          ? { mode, allowedOrigins: [] }
+          : { mode, headerName: 'authorization', allowedOrigins: [] };
+      const f = setup({ ...verification, authentication: policy });
+      const result = await f.application.inject({
+        method: 'POST',
+        url: `/hooks/${endpointKey}`,
+        headers: {
+          'content-type': 'application/json',
+          ...(mode === 'header_secret'
+            ? {
+                authorization: `Bearer ${Buffer.from(currentSecret).toString('base64url')}`,
+              }
+            : {}),
+        },
+        payload: '{}',
+      });
+      expect(result.statusCode).toBe(202);
+      expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+      if (mode === 'secret_url') expect(f.openedSecrets).toHaveLength(0);
+      else
+        expect(
+          f.openedSecrets.every((secret) => secret.every((byte) => byte === 0)),
+        ).toBe(true);
+    },
+  );
+  it.each(['authorization', 'x-webhook-secret'])(
+    'accepts current and overlapping previous header secrets in %s, refusing missing/wrong/expired ones',
+    async (headerName) => {
+      const policy = {
+        mode: 'header_secret' as const,
+        headerName,
+        allowedOrigins: [],
+      };
+      const f = setup({ ...verification, authentication: policy });
+      const send = (secret: Uint8Array | undefined) =>
+        f.application.inject({
+          method: 'POST',
+          url: `/hooks/${endpointKey}`,
+          headers: {
+            'content-type': 'application/json',
+            ...(secret === undefined
+              ? {}
+              : {
+                  [headerName]: `${headerName === 'authorization' ? 'Bearer ' : ''}${Buffer.from(secret).toString('base64url')}`,
+                }),
+          },
+          payload: '{}',
+        });
+      expect((await send(currentSecret)).statusCode).toBe(202);
+      expect((await send(previousSecret)).statusCode).toBe(202);
+      expect((await send(undefined)).statusCode).toBe(401);
+      expect((await send(new Uint8Array(32).fill(19))).statusCode).toBe(401);
+      const previous = verification.previousSecret;
+      if (previous === undefined) throw new Error('Previous fixture missing');
+      f.database.resolveVerification.mockResolvedValue({
+        ...verification,
+        authentication: policy,
+        previousSecret: { ...previous, validUntil: now },
+      });
+      expect((await send(previousSecret)).statusCode).toBe(401);
+    },
+  );
+  it.each(['authorization', 'x-webhook-secret'])(
+    'refuses duplicate and comma-folded %s credentials on the wire',
+    async (headerName) => {
+      const f = setup({
+        ...verification,
+        authentication: {
+          mode: 'header_secret',
+          headerName,
+          allowedOrigins: [],
+        },
+      });
+      const value = `${headerName === 'authorization' ? 'Bearer ' : ''}${Buffer.from(currentSecret).toString('base64url')}`;
+      for (const headers of [
+        [...rawHeaders('{}'), headerName, value, headerName, value],
+        [...rawHeaders('{}'), headerName, `${value},${value}`],
+      ])
+        expect(
+          (await sendRawWebhook(f.application, headers, '{}')).statusCode,
+        ).toBe(401);
+      expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+    },
+  );
+  it('handles endpoint-only preflight without decrypting, logging a delivery or starting a run', async () => {
+    const f = setup({
+      ...verification,
+      authentication: {
+        mode: 'header_secret',
+        headerName: 'x-webhook-secret',
+        allowedOrigins: ['https://app.example'],
+      },
+    });
+    const response = await f.application.inject({
+      method: 'OPTIONS',
+      url: `/hooks/${endpointKey}`,
+      headers: {
+        origin: 'https://app.example',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers':
+          'Content-Type, X-Webhook-Secret, Idempotency-Key',
+      },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(response.headers).toMatchObject({
+      'access-control-allow-origin': 'https://app.example',
+      'access-control-allow-methods': 'POST',
+      'access-control-allow-headers':
+        'content-type, x-webhook-secret, idempotency-key',
+    });
+    expect(
+      response.headers['access-control-allow-credentials'],
+    ).toBeUndefined();
+    expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+    expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
+    expect(f.openedSecrets).toHaveLength(0);
+  });
+  it('keeps preflight read-only and refuses unknown endpoints, origins, methods and unsupported headers', async () => {
+    const f = setup({
+      ...verification,
+      authentication: {
+        mode: 'secret_url',
+        allowedOrigins: ['https://app.example'],
+      },
+    });
+    const base = {
+      method: 'OPTIONS' as const,
+      url: `/hooks/${endpointKey}`,
+      headers: {
+        origin: 'https://app.example',
+        'access-control-request-method': 'POST',
+      },
+    };
+    for (const extra of [
+      { origin: 'https://evil.example' },
+      { origin: 'null' },
+      { 'access-control-request-method': 'GET' },
+      { 'access-control-request-headers': 'authorization' },
+    ]) {
+      const result = await f.application.inject({
+        ...base,
+        headers: { ...base.headers, ...extra },
+      });
+      expect(result.statusCode).toBe(401);
+      expect(result.headers['access-control-allow-origin']).toBeUndefined();
+    }
+    expect(f.database.consumeIngressLimit).not.toHaveBeenCalled();
+    f.database.resolveVerification.mockResolvedValueOnce(null);
+    expect((await f.application.inject(base)).statusCode).toBe(401);
+    expect(f.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+  it('adds exact CORS origin to 202 and workflow replies; refuses other browser origins before admission', async () => {
+    const f = setup({
+      ...verification,
+      authentication: {
+        mode: 'secret_url',
+        allowedOrigins: ['https://app.example'],
+      },
+    });
+    const send = (origin: string) =>
+      f.application.inject({
+        method: 'POST',
+        url: `/hooks/${endpointKey}`,
+        headers: { origin, 'content-type': 'application/json' },
+        payload: '{}',
+      });
+    const accepted = await send('https://app.example');
+    expect(accepted.statusCode).toBe(202);
+    expect(accepted.headers['access-control-allow-origin']).toBe(
+      'https://app.example',
+    );
+    f.database.acceptVerifiedDelivery.mockResolvedValueOnce({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+      responseWaitSeconds: 1,
+    });
+    f.database.readResponse.mockResolvedValueOnce({
+      state: 'responded',
+      response: {
+        statusCode: 200,
+        contentType: 'text/csv',
+        body: 'a,b\n1,2',
+        headers: { 'x-total-count': '1' },
+      },
+    });
+    const reply = await send('https://app.example');
+    expect(reply.body).toBe('a,b\n1,2');
+    expect(reply.headers['access-control-allow-origin']).toBe(
+      'https://app.example',
+    );
+    expect(reply.headers['access-control-allow-credentials']).toBeUndefined();
+    expect((await send('https://evil.example')).statusCode).toBe(401);
+    expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledTimes(2);
+  });
   it.each([
     {
       name: 'callable input contract',
@@ -129,6 +329,32 @@ describe('generic webhook ingress', () => {
       const result = await f.application.inject(request('{}', currentSecret));
       expect(result.statusCode).toBe(statusCode);
       expect(result.body).toBe(body);
+    },
+  );
+  it.each(['text/csv', 'application/xml'] as const)(
+    'returns exact UTF-8 bytes with an explicit charset for %s',
+    async (contentType) => {
+      const f = setup();
+      f.database.acceptVerifiedDelivery.mockResolvedValueOnce({
+        runId: '99999999-9999-4999-8999-999999999999',
+        replayed: false,
+        responseWaitSeconds: 1,
+      });
+      f.database.readResponse.mockResolvedValueOnce({
+        state: 'responded',
+        response: {
+          statusCode: 200,
+          contentType,
+          headers: { 'x-total-count': '1' },
+          body: 'héllo',
+        },
+      });
+      const result = await f.application.inject(request('{}', currentSecret));
+      expect(result.statusCode).toBe(200);
+      expect(result.headers['content-type']).toBe(
+        `${contentType}; charset=utf-8`,
+      );
+      expect(result.body).toBe('héllo');
     },
   );
   it('returns only a safe code when the run fails before replying', async () => {

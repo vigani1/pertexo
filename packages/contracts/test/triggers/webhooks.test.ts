@@ -29,6 +29,7 @@ const trigger = Object.freeze({
   status: 'active' as const,
   healthStatus: 'healthy' as const,
   lastErrorCode: null,
+  authentication: { mode: 'signed' as const, allowedOrigins: [] },
   endpointReady: true,
   reconciledAt: null,
 });
@@ -186,7 +187,11 @@ describe('webhook public contracts', () => {
       >;
       const operation = paths[path]?.[route.method.toLowerCase()];
       expect(operation?.responses).toHaveProperty(
-        route.path.startsWith('/hooks/') ? '202' : '200',
+        route.method === 'OPTIONS'
+          ? '204'
+          : route.path.startsWith('/hooks/')
+            ? '202'
+            : '200',
       );
       for (const header of 'requiredHeaders' in route
         ? route.requiredHeaders

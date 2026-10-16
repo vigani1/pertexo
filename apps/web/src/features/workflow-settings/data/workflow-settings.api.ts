@@ -10,6 +10,8 @@ import {
   type ScheduleManagementCommandResponse,
   type ScheduleOccurrenceListResponse,
   webhookDeliveryListResponseSchema,
+  webhookAuthenticationSchema,
+  type WebhookAuthentication,
   webhookManagementCommandResponseSchema,
   webhookRotateSecretRequestSchema,
   webhookTriggerListResponseSchema,
@@ -150,17 +152,24 @@ export function commandWebhook(
         idempotencyKey: string;
       }>
     | Readonly<{
+        command: 'authentication';
+        authentication: WebhookAuthentication;
+        idempotencyKey: string;
+      }>
+    | Readonly<{
         command: 'rotate-secret';
         endpointKey: string;
         idempotencyKey: string;
       }>,
 ): Promise<WebhookManagementCommandResponse> {
   const body =
-    input.command === 'rotate-secret'
-      ? webhookRotateSecretRequestSchema.parse({
-          endpointKey: input.endpointKey,
-        })
-      : undefined;
+    input.command === 'authentication'
+      ? webhookAuthenticationSchema.parse(input.authentication)
+      : input.command === 'rotate-secret'
+        ? webhookRotateSecretRequestSchema.parse({
+            endpointKey: input.endpointKey,
+          })
+        : undefined;
   return apiClient.request({
     path: `${workflowPath(workspaceId, workflowId)}/triggers/${encodeURIComponent(triggerId)}/webhook/${input.command}`,
     method: 'POST',

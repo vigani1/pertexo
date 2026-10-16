@@ -22,8 +22,13 @@ observed wins, otherwise the caller receives 202. A committed response wins over
 otherwise a failure returns only a fixed safe error code.
 
 JSON/text bodies have a 1 MiB ceiling within the existing engine envelope, and
-headers have a closed safe list with generated content type, no-store and
+headers follow a bounded safe policy with generated content type, no-store and
 nosniff. Response data follows run-detail visibility, 30-day retention and
 workspace purge. No response body or headers enter audit, email, notices or
 error-workflow summaries. This extends ADR 069's existing execution and storage
 owners without another execution engine, service, role or numbered format.
+
+Accepted 2026-10-17: the owner extended this policy to non-reserved custom x-
+headers and explicit text/csv and application/xml text formats, retaining HTML,
+proxy and response-control prohibitions. See ADR 026's accepted amendment and
+the [authentication plan](../feature-plans/webhook-authentication.md).

@@ -1,5 +1,5 @@
 import {
-  WEBHOOK_RESPONSE_HEADER_NAMES,
+  isWebhookResponseHeaderAllowed,
   type SchemaJson,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
@@ -7,6 +7,9 @@ import { z } from 'zod';
 export const CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA = z
   .object({
     bodyType: z.enum(['json', 'text']).optional(),
+    textContentType: z
+      .enum(['text/plain', 'text/csv', 'application/xml'])
+      .optional(),
   })
   .strict();
 export const CORE_RESPOND_WEBHOOK_INPUT_SCHEMA = z
@@ -15,19 +18,46 @@ export const CORE_RESPOND_WEBHOOK_INPUT_SCHEMA = z
     body: z.unknown().nonoptional(),
     statusCode: z.number().int().min(200).max(599).optional(),
     headers: z
-      .object(
-        Object.fromEntries(
-          WEBHOOK_RESPONSE_HEADER_NAMES.map((name) => [
-            name,
+      .preprocess(
+        (value, context) => {
+          // Zod records omit __proto__; refuse it explicitly instead of accepting a changed header map.
+          if (
+            value !== null &&
+            typeof value === 'object' &&
+            Object.hasOwn(value, '__proto__')
+          )
+            context.addIssue({
+              code: 'custom',
+              message: 'A webhook response cannot set __proto__.',
+            });
+          return value;
+        },
+        z
+          .record(
+            z
+              .string()
+              .min(1)
+              .max(64)
+              .refine(
+                isWebhookResponseHeaderAllowed,
+                'Use a safe named header or a non-reserved x- header.',
+              ),
             z
               .string()
               .max(1024)
-              .regex(/^[\x20-\x7e]*$/u)
-              .optional(),
-          ]),
-        ),
+              .regex(/^[\x20-\x7e]*$/u),
+          )
+          .refine(
+            (headers) => Object.keys(headers).length <= 16,
+            'Use at most 16 headers.',
+          )
+          .refine(
+            (headers) =>
+              new Set(Object.keys(headers).map((name) => name.toLowerCase()))
+                .size === Object.keys(headers).length,
+            'Header names must be distinct, regardless of case.',
+          ),
       )
-      .strict()
       .optional(),
   })
   .strict();

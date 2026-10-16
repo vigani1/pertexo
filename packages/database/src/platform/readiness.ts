@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0022_draft_workflow_tests.sql';
+export const EXPECTED_MIGRATION_HEAD = '0023_webhook_authentication.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

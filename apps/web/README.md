@@ -287,3 +287,8 @@ headers, previews, timeout fallback and the admission log.
 Code steps have a lazily loaded JavaScript editor with shared-parser syntax
 errors, effective instance limits, pinned previews and private console/error
 diagnostics in tests and run details. See [Code](../../docs/guides/code.md).
+
+Webhook endpoint settings support Signed (default), Secret URL and Header secret
+authentication, with optional exact browser origins for URL/header modes. Mode
+or credential-header changes rotate both credentials; origins-only changes keep
+them. See [Receive webhooks](../../docs/guides/webhooks.md).

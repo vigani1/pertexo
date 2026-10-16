@@ -1,3 +1,4 @@
+import type { WebhookAuthentication } from '@pertexo/contracts';
 import { users } from './foundation.js';
 import { workflowTriggers } from './authoring/workflows.js';
 import { workflowRuns } from './runs/execution.js';
@@ -8,6 +9,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   primaryKey,
   smallint,
   text,
@@ -68,6 +70,10 @@ export const webhookTriggerEndpoints = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     triggerId: uuid('trigger_id').notNull(),
     endpointKeyHash: char('endpoint_key_hash', { length: 64 }).notNull(),
+    authentication: jsonb('authentication')
+      .$type<WebhookAuthentication>()
+      .notNull()
+      .default(sql`'{"mode":"signed","allowedOrigins":[]}'::jsonb`),
     status: varchar('status', { length: 16 })
       .notNull()
       .default(sql`'active'::character varying`),

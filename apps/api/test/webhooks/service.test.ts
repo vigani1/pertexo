@@ -139,6 +139,50 @@ describe('webhook management service', () => {
     expect(requests[0]).not.toBe(requests[1]);
   });
 
+  it('reveals mode-change credentials only once and hides the unused secret in URL mode', async () => {
+    const f = setup(true);
+    const authentication = {
+      mode: 'secret_url' as const,
+      allowedOrigins: ['https://app.example'],
+    };
+    const healthForMode = { ...health, authentication };
+    f.database.configureAuthentication.mockResolvedValueOnce({
+      trigger: healthForMode,
+      replayed: false,
+      rotated: true,
+    });
+    const result = await f.service.configureAuthentication({
+      ...input,
+      authentication,
+    });
+    expect(result.replayed).toBe(false);
+    expect(result.endpointKey).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    expect(result.signingSecret).toBeUndefined();
+    expectWiped(f.generated);
+    f.database.configureAuthentication.mockResolvedValueOnce({
+      trigger: healthForMode,
+      replayed: true,
+      rotated: false,
+    });
+    expect(
+      await f.service.configureAuthentication({ ...input, authentication }),
+    ).toEqual({
+      trigger: { ...publicHealthFixture(), authentication },
+      replayed: true,
+    });
+    f.database.configureAuthentication.mockResolvedValueOnce({
+      trigger: healthForMode,
+      replayed: false,
+      rotated: false,
+    });
+    expect(
+      await f.service.configureAuthentication({ ...input, authentication }),
+    ).toEqual({
+      trigger: { ...publicHealthFixture(), authentication },
+      replayed: false,
+    });
+  });
+
   it('maps management command idempotency conflicts to the stable public code', async () => {
     const { service, database } = setup(true);
     database.provision.mockRejectedValueOnce(
@@ -185,6 +229,7 @@ describe('webhook management service', () => {
           healthStatus: health.healthStatus,
           lastErrorCode: null,
           endpointReady: true,
+          authentication: { mode: 'signed', allowedOrigins: [] },
           reconciledAt: '2026-08-25T12:00:00.000Z',
         },
       ],
@@ -344,6 +389,9 @@ function setup(original: boolean) {
     .fn<WebhookTriggerDatabase['provision']>()
     .mockResolvedValue(health);
   const database = {
+    configureAuthentication: vi
+      .fn<WebhookTriggerDatabase['configureAuthentication']>()
+      .mockResolvedValue({ trigger: health, replayed: false, rotated: true }),
     provision,
     rotateEndpoint: vi
       .fn<WebhookTriggerDatabase['rotateEndpoint']>()
@@ -406,6 +454,7 @@ function publicHealthFixture() {
     healthStatus: health.healthStatus,
     lastErrorCode: health.lastErrorCode,
     endpointReady: health.endpointReady,
+    authentication: { mode: 'signed', allowedOrigins: [] },
     reconciledAt: null,
   };
 }
@@ -435,6 +484,7 @@ function verification(secretVersionId: string): WebhookVerificationReference {
     workflowVersionId: health.workflowVersionId,
     nodeId: health.nodeId,
     databaseTime: new Date('2026-08-25T12:00:00.000Z'),
+    authentication: { mode: 'signed', allowedOrigins: [] },
     currentSecret: {
       id: secretVersionId,
       kmsKeyReference: 'key',

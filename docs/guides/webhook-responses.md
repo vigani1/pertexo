@@ -5,7 +5,7 @@ Pertexo saves the run. Execution happens on the worker.
 
 To return a workflow result, open the Webhook step’s **Setup**, choose **When
 the workflow responds**, and set a wait between 1 and 30 seconds (10 by default).
-Add a **Respond to webhook** step, choose JSON or plain text, and map its `body`
+Add a **Respond to webhook** step, choose JSON or text (plain text, CSV or XML), and map its `body`
 on **Inputs**. Map `statusCode` to change the default 200. Connect its outgoing
 link when more work should follow: replying does not end the run.
 
@@ -17,7 +17,7 @@ For example, after validating an order, map a JSON body from earlier steps:
 
 Map `statusCode` to `201` if the result represents a newly created resource.
 For text, choose **Plain text** and map a text value such as `Order accepted`.
-Status 204, 205 or 304 requires plain text with an empty body.
+Status 204, 205 or 304 requires a text response with an empty body.
 
 ## What the caller receives
 
@@ -31,7 +31,7 @@ Status 204, 205 or 304 requires plain text with an empty body.
   lifecycle. Long waits, approvals and child workflows do not extend this wait.
 - Under heavy load, an API instance can return the durable 202 receipt
   immediately instead of holding another socket open.
-- Disconnecting never cancels an accepted run. An exact, correctly signed
+- Disconnecting never cancels an accepted run. An exact, correctly authenticated
   webhook retry refers to the same run and can retrieve its retained response.
   It does not execute the workflow again.
 
@@ -48,12 +48,14 @@ Use a smaller response if it does not fit. Plain text cannot contain a null
 character; JSON can encode one. JSON/text only; no HTML, binary files,
 streaming or redirect responses.
 
-An optional mapped `headers` object can contain only `content-language`,
-`retry-after`, `x-request-id` and `x-correlation-id`, with plain values up to
-1,024 characters each. Names use this lowercase spelling. Other headers and
-control characters are refused. Pertexo generates Content-Type and always adds
-`Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. Set-Cookie,
-Content-Length, Location and hop-by-hop headers are unavailable.
+An optional mapped `headers` object accepts `content-language`, `retry-after`,
+`x-request-id`, `x-correlation-id` and non-reserved custom x- headers. Use at most
+16 headers with 1,024 ASCII characters per value. Names are case-insensitive and
+normalized to lowercase; duplicates and control characters are refused. Proxy,
+forwarding, security and Pertexo headers cannot be overridden. Pertexo generates
+Content-Type (with UTF-8 charset), `Cache-Control: no-store` and
+`X-Content-Type-Options: nosniff`. Set-Cookie, Content-Length, Location and
+hop-by-hop headers are unavailable.
 
 Only an original webhook run with this mode enabled can reply. Manual runs,
 child Calls, replay, recovery and editor tests never reply to its caller. A
@@ -62,3 +64,5 @@ preview checks the proposed response and returns a `preview` receipt.
 Response data follows run-detail retention: 30 days after completion, with
 workspace purge. Expired data cannot be served while awaiting cleanup. Response
 bodies and headers are never placed in audit, email, notices or error summaries.
+
+For browser access and authentication modes, see [Receive webhooks](webhooks.md).

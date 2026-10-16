@@ -5,7 +5,7 @@ Status: implemented and locally qualified. Updated: 2026-10-16.
 
 ## Outcome and current code
 
-Signed webhook ingress durably accepts a published run and returns 202 today.
+Webhook ingress durably accepts a published run and returns 202 today.
 Keep that default. Opting into **When the workflow responds** lets an original
 webhook run reply through a **Respond to webhook** step while execution stays on
 the worker. The API waits only for committed data, never executes steps.
@@ -43,10 +43,13 @@ service, transport, role, global store or CI job. The pure engine is unchanged.
   engine/input envelopes remain bounded too,
   so mapping/config overhead can reduce the usable payload. No file response,
   arbitrary binary, streaming, redirects or HTML response mode in this slice.
-- Headers use a closed list: `content-language`, `retry-after`, `x-request-id`
-  and `x-correlation-id`, at most four, with bounded plain values and no control
-  characters. Content-Type is generated for JSON/text. Always send
-  `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`. Refuse all other
+- Headers allow `content-language`, `retry-after`, `x-request-id` and
+  `x-correlation-id`, plus non-reserved custom x- headers (2026-10-17 follow-up).
+  At most 16, with 1,024-character ASCII values, no controls or case-insensitive
+  duplicates. Proxy, forwarding, security and response-control headers are
+  refused. Text format is explicitly text/plain (default), text/csv or
+  application/xml. Content-Type is generated for JSON/text. Always send
+  `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`. Refuse other
   names, including Set-Cookie, hop-by-hop, Content-Length and Location; do not
   silently drop unsafe headers.
 - First committed response wins across nodes, branches, iterations, retries and
@@ -63,9 +66,9 @@ service, transport, role, global store or CI job. The pure engine is unchanged.
   response takes precedence over a later run failure. If the run fails or enters
   unknown-outcome attention before any response, return 500 with only the fixed
   safe code `webhook.workflow_failed`, never provider messages or run data.
-- Each signed HTTP request waits at most its captured 1–30 second policy. On
+- Each authenticated HTTP request waits at most its captured 1–30 second policy. On
   timeout, cancellation or completion without a response, return the existing
-  202 `{runId,replayed}` receipt. Execution continues. An exact signed ingress
+  202 `{runId,replayed}` receipt. Execution continues. An exact authenticated ingress
   duplicate refers to the original run and may read its retained response;
   it never starts another execution or re-sends a response through a worker.
 - Use short indexed PostgreSQL reads every 250 ms, releasing the connection
@@ -133,6 +136,9 @@ React Doctor: 100/100. The two API listeners read the same PostgreSQL result;
 
 ## Later
 
-Streaming, file/binary responses, public unauthenticated webhooks, redirect
+Streaming, file/binary responses, redirect
 responses and indefinite waits. Human waits and child Calls remain ordinary
 workflow behavior; they cannot extend the caller's bounded wait.
+
+Authentication modes and endpoint-scoped browser access are owned by the
+[webhook authentication follow-up](webhook-authentication.md), with ADR 026 amended.

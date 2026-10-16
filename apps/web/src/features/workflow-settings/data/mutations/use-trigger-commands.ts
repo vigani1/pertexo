@@ -1,4 +1,7 @@
-import type { WebhookManagementCommandResponse } from '@pertexo/contracts';
+import type {
+  WebhookManagementCommandResponse,
+  WebhookAuthentication,
+} from '@pertexo/contracts';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
@@ -88,21 +91,24 @@ export type IssuedWebhookCredentials = Readonly<{
 }>;
 
 export type WebhookCommandOutcome =
-  'blocked' | 'complete' | 'credentials' | 'failed';
+  'blocked' | 'complete' | 'credentials' | 'failed' | 'updated';
 
-export type WebhookCommand = 'provision' | 'rotate-endpoint' | 'rotate-secret';
+export type WebhookCommand =
+  'provision' | 'rotate-endpoint' | 'rotate-secret' | 'authentication';
 
 /** What each command does, as the noun phrase used in feedback. */
 export const WEBHOOK_ACTIONS: Readonly<Record<WebhookCommand, string>> = {
   provision: 'creating the endpoint',
+  authentication: 'updating authentication',
   'rotate-endpoint': 'rotating the URL',
-  'rotate-secret': 'rotating the signing secret',
+  'rotate-secret': 'rotating the webhook secret',
 };
 
 type WebhookCommandAttempt = Readonly<{
   triggerId: string;
   command: WebhookCommand;
   endpointKey: string;
+  authentication?: WebhookAuthentication;
   intent: string;
   idempotencyKey: string;
 }>;
@@ -141,11 +147,12 @@ export function useWebhookCommand({
     triggerId: string,
     command: WebhookCommand,
     endpointKey: string,
+    authentication?: WebhookAuthentication,
   ) {
     if (locked.current || unresolvedAttemptRef.current !== undefined)
       return 'blocked' satisfies WebhookCommandOutcome;
     const scope = `webhook:${triggerId}`;
-    const intent = `${command}:${endpointKey.trim()}`;
+    const intent = `${command}:${endpointKey.trim()}:${authentication === undefined ? '' : JSON.stringify(authentication)}`;
     const attempt = commands.begin(scope, intent);
     if (attempt === undefined) {
       setError({ triggerId, message: unresolvedCommandMessage });
@@ -155,6 +162,7 @@ export function useWebhookCommand({
       triggerId,
       command,
       endpointKey: endpointKey.trim(),
+      ...(authentication === undefined ? {} : { authentication }),
       intent,
       idempotencyKey: attempt.key,
     });
@@ -174,17 +182,26 @@ export function useWebhookCommand({
     setPending({ triggerId: attempt.triggerId, command: attempt.command });
     setError(undefined);
     try {
-      const input =
-        attempt.command === 'rotate-secret'
-          ? {
-              command: attempt.command,
-              endpointKey: attempt.endpointKey,
-              idempotencyKey: attempt.idempotencyKey,
-            }
-          : {
-              command: attempt.command,
-              idempotencyKey: attempt.idempotencyKey,
-            };
+      let input: Parameters<typeof commandWebhook>[4];
+      if (attempt.command === 'authentication') {
+        if (attempt.authentication === undefined)
+          throw new Error('Webhook authentication intent is missing');
+        input = {
+          command: attempt.command,
+          authentication: attempt.authentication,
+          idempotencyKey: attempt.idempotencyKey,
+        };
+      } else if (attempt.command === 'rotate-secret') {
+        input = {
+          command: attempt.command,
+          endpointKey: attempt.endpointKey,
+          idempotencyKey: attempt.idempotencyKey,
+        };
+      } else
+        input = {
+          command: attempt.command,
+          idempotencyKey: attempt.idempotencyKey,
+        };
       const response = await commandWebhook(
         apiClient,
         workspaceId,
@@ -219,7 +236,11 @@ export function useWebhookCommand({
         });
       }
       return (
-        awaitingAcknowledgement ? 'credentials' : 'complete'
+        awaitingAcknowledgement
+          ? 'credentials'
+          : response.replayed
+            ? 'complete'
+            : 'updated'
       ) satisfies WebhookCommandOutcome;
     } catch (cause) {
       if (isUncertainSettingsCommand(cause)) {

@@ -1,5 +1,9 @@
+import { WebhookAuthenticationDialog } from './authentication-dialog';
 import { useState } from 'react';
-import type { WebhookTriggerHealthResponse } from '@pertexo/contracts';
+import type {
+  WebhookTriggerHealthResponse,
+  WebhookAuthentication,
+} from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
@@ -14,8 +18,9 @@ import { WebhookDeliveries } from './deliveries';
 
 const DONE: Readonly<Record<WebhookCommand, string>> = {
   provision: 'Endpoint created',
+  authentication: 'Authentication updated',
   'rotate-endpoint': 'URL rotated',
-  'rotate-secret': 'Signing secret rotated',
+  'rotate-secret': 'Webhook secret rotated',
 };
 
 /**
@@ -54,9 +59,25 @@ export function WebhooksSection({
     }>
   >();
 
-  async function run(triggerId: string, command: WebhookCommand, key = '') {
-    const outcome = await webhook.execute(triggerId, command, key);
+  const [configuring, setConfiguring] =
+    useState<WebhookTriggerHealthResponse>();
+
+  async function run(
+    triggerId: string,
+    command: WebhookCommand,
+    key = '',
+    authentication?: WebhookAuthentication,
+  ) {
+    const outcome = await webhook.execute(
+      triggerId,
+      command,
+      key,
+      authentication,
+    );
     setConfirming(undefined);
+    if (outcome !== 'failed' && outcome !== 'blocked')
+      setConfiguring(undefined);
+    if (outcome === 'updated') notifications.success({ title: DONE[command] });
     if (outcome === 'complete')
       notifications.info({
         title: 'That change was already made',
@@ -91,7 +112,8 @@ export function WebhooksSection({
               : undefined
           }
           onCommand={(command) => {
-            if (command === 'provision') void run(trigger.id, command);
+            if (command === 'authentication') setConfiguring(trigger);
+            else if (command === 'provision') void run(trigger.id, command);
             else setConfirming({ triggerId: trigger.id, command });
           }}
           onRetryUnresolved={() => void retry()}
@@ -112,6 +134,25 @@ export function WebhooksSection({
           }
         />
       ))}
+      {configuring === undefined ? null : (
+        <WebhookAuthenticationDialog
+          key={configuring.id}
+          authentication={configuring.authentication}
+          pending={webhook.pending?.command === 'authentication'}
+          blocked={webhook.blocked}
+          error={
+            webhook.error?.triggerId === configuring.id
+              ? webhook.error.message
+              : undefined
+          }
+          onSave={(authentication) =>
+            run(configuring.id, 'authentication', '', authentication)
+          }
+          onClose={() => {
+            setConfiguring(undefined);
+          }}
+        />
+      )}
       <ConfirmDialog
         open={confirming?.command === 'rotate-endpoint'}
         onOpenChange={(open) => {
@@ -131,6 +172,10 @@ export function WebhooksSection({
       />
       <RotateSecretDialog
         open={confirming?.command === 'rotate-secret'}
+        headerSecret={
+          triggers.find((trigger) => trigger.id === confirming?.triggerId)
+            ?.authentication.mode === 'header_secret'
+        }
         pending={webhook.pending?.command === 'rotate-secret'}
         onRotate={(endpointKey) =>
           confirming === undefined

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   webhookDeliveryListQuerySchema,
+  webhookAuthenticationSchema,
   webhookRotateSecretRequestSchema,
 } from '@pertexo/contracts';
 import { z } from 'zod';
@@ -90,6 +91,31 @@ export class WebhookManagementController {
   )
   public provision(@Req() request: Request, @Param() params: unknown) {
     return this.command('provision', request, params);
+  }
+
+  @Post(':triggerId/webhook/authentication')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WebhookUpdateGuard,
+    CsrfProtectionGuard,
+  )
+  public configureAuthentication(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const route = commandRouteSchema.parse(params);
+    const authentication = webhookAuthenticationSchema.parse(body);
+    return withRequestOperationSignal(request, (signal) =>
+      this.service.configureAuthentication({
+        ...route,
+        actorId: authenticatedSession(request).userId,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        authentication,
+        signal,
+      }),
+    );
   }
 
   @Post(':triggerId/webhook/rotate-endpoint')

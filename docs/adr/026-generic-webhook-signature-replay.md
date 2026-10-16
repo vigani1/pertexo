@@ -142,3 +142,32 @@ when the sender omits an idempotency key.
 - Returning `202` before delivery, run, event, and outbox commit.
 - Synchronous workflow-controlled webhook responses.
 - A broad security-definer repository that bypasses normal tenant writes.
+
+## Accepted amendment — 2026-10-17
+
+The owner approved three explicit authentication modes per materialized webhook
+endpoint: Signed (unchanged default), Secret URL (the unguessable address alone),
+and Header secret (the existing encrypted random secret in Bearer or one safe
+named header, compared in constant time). Authentication policy remains outside
+workflow JSON. See the [implementation plan](../feature-plans/webhook-authentication.md)
+for bounds and owner locations.
+
+Changing mode or credential header atomically rotates both address and secret,
+without overlap across modes. Existing independent rotations retain their
+semantics, including five-minute secret overlap within a mode. Configuration
+uses the same authorization, CSRF, idempotency and once-only reveal rules.
+Admission rechecks the proof's policy and eligible credential under locks.
+All modes retain the delivery log, raw-byte deduplication, rate limit and single
+non-disclosing authentication failure. The historical `signatureCheck` field
+now denotes authentication by the selected mode; its stored shape is unchanged.
+
+URL/header modes may allow exact browser origins, with endpoint-only preflight
+and explicit CORS response headers, never credentials or wildcards. Origin is
+a browser restriction, not a substitute for the endpoint's credential. It does
+not grant Pertexo session access. URL credentials must be excluded from logs
+and telemetry. Provider-specific signatures remain F21.
+
+ADR 081 already supersedes the original prohibition on synchronous replies.
+Its shared safe response contract now permits bounded non-reserved custom x-
+headers and explicit text/csv or application/xml text formats. HTML remains
+blocked, as do cookies, hop-by-hop headers and response-control overrides.

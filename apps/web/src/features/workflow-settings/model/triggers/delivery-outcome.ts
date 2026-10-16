@@ -9,9 +9,9 @@ type DeliveryOutcome = Readonly<{
 
 const REJECTED_SIGNATURE: DeliveryOutcome = {
   tone: 'failure',
-  label: 'Signature didn’t match',
+  label: 'Authentication failed',
   detail:
-    'Check that the sender signs with the current signing secret. No run started.',
+    'Check the authentication mode, credential and allowed browser origin. No run started.',
 };
 const STALE_TIMESTAMP: DeliveryOutcome = {
   tone: 'failure',
@@ -23,7 +23,7 @@ const NOT_ACCEPTING: DeliveryOutcome = {
   tone: 'attention',
   label: 'Not accepting',
   detail:
-    'Signed correctly, but the endpoint had stopped taking deliveries. No run started.',
+    'Authenticated, but the endpoint had stopped taking deliveries. No run started.',
 };
 
 /** What happened to one delivery, in words, from its recorded checks. */
@@ -51,7 +51,7 @@ export function describeDelivery(
         tone: 'failure',
         label: 'Invalid request',
         detail:
-          'Signed correctly, but the body wasn’t JSON or the Idempotency-Key was malformed. No run started.',
+          'Authenticated, but the body wasn’t JSON or the Idempotency-Key was malformed. No run started.',
       };
     case 'conflict':
       return {
@@ -72,7 +72,7 @@ export function describeDelivery(
         tone: 'attention',
         label: 'Paused',
         detail:
-          'Signed correctly, but the workflow was paused after failing repeatedly. No run started.',
+          'Authenticated, but the workflow was paused after failing repeatedly. No run started.',
       };
   }
 }

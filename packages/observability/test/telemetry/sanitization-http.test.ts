@@ -16,6 +16,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createNodeInstrumentations } from '../../src/telemetry/index.js';
 
+const WEBHOOK_PATH_SECRET = 'k'.repeat(43);
+const WEBHOOK_HEADER_SECRET = 'opaque-webhook-header-credential';
 const QUERY_SECRET = 'oauth-code-secret';
 const STATE_SECRET = 'oauth-state-secret';
 const ARBITRARY_SECRET = 'arbitrary-query-secret';
@@ -318,6 +320,15 @@ describe('HTTP telemetry URL privacy', () => {
         `${origin}/undici-client?code=${QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
       );
       await fetchResponse.arrayBuffer();
+      const webhookUrl = `${origin}/hooks/${WEBHOOK_PATH_SECRET}`;
+      await request(http, webhookUrl, {
+        headers: { 'x-webhook-secret': WEBHOOK_HEADER_SECRET },
+      });
+      await (
+        await fetch(webhookUrl, {
+          headers: { authorization: `Bearer ${WEBHOOK_HEADER_SECRET}` },
+        })
+      ).arrayBuffer();
 
       closedServer = http.createServer();
       const closedPort = await listen(closedServer);
@@ -555,9 +566,24 @@ describe('HTTP telemetry URL privacy', () => {
       );
     });
 
+    it('exports only redacted webhook paths without named-header or Bearer credentials', () => {
+      const webhooks = captured.spans.filter(
+        (span) => span.attributes['url.path'] === '/hooks/[Redacted]',
+      );
+      expect(webhooks).toHaveLength(4);
+      expect(
+        webhooks.filter((span) => span.kind === SpanKind.SERVER),
+      ).toHaveLength(2);
+      expect(
+        webhooks.filter((span) => span.kind === SpanKind.CLIENT),
+      ).toHaveLength(2);
+    });
+
     it('removes all query and credential sentinels from every exported span', () => {
       const { spans } = captured;
       const secrets = [
+        WEBHOOK_PATH_SECRET,
+        WEBHOOK_HEADER_SECRET,
         QUERY_SECRET,
         STATE_SECRET,
         ARBITRARY_SECRET,

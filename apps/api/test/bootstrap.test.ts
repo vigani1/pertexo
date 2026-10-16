@@ -1317,6 +1317,7 @@ describe('API bootstrap ownership and health', () => {
             healthStatus: 'healthy',
             lastErrorCode: null,
             endpointReady: true,
+            authentication: { mode: 'signed', allowedOrigins: [] },
             reconciledAt: null,
           },
           replayed: true,
