@@ -1,3 +1,4 @@
+import { FormFieldControl } from './field-control';
 import { useId, useState, type SubmitEvent } from 'react';
 import {
   parseFormValues,
@@ -5,10 +6,6 @@ import {
   type FormField,
   type FormValues,
 } from '@pertexo/workflow-model';
-import { LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { valuesFromDraft } from '../model/values';
@@ -60,10 +57,6 @@ export function FormResponse({
   const errorByName = new Map(
     errors.map((issue) => [issue.name, issue.message]),
   );
-  function textValue(name: string) {
-    const value = draft[name];
-    return typeof value === 'string' ? value : '';
-  }
   function change(name: string, value: string | boolean) {
     setDraft((previous) => ({ ...previous, [name]: value }));
     setErrors((previous) =>
@@ -81,71 +74,16 @@ export function FormResponse({
         className="flex min-w-0 flex-col gap-5"
       >
         {fields.map((field) => (
-          <LabelledField
+          <FormFieldControl
             key={field.id}
+            field={field}
             id={`${id}-${field.name}`}
-            label={`${field.label}${field.required ? '' : ' (optional)'}`}
-            description={field.help || undefined}
+            value={draft[field.name]}
             error={errorByName.get(field.name)}
-          >
-            {(control) =>
-              field.type === 'boolean' ? (
-                <Checkbox
-                  {...control}
-                  checked={draft[field.name] === true}
-                  onCheckedChange={(checked) => {
-                    change(field.name, checked);
-                  }}
-                />
-              ) : field.type === 'select' ? (
-                <select
-                  {...control}
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
-                  value={textValue(field.name)}
-                  onChange={(event) => {
-                    change(field.name, event.target.value);
-                  }}
-                >
-                  <option value="">Choose…</option>
-                  {field.options.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              ) : field.type === 'textarea' ? (
-                <Textarea
-                  {...control}
-                  value={textValue(field.name)}
-                  maxLength={10000}
-                  rows={4}
-                  onChange={(event) => {
-                    change(field.name, event.target.value);
-                  }}
-                />
-              ) : (
-                <Input
-                  {...control}
-                  type={
-                    field.type === 'number'
-                      ? 'number'
-                      : field.type === 'date'
-                        ? 'date'
-                        : field.type === 'email'
-                          ? 'email'
-                          : 'text'
-                  }
-                  {...(field.type === 'number'
-                    ? { step: 'any' }
-                    : { maxLength: 10000 })}
-                  value={textValue(field.name)}
-                  onChange={(event) => {
-                    change(field.name, event.target.value);
-                  }}
-                />
-              )
-            }
-          </LabelledField>
+            onChange={(value) => {
+              change(field.name, value);
+            }}
+          />
         ))}
       </fieldset>
       {errorByName.has('') ? (

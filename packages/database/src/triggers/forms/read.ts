@@ -1,5 +1,5 @@
+import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';
-import { formConfigSchema, workflowGraphSchema } from '@pertexo/workflow-model';
 import { parsePublishedWorkflowRow } from '../../runs/queries/published-workflow.js';
 import {
   lockWorkspaceAuthority,
@@ -71,17 +71,5 @@ export async function readFormVersion(
   const { graph_json, ...projection } = row;
   const version = parsePublishedWorkflowRow(projection);
   if (version === null) throw new FormUnavailableError();
-  const graph = workflowGraphSchema.parse(graph_json);
-  const node = graph.nodes.find(
-    (node) =>
-      node.definition.key === 'core.form' &&
-      node.definition.version === 1 &&
-      node.disabled !== true,
-  );
-  if (node === undefined) throw new FormUnavailableError();
-  return {
-    version,
-    nodeId: node.id,
-    form: formConfigSchema.parse(node.config),
-  };
+  return { version, ...readFormDefinition(graph_json) };
 }
