@@ -38,9 +38,11 @@ export async function sampleDraft(
   const row = result.rows[0];
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
+  const graph = parseWorkflowGraphDraft(row.graph_json);
   return {
     revision: row.revision,
-    bindings: stepSampleBindings(parseWorkflowGraphDraft(row.graph_json)),
+    graph,
+    bindings: stepSampleBindings(graph),
   };
 }
 export async function sampleDatabaseTime(client: PoolClient): Promise<Date> {

@@ -37,6 +37,7 @@ export type WorkflowRunRecord = Readonly<{
     | 'webhook'
     | 'workflow_call'
     | 'workflow_error'
+    | 'test'
     | 'form';
   createdAt: Date;
   updatedAt: Date;

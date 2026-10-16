@@ -47,6 +47,7 @@ const acceptWorkflowRunInputSchema = z
     scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
     traceparent: traceparentSchema,
     triggerType: z.enum([
+      'test',
       'api',
       'manual',
       'replay',
@@ -434,7 +435,11 @@ export async function acceptWorkflowRun(
             ? null
             : sql`${storedRunInputJson}::jsonb`,
         inputRefExpiresAt:
-          storedRunInputJson === null ? null : sql`now() + interval '30 days'`,
+          storedRunInputJson === null
+            ? null
+            : parsed.triggerType === 'test'
+              ? sql`now() + interval '7 days'`
+              : sql`now() + interval '30 days'`,
         variableSetRevision,
         triggerType: parsed.triggerType,
         startedBy: parsed.startedBy ?? null,

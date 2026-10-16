@@ -33,6 +33,23 @@ describe('atomic attempt connection health forwarding', () => {
     });
   });
 
+  it('keeps test dispatch real without forwarding connection health into workspace notices', async () => {
+    const environment = createNodeExecutionEnvironment({
+      test: true,
+      executionSignal: new AbortController().signal,
+      lease: lease(),
+      registry: { execute: vi.fn() },
+      runStore: executionStore(),
+    });
+    await environment.runtime.beforeDispatch();
+    environment.runtime.observeConnectionHealth?.({
+      kind: 'reauthorization_required',
+      reasonCode: 'connection.slack_token_expired',
+    });
+    expect(environment.wasDispatched()).toBe(true);
+    expect(environment.connectionHealthObservation()).toBeUndefined();
+  });
+
   it('honors durable cancellation after an executor ignores abort and returns success, preserving captured evidence', async () => {
     vi.useFakeTimers();
     try {

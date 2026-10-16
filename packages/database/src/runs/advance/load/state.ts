@@ -3,7 +3,10 @@ import { readPendingTaskFacts } from '../../pending-tasks/facts.js';
 import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
-import { parsePublishedWorkflowRow } from '../../queries/published-workflow.js';
+import {
+  EXECUTION_SOURCE_SQL,
+  parseExecutionSource,
+} from '../../queries/execution-source.js';
 import {
   CoordinatorRunStateCorruptError,
   type RunAdvanceState,
@@ -75,6 +78,8 @@ type LockedRow = CoordinatorCommitRow &
     version_number: number | null;
     checksum: string | null;
     executable_json: unknown;
+    test_dispositions: unknown;
+    test_expires_at: unknown;
   }>;
 
 function publishedVersion(row: LockedRow): unknown {
@@ -82,6 +87,8 @@ function publishedVersion(row: LockedRow): unknown {
   return {
     checksum: row.checksum,
     executable_json: row.executable_json,
+    test_dispositions: row.test_dispositions,
+    test_expires_at: row.test_expires_at,
     id: row.version_id,
     version_number: row.version_number,
     workflow_id: row.version_workflow_id,
@@ -116,13 +123,13 @@ export async function loadRunForAdvance(
               and run.deadline_at <= clock_timestamp() as deadline_expired,
             version.id as version_id, version.workspace_id as version_workspace_id,
             version.workflow_id as version_workflow_id, version.version_number,
-            version.checksum, version.executable_json
+            version.checksum, version.executable_json, version.test_dispositions, version.test_expires_at
        from app.workflow_runs run
        join app.run_checkpoints checkpoint
          on checkpoint.workspace_id = run.workspace_id
         and checkpoint.workflow_run_id = run.id
         and checkpoint.workflow_version_id = run.workflow_version_id
-       left join app.workflow_versions version
+       left join (${EXECUTION_SOURCE_SQL}) version
          on version.workspace_id = run.workspace_id
         and version.id = run.workflow_version_id
        where run.workspace_id = $1 and run.id = $2
@@ -146,7 +153,9 @@ export async function loadRunForAdvance(
       ...(await synchronizeHumanWait(client, workspaceId, runId, 'loading')),
     };
   // A run's version is immutable; one that is gone went with its run.
-  const version = parsePublishedWorkflowRow(publishedVersion(row));
+  const version = parseExecutionSource(
+    publishedVersion(row) as Record<string, unknown> | undefined,
+  );
   if (version === null) return Object.freeze({ kind: 'not_found' });
   const firstSequence = row.next_event_sequence;
   if (firstSequence === null || firstSequence < 1)

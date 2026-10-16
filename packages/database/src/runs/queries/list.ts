@@ -130,6 +130,7 @@ async function listWorkflowRunsInTransaction(
     .where(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
+        sql`${workflowRuns.triggerType} <> 'test'`,
         input.workflowId === undefined
           ? undefined
           : eq(workflowRuns.workflowId, input.workflowId),

@@ -23,6 +23,7 @@ export async function readFailureDays(
     .where(
       and(
         eq(workflowRuns.workspaceId, workspaceId),
+        sql`${workflowRuns.triggerType} <> 'test'`,
         inArray(workflowRuns.workflowId, [...workflowIds]),
         inArray(workflowRuns.status, [
           'failed',

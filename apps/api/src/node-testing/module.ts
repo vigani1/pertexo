@@ -1,3 +1,5 @@
+import { WorkflowTestsController } from './workflows/controller.js';
+import { WorkflowTestsUseCase } from './workflows/use-case.js';
 import { StepSamplesController } from './samples/controller.js';
 import { StepSamplesUseCase } from './samples/use-case.js';
 import { Module } from '@nestjs/common';
@@ -23,6 +25,13 @@ export class NodeTestingModule {
         useValue: dependencies.authorization,
       },
       NodeTestingUpdateGuard,
+      {
+        provide: WorkflowTestsUseCase,
+        useValue: new WorkflowTestsUseCase(
+          dependencies.persistence.workflowTests,
+          dependencies.authorization,
+        ),
+      },
       NodeSamplesReadGuard,
       {
         provide: StepSamplesUseCase,
@@ -51,7 +60,11 @@ export class NodeTestingModule {
     return {
       module: NodeTestingModule,
       imports: [identityModule],
-      controllers: [NodeTestingController, StepSamplesController],
+      controllers: [
+        NodeTestingController,
+        StepSamplesController,
+        WorkflowTestsController,
+      ],
       providers,
       exports: [TestWorkflowNodeUseCase, GetPreviewRunUseCase],
     };

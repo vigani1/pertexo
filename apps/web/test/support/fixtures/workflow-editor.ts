@@ -143,6 +143,9 @@ export function editorHandlers(
     capabilities: options.capabilities ?? workspace.capabilities,
   };
   return [
+    http.get(`${workflowApi}/draft/tests`, () =>
+      HttpResponse.json({ items: [] }),
+    ),
     http.get(`${workflowApi}/draft/samples`, () =>
       HttpResponse.json({
         items: [],

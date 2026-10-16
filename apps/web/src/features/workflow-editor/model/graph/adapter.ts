@@ -5,6 +5,7 @@ import {
 } from '@pertexo/workflow-model';
 import type {
   NodeDefinitionCatalogItem,
+  WorkflowNodeRunSummary,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import type { CoordinateExtent, Edge, Node } from '@xyflow/react';
@@ -70,6 +71,7 @@ interface WorkflowNodeData extends Record<string, unknown> {
   summary: string | undefined;
   /** Output size of this step's last passed test here, when it's known. */
   testOutputBytes: number | undefined;
+  testStatus?: WorkflowNodeRunSummary['status'] | undefined;
   sampleState?: 'pinned' | 'stale' | 'expired' | undefined;
   /** The latest check describes the draft on screen. */
   issueCount: number;
@@ -123,6 +125,8 @@ export type CanvasDecorations = Readonly<{
   measuredSizes?: ReadonlyMap<string, Size>;
   /** Output size of each step's last passed test, when known. */
   testOutputBytes?: ReadonlyMap<string, number>;
+  testStatuses?:
+    ReadonlyMap<string, WorkflowNodeRunSummary['status']> | undefined;
   sampleStates?: ReadonlyMap<string, 'pinned' | 'stale' | 'expired'>;
 }>;
 
@@ -301,6 +305,7 @@ function projectNode(
       },
       summary: stepSummary(node),
       testOutputBytes: decorations.testOutputBytes?.get(node.id),
+      testStatus: decorations.testStatuses?.get(node.id),
       sampleState: decorations.sampleStates?.get(node.id),
       issueCount: decorations.issuesByNode.get(node.id) ?? 0,
       missingConnections: (definition?.connectionRequirements ?? []).filter(

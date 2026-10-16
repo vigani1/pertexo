@@ -13,7 +13,35 @@ test. **Check setup** still checks the real settings.
 
 Published runs always execute their real steps. Publishing, running, replaying,
 recovering, duplicating and exporting never carry pins along. Importing a workflow
-doesn’t import them either. Pins aren’t a full-workflow test mode or a test suite.
+doesn’t import them either. Use **Test workflow** to apply the pins across a saved draft. Test suites stay later.
+
+## Test the whole draft
+
+Choose **Test workflow** in the editor. Pertexo saves the draft first, then lets
+you choose a saved input case, load the trigger’s pinned sample, or paste JSON.
+Cases and pasted input are detached copies. A test never publishes the draft.
+
+Pinned steps return their saved output. Every unpinned step executes for real:
+review the list of steps that can change external data and acknowledge their
+effects before starting. A test is not a provider sandbox.
+
+The canvas shows live step progress. Open **Test history** to inspect each
+result, **Pin output…**, or **Cancel test** while it runs. A changed draft hides
+old progress from its canvas; the test history keeps its frozen draft labels.
+One test can be active per person per workflow. Workspace capacity limits apply.
+
+**Wait** finishes immediately and is labeled **Wait skipped in test**. Pin
+**Approval**, **Request input** and **Call workflow** before testing beyond them;
+an unpinned one stops with **Pin this step to continue the test**. Branching
+pins must contain a valid `selectedPort` (for example `approved` for Approval).
+**Respond to webhook** validates its response but never answers a real caller.
+
+Tests appear only in the editor’s history, never the main runs list. They do not
+send failure alerts, start error workflows, add inbox notices or change automatic
+pause streaks. They keep their input, frozen pins, results and generated files for
+seven days, and have a five-minute execution budget including queue time (or the
+draft’s shorter limit). Published runs, replay and recovery always use real
+published execution; a draft test cannot become their source.
 
 ## Review changed settings
 

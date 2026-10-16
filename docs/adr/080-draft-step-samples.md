@@ -26,3 +26,14 @@ copies retain their existing seven-day lifetime. There is no revision archive,
 numbered stored format, legal hold or new execution subsystem. This follows ADR
 069 and replaces the pre-reset F02 plan's superseded machinery. Sample access
 follows run-data visibility; only workflow editors may change it.
+
+## Amendment — whole-draft tests (2026-10-16)
+
+Owner-approved whole-draft tests freeze the saved draft and current pins as an
+immutable test execution snapshot. Existing engine and worker execution rows
+provide progress, cancellation and capacity; the snapshot is never a published
+version. A `test` discriminator separates history, seven-day retention and all
+terminal operational effects from real runs. Shared pins are copied at admission;
+later changes never affect an accepted test. Test-only substitution cannot be
+requested by published start, replay or recovery. See the F02 plan for the
+execution rules and required isolation evidence.

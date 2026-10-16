@@ -59,3 +59,14 @@ export type {
   RecoveryValues,
   RecoveryPlan,
 } from './recovery/contract.js';
+
+export {
+  testStepDisposition,
+  type WorkflowTestPolicy,
+  type WorkflowTestPins,
+} from './testing/policy.js';
+
+export {
+  buildWorkflowTestExecutable,
+  type WorkflowTestCompilation,
+} from './testing/compile.js';

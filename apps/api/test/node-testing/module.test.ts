@@ -64,6 +64,13 @@ function dependencies() {
       }),
     },
     persistence: {
+      workflowTests: {
+        prepare: vi.fn(),
+        start: vi.fn(),
+        list: vi.fn(),
+        get: vi.fn(),
+        cancel: vi.fn(),
+      },
       stepSamples: nodeTestingSamples(),
       getDraft: vi.fn().mockResolvedValue(nodeTestingDraft()),
       acceptPreview: vi.fn().mockResolvedValue({

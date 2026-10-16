@@ -324,6 +324,73 @@ function fixture(nodeId: 'manual' | 'terminate') {
 }
 
 describe('node attempt execution engine', () => {
+  it('substitutes a test pin before mappings, input capture or executor dispatch', async () => {
+    const { catalog, projection, lease } = fixture('terminate');
+    const execute = vi.fn();
+    const onInputResolved = vi.fn().mockResolvedValue(undefined);
+    const prepared = createNodeAttemptExecutionEngine({ catalog }).prepare({
+      lease,
+      projection: {
+        ...projection,
+        test: { pinnedNodeIds: ['terminate'] },
+        testSample: { sampleId: OUTBOX_ID, output: { sample: 'frozen' } },
+      },
+    });
+    expect(prepared.upstreamNodeOutputs).toEqual([]);
+    await expect(
+      prepared.execute({
+        runInput: { different: true },
+        completedNodeOutputs: [],
+        abortRequested: false,
+        registry: { execute },
+        onInputResolved,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({
+      kind: 'terminal_success',
+      output: { sample: 'frozen' },
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect(onInputResolved).not.toHaveBeenCalled();
+  });
+  it('keeps normal Wait suspension but completes it immediately in a draft test', async () => {
+    const { catalog, lease } = fixture('manual');
+    const source = graph();
+    const projection = compiledProjection(
+      {
+        ...source,
+        nodes: source.nodes.map((node) =>
+          node.id === 'manual'
+            ? {
+                ...node,
+                definition: { key: 'core.wait', version: 1 },
+                config: { durationSeconds: 3600 },
+              }
+            : node,
+        ),
+      },
+      catalog,
+    );
+    const engine = createNodeAttemptExecutionEngine({ catalog });
+    expect(
+      engine.prepare({ lease, projection }).suspensionDurationSeconds,
+    ).toBe(3600);
+    const prepared = engine.prepare({
+      lease,
+      projection: { ...projection, test: { pinnedNodeIds: [] } },
+    });
+    expect(prepared.suspensionDurationSeconds).toBeUndefined();
+    await expect(
+      prepared.execute({
+        runInput: {},
+        completedNodeOutputs: [],
+        abortRequested: false,
+        registry: createCoreNodeRegistry(),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ kind: 'succeeded' });
+  });
+
   it('verifies the pinned executable and executes Manual using only run input', async () => {
     const { catalog, projection, lease } = fixture('manual');
     const engine = createNodeAttemptExecutionEngine({

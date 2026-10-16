@@ -231,6 +231,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'workflow_failure_streaks',
     'workflow_trigger_outcomes',
     'workflow_manual_start_rejections',
+    'workflow_test_snapshots',
     'workflow_runs',
     'workflow_integration_usage',
     'workflow_drafts',

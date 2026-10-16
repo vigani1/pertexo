@@ -86,6 +86,11 @@ export async function lockReplaySource(
       ${transaction.workspaceId}, ${sourceRunId}
     )
   `);
+  const run = await transaction.db.execute<{ trigger_type: string }>(
+    sql`select trigger_type from app.workflow_runs where workspace_id=${transaction.workspaceId} and id=${sourceRunId}`,
+  );
+  if (run.rows[0]?.trigger_type === 'test')
+    throw new WorkflowRunNotExecutableError();
   const source = result.rows[0];
   if (source === undefined) throw new WorkflowRunNotFoundError();
   if (source.lifecycle_status !== 'active')

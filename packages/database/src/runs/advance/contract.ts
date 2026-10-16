@@ -6,7 +6,7 @@ import type {
 } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
-import type { PublishedWorkflow } from '../queries/published-workflow.js';
+import type { WorkflowExecutionProjection } from '../queries/execution-source.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { RunTransitionPlan } from './plan.js';
 
@@ -34,7 +34,7 @@ export type RunAdvanceState = Readonly<{
   hasExecutionSlot: boolean;
   callOutcomes: readonly WorkflowCallOutcome[];
   taskOutcomes: readonly PendingTaskOutcome[];
-  workflow: PublishedWorkflow;
+  workflow: WorkflowExecutionProjection;
   /** On-demand completion projection using the already locked run transaction. */
   readCompletionValues(nodeIds?: readonly string[]): Promise<
     Readonly<{

@@ -120,9 +120,17 @@ Completion and checkpoint writes use existing transactional/CAS checks. Live run
 and inbox SSE events are hints; clients refetch authoritative reads after
 reconnect or missed events.
 
+Whole-draft tests use the ordinary engine, workers, checkpoints, events and
+capacity counters with trigger type `test`. An immutable `workflow_test_snapshots`
+row owns their saved graph, executable and pins; its execution identity never
+enters publication queries. The coordinator reads pin identities and the worker
+reads only its step’s frozen sample. Terminal producers suppress operational
+notifications and trigger outcomes for tests. Authoring owns admission and the
+editor owns test history; lifecycle retention expires their data after seven days.
+
 ## Database boundaries
 
-All 85 tables are declared once under `packages/database/src/schema/`. Typed
+All application tables are declared once under `packages/database/src/schema/`. Typed
 Drizzle reads/writes and typed `sql` statements share those definitions. Runtime
 code contains application rules; PostgreSQL retains constraints, forced
 workspace row security, transactions, queue claims, atomic capacity counters and

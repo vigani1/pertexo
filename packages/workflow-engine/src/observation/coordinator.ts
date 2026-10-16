@@ -28,6 +28,7 @@ export function branchSelectionObservations(
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   invocations: ReadonlyMap<string, CheckpointInvocation>,
   nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+  test = false,
 ): readonly WorkflowObservation[] {
   const seen = new Map<string, string>();
   const verifiedParallelOutputs = new Set<string>();
@@ -68,7 +69,8 @@ export function branchSelectionObservations(
       );
     const invocation = invocations.get(material.invocationKey);
     const node = nodes.get(invocation?.nodeId ?? '');
-    if (node === undefined || isHumanTaskDefinition(node.definition)) return [];
+    if (node === undefined || (!test && isHumanTaskDefinition(node.definition)))
+      return [];
     const parallelPorts = configuredParallelOutputPorts(node);
     if (parallelPorts !== undefined) {
       if (
@@ -108,7 +110,8 @@ export function branchSelectionObservations(
       'observation_invalid',
       'branch output',
     );
-    exactKeys(output, ['selectedPort']);
+    if (!test || !isHumanTaskDefinition(node.definition))
+      exactKeys(output, ['selectedPort']);
     if (
       typeof output.selectedPort !== 'string' ||
       !outputPorts.includes(output.selectedPort)

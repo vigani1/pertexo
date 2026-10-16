@@ -257,7 +257,7 @@ export async function createWorkerNodeRuntimeCapabilities(
       respond: async ({ response, signal }) => {
         assertCapabilityRuntimeOpen(lifecycle);
         signal.throwIfAborted();
-        if (context.previewRunId !== undefined)
+        if (context.previewRunId !== undefined || context.testRun === true)
           return { outcome: 'preview', statusCode: response.statusCode };
         return webhookResponses.respond({
           workspaceId: context.workspaceId,

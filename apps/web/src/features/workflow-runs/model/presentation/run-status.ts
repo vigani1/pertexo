@@ -38,6 +38,7 @@ const nodeStatusLooks: Readonly<Record<NodeStatus, StatusLook>> = {
 };
 
 const triggerLabels: Readonly<Record<RunTriggerType, string>> = {
+  test: 'Test',
   api: 'API',
   manual: 'Manual',
   replay: 'Replay',

@@ -20,6 +20,7 @@ export function InputCasesPanel({
   workspace,
   workflow,
   disabled = false,
+  readOnly = false,
   editing: controlledEditing,
   onLoad,
   onEditingChange,
@@ -29,6 +30,7 @@ export function InputCasesPanel({
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   disabled?: boolean;
+  readOnly?: boolean;
   /** The run dialog owns editing alongside its confirmation guard. */
   editing?: boolean;
   onLoad: (input: LoadedInputCase) => void;
@@ -36,6 +38,7 @@ export function InputCasesPanel({
   onAccessLost?: () => void;
 }>) {
   const writable =
+    !readOnly &&
     workspace.status === 'active' &&
     workflow.lifecycleStatus === 'active' &&
     workspace.capabilities.includes('workflow:update');

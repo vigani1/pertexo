@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/queries.public';
 import type {
@@ -160,7 +161,9 @@ export function WorkflowCommandActions({
   onIssuesOpenChange,
   onFix,
   onPublished,
+  testAction,
 }: Readonly<{
+  testAction?: ReactNode;
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
@@ -255,6 +258,7 @@ export function WorkflowCommandActions({
           open={issuesOpen}
           onOpenChange={onIssuesOpenChange}
         />
+        {testAction}
         <PublishedRunAction
           form={liveIsForm}
           canRun={canRun}

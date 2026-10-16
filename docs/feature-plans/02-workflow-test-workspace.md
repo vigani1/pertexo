@@ -1,6 +1,6 @@
 # F02 — Run-input cases and pinned samples
 
-Status: slices 1 and 2 implemented. Slice 3 stays later.
+Status: slices 1 and 2 implemented; whole-draft tests in progress. Slice 3 stays later.
 Updated: 2026-10-16. [Roadmap](../product-roadmap.md).
 Decisions: [ADR 061](../adr/061-workflow-input-cases-and-checked-manual-start.md)
 and [ADR 080](../adr/080-draft-step-samples.md). History stays in git.
@@ -104,12 +104,96 @@ hold, release-cohort and production-enablement machinery.
 - Phone, keyboard and reduced-motion behavior follow existing Weft components.
   No new design system, global sample store, graph editor mirror or binary viewer.
 
+## Whole-draft tests (2026-10-16)
+
+The owner now authorizes **Test workflow**, separate from the published Run
+command. Current code has single-step previews and shared pins, but no durable
+whole-draft execution. Reuse the engine, coordinator, attempt workers, run events
+and admission counters; never run a workflow in the API or browser.
+
+### Admission and ownership
+
+- The node-testing API owns `/workflows/:workflowId/draft/tests`: prepare the
+  saved revision, start with an idempotency key, list retained tests, inspect and
+  cancel one. Session-only; require current workflow update, workflow read,
+  run read and run start authority. Archived workflows cannot start tests.
+- Freeze the exact saved draft revision, compiled executable, current variable
+  revision and matching pin IDs/outputs in one admission transaction. Recheck
+  authority, revision, pin identity and expiry under the existing authoring locks.
+  A stale/expired pin refuses the test, never falls through to a real call.
+  The coordinator loads pin identities only; each worker reads only its own
+  frozen sample, keeping unrelated pin payloads out of per-step reads. Preserve each sample’s existing encoded execution value inside the snapshot,
+  so PostgreSQL cannot inflate numeric exponents in a nested JSONB payload.
+  Accepted command recovery precedes mutable draft/pin checks.
+- Keep a test snapshot alongside the ordinary execution rows, explicitly marked
+  by trigger type `test`. Its executable identity is the snapshot ID, never a
+  published version. Published version readers remain publication-only; worker
+  execution readers resolve either immutable source. No fake publication, no
+  incremented publication number and no test overrides on real-run commands.
+- A partial unique index enforces one queued/running/waiting test per starter
+  and workflow, including different API instances. Ordinary workspace/workflow
+  queue and active capacity admission applies. Tests have a five-minute execution
+  budget including queue time and retries, capped by a shorter draft run budget.
+  Cancel uses the existing fenced
+  run cancellation. One person may test a different workflow concurrently.
+- Input is bounded run JSON selected from a saved input case, the trigger's
+  matching pinned sample, or pasted JSON. Loading a case makes a detached copy;
+  its published-version context does not change this command into a real run.
+- Preparation lists every enabled unpinned step that can cause external effects,
+  including loop bodies and alternatives. Admission requires the same explicit
+  effects acknowledgement as individual tests and rechecks the exact list.
+  Pins skip credential resolution, mapping evaluation and executor dispatch.
+
+### Execution and isolation
+
+- Execute the original graph with the existing engine's branches, failure links,
+  joins and loops. An injected engine compiler derives test admission facts and the first
+  checkpoint under the storage locks. The database has no runtime engine import.
+  A narrowly scoped test execution policy substitutes frozen
+  sample outputs; it is not another executor, engine or editable graph format.
+  Preserve invocation identity so repeated loop results remain distinguishable.
+- Wait completes immediately and records **Wait skipped in test**. Approval,
+  Request input and Call use their pin. Without one, stop at that step with
+  **Pin this step to continue the test**; never create a human task/child run.
+  Respond to webhook never writes a response in a test.
+- Tests never produce error-workflow intents, failure alerts, inbox notices,
+  notification email, trigger outcomes or auto-pause streaks, even on unknown
+  provider outcomes or worker reconciliation. Live execution events remain for
+  the editor. Effectful unpinned steps still execute genuinely and retain the
+  ordinary dispatch, retry, cancellation and unknown-outcome rules.
+- Retain the copied input, graph, pins, outputs and private Code diagnostics for
+  seven days, like previews. Extend existing cleanup, artifact references,
+  variable revision retention and workspace purge, with no second value format.
+  Tests are excluded from ordinary run lists, step health and activity totals.
+  Expired test data cannot be pinned, replayed or recovered as a real run.
+
+### Editor and evidence
+
+- Add **Test workflow** beside published Run. Apply pending setup and flush the
+  save coordinator first; keep the admitted revision visible if editing resumes.
+  Use the existing bounded JSON/case controls and plain effects confirmation.
+- Observe durable events through the current run stream, project step progress
+  onto the existing canvas, and offer Cancel. Editor test history is separate
+  from published run history, clearly labeled **Test**, with pinned/skipped
+  provenance and Pin output for each successful retained step result.
+- Preserve exact uncertain start/cancel commands and forbid accidental duplicate
+  starts. Scope/permission changes fence late results and clear forbidden data.
+  Verify phone/desktop, keyboard, reduced motion and reconnect behavior.
+- Prove real PostgreSQL admission races, snapshot isolation, pin replacement,
+  stale refusal, effects refusal, capacity, cancellation and seven-day cleanup.
+  Exercise every suppression path, pinned control steps, Wait, human tasks,
+  Calls, loops and Code. Keep the existing real HTTP adapter/worker qualification
+  against a local fixture green. Qualify a
+  browser/API/worker end-to-end test, pin a result and prove published execution
+  still ignores pins. Run lint/types/unit/mocked e2e/build and React Doctor.
+
 ## Slices and status
 
 | Slice | Status |
 | --- | --- |
 | 1. Named run-input cases and checked published starts | Delivered (#145) |
 | 2. Bound draft samples, atomic preview substitution and editor/history | Implemented |
+| Whole-draft tests and live editor test history | Implemented |
 | 3. Suites, assertions and batch regression | Later |
 
 ## Required evidence
@@ -132,7 +216,7 @@ hold, release-cohort and production-enablement machinery.
 
 ## Later work
 
-Suites/assertions, batch tests, binary/file-backed pinned samples and a full-draft
-workflow test command. Keep the current single-step preview seam; never label a
-published real run as an isolated test. No automatic production-data capture or
+Suites/assertions, batch tests and binary/file-backed pinned samples remain
+later. Keep the current single-step preview seam; never label a published real
+run as an isolated test. No automatic production-data capture or
 automatic redaction claim.

@@ -37,7 +37,7 @@ const ROUTE_ERROR_MAPPERS: readonly RouteErrorMapper[] = Object.freeze([
   },
   {
     route:
-      /^\/v1\/workspaces\/[^/]+\/(?:previews\/[^/]+|workflows\/[^/]+\/draft\/(?:samples|nodes\/[^/]+\/(?:test|sample)))$/u,
+      /^\/v1\/workspaces\/[^/]+\/(?:previews\/[^/]+|workflows\/[^/]+\/draft\/(?:tests(?:\/[^/]+(?:\/cancel)?)?|samples|nodes\/[^/]+\/(?:test|sample)))$/u,
     map: mapNodeTestingError,
   },
   {

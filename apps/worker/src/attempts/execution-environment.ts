@@ -27,6 +27,8 @@ export type NodeExecutionEnvironment = Readonly<{
 export function createNodeExecutionEnvironment(
   input: Readonly<{
     executionSignal: AbortSignal;
+    test?: boolean;
+    artifactRetentionDeadline?: Date;
     variables?: Readonly<Record<string, JsonValue>>;
     lease: NodeAttemptLease;
     registry: NodeExecutionRegistry;
@@ -40,6 +42,10 @@ export function createNodeExecutionEnvironment(
     () => dispatchState === 'marked',
   );
   const capabilityContext = Object.freeze({
+    ...(input.test === true ? { testRun: true } : {}),
+    ...(input.artifactRetentionDeadline === undefined
+      ? {}
+      : { artifactRetentionDeadline: input.artifactRetentionDeadline }),
     workspaceId: lease.workspaceId,
     runId: lease.runId,
     nodeRunId: lease.nodeRunId,
@@ -130,7 +136,8 @@ export function createNodeExecutionEnvironment(
     registry,
     runtime,
     wasDispatched: () => dispatchState === 'marked',
-    connectionHealthObservation: healthCapture.read,
+    connectionHealthObservation:
+      input.test === true ? () => undefined : healthCapture.read,
     codeDiagnostics: () => diagnostics,
   });
 }

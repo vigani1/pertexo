@@ -7,8 +7,8 @@ import {
   type NodeAttemptRunStore,
 } from '@pertexo/database/attempts';
 import type {
-  PublishedWorkflowReader,
-  PublishedWorkflow,
+  WorkflowExecutionReader,
+  WorkflowExecutionProjection,
 } from '@pertexo/database/runs';
 import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/execution';
 import type {
@@ -49,6 +49,8 @@ type AttemptDelivery = Extract<
 export interface PreparedNodeAttempt {
   readonly sourceFailure?: Readonly<{ nodeId: string; invocationKey: string }>;
   readonly suspensionDurationSeconds?: number;
+  readonly testSubstitution?: boolean;
+  readonly testPinRequired?: boolean;
   readonly upstreamNodeOutputs: readonly Readonly<{
     nodeId: string;
     invocationKey: string;
@@ -69,7 +71,7 @@ export interface NodeAttemptExecutionEngine {
   prepare(
     input: Readonly<{
       lease: NodeAttemptLease;
-      projection: PublishedWorkflow;
+      projection: WorkflowExecutionProjection;
     }>,
   ): PreparedNodeAttempt;
 }
@@ -90,7 +92,7 @@ export type NodeAttemptHandlerDependencies = Readonly<{
   heartbeatIntervalMillis: number;
   leaseDurationSeconds: number;
   notifications?: RunEventNotificationPublisher;
-  reader: PublishedWorkflowReader;
+  reader: WorkflowExecutionReader;
   registry: NodeExecutionRegistry;
   runStore: NodeAttemptRunStore;
   runtimeCapabilities?: NodeExecutionCapabilityFactories;
@@ -410,6 +412,7 @@ export function createNodeAttemptHandler(
       const published = await dependencies.reader.readForExecution({
         workspaceId: delivery.data.workspaceId,
         workflowVersionId: claimed.lease.workflowVersionId,
+        nodeId: claimed.lease.nodeId,
         signal: context.signal,
       });
       if (published === null)
@@ -438,6 +441,14 @@ export function createNodeAttemptHandler(
           hasProviderDispatchUncertainty(claimed.lease, false),
         );
       }
+      if (prepared.testPinRequired === true) {
+        const completed = await dependencies.runStore.complete({
+          lease: claimed.lease,
+          outcome: { status: 'failed', safeErrorCode: 'test.pin_required' },
+          signal: context.signal,
+        });
+        return completionResult(dependencies, claimed.lease, completed.kind);
+      }
       if (claimed.lease.admissionKind === 'wait_resume') {
         if (inputs.resumeOutput === undefined)
           throw new NodeAttemptHandlerStateError('wait_resume_output_missing');
@@ -460,10 +471,15 @@ export function createNodeAttemptHandler(
         const environment = createNodeExecutionEnvironment({
           executionSignal: heartbeat.executionSignal,
           variables: inputs.variables ?? {},
+          test: published.test !== undefined,
+          ...(published.testExpiresAt === undefined
+            ? {}
+            : { artifactRetentionDeadline: published.testExpiresAt }),
           lease: claimed.lease,
           registry: dependencies.registry,
           runStore: dependencies.runStore,
-          ...(dependencies.runtimeCapabilities === undefined
+          ...(dependencies.runtimeCapabilities === undefined ||
+          prepared.testSubstitution === true
             ? {}
             : { runtimeCapabilities: dependencies.runtimeCapabilities }),
         });

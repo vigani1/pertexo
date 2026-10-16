@@ -4087,6 +4087,7 @@
             "triggerType": {
               "type": "string",
               "enum": [
+                "test",
                 "api",
                 "manual",
                 "replay",
@@ -4309,6 +4310,7 @@
         "triggerType": {
           "type": "string",
           "enum": [
+            "test",
             "api",
             "manual",
             "replay",
@@ -4521,6 +4523,7 @@
         "triggerType": {
           "type": "string",
           "enum": [
+            "test",
             "api",
             "manual",
             "replay",
@@ -4785,6 +4788,7 @@
         "triggerType": {
           "type": "string",
           "enum": [
+            "test",
             "api",
             "manual",
             "replay",
@@ -5115,6 +5119,7 @@
               "triggerType": {
                 "type": "string",
                 "enum": [
+                  "test",
                   "api",
                   "manual",
                   "replay",
@@ -5959,6 +5964,7 @@
             "triggerType": {
               "type": "string",
               "enum": [
+                "test",
                 "api",
                 "manual",
                 "replay",
@@ -6614,6 +6620,7 @@
             "triggerType": {
               "type": "string",
               "enum": [
+                "test",
                 "api",
                 "manual",
                 "replay",

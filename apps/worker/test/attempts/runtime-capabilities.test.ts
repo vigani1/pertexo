@@ -75,6 +75,17 @@ describe('worker node runtime capabilities', () => {
         statusCode: 200,
       });
       expect(respond).toHaveBeenCalledWith({ ...context, response, signal });
+      const draftTest = runtime.factories.webhookResponse?.({
+        ...context,
+        testRun: true,
+      });
+      if (draftTest === undefined)
+        throw new Error('Draft test response capability missing');
+      expect(await draftTest.respond({ response, signal })).toEqual({
+        outcome: 'preview',
+        statusCode: response.statusCode,
+      });
+      expect(respond).toHaveBeenCalledTimes(1);
       const preview = runtime.factories.webhookResponse?.({
         ...context,
         previewRunId,

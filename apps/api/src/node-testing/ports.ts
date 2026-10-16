@@ -10,6 +10,7 @@ export type NodeTestingPersistence = Pick<
   | 'readPreview'
   | 'resolvePreviewReplay'
   | 'stepSamples'
+  | 'workflowTests'
 >;
 
 export type NodeTestingDependencies = Readonly<{

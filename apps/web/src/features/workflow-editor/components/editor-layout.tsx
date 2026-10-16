@@ -59,7 +59,7 @@ export function EditorLayout({
         <div className="pointer-events-auto" {...covers}>
           {bar}
         </div>
-        {banner}
+        <div {...covers}>{banner}</div>
         <div className="relative min-h-0 flex-1">
           {editable ? (
             <aside

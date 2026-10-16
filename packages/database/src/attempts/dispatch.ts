@@ -1,3 +1,4 @@
+import { EXECUTION_SOURCE_SQL } from '../runs/queries/execution-source.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';
 
@@ -128,7 +129,7 @@ export async function markNodeAttemptDispatched(
         input.connectionFence.expectedAuthType === 'slack_bot_token'
       ) {
         const published = await client.query<{ executable_json: unknown }>(
-          'select executable_json from app.workflow_versions where workspace_id=$1 and id=$2',
+          `select executable_json from (${EXECUTION_SOURCE_SQL}) source where workspace_id=$1 and id=$2`,
           [input.lease.workspaceId, input.lease.workflowVersionId],
         );
         if (

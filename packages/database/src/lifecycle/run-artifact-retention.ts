@@ -79,7 +79,9 @@ const DUE_ARTIFACT = `
 
 /** Run inputs, outputs, events and checkpoints that still name the artifact. */
 const REFERENCED = `
-  select exists (select 1 from app.workflow_drafts draft
+  select exists (select 1 from app.workflow_test_snapshots snapshot
+      where snapshot.workspace_id=$1 and snapshot.expires_at>clock_timestamp() and app.jsonb_references_artifact(snapshot.graph_json,$2))
+    or exists (select 1 from app.workflow_drafts draft
       where draft.workspace_id = $1 and app.jsonb_references_artifact(draft.graph_json, $2))
     or exists (select 1 from app.workflow_versions version
       where version.workspace_id = $1 and app.jsonb_references_artifact(version.graph_json, $2))

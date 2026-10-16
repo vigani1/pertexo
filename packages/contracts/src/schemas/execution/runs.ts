@@ -43,6 +43,7 @@ export const workflowNodeRunStatusSchema = z.enum([
   'outcome_unknown',
 ]);
 export const workflowRunTriggerTypeSchema = z.enum([
+  'test',
   'api',
   'manual',
   'replay',

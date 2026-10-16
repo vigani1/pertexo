@@ -18,6 +18,13 @@ import {
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
   {
+    name: 'workflow_test_snapshots',
+    statement: `with page as (
+    select snapshot.run_id from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.id=snapshot.run_id
+    where snapshot.expires_at<=clock_timestamp() and run.status not in ('queued','running','waiting') order by snapshot.run_id limit $1
+  ) delete from app.workflow_test_snapshots snapshot using page where snapshot.run_id=page.run_id`,
+  },
+  {
     name: 'webhook_responses',
     statement: `with page as (
       select response.run_id from app.webhook_run_responses response
@@ -49,7 +56,7 @@ export const RETENTION_RULES = Object.freeze([
         from app.node_runs node
         join app.workflow_runs run
           on run.workspace_id = node.workspace_id and run.id = node.workflow_run_id
-        where run.completed_at <= clock_timestamp() - interval '30 days'
+        where run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '30 days' end
         order by node.id limit $1
       )
       delete from app.node_runs node using page
@@ -63,7 +70,7 @@ export const RETENTION_RULES = Object.freeze([
         from app.run_events event
         join app.workflow_runs run
           on run.workspace_id = event.workspace_id and run.id = event.workflow_run_id
-        where run.completed_at <= clock_timestamp() - interval '30 days'
+        where run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '30 days' end
         order by event.workflow_run_id, event.sequence limit $1
       )
       delete from app.run_events event using page
@@ -79,7 +86,7 @@ export const RETENTION_RULES = Object.freeze([
         join app.workflow_runs run
           on run.workspace_id = checkpoint.workspace_id
          and run.id = checkpoint.workflow_run_id
-        where run.completed_at <= clock_timestamp() - interval '30 days'
+        where run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '30 days' end
         order by checkpoint.workflow_run_id limit $1
       )
       delete from app.run_checkpoints checkpoint using page
@@ -94,7 +101,7 @@ export const RETENTION_RULES = Object.freeze([
       with page as (
         select run.id from app.workflow_runs run
         where run.details_purged_at is null
-          and run.completed_at <= clock_timestamp() - interval '30 days'
+          and run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '30 days' end
           and not exists (select 1 from app.node_runs node
             where node.workspace_id = run.workspace_id and node.workflow_run_id = run.id)
           and not exists (select 1 from app.run_events event
@@ -156,7 +163,7 @@ export const RETENTION_RULES = Object.freeze([
     statement: `
       with page as (
         select run.id from app.workflow_runs run
-        where run.completed_at <= clock_timestamp() - interval '90 days'
+        where run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '90 days' end
           and run.details_purged_at is not null
           and not exists (select 1 from app.workflow_calls call
             where call.workspace_id = run.workspace_id

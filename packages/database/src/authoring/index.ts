@@ -120,3 +120,6 @@ export type {
   SampleRead,
   SampleResult,
 } from './step-samples/contract.js';
+
+export { WorkflowTestError } from '../previews/workflows/contract.js';
+export type { WorkflowTestStore } from '../previews/workflows/contract.js';

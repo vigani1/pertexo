@@ -309,6 +309,10 @@ describe('node-testing public contracts', () => {
     expect(Object.keys(nodeTestingOpenApiDocument.paths)).toEqual([
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/samples',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/sample',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/tests/prepare',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/tests',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/tests/{runId}',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/tests/{runId}/cancel',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test',
       '/v1/workspaces/{workspaceId}/previews/{previewRunId}',
     ]);

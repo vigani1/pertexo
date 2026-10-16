@@ -1,3 +1,7 @@
+import type {
+  WorkflowTestPins,
+  WorkflowTestCompilation,
+} from '@pertexo/workflow-engine';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import type {
   GraphValidationResult,
@@ -36,5 +40,9 @@ export type WorkflowAuthoringDatabaseOptions = Readonly<{
   definitionCatalog?: WorkflowDefinitionCatalog;
   runtime?: DatabaseRuntime;
   executableCompiler: WorkflowExecutableCompiler;
+  workflowTestCompiler?: (
+    graph: WorkflowGraph,
+    pins: WorkflowTestPins,
+  ) => WorkflowTestCompilation;
   validateAuthoringGraph?: WorkflowAuthoringGraphValidator;
 }>;

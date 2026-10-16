@@ -261,6 +261,8 @@ function WorkflowEditorSession({
           ensureSaved={ensureSaved}
           flushSave={flushSave}
           effects={effects}
+          workflow={workflow.data}
+          verifyIdentity={verification.verifyOwner}
           bar={(chrome) => (
             <EditorCommandBar
               paused={paused}
@@ -292,6 +294,7 @@ function WorkflowEditorSession({
                     graph={graph}
                     draft={{ generation, revision }}
                     commandSession={commandSession}
+                    testAction={chrome.workflowTestAction}
                     issues={issues}
                     issuesOpen={chrome.issuesOpen}
                     triggersAvailable={triggersAvailable}

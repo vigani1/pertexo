@@ -8,6 +8,7 @@ import type {
 /** Identity and ownership supplied when constructing per-attempt capabilities. */
 export type NodeExecutionCapabilityContext = Readonly<{
   artifactRetentionDeadline?: Date;
+  testRun?: boolean;
   previewRunId?: string;
   workspaceId: string;
   runId: string;
