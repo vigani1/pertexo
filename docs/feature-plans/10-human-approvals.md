@@ -297,8 +297,8 @@ F11 request-input reuses the pending-task mechanism in the next authorized featu
 
 ## Follow-up: starter choice and recorded decider (2026-10-16)
 
-The owner approved a per-step choice. Add `allowStarterToDecide` to Approval setup with a false default; an absent
-stored value stays off. Capture it with the existing
+The owner approved a per-step choice. Add optional `allowStarterToDecide` to Approval setup; an absent or false
+stored value stays off. Keep absence intact for strict portable export/import. Capture it with the existing
 immutable task setup, so editing a workflow never changes an open task. An
 explicit true value removes only starter exclusion: current workspace, user,
 membership, run-read capability, captured role/member audience, run state,
@@ -359,6 +359,6 @@ tracker and the guide, then merge only after green CI.
 
 - [x] Shared rule, optional setup, transactional output and audience inspection.
 - [x] Editor checkbox, exact advisory and user guide.
-- [x] Local qualification: 9,221 units, 17 focused PostgreSQL tests, 183 mocked
+- [x] Local qualification: 9,222 units, 17 focused PostgreSQL tests, 183 mocked
       browser checks, real API/worker decisions with independent SQL evidence,
       and React Doctor 100/100. PR CI must be green before merge.

@@ -100,3 +100,23 @@ describe('registered portable definition policy', () => {
     ]);
   });
 });
+
+it('preserves legacy approval setup without inserting a new starter default', () => {
+  const definition = platformPortableDefinitionPolicy().definitions.find(
+    ({ key }) => key === 'core.approval',
+  );
+  const legacy = {
+    title: 'Approval needed',
+    instructions: '',
+    expiresAfterSeconds: 604800,
+    audience: { roles: ['owner', 'admin'], memberIds: [] },
+  };
+  expect(definition?.validateConfig(legacy)).toBe(true);
+  for (const allowed of [true, false])
+    expect(
+      definition?.validateConfig({ ...legacy, allowStarterToDecide: allowed }),
+    ).toBe(true);
+  expect(
+    definition?.validateConfig({ ...legacy, allowStarterToDecide: 'true' }),
+  ).toBe(false);
+});
