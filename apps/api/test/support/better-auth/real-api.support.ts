@@ -123,6 +123,7 @@ export function useBetterAuthRealApi(
   suite: string,
   options: Readonly<{
     publicWebOrigin?: string;
+    databasePoolMax?: number;
     automationTokens?: boolean;
     artifacts?: ApiConfig['artifacts'];
     /** F07-owned qualification namespace, never a shared database selection. */
@@ -157,7 +158,7 @@ export function useBetterAuthRealApi(
     connectionString: databaseUrl(apiBaseUrl),
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 5_000,
-    max: 4,
+    max: options.databasePoolMax ?? 4,
     ownerRole: 'pertexo_owner',
   });
   const { mail, mailedMessages } = captureLocalAuthenticationMail();

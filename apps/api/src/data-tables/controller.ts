@@ -1,3 +1,4 @@
+import { TableExportAdmission } from './export/admission.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { decodeTableExportRequest } from './export/request.js';
 import { sendTableExport } from './export/response.js';
@@ -47,6 +48,7 @@ export class DataTablesController {
   constructor(
     private readonly tables: DataTablesService,
     private readonly csrf: CsrfProtectionGuard,
+    private readonly exports: TableExportAdmission,
   ) {}
   private scope(request: Request, workspace: unknown) {
     return {
@@ -162,15 +164,15 @@ export class DataTablesController {
       request.headers['content-type'],
     );
     this.csrf.assertRequestAllowed(request, csrfToken);
-    await sendTableExport(
-      this.tables.store,
-      {
-        ...this.scope(request, workspace),
-        tableId: workspaceIdentifierSchema.parse(table),
-        query,
-      },
-      request,
-      reply,
+    const scope = this.scope(request, workspace);
+    const tableId = workspaceIdentifierSchema.parse(table);
+    await this.exports.run(scope.workspaceId, () =>
+      sendTableExport(
+        this.tables.store,
+        { ...scope, tableId, query },
+        request,
+        reply,
+      ),
     );
   }
   @Post(':tableId/rows/query')

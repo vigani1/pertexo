@@ -433,6 +433,7 @@ export class WorkflowRuntimeModule {
                 runtime.dataTables,
                 runtime.dependencies.authorization,
                 identityModule,
+                admission,
               ),
             ]),
         ...(runtime.variables === undefined

@@ -1,3 +1,8 @@
+import {
+  request as httpRequest,
+  type ServerResponse,
+  type IncomingMessage,
+} from 'node:http';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { afterEach, expect, it } from 'vitest';
 import type {
@@ -164,3 +169,45 @@ it('keeps errors before the consumer starts as ordinary non-download responses',
   );
   await response.text();
 });
+
+it('aborts a real backpressured HTTP download after no socket progress, without buffering the file', async () => {
+  const closed = Promise.withResolvers<undefined>();
+  let produced = 0;
+  const url = await serve(async ({ consume, signal }) => {
+    async function* csv() {
+      for (let i = 0; i < 4096; i++) {
+        signal?.throwIfAborted();
+        produced++;
+        yield await Promise.resolve('x'.repeat(65536));
+      }
+    }
+    try {
+      await consume(csv(), { ...table, storedBytes: 50 * 1_048_576 });
+    } finally {
+      closed.resolve(undefined);
+    }
+  });
+  let response: ServerResponse | undefined;
+  adapters
+    .at(-1)
+    ?.getInstance()
+    .server.on('request', (_request, reply) => {
+      response = reply;
+    });
+  const pending = Promise.withResolvers<IncomingMessage>();
+  const request = httpRequest(url, { method: 'POST' }, pending.resolve);
+  request.on('error', pending.reject);
+  request.end();
+  const download = await pending.promise;
+  download.on('error', () => undefined);
+  try {
+    // No client reads. The server must reach actual socket backpressure first.
+    await expect.poll(() => response?.writableNeedDrain).toBe(true);
+    await closed.promise;
+    expect(response?.destroyed).toBe(true);
+    expect(produced).toBeLessThan(4096);
+  } finally {
+    download.destroy();
+    request.destroy();
+  }
+}, 75_000);

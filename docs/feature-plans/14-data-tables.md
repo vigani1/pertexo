@@ -196,7 +196,7 @@ No new service, role, package or CI job. Amend ADR 083 rather than create an ADR
 
 - node-sdk/data-tables owns column/binding/value contracts and pure binding rules;
   nodes-core consumes the configured binding through its existing scoped runtime.
-- database/data-tables owns schema transactions, reference checks and snapshot
+- database/data-tables owns schema transactions, reference checks and batched
   export. Existing authoring/runs owners call the same reference validator.
 - API owns once-only request validation; contracts/OpenAPI expose schema edits
   and full export. Web data-tables owns plain schema forms and export feedback;
@@ -236,17 +236,17 @@ role, dependency, stored format or CI job.
 ### Decisions and ownership
 
 - Export all rows or all matching rows up to the existing row/storage quotas;
-  remove only the complete-export 1 MiB cap. Snapshot the schema and rows in one
-  existing repeatable-read workspace transaction. Fetch at most 16 rows by
-  `(workspace_id, table_id, id > last_id)` keyset and await downstream backpressure.
+  remove only the complete-export 1 MiB cap. The availability amendment below
+  replaces the original whole-download snapshot with short batch transactions.
+  Use `(workspace_id, table_id, id > last_id)` keysets and await downstream backpressure.
   CSV encoding yields one row at a time with the existing quoting/formula rules.
 - Exports explicitly use creation/row-ID order, including filtered exports.
   Keep on-screen Find sorting. Explain export order in the UI/guide; reject a
   sort parameter rather than silently ignore it. Unindexed arbitrary-column
   sorting per keyset batch would repeatedly scan/sort a quota-sized table.
-- The database owns the snapshot, keyset and encoder. Its export method lends an
-  async CSV iterable to an awaited consumer inside the transaction; it never
-  returns a live client or lets a consumer outlive the transaction.
+- The database owns keysets and CSV encoding. Its export method lends an async
+  iterable to an awaited consumer; each batch's transaction completes before
+  yielding rows. It never lends a checked-out client to the HTTP consumer.
 - Prepare and validate the current-column query before lending the iterable to
   the HTTP consumer, so a stale filter remains an ordinary problem response.
   Once the stream is handed to Fastify, every failure aborts the socket, including
@@ -254,7 +254,7 @@ role, dependency, stored format or CI job.
   queued stream before headers can otherwise become a complete empty 200 CSV.
 - API owns HTTP streaming, cancellation and finalization: a bounded PassThrough
   and `pipeline` feed Fastify's normal response stream. End the download only
-  after the read transaction finishes successfully. Any later failure destroys
+  after all batch reads finish successfully. Any later failure destroys
   the stream/response; never turn a partial export into a successful CSV. Errors
   before streaming keep ordinary problem responses. Verify abrupt upstream loss
   through the existing single-server proxy as well as direct HTTP.
@@ -272,7 +272,7 @@ role, dependency, stored format or CI job.
   successful completion from the initiating button.
 - Add an existing-limiter endpoint class for exports: fail closed, 5 starts per
   actor and 10 per workspace per minute. Retain session/workspace fences and pool
-  bounds. Export gets a 30-minute operation budget and aborts on disconnect;
+  bounds. Export uses the availability amendment budgets and aborts on disconnect;
   ordinary request budgets stay 30 seconds. This is a timeout, not a file cap.
 - Amend ADR 083 and the guide. Remove the old buffered response contract and
   browser Blob download. No file moves are needed.
@@ -375,3 +375,68 @@ non-download error response. No new format, service, role or decision is introdu
   zero-byte, partial and transaction-end failures through HTTP and proxies.
 - [x] Requalify the 100,000-row export under a 192 MiB heap and local checks.
   The correction merges only after green exact-head CI.
+
+
+## Export availability (2026-10-17)
+
+The owner approved dropping the whole-download snapshot to protect the shared
+API pool. This replaces snapshot/time/batch rules in the streaming section.
+No new service, dependency, schema, role, package or CI job.
+
+- Read metadata, then each ID-keyset batch in a short workspace-scoped read
+  transaction. Check active membership and current columns on every batch;
+  release the pooled client before yielding any CSV or waiting on the client.
+  Keep the initial headers/filter definition; a schema change aborts clearly.
+  Ordinary row edits have **no snapshot guarantee**: changed rows may or may not
+  appear. ID pagination never emits the same row twice. No exported PG snapshot,
+  dedicated connection, long transaction, or hidden background export.
+- Fetch up to 256 rows and 4 MiB of stored JSON per checkout. A bounded candidate
+  set and byte-prefix query avoid sending 256 maximum-size (64 KiB) rows into
+  Node. CSV still encodes one row at a time; quoting/formula protection stays.
+- API admission: one active export per workspace across instances, using an
+  exclusive expiring slot on the existing Redis admission runtime; two active
+  exports per API instance, including admission/cleanup. Refuse extras before
+  download headers with a clear conflict: an export is already running.
+  Keep the existing 5/actor, 10/workspace per-minute start limiter. Redis failure
+  fails closed. Owner-checked slot release prevents an expired owner's cleanup
+  from releasing a newer export. A crashed instance's slot expires after 5m30s;
+  no heartbeat, service or persistent export record. Release failures are logged
+  and leave the slot to expire; they cannot replace a completed/disconnected
+  HTTP outcome (including when Redis closes during API shutdown).
+- API holds admission through actual response completion, cancellation or
+  failure. Observe socket bytes, not source production: abort after about 60s
+  without write progress. Total transfer budget: 60s + 1s per started stored MiB
+  of the table, capped at 5m; an outer 5m request deadline includes setup. This
+  scales with bounded stored size, not client claims. Filtered exports use the
+  table size as a conservative budget. Ordinary request deadlines stay 30s.
+- Preserve failure semantics: known authorization/query errors precede attachment
+  hand-off; every later failure, including zero-byte and final-read failure,
+  aborts the download. Successful EOF follows all batch cleanup. Native browser
+  downloads, proxy behavior, CSRF, creation order and value/import limits stay.
+
+### Qualification / tracker
+
+- [x] Reconcile current code; record the no-snapshot and admission decisions.
+- [x] One-client PostgreSQL pool stays usable with multiple blocked consumers;
+  row edits are visible in later batches, schema edits abort, byte-bounded batches.
+- [x] Actual HTTP stalls/disconnects/failure cleanup, slot caps across instances,
+  expired ownership, progress/deadline tests and quota-size export measurement.
+- [x] Local lint/types/unit/integration qualified. Merge requires green exact-head CI.
+
+
+Local evidence: all 27 data-table PostgreSQL integration tests passed. Three
+blocked export consumers shared a one-client pool while ordinary list and row
+write operations completed. The real authenticated API also served three row
+queries during an unread 20 MB native HTTP download with its serving pool set
+to one; another export returned a 409 problem before attachment headers. The
+actual HTTP stall proof aborted after about 61 seconds without socket progress,
+with the producer still bounded. Real Redis proved cross-instance exclusion,
+cancellation release, expiry and old-owner cleanup isolation. Existing direct
+HTTP and nginx/Caddy zero-byte/partial failure proofs remain green.
+
+The quota-size proof streamed 100,000 rows / 1,068,188,909 CSV bytes under a
+192 MiB child-process heap; peak sampled JavaScript heap was 76,413,424 bytes
+and elapsed time 10,825 ms. These are local measurements, not timing assertions
+or throughput promises. Root format/build/lint/types/dependency/contract/schema/
+architecture checks, database/rate-limit units and affected API regressions
+passed. No frontend logic or dependency changes.

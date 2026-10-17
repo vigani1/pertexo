@@ -55,21 +55,20 @@ schema edit checks revision, updates bounded batches/counters, and records one
 safe audit event in the same transaction. Required additions backfill a typed
 default; unique-key changes validate all existing values. Type changes stay later.
 
-Complete CSV export uses the existing repeatable-read workspace fence and the
-streaming amendment below. No new storage service, role or background export
-subsystem is introduced.
+Complete CSV export uses short workspace-scoped batch reads, as amended below.
+No new storage service, role or background export subsystem is introduced.
 
 ## Amendment — streamed complete exports (2026-10-17)
 
 The owner removed the 1 MiB complete-export cap. Keep the stored-data quotas,
 workflow result envelope and import bounds. Use creation/row-ID keysets and
-bounded batches inside one read snapshot; the UI explicitly distinguishes this
-export order from on-screen sorting. Preserve quoting and formula protection.
+bounded batches with the availability amendment below; the UI explicitly
+distinguishes this export order from on-screen sorting. Preserve quoting and formula protection.
 
 A native browser form download and a backpressured API stream keep full exports
 out of application buffers. The existing session and CSRF policy authorizes the
 POST, with bounded form decoding only at this endpoint. Successful HTTP EOF is
-sent only after the read transaction completes; failures abort the download.
+sent only after all batch reads and cleanup complete; failures abort the download.
 The existing rate limiter bounds export starts. No download tickets, temporary
 artifact storage, browser service worker or background export system is added.
 
@@ -82,3 +81,21 @@ the currently bound IDs. This is an ordinary undoable draft config change;
 immutable published graphs remain unchanged. The review lists affected mappings
 and identifies dynamic consumers for manual inspection. It never silently
 rewrites mappings, expressions, Code or input data on the user's behalf.
+
+
+## Amendment — export availability (2026-10-17)
+
+A whole-download read snapshot pins one of the API's small number of pooled
+connections for the client's lifetime. The owner approved replacing it with
+short checkouts: read an ID-keyset batch, commit and release, then stream it.
+Exports have no cross-batch snapshot guarantee; concurrent row changes may or
+may not appear. Recheck workspace authority and the initial column definition
+per batch; abort a schema-changing export rather than produce misleading CSV.
+
+Use the existing Redis admission runtime for one active export per workspace
+across instances, plus a two-export in-process cap. Slots expire after the
+maximum transfer deadline plus cleanup margin; release checks the owner.
+Abort stalled writes after about 60 seconds and scale the total budget with
+stored size, capped at five minutes. The plan owns exact bounds. This trades
+snapshot consistency for pool availability without adding storage, a dedicated
+connection, background work or another service. Partial downloads still fail.
