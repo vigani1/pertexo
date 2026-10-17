@@ -120,7 +120,7 @@ export {
   type WorkflowLifecycleStatus,
   type WorkflowTriggerStatus,
 } from './lifecycle.js';
-export { resolveValueSource, type ValueResolution } from './mapping.js';
+export { resolveValueSource, type ValueResolution } from './mapping/resolve.js';
 export { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from './observation-window.js';
 export {
   PortableJsonError,

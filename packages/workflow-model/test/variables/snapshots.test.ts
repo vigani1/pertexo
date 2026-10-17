@@ -1,4 +1,4 @@
-import { resolveValueSource } from '../../src/mapping.js';
+import { resolveValueSource } from '../../src/mapping/resolve.js';
 import { afterAll, expect, it } from 'vitest';
 import {
   workspaceVariableValuesSchema,
