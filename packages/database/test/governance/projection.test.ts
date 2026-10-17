@@ -28,3 +28,17 @@ it('projects typed audit facts and hides free text and legacy non-object JSON', 
     changedNames: ['RATE'],
   });
 });
+
+it('bounds legacy full variable-name unions while exposing their total count', () => {
+  const names = Array.from(
+    { length: 200 },
+    (_, index) => `NAME_${String(index)}`,
+  );
+  const metadata = projectAuditMetadata({ changedNames: names });
+  expect(metadata.changedNames).toEqual(names.slice(0, 100));
+  expect(metadata).toMatchObject({
+    changedCount: 200,
+    changedNamesTruncated: true,
+  });
+  expect(projectAuditMetadata({ changedNames: ['PRIVATE=VALUE'] })).toEqual({});
+});

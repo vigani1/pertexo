@@ -27,7 +27,9 @@ those rather than adding another task engine or mail path.
 - Audit entries contain actor, action, target, time and bounded metadata only.
   Never include credentials, tokens, URLs containing endpoint keys, provider
   messages, run inputs/outputs, variable values, table rows or review notes.
-  The reader uses a safe projection for older metadata too.
+  The reader uses a safe projection for older metadata too. Variable changes
+  summarize at most 100 names with a total count/truncation marker, so replacing
+  two full sets cannot exceed the existing 8 KB audit-record budget.
 - Filters: person, action, target type/ID and inclusive/exclusive UTC date range.
   Stable keyset pagination uses time and ID. Page size is at most 100.
 - Audit retention defaults to 365 days, adjustable from 30 through 2,555 days.
@@ -103,9 +105,9 @@ is F17. No unrelated authorization rewrite.
 - [ ] Exact publication review, policy and inbox implemented.
 - [ ] Review integration/browser evidence and green PR merged.
 
-Audit evidence (2026-10-17): nine real PostgreSQL governance cases cover
+Audit evidence (2026-10-17): ten real PostgreSQL governance cases cover
 microsecond cursor ties, safe legacy metadata, 100,000-event export refusal,
-formula protection, exact settings retries/conflicts, retention, cross-workspace
+formula protection, exact settings retries/conflicts, retention, full variable-set replacement, cross-workspace
 access, builder refusal, mid-export demotion and a stalled one-client pool.
 Existing data-table/connection integration journeys pass (88 tests); real API
 export tests prove table/audit downloads share admission while ordinary requests
