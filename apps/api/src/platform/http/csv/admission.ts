@@ -1,10 +1,7 @@
 import { Logger } from '@nestjs/common';
 import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { DataTableError } from '@pertexo/node-sdk';
-import {
-  applicationError,
-  throwApplicationError,
-} from '../../platform/http/index.js';
+import { applicationError, throwApplicationError } from '../index.js';
 import { EXPORT_INSTANCE_LIMIT, EXPORT_SLOT_MILLIS } from './limits.js';
 
 export class TableExportAdmission {

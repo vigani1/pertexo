@@ -1,7 +1,7 @@
-import { TableExportAdmission } from './export/admission.js';
+import { TableExportAdmission } from '../platform/http/csv/admission.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { decodeTableExportRequest } from './export/request.js';
-import { sendTableExport } from './export/response.js';
+import { sendTableExport } from '../platform/http/csv/response.js';
 import {
   Body,
   Controller,
