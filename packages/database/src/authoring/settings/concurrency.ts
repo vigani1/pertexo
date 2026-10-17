@@ -181,7 +181,7 @@ export function createWorkflowConcurrencyStore(
                     metadata->>'triggerType' trigger_type,metadata->>'reason' reason
              from app.usage_events where workspace_id=$1 and resource_type='workflow' and resource_id=$2
                and category='trigger.skipped' and occurred_at>statement_timestamp()-${RUN_SUMMARY_RETENTION_SQL}
-             order by occurred_at desc,id limit 20`,
+             order by occurred_at desc nulls last,id limit 20`,
             [workspaceId, workflowId],
           );
           return settings.parse({
