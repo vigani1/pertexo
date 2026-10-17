@@ -238,9 +238,14 @@ export async function createWorkerNodeRuntimeCapabilities(
         dependencies.databaseRuntime,
       ));
     factories.dataTables = (context) => ({
-      execute: ({ command, signal }) => {
+      execute: ({ command, columnBindings, signal }) => {
         assertCapabilityRuntimeOpen(lifecycle);
-        return dataTables.execute({ ...context, command, signal });
+        return dataTables.execute({
+          ...context,
+          command,
+          ...(columnBindings === undefined ? {} : { columnBindings }),
+          signal,
+        });
       },
     });
     if (codeClient !== undefined && options.codeRunner !== undefined) {

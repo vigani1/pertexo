@@ -27,11 +27,13 @@ export function TableRowEditor({
   scope,
   table,
   row,
+  schemaChanged = false,
   onClose,
 }: Readonly<{
   scope: TableScope;
   table: DataTableDefinition;
   row?: DataTableRow | undefined;
+  schemaChanged?: boolean;
   onClose: () => void;
 }>) {
   const cache = useQueryClient();
@@ -63,10 +65,17 @@ export function TableRowEditor({
             ? 'All required fields need a value.'
             : `Editing revision ${String(row.revision)}. Your edits are kept if the row changes.`}
         </DialogDescription>
+        {schemaChanged ? (
+          <Notice tone="warning">
+            Columns changed while this form was open. Your values are kept.
+            Close and reopen the row to review the current columns.
+          </Notice>
+        ) : null}
         <form
           className="mt-5 grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
+            if (schemaChanged) return;
             try {
               const values = readTableValues(table.columns, draft);
               void command.send({
@@ -101,7 +110,10 @@ export function TableRowEditor({
             }
           }}
         >
-          <fieldset disabled={locked} className="grid min-w-0 gap-4">
+          <fieldset
+            disabled={locked || schemaChanged}
+            className="grid min-w-0 gap-4"
+          >
             {table.columns.map((column) => (
               <div key={column.name} className="grid gap-2">
                 <Label htmlFor={`cell-${column.name}`}>
@@ -171,7 +183,11 @@ export function TableRowEditor({
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={locked}>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={locked || schemaChanged}
+            >
               {command.pending ? 'Saving…' : 'Save row'}
             </Button>
             <Button

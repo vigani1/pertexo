@@ -1,3 +1,4 @@
+import { dataTableReferenceIssues } from '../../data-tables/columns/references.js';
 import { lockWorkspaceVariableNames } from '../../variables/read.js';
 import { revokeRemovedFormAccess } from '../../triggers/forms/publication.js';
 import { validateApprovalAudience } from './pending-tasks.js';
@@ -196,6 +197,12 @@ async function lockAndCompilePublication(
     draft.graphJson,
     variant.definitionCatalog,
   );
+  const tableIssues = await dataTableReferenceIssues(
+    client,
+    input.workspaceId,
+    graph,
+  );
+  if (tableIssues.length > 0) throw new InvalidWorkflowGraphError(tableIssues);
   await validateApprovalAudience(client, input.workspaceId, graph);
   await lockArtifactReferences(client, input.workspaceId, graph);
   const executable = executableSchema.parse(variant.executableCompiler(graph));

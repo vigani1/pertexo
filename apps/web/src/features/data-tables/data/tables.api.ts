@@ -6,6 +6,10 @@ import {
   dataTableResultSchema,
   dataTableWriteReceiptSchema,
   dataTableImportedSchema,
+  dataTableSchemaEditedSchema,
+  dataTableExportedSchema,
+  type DataTableSchemaEdit,
+  type DataTableExportQuery,
   type DataTableCreate,
   type DataTableLimits,
   type DataTableWrite,
@@ -44,6 +48,7 @@ export function readRows(
   });
 }
 export type TableCommand =
+  | { kind: 'schema'; tableId: string; body: DataTableSchemaEdit }
   | { kind: 'create'; body: DataTableCreate }
   | { kind: 'limits'; body: DataTableLimits }
   | { kind: 'remove'; tableId: string; body: { expectedRevision: number } }
@@ -56,6 +61,17 @@ export async function sendTableCommand(
 ) {
   const headers = { 'Idempotency-Key': key };
   switch (command.kind) {
+    case 'schema':
+      return scope.apiClient.request({
+        path: `${path(scope)}/${encodeURIComponent(command.tableId)}/schema`,
+        method: 'PUT',
+        body: command.body,
+        headers,
+        response: {
+          kind: 'json',
+          decode: (value) => dataTableSchemaEditedSchema.parse(value),
+        },
+      });
     case 'create':
       return scope.apiClient.request({
         path: path(scope),
@@ -112,4 +128,22 @@ export async function sendTableCommand(
         },
       });
   }
+}
+
+export function exportRows(
+  scope: TableScope,
+  tableId: string,
+  query: DataTableExportQuery,
+  signal: AbortSignal,
+) {
+  return scope.apiClient.request({
+    path: `${path(scope)}/${encodeURIComponent(tableId)}/export`,
+    method: 'POST',
+    body: query,
+    signal,
+    response: {
+      kind: 'json',
+      decode: (value) => dataTableExportedSchema.parse(value),
+    },
+  });
 }

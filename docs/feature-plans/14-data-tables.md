@@ -1,6 +1,6 @@
 # F14 — Workspace data tables
 
-Status: delivered in #334 on 2026-10-17. Parent:
+Status: first slice delivered in #334; editable columns/export follow-up in progress. Parent:
 [roadmap](../product-roadmap.md). Decision: [ADR 083](../adr/083-workspace-data-tables.md).
 
 ## Outcome and current foundations
@@ -8,12 +8,12 @@ Status: delivered in #334 on 2026-10-17. Parent:
 Small typed workspace datasets, managed by editors and usable from workflows.
 Current main has workspace authority/forced RLS, bounded JSON, ordinary worker
 capabilities, idempotent commands, CSV parsing, draft tests and capacity usage.
-There is no customer table product. Internal platform tables remain inaccessible.
+The first table slice is delivered. Internal platform tables remain inaccessible.
 No service, role, queue, package or CI job is added.
 
 ## Decisions and bounds
 
-- Fixed typed schema at creation: 1–20 named columns, text, finite number,
+- Typed schema at creation (evolution rules below): 1–20 named columns, text, finite number,
   boolean, ISO date (YYYY-MM-DD) or JSON. Each column can be required; missing
   optional cells are null. No implicit conversion in API/node writes. CSV uses
   column-directed conversion and reports the row/column on failure. JSON columns
@@ -57,11 +57,12 @@ No service, role, queue, package or CI job is added.
   export/import contains references only, never table data. Deleting a table
   requires explicit confirmation and makes references fail clearly; recreating
   the name is an explicit retargeting choice. The UI explains this. Schema
-  changes/renaming, cross-workspace lookup and user-defined indexes stay later.
+  changes follow the bounded evolution rules below. Cross-workspace lookup and
+  user-defined indexes stay later.
 - CSV import uses the existing pinned csv-parse dependency, RFC 4180/UTF-8/BOM,
   headers matching columns, a 1 MiB request bound and at most 1,000 rows per
-  atomic import. Export is paged CSV with safe quoting and spreadsheet formula
-  escaping. No file browser or artifact-storage coupling.
+  atomic import. Export covers the whole selected result within the existing 1 MiB result
+  budget, with safe quoting and spreadsheet formula escaping. No file browser or artifact-storage coupling.
 
 ## Ownership
 
@@ -92,7 +93,7 @@ exact-head CI. Record measured bounds and any limitations below.
 
 ## Later work
 
-Schema evolution, rename/refactoring, composite keys/indexes, larger imports,
+Type changes, table renaming, composite keys/indexes, larger imports,
 streamed export, row history, external database connectors, formulas and billing.
 
 ## Tracker
@@ -140,3 +141,94 @@ streamed export, row history, external database connectors, formulas and billing
   fixed provider-key derivation using the original effect class after a test
   substitution; the engine now derives the key from the effective admission
   class. A focused regression fails before the fix and covers ordinary writes.
+
+## Editable columns and complete CSV export (2026-10-17)
+
+Owner-approved follow-up; first reconcile the existing fixed-schema implementation.
+No new service, role, package or CI job. Amend ADR 083 rather than create an ADR.
+
+### Decisions
+
+- Columns have an immutable ID and a mutable, unique display/name identifier.
+  Backfill existing IDs from their original names, preserving existing workflows
+  and stored rows without rewriting published versions. Initial schema IDs are
+  the creation names within that table; later additions receive fresh opaque IDs; deleting and recreating a name never revives an old binding.
+- Workflow table config freezes alias-to-column-ID bindings. Inputs and outputs
+  keep the aliases chosen when configured, including JSON paths, while the
+  scoped runtime resolves IDs to current column names. The editor displays human
+  names and provides explicit column review; background refresh never rewrites
+  the draft or mappings. Removing a bound column is a clear publish/start error.
+- Legacy steps without an explicit binding use the original-name IDs. After a
+  column removal, unverifiable legacy steps must review/rebind before starting;
+  refuse conservatively rather than guess from arbitrary mapping expressions.
+  No mutation of immutable published graphs. New/imported cross-workspace steps
+  must explicitly reselect their target columns when IDs do not match; never
+  silently bind a recreated or unrelated column just because its name matches.
+- Add optional columns with null existing cells, or required columns with a
+  typed non-null default for every existing row. A supplied default is also
+  checked against row and workspace byte limits. It is a backfill, not a hidden
+  default for future workflow writes. Renames keep IDs and stable workflow
+  aliases. Confirm deletion and explain loss of stored cells / any unique key.
+  Keep at least one column. Type changes remain deferred in this follow-up.
+- Change or clear the single unique key only when the selected column is a
+  required text/number/date column and all existing values fit the current key
+  bound and are unique. Clear old key values inside the transaction before
+  assigning replacements; constraint failure rolls the complete change back.
+- Every schema edit compares the current table revision, serializes through the
+  existing workspace quota and table locks, rewrites rows in bounded batches,
+  maintains exact stored-byte/row counters and revisions, and records one safe
+  audit event in the same transaction. No row values/defaults in audit metadata.
+  Retried commands return their original result and do not repeat the audit.
+  CSV conversion stays API-owned but runs after claiming the exact raw-CSV
+  command, under the table lock. This prevents schema changes between header
+  validation and import, and lets a committed import replay after a rename.
+  Pre-upgrade import receipts with the previous parsed-row hash refuse safely
+  rather than repeat an unverifiable command; inspect history before a new import.
+- Check bindings in publication/validation and common run admission, including
+  nested loop bodies and Call children. Replays/recovery keep their immutable
+  graph's bindings. Pinned test substitutions require no table operation.
+  Runtime rechecks under its existing write/read transaction for schema changes
+  after acceptance; completed write receipts retain their exact original result.
+- Export all rows or all matching filtered/sorted rows, ignoring UI pagination.
+  Use the existing repeatable-read workspace transaction and a bounded SQL cursor
+  so schema and rows come from one snapshot. Keep the existing 1 MiB result
+  budget for the completed CSV, counting UTF-8 bytes and CSV escaping. Refuse
+  oversized results with instructions to narrow the filter; never download an
+  undisclosed partial result. Preserve spreadsheet-formula escaping. Use the
+  ordinary authenticated API and a bounded CSV download, with no artifact job.
+
+### Ownership and evidence
+
+- node-sdk/data-tables owns column/binding/value contracts and pure binding rules;
+  nodes-core consumes the configured binding through its existing scoped runtime.
+- database/data-tables owns schema transactions, reference checks and snapshot
+  export. Existing authoring/runs owners call the same reference validator.
+- API owns once-only request validation; contracts/OpenAPI expose schema edits
+  and full export. Web data-tables owns plain schema forms and export feedback;
+  editor owns explicit table-column bindings and normal mapping controls.
+- Prove populated upgrades, rename preserving published mappings/output aliases,
+  deletion refusal at publish/start, ID non-reuse, quota/required/default failures,
+  uniqueness/concurrency/rollback/idempotency/audit and ordinary workspace fences.
+  Prove CSV beyond page one, whole filtered/sorted results, formula protection,
+  UTF-8/escaping bounds and consistent schema/data while writers run.
+- Real worker and owned browser journeys at desktop/phone widths, normal lint,
+  types/unit/mocked e2e, React Doctor, schema/contracts/boundaries and green CI.
+
+### Follow-up tracker
+
+- [x] Reconcile code and record ID/binding/export decisions.
+- [x] Atomic schema changes, upgrade and reference fences qualified.
+- [x] Editor/forms and full CSV export qualified end to end.
+- [x] Guide and ADR 083 updated. Merge remains gated on green exact-head CI.
+
+- Follow-up local evidence: 22 database integration tests, a populated 0028 →
+  0029 upgrade, and real worker execution passed. The 100,000-row rename kept
+  exact counters (4,177,780 stored bytes); local duration ranged from about 3
+  seconds to 40 seconds under concurrent verification load. These are measured
+  observations, not CI timing assertions or throughput promises.
+- The real browser journey passed at 1280px and 375px: import 123 rows, export
+  beyond the 50-row page, add a required default, run the exact published version
+  before/after rename with original aliases, and refuse deletion-bound drafts
+  at publish and old versions at start. Existing effects/pins and variable
+  snapshot journeys passed alongside it. Mocked regressions cover human aliases,
+  whole filtered export and exact retry after a lost schema-edit acknowledgement.

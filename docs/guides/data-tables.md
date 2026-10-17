@@ -22,10 +22,36 @@ Optionally choose a required text, number or date column as the unique key.
 **Upsert by key** needs one. Keys fit 1 KB including their JSON representation;
 use a short business identifier. Duplicate keys are refused atomically.
 
-Column types and names stay fixed in this first slice. Choose carefully, or
-create another table and migrate the rows deliberately. Deleting a table asks
-you to type its name. Workflows referencing it then fail clearly; recreating the
-same name deliberately points those workflows at the new table.
+## Change columns
+
+Open **Edit columns**. You can add, rename or delete a column, or change the
+unique key. Column types stay fixed. An optional addition fills existing rows
+with empty cells unless you supply a default. A required addition needs a typed
+default for every existing row. This backfill is not a default for future writes:
+workflows must still provide required values.
+
+Renaming keeps the column's identity. Existing configured workflow fields keep
+their original aliases, including downstream output paths. For example, renaming
+`amount` to `total` changes the table page and CSV header; a workflow configured
+with `amount` still reads/writes that same column and returns `values.amount`.
+
+Deleting asks for confirmation and removes that column's cells from every row.
+Deleting the key column also clears the unique key. Workflows bound to a removed
+column fail validation or are refused when starting an older published version.
+Recreating the name creates a different column; it never silently revives a
+binding. Older steps without explicit bindings require column review after any
+column removal. In the step's Setup, choose **Review current columns**, review
+Inputs, then publish. Existing aliases stay stable; new columns get new aliases.
+
+A unique key must be a required text, number or date column. Existing values must
+all be unique and fit the 1 KB key bound. Changing it changes which row **Upsert
+by key** matches, so review those workflows. Clearing it disables Upsert until a
+key is selected. All schema changes are atomic and audited: a duplicate, stale
+revision, invalid default or quota failure changes nothing. Close and reopen the
+dialog if another writer changed the table while it was open.
+
+Deleting a table asks you to type its name. Workflows referencing it then fail
+clearly; recreating the same table name is a deliberate retargeting choice.
 
 ## Read, edit and move rows
 
@@ -51,17 +77,26 @@ JSON needs valid JSON. JSON cells do not extend the retention of file references
 record/column where possible. Import at most 1,000 rows and a 1 MB request;
 JSON framing counts too. Split larger files into smaller imports.
 
-**Export this page** downloads the currently loaded, filtered/sorted page as
-CSV. Move through pages for the remaining rows. Text that could execute as a
-spreadsheet formula is prefixed with an apostrophe. This protects spreadsheet
-users; remove that prefix deliberately if importing that text back into Pertexo.
+**Export all rows** downloads the whole table. **Export filtered rows** downloads
+every matching row in the current sort order. Neither is limited to the visible
+page. Headers and rows come from one consistent snapshot. The completed CSV must
+fit 1 MB, including UTF-8 bytes, quoting and formula protection. An oversized
+result is refused before download: narrow the filter and export the matching
+rows. You never receive an undisclosed partial export.
+
+Text that could execute as a spreadsheet formula is prefixed with an apostrophe.
+This protects spreadsheet users; remove that prefix deliberately if importing
+that text back into Pertexo.
 
 ## Use tables in workflows
 
 Add a table step and choose a workspace table in Setup. In Inputs, use the normal
 mapping controls for `values` or `query`. Table names are included in workflow
 export/import; table schemas and rows are not. Create the named table in the
-receiving workspace before running an imported workflow.
+receiving workspace before running an imported workflow. Setup binds human field
+aliases to stable column IDs. If an imported binding does not match the receiving
+table (for example, a later-added column has a different ID), explicitly reselect
+that table and review Inputs before publishing. No rows or schemas are imported.
 
 | Step | Input | Result |
 | --- | --- | --- |
@@ -116,9 +151,10 @@ until you delete them or the workspace is purged.
 | Rows per table | 10,000 | 100,000 |
 | Stored cell JSON per workspace | 50 MB | 1 GB |
 | One row | 64 KB | Fixed |
-| Import / one mutation | 1,000 rows | Fixed |
+| Import / one row mutation | 1,000 rows | Fixed |
+| Complete CSV export | 1 MB | Fixed |
 
 Open **Table limits** to raise bounded quotas. Lowering a quota below current
 use is refused. Text/JSON must be valid Unicode without null characters. There
-is no arbitrary SQL, custom index, schema evolution, row history or unbounded
+is no arbitrary SQL, custom index, type changes, row history or unbounded
 import/export in this slice.

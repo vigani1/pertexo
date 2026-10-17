@@ -1,10 +1,13 @@
 import type {
   DataTableWriteReceipt,
+  DataTableSchemaEdit,
+  DataTableExportQuery,
   DataTableDefinition,
   DataTablesResponse,
 } from '@pertexo/contracts';
 import type {
-  DataTableColumn,
+  DataTableNewColumn,
+  DataTableBindings,
   DataTableValues,
   DataTableQuery,
   DataTableResult,
@@ -28,10 +31,20 @@ export interface DataTablesStore {
       DataTableMutation &
       Readonly<{
         name: string;
-        columns: readonly DataTableColumn[];
+        columns: readonly DataTableNewColumn[];
         keyColumn?: string | null;
       }>,
   ): Promise<{ id: string }>;
+  editSchema(
+    input: DataTableScope &
+      DataTableMutation &
+      DataTableSchemaEdit &
+      Readonly<{ tableId: string }>,
+  ): Promise<{ revision: number }>;
+  exportCsv(
+    input: DataTableScope &
+      Readonly<{ tableId: string; query: DataTableExportQuery }>,
+  ): Promise<{ csv: string; rowCount: number }>;
   remove(
     input: DataTableScope &
       DataTableMutation &
@@ -64,7 +77,16 @@ export interface DataTablesStore {
   importRows(
     input: DataTableScope &
       DataTableMutation &
-      Readonly<{ tableId: string; rows: readonly DataTableValues[] }>,
+      Readonly<{ tableId: string }> &
+      (
+        | Readonly<{ rows: readonly DataTableValues[] }>
+        | Readonly<{
+            csv: string;
+            prepareRows: (
+              table: DataTableDefinition,
+            ) => readonly DataTableValues[];
+          }>
+      ),
   ): Promise<{ affected: number }>;
   close(): Promise<void>;
 }
@@ -83,7 +105,11 @@ export type DataTableAttempt = Readonly<{
 export interface WorkerDataTablesStore {
   execute(
     input: DataTableAttempt &
-      Readonly<{ command: DataTableCommand; signal: AbortSignal }>,
+      Readonly<{
+        command: DataTableCommand;
+        columnBindings?: DataTableBindings;
+        signal: AbortSignal;
+      }>,
   ): Promise<DataTableResult>;
   close(): Promise<void>;
 }

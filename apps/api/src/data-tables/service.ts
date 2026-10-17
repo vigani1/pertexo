@@ -3,27 +3,45 @@ import {
   DataTableError,
   DATA_TABLE_LIMITS,
   dataTableCsvValue,
+  type DataTableValues,
 } from '@pertexo/node-sdk';
-import type { DataTablesStore } from '@pertexo/database/data-tables';
+import type {
+  DataTablesStore,
+  DataTableDefinition,
+} from '@pertexo/database/data-tables';
 export class DataTablesService {
   constructor(readonly store: DataTablesStore) {}
   async importCsv(
-    input: Parameters<DataTablesStore['importRows']>[0] &
+    input: Omit<
+      Parameters<DataTablesStore['importRows']>[0],
+      'rows' | 'prepareRows'
+    > &
       Readonly<{ csv: string }>,
   ) {
-    if (Buffer.byteLength(input.csv) > 1_048_576)
+    try {
+      return await this.store.importRows({
+        ...input,
+        prepareRows: (table: DataTableDefinition) =>
+          this.parseCsv(input.csv, table),
+      });
+    } catch (error) {
+      if (error instanceof DataTableError && error.rowNumber !== undefined)
+        throw new DataTableError(
+          error.code,
+          `CSV row ${String(error.rowNumber + 1)}: ${error.message}`,
+        );
+      throw error;
+    }
+  }
+  private parseCsv(csv: string, table: DataTableDefinition) {
+    if (Buffer.byteLength(csv) > 1_048_576)
       throw new DataTableError(
         'invalid_values',
         'CSV imports must fit 1 MB. Split the file.',
       );
-    const table = (await this.store.list(input)).tables.find(
-      (item) => item.id === input.tableId,
-    );
-    if (table === undefined)
-      throw new DataTableError('not_found', 'This data table is unavailable.');
     let records: string[][];
     try {
-      records = parse(input.csv, {
+      records = parse(csv, {
         to: DATA_TABLE_LIMITS.batchRows + 2,
         bom: true,
         skip_empty_lines: true,
@@ -62,7 +80,7 @@ export class DataTablesService {
               throw new DataTableError('invalid_values', 'Unknown column.');
             return [name, dataTableCsvValue(column, record[columnIndex] ?? '')];
           }),
-        ) as Parameters<DataTablesStore['importRows']>[0]['rows'][number];
+        ) as DataTableValues;
       } catch (error) {
         if (error instanceof DataTableError)
           throw new DataTableError(
@@ -72,15 +90,6 @@ export class DataTablesService {
         throw error;
       }
     });
-    try {
-      return await this.store.importRows({ ...input, rows });
-    } catch (error) {
-      if (error instanceof DataTableError && error.rowNumber !== undefined)
-        throw new DataTableError(
-          error.code,
-          `CSV row ${String(error.rowNumber + 1)}: ${error.message}`,
-        );
-      throw error;
-    }
+    return rows;
   }
 }

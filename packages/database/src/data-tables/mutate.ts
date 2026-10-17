@@ -11,7 +11,7 @@ import {
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type { DataTableDefinition, DataTableQuotas } from './contract.js';
 import { boundedResult, queryClause, type StoredRow } from './queries.js';
-function keyValue(
+export function keyValue(
   table: DataTableDefinition,
   values: DataTableValues,
 ): string | null {

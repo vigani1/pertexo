@@ -11,6 +11,10 @@ import {
 export function dataTableContractSchemas(target: 'client' | 'openapi') {
   const definitions = [
     ['DataTablesResponse', schemas.dataTablesResponseSchema, 'output'],
+    ['DataTableSchemaEdit', schemas.dataTableSchemaEditSchema, 'input'],
+    ['DataTableSchemaEdited', schemas.dataTableSchemaEditedSchema, 'output'],
+    ['DataTableExportQuery', schemas.dataTableExportQuerySchema, 'input'],
+    ['DataTableExported', schemas.dataTableExportedSchema, 'output'],
     ['DataTableCreate', schemas.dataTableCreateSchema, 'input'],
     ['DataTableCreated', schemas.dataTableCreatedSchema, 'output'],
     ['DataTableRemove', schemas.dataTableRemoveSchema, 'input'],
@@ -86,6 +90,23 @@ export const dataTableContractPaths = {
       'DataTableRemoved',
       'DataTableRemove',
       true,
+      true,
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/data-tables/{tableId}/schema': {
+    put: operation(
+      'editDataTableSchema',
+      'DataTableSchemaEdited',
+      'DataTableSchemaEdit',
+      true,
+      true,
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/data-tables/{tableId}/export': {
+    post: operation(
+      'exportDataTableCsv',
+      'DataTableExported',
+      'DataTableExportQuery',
       true,
     ),
   },

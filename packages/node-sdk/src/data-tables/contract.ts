@@ -1,6 +1,24 @@
 import { z } from 'zod';
 import { inspectBoundedJson } from '../values/bounds.js';
 
+export const DATA_TABLE_OPERATIONS = [
+  'find',
+  'insert',
+  'update',
+  'upsert',
+  'delete',
+] as const;
+export function isDataTableDefinition(
+  definition: Readonly<{ key: string; version: number }>,
+): boolean {
+  return (
+    definition.version === 1 &&
+    DATA_TABLE_OPERATIONS.some(
+      (operation) => definition.key === `core.table_${operation}`,
+    )
+  );
+}
+
 export const DATA_TABLE_LIMITS = Object.freeze({
   tables: 20,
   columns: 20,
@@ -17,16 +35,20 @@ export const DATA_TABLE_LIMITS = Object.freeze({
 export const dataTableNameSchema = z
   .string()
   .regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/u);
-export const dataTableColumnSchema = z
+export const dataTableNewColumnSchema = z
   .object({
     name: dataTableNameSchema,
     type: z.enum(['text', 'number', 'boolean', 'date', 'json']),
     required: z.boolean().default(false),
   })
   .strict();
+export type DataTableNewColumn = z.infer<typeof dataTableNewColumnSchema>;
+export const dataTableColumnSchema = dataTableNewColumnSchema.extend({
+  id: dataTableNameSchema,
+});
 export type DataTableColumn = z.infer<typeof dataTableColumnSchema>;
-export const dataTableColumnsSchema = z
-  .array(dataTableColumnSchema)
+export const dataTableNewColumnsSchema = z
+  .array(dataTableNewColumnSchema)
   .min(1)
   .max(DATA_TABLE_LIMITS.maxColumns)
   .refine(
@@ -34,6 +56,32 @@ export const dataTableColumnsSchema = z
       new Set(columns.map((column) => column.name)).size === columns.length,
     'Column names must be unique',
   );
+export const dataTableColumnsSchema = z
+  .array(dataTableColumnSchema)
+  .min(1)
+  .max(DATA_TABLE_LIMITS.maxColumns)
+  .refine(
+    (columns) =>
+      new Set(columns.map((column) => column.name)).size === columns.length &&
+      new Set(columns.map((column) => column.id)).size === columns.length,
+    'Column names and IDs must be unique',
+  );
+export const dataTableBindingsSchema = z
+  .record(dataTableNameSchema, dataTableNameSchema)
+  .refine(
+    (bindings) =>
+      Object.keys(bindings).length <= DATA_TABLE_LIMITS.maxColumns &&
+      new Set(Object.values(bindings)).size === Object.keys(bindings).length,
+    'Bind each column once, within the column limit',
+  );
+export type DataTableBindings = z.infer<typeof dataTableBindingsSchema>;
+export const dataTableConfigSchema = z
+  .object({
+    table: dataTableNameSchema,
+    columnBindings: dataTableBindingsSchema.optional(),
+  })
+  .strict();
+export type DataTableConfig = z.infer<typeof dataTableConfigSchema>;
 export const dataTableValueStructuralSchema = z.json();
 export const dataTableValuesStructuralSchema = z.record(
   z.string(),
@@ -155,7 +203,11 @@ export const dataTableResultSchema = z
 export type DataTableResult = z.infer<typeof dataTableResultSchema>;
 export interface NodeDataTableRuntime {
   execute(
-    input: Readonly<{ command: DataTableCommand; signal: AbortSignal }>,
+    input: Readonly<{
+      command: DataTableCommand;
+      columnBindings?: DataTableBindings;
+      signal: AbortSignal;
+    }>,
   ): Promise<DataTableResult>;
 }
 export class DataTableError extends Error {

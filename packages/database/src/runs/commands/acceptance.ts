@@ -1,3 +1,4 @@
+import { requireRunTableReferences } from '../../data-tables/columns/references.js';
 import { requireWorkflowConcurrency } from './concurrency.js';
 export { WorkflowAlreadyRunningError } from './concurrency.js';
 import { runInputRetentionSql } from '../data-policy.js';
@@ -415,6 +416,8 @@ export async function acceptWorkflowRun(
       parsed.workflowId,
       parsed.triggerType,
     );
+    if (parsed.triggerType !== 'test')
+      await requireRunTableReferences(transaction, parsed.workflowVersionId);
     insertedRuns = await transaction.db
       .insert(workflowRuns)
       .values({

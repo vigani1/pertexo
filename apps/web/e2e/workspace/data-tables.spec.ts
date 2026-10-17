@@ -31,10 +31,16 @@ for (const width of [1280, 375])
               id,
               name: 'Orders',
               columns: [
-                { name: 'key', type: 'text', required: true },
-                { name: 'amount', type: 'number', required: true },
+                { id: 'key', name: 'key', type: 'text', required: true },
+                {
+                  id: 'amount',
+                  name: 'amount',
+                  type: 'number',
+                  required: true,
+                },
               ],
               keyColumn: 'key',
+              hasRemovedColumns: false,
               rowCount: 1,
               storedBytes: 25,
               revision: 1,

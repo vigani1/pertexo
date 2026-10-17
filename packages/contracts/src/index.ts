@@ -149,6 +149,13 @@ export {
 
 export {
   dataTableCreateSchema,
+  dataTableSchemaEditSchema,
+  dataTableSchemaEditedSchema,
+  dataTableExportQuerySchema,
+  dataTableExportedSchema,
+  type DataTableSchemaEdit,
+  type DataTableSchemaChange,
+  type DataTableExportQuery,
   dataTableLimitsSchema,
   dataTableQuotasSchema,
   dataTablesResponseSchema,

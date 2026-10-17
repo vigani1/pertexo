@@ -13,13 +13,14 @@ import type { TableScope } from '../data/tables.api';
 import { CreateDataTable } from '../components/create';
 import { DataTableLimits } from '../components/limits';
 import { DataTableRows } from '../components/rows';
+import { EditTableColumns } from '../components/columns/dialog';
 import { RemoveDataTable } from '../components/remove';
 import {
   TablePageActions,
   TableCapacity,
   TableCollection,
 } from '../components/overview';
-type TableDialog = 'create' | 'limits' | 'remove';
+type TableDialog = 'create' | 'limits' | 'remove' | 'columns';
 export function DataTablesPage({
   scope,
   workspace,
@@ -129,7 +130,7 @@ function TableDetail({
         {table.keyColumn === null
           ? 'No unique key'
           : `Unique key: ${table.keyColumn}`}
-        . Schemas stay fixed; each row fits 64 KB.
+        . Each row fits 64 KB.
       </p>
       <DataTableRows
         key={table.id}
@@ -168,6 +169,10 @@ function TableDialogs({
     case 'limits':
       return quotas === undefined ? null : (
         <DataTableLimits scope={scope} quotas={quotas} onClose={onClose} />
+      );
+    case 'columns':
+      return table === undefined ? null : (
+        <EditTableColumns scope={scope} table={table} onClose={onClose} />
       );
     case 'remove':
       return table === undefined ? null : (

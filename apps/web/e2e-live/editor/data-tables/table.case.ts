@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect } from '@playwright/test';
-import { dataTablesResponseSchema } from '@pertexo/contracts';
+import {
+  dataTablesResponseSchema,
+  dataTableResultSchema,
+  workflowNodeRunOutputResponseSchema,
+  apiProblemSchema,
+  workflowValidateResponseSchema,
+} from '@pertexo/contracts';
 import { test } from '../../support/browser-fixture';
 import {
   registerEditorUser,
@@ -136,13 +142,31 @@ for (const width of [1280, 375])
     await expect(
       page.getByRole('row').filter({ hasText: 'alpha' }),
     ).toContainText('20');
+    await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+    const bulk = page.getByRole('dialog', { name: 'Import CSV', exact: true });
+    await bulk
+      .getByLabel('Or paste CSV', { exact: true })
+      .fill(
+        'key,amount\n' +
+          Array.from(
+            { length: 120 },
+            (_, index) => `extra${String(index)},${String(index)}`,
+          ).join('\n'),
+      );
+    await bulk
+      .getByRole('button', { name: 'Import rows', exact: true })
+      .click();
+    await expect(bulk).not.toBeVisible();
     const download = page.waitForEvent('download');
     await page
-      .getByRole('button', { name: 'Export this page', exact: true })
+      .getByRole('button', { name: 'Export all rows', exact: true })
       .click();
     const file = await download;
     const local = await file.path();
-    expect(await readFile(local, 'utf8')).toContain('"alpha","20"');
+    const csv = await readFile(local, 'utf8');
+    expect(csv).toContain('"alpha","20"');
+    expect(csv).toContain('"extra119","119"');
+    expect(csv.split('\r\n')).toHaveLength(124);
     await expect
       .poll(() =>
         page.evaluate(
@@ -154,6 +178,27 @@ for (const width of [1280, 375])
       path: `/tmp/pertexo-f14-${String(width)}.png`,
       fullPage: true,
     });
+    await page
+      .getByRole('button', { name: 'Edit columns', exact: true })
+      .click();
+    const columns = page.getByRole('dialog', {
+      name: 'Edit columns',
+      exact: true,
+    });
+    await columns.getByLabel('Column name', { exact: true }).fill('currency');
+    await columns
+      .getByRole('checkbox', { name: 'Required column', exact: true })
+      .click();
+    await columns
+      .getByLabel('Default for existing rows (required)', { exact: true })
+      .fill('USD');
+    await columns
+      .getByRole('button', { name: 'Save column changes', exact: true })
+      .click();
+    await expect(columns).not.toBeVisible();
+    await expect(
+      page.getByRole('row').filter({ hasText: 'alpha' }),
+    ).toContainText('USD');
     await page.setViewportSize({ width: 1280, height: 768 });
     const workflow = await createEditorWorkflow(
       page,
@@ -176,10 +221,74 @@ for (const width of [1280, 375])
             (node) => node.id === nodeId,
           )?.config,
       )
-      .toEqual({ table: 'Orders' });
-    await publishSingleStep(page, workflow);
+      .toMatchObject({
+        table: 'Orders',
+        columnBindings: { key: 'key', amount: 'amount' },
+      });
+    const version = await publishSingleStep(page, workflow);
     const runId = await startSingleStep(page, {});
     await waitForRun(page, workspaceId, runId, 'succeeded');
+    await page.goto(`/w/${workspaceId}/data-tables/${table.id}`);
+    await page.setViewportSize({ width, height: 768 });
+    await page
+      .getByRole('button', { name: 'Edit columns', exact: true })
+      .click();
+    await columns
+      .getByRole('button', { name: 'Rename amount', exact: true })
+      .click();
+    await columns.getByLabel('Column name', { exact: true }).fill('total');
+    await page.screenshot({
+      path: `/tmp/pertexo-f14-columns-${String(width)}.png`,
+      fullPage: true,
+    });
+    await columns
+      .getByRole('button', { name: 'Save column changes', exact: true })
+      .click();
+    await expect(columns).not.toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: /total/u }),
+    ).toBeVisible();
+    await page.setViewportSize({ width: 1280, height: 768 });
+    await page.goto(workflow.replace('/v1/workspaces/', '/w/'));
+    const renamedRun = await startSingleStep(page, {});
+    const completed = await waitForRun(
+      page,
+      workspaceId,
+      renamedRun,
+      'succeeded',
+    );
+    const completedNode = completed.nodes.find(
+      (node) => node.nodeId === nodeId,
+    );
+    if (completedNode === undefined) throw new Error('Find result missing');
+    const outputResponse = await page.request.get(
+      `/v1/workspaces/${workspaceId}/runs/${renamedRun}/node-runs/${completedNode.id}/output`,
+    );
+    expect(outputResponse.ok()).toBe(true);
+    const output = workflowNodeRunOutputResponseSchema.parse(
+      await outputResponse.json(),
+    ).output;
+    if (output.kind !== 'inline')
+      throw new Error('Expected inline Find output');
+    const found = dataTableResultSchema.parse(output.value);
+    expect(
+      found.rows.find((row) => row.values.key === 'alpha')?.values,
+    ).toEqual({ key: 'alpha', amount: 20, currency: 'USD' });
+    await page.goto(`/w/${workspaceId}/data-tables/${table.id}`);
+    await page.setViewportSize({ width, height: 768 });
+    await page
+      .getByRole('button', { name: 'Edit columns', exact: true })
+      .click();
+    await columns
+      .getByRole('button', { name: 'Delete total', exact: true })
+      .click();
+    await expect(
+      columns.getByText(/Delete total and its cells/u),
+    ).toBeVisible();
+    await columns
+      .getByRole('button', { name: 'Confirm delete column', exact: true })
+      .click();
+    await expect(columns).not.toBeVisible();
     const csrf = (await page.context().cookies()).find(
       (cookie) => cookie.name === 'pertexo_csrf',
     );
@@ -190,8 +299,34 @@ for (const width of [1280, 375])
     };
     const rows = await page.request.post(
       `${tablePath}/${table.id}/rows/query`,
-      { headers, data: { filters: [], limit: 100, offset: 0 } },
+      { headers, data: { filters: [], limit: 1000, offset: 0 } },
     );
     expect(rows.status()).toBe(200);
-    expect(((await rows.json()) as { rows: unknown[] }).rows).toHaveLength(3);
+    expect(((await rows.json()) as { rows: unknown[] }).rows).toHaveLength(123);
+    const checked = await page.request.post(`${workflow}/validate`, {
+      headers,
+      data: {},
+    });
+    expect(checked.ok()).toBe(true);
+    const invalid = workflowValidateResponseSchema.parse(await checked.json());
+    expect(invalid.valid).toBe(false);
+    expect(
+      invalid.issues.some((issue) => issue.message.includes('removed')),
+    ).toBe(true);
+    const tag = checked.headers().etag;
+    if (tag === undefined) throw new Error('Checked draft tag missing');
+    const refusedPublication = await page.request.post(`${workflow}/publish`, {
+      headers: { ...headers, 'If-Match': tag, 'Idempotency-Key': randomUUID() },
+      data: {},
+    });
+    expect(refusedPublication.status()).toBeGreaterThanOrEqual(400);
+    expect(refusedPublication.status()).toBeLessThan(500);
+    const refused = await page.request.post(`${workflow}/runs`, {
+      headers: { ...headers, 'Idempotency-Key': randomUUID() },
+      data: { input: {}, expectedPublishedVersionId: version.id },
+    });
+    expect(refused.status()).toBe(400);
+    expect(apiProblemSchema.parse(await refused.json()).detail).toContain(
+      'removed',
+    );
   });

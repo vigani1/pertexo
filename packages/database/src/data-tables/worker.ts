@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
-import { DataTableError, type DataTableResult } from '@pertexo/node-sdk';
+import {
+  DataTableError,
+  resolveDataTableBindings,
+  bindDataTableCommand,
+  projectBoundDataTableResult,
+  type DataTableResult,
+} from '@pertexo/node-sdk';
 import type { DatabaseConfig } from '../config.js';
 import {
   acquireDatabasePool,
@@ -31,17 +37,32 @@ export function createWorkerDataTablesStore(
             const table = await requireTable(client, input.workspaceId, {
               name: input.command.table,
             });
-            return findRows(
-              client,
-              input.workspaceId,
-              table,
-              input.command.query,
+            const names = resolveDataTableBindings(
+              table.columns,
+              input.columnBindings,
+              table.hasRemovedColumns,
+            );
+            const command = bindDataTableCommand(input.command, names);
+            if (command.operation !== 'find')
+              throw new Error('Read operation changed');
+            return projectBoundDataTableResult(
+              await findRows(client, input.workspaceId, table, command.query),
+              names,
             );
           }
           const quotas = await readQuotas(client, input.workspaceId, true);
           await assertTableExecution(client, input, true);
           const requestHash = createHash('sha256')
-            .update(canonicalJson(input.command))
+            .update(
+              canonicalJson(
+                input.columnBindings === undefined
+                  ? input.command
+                  : {
+                      command: input.command,
+                      columnBindings: input.columnBindings,
+                    },
+              ),
+            )
             .digest('hex');
           const prior = (
             await client.query<{ request_hash: string; result_json: string }>(
@@ -63,12 +84,17 @@ export function createWorkerDataTablesStore(
             { name: input.command.table },
             true,
           );
-          const result = await mutateRows(
-            client,
-            input.workspaceId,
-            table,
-            quotas,
-            input.command,
+          const names = resolveDataTableBindings(
+            table.columns,
+            input.columnBindings,
+            table.hasRemovedColumns,
+          );
+          const command = bindDataTableCommand(input.command, names);
+          if (command.operation === 'find')
+            throw new Error('Write operation changed');
+          const result = projectBoundDataTableResult(
+            await mutateRows(client, input.workspaceId, table, quotas, command),
+            names,
           );
           await assertTableExecution(client, input, true);
           await client.query(

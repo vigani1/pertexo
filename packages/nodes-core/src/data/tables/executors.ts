@@ -1,4 +1,8 @@
-import { DataTableError, type DataTableCommand } from '@pertexo/node-sdk';
+import {
+  DataTableError,
+  type DataTableConfig,
+  type DataTableCommand,
+} from '@pertexo/node-sdk';
 import {
   NodeExecutorFailure,
   type NodeExecutorRegistration,
@@ -11,7 +15,7 @@ export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] =
     execute: async (invocation) => {
       const runtime = invocation.runtime?.dataTables;
       if (runtime === undefined) throw new NodeDataTableFailure('not_found');
-      const { table } = invocation.config as { table: string };
+      const { table, columnBindings } = invocation.config as DataTableConfig;
       const command = {
         ...(invocation.input as object),
         operation,
@@ -19,7 +23,11 @@ export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] =
       } as DataTableCommand;
       try {
         if (operation !== 'find') await invocation.runtime?.beforeDispatch();
-        return await runtime.execute({ command, signal: invocation.signal });
+        return await runtime.execute({
+          command,
+          ...(columnBindings === undefined ? {} : { columnBindings }),
+          signal: invocation.signal,
+        });
       } catch (error) {
         if (error instanceof NodeExecutorFailure) throw error;
         if (error instanceof DataTableError)

@@ -1,3 +1,4 @@
+import { dataTableReferenceIssues } from '../../data-tables/columns/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -80,12 +81,21 @@ export function createWorkflowAuthoringReadStore(
           const row = result.rows[0];
           if (row === undefined) return null;
           const draft = mapDraft(row, variant.definitionCatalog);
-          const validation = await admitWorkflowAuthoring(
+          let validation = await admitWorkflowAuthoring(
             client,
             variant.validateAuthoringGraph,
             parseWorkflowGraphDraft(draft.graphJson),
             options.signal === undefined ? {} : { signal: options.signal },
           );
+          if (validation.ok) {
+            const issues = await dataTableReferenceIssues(
+              client,
+              workspaceId,
+              draft.graphJson,
+            );
+            if (issues.length > 0)
+              validation = { ...validation, ok: false, issues };
+          }
           const publication = await client.query<{
             versionId: string;
             versionNumber: number;

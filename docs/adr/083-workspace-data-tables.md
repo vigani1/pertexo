@@ -34,6 +34,28 @@ references fail clearly. Use existing worker capabilities, roles and services.
 
 One transaction serializes quota-sensitive writes per workspace, giving clear
 bounds and race-safe accounting. This deliberately favors small datasets over
-unbounded write throughput. Fixed schemas avoid an implicit migration system.
+unbounded write throughput. Schema evolution stays explicit and bounded; there is no general migration language.
 No arbitrary SQL, custom indexes, external storage or new infrastructure is
 introduced. The plan owns exact limits and acceptance evidence.
+
+
+## Amendment — editable columns (2026-10-17)
+
+The owner approved bounded schema evolution. Each column has an immutable ID;
+its name may change. Workflow config binds stable input/output aliases to IDs,
+so renames preserve both effects and downstream output paths. Existing columns
+receive their original name as ID, preserving old published graphs. IDs for later-added columns are
+fresh and never reused. After a removal, legacy steps without declared bindings
+must be reviewed before fresh starts rather than guessing from expressions.
+
+Rows retain their current human column names. A rename atomically rewrites
+those names while the scoped workflow adapter resolves IDs and projects stable
+aliases. The existing quota/table locks serialize schema and row writes. Each
+schema edit checks revision, updates bounded batches/counters, and records one
+safe audit event in the same transaction. Required additions backfill a typed
+default; unique-key changes validate all existing values. Type changes stay later.
+
+Complete CSV export uses the existing repeatable-read workspace fence, bounded
+cursor reads and the existing 1 MiB result budget. Oversized exports fail before
+download with a narrowing instruction; formula protection remains enabled.
+No new storage service, role or background export subsystem is introduced.

@@ -66,6 +66,15 @@ export function boundedResult(
     );
   return result;
 }
+export function rowOrderClause(
+  query: DataTableQuery,
+  parameters: unknown[],
+): string {
+  if (query.sort === undefined) return 'id';
+  parameters.push(query.sort.column);
+  return `values_json::jsonb -> $${String(parameters.length)}::text ${query.sort.direction === 'desc' ? 'desc' : 'asc'} nulls last,id`;
+}
+
 export async function findRows(
   client: PoolClient,
   workspaceId: string,
@@ -74,11 +83,7 @@ export async function findRows(
 ): Promise<DataTableResult> {
   const parameters: unknown[] = [workspaceId, table.id];
   const where = queryClause(table, query, parameters);
-  let order = 'id';
-  if (query.sort !== undefined) {
-    parameters.push(query.sort.column);
-    order = `values_json::jsonb -> $${String(parameters.length)}::text ${query.sort.direction === 'desc' ? 'desc' : 'asc'} nulls last,id`;
-  }
+  const order = rowOrderClause(query, parameters);
   parameters.push(query.limit + 1, query.offset);
   const result = await client.query<StoredRow>(
     `select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and ${where} order by ${order} limit $${String(parameters.length - 1)} offset $${String(parameters.length)}`,

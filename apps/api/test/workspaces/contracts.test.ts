@@ -280,6 +280,8 @@ describe('identity/workspace generated contracts', () => {
       '/v1/workspaces/{workspaceId}/data-tables',
       '/v1/workspaces/{workspaceId}/data-tables/limits',
       '/v1/workspaces/{workspaceId}/data-tables/{tableId}',
+      '/v1/workspaces/{workspaceId}/data-tables/{tableId}/schema',
+      '/v1/workspaces/{workspaceId}/data-tables/{tableId}/export',
       '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query',
       '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows',
       '/v1/workspaces/{workspaceId}/data-tables/{tableId}/import',

@@ -1,5 +1,5 @@
 import { DataTableSetup } from '../builders/table-setup';
-import type { CodeSettings } from '@pertexo/node-sdk';
+import { isDataTableDefinition, type CodeSettings } from '@pertexo/node-sdk';
 import { lazy, Suspense } from 'react';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { WebhookTriggerSetup } from '../webhook/trigger-setup';
@@ -232,7 +232,7 @@ function SetupControls({
         scope={callScope}
       />
     );
-  if (node.definition.key.startsWith('core.table_') && callScope !== undefined)
+  if (isDataTableDefinition(node.definition) && callScope !== undefined)
     return <DataTableSetup scope={callScope} config={config} form={form} />;
   if (node.definition.key === 'core.code')
     return (
