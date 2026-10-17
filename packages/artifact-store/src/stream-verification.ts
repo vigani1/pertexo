@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { pipeline, Transform } from 'node:stream';
+import { Transform } from 'node:stream';
+import { finished } from 'node:stream/promises';
 import type { TransformCallback, Readable } from 'node:stream';
 
 import {
@@ -78,13 +79,23 @@ export function verifiedBody(
     maxObjectBytes,
     source,
   );
-  // Own transfer errors before the caller attaches its reader; consumers still
-  // observe the same terminal error through the returned stream.
-  pipeline(body, verifier, (error) => {
-    if (error !== null) verifier.destroy(error);
-  });
+  // The caller (including the SDK uploader) owns consumption. Monitor both
+  // ends without making the returned transform a pipeline destination, and
+  // preserve early errors for a reader that has not attached yet.
+  void finished(body, { cleanup: true, readable: true, writable: false }).catch(
+    (error: unknown) => {
+      verifier.destroy(transferError(error, 'Artifact transfer failed'));
+    },
+  );
+  const closeTransfer = (): void => {
+    signal?.removeEventListener('abort', abort);
+    body.destroy();
+  };
+  void finished(verifier, { cleanup: true }).then(closeTransfer, closeTransfer);
   const abort = (): void => {
-    verifier.destroy(abortError(signal));
+    verifier.destroy(
+      transferError(signal?.reason, 'Artifact transfer aborted'),
+    );
   };
   if (signal !== undefined) {
     if (signal.aborted) {
@@ -93,18 +104,14 @@ export function verifiedBody(
       signal.addEventListener('abort', abort, { once: true });
     }
   }
-  verifier.once('close', () => {
-    signal?.removeEventListener('abort', abort);
-  });
-  return verifier;
+  return body.pipe(verifier);
 }
 
-function abortError(signal: AbortSignal | undefined): Error {
-  const reason: unknown = signal?.reason;
+function transferError(reason: unknown, message: string): Error {
   try {
     if (reason instanceof Error) return reason;
   } catch {
-    // Cancellation values are untrusted at this boundary.
+    // Transfer failures and cancellation reasons are untrusted at this boundary.
   }
-  return new Error('Artifact transfer aborted', { cause: reason });
+  return new Error(message, { cause: reason });
 }

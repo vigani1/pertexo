@@ -550,10 +550,15 @@ changing test configuration. The final two ready-control storage cases pass
 again after fixture cleanup. React Doctor's eight-file changed scan is 100/100;
 no whole-application score is claimed. A later live file-input job exposed an
 existing verifier error before its reader attached: the worker crashed and the
-next run stayed queued. Node's pipeline now owns transfer errors immediately,
-while returning the original terminal error to the consumer. Three subprocess
-regressions reproduce pre-reader timeout, upstream failure and premature close;
-they also prove source cleanup and abort-listener removal. Storage integrity,
+next run stayed queued. Node's stream completion monitoring now owns transfer
+errors immediately while returning the original terminal error to the consumer.
+The SDK retains ownership of consumption: making the returned transform a
+pipeline destination stalled RustFS uploads at the unchanged five-second
+request deadline, while completion monitoring preserves the original flow.
+Three subprocess regressions reproduce pre-reader timeout, upstream failure
+and premature close; they also prove source cleanup and abort-listener removal.
+The seven live file browser cases and the full cached-RustFS encrypted backup
+and restore qualification pass with the original request deadline. Storage integrity,
 file limits, formats and the loop measurements are unchanged. CI remains
 required before merge.
 
