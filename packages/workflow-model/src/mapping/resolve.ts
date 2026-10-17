@@ -1,13 +1,13 @@
-import { lookupWorkspaceVariable } from './variables/lookup.js';
-import { canonicalizeJson, type JsonValue } from './json/canonical.js';
+import { lookupWorkspaceVariable } from '../variables/lookup.js';
+import { canonicalizeJson, type JsonValue } from '../json/canonical.js';
 import type {
   ExpressionContext,
   ExpressionEvaluator,
   ExpressionResult,
-} from './expressions/policy.js';
-import type { ValueSource } from './graph/contract.js';
-import { resolveJsonPath } from './json/path.js';
-import type { WorkflowNodeFailureValue } from './failure-routing/failure-value.js';
+} from '../expressions/policy.js';
+import type { ValueSource } from '../graph/contract.js';
+import { resolveJsonPath } from '../json/path.js';
+import type { WorkflowNodeFailureValue } from '../failure-routing/failure-value.js';
 
 export type ValueResolution =
   | { readonly kind: 'value'; readonly value: JsonValue }

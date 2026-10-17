@@ -1,3 +1,7 @@
+import {
+  runInputValueSourceSchema,
+  expressionValueSourceSchema,
+} from '../mapping/contract.js';
 import { workspaceVariableNameSchema } from '../variables/contract.js';
 import { z } from 'zod';
 
@@ -109,7 +113,7 @@ const valueSourceSchema = z.discriminatedUnion('kind', [
     })
     .strict(),
   z.object({ kind: z.literal('literal'), value: z.json() }).strict(),
-  z.object({ kind: z.literal('run_input'), path: z.string() }).strict(),
+  runInputValueSourceSchema,
   z
     .object({
       kind: z.literal('node_output'),
@@ -124,13 +128,7 @@ const valueSourceSchema = z.discriminatedUnion('kind', [
       path: z.string(),
     })
     .strict(),
-  z
-    .object({
-      kind: z.literal('expression'),
-      language: z.literal('jsonata'),
-      expression: z.string(),
-    })
-    .strict(),
+  expressionValueSourceSchema,
   z
     .object({
       kind: z.literal('structured_input'),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ExpressionEvaluator } from '../src/expressions/policy.js';
 import { resolveJsonPath } from '../src/json/path.js';
-import { resolveValueSource } from '../src/mapping.js';
+import { resolveValueSource } from '../src/mapping/resolve.js';
 
 describe('value sources', () => {
   it('resolves deterministic JSON paths and distinguishes missing from null', () => {
