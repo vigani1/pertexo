@@ -86,9 +86,10 @@ export async function verifyWorkflowInputCasesEvidence(
     case_id: string;
     revision: number;
     input: string;
+    expectations: string | null;
     canonical_bytes: number;
   }>(
-    'select case_id,revision,input,canonical_bytes from app.workflow_input_case_payloads where workspace_id=$1 and case_id=any($2::uuid[]) order by case_id,revision limit 4',
+    'select case_id,revision,input,expectations,canonical_bytes from app.workflow_input_case_payloads where workspace_id=$1 and case_id=any($2::uuid[]) order by case_id,revision limit 4',
     [evidence.workspaceId, [evidence.caseId, evidence.replacementCaseId]],
   );
   const first = payloads.rows.find(
@@ -109,7 +110,10 @@ export async function verifyWorkflowInputCasesEvidence(
   expect(JSON.parse(copied?.input ?? '') as unknown).toEqual(expectedInput);
   for (const payload of payloads.rows)
     expect(payload.canonical_bytes).toBe(
-      Buffer.byteLength(payload.input, 'utf8'),
+      Buffer.byteLength(payload.input, 'utf8') +
+        (payload.expectations === null
+          ? 0
+          : Buffer.byteLength(payload.expectations, 'utf8')),
     );
   const runs = await database.query<{
     id: string;

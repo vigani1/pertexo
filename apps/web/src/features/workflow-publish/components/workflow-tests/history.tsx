@@ -34,11 +34,6 @@ export function WorkflowTestHistory({
 }>) {
   const [expanded, setExpanded] = useState(false);
   if (!tests.enabled) return null;
-  const progress = tests.progress.data;
-  const choices = (tests.history.data?.items ?? []).map((item) => ({
-    value: item.runId,
-    label: `Draft ${String(item.draftRevision)} · ${describeRunStatus(item.runId === progress?.run.id ? progress.run.status : item.status).label} · ${formatDate(item.createdAt)} · ${formatClock(item.createdAt)}`,
-  }));
   return (
     <section
       aria-label="Workflow tests"
@@ -98,29 +93,7 @@ export function WorkflowTestHistory({
               No workflow tests yet.
             </p>
           ) : null}
-          {choices.length > 0 ? (
-            <Select
-              items={choices}
-              value={tests.activeId ?? null}
-              onValueChange={(value) => {
-                if (value !== null) tests.selectRun(value);
-              }}
-            >
-              <SelectTrigger
-                aria-label="Retained workflow test"
-                className="w-full sm:max-w-lg"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {choices.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
+          <WorkflowTestPicker tests={tests} />
           <WorkflowTestResults tests={tests} ensureSaved={ensureSaved} />
           <TestSuiteHistory
             suites={tests.suites}
@@ -224,5 +197,51 @@ function TestStream({
         ? 'Live step progress'
         : (events.recoveryMessage ?? 'Connecting to live step progress…')}
     </p>
+  );
+}
+
+function WorkflowTestPicker({
+  tests,
+}: Readonly<{
+  tests: Pick<
+    WorkflowTests,
+    'history' | 'snapshot' | 'progress' | 'activeId' | 'selectRun'
+  >;
+}>) {
+  const progress = tests.progress.data;
+  const retained = tests.history.data?.items ?? [];
+  const selected = tests.snapshot.data;
+  const items =
+    selected !== undefined &&
+    !retained.some((item) => item.runId === selected.runId)
+      ? [selected, ...retained]
+      : retained;
+  const choices = items.map((item) => ({
+    value: item.runId,
+    label: `Draft ${String(item.draftRevision)} · ${describeRunStatus(item.runId === progress?.run.id ? progress.run.status : item.status).label} · ${formatDate(item.createdAt)} · ${formatClock(item.createdAt)}`,
+  }));
+  if (choices.length === 0) return null;
+  return (
+    <Select
+      items={choices}
+      value={tests.activeId ?? null}
+      onValueChange={(value) => {
+        if (value !== null) tests.selectRun(value);
+      }}
+    >
+      <SelectTrigger
+        aria-label="Retained workflow test"
+        className="w-full sm:max-w-lg"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {choices.map((item) => (
+          <SelectItem key={item.value} value={item.value}>
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

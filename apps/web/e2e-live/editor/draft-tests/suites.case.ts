@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect } from '@playwright/test';
 import {
   workflowTestSuiteAcceptedSchema,
@@ -20,7 +21,7 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
   page,
   request,
 }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const mailOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
   if (mailOrigin === undefined) throw new Error('Use the owned API fixture');
   await registerEditorUser(page, request, mailOrigin, 'Suite owner');
@@ -47,7 +48,7 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
         (await readEditorDraft(page, path)).graph.nodes[0]?.inputMappings,
     )
     .toEqual({ amount: { kind: 'run_input', path: '$.amount' } });
-  await publishSingleStep(page, path);
+  const publication = await publishSingleStep(page, path);
   await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
   await openWorkflowAction(page, 'Input cases');
   const cases = page.getByRole('dialog', { name: 'Input cases', exact: true });
@@ -83,6 +84,25 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
   await cases
     .getByRole('button', { name: 'Close input cases', exact: true })
     .click();
+  const csrf = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'pertexo_csrf',
+  );
+  if (csrf === undefined) throw new Error('Owned CSRF cookie missing');
+  for (let ordinal = 3; ordinal <= 50; ordinal++) {
+    const response = await page.request.post(`${path}/input-cases`, {
+      headers: {
+        'x-csrf-token': decodeURIComponent(csrf.value),
+        'Idempotency-Key': randomUUID(),
+      },
+      data: {
+        workflowVersionId: publication.id,
+        name: `Order ${String(ordinal).padStart(2, '0')}`,
+        input: { amount: ordinal },
+      },
+    });
+    expect(response.status(), await response.text()).toBe(201);
+  }
+
   await page
     .getByRole('button', { name: 'Run all tests', exact: true })
     .click();
@@ -90,7 +110,7 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
     name: 'Run all tests',
     exact: true,
   });
-  await expect(suiteDialog).toContainText('2 cases');
+  await expect(suiteDialog).toContainText('50 cases');
   const started = page.waitForResponse(
     (response) =>
       response.url().endsWith(`${path}/draft/test-suites`) &&
@@ -114,7 +134,7 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
             )
           ).json(),
         ).status,
-      { timeout: 20000 },
+      { timeout: 90000 },
     )
     .toBe('failed');
   const history = page.getByRole('region', {
@@ -128,7 +148,7 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
   await expect(
     suites.getByText('Suite · failed', { exact: true }),
   ).toBeVisible();
-  await expect(suites).toContainText('1/2 passed');
+  await expect(suites).toContainText('49/50 passed');
   await suites
     .getByRole('button', { name: 'Report Eight', exact: true })
     .click();
@@ -156,7 +176,7 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
   await page.screenshot({ path: '/tmp/pertexo-f02-suites-phone.png' });
   await page.setViewportSize({ width: 1280, height: 900 });
   await suites
-    .getByRole('button', { name: 'View test Eight', exact: true })
+    .getByRole('button', { name: 'View test Seven', exact: true })
     .click();
   await expect(
     history.getByRole('region', {
@@ -164,6 +184,12 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
       exact: true,
     }),
   ).toBeVisible();
+  await expect(
+    history.getByRole('combobox', {
+      name: 'Retained workflow test',
+      exact: true,
+    }),
+  ).toContainText('Succeeded');
   await page.getByTestId(`rf__node-${nodeId}`).focus();
   await page.keyboard.press('Enter');
   await page.getByLabel('Label', { exact: true }).fill('Updated suite amount');
@@ -171,6 +197,20 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
   await expect
     .poll(async () => (await readEditorDraft(page, path)).graph.nodes[0]?.label)
     .toBe('Updated suite amount');
+  await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
+  await page
+    .getByRole('region', { name: 'Inputs', exact: true })
+    .locator('ol > li')
+    .first()
+    .getByLabel('Field', { exact: true })
+    .fill('total');
+  await page.keyboard.press('Tab');
+  await expect
+    .poll(
+      async () =>
+        (await readEditorDraft(page, path)).graph.nodes[0]?.inputMappings,
+    )
+    .toEqual({ total: { kind: 'run_input', path: '$.amount' } });
   await page.getByRole('button', { name: 'Publish v2', exact: true }).click();
   const publish = page.getByRole('dialog', { name: 'Publish v2', exact: true });
   await expect(publish).toContainText('Latest suite: failed');
