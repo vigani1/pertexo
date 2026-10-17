@@ -1,3 +1,7 @@
+import {
+  testRunSql,
+  TEST_RUN_RETENTION_MILLIS,
+} from '../../runs/data-policy.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
@@ -108,7 +112,7 @@ export function createWorkflowTestStore(
             rolesForCapability('connection:use'),
           );
         const active = await client.query(
-          `select id from app.workflow_runs where workspace_id=$1 and workflow_id=$2 and started_by=$3 and trigger_type='test' and status in ('queued','running','waiting') limit 1`,
+          `select id from app.workflow_runs where workspace_id=$1 and workflow_id=$2 and started_by=$3 and ${testRunSql()} and status in ('queued','running','waiting') limit 1`,
           [input.workspaceId, input.workflowId, input.actorId],
         );
         if (active.rows.length > 0)
@@ -155,7 +159,7 @@ export function createWorkflowTestStore(
             canonicalJson(snapshot.graph),
             canonicalJson(snapshot.compiled.executableJson),
             canonicalJson(snapshot.frozenPins),
-            new Date(accepted.acceptedAt.getTime() + 7 * 86400000),
+            new Date(accepted.acceptedAt.getTime() + TEST_RUN_RETENTION_MILLIS),
             snapshot.compiled.checksum,
             JSON.stringify(snapshot.compiled.dispositions),
           ],

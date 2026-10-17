@@ -1,3 +1,4 @@
+import { ordinaryRunSql } from '../data-policy.js';
 import { sql, type SQL } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -129,7 +130,7 @@ function recentRuns(
   return sql`
     select id, status, created_at, workflow_version_id
     from app.workflow_runs
-    where trigger_type <> 'test' and workspace_id = ${transaction.workspaceId}
+    where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
       and workflow_id = ${workflowId}
     order by created_at desc, id desc
     limit ${STEP_HISTORY_RUN_WINDOW}

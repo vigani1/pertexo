@@ -1,3 +1,8 @@
+import {
+  retainedTestRunSql,
+  runRetentionIntervalSql,
+  RUN_DETAILS_RETENTION_SQL,
+} from '../data-policy.js';
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { variableSetSnapshotSql } from '../../variables/values.js';
 import {
@@ -138,8 +143,8 @@ export async function runInputInTransaction(
 ): Promise<WorkflowRunData | undefined> {
   const result = await transaction.db.execute(sql`
     select
-      case when trigger_type='test' and created_at<=statement_timestamp()-interval '7 days' then null else input_ref end as input_ref,
-      created_at <= statement_timestamp() - case when trigger_type='test' then interval '7 days' else interval '30 days' end
+      case when ${sql.raw(retainedTestRunSql())} then input_ref else null end as input_ref,
+      created_at <= statement_timestamp() - ${sql.raw(runRetentionIntervalSql())}
         as past_input_window
     from app.workflow_runs
     where workspace_id = ${transaction.workspaceId} and id = ${runId}
@@ -163,7 +168,7 @@ async function nodeRunValueInTransaction(
   const result = await transaction.db.execute(sql`
     select ${column} as stored
     from app.node_runs
-    where exists(select 1 from app.workflow_runs run where run.workspace_id=app.node_runs.workspace_id and run.id=app.node_runs.workflow_run_id and (run.trigger_type<>'test' or run.created_at>statement_timestamp()-interval '7 days'))
+    where exists(select 1 from app.workflow_runs run where run.workspace_id=app.node_runs.workspace_id and run.id=app.node_runs.workflow_run_id and ${sql.raw(retainedTestRunSql('run'))})
       and workspace_id = ${transaction.workspaceId}
       and workflow_run_id = ${runId}
       and id = ${nodeRunId}
@@ -242,7 +247,7 @@ export async function readWorkflowRunVariables(
         snapshot: unknown;
         retained: boolean;
       }>(
-        sql`select ${sql.raw(variableSetSnapshotSql('run'))} snapshot,(run.details_purged_at IS NULL AND (run.completed_at IS NULL OR run.completed_at>clock_timestamp()-interval '30 days') AND (run.trigger_type<>'test' OR run.created_at>clock_timestamp()-interval '7 days')) retained from app.workflow_runs run left join app.workspace_variable_set_revisions variable_set on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision where run.workspace_id=${transaction.workspaceId} and run.id=${parsed.runId}`,
+        sql`select ${sql.raw(variableSetSnapshotSql('run'))} snapshot,(run.details_purged_at IS NULL AND (run.completed_at IS NULL OR run.completed_at>clock_timestamp()-${sql.raw(RUN_DETAILS_RETENTION_SQL)}) AND ${sql.raw(retainedTestRunSql('run', 'clock_timestamp()'))}) retained from app.workflow_runs run left join app.workspace_variable_set_revisions variable_set on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision where run.workspace_id=${transaction.workspaceId} and run.id=${parsed.runId}`,
       );
       const row = result.rows[0];
       if (row === undefined) return undefined;
@@ -265,8 +270,8 @@ export async function readWorkflowNodeRunDiagnostics(
     async (transaction) => {
       const result = await transaction.db.execute<{ diagnostics: unknown }>(sql`
       select case when run.details_purged_at is null
-        and (run.completed_at is null or run.completed_at > statement_timestamp() - interval '30 days')
-        and (run.trigger_type<>'test' or run.created_at>statement_timestamp()-interval '7 days')
+        and (run.completed_at is null or run.completed_at > statement_timestamp() - ${sql.raw(RUN_DETAILS_RETENTION_SQL)})
+        and ${sql.raw(retainedTestRunSql('run'))}
         then attempt.code_diagnostics else null end as diagnostics
       from app.node_runs node
       join app.workflow_runs run on run.workspace_id = node.workspace_id and run.id = node.workflow_run_id

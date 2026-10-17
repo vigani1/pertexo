@@ -1,3 +1,4 @@
+import { runInputRetentionSql } from '../data-policy.js';
 import { variableRevisionForAcceptance } from './variables.js';
 import { requireFormAdmission } from './forms.js';
 import { and, eq, sql } from 'drizzle-orm';
@@ -437,9 +438,7 @@ export async function acceptWorkflowRun(
         inputRefExpiresAt:
           storedRunInputJson === null
             ? null
-            : parsed.triggerType === 'test'
-              ? sql`now() + interval '7 days'`
-              : sql`now() + interval '30 days'`,
+            : sql`now() + ${sql.raw(runInputRetentionSql(parsed.triggerType))}`,
         variableSetRevision,
         triggerType: parsed.triggerType,
         startedBy: parsed.startedBy ?? null,

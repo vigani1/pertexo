@@ -1,3 +1,4 @@
+import { ordinaryRunSql } from '../data-policy.js';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -128,7 +129,7 @@ async function readInTransaction(
           (count(*) filter (where status = 'running'))::integer as running,
           (count(*) filter (where status = 'waiting'))::integer as waiting
         from app.workflow_runs
-        where trigger_type <> 'test' and workspace_id = ${transaction.workspaceId}
+        where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
           and status in ('queued', 'running', 'waiting')
       `)
     ).rows[0],
@@ -136,7 +137,7 @@ async function readInTransaction(
   const statusRows = await transaction.db.execute(sql`
     select status, count(*)::integer as run_count
     from app.workflow_runs
-    where trigger_type <> 'test' and workspace_id = ${transaction.workspaceId}
+    where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
       and created_at >= transaction_timestamp()
         - make_interval(hours => ${hours}::integer)
       and created_at < transaction_timestamp()
@@ -177,7 +178,7 @@ async function readWorkflowBreakdown(
     with window_counts as (
       select workflow_id, status, count(*)::integer as run_count
       from app.workflow_runs
-      where trigger_type <> 'test' and workspace_id = ${transaction.workspaceId}
+      where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
         and created_at >= transaction_timestamp()
           - make_interval(hours => ${hours}::integer)
         and created_at < transaction_timestamp()

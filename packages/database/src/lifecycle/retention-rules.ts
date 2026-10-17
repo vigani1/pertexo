@@ -1,3 +1,7 @@
+import {
+  expiredRunSql,
+  RUN_DETAILS_RETENTION_SQL,
+} from '../runs/data-policy.js';
 import { VARIABLE_SET_RETENTION_RULE } from '../variables/retention.js';
 import { API_TOKEN_RETENTION_RULE } from './identity/api-tokens.js';
 import { reapInvitationReplacementClaims } from './invitation-claims.js';
@@ -29,7 +33,7 @@ export const RETENTION_RULES = Object.freeze([
     statement: `with page as (
       select response.run_id from app.webhook_run_responses response
       join app.workflow_runs run on run.workspace_id=response.workspace_id and run.id=response.run_id
-      where run.completed_at<=clock_timestamp()-interval '30 days' order by response.run_id limit $1
+      where run.completed_at<=clock_timestamp()-${RUN_DETAILS_RETENTION_SQL} order by response.run_id limit $1
     ) delete from app.webhook_run_responses response using page where response.run_id=page.run_id`,
   },
   {
@@ -47,8 +51,8 @@ export const RETENTION_RULES = Object.freeze([
       from page where run.id = page.id`,
   },
   {
-    // Execution details go 30 days after a run completes. Deleting a node run
-    // deletes its attempts.
+    // Test details follow the creation window; ordinary details follow completion.
+    // Deleting a node run also deletes its attempts.
     name: 'node_runs',
     statement: `
       with page as (
@@ -56,7 +60,7 @@ export const RETENTION_RULES = Object.freeze([
         from app.node_runs node
         join app.workflow_runs run
           on run.workspace_id = node.workspace_id and run.id = node.workflow_run_id
-        where run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '30 days' end
+        where ${expiredRunSql('run')}
         order by node.id limit $1
       )
       delete from app.node_runs node using page
@@ -70,7 +74,7 @@ export const RETENTION_RULES = Object.freeze([
         from app.run_events event
         join app.workflow_runs run
           on run.workspace_id = event.workspace_id and run.id = event.workflow_run_id
-        where run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '30 days' end
+        where ${expiredRunSql('run')}
         order by event.workflow_run_id, event.sequence limit $1
       )
       delete from app.run_events event using page
@@ -86,7 +90,7 @@ export const RETENTION_RULES = Object.freeze([
         join app.workflow_runs run
           on run.workspace_id = checkpoint.workspace_id
          and run.id = checkpoint.workflow_run_id
-        where run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '30 days' end
+        where ${expiredRunSql('run')}
         order by checkpoint.workflow_run_id limit $1
       )
       delete from app.run_checkpoints checkpoint using page
@@ -101,7 +105,7 @@ export const RETENTION_RULES = Object.freeze([
       with page as (
         select run.id from app.workflow_runs run
         where run.details_purged_at is null
-          and run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '30 days' end
+          and ${expiredRunSql('run')}
           and not exists (select 1 from app.node_runs node
             where node.workspace_id = run.workspace_id and node.workflow_run_id = run.id)
           and not exists (select 1 from app.run_events event
@@ -163,7 +167,7 @@ export const RETENTION_RULES = Object.freeze([
     statement: `
       with page as (
         select run.id from app.workflow_runs run
-        where run.completed_at IS NOT NULL AND (case when run.trigger_type='test' then run.created_at else run.completed_at end) <= clock_timestamp() - case when run.trigger_type='test' then interval '7 days' else interval '90 days' end
+        where ${expiredRunSql('run', 'summary')}
           and run.details_purged_at is not null
           and not exists (select 1 from app.workflow_calls call
             where call.workspace_id = run.workspace_id

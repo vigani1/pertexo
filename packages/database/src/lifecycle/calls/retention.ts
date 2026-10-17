@@ -1,3 +1,7 @@
+import {
+  RUN_DETAILS_RETENTION_SQL,
+  RUN_SUMMARY_RETENTION_SQL,
+} from '../../runs/data-policy.js';
 /** Call payloads follow their parent's detail window; identity follows its summary. */
 export const CALL_DETAILS_RETENTION_RULE = {
   name: 'call_details',
@@ -9,7 +13,7 @@ export const CALL_DETAILS_RETENTION_RULE = {
       where call.details_purged_at is null and call.consumed_at is not null
         and not call.slot_lent and call.status not in ('pending','accepted')
         and (call.cancel_requested_at is null or call.cancel_applied_at is not null)
-        and parent.completed_at <= clock_timestamp() - interval '30 days'
+        and parent.completed_at <= clock_timestamp() - ${RUN_DETAILS_RETENTION_SQL}
       order by parent.completed_at, call.id limit $1 for update of call skip locked
     )
     update app.workflow_calls call
@@ -23,7 +27,7 @@ export const CALL_CHILD_REFERENCES_RETENTION_RULE = {
   statement: `
     with page as (
       select child.workspace_id, child.id from app.workflow_runs child
-      where child.completed_at <= clock_timestamp() - interval '90 days'
+      where child.completed_at <= clock_timestamp() - ${RUN_SUMMARY_RETENTION_SQL}
         and child.details_purged_at is not null
         and exists (select 1 from app.workflow_calls call
           where call.workspace_id = child.workspace_id and call.live_child_run_id = child.id

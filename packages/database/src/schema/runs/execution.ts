@@ -1,3 +1,4 @@
+import { testRunSql } from '../../runs/data-policy.js';
 import {
   NODE_IDENTITY_KEY_PATTERN,
   type CodeDiagnostics,
@@ -241,7 +242,7 @@ export const workflowRuns = appSchema.table(
     uniqueIndex('workflow_runs_one_active_test')
       .on(table.workspaceId, table.workflowId, table.startedBy)
       .where(
-        sql`trigger_type='test' AND status IN ('queued','running','waiting')`,
+        sql`${sql.raw(testRunSql())} AND status IN ('queued','running','waiting')`,
       ),
     index('workflow_runs_detail_retention_idx')
       .on(table.workspaceId, table.completedAt, table.id)
