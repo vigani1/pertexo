@@ -497,6 +497,7 @@ export default tseslint.config(
     ignores: [
       'packages/workflow-model/src/server.ts',
       'packages/workflow-model/src/graph/identity.ts',
+      'packages/workflow-model/src/event-coordination/key.ts',
       'packages/workflow-model/src/expressions/**',
       'packages/workflow-model/src/authoring-validation/**',
     ],
@@ -512,6 +513,7 @@ export default tseslint.config(
                 'jsonata',
                 './server.js',
                 '**/graph/identity.js',
+                '**/event-coordination/key.js',
                 '**/expressions/*',
                 '**/authoring-validation/*',
               ],

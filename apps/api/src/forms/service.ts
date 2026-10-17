@@ -1,6 +1,7 @@
 import {
   formSchemaResponseSchema,
   formAccessSchema,
+  coordinatedEventHistorySchema,
   formSubmissionResponseSchema,
   publicFormSubmissionResponseSchema,
 } from '@pertexo/contracts';
@@ -22,6 +23,11 @@ export class FormService {
         ? formSubmissionResponseSchema
         : publicFormSubmissionResponseSchema
       ).parse(await this.store.submit(input, grant)),
+    );
+  }
+  history(input: Parameters<FormStore['history']>[0]) {
+    return formOperation(async () =>
+      coordinatedEventHistorySchema.parse(await this.store.history(input)),
     );
   }
   access(input: Parameters<FormStore['access']>[0]) {

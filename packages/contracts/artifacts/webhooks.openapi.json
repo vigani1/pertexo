@@ -169,6 +169,7 @@
               "variables.changed",
               "variables.usage_changed",
               "workflow.variable_snapshot_unavailable",
+              "trigger.coordination_unavailable",
               "form.unavailable",
               "form.changed",
               "form.access_conflict",
@@ -272,37 +273,103 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "anyOf": [
           {
-            "type": "object",
-            "properties": {
-              "runId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "runId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "replayed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "runId",
+                  "replayed"
+                ],
+                "additionalProperties": false
               },
-              "replayed": {
-                "type": "boolean"
+              {
+                "type": "object",
+                "properties": {
+                  "skipped": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "reason": {
+                    "type": "string",
+                    "const": "concurrency_limit"
+                  }
+                },
+                "required": [
+                  "skipped",
+                  "reason"
+                ],
+                "additionalProperties": false
               }
-            },
-            "required": [
-              "runId",
-              "replayed"
-            ],
-            "additionalProperties": false
+            ]
           },
           {
             "type": "object",
             "properties": {
-              "skipped": {
+              "coordinated": {
                 "type": "boolean",
                 "const": true
               },
-              "reason": {
+              "eventId": {
                 "type": "string",
-                "const": "concurrency_limit"
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "outcome": {
+                "type": "string",
+                "enum": [
+                  "deduplicated",
+                  "debounced",
+                  "throttled",
+                  "refused"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "skipped",
+                  "refused"
+                ]
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "duplicate_key",
+                      "newer_event",
+                      "throttle_limit",
+                      "invalid_key",
+                      "coordination_full",
+                      "coordination_timeout",
+                      "queue_full",
+                      "concurrency_limit",
+                      "workflow_unavailable",
+                      "publication_changed",
+                      "endpoint_disabled"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
-              "skipped",
+              "coordinated",
+              "eventId",
+              "outcome",
+              "status",
               "reason"
             ],
             "additionalProperties": false
@@ -909,6 +976,7 @@
                   "type": "string",
                   "enum": [
                     "accepted",
+                    "coordinated",
                     "skipped",
                     "replayed",
                     "authentication_failed",
@@ -968,6 +1036,141 @@
                 "skipReason": {
                   "type": "string",
                   "const": "concurrency_limit"
+                },
+                "coordination": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "webhook",
+                        "form"
+                      ]
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "deduplicate",
+                        "debounce",
+                        "throttle"
+                      ]
+                    },
+                    "outcome": {
+                      "type": "string",
+                      "enum": [
+                        "accepted",
+                        "skipped",
+                        "deduplicated",
+                        "debounced",
+                        "throttled",
+                        "refused"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "started",
+                        "skipped",
+                        "coalesced",
+                        "refused"
+                      ]
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "duplicate_key",
+                            "newer_event",
+                            "throttle_limit",
+                            "invalid_key",
+                            "coordination_full",
+                            "coordination_timeout",
+                            "queue_full",
+                            "concurrency_limit",
+                            "workflow_unavailable",
+                            "publication_changed",
+                            "endpoint_disabled"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "runId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "versionNumber": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "receivedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "dueAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "finishedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "nodeId",
+                    "source",
+                    "mode",
+                    "outcome",
+                    "status",
+                    "reason",
+                    "runId",
+                    "versionNumber",
+                    "receivedAt",
+                    "dueAt",
+                    "finishedAt"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [

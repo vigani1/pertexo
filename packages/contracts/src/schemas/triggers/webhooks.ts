@@ -1,3 +1,5 @@
+import { eventCoordinationReceiptSchema } from '@pertexo/workflow-model';
+import { coordinatedEventSchema } from '../forms/coordination.js';
 import { z } from 'zod';
 import { webhookAuthenticationSchema } from './authentication.js';
 
@@ -70,7 +72,8 @@ export const webhookIngressResponseSchema = z
         reason: z.literal('concurrency_limit'),
       })
       .strict(),
-  );
+  )
+  .or(eventCoordinationReceiptSchema);
 
 /**
  * ADR 045: what happened to one attributed request, metadata only. ADR 056
@@ -79,6 +82,7 @@ export const webhookIngressResponseSchema = z
  */
 const webhookDeliveryOutcomeSchema = z.enum([
   'accepted',
+  'coordinated',
   'skipped',
   'replayed',
   'authentication_failed',
@@ -122,6 +126,7 @@ export const webhookDeliverySchema = z
     byteLength: z.number().int().min(0).max(262_144).nullable(),
     runId: z.uuid().nullable(),
     skipReason: z.literal('concurrency_limit').optional(),
+    coordination: coordinatedEventSchema.optional(),
   })
   .strict();
 export const webhookDeliveryListResponseSchema = z

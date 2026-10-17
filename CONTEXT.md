@@ -174,3 +174,13 @@ new identities. Receipts follow execution retention; table rows persist until
 explicit deletion or workspace purge. See
 [ADR 083](docs/adr/083-workspace-data-tables.md) and the
 [data tables guide](docs/guides/data-tables.md).
+
+### Trigger event coordination
+
+An optional published Webhook/Form policy groups business events by a typed,
+canonical hashed input key. Deduplicate suppresses matches in a fixed window;
+Debounce retains the latest event until quiet; Throttle bounds admissions and
+skips or delays excess in arrival order. A pending event is accepted input, not
+a run. Run admission, transport replay and execution retries retain separate
+meanings. See [ADR 084](docs/adr/084-durable-trigger-event-coordination.md) and
+the [event coordination guide](docs/guides/event-coordination.md).

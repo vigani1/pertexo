@@ -163,3 +163,53 @@ it('keeps entered values after a definite busy response and uses a new key for a
   expect(keys).toHaveLength(2);
   expect(keys[1]).not.toBe(keys[0]);
 });
+
+it.each([
+  ['pending', 'debounced', null, 'Accepted for later. No run has started yet.'],
+  [
+    'skipped',
+    'deduplicated',
+    'duplicate_key',
+    'An event with this key was already accepted in this window.',
+  ],
+  [
+    'refused',
+    'refused',
+    'coordination_full',
+    'The workspace has too many pending events or active keys. Try again shortly.',
+  ],
+] as const)(
+  'presents a %s coordinated receipt without an acceptance message or redirect',
+  async (status, outcome, reason, detail) => {
+    mockServer.use(
+      http.get(path, () => HttpResponse.json({ versionId, form })),
+      http.post(`${path}/submit`, () =>
+        HttpResponse.json({
+          accepted: false,
+          coordinated: true,
+          eventId: publicId,
+          outcome,
+          status,
+          reason,
+          replayed: false,
+        }),
+      ),
+    );
+    mount();
+    const user = userEvent.setup();
+    await user.type(
+      await screen.findByLabelText('Message', { exact: true }),
+      'Order update',
+    );
+    await user.click(screen.getByRole('button', { name: 'Send response' }));
+    expect(await screen.findByText(detail, { exact: true })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Response sent' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Continue' })).toBeNull();
+    await user.click(
+      screen.getByRole('button', { name: 'Send another response' }),
+    );
+    expect(
+      await screen.findByLabelText('Message', { exact: true }),
+    ).toBeVisible();
+  },
+);

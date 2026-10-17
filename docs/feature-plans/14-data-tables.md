@@ -1,6 +1,6 @@
 # F14 — Workspace data tables
 
-Status: implemented and locally qualified; awaiting PR CI, owner-authorized 2026-10-17. Parent:
+Status: delivered in #334 on 2026-10-17. Parent:
 [roadmap](../product-roadmap.md). Decision: [ADR 083](../adr/083-workspace-data-tables.md).
 
 ## Outcome and current foundations
@@ -101,7 +101,7 @@ streamed export, row history, external database connectors, formulas and billing
 - [x] Persistence, lifecycle and retry invariants qualified.
 - [x] Nodes, API and frontend qualified together.
 - [x] Guides, bounds and real evidence recorded.
-- [ ] PR merged with green exact-head CI.
+- [x] PR #334 merged with green exact-head CI.
 
 ## Qualification evidence (2026-10-17)
 
@@ -123,7 +123,7 @@ streamed export, row history, external database connectors, formulas and billing
 - Retention, fence, populated-upgrade and maximum-size proofs passed. Root
   format, typecheck, lint, unit, contract, architecture, schema ownership and
   dependency checks passed. React Doctor: 100/100, no new diagnostics.
-  Full mocked browser suite: 206 passed. Remaining gate: green exact-head CI.
+  Full mocked browser suite: 206 passed. All required exact-head CI passed; #334 merged.
 
 - Maximum-row qualification: imported 100,000 real rows in 100 atomic batches
   through the serving-role store in 1,726 ms; filtered/sorted read at that maximum

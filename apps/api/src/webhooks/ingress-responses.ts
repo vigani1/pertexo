@@ -2,6 +2,7 @@ import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
 import type { ApiProblemCode } from '@pertexo/contracts';
 import {
   WebhookDeliveryIneligibleError,
+  EventCoordinationUnavailableError,
   WebhookDeliveryReplayMismatchError,
   WebhookWorkflowPausedError,
 } from '@pertexo/database/triggers';
@@ -24,6 +25,10 @@ export async function rejectAcceptance(
   telemetry: WebhookIngressTelemetry,
   reject: (attempt: RejectedAttempt) => Promise<void>,
 ): Promise<void> {
+  if (error instanceof EventCoordinationUnavailableError) {
+    await problem(reply, 503, 'trigger.coordination_unavailable', requestId);
+    return;
+  }
   if (
     error instanceof CallableInputInvalidError ||
     error instanceof StoredExecutionValueInvalidError

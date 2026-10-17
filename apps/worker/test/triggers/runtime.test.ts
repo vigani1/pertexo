@@ -40,6 +40,16 @@ function dependencies() {
     reconcile: vi.fn(),
     recordFailure: vi.fn(),
   };
+  const coordination = {
+    close: vi.fn().mockResolvedValue(undefined),
+    scanDue: vi.fn().mockResolvedValue({
+      examined: 0,
+      started: 0,
+      pending: 0,
+      refused: 0,
+      idle: 0,
+    }),
+  };
   let options: QueueConsumerOptions | undefined;
   const logger = {
     debug: vi.fn(),
@@ -56,6 +66,7 @@ function dependencies() {
   };
   return {
     consumer,
+    coordination,
     scanner,
     reconciliation,
     logger,
@@ -90,7 +101,8 @@ describe('trigger runtime', () => {
     ['traceRunner', []],
     ['reconciliation', []],
     ['scanner', ['reconciliation']],
-    ['consumer', ['reconciliation', 'scanner']],
+    ['coordination', ['reconciliation', 'scanner']],
+    ['consumer', ['reconciliation', 'scanner', 'coordination']],
   ] as const)(
     'rolls back owners acquired before %s construction fails',
     async (failedStage, expectedClosed) => {
@@ -116,6 +128,15 @@ describe('trigger runtime', () => {
         return value;
       };
       const factories = {
+        coordination: vi.fn(() =>
+          acquire('coordination', {
+            close: vi.fn(() => {
+              closed.push('coordination');
+              return Promise.resolve();
+            }),
+            scanDue: vi.fn(),
+          }),
+        ),
         consumer: vi.fn(() =>
           acquire('consumer', {
             close: vi.fn(),
@@ -230,9 +251,9 @@ describe('trigger runtime', () => {
     });
     await expect(runtime.checkReadiness()).resolves.toBeUndefined();
     expect(selected.logger.error).toHaveBeenCalledWith(
-      'trigger.schedule_scan_failed',
-      { safeErrorCode: 'trigger.schedule_scan_failed' },
-      failure,
+      'trigger.scan_failed',
+      { safeErrorCode: 'trigger.scan_failed' },
+      expect.objectContaining({ errors: [failure] }),
     );
     await runtime.close();
   });
@@ -335,8 +356,8 @@ describe('trigger runtime', () => {
       expect(runtime.checkReadiness()).rejects.toThrow(/latest scan/u),
     );
     expect(selected.logger.error).toHaveBeenCalledWith(
-      'trigger.schedule_scan_failed',
-      { safeErrorCode: 'trigger.schedule_scan_failed' },
+      'trigger.scan_failed',
+      { safeErrorCode: 'trigger.scan_failed' },
       expect.any(Error),
     );
     expect(selected.telemetry.scanFailed).toHaveBeenCalledWith(

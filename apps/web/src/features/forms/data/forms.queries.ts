@@ -1,8 +1,10 @@
 import { workflowKeys } from '@/features/workflows/queries.public';
-import { queryOptions } from '@tanstack/react-query';
+import type { CoordinatedEventHistory } from '@pertexo/contracts';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import {
   readForm,
   readFormAccess,
+  readFormEvents,
   type FormScope,
   type MemberFormScope,
 } from './forms.api';
@@ -37,5 +39,23 @@ export function formAccessQueryOptions(scope: MemberFormScope) {
     ] as const,
     queryFn: ({ signal }) => readFormAccess(scope, signal),
     staleTime: 10000,
+  });
+}
+
+export function formEventsQueryOptions(scope: MemberFormScope) {
+  return infiniteQueryOptions({
+    queryKey: [
+      ...workflowKeys.detail(scope.userId, scope.workspaceId, scope.workflowId),
+      'form-events',
+    ],
+    initialPageParam: null as CoordinatedEventHistory['next'],
+    queryFn: ({ pageParam, signal }) =>
+      readFormEvents(scope, pageParam, signal),
+    getNextPageParam: (page) => page.next ?? undefined,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }

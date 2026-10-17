@@ -126,3 +126,11 @@ richer validation. These are not available in this release.
 
 A workflow can [queue or skip at its concurrency limit](concurrency.md).
 Skipped events create no run and remain visible in trigger history and Usage.
+
+## Coordinate submissions
+
+The Form step supports optional [event coordination](event-coordination.md). Use
+a field key such as `$.values.orderId` to deduplicate, debounce or throttle.
+Pending, duplicate and refused submissions show their actual status instead of
+the ordinary thank-you message or redirect. Editors see metadata in the step’s
+**Coordinated form events** history. Public responses expose no run link or key.

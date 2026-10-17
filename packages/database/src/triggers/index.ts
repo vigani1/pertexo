@@ -66,3 +66,9 @@ export type {
   WebhookResponseSnapshot,
   WriteWebhookResponse,
 } from './webhooks/responses/contract.js';
+
+export {
+  createTriggerEventScanner,
+  type TriggerEventScanner,
+} from './coordination/scanner.js';
+export { EventCoordinationUnavailableError } from './coordination/contract.js';

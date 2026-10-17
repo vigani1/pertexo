@@ -7,12 +7,14 @@ import {
   Param,
   Post,
   Req,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
   formParamsSchema,
   formSubmissionRequestSchema,
   formAccessRequestSchema,
+  coordinatedEventHistoryQuerySchema,
 } from '@pertexo/contracts';
 import {
   CsrfProtectionGuard,
@@ -68,6 +70,25 @@ export class MemberFormsController {
         actorId: authenticatedSession(request).userId,
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),
+        signal,
+      }),
+    );
+  }
+  @Get('events')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(FormManageGuard)
+  history(
+    @Req() request: FormRequest,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const scope = formParamsSchema.parse(params);
+    const input = coordinatedEventHistoryQuerySchema.parse(query);
+    return withRequestOperationSignal(request, (signal) =>
+      this.forms.history({
+        ...scope,
+        ...input,
+        actorId: authenticatedSession(request).userId,
         signal,
       }),
     );

@@ -1,3 +1,4 @@
+import './coordination/events.case';
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 import { test } from '../support/browser-fixture';

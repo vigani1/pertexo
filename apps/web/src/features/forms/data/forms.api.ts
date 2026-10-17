@@ -1,4 +1,5 @@
 import {
+  coordinatedEventHistorySchema,
   formCapabilitySchema,
   formSchemaResponseSchema,
   formSubmissionResponseSchema,
@@ -129,6 +130,26 @@ export function setFormAccess(
     response: {
       kind: 'json',
       decode: (value) => formAccessSchema.parse(value),
+    },
+  });
+}
+
+export function readFormEvents(
+  scope: MemberFormScope,
+  cursor: Readonly<{ receivedAt: string; id: string }> | null,
+  signal: AbortSignal,
+) {
+  const query = new URLSearchParams({ limit: '25' });
+  if (cursor !== null) {
+    query.set('before', cursor.receivedAt);
+    query.set('beforeId', cursor.id);
+  }
+  return scope.apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(scope.workspaceId)}/workflows/${encodeURIComponent(scope.workflowId)}/form/events?${query.toString()}`,
+    signal,
+    response: {
+      kind: 'json',
+      decode: (value) => coordinatedEventHistorySchema.parse(value),
     },
   });
 }

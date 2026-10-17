@@ -209,7 +209,7 @@ export async function executeCuratedTemplateTriggers(
       }
       expect(response.status).toBe(202);
       const accepted = webhookIngressResponseSchema.parse(response.json);
-      if ('skipped' in accepted)
+      if (!('runId' in accepted))
         throw new Error('Expected a template webhook run');
       expect(accepted.replayed).toBe(false);
       await terminal(

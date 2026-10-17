@@ -1,3 +1,4 @@
+import { triggerCoordinatedEvents } from '../event-coordination/records.js';
 import { workflowTriggers } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/execution.js';
 import {
@@ -28,6 +29,7 @@ export const webhookTriggerDeliveries = appSchema.table(
     workflowRunId: uuid('workflow_run_id'),
     dedupeKind: varchar('dedupe_kind', { length: 16 }),
     skipReason: varchar('skip_reason', { length: 32 }),
+    coordinationEventId: uuid('coordination_event_id'),
     receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
       .notNull(),
@@ -45,6 +47,13 @@ export const webhookTriggerDeliveries = appSchema.table(
     bodyBytes: integer('body_bytes'),
   },
   (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      columns: [table.workspaceId, table.coordinationEventId],
+      foreignColumns: [
+        triggerCoordinatedEvents.workspaceId,
+        triggerCoordinatedEvents.id,
+      ],
+    }).onDelete('restrict'),
     check(
       'webhook_trigger_deliveries_body_bytes_valid',
       sql`((body_bytes IS NULL) OR ((body_bytes >= 0) AND (body_bytes <= 262144)))`,
@@ -55,7 +64,7 @@ export const webhookTriggerDeliveries = appSchema.table(
     ),
     check(
       'webhook_trigger_deliveries_outcome_valid',
-      sql`(((outcome='skipped' AND http_status=202 AND signature_check='verified' AND replay_check IN ('new','duplicate') AND workflow_run_id IS NULL AND dedupe_kind IS NOT NULL AND skip_reason='concurrency_limit') OR (skip_reason IS NULL AND ((((outcome)::text = 'accepted'::text) AND (http_status = 202) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text) AND (workflow_run_id IS NOT NULL) AND (dedupe_kind IS NOT NULL)) OR (((outcome)::text = 'replayed'::text) AND (http_status = 202) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'duplicate'::text) AND (workflow_run_id IS NOT NULL) AND (dedupe_kind IS NOT NULL)) OR ((workflow_run_id IS NULL) AND ((((outcome)::text = 'authentication_failed'::text) AND (http_status = 401) AND ((((signature_check)::text = 'not_checked'::text) AND ((replay_check)::text = 'stale_timestamp'::text)) OR (((signature_check)::text = 'mismatch'::text) AND ((replay_check)::text = 'not_checked'::text)) OR (((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)))) OR (((outcome)::text = 'invalid_request'::text) AND (http_status = 400) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'not_checked'::text)) OR (((outcome)::text = 'conflict'::text) AND (http_status = 409) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'conflict'::text)) OR (((outcome)::text = 'rate_limited'::text) AND (http_status = 429) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)) OR (((outcome)::text = 'paused'::text) AND (http_status = 423) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)))))))) IS TRUE`,
+      sql`(((outcome='coordinated' and http_status=202 and signature_check='verified' and replay_check in ('new','duplicate') and workflow_run_id is null and dedupe_kind is not null and skip_reason is null and coordination_event_id is not null) OR (outcome='skipped' AND http_status=202 AND signature_check='verified' AND replay_check IN ('new','duplicate') AND workflow_run_id IS NULL AND dedupe_kind IS NOT NULL AND skip_reason='concurrency_limit') OR (skip_reason IS NULL AND ((((outcome)::text = 'accepted'::text) AND (http_status = 202) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text) AND (workflow_run_id IS NOT NULL) AND (dedupe_kind IS NOT NULL)) OR (((outcome)::text = 'replayed'::text) AND (http_status = 202) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'duplicate'::text) AND (workflow_run_id IS NOT NULL) AND (dedupe_kind IS NOT NULL)) OR ((workflow_run_id IS NULL) AND ((((outcome)::text = 'authentication_failed'::text) AND (http_status = 401) AND ((((signature_check)::text = 'not_checked'::text) AND ((replay_check)::text = 'stale_timestamp'::text)) OR (((signature_check)::text = 'mismatch'::text) AND ((replay_check)::text = 'not_checked'::text)) OR (((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)))) OR (((outcome)::text = 'invalid_request'::text) AND (http_status = 400) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'not_checked'::text)) OR (((outcome)::text = 'conflict'::text) AND (http_status = 409) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'conflict'::text)) OR (((outcome)::text = 'rate_limited'::text) AND (http_status = 429) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)) OR (((outcome)::text = 'paused'::text) AND (http_status = 423) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)))))))) IS TRUE`,
     ),
     check(
       'webhook_trigger_deliveries_retention_valid',
@@ -150,6 +159,7 @@ export const webhookTriggerReplayRecords = appSchema.table(
     deliveryId: uuid('delivery_id').notNull(),
     workflowRunId: uuid('workflow_run_id'),
     skipReason: varchar('skip_reason', { length: 32 }),
+    coordinationEventId: uuid('coordination_event_id'),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,
       mode: 'date',
@@ -159,6 +169,13 @@ export const webhookTriggerReplayRecords = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      columns: [table.workspaceId, table.coordinationEventId],
+      foreignColumns: [
+        triggerCoordinatedEvents.workspaceId,
+        triggerCoordinatedEvents.id,
+      ],
+    }).onDelete('restrict'),
     check(
       'webhook_replay_skip_valid',
       sql`skip_reason IS NULL OR (skip_reason='concurrency_limit' AND workflow_run_id IS NULL)`,

@@ -55,6 +55,7 @@ export type WorkflowRunStatisticsRecord = Readonly<{
     createdAtBefore: string;
     total: number;
     skippedTriggerEvents?: number;
+    coordinatedTriggerEvents?: number;
     byStatus: WorkflowRunStatusCountRecord;
   }>;
   workflows?: Readonly<{
@@ -144,9 +145,12 @@ async function readInTransaction(
       and created_at < transaction_timestamp()
     group by status
   `);
-  const skipped = await transaction.db.execute<{ count: number }>(sql`
-    select count(*)::integer count from app.usage_events
-    where workspace_id=${transaction.workspaceId} and category='trigger.skipped'
+  const skipped = await transaction.db.execute<{
+    count: number;
+    coordinated: number;
+  }>(sql`
+    select count(*) filter(where category='trigger.skipped')::integer count,count(*) filter(where category='trigger.coordinated')::integer coordinated from app.usage_events
+    where workspace_id=${transaction.workspaceId} and category in ('trigger.skipped','trigger.coordinated')
       and occurred_at>=transaction_timestamp()-make_interval(hours=>${hours}::integer)
       and occurred_at<transaction_timestamp()
   `);
@@ -167,6 +171,7 @@ async function readInTransaction(
       createdAtFrom: current.created_at_from,
       createdAtBefore: current.as_of,
       skippedTriggerEvents: countSchema.parse(skipped.rows[0]?.count),
+      coordinatedTriggerEvents: countSchema.parse(skipped.rows[0]?.coordinated),
       total: Object.values(byStatus).reduce((sum, count) => sum + count, 0),
       byStatus: Object.freeze(byStatus),
     }),

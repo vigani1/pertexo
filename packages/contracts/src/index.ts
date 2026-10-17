@@ -168,3 +168,10 @@ export {
   type DataTableLimits,
   type DataTableWriteReceipt,
 } from './schemas/identity/data-tables.js';
+
+export {
+  coordinatedEventHistorySchema,
+  coordinatedEventHistoryQuerySchema,
+  type CoordinatedEvent,
+  type CoordinatedEventHistory,
+} from './schemas/forms/coordination.js';

@@ -563,6 +563,12 @@ export const usageEvents = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    index('usage_events_coordinated_history_idx')
+      .on(table.workspaceId, table.occurredAt, table.id)
+      .where(sql`category='trigger.coordinated'`),
+    index('usage_events_coordinated_retention_idx')
+      .on(table.occurredAt, table.id)
+      .where(sql`category='trigger.coordinated'`),
     index('usage_events_trigger_skip_history_idx')
       .on(
         table.workspaceId,

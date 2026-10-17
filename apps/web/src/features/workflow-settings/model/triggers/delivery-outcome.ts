@@ -1,4 +1,5 @@
 import type { WebhookDeliveryResponse } from '@pertexo/contracts';
+import { describeCoordinatedEvent } from '@/features/trigger-events/presentation.public';
 import type { StatusTone } from '@/components/ui/status';
 
 type DeliveryOutcome = Readonly<{
@@ -30,10 +31,27 @@ const NOT_ACCEPTING: DeliveryOutcome = {
 export function describeDelivery(
   delivery: Pick<
     WebhookDeliveryResponse,
-    'outcome' | 'signatureCheck' | 'replayCheck'
+    'outcome' | 'signatureCheck' | 'replayCheck' | 'coordination'
   >,
 ): DeliveryOutcome {
+  if (delivery.coordination !== undefined) {
+    const current = describeCoordinatedEvent(delivery.coordination);
+    return delivery.replayCheck === 'duplicate'
+      ? {
+          ...current,
+          tone: 'neutral',
+          label: `Duplicate · ${current.label}`,
+          detail: `The original event is shown here. No additional run. ${current.detail}`,
+        }
+      : current;
+  }
   switch (delivery.outcome) {
+    case 'coordinated':
+      return {
+        tone: 'neutral',
+        label: 'Coordinated',
+        detail: 'Coordination history is no longer retained.',
+      };
     case 'skipped':
       return {
         tone: 'skipped',

@@ -243,3 +243,22 @@ export {
 } from './test-suites/compare.js';
 
 export { workflowTestStepChoices } from './test-suites/steps.js';
+
+export {
+  EVENT_COORDINATION_LIMITS,
+  eventCoordinationKeySchema,
+  eventCoordinationPolicySchema,
+  eventCoordinationReceiptSchema,
+  eventCoordinationOutcomeSchema,
+  eventCoordinationStatusSchema,
+  eventCoordinationReasonSchema,
+  isEventCoordinationTrigger,
+  type EventCoordinationPolicy,
+  type EventCoordinationReceipt,
+  type EventCoordinationStatus,
+  type EventCoordinationReason,
+} from './event-coordination/contract.js';
+export {
+  decideEventCoordination,
+  type EventCoordinationWindow,
+} from './event-coordination/decision.js';

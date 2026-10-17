@@ -56,3 +56,36 @@ it('keeps busy receipts separate from accepted responses and public run history'
         .success,
     ).toBe(false);
 });
+
+it('keeps coordinated receipts public-safe and excludes trigger policy from the public form', () => {
+  const receipt = {
+    accepted: false,
+    coordinated: true,
+    eventId: versionId,
+    outcome: 'debounced',
+    status: 'pending',
+    reason: null,
+    replayed: false,
+  };
+  expect(publicFormSubmissionResponseSchema.parse(receipt)).toEqual(receipt);
+  for (const extra of [
+    { runId: versionId },
+    { key: 'sensitive' },
+    { policy: { mode: 'debounce' } },
+    { thankYouMessage: 'Accepted' },
+    { redirectUrl: 'https://example.test/' },
+  ])
+    expect(
+      publicFormSubmissionResponseSchema.safeParse({ ...receipt, ...extra })
+        .success,
+    ).toBe(false);
+  const form = formConfigSchema.parse({
+    coordination: {
+      mode: 'deduplicate',
+      key: { kind: 'run_input', path: '$.values.id' },
+    },
+  });
+  expect(formSchemaResponseSchema.safeParse({ versionId, form }).success).toBe(
+    false,
+  );
+});

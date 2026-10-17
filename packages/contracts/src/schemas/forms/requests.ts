@@ -1,3 +1,4 @@
+import { eventCoordinationReceiptSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
   formConfigSchema,
@@ -12,7 +13,11 @@ export const formCapabilitySchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
 export const formSchemaResponseSchema = z
   .object({
     versionId: z.uuid(),
-    form: formConfigSchema.omit({ thankYouMessage: true, redirectUrl: true }),
+    form: formConfigSchema.omit({
+      thankYouMessage: true,
+      redirectUrl: true,
+      coordination: true,
+    }),
   })
   .strict();
 export const formSubmissionRequestSchema = z
@@ -35,9 +40,13 @@ const skippedFormSubmissionResponseSchema = z
     replayed: z.boolean(),
   })
   .strict();
-export const formSubmissionResponseSchema = z.discriminatedUnion('accepted', [
+const coordinatedFormSubmissionResponseSchema = eventCoordinationReceiptSchema
+  .extend({ accepted: z.literal(false), replayed: z.boolean() })
+  .strict();
+export const formSubmissionResponseSchema = z.union([
   acceptedFormSubmissionResponseSchema,
   skippedFormSubmissionResponseSchema,
+  coordinatedFormSubmissionResponseSchema,
 ]);
 export const formAccessSchema = z
   .object({
@@ -70,10 +79,8 @@ export type FormSubmissionResponse = z.output<
 >;
 export type FormAccess = z.output<typeof formAccessSchema>;
 export type FormAccessRequest = z.output<typeof formAccessRequestSchema>;
-export const publicFormSubmissionResponseSchema = z.discriminatedUnion(
-  'accepted',
-  [
-    acceptedFormSubmissionResponseSchema.omit({ runId: true }).strict(),
-    skippedFormSubmissionResponseSchema,
-  ],
-);
+export const publicFormSubmissionResponseSchema = z.union([
+  acceptedFormSubmissionResponseSchema.omit({ runId: true }).strict(),
+  skippedFormSubmissionResponseSchema,
+  coordinatedFormSubmissionResponseSchema,
+]);

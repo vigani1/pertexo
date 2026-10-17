@@ -1,3 +1,5 @@
+import type { CoordinatedEvent } from '@pertexo/contracts';
+import { COORDINATED_EVENT_METADATA_SQL } from '../coordination/history.js';
 import { sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
@@ -18,6 +20,7 @@ import { WebhookTriggerNotFoundError } from './errors.js';
  */
 const HTTP_STATUS = Object.freeze({
   accepted: 202,
+  coordinated: 202,
   skipped: 202,
   replayed: 202,
   authentication_failed: 401,
@@ -28,6 +31,7 @@ const HTTP_STATUS = Object.freeze({
 } as const);
 const OUTCOMES = [
   'accepted',
+  'coordinated',
   'skipped',
   'replayed',
   'authentication_failed',
@@ -59,7 +63,10 @@ export type WebhookDeliveryEndpoint = Readonly<{
 
 export type RejectedWebhookDelivery = Readonly<{
   endpoint: WebhookDeliveryEndpoint;
-  outcome: Exclude<WebhookDeliveryOutcome, 'accepted' | 'replayed' | 'skipped'>;
+  outcome: Exclude<
+    WebhookDeliveryOutcome,
+    'accepted' | 'replayed' | 'skipped' | 'coordinated'
+  >;
   signatureCheck: WebhookSignatureCheck;
   replayCheck: WebhookReplayCheck;
   bodyBytes: number;
@@ -75,6 +82,7 @@ export type WebhookDeliveryRecord = Readonly<{
   bodyBytes: number | null;
   runId: string | null;
   skipReason?: 'concurrency_limit';
+  coordination?: CoordinatedEvent;
 }>;
 
 /** Newest-first keyset position: `(received_at desc, id asc)`. */
@@ -158,17 +166,18 @@ export async function insertWebhookDelivery(
     bodyBytes: number;
     runId?: string;
     dedupeKind?: 'keyed' | 'fingerprint';
+    coordinationEventId?: string;
   }>,
 ): Promise<void> {
   await transaction.db.execute(sql`
     insert into app.webhook_trigger_deliveries
       (id,workspace_id,trigger_id,endpoint_id,workflow_run_id,dedupe_kind,
-       outcome,http_status,signature_check,replay_check,body_bytes,skip_reason)
+       outcome,http_status,signature_check,replay_check,body_bytes,skip_reason,coordination_event_id)
     values(${delivery.id ?? generatePersistedId()},${transaction.workspaceId},
       ${uuidSchema.parse(endpoint.triggerId)},${uuidSchema.parse(endpoint.endpointId)},
       ${delivery.runId ?? null},${delivery.dedupeKind ?? null},${delivery.outcome},
       ${HTTP_STATUS[delivery.outcome]},${delivery.signatureCheck},
-      ${delivery.replayCheck},${bodyBytesSchema.parse(delivery.bodyBytes)},${delivery.outcome === 'skipped' ? 'concurrency_limit' : null})
+      ${delivery.replayCheck},${bodyBytesSchema.parse(delivery.bodyBytes)},${delivery.outcome === 'skipped' ? 'concurrency_limit' : null},${delivery.coordinationEventId ?? null})
   `);
 }
 
@@ -183,6 +192,9 @@ function mapDelivery(row: Record<string, unknown>): WebhookDeliveryRecord {
     replayCheck: z.enum(REPLAY_CHECKS).parse(row.replay_check),
     bodyBytes: bodyBytesSchema.nullable().parse(row.body_bytes),
     runId: uuidSchema.nullable().parse(row.workflow_run_id),
+    ...(row.coordination === null || row.coordination === undefined
+      ? {}
+      : { coordination: row.coordination as CoordinatedEvent }),
     ...(outcome === 'skipped'
       ? { skipReason: z.literal('concurrency_limit').parse(row.skip_reason) }
       : {}),
@@ -201,15 +213,17 @@ async function readDeliveryPage(
   // Rows past their ADR 013 expiry are never served, even before the bounded
   // retention stage removes them.
   const result = await client.query<Record<string, unknown>>(
-    `select id,outcome,http_status,signature_check,replay_check,body_bytes,skip_reason,
-            workflow_run_id,
-            to_char(received_at at time zone 'UTC',
+    `select delivery.id,delivery.outcome,delivery.http_status,delivery.signature_check,delivery.replay_check,delivery.body_bytes,delivery.skip_reason,
+            coalesce(delivery.workflow_run_id,event.run_id) workflow_run_id,
+            case when event.id is null then null else ${COORDINATED_EVENT_METADATA_SQL} end coordination,
+            to_char(delivery.received_at at time zone 'UTC',
               'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') received_at_cursor
-       from app.webhook_trigger_deliveries
-      where workspace_id=$1 and trigger_id=$2 and expires_at>clock_timestamp()
-        and ($3::timestamptz is null or received_at<$3::timestamptz
-          or (received_at=$3::timestamptz and id>$4::uuid))
-      order by received_at desc,id asc
+       from app.webhook_trigger_deliveries delivery
+       left join app.trigger_coordinated_events event on event.workspace_id=delivery.workspace_id and event.id=delivery.coordination_event_id and event.expires_at>clock_timestamp()
+      where delivery.workspace_id=$1 and delivery.trigger_id=$2 and delivery.expires_at>clock_timestamp()
+        and ($3::timestamptz is null or delivery.received_at<$3::timestamptz
+          or (delivery.received_at=$3::timestamptz and delivery.id>$4::uuid))
+      order by delivery.received_at desc,delivery.id asc
       limit $5`,
     [
       input.workspaceId,

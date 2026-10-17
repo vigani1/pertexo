@@ -326,6 +326,7 @@ export const workflowRunStatisticsResponseSchema = z
         createdAtBefore: workflowRunStatisticsTimestampSchema,
         total: workflowRunCountSchema,
         skippedTriggerEvents: workflowRunCountSchema.optional(),
+        coordinatedTriggerEvents: workflowRunCountSchema.optional(),
         byStatus: workflowRunStatusCountsSchema,
       })
       .strict(),

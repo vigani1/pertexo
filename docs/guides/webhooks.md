@@ -74,3 +74,10 @@ Provider-specific signatures such as Stripe or GitHub remain later work in F21.
 
 A workflow can [queue or skip at its concurrency limit](concurrency.md).
 Skipped events create no run and remain visible in trigger history and Usage.
+
+## Business events
+
+Use optional [event coordination](event-coordination.md) in the trigger setup to
+deduplicate, debounce or throttle business events by an input key. It is Off by
+default and separate from transport replay. Pending events acknowledge with 202
+and appear in delivery history; they do not hold a synchronous caller open.

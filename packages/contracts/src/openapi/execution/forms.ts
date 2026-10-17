@@ -1,3 +1,4 @@
+import { coordinatedEventHistorySchema } from '../../schemas/forms/coordination.js';
 import {
   formSchemaResponseSchema,
   formSubmissionRequestSchema,
@@ -17,6 +18,7 @@ import {
   problemResponse,
 } from '../primitives.js';
 export const formSchemas = {
+  CoordinatedEventHistory: jsonSchema(coordinatedEventHistorySchema, 'output'),
   FormSchemaResponse: jsonSchema(formSchemaResponseSchema, 'output'),
   FormSubmissionRequest: jsonSchema(formSubmissionRequestSchema, 'input'),
   FormSubmissionResponse: jsonSchema(formSubmissionResponseSchema, 'output'),
@@ -50,6 +52,38 @@ const errors = {
 };
 const memberSecurity = [{ cookieSession: [] }];
 export const formPaths = {
+  '/v1/workspaces/{workspaceId}/workflows/{workflowId}/form/events': {
+    get: {
+      operationId: 'listCoordinatedFormEvents',
+      security: memberSecurity,
+      parameters: [
+        workspace,
+        workflow,
+        {
+          in: 'query',
+          name: 'limit',
+          schema: { type: 'integer', minimum: 1, maximum: 100 },
+        },
+        {
+          in: 'query',
+          name: 'before',
+          schema: { type: 'string', format: 'date-time' },
+        },
+        {
+          in: 'query',
+          name: 'beforeId',
+          schema: { type: 'string', format: 'uuid' },
+        },
+      ],
+      responses: {
+        '200': jsonResponse(
+          'Metadata-only form event history',
+          'CoordinatedEventHistory',
+        ),
+        ...errors,
+      },
+    },
+  },
   '/v1/workspaces/{workspaceId}/workflows/{workflowId}/form': {
     get: {
       operationId: 'getMemberForm',
