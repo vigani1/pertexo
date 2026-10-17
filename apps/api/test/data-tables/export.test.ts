@@ -27,6 +27,12 @@ async function serve(exportCsv: DataTablesStore['exportCsv']) {
   const adapter = new FastifyAdapter();
   adapters.push(adapter);
   const server = adapter.getInstance();
+  server.setErrorHandler((_error, _request, reply) => {
+    void reply
+      .code(500)
+      .type('application/problem+json')
+      .send({ title: 'Export failed' });
+  });
   server.post('/export', async (request, reply) => {
     await sendTableExport(
       { exportCsv },
@@ -136,4 +142,25 @@ it('decodes form queries once and uses the shared CSRF policy', () => {
       'application/json',
     ),
   ).toThrow();
+});
+
+it('aborts if the producer fails before emitting any CSV bytes', async () => {
+  async function* csv() {
+    await Promise.reject(new Error('read failed before the first byte'));
+    yield 'unreachable';
+  }
+  const url = await serve(async ({ consume }) => {
+    await consume(csv(), table);
+  });
+  await expect(fetch(url, { method: 'POST' })).rejects.toThrow();
+});
+it('keeps errors before the consumer starts as ordinary non-download responses', async () => {
+  const url = await serve(() => Promise.reject(new Error('export refused')));
+  const response = await fetch(url, { method: 'POST' });
+  expect(response.status).toBe(500);
+  expect(response.headers.get('content-disposition')).toBeNull();
+  expect(response.headers.get('content-type')).toContain(
+    'application/problem+json',
+  );
+  await response.text();
 });

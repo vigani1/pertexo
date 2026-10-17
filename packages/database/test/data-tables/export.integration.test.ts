@@ -67,6 +67,24 @@ it('releases its snapshot/client when the destination fails or the caller cancel
     ).tables.some((entry) => entry.id === table.id),
   ).toBe(true);
 });
+it('rejects a stale filter before offering its CSV iterable to a download consumer', async () => {
+  const table = await create();
+  let consumed = false;
+  await expect(
+    store.exportCsv({
+      ...scope(),
+      tableId: table.id,
+      query: {
+        filters: [{ column: 'removed', operator: 'equals', value: 'value' }],
+      },
+      consume: () => {
+        consumed = true;
+        return Promise.resolve();
+      },
+    }),
+  ).rejects.toThrow(/column/iu);
+  expect(consumed).toBe(false);
+});
 it('streams a 100,000-row near-1-GiB table under a 192-MiB child-process heap', async () => {
   await store.configure({
     ...scope(),

@@ -12,6 +12,12 @@ export async function verifyCsvProxy({ origin, headers, probe }) {
   assert.match(complete.headers['content-disposition'], /attachment/u);
   assert.ok(Buffer.byteLength(complete.value) > 1_048_576);
   assert.ok(complete.value.endsWith('"last"\r\n'));
+  const early = await probe(`${origin}/v1/csv-probe/early-failure`, headers, {
+    method: 'POST',
+  });
+  assert.ok(early.status >= 400);
+  assert.equal(early.headers['content-disposition'], undefined);
+  assert.doesNotMatch(String(early.headers['content-type']), /text\/csv/u);
   const key = randomUUID();
   const incoming = await new Promise((resolve, reject) => {
     const outgoing = request(
@@ -41,5 +47,8 @@ export async function verifyCsvProxy({ origin, headers, probe }) {
   assert.ok(
     released,
     'The consumer must receive a CSV prefix before the upstream fails',
+  );
+  console.log(
+    'CSV proxy: full download, before-header refusal and partial interruption passed.',
   );
 }
