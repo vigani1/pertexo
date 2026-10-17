@@ -116,6 +116,8 @@ CI and merge receipts are recorded in the implementation PR.
 - Bounded retention removes expired skip summaries in pages, preserving recent
   skips and other usage categories; workspace purge scrubs skip facts through the
   existing ledger owner. Settings return only the latest 20 retained events.
+  A 10,000-row PostgreSQL ordering probe showed that explicit NULLS LAST is
+  needed to match the history index: 20 indexed rows instead of a 10,000-row sort.
 - Eleven real webhook HTTP cases include signed and Secret URL skips. The real
   settings browser/worker fixture exercises Queue backlog, restart, manual 409,
   Skip and removal of the cap at desktop and phone widths. Screenshots were
