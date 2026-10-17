@@ -1,10 +1,10 @@
 # Personal notifications
 
 The Inbox combines failing workflows, auto-paused workflows, connections needing
-attention, workspace queue/file capacity and waiting approvals. Failure threads
+attention, approaching workspace capacity, reached queue/file limits and waiting approvals. Failure threads
 keep their 30-day lanes. Operational cards describe current attention and leave
 when it resolves. A full active-run allowance is ordinary queueing, not a limit
-notice. Reading a notice changes only your own read state.
+notice; its 80% approaching-capacity warning is separate. See [Usage and trends](usage.md). Reading a notice changes only your own read state.
 
 Owners, admins and operators see workflow failures, pauses and limits by default.
 Owners and admins see connection attention. Approval cards use the task's actual

@@ -25,11 +25,21 @@ const workspaceInboxRevisionSchema = z
     { message: 'Revision exceeds PostgreSQL bigint' },
   );
 export const workspaceInboxCursorSchema = z.string().min(1).max(1_024);
+export const workspaceCapacityLimitSchema = z.enum([
+  'active',
+  'queue',
+  'artifact_bytes',
+  'artifact_count',
+]);
+export type WorkspaceCapacityLimit = z.output<
+  typeof workspaceCapacityLimitSchema
+>;
 export const workspaceNoticeKindSchema = z.enum([
   'workflow_failure',
   'workflow_auto_paused',
   'connection_attention',
   'limit_reached',
+  'limit_approaching',
   'approval_waiting',
 ]);
 export const workspaceInboxFilterSchema = z.enum(['all', 'unread']);
@@ -82,6 +92,7 @@ export const workspaceInboxAttentionThreadSchema = z
       'workflow_auto_paused',
       'connection_attention',
       'limit_reached',
+      'limit_approaching',
       'approval_waiting',
     ]),
     subjectId: z.uuid(),
@@ -93,9 +104,7 @@ export const workspaceInboxAttentionThreadSchema = z
     latestOccurredAt: workspaceInboxTimestampSchema,
     revision: workspaceInboxRevisionSchema,
     unread: z.boolean(),
-    limits: z
-      .array(z.enum(['queue', 'artifact_bytes', 'artifact_count']))
-      .max(3),
+    limits: z.array(workspaceCapacityLimitSchema).max(4),
   })
   .strict();
 export const workspaceInboxThreadSchema = z.union([

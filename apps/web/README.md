@@ -9,11 +9,13 @@ Overview, the bounded workflow editor with conflict-safe draft persistence,
 validation, node preview, typed visual input mappings, exact-version publishing,
 run start, live run detail and contract-backed workflow settings/operations,
 including personal API token Settings, automatic trigger-pause rules,
-owner-managed workspace defaults and explicit Resume controls. The first
-read-only Usage slice separates current execution/artifact capacity from ADR 044
-retained run activity, with independent snapshots and exact server-window
-drilldowns (ADR 057). It does not introduce billing, an operation meter,
-warnings, quota editing or calendar reporting.
+owner-managed workspace defaults and explicit Resume controls. Read-only Usage
+separates current execution/artifact capacity from ADR 044 retained run
+activity, with independent snapshots and exact server-window drilldowns (ADR
+057). F12 adds 80% capacity warnings through F27 and a 30/90-day UTC Trends page
+with daily outcomes, elapsed durations and top workflows. See
+[Usage](../../docs/guides/usage.md). Billing, an operation meter, quota editing
+and reporting timezone settings remain outside this slice.
 
 ADR 058's workflow concurrency settings add a current Queue/Skip cap to workflow
 Settings and timestamped queued-run blocker explanations. It preserves workspace

@@ -1,3 +1,7 @@
+import {
+  usageTrendPeriodSchema,
+  usageTrendsResponseSchema,
+} from '../../schemas/execution/usage-trends.js';
 import { workflowRunVariablesResponseSchema } from '../../schemas/identity/variables.js';
 import { formSchemas, formPaths } from './forms.js';
 import { pendingTaskPaths, pendingTaskSchemas } from './pending-tasks.js';
@@ -66,6 +70,7 @@ const schemas = Object.freeze({
     workflowRecoveryUnavailableProblemSchema,
     'output',
   ),
+  UsageTrendsResponse: jsonSchema(usageTrendsResponseSchema, 'output'),
   UsageCapacityResponse: jsonSchema(usageCapacityResponseSchema, 'output'),
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WorkflowRunStartRequest: jsonSchema(workflowRunStartRequestSchema, 'input'),
@@ -189,6 +194,28 @@ export const workflowRunsOpenApiDocument = Object.freeze({
             'WorkflowRunVariablesResponse',
           ),
           '401': responseReference('Unauthenticated'),
+          '404': responseReference('NotFound'),
+          '429': problemResponse('Rate limited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/usage-trends': {
+      get: {
+        operationId: 'getWorkspaceUsageTrends',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          queryParameter('period', usageTrendPeriodSchema),
+        ],
+        responses: {
+          '200': jsonResponse(
+            'Retained ordinary-run trends over UTC days; not billing',
+            'UsageTrendsResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '429': problemResponse('Rate limited'),
           '500': responseReference('Unexpected'),

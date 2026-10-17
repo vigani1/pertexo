@@ -1,3 +1,5 @@
+import { GetUsageTrendsUseCase } from './usage/trends.js';
+import { UsageTrendsController } from './usage/trends-controller.js';
 import {
   GetRunRecoveryUseCase,
   RecoverRunUseCase,
@@ -74,6 +76,13 @@ export class WorkflowRunsModule {
           dependencies.visibilityMetrics ?? createSseVisibilityMetrics(),
       },
       WorkflowRunReadGuard,
+      {
+        provide: GetUsageTrendsUseCase,
+        useValue: new GetUsageTrendsUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
       UsageCapacityArtifactReadGuard,
       {
         provide: GetUsageCapacityUseCase,
@@ -207,6 +216,7 @@ export class WorkflowRunsModule {
         RunRecoveryController,
         WorkflowRunDataController,
         UsageCapacityController,
+        UsageTrendsController,
       ],
       providers,
       exports: [
@@ -216,6 +226,7 @@ export class WorkflowRunsModule {
         ListWorkflowRunsUseCase,
         GetWorkflowRunStatisticsUseCase,
         GetUsageCapacityUseCase,
+        GetUsageTrendsUseCase,
         GetWorkflowRunInputUseCase,
         GetWorkflowRunVariablesUseCase,
         GetWorkflowNodeRunOutputUseCase,

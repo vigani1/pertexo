@@ -66,6 +66,7 @@ describe('workflow-run public contracts', () => {
       '/v1/forms/{publicId}',
       '/v1/forms/{publicId}/submit',
       '/v1/workspaces/{workspaceId}/runs/{runId}/variables',
+      '/v1/workspaces/{workspaceId}/usage-trends',
       '/v1/workspaces/{workspaceId}/usage-capacity',
       '/v1/workspaces/{workspaceId}/runs',
       '/v1/workspaces/{workspaceId}/run-statistics',

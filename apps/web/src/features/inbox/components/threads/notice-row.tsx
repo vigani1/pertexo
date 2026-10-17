@@ -12,6 +12,7 @@ const labels = {
   workflow_auto_paused: 'Workflow auto-paused',
   connection_attention: 'Connection needs attention',
   limit_reached: 'Workspace limit reached',
+  limit_approaching: 'Workspace nearing a limit',
   approval_waiting: 'Approval waiting',
 } as const;
 function AttentionLink({
@@ -45,7 +46,10 @@ function AttentionLink({
         Open connection
       </Link>
     );
-  if (thread.noticeKind === 'limit_reached')
+  if (
+    thread.noticeKind === 'limit_reached' ||
+    thread.noticeKind === 'limit_approaching'
+  )
     return (
       <Link
         onClick={onOpen}
@@ -97,12 +101,18 @@ export function NoticeThreadRow(
         {thread.noticeKind === 'approval_waiting' ? (
           <TaskDetails details={thread.details} />
         ) : null}
+        {thread.noticeKind === 'limit_approaching' ? (
+          <p className="text-sm text-muted-foreground">
+            At least 80% of this capacity is in use.
+          </p>
+        ) : null}
         {thread.limits.length > 0 ? (
           <p className="text-sm text-muted-foreground">
             {thread.limits
               .map(
                 (limit) =>
                   ({
+                    active: 'Active runs',
                     queue: 'Queued runs',
                     artifact_bytes: 'File storage',
                     artifact_count: 'File count',

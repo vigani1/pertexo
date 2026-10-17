@@ -40,6 +40,7 @@ const persistence = {
   get: () => Promise.resolve(undefined),
   list: () => Promise.resolve({ items: [] }),
   statistics: () => Promise.reject(new Error('not exercised')),
+  usageTrends: () => Promise.reject(new Error('not exercised')),
   usageCapacity: () => Promise.reject(new Error('not exercised')),
   cancel: () => Promise.reject(new Error('not exercised')),
   readVariables: () => Promise.resolve({ revision: 0, values: {} }),

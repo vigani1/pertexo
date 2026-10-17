@@ -1,3 +1,4 @@
+import { UsageTrendsController } from '../../src/workflow-runs/usage/trends-controller.js';
 import { RunRecoveryController } from '../../src/workflow-runs/recovery/controller.js';
 import { describe, expect, it } from 'vitest';
 
@@ -27,6 +28,7 @@ const dependencies = {
     stepHealth: () => Promise.resolve(undefined),
     stepRuns: () => Promise.resolve(undefined),
     statistics: () => Promise.reject(new Error('not exercised')),
+    usageTrends: () => Promise.reject(new Error('not exercised')),
     usageCapacity: () => Promise.reject(new Error('not exercised')),
     cancel: () => Promise.reject(new Error('not exercised')),
   },
@@ -60,6 +62,7 @@ describe('workflow runs Nest module', () => {
       RunRecoveryController,
       WorkflowRunDataController,
       UsageCapacityController,
+      UsageTrendsController,
     ]);
   });
 });

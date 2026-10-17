@@ -1,0 +1,52 @@
+import { Link } from '@tanstack/react-router';
+import type { UsageTrendsResponse } from '@pertexo/contracts';
+export function WorkflowRankings({
+  items,
+  metric,
+  workspaceId,
+  canOpen,
+}: Readonly<{
+  items: UsageTrendsResponse['busiest'];
+  metric: 'runs' | 'failures';
+  workspaceId: string;
+  canOpen: boolean;
+}>) {
+  return items.length === 0 ? (
+    <p className="text-sm text-muted-foreground">
+      {metric === 'failures'
+        ? 'No failures in this period.'
+        : 'No runs in this period.'}
+    </p>
+  ) : (
+    <ol className="divide-y divide-border">
+      {items.map((item) => (
+        <li
+          key={item.workflowId}
+          className="flex items-center justify-between gap-4 py-3 text-sm"
+        >
+          <span className="min-w-0 truncate">
+            {canOpen ? (
+              <Link
+                className="underline underline-offset-4"
+                to="/w/$workspaceId/workflows/$workflowId"
+                params={{ workspaceId, workflowId: item.workflowId }}
+              >
+                {item.workflowName ?? 'Workflow'}
+              </Link>
+            ) : (
+              'Workflow'
+            )}
+          </span>
+          <span className="shrink-0 tabular-nums">
+            {item[metric].toLocaleString()}{' '}
+            {item[metric] === 1
+              ? metric === 'runs'
+                ? 'run'
+                : 'failure'
+              : metric}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}

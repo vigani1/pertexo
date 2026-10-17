@@ -347,6 +347,7 @@ function databaseWith(
   return {
     recovery: vi.fn<WorkflowRunDatabase['recovery']>(),
     recover: vi.fn<WorkflowRunDatabase['recover']>(),
+    usageTrends: vi.fn<WorkflowRunDatabase['usageTrends']>(),
     usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
     start: vi.fn<WorkflowRunDatabase['start']>().mockResolvedValue({
       run: run(),
@@ -710,6 +711,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
       recovery: vi.fn<WorkflowRunDatabase['recovery']>(),
       recover: vi.fn<WorkflowRunDatabase['recover']>(),
+      usageTrends: vi.fn<WorkflowRunDatabase['usageTrends']>(),
       usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       readVariables: () => Promise.resolve({ revision: 0, values: {} }),
@@ -1004,6 +1006,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
       recovery: vi.fn<WorkflowRunDatabase['recovery']>(),
       recover: vi.fn<WorkflowRunDatabase['recover']>(),
+      usageTrends: vi.fn<WorkflowRunDatabase['usageTrends']>(),
       usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
         run: run(),

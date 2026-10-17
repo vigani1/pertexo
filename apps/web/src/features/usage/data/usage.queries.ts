@@ -1,3 +1,4 @@
+import type { UsageTrendPeriod } from '@pertexo/contracts';
 import { queryOptions } from '@tanstack/react-query';
 import type { WorkflowRunStatisticsWindow } from '@pertexo/contracts';
 import {
@@ -5,7 +6,7 @@ import {
   workflowRunKeys,
 } from '@/features/workflow-runs/queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { getUsageCapacity } from './usage.api';
+import { getUsageCapacity, getUsageTrends } from './usage.api';
 import { forgetDeniedSnapshots } from '../model/usage-access';
 
 export function usageCapacityQueryOptions(
@@ -66,6 +67,36 @@ export function usageActivityQueryOptions(
         throw error;
       }
     },
+    refetchIntervalInBackground: false,
+  });
+}
+
+export function usageTrendsQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  period: UsageTrendPeriod,
+) {
+  const scope = [
+    'identity',
+    userId,
+    'workspace',
+    workspaceId,
+    'usage-trends',
+  ] as const;
+  const queryKey = [...scope, period] as const;
+  return queryOptions({
+    queryKey,
+    queryFn: async ({ signal, client }) => {
+      try {
+        return await getUsageTrends(apiClient, workspaceId, period, signal);
+      } catch (error: unknown) {
+        await forgetDeniedSnapshots(client, scope, queryKey, error);
+        throw error;
+      }
+    },
+    staleTime: 15000,
+    refetchInterval: 30000,
     refetchIntervalInBackground: false,
   });
 }

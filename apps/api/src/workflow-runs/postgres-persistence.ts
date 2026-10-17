@@ -88,6 +88,17 @@ export function createPostgresWorkflowRunPersistence(
         return mapPersistenceError(error);
       }
     },
+    usageTrends: async (
+      input: Parameters<WorkflowRunPersistence['usageTrends']>[0],
+    ) => {
+      try {
+        return await database.usageTrends(input);
+      } catch (error: unknown) {
+        if (error instanceof WorkspaceAccessDeniedError)
+          return throwWorkflowRunError(applicationError('resource.not_found'));
+        return mapPersistenceError(error);
+      }
+    },
     usageCapacity: async (
       input: Parameters<WorkflowRunPersistence['usageCapacity']>[0],
     ) => {

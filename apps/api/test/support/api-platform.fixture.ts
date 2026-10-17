@@ -133,6 +133,7 @@ export function createStubApiWorkflowRuntime(
         stepHealth: () => Promise.resolve(undefined),
         stepRuns: () => Promise.resolve(undefined),
         statistics: () => Promise.reject(new Error('not used')),
+        usageTrends: () => Promise.reject(new Error('not used')),
         usageCapacity: () => Promise.reject(new Error('not used')),
         cancel: () => Promise.reject(new Error('not used')),
       },

@@ -8,6 +8,7 @@ const labels = {
   workflow_auto_paused: 'Workflow auto-paused',
   connection_attention: 'Connection needs attention',
   limit_reached: 'Workspace limit reached',
+  limit_approaching: 'Workspace nearing a limit',
   approval_waiting: 'Approval waiting',
 } as const;
 /** Only the database's safe projection enters personal mail. */

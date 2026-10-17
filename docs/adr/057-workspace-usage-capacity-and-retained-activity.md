@@ -96,3 +96,23 @@ that expects head 0125. This is not a new promise of mixed-head rolling startup.
 There is no production rollout authorization here. F12 warnings, trends,
 timezone settings, quota editing and billing remain deferred and the full F12
 tracker must not imply their completion.
+
+## Amendment — 2026-10-17: warning episodes and retained trends
+
+The owner approved fixed 80% warnings and 30/90-day trends. This supersedes their
+previous deferral, without introducing billing, configurable thresholds, quota
+editing or reporting timezones. F27's current-attention observer and delivery own
+independent per-limit warning episodes. Existing Inbox threads gain a nullable
+capacity key and uniqueness fence; no additional notification subsystem is needed.
+Only an observed drop below 80% rearms that limit. Observation/mail stay best
+effort, and brief between-scan crossings can be missed. Current capacity includes
+all charged work, including tests and reservations, under existing admission rules.
+
+Trends use retained ordinary-run summaries and exclude tests through the shared
+runs data-policy owner. A period contains 30 or 90 UTC calendar days including the
+partial current day. Server bounds and snapshot time are authoritative. Durations
+measure elapsed completion-minus-start time, including waits but excluding the
+pre-start queue; unavailable durations are not zero. Return daily outcomes and
+bounded top-ten workflow rankings, with existing run-read/name disclosure, RLS,
+statement timeout and cache-denial behavior. No rollup or reconstructed lifetime
+history. See F12 for owners, evidence, coverage and rollout limits.

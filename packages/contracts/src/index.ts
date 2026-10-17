@@ -128,3 +128,5 @@ export {
 export * from './schemas/workflows/step-samples.js';
 
 export * from './schemas/execution/workflow-tests.js';
+
+export * from './schemas/execution/usage-trends.js';

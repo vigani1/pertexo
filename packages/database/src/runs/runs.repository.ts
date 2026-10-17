@@ -1,3 +1,8 @@
+import {
+  readUsageTrends,
+  type UsageTrendsInput,
+} from './queries/usage-trends.js';
+import type { UsageTrendsResponse } from '@pertexo/contracts';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
@@ -213,6 +218,7 @@ export type CancelWorkflowRunInput = Readonly<
   z.input<typeof cancelInputSchema>
 >;
 export interface WorkflowRunDatabase {
+  usageTrends(input: UsageTrendsInput): Promise<UsageTrendsResponse>;
   recovery(
     input: WorkflowRecoveryPreviewInput,
   ): Promise<WorkflowRecoveryPreview>;
@@ -360,6 +366,7 @@ export function createWorkflowRunDatabase(
       readWorkflowStepRuns(pool, input),
     statistics: (input: WorkflowRunStatisticsDatabaseInput) =>
       readWorkflowRunStatistics(pool, input),
+    usageTrends: (input: UsageTrendsInput) => readUsageTrends(pool, input),
     usageCapacity: (input: WorkspaceUsageCapacityInput) =>
       readWorkspaceUsageCapacity(pool, input),
     cancel: async (input: CancelWorkflowRunInput) => {

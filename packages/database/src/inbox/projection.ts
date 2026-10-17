@@ -25,8 +25,9 @@ export type NoticeRow = Readonly<{
   unread: boolean;
   source_revision: string | null;
   task_details: unknown;
+  capacity_limit: string | null;
 }>;
-export const noticeColumns = `thread.id,thread.notice_kind,thread.subject_id,thread.workflow_id,workflow.name workflow_name,connection.name connection_name,workspace.name workspace_name,thread.latest_kind,thread.occurrence_count::text,thread.source_revision,
+export const noticeColumns = `thread.id,thread.notice_kind,thread.subject_id,thread.workflow_id,workflow.name workflow_name,connection.name connection_name,workspace.name workspace_name,thread.latest_kind,thread.occurrence_count::text,thread.source_revision,thread.capacity_limit,
  task.context->'details' task_details,to_char(thread.first_occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') first_occurred_at,
  to_char(thread.latest_occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') latest_occurred_at,
  thread.latest_run_id,thread.revision::text,(seen.read_revision is null or seen.read_revision<thread.revision) unread`;
@@ -89,9 +90,11 @@ export async function projectNotices(
             name:
               row.workflow_name ?? row.connection_name ?? row.workspace_name,
             limits:
-              row.notice_kind === 'limit_reached'
-                ? (row.source_revision?.split(',') ?? [])
-                : [],
+              row.notice_kind === 'limit_approaching'
+                ? [row.capacity_limit]
+                : row.notice_kind === 'limit_reached'
+                  ? (row.source_revision?.split(',') ?? [])
+                  : [],
           },
     );
   });

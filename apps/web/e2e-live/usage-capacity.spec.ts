@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import {
   usageCapacityResponseSchema,
+  usageTrendsResponseSchema,
   workflowRunStatisticsResponseSchema,
 } from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
@@ -44,9 +45,9 @@ test('reports real current capacity and retained activity with exact drilldowns'
     await (await capacityResponse).json(),
   );
   expect(capacity.execution).toMatchObject({
-    activeRuns: 1,
+    activeRuns: 4,
     reservedActiveSlots: 0,
-    activeCapacityConsumed: 1,
+    activeCapacityConsumed: 4,
     queuedRuns: 1,
     policy: { state: 'active', activeRunLimit: 5, queuedRunLimit: 100 },
   });
@@ -62,16 +63,16 @@ test('reports real current capacity and retained activity with exact drilldowns'
     current.getByRole('figure', { name: '11 B stored of 1 GB' }),
   ).toBeVisible();
   await expect(current).toContainText('/ 1 GB');
-  await expect(current).toContainText('1 / 5');
+  await expect(current).toContainText('4 / 5');
   const oneHour = workflowRunStatisticsResponseSchema.parse(
     await (await oneHourResponse).json(),
   );
-  expect(oneHour.window.total).toBe(3);
+  expect(oneHour.window.total).toBe(6);
   const activity = page.getByRole('region', { name: 'Recent runs' });
   const renderedTotal = activity
     .locator('p')
     .filter({ hasText: /runs? started in the last/u });
-  await expect(renderedTotal).toHaveText('3 runs started in the last hour');
+  await expect(renderedTotal).toHaveText('6 runs started in the last hour');
   const sixHourResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/run-statistics?') &&
@@ -83,8 +84,8 @@ test('reports real current capacity and retained activity with exact drilldowns'
   const sixHour = workflowRunStatisticsResponseSchema.parse(
     await (await sixHourResponse).json(),
   );
-  expect(sixHour.window.total).toBe(4);
-  await expect(renderedTotal).toHaveText('4 runs started in the last 6 hours');
+  expect(sixHour.window.total).toBe(7);
+  await expect(renderedTotal).toHaveText('7 runs started in the last 6 hours');
   await expect(page).toHaveURL(/window=6h/u);
   const failed = page
     .getByRole('list', { name: 'Activity by current run status' })
@@ -123,8 +124,8 @@ test('reports real current capacity and retained activity with exact drilldowns'
   const mobile = workflowRunStatisticsResponseSchema.parse(
     await (await mobileResponse).json(),
   );
-  expect(mobile.window.total).toBe(4);
-  await expect(renderedTotal).toHaveText('4 runs started in the last 6 hours');
+  expect(mobile.window.total).toBe(7);
+  await expect(renderedTotal).toHaveText('7 runs started in the last 6 hours');
   await expect(
     page.getByRole('button', { name: 'Refresh recent runs' }),
   ).toBeEnabled();
@@ -140,6 +141,57 @@ test('reports real current capacity and retained activity with exact drilldowns'
     path: '/tmp/pertexo-usage-live-mobile.png',
     fullPage: true,
   });
+  for (const width of [1280, 375]) {
+    await page.setViewportSize({ width, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const response = page.waitForResponse(
+      (item) =>
+        item.url().includes('/usage-trends?period=90d') &&
+        item.status() === 200,
+    );
+    await page.goto(`/w/${seed.workspaceId}/settings/usage/trends?period=90d`);
+    const summary = usageTrendsResponseSchema.parse(
+      await (await response).json(),
+    );
+    expect(summary).toMatchObject({
+      total: 8,
+      elapsed: { measuredRuns: 3, averageMs: 40000, slowestMs: 60000 },
+    });
+    expect(summary.days).toHaveLength(90);
+    await expect(
+      page
+        .getByRole('region', { name: 'Daily outcomes' })
+        .getByText('8 runs', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('region', { name: 'Elapsed duration' }),
+    ).toContainText('40s');
+    await expect(
+      page.getByRole('region', { name: 'Elapsed duration' }),
+    ).toContainText('1m 00s');
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `/tmp/pertexo-f12-trends-live-${String(width)}.png`,
+      fullPage: true,
+    });
+    await page.goto(`/w/${seed.workspaceId}/inbox`);
+    await expect(
+      page.getByText('Workspace nearing a limit', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('At least 80% of this capacity is in use.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: `/tmp/pertexo-f12-warning-live-${String(width)}.png`,
+      fullPage: true,
+    });
+  }
   const evidence = await request.post(`${origin}/usage-evidence`, {
     data: { workspaceId: seed.workspaceId, observed: true },
   });

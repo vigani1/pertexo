@@ -290,7 +290,7 @@ export const RETENTION_RULES = Object.freeze([
       where proof.id = page.id`,
   },
   {
-    // An inbox thread goes 30 days after its latest failure.
+    // Recheck after row-lock waits so retention cannot erase a reactivated episode.
     name: 'workspace_inbox_threads',
     statement: `
       with page as (
@@ -300,7 +300,9 @@ export const RETENTION_RULES = Object.freeze([
       )
       delete from app.workspace_inbox_threads thread using page
       where (thread.workspace_id, thread.id)
-        = (page.workspace_id, page.id)`,
+        = (page.workspace_id, page.id)
+        and thread.latest_occurred_at <= statement_timestamp() - interval '720 hours'
+        and (thread.notice_kind='workflow_failure' or not thread.active)`,
   },
   {
     name: 'identity_security_audit_facts',

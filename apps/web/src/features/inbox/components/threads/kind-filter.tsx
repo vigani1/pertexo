@@ -17,6 +17,7 @@ const noticeKinds = [
   { value: 'workflow_auto_paused', label: 'Auto-paused workflows' },
   { value: 'connection_attention', label: 'Connections needing attention' },
   { value: 'limit_reached', label: 'Limits reached' },
+  { value: 'limit_approaching', label: 'Approaching limits' },
   { value: 'approval_waiting', label: 'Approvals waiting' },
 ];
 export function NoticeKindFilter({
