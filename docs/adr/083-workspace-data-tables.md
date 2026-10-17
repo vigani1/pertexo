@@ -72,3 +72,13 @@ POST, with bounded form decoding only at this endpoint. Successful HTTP EOF is
 sent only after the read transaction completes; failures abort the download.
 The existing rate limiter bounds export starts. No download tickets, temporary
 artifact storage, browser service worker or background export system is added.
+
+
+## Clarification — explicit workflow names (2026-10-17)
+
+Renamed table columns do not rewrite workflow aliases. The editor shows both
+names and offers an explicit review before adopting current names together for
+the currently bound IDs. This is an ordinary undoable draft config change;
+immutable published graphs remain unchanged. The review lists affected mappings
+and identifies dynamic consumers for manual inspection. It never silently
+rewrites mappings, expressions, Code or input data on the user's behalf.

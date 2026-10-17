@@ -21,6 +21,7 @@ import {
   startSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
+import { qualifyColumnNames } from './qualify-column-names';
 import { qualifyLargeDownload } from './qualify-download';
 for (const width of [1280, 375])
   test(`real typed data tables create, import, edit, export and execute at ${String(width)}px`, async ({
@@ -277,6 +278,14 @@ for (const width of [1280, 375])
     expect(
       found.rows.find((row) => row.values.key === 'alpha')?.values,
     ).toEqual({ key: 'alpha', amount: 20, currency: 'USD' });
+    const currentVersionId = await qualifyColumnNames(
+      page,
+      workspaceId,
+      workflow,
+      nodeId,
+      version.id,
+      width,
+    );
     await page.goto(`/w/${workspaceId}/data-tables/${table.id}`);
     await page.setViewportSize({ width, height: 768 });
     await page
@@ -326,7 +335,7 @@ for (const width of [1280, 375])
     expect(refusedPublication.status()).toBeLessThan(500);
     const refused = await page.request.post(`${workflow}/runs`, {
       headers: { ...headers, 'Idempotency-Key': randomUUID() },
-      data: { input: {}, expectedPublishedVersionId: version.id },
+      data: { input: {}, expectedPublishedVersionId: currentVersionId },
     });
     expect(refused.status()).toBe(400);
     expect(apiProblemSchema.parse(await refused.json()).detail).toContain(
