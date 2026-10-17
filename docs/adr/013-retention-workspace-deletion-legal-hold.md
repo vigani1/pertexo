@@ -130,3 +130,10 @@ legal authority and backup duration.
 - Restoring directly to `active` or automatically re-enabling integrations.
 - Claiming immediate physical deletion from backup media.
 - Inventing legal authority or a backup-retention duration in the ADR.
+
+## Amendment — 2026-10-17
+
+[ADR 085](085-audit-and-publication-review.md) makes workspace audit retention
+configurable from 30 to 2,555 days, default 365, through audited owner/admin
+commands. The existing retention runner applies it. Run retention is unchanged;
+ADR 069 still supersedes this ADR where it removed older lifecycle machinery.

@@ -229,3 +229,6 @@ Write JavaScript transforms with the isolated [Code step](docs/guides/code.md).
 
 Process lists with [For each](docs/guides/for-each.md) and
 [Batch items](docs/guides/data-transforms.md#batching-work-for-for-each).
+
+Workspace owners and admins can inspect and export the
+[audit log](docs/guides/audit.md) and configure how long its metadata is kept.

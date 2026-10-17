@@ -77,6 +77,11 @@ export const ROLE_MATRIX: readonly Readonly<{
     roles: ['owner', 'admin', 'builder'],
   },
   {
+    ability: 'Read the audit log and manage audit retention',
+    capabilities: ['audit:read', 'governance:manage'],
+    roles: ['owner', 'admin'],
+  },
+  {
     ability: 'Manage workspace variables',
     capabilities: ['variable:manage'],
     roles: ['owner', 'admin'],

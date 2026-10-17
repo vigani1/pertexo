@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../governance/audit/append.js';
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { DataTableError } from '@pertexo/node-sdk';
@@ -81,6 +82,13 @@ export function createDataTablesStore(
     client: PoolClient,
     input: DataTableScope & { idempotencyKey: string },
     operation: string,
+    audit:
+      | ((result: T) => Readonly<{
+          targetId: string;
+          targetType: 'workspace' | 'data_table';
+          metadata?: Readonly<Record<string, unknown>>;
+        }>)
+      | null,
     request: unknown,
     work: () => Promise<T>,
   ): Promise<T> => {
@@ -99,6 +107,13 @@ export function createDataTablesStore(
     });
     if (prior !== null) return prior as T;
     const result = await work();
+    if (audit !== null)
+      await appendAuditFact(client, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        action: operation,
+        ...audit(result),
+      });
     await completeCommand(client, identity, result);
     return result;
   };
@@ -120,6 +135,11 @@ export function createDataTablesStore(
           client,
           input,
           'data.tables.create',
+          (result) => ({
+            targetType: 'data_table',
+            targetId: result.id,
+            metadata: { columnCount: input.columns.length },
+          }),
           {
             name: input.name,
             columns: input.columns,
@@ -179,6 +199,7 @@ export function createDataTablesStore(
           client,
           input,
           'data.tables.schema.edit',
+          null,
           {
             tableId: input.tableId,
             expectedRevision: input.expectedRevision,
@@ -206,6 +227,7 @@ export function createDataTablesStore(
           client,
           input,
           'data.tables.remove',
+          () => ({ targetType: 'data_table', targetId: input.tableId }),
           { tableId: input.tableId, expectedRevision: input.expectedRevision },
           async () => {
             await readQuotas(client, input.workspaceId, true);
@@ -240,6 +262,16 @@ export function createDataTablesStore(
             client,
             input,
             'data.tables.configure',
+            () => ({
+              targetType: 'workspace',
+              targetId: input.workspaceId,
+              metadata: {
+                tableLimit: input.tableLimit,
+                columnLimit: input.columnLimit,
+                rowLimit: input.rowLimit,
+                byteLimit: input.byteLimit,
+              },
+            }),
             {
               tableLimit: input.tableLimit,
               columnLimit: input.columnLimit,
@@ -295,6 +327,14 @@ export function createDataTablesStore(
           client,
           input,
           'data.tables.rows.write',
+          (result) => ({
+            targetType: 'data_table',
+            targetId: input.tableId,
+            metadata: {
+              operation: input.command.operation,
+              affected: result.affected,
+            },
+          }),
           {
             tableId: input.tableId,
             command: input.command,
@@ -344,6 +384,11 @@ export function createDataTablesStore(
           client,
           input,
           'data.tables.rows.import',
+          (result) => ({
+            targetType: 'data_table',
+            targetId: input.tableId,
+            metadata: { affected: result.affected },
+          }),
           'prepareRows' in input
             ? { tableId: input.tableId, csv: input.csv }
             : { tableId: input.tableId, rows: input.rows },

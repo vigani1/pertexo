@@ -1,4 +1,11 @@
 import {
+  auditFilterSchema,
+  auditQuerySchema,
+  auditPageSchema,
+  governanceSettingsSchema,
+  governanceUpdateSchema,
+} from '@pertexo/contracts';
+import {
   workspaceVariablesResponseSchema,
   workspaceVariablesRequestSchema,
   workspaceVariablesCommandResponseSchema,
@@ -154,6 +161,11 @@ describe('identity/workspace generated contracts', () => {
           accountSecuritySessionsResponseSchema,
           'output',
         ),
+        AuditFilter: generated(auditFilterSchema, 'input'),
+        AuditQuery: generated(auditQuerySchema, 'input'),
+        AuditPage: generated(auditPageSchema, 'output'),
+        GovernanceSettings: generated(governanceSettingsSchema, 'output'),
+        GovernanceUpdate: generated(governanceUpdateSchema, 'input'),
         ApiProblem: generated(apiProblemSchema, 'output'),
         AuthenticationCapabilitiesResponse: generated(
           authenticationCapabilitiesResponseSchema,
@@ -285,6 +297,9 @@ describe('identity/workspace generated contracts', () => {
       '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query',
       '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows',
       '/v1/workspaces/{workspaceId}/data-tables/{tableId}/import',
+      '/v1/workspaces/{workspaceId}/governance/audit',
+      '/v1/workspaces/{workspaceId}/governance/settings',
+      '/v1/workspaces/{workspaceId}/governance/audit/export',
       '/v1/auth/capabilities',
       '/v1/users/me',
       '/v1/auth/account-security/sessions',

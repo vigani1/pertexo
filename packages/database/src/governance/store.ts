@@ -1,0 +1,112 @@
+import type { PoolClient } from 'pg';
+import type { DatabaseConfig } from '../config.js';
+import {
+  acquireDatabasePool,
+  type DatabaseRuntime,
+} from '../platform/pool/runtime.js';
+import {
+  withTenantScopedClient,
+  withTenantScopedReadClient,
+} from '../tenant-access/transactions.js';
+import {
+  lockWorkspaceAuthority,
+  readWorkspaceAuthority,
+} from '../tenant-access/workspaces/authority.js';
+import {
+  rolesForCapability,
+  type AuthorizationCapability,
+} from '../tenant-access/policy.js';
+import type { GovernanceStore, GovernanceScope } from './contract.js';
+import {
+  readAuditBatch,
+  decodeAuditCursor,
+  encodeAuditCursor,
+  projectAuditEvent,
+} from './audit/query.js';
+import { prepareAuditExport } from './audit/export.js';
+import {
+  readGovernanceSettings,
+  configureGovernance,
+} from './settings/commands.js';
+export function createGovernanceStore(
+  config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
+): GovernanceStore {
+  const lease = acquireDatabasePool(config, runtime);
+  const read = <T>(
+    input: GovernanceScope,
+    capability: AuthorizationCapability,
+    work: (client: PoolClient) => Promise<T>,
+  ) =>
+    withTenantScopedReadClient(
+      lease.pool,
+      input,
+      async (client) => {
+        await readWorkspaceAuthority(
+          client,
+          input.workspaceId,
+          input.actorId,
+          rolesForCapability(capability),
+          ['active', 'suspended', 'pending_deletion'],
+        );
+        return work(client);
+      },
+      input.signal === undefined ? {} : { signal: input.signal },
+    );
+  return {
+    close: () => lease.close(),
+    list: async (input) => {
+      const after = decodeAuditCursor(input.query.after);
+      return read(input, 'audit:read', async (client) => {
+        const rows = await readAuditBatch(
+          client,
+          input.workspaceId,
+          input.query,
+          input.query.limit + 1,
+          after,
+        );
+        const items = rows.slice(0, input.query.limit);
+        const last = items.at(-1);
+        return {
+          items: items.map(projectAuditEvent),
+          nextCursor:
+            rows.length > input.query.limit && last !== undefined
+              ? encodeAuditCursor(last)
+              : null,
+        };
+      });
+    },
+    settings: (input) =>
+      read(input, 'audit:read', (client) =>
+        readGovernanceSettings(client, input.workspaceId),
+      ),
+    configure: (input) =>
+      withTenantScopedClient(
+        lease.pool,
+        input,
+        async (client) => {
+          await client.query(
+            'select id from app.workspaces where id=$1 for update',
+            [input.workspaceId],
+          );
+          await lockWorkspaceAuthority(
+            client,
+            input.workspaceId,
+            input.actorId,
+            rolesForCapability('governance:manage'),
+          );
+          return configureGovernance(client, input);
+        },
+        input.signal === undefined ? {} : { signal: input.signal },
+      ),
+    exportCsv: async (input) => {
+      const prepared = await prepareAuditExport(
+        (work) => read(input, 'audit:read', work),
+        input.workspaceId,
+        input.query,
+        input.signal,
+      );
+      await input.consume(prepared.csv, prepared.metadata);
+    },
+  };
+}

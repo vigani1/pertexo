@@ -59,6 +59,10 @@
     "./data-tables": {
       "types": "./dist/data-tables/index.d.ts",
       "default": "./dist/data-tables/index.js"
+    },
+    "./governance": {
+      "types": "./dist/governance/index.d.ts",
+      "default": "./dist/governance/index.js"
     }
   },
   "scripts": {

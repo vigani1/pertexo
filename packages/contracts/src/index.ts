@@ -181,3 +181,17 @@ export {
   type CoordinatedEvent,
   type CoordinatedEventHistory,
 } from './schemas/forms/coordination.js';
+
+export {
+  auditFilterSchema,
+  auditQuerySchema,
+  auditPageSchema,
+  auditRetentionSchema,
+  governanceSettingsSchema,
+  governanceUpdateSchema,
+  type AuditFilter,
+  type AuditQuery,
+  type AuditEvent,
+  type AuditPage,
+  type GovernanceSettings,
+} from './schemas/identity/governance.js';

@@ -91,7 +91,7 @@ it('renames populated mail without changing row, grant, index or referenced rela
       '0026_workflow_test_suites.sql',
       '0027_workspace_data_tables.sql',
       '0028_trigger_event_coordination.sql',
-      '0029_data_table_column_identity.sql',
+      '0030_audit_retention.sql',
     ]);
     expect(await catalog('app.system_mail_deliveries')).toEqual(before);
     expect(

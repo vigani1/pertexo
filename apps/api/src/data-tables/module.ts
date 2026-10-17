@@ -1,6 +1,3 @@
-import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
-import { RATE_LIMIT_CONCURRENCY } from '../platform/rate-limit/rate-limit.module.js';
-import { TableExportAdmission } from '../platform/http/csv/admission.js';
 import { Module, type DynamicModule } from '@nestjs/common';
 import type { DataTablesStore } from '@pertexo/database/data-tables';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
@@ -26,12 +23,6 @@ export class DataTablesModule {
       imports: [identityModule, admissionModule],
       controllers: [DataTablesController],
       providers: [
-        {
-          provide: TableExportAdmission,
-          inject: [RATE_LIMIT_CONCURRENCY],
-          useFactory: (slots: RedisRateLimitRuntime) =>
-            new TableExportAdmission(slots),
-        },
         { provide: DataTablesService, useValue: new DataTablesService(store) },
         { provide: TABLE_AUTHORIZATION, useValue: authorization },
         DataTablesReadGuard,

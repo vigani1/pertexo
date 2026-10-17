@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/append.js';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -53,6 +54,18 @@ export async function recordCredentialAccess(
     purpose: string;
   }>,
 ): Promise<void> {
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    action: 'connection.credential_accessed',
+    targetType: 'connection',
+    targetId: input.connectionId,
+    traceId: input.traceId,
+    metadata: {
+      actorKind: 'worker',
+      purpose: input.purpose,
+      secretVersionId: input.secretVersionId,
+    },
+  });
   await client.query(
     `insert into app.connection_events
        (id, workspace_id, connection_id, event_type, actor_kind, actor_id,

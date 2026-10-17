@@ -1,0 +1,28 @@
+import { Module, type DynamicModule } from '@nestjs/common';
+import type { GovernanceStore } from '@pertexo/database/governance';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
+import { GovernanceController } from './controller.js';
+import { GovernanceService } from './service.js';
+import { GOVERNANCE_AUTHORIZATION, GovernanceGuard } from './guard.js';
+@Module({})
+// Nest dynamic modules require a class container.
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+export class GovernanceModule {
+  static register(
+    store: GovernanceStore,
+    authorization: WorkspaceAuthorizationSource,
+    identity: DynamicModule,
+    admission: DynamicModule,
+  ): DynamicModule {
+    return {
+      module: GovernanceModule,
+      imports: [identity, admission],
+      controllers: [GovernanceController],
+      providers: [
+        { provide: GovernanceService, useValue: new GovernanceService(store) },
+        { provide: GOVERNANCE_AUTHORIZATION, useValue: authorization },
+        GovernanceGuard,
+      ],
+    };
+  }
+}

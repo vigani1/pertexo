@@ -219,13 +219,13 @@ export const RETENTION_RULES = Object.freeze([
       delete from app.workflow_runs run using page where run.id = page.id`,
   },
   {
-    // Audit records are kept for a year.
     name: 'audit_events',
     statement: `
       with page as (
-        select id from app.audit_events
-        where occurred_at <= clock_timestamp() - interval '365 days'
-        order by occurred_at, id limit $1
+        select audit.id from app.audit_events audit
+        join app.workspaces workspace on workspace.id=audit.workspace_id
+        where audit.occurred_at <= clock_timestamp() - workspace.audit_retention_days * interval '1 day'
+        order by audit.occurred_at, audit.id limit $1
       )
       delete from app.audit_events audit using page where audit.id = page.id`,
   },

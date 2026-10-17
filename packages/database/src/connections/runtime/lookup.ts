@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/append.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool } from 'pg';
@@ -105,6 +106,18 @@ export function createConnectionLookupPersistence(
               }),
             ],
           );
+          await appendAuditFact(client, {
+            workspaceId,
+            actorId,
+            action: 'connection.credential_accessed',
+            targetType: 'connection',
+            targetId: connectionId,
+            ...metadata,
+            metadata: {
+              purpose,
+              secretVersionId: connection.currentSecretVersionId,
+            },
+          });
           return Object.freeze({
             connection,
             secretVersionId: connection.currentSecretVersionId,

@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../governance/audit/append.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 
 import type { Pool } from 'pg';
@@ -173,6 +174,15 @@ export function createConnectionSecretPersistence(
               }),
             ],
           );
+          await appendAuditFact(client, {
+            workspaceId,
+            actorId,
+            action: 'connection.secret_rotated',
+            targetType: 'connection',
+            targetId: connectionId,
+            ...metadata,
+            metadata: { previousSecretVersionId: expected, secretVersionId },
+          });
           const row = updated.rows[0];
           if (row === undefined)
             throw new Error('Connection rotation returned no row');

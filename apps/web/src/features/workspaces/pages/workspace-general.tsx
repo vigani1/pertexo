@@ -149,6 +149,21 @@ export function WorkspaceGeneralPage({
           </Link>
         </SettingsSection>
 
+        {workspace.capabilities.includes('audit:read') ? (
+          <SettingsSection
+            title="Audit log"
+            description="Who changed what and how long audit events are kept."
+          >
+            <Link
+              className="text-sm text-action underline underline-offset-4"
+              to="/w/$workspaceId/settings/audit"
+              params={{ workspaceId: workspace.id }}
+            >
+              Open audit log
+            </Link>
+          </SettingsSection>
+        ) : null}
+
         <SettingsSection
           title="Your access"
           description={`You’re ${withArticle(workspace.role)}. ${ROLE_SUMMARIES[workspace.role]}`}

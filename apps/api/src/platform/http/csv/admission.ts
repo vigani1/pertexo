@@ -1,12 +1,14 @@
 import { Logger } from '@nestjs/common';
 import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
-import { DataTableError } from '@pertexo/node-sdk';
-import { applicationError, throwApplicationError } from '../index.js';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../application-error.js';
 import { EXPORT_INSTANCE_LIMIT, EXPORT_SLOT_MILLIS } from './limits.js';
 
-export class TableExportAdmission {
+export class CsvExportAdmission {
   private active = 0;
-  private readonly logger = new Logger(TableExportAdmission.name);
+  private readonly logger = new Logger(CsvExportAdmission.name);
   constructor(
     private readonly slots: Pick<RedisRateLimitRuntime, 'acquireExclusiveSlot'>,
   ) {}
@@ -19,6 +21,7 @@ export class TableExportAdmission {
     > = null;
     try {
       try {
+        // Keep the namespace shared with table exports during rolling upgrades.
         slot = await this.slots.acquireExclusiveSlot(
           `data-table-export:${workspaceId}`,
           EXPORT_SLOT_MILLIS,
@@ -40,7 +43,7 @@ export class TableExportAdmission {
         // The response may already have completed or disconnected, including
         // during shutdown. Never replace its outcome with a cleanup error.
         this.logger.warn(
-          'Could not release table export slot; it will expire automatically.',
+          'Could not release CSV export slot; it will expire automatically.',
         );
       } finally {
         this.active -= 1;
@@ -49,9 +52,11 @@ export class TableExportAdmission {
   }
 
   private refuse(): never {
-    throw new DataTableError(
-      'conflict',
-      'An export is already running. Wait for it to finish or cancel it, then try again.',
+    throwApplicationError(
+      applicationError('workspace.conflict', {
+        safeDetail:
+          'An export is already running. Wait for it to finish or cancel it, then try again.',
+      }),
     );
   }
 }

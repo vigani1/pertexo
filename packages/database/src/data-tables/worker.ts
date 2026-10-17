@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../governance/audit/append.js';
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
 import {
@@ -109,6 +110,19 @@ export function createWorkerDataTablesStore(
               JSON.stringify(result),
             ],
           );
+          await appendAuditFact(client, {
+            workspaceId: input.workspaceId,
+            action: 'data.tables.rows.write',
+            targetType: 'data_table',
+            targetId: table.id,
+            metadata: {
+              actorKind: 'workflow',
+              runId: input.runId,
+              invocationId: input.nodeRunId,
+              operation: command.operation,
+              affected: result.affected,
+            },
+          });
           return result;
         },
       ).catch((error: unknown) => {

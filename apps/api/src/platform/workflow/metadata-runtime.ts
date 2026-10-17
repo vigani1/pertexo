@@ -1,4 +1,8 @@
 import {
+  createGovernanceStore,
+  type GovernanceStore,
+} from '@pertexo/database/governance';
+import {
   createDataTablesStore,
   type DataTablesStore,
 } from '@pertexo/database/data-tables';
@@ -26,6 +30,7 @@ export type ApiWorkflowMetadataRuntime = Readonly<{
   inputCases?: WorkflowInputCaseDatabase;
   variables: WorkspaceVariablesStore;
   dataTables: DataTablesStore;
+  governance: GovernanceStore;
   organization: WorkflowAuthoringDependencies['organization'];
   close(): Promise<void>;
 }>;
@@ -68,6 +73,8 @@ export async function createApiWorkflowMetadataRuntime(
             createWorkflowInputCaseDatabase
           )(config, lease));
     if (inputCases !== undefined) resources.push(inputCases);
+    const governance = createGovernanceStore(config, runtime);
+    resources.push(governance);
     const dataTables = createDataTablesStore(config, runtime);
     resources.push(dataTables);
     const variables = createWorkspaceVariablesStore(config, runtime);
@@ -85,6 +92,7 @@ export async function createApiWorkflowMetadataRuntime(
     return Object.freeze({
       variables,
       dataTables,
+      governance,
       ...(inputCases === undefined ? {} : { inputCases }),
       organization: Object.freeze({
         tags,

@@ -1,3 +1,4 @@
+import { CsvExportAdmission } from '../http/csv/admission.js';
 import { HttpRateLimitAdmission } from './admission.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
@@ -30,8 +31,18 @@ export class RateLimitModule {
     return {
       module: RateLimitModule,
       imports: [ApiLifecycleModule],
-      exports: [HttpRateLimitAdmission, RATE_LIMIT_CONCURRENCY],
+      exports: [
+        HttpRateLimitAdmission,
+        RATE_LIMIT_CONCURRENCY,
+        CsvExportAdmission,
+      ],
       providers: [
+        {
+          provide: CsvExportAdmission,
+          inject: [RATE_LIMIT_CONCURRENCY],
+          useFactory: (slots: RedisRateLimitRuntime) =>
+            new CsvExportAdmission(slots),
+        },
         {
           provide: RATE_LIMIT_CONCURRENCY,
           inject: [ApiShutdownCoordinator],

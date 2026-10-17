@@ -242,7 +242,7 @@ jobs:
           - suite: live-3
             journeys: >-
               duplication portability curated-templates run-recovery forms
-              transforms pinned-samples
+              transforms pinned-samples governance
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
