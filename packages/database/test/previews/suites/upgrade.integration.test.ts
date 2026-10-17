@@ -86,6 +86,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0026_workflow_test_suites.sql',
       '0027_workspace_data_tables.sql',
       '0028_trigger_event_coordination.sql',
+      '0029_data_table_column_identity.sql',
     ]);
     expect(
       (
