@@ -276,3 +276,39 @@ it('blocks replay of an expired Form response rather than letting someone invent
     within(dialog).getByRole('link', { name: 'Open workflow form' }),
   ).toBeVisible();
 });
+
+it('describes a concurrency refusal without claiming a replay conflict', async () => {
+  installRunHandlers();
+  mockServer.use(
+    http.post(`${apiBase}/runs/${sourceRunId}/replay`, () =>
+      HttpResponse.json(
+        {
+          type: 'about:blank',
+          title: 'Workflow already running',
+          status: 409,
+          code: 'workflow.already_running',
+          requestId: 'test',
+        },
+        {
+          status: 409,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      ),
+    ),
+  );
+  renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+  const dialog = await openReplay();
+  await userEvent
+    .setup()
+    .click(within(dialog).getByRole('button', { name: 'Replay run' }));
+  expect(
+    await within(dialog).findByText(
+      'This workflow is already running. Try again shortly.',
+    ),
+  ).toBeVisible();
+  expect(
+    within(dialog).queryByText('This replay clashes with an earlier one.', {
+      exact: false,
+    }),
+  ).toBeNull();
+});

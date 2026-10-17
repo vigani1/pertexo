@@ -1,3 +1,5 @@
+import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
+import { recordWorkflowTriggerSkip } from '../skips.js';
 import {
   webhookAuthenticationSchema,
   type WebhookAuthentication,
@@ -149,10 +151,13 @@ export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
     endpointKeyHash: string,
   ): Promise<WebhookVerificationReference | null>;
   consumeIngressLimit(endpointKeyHash: string): Promise<void>;
-  acceptVerifiedDelivery(
-    input: AcceptVerifiedWebhookDeliveryInput,
-  ): Promise<
-    Readonly<{ runId: string; replayed: boolean; responseWaitSeconds?: number }>
+  acceptVerifiedDelivery(input: AcceptVerifiedWebhookDeliveryInput): Promise<
+    | Readonly<{
+        runId: string;
+        replayed: boolean;
+        responseWaitSeconds?: number;
+      }>
+    | Readonly<{ skipped: true; reason: 'concurrency_limit' }>
   >;
   close(): Promise<void>;
 }
@@ -597,13 +602,14 @@ export function createWebhookTriggerDatabase(
           if (replay?.active === true) {
             const replayed = resolveExactReplay(replay, requestFingerprint);
             await insertWebhookDelivery(transaction, verification, {
-              outcome: 'replayed',
+              outcome: 'skipped' in replayed ? 'skipped' : 'replayed',
               signatureCheck: 'verified',
               replayCheck: 'duplicate',
               bodyBytes: input.bodyBytes,
-              runId: replayed.runId,
+              ...('skipped' in replayed ? {} : { runId: replayed.runId }),
               dedupeKind,
             });
+            if ('skipped' in replayed) return replayed;
             const seconds = await webhookReplayWait(
               transaction,
               replayed.runId,
@@ -633,23 +639,58 @@ export function createWebhookTriggerDatabase(
             verification.workflowVersionId,
           );
           const initial = input.checkpointFactory(projection);
-          const accepted = await acceptWorkflowRun(transaction, {
-            initialCheckpoint: initial.checkpoint,
-            ...(initial.validateInput === undefined
-              ? {}
-              : { validateInput: initial.validateInput }),
-            keyHash: createHash('sha256').update(deliveryId).digest('hex'),
-            operation: 'workflow.run.accept',
-            requestHash: requestFingerprint,
-            scope: `webhook:${verification.endpointId}`,
-            triggerType: 'webhook',
-            workflowId: verification.workflowId,
-            workflowVersionId: verification.workflowVersionId,
-            runInput: input.payload,
-            ...(input.traceparent === undefined
-              ? {}
-              : { traceparent: input.traceparent }),
-          });
+          let accepted;
+          await transaction.db.execute(sql`savepoint webhook_run_admission`);
+          try {
+            accepted = await acceptWorkflowRun(transaction, {
+              initialCheckpoint: initial.checkpoint,
+              ...(initial.validateInput === undefined
+                ? {}
+                : { validateInput: initial.validateInput }),
+              keyHash: createHash('sha256').update(deliveryId).digest('hex'),
+              operation: 'workflow.run.accept',
+              requestHash: requestFingerprint,
+              scope: `webhook:${verification.endpointId}`,
+              triggerType: 'webhook',
+              workflowId: verification.workflowId,
+              workflowVersionId: verification.workflowVersionId,
+              runInput: input.payload,
+              ...(input.traceparent === undefined
+                ? {}
+                : { traceparent: input.traceparent }),
+            });
+          } catch (error) {
+            if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
+            await transaction.db.execute(
+              sql`rollback to savepoint webhook_run_admission`,
+            );
+            await transaction.db.execute(
+              sql`release savepoint webhook_run_admission`,
+            );
+            await insertWebhookDelivery(transaction, verification, {
+              id: deliveryId,
+              outcome: 'skipped',
+              signatureCheck: 'verified',
+              replayCheck: 'new',
+              bodyBytes: input.bodyBytes,
+              dedupeKind,
+            });
+            await transaction.db.execute(
+              sql`update app.webhook_trigger_replay_records set skip_reason='concurrency_limit' where workspace_id=${transaction.workspaceId} and delivery_id=${deliveryId}`,
+            );
+            await recordWorkflowTriggerSkip(
+              transaction,
+              verification.workflowId,
+              'webhook',
+            );
+            return Object.freeze({
+              skipped: true as const,
+              reason: 'concurrency_limit' as const,
+            });
+          }
+          await transaction.db.execute(
+            sql`release savepoint webhook_run_admission`,
+          );
           await insertWebhookDelivery(transaction, verification, {
             id: deliveryId,
             outcome: 'accepted',

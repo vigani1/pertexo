@@ -69,3 +69,8 @@ don't disclose whether an endpoint exists.
 
 For a workflow-controlled response, see [Respond to webhook](webhook-responses.md).
 Provider-specific signatures such as Stripe or GitHub remain later work in F21.
+
+## When the workflow is busy
+
+A workflow can [queue or skip at its concurrency limit](concurrency.md).
+Skipped events create no run and remain visible in trigger history and Usage.

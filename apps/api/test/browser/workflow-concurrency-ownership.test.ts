@@ -85,6 +85,7 @@ function fixture(selectedProject: string | null = 'pertexo-ci-1234-2-browser') {
 describe('workflow concurrency ownership attestation', () => {
   it.each([
     'pertexo-ci-1234-2-browser',
+    'pertexo-ci-1234-2-integration',
     'pertexo-concurrency-browser-oct01-abcdef1234',
   ])(
     'accepts exact Compose-attested %s without service mutation',

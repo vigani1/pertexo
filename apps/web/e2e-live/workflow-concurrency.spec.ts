@@ -50,6 +50,39 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
   ).toBeVisible();
   await page.goto(settingsPath);
   await expect(input).toHaveValue('1');
+  await page
+    .getByRole('combobox', { name: 'When the limit is reached' })
+    .click();
+  await page.getByRole('option', { name: 'Skip', exact: true }).click();
+  const skippedPolicy = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/concurrency') &&
+      response.request().method() === 'PUT' &&
+      response.status() === 200,
+  );
+  await page.getByRole('button', { name: 'Save concurrency limit' }).click();
+  expect(
+    workflowConcurrencyCommandResponseSchema.parse(
+      await (await skippedPolicy).json(),
+    ).settings.overflow,
+  ).toBe('skip');
+  expect((await request.post(`${origin}/refuse-start`)).ok()).toBe(true);
+  for (const width of [1280, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(
+      page.getByRole('combobox', { name: 'When the limit is reached' }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `/tmp/pertexo-concurrency-skip-${String(width)}.png`,
+      fullPage: true,
+    });
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   await input.fill('');
   const removed = page.waitForResponse(
     (response) =>

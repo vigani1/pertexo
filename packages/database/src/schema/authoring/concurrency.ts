@@ -7,6 +7,7 @@ import {
   integer,
   primaryKey,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { workflows } from './workflows.js';
 
@@ -16,12 +17,17 @@ export const workflowConcurrencyPolicies = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     activeRunLimit: integer('active_run_limit'),
+    overflow: varchar('overflow', { length: 8 }).notNull().default('queue'),
     revision: integer('revision').notNull().default(1),
   },
   (table): PgTableExtraConfigValue[] => [
     check(
       'workflow_concurrency_policies_active_run_limit_check',
       sql`((active_run_limit >= 1) AND (active_run_limit <= 10000))`,
+    ),
+    check(
+      'workflow_concurrency_policies_overflow_check',
+      sql`overflow IN ('queue','skip')`,
     ),
     check('workflow_concurrency_policies_revision_check', sql`(revision > 0)`),
     primaryKey({

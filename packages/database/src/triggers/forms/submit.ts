@@ -1,3 +1,7 @@
+import { formSubmissionResponseSchema } from '@pertexo/contracts';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
+import { recordWorkflowTriggerSkip } from '../skips.js';
 import { readFormDefinition } from './definition.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -50,6 +54,22 @@ export async function submitForm(
     db: drizzle(client, { schema: databaseSchema }),
     workspaceId: parseWorkspaceId(input.workspaceId),
   };
+  const command = {
+    workspaceId: input.workspaceId,
+    operation: 'form.submit',
+    scope,
+    idempotencyKey: input.idempotencyKey,
+  };
+  const previous = await claimCommand(client, {
+    ...command,
+    requestHash: identity.requestHash,
+    resourceId: input.workflowId,
+  });
+  if (previous !== null)
+    return formSubmissionResponseSchema.parse({
+      ...formSubmissionResponseSchema.parse(previous),
+      replayed: true,
+    });
   const replay = await readWorkflowRunAcceptanceReplay(transaction, identity);
   if (replay !== null) {
     let acceptedForm = form;
@@ -63,11 +83,13 @@ export async function submitForm(
       if (row === undefined) throw new FormUnavailableError();
       acceptedForm = readFormDefinition(row.graph_json).form;
     }
-    return submissionReceipt(
+    const receipt = submissionReceipt(
       acceptedForm,
       { runId: replay.runId, replayed: true },
       publicAccess,
     );
+    await completeCommand(client, command, receipt);
+    return receipt;
   }
   if (version.id !== input.versionId) throw new FormChangedError();
   const values = parseFormValues(form.fields, input.values);
@@ -75,27 +97,47 @@ export async function submitForm(
   const at = now.rows[0]?.now;
   if (at === undefined) throw new Error('Form admission clock missing');
   const initial = prepare(version);
-  const accepted = await acceptWorkflowRun(transaction, {
-    ...identity,
-    workflowId: input.workflowId,
-    workflowVersionId: version.id,
-    initialCheckpoint: initial.checkpoint,
-    ...(initial.validateInput === undefined
-      ? {}
-      : { validateInput: initial.validateInput }),
-    triggerType: 'form',
-    ...(input.actorId === undefined ? {} : { startedBy: input.actorId }),
-    runInput: {
-      values,
-      submittedBy: input.actorId ?? null,
-      submittedAt: at.toISOString(),
-    },
-  });
-  return submissionReceipt(
+  let accepted;
+  await client.query('savepoint form_run_admission');
+  try {
+    accepted = await acceptWorkflowRun(transaction, {
+      ...identity,
+      workflowId: input.workflowId,
+      workflowVersionId: version.id,
+      initialCheckpoint: initial.checkpoint,
+      ...(initial.validateInput === undefined
+        ? {}
+        : { validateInput: initial.validateInput }),
+      triggerType: 'form',
+      ...(input.actorId === undefined ? {} : { startedBy: input.actorId }),
+      runInput: {
+        values,
+        submittedBy: input.actorId ?? null,
+        submittedAt: at.toISOString(),
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
+    await client.query('rollback to savepoint form_run_admission');
+    await client.query('release savepoint form_run_admission');
+    await recordWorkflowTriggerSkip(transaction, input.workflowId, 'form');
+    const receipt = {
+      accepted: false as const,
+      skipped: true as const,
+      reason: 'concurrency_limit' as const,
+      replayed: false,
+    };
+    await completeCommand(client, command, receipt);
+    return receipt;
+  }
+  await client.query('release savepoint form_run_admission');
+  const receipt = submissionReceipt(
     form,
     { runId: accepted.runId, replayed: accepted.duplicate },
     publicAccess,
   );
+  await completeCommand(client, command, receipt);
+  return receipt;
 }
 function submissionReceipt(
   form: FormConfig,

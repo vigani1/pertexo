@@ -289,7 +289,11 @@ describe('workflow concurrency settings', () => {
     await waitFor(() => {
       expect(bodies).toHaveLength(2);
     });
-    expect(bodies[1]).toEqual({ limit: 1, expectedRevision: 1 });
+    expect(bodies[1]).toEqual({
+      limit: 1,
+      expectedRevision: 1,
+      overflow: 'queue',
+    });
   });
   it('saves a current operational limit and removes it without publishing', async () => {
     installQueries();
@@ -336,8 +340,8 @@ describe('workflow concurrency settings', () => {
       'Current limit: no additional workflow limit. Workspace limits still apply.',
     );
     expect(bodies).toEqual([
-      { limit: 1, expectedRevision: 1 },
-      { limit: null, expectedRevision: 2 },
+      { limit: 1, expectedRevision: 1, overflow: 'queue' },
+      { limit: null, expectedRevision: 2, overflow: 'queue' },
     ]);
   });
 
@@ -373,7 +377,9 @@ describe('workflow concurrency settings', () => {
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
     await screen.findByText('Concurrency settings saved');
-    expect(bodies).toEqual([{ limit: null, expectedRevision: 1 }]);
+    expect(bodies).toEqual([
+      { limit: null, expectedRevision: 1, overflow: 'queue' },
+    ]);
   });
 
   it('retains edits after typed conflict and only resubmits after reviewing fresh authority', async () => {
@@ -411,7 +417,11 @@ describe('workflow concurrency settings', () => {
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
     await screen.findByText('Concurrency settings saved');
-    expect(bodies[1]).toEqual({ limit: 1, expectedRevision: 2 });
+    expect(bodies[1]).toEqual({
+      limit: 1,
+      expectedRevision: 2,
+      overflow: 'queue',
+    });
   });
 
   it('retries the exact body and key after an uncertain outcome, not the refreshed revision', async () => {
@@ -446,10 +456,14 @@ describe('workflow concurrency settings', () => {
     await screen.findByText('Concurrency settings saved');
     expect(requests).toHaveLength(2);
     expect(requests[1]).toEqual(requests[0]);
-    expect(requests[1]?.body).toEqual({ limit: 1, expectedRevision: 1 });
+    expect(requests[1]?.body).toEqual({
+      limit: 1,
+      expectedRevision: 1,
+      overflow: 'queue',
+    });
   });
 
-  it('allows reading without workflow:update and never renders deferred policy controls', async () => {
+  it('allows reading policy and history without rendering editing controls', async () => {
     installQueries([]);
     renderApp(path);
     const section = await screen.findByRole('region', { name: 'Concurrency' });
@@ -457,9 +471,10 @@ describe('workflow concurrency settings', () => {
       'Current limit: no additional workflow limit. Workspace limits still apply.',
     );
     expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(section).queryByRole('combobox')).not.toBeInTheDocument();
     expect(
-      within(section).queryByText(/skip|queue length/iu),
-    ).not.toBeInTheDocument();
+      within(section).getByRole('region', { name: 'Recent skipped triggers' }),
+    ).toBeVisible();
   });
 
   it.each([401, 403, 404, 409])(
@@ -524,4 +539,52 @@ describe('workflow concurrency settings', () => {
     );
     await screen.findByText(/Couldn’t refresh/u);
   });
+});
+
+it('saves Skip with the workflow limit and shows metadata-only skip history', async () => {
+  installQueries();
+  let current: WorkflowConcurrencySettings = {
+    ...defaultConcurrencySettings,
+    limit: 1,
+  };
+  mockServer.use(
+    http.get(endpoint, () => HttpResponse.json(current)),
+    http.put(endpoint, async ({ request }) => {
+      const body = await request.json();
+      expect(body).toEqual({ limit: 1, overflow: 'skip', expectedRevision: 1 });
+      current = {
+        ...current,
+        overflow: 'skip',
+        revision: 2,
+        recentSkips: [
+          {
+            id: workflowId,
+            at: defaultConcurrencySettings.asOf,
+            triggerType: 'webhook',
+            reason: 'concurrency_limit',
+          },
+        ],
+      };
+      return HttpResponse.json({ settings: current, replayed: false });
+    }),
+  );
+  renderApp(path);
+  const user = userEvent.setup();
+  await user.click(
+    await screen.findByRole('combobox', { name: 'When the limit is reached' }),
+  );
+  await user.click(screen.getByRole('option', { name: 'Skip' }));
+  await user.click(
+    screen.getByRole('button', { name: 'Save concurrency limit' }),
+  );
+  expect(await screen.findByText('Webhook skipped')).toBeVisible();
+  expect(
+    screen.getByText('Concurrency limit reached. No run started.'),
+  ).toBeVisible();
+  expect(
+    screen.getByText(
+      'New trigger events are skipped when all workflow places are occupied',
+      { exact: false },
+    ),
+  ).toBeVisible();
 });

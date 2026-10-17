@@ -18,7 +18,7 @@ export const formSchemaResponseSchema = z
 export const formSubmissionRequestSchema = z
   .object({ versionId: z.uuid(), values: z.record(z.string(), z.unknown()) })
   .strict();
-export const formSubmissionResponseSchema = z
+const acceptedFormSubmissionResponseSchema = z
   .object({
     accepted: z.literal(true),
     thankYouMessage: formThankYouMessageSchema,
@@ -27,6 +27,18 @@ export const formSubmissionResponseSchema = z
     replayed: z.boolean(),
   })
   .strict();
+const skippedFormSubmissionResponseSchema = z
+  .object({
+    accepted: z.literal(false),
+    skipped: z.literal(true),
+    reason: z.literal('concurrency_limit'),
+    replayed: z.boolean(),
+  })
+  .strict();
+export const formSubmissionResponseSchema = z.discriminatedUnion('accepted', [
+  acceptedFormSubmissionResponseSchema,
+  skippedFormSubmissionResponseSchema,
+]);
 export const formAccessSchema = z
   .object({
     access: z.enum(['members', 'public']),
@@ -58,6 +70,10 @@ export type FormSubmissionResponse = z.output<
 >;
 export type FormAccess = z.output<typeof formAccessSchema>;
 export type FormAccessRequest = z.output<typeof formAccessRequestSchema>;
-export const publicFormSubmissionResponseSchema = formSubmissionResponseSchema
-  .omit({ runId: true })
-  .strict();
+export const publicFormSubmissionResponseSchema = z.discriminatedUnion(
+  'accepted',
+  [
+    acceptedFormSubmissionResponseSchema.omit({ runId: true }).strict(),
+    skippedFormSubmissionResponseSchema,
+  ],
+);

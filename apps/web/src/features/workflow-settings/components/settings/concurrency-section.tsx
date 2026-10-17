@@ -1,3 +1,5 @@
+import { OverflowPicker } from './concurrency/overflow';
+import { SkipHistory } from './concurrency/history';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
@@ -84,10 +86,13 @@ function ConcurrencyEditor({
   scope,
 }: Readonly<{ settings: WorkflowConcurrencySettings; scope: Scope }>) {
   const [draft, setDraft] =
-    useState<Readonly<{ value: string; revision: number }>>();
+    useState<
+      Readonly<{ value: string; revision: number; overflow: 'queue' | 'skip' }>
+    >();
   const current = draft ?? {
     value: settings.limit === null ? '' : String(settings.limit),
     revision: settings.revision,
+    overflow: settings.overflow,
   };
   const validation = useFieldValidation<'limit'>();
   const command = useConcurrencyCommand(
@@ -112,6 +117,7 @@ function ConcurrencyEditor({
       return;
     if (
       await command.send({
+        overflow: current.overflow,
         limit: current.value.trim() === '' ? null : Number(current.value),
         expectedRevision: command.conflict
           ? settings.revision
@@ -147,6 +153,7 @@ function ConcurrencyEditor({
               setDraft({
                 value: event.target.value,
                 revision: current.revision,
+                overflow: current.overflow,
               });
               validation.change(
                 'limit',
@@ -156,6 +163,13 @@ function ConcurrencyEditor({
           />
         )}
       </LabelledField>
+      <OverflowPicker
+        value={current.overflow}
+        disabled={command.pending || command.unconfirmed}
+        onChange={(overflow) => {
+          setDraft({ ...current, overflow });
+        }}
+      />
       <div>
         <ProgressButton
           type="submit"
@@ -195,11 +209,14 @@ function ConcurrencyPolicy({
         </p>
       )}
       <p className="text-sm text-muted-foreground">
-        Extra runs wait their turn in acceptance order. Starts are ordered, not
-        completion or external effects. Lowering the limit does not stop active
-        runs or revoke reserved starts. Pausing triggers does not pause already
-        accepted runs.
+        {settings.overflow === 'queue'
+          ? 'Extra runs wait their turn in acceptance order.'
+          : 'New trigger events are skipped when all workflow places are occupied, including accepted queued runs. Manual starts are refused.'}{' '}
+        Starts are ordered, not completion or external effects. Lowering the
+        limit does not stop active runs or revoke reserved starts. Pausing
+        triggers does not pause already accepted runs.
       </p>
+      <SkipHistory items={settings.recentSkips ?? []} />
       <p className="text-xs text-muted-foreground">
         Observed{' '}
         <time dateTime={settings.asOf} title={settings.asOf}>

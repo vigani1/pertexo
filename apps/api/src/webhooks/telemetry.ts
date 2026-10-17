@@ -10,6 +10,7 @@ const TRACEPARENT = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/u;
 
 export type WebhookDeliveryOutcome =
   | 'accepted'
+  | 'skipped'
   | 'replayed'
   | 'authentication_failed'
   | 'invalid_request'

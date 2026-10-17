@@ -5,6 +5,7 @@ export {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
+  WorkflowAlreadyRunningError,
 } from './commands/acceptance.js';
 export type {
   PublishedWorkflowReader,

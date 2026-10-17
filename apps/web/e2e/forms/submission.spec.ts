@@ -217,3 +217,69 @@ test('keeps thank-you text escaped while linking safe plain URLs', async ({
   await expect(page.getByText(/<img src=x>/u)).toBeVisible();
   await expect(page.locator('img[src=x]')).toHaveCount(0);
 });
+
+for (const width of [1280, 375])
+  test(`keeps a busy form editable and retries as a fresh event at ${String(width)}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await installEditorRoutes(page, remoteDraft());
+    const path = `**/v1/forms/${publicId}`;
+    await page.route(path, (route) =>
+      route.fulfill({ json: { versionId, form } }),
+    );
+    const keys: (string | undefined)[] = [];
+    await page.route(`${path}/submit`, (route) => {
+      keys.push(route.request().headers()['idempotency-key']);
+      return route.fulfill({
+        json:
+          keys.length === 1
+            ? {
+                accepted: false,
+                skipped: true,
+                reason: 'concurrency_limit',
+                replayed: false,
+              }
+            : {
+                accepted: true,
+                replayed: false,
+                thankYouMessage: 'Thanks for your response.',
+              },
+      });
+    });
+    await page.goto(`/forms/${publicId}#${capability}`);
+    const message = page.getByLabel('Message', { exact: true });
+    const send = page.getByRole('button', {
+      name: 'Send response',
+      exact: true,
+    });
+    await message.fill('Keep my entered response');
+    await send.click();
+    await expect(
+      page.getByText(
+        'This workflow is busy. Try again shortly. Your response has not been sent.',
+        {
+          exact: true,
+        },
+      ),
+    ).toBeVisible();
+    await expect(message).toHaveValue('Keep my entered response');
+    await expect(message).toBeEnabled();
+    await expect(
+      page.getByRole('heading', { name: 'Response sent', exact: true }),
+    ).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await send.click();
+    await expect(
+      page.getByRole('heading', { name: 'Response sent', exact: true }),
+    ).toBeVisible();
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBeTruthy();
+    expect(keys[1]).not.toBe(keys[0]);
+  });

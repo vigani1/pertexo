@@ -11,7 +11,7 @@ import {
 import { workflowRunAdmissionBlockersSchema } from '../../src/schemas/execution/runs.js';
 import { API_PROBLEM_MANIFEST } from '../../src/errors/api-problem.js';
 
-describe('workflow queue-only concurrency contracts', () => {
+describe('workflow Queue/Skip concurrency contracts', () => {
   it('bounds strict requests identically in runtime and generated clients', () => {
     const validate = new Ajv2020({ strict: false }).compile(
       workflowAuthoringClientContract.schemas
@@ -32,7 +32,7 @@ describe('workflow queue-only concurrency contracts', () => {
       { limit: '1', expectedRevision: 1 },
       { limit: 1, expectedRevision: 0 },
       { limit: 1, expectedRevision: 2_147_483_648 },
-      { limit: 1, expectedRevision: 1, overflow: 'skip' },
+      { limit: 1, expectedRevision: 1, overflow: 'drop' },
       { limit: null, expectedRevision: 1, queueLength: 10 },
     ]) {
       expect(
@@ -61,7 +61,7 @@ describe('workflow queue-only concurrency contracts', () => {
     expect(
       workflowConcurrencySettingsSchema.safeParse({
         ...settings,
-        overflow: 'skip',
+        overflow: 'drop',
       }).success,
     ).toBe(false);
     expect(

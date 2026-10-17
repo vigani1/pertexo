@@ -2,7 +2,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { isUnconfirmedRunCommand } from '../../model/commands/run-command';
+import {
+  isUnconfirmedRunCommand,
+  runAdmissionError,
+} from '../../model/commands/run-command';
 import {
   normalizeRunIntent,
   type RunIntent,
@@ -55,6 +58,8 @@ export function useRunReplay({
 }
 
 function runReplayError(error: unknown): string {
+  const admissionError = runAdmissionError(error);
+  if (admissionError !== undefined) return admissionError;
   if (isUnconfirmedRunCommand(error))
     return 'We couldn’t confirm whether the replay started. Retry the same request within 24 hours to check acceptance without starting it twice.';
   if (isApiError(error) && error.problem?.code === 'form.required')

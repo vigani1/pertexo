@@ -93,6 +93,16 @@ const workerConfig = parseDatabaseConfig({
   connectionString: url(workerBaseUrl),
   max: 8,
 });
+async function acceptWebhook(
+  input: Parameters<
+    ReturnType<typeof createWebhookTriggerDatabase>['acceptVerifiedDelivery']
+  >[0],
+) {
+  const result = await webhook.acceptVerifiedDelivery(input);
+  if ('skipped' in result)
+    throw new Error('Expected an accepted webhook in this journey');
+  return result;
+}
 let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
 let reconciliation: ReturnType<
   typeof createWorkflowTriggerReconciliationDatabase
@@ -1080,7 +1090,7 @@ describe('generic webhook database seam', () => {
       webhook.resolveVerification(provisioned.endpointKeyHash),
     ).resolves.toBeNull();
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         verification,
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('archived-webhook-admission'),
@@ -1627,6 +1637,87 @@ describe('generic webhook database seam', () => {
     });
   });
 
+  it('commits one skipped webhook event, preserves its receipt after release and exposes the reason', async () => {
+    const { verification } = await createWebhookScenario({
+      responseMode: 'workflow',
+      responseWaitSeconds: 1,
+    });
+    const input = {
+      verification,
+      verifiedSecretVersionId: verification.currentSecret.id,
+      requestFingerprint: hash('skip-payload'),
+      idempotencyKeyHash: hash('skip-first'),
+      payload: { private: 'not in skip metadata' },
+      bodyBytes: 64,
+      checkpointFactory,
+    };
+    const first = await acceptWebhook(input);
+    await ownerQuery(
+      `insert into app.workflow_concurrency_policies(workspace_id,workflow_id,active_run_limit,overflow) values($1,$2,1,'skip')`,
+      [workspaceId, verification.workflowId],
+    );
+    const skippedInput = { ...input, idempotencyKeyHash: hash('skip-busy') };
+    const skipped = { skipped: true, reason: 'concurrency_limit' };
+    expect(
+      await Promise.all(
+        Array.from({ length: 4 }, () =>
+          webhook.acceptVerifiedDelivery(skippedInput),
+        ),
+      ),
+    ).toEqual([skipped, skipped, skipped, skipped]);
+    const counts = () =>
+      ownerQuery(
+        `select (select count(*)::int from app.workflow_runs where workflow_id=$1) runs,
+      (select count(*)::int from app.usage_events where resource_id=$1 and category='trigger.skipped') skips,
+      (select count(*)::int from app.idempotency_records where status='in_progress') incomplete`,
+        [verification.workflowId],
+      );
+    expect((await counts()).rows).toEqual([
+      { runs: 1, skips: 1, incomplete: 0 },
+    ]);
+    const history = await webhook.listDeliveries({
+      workspaceId,
+      actorId,
+      workflowId: verification.workflowId,
+      triggerId: verification.triggerId,
+    });
+    expect(
+      history.items.filter((item) => item.outcome === 'skipped'),
+    ).toHaveLength(4);
+    expect(
+      history.items
+        .filter((item) => item.outcome === 'skipped')
+        .every(
+          (item) =>
+            item.skipReason === 'concurrency_limit' &&
+            item.runId === null &&
+            item.httpStatus === 202,
+        ),
+    ).toBe(true);
+    await ownerQuery(
+      `update app.workflow_runs set status='canceled',completed_at=clock_timestamp() where id=$1`,
+      [first.runId],
+    );
+    expect(await webhook.acceptVerifiedDelivery(skippedInput)).toEqual(skipped);
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        ...skippedInput,
+        requestFingerprint: hash('changed'),
+      }),
+    ).rejects.toBeInstanceOf(WebhookDeliveryReplayMismatchError);
+    await acceptWebhook({ ...input, idempotencyKeyHash: hash('skip-next') });
+    expect((await counts()).rows).toEqual([
+      { runs: 2, skips: 1, incomplete: 0 },
+    ]);
+    const metadata = await ownerQuery(
+      `select metadata from app.usage_events where resource_id=$1 and category='trigger.skipped'`,
+      [verification.workflowId],
+    );
+    expect(metadata.rows).toEqual([
+      { metadata: { reason: 'concurrency_limit', triggerType: 'webhook' } },
+    ]);
+  });
+
   it('captures opt-in response policy atomically and preserves it for exact ingress retries', async () => {
     const scenario = await createWebhookScenario({
       responseMode: 'workflow',
@@ -1642,12 +1733,12 @@ describe('generic webhook database seam', () => {
       bodyBytes: 2,
       checkpointFactory,
     };
-    const first = await webhook.acceptVerifiedDelivery(input);
+    const first = await acceptWebhook(input);
     expect(first).toMatchObject({ replayed: false, responseWaitSeconds: 1 });
     expect(
       await webhook.readResponse({ workspaceId, runId: first.runId }),
     ).toEqual({ state: 'pending' });
-    const duplicate = await webhook.acceptVerifiedDelivery(input);
+    const duplicate = await acceptWebhook(input);
     expect(duplicate).toEqual({ ...first, replayed: true });
     expect(
       (
@@ -1658,7 +1749,7 @@ describe('generic webhook database seam', () => {
       ).rows,
     ).toEqual([{ run_id: first.runId, wait_seconds: 1, body: null }]);
     const immediate = await createWebhookScenario();
-    const accepted = await webhook.acceptVerifiedDelivery({
+    const accepted = await acceptWebhook({
       ...input,
       verification: immediate.verification,
       verifiedSecretVersionId: immediate.verification.currentSecret.id,
@@ -1687,8 +1778,8 @@ describe('generic webhook database seam', () => {
       checkpointFactory,
     } as const;
     const accepted = await Promise.all([
-      webhook.acceptVerifiedDelivery(input),
-      webhook.acceptVerifiedDelivery(input),
+      acceptWebhook(input),
+      acceptWebhook(input),
     ]);
     expect(new Set(accepted.map(({ runId }) => runId)).size).toBe(1);
     expect(accepted.map(({ replayed }) => replayed).sort()).toEqual([
@@ -1713,7 +1804,7 @@ describe('generic webhook database seam', () => {
       },
     ]);
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         ...input,
         requestFingerprint: hash('changed-payload'),
       }),
@@ -1748,7 +1839,7 @@ describe('generic webhook database seam', () => {
       bodyBytes: 64,
       checkpointFactory,
     } as const;
-    const before = await webhook.acceptVerifiedDelivery(input);
+    const before = await acceptWebhook(input);
     // ADR 056: the fold records a pause exactly like this.
     await ownerQuery(
       `update app.workflows
@@ -1760,12 +1851,12 @@ describe('generic webhook database seam', () => {
       [workspaceId, pausedWorkflowId, before.runId],
     );
 
-    await expect(webhook.acceptVerifiedDelivery(input)).resolves.toEqual({
+    await expect(acceptWebhook(input)).resolves.toEqual({
       runId: before.runId,
       replayed: true,
     });
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         ...input,
         requestFingerprint: hash('during-pause'),
         idempotencyKeyHash: hash('during-pause-key'),
@@ -1808,7 +1899,7 @@ describe('generic webhook database seam', () => {
       idempotencyKey: randomUUID(),
     });
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         ...input,
         requestFingerprint: hash('after-resume'),
         idempotencyKeyHash: hash('after-resume-key'),
@@ -1883,7 +1974,7 @@ describe('generic webhook database seam', () => {
       rows: [{ endpoint_status: 'disabled', schedule_status: 'disabled' }],
     });
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         ...input,
         requestFingerprint: hash('still-disabled'),
         idempotencyKeyHash: hash('still-disabled-key'),
@@ -1911,7 +2002,7 @@ describe('generic webhook database seam', () => {
         bodyBytes: 64,
         checkpointFactory,
       } as const;
-      const first = await webhook.acceptVerifiedDelivery(input);
+      const first = await acceptWebhook(input);
       const observation = await ownerQuery<{ observed_at: Date }>(
         `update app.webhook_trigger_replay_records
             set created_at=clock_timestamp()-case when dedupe_kind='keyed'
@@ -1926,8 +2017,8 @@ describe('generic webhook database seam', () => {
       expect(observation.rows[0]?.observed_at).toBeInstanceOf(Date);
 
       const raced = await Promise.all([
-        webhook.acceptVerifiedDelivery(input),
-        webhook.acceptVerifiedDelivery(input),
+        acceptWebhook(input),
+        acceptWebhook(input),
       ]);
       expect(new Set(raced.map(({ runId }) => runId)).size).toBe(1);
       expect(raced[0].runId).not.toBe(first.runId);
@@ -1977,7 +2068,7 @@ describe('generic webhook database seam', () => {
     const before = await durableCounts();
     const failure = new Error('checkpoint construction failed after replay');
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         verification,
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('post-replay-rollback'),
@@ -2017,7 +2108,7 @@ describe('generic webhook database seam', () => {
     if (verification === null)
       throw new Error('Expected graph-disabled external endpoint');
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         verification,
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('graph-disabled-ingress'),
@@ -2057,7 +2148,7 @@ describe('generic webhook database seam', () => {
       bodyBytes: 2,
       checkpointFactory,
     };
-    await webhook.acceptVerifiedDelivery(old);
+    await acceptWebhook(old);
     await expect(
       webhook.configureAuthentication({ ...command, workflowId: randomUUID() }),
     ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
@@ -2072,7 +2163,7 @@ describe('generic webhook database seam', () => {
     await expect(
       webhook.resolveVerification(resources.endpointKeyHash),
     ).resolves.toBeNull();
-    await expect(webhook.acceptVerifiedDelivery(old)).rejects.toBeInstanceOf(
+    await expect(acceptWebhook(old)).rejects.toBeInstanceOf(
       WebhookDeliveryIneligibleError,
     );
     const url = await webhook.resolveVerification(nextKey);
@@ -2089,8 +2180,8 @@ describe('generic webhook database seam', () => {
       requestFingerprint: hash('url-body'),
       idempotencyKeyHash: hash('url-body'),
     };
-    const accepted = await webhook.acceptVerifiedDelivery(input);
-    expect(await webhook.acceptVerifiedDelivery(input)).toEqual({
+    const accepted = await acceptWebhook(input);
+    expect(await acceptWebhook(input)).toEqual({
       ...accepted,
       replayed: true,
     });
@@ -2119,7 +2210,7 @@ describe('generic webhook database seam', () => {
       authentication: origins,
       currentSecret: { id: nextSecret.id },
     });
-    await expect(webhook.acceptVerifiedDelivery(input)).rejects.toBeInstanceOf(
+    await expect(acceptWebhook(input)).rejects.toBeInstanceOf(
       WebhookDeliveryIneligibleError,
     );
     const headerKey = hash(randomUUID());
@@ -2177,7 +2268,7 @@ describe('generic webhook database seam', () => {
       bodyBytes: 64,
       checkpointFactory,
     } as const;
-    await webhook.acceptVerifiedDelivery(acceptedBeforeRotation);
+    await acceptWebhook(acceptedBeforeRotation);
     await webhook.rotateEndpoint({
       workspaceId,
       workflowId: scenarioWorkflowId,
@@ -2190,17 +2281,17 @@ describe('generic webhook database seam', () => {
     await expect(
       webhook.resolveVerification(resources.endpointKeyHash),
     ).resolves.toBeNull();
+    await expect(acceptWebhook(acceptedBeforeRotation)).rejects.toBeInstanceOf(
+      WebhookDeliveryIneligibleError,
+    );
     await expect(
-      webhook.acceptVerifiedDelivery(acceptedBeforeRotation),
-    ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
-    await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         ...acceptedBeforeRotation,
         requestFingerprint: hash('changed-after-rotation'),
       }),
     ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         verification: oldVerification,
         verifiedSecretVersionId: oldVerification.currentSecret.id,
         requestFingerprint: hash('rotation-race'),
@@ -2265,7 +2356,7 @@ describe('generic webhook database seam', () => {
     if (after?.previousSecret === undefined)
       throw new Error('Expected a previous secret overlap');
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         verification: after,
         verifiedSecretVersionId: after.previousSecret.id,
         requestFingerprint: hash('previous-secret-before-expiry'),
@@ -2298,7 +2389,7 @@ describe('generic webhook database seam', () => {
     if (expiredReference === null)
       throw new Error('Expected endpoint after previous-secret expiry');
     await expect(
-      webhook.acceptVerifiedDelivery({
+      acceptWebhook({
         verification: expiredReference,
         verifiedSecretVersionId: after.previousSecret.id,
         requestFingerprint: hash('previous-secret-after-expiry'),
@@ -2324,13 +2415,13 @@ describe('generic webhook database seam', () => {
       bodyBytes: 64,
       checkpointFactory,
     } as const;
-    await expect(webhook.acceptVerifiedDelivery(input)).rejects.toBeInstanceOf(
+    await expect(acceptWebhook(input)).rejects.toBeInstanceOf(
       WebhookDeliveryIneligibleError,
     );
     await ownerQuery("update app.workspaces set status='active' where id=$1", [
       workspaceId,
     ]);
-    await expect(webhook.acceptVerifiedDelivery(input)).resolves.toMatchObject({
+    await expect(acceptWebhook(input)).resolves.toMatchObject({
       replayed: false,
     });
   });
@@ -2347,8 +2438,8 @@ describe('generic webhook database seam', () => {
       bodyBytes: 321,
       checkpointFactory,
     } as const;
-    const accepted = await webhook.acceptVerifiedDelivery(admitted);
-    await expect(webhook.acceptVerifiedDelivery(admitted)).resolves.toEqual({
+    const accepted = await acceptWebhook(admitted);
+    await expect(acceptWebhook(admitted)).resolves.toEqual({
       runId: accepted.runId,
       replayed: true,
     });
@@ -2451,6 +2542,7 @@ describe('generic webhook database seam', () => {
       'received_at',
       'replay_check',
       'signature_check',
+      'skip_reason',
       'trigger_id',
       'workflow_run_id',
       'workspace_id',

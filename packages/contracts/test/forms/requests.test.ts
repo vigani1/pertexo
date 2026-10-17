@@ -36,3 +36,23 @@ it('publishes the fields separately from the post-acceptance message', () => {
     }).success,
   ).toBe(false);
 });
+
+it('keeps busy receipts separate from accepted responses and public run history', () => {
+  const busy = {
+    accepted: false,
+    skipped: true,
+    reason: 'concurrency_limit',
+    replayed: false,
+  };
+  expect(formSubmissionResponseSchema.parse(busy)).toEqual(busy);
+  expect(publicFormSubmissionResponseSchema.parse(busy)).toEqual(busy);
+  for (const extra of [
+    { runId: versionId },
+    { thankYouMessage: 'Accepted' },
+    { redirectUrl: 'https://example.test/' },
+  ])
+    expect(
+      publicFormSubmissionResponseSchema.safeParse({ ...busy, ...extra })
+        .success,
+    ).toBe(false);
+});

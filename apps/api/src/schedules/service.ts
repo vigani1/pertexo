@@ -225,6 +225,9 @@ function publicOccurrence(
     recordedAt: occurrence.recordedAt,
     outcome: occurrence.outcome,
     runId: occurrence.runId,
+    ...(occurrence.skipReason === undefined
+      ? {}
+      : { skipReason: occurrence.skipReason }),
   };
 }
 

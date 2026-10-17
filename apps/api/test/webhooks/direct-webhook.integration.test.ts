@@ -764,6 +764,79 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     expect(log.nextCursor).toBeNull();
   }, 60_000);
 
+  it('returns 202 for signed and Secret URL concurrency skips, with durable native history and one usage fact', async () => {
+    const seeded = await seedWebhook('concurrency-skip');
+    const raw = Buffer.from('{"event":"skip proof"}');
+    const first = await sendWebhook(
+      seeded.endpointKey,
+      seeded.originalSecret,
+      raw,
+      'concurrency-first',
+    );
+    expect(first.status).toBe(202);
+    await ownerQuery(
+      `insert into app.workflow_concurrency_policies(workspace_id,workflow_id,active_run_limit,overflow) values($1,$2,1,'skip')`,
+      [workspaceId, seeded.workflowId],
+    );
+    const signed = await sendWebhook(
+      seeded.endpointKey,
+      seeded.originalSecret,
+      raw,
+      'concurrency-signed',
+    );
+    expect(signed.status).toBe(202);
+    expect(signed.json).toEqual({ skipped: true, reason: 'concurrency_limit' });
+    const session = await issueBrowserSession(
+      identityRuntime.dependencies.sessions,
+      seeded.actorId,
+    );
+    const policy = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/workflows/${seeded.workflowId}/triggers/${seeded.trigger.id}/webhook/authentication`,
+      headers: {
+        cookie: session.cookieHeader,
+        'x-csrf-token': session.csrf,
+        'idempotency-key': randomUUID(),
+      },
+      payload: { mode: 'secret_url', allowedOrigins: [] },
+    });
+    expect(policy.statusCode, policy.body).toBe(200);
+    const key = requireString(
+      policy.json<{ endpointKey: string }>().endpointKey,
+    );
+    const post = () =>
+      application.inject({
+        method: 'POST',
+        url: `/hooks/${key}`,
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'concurrency-url',
+        },
+        payload: raw,
+      });
+    const url = await post();
+    expect(url.statusCode).toBe(202);
+    expect(url.json()).toEqual({ skipped: true, reason: 'concurrency_limit' });
+    expect((await post()).json()).toEqual(url.json());
+    const history = await service.listDeliveries({
+      workspaceId,
+      workflowId: seeded.workflowId,
+      actorId: seeded.actorId,
+      triggerId: seeded.trigger.id,
+    });
+    expect(
+      history.items.filter((item) => item.outcome === 'skipped'),
+    ).toHaveLength(3);
+    expect(
+      (
+        await ownerQuery(
+          `select (select count(*)::int from app.workflow_runs where workflow_id=$1) runs,(select count(*)::int from app.usage_events where resource_id=$1 and category='trigger.skipped') skips`,
+          [seeded.workflowId],
+        )
+      ).rows,
+    ).toEqual([{ runs: 1, skips: 2 }]);
+  });
+
   it('reads a resumed run as running through authenticated HTTP', async () => {
     const { actorId, endpointKey, originalSecret } =
       await seedWebhook('run-status-read');

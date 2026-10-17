@@ -1,3 +1,5 @@
+import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
+import { recordWorkflowTriggerSkip } from '../skips.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
@@ -246,7 +248,7 @@ async function persistClaimedOccurrence(
   occurrence: ClaimedOccurrence,
   checkpointFactory: InitialCheckpointFactory,
 ): Promise<RecordedScheduleOccurrence> {
-  const disposition: RecordedScheduleOccurrence =
+  let disposition: RecordedScheduleOccurrence =
     (await claimedScheduleWorkflowPaused(
       transaction,
       claim,
@@ -254,15 +256,27 @@ async function persistClaimedOccurrence(
     ))
       ? 'paused'
       : occurrence.disposition;
-  const runId =
-    disposition === 'accepted'
-      ? await admitScheduledRun(
-          transaction,
-          claim,
-          occurrence.scheduledAt,
-          checkpointFactory,
-        )
-      : null;
+  let runId: string | null = null;
+  let skipReason: 'concurrency_limit' | null = null;
+  if (disposition === 'accepted') {
+    await transaction.db.execute(sql`savepoint schedule_run_admission`);
+    try {
+      runId = await admitScheduledRun(
+        transaction,
+        claim,
+        occurrence.scheduledAt,
+        checkpointFactory,
+      );
+    } catch (error) {
+      if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
+      await transaction.db.execute(
+        sql`rollback to savepoint schedule_run_admission`,
+      );
+      disposition = 'skipped';
+      skipReason = 'concurrency_limit';
+    }
+    await transaction.db.execute(sql`release savepoint schedule_run_admission`);
+  }
   // Record the occurrence once, move the schedule on and release the lease.
   const schedule = await transaction.db.execute(sql`
     select 1 from app.trigger_schedules
@@ -271,13 +285,15 @@ async function persistClaimedOccurrence(
     for update`);
   if (schedule.rows.length !== 1)
     throw new ScheduleClaimLostError('Schedule claim expired');
-  await transaction.db.execute(sql`
+  const recorded = await transaction.db.execute(sql`
     insert into app.trigger_schedule_occurrences
-      (id, workspace_id, trigger_id, scheduled_at, disposition, workflow_run_id)
+      (id, workspace_id, trigger_id, scheduled_at, disposition, workflow_run_id, skip_reason)
     values (${generatePersistedId()}, ${transaction.workspaceId},
             ${claim.trigger_id}, ${occurrence.scheduledAt}, ${disposition},
-            ${runId})
-    on conflict (trigger_id, scheduled_at) do nothing`);
+            ${runId},${skipReason})
+    on conflict (trigger_id, scheduled_at) do nothing returning id`);
+  if (skipReason !== null && recorded.rows.length === 1)
+    await recordWorkflowTriggerSkip(transaction, claim.workflow_id, 'schedule');
   await transaction.db.execute(sql`
     update app.trigger_schedules
     set last_fire_at=${occurrence.scheduledAt},

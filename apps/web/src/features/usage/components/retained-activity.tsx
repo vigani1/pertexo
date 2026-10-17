@@ -50,6 +50,15 @@ export function RetainedActivity({
           View these runs
         </Link>
       </div>
+      {snapshot.window.skippedTriggerEvents === undefined ? null : (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-mono">
+            {snapshot.window.skippedTriggerEvents}
+          </span>{' '}
+          trigger events skipped at the concurrency limit {windowPhrase}. Skips
+          do not start runs.
+        </p>
+      )}
       <ul
         className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-4"
         aria-label="Activity by current run status"

@@ -1,4 +1,10 @@
 export const workflowConcurrencyProblems = {
+  'workflow.already_running': {
+    status: 409,
+    title: 'Workflow already running',
+    severity: 'warn',
+    exposeDetail: true,
+  },
   'workflow.concurrency_revision_conflict': {
     status: 409,
     title: 'Workflow concurrency revision conflict',

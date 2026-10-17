@@ -563,6 +563,17 @@ export const usageEvents = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    index('usage_events_trigger_skip_history_idx')
+      .on(
+        table.workspaceId,
+        table.resourceId,
+        table.occurredAt.desc(),
+        table.id,
+      )
+      .where(sql`category='trigger.skipped' AND resource_type='workflow'`),
+    index('usage_events_trigger_skip_retention_idx')
+      .on(table.occurredAt, table.id)
+      .where(sql`category='trigger.skipped'`),
     check(
       'usage_events_category_format',
       sql`((category)::text ~ '^[a-z][a-z0-9._:-]{0,63}$'::text)`,

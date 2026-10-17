@@ -267,6 +267,18 @@ describe.skipIf(!enabled)(
           await blocked();
           return { restarted: true };
         }
+        if (path === '/refuse-start') {
+          const result = await api.send('POST', `${route}/runs`, {
+            browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: { input: {} },
+          });
+          expect(result.statusCode, result.payload).toBe(409);
+          expect(result.json()).toMatchObject({
+            code: 'workflow.already_running',
+          });
+          return { refused: true };
+        }
         if (path !== '/released-evidence')
           throw new Error('Unknown concurrency command');
         const first = await waitFor(runs[0] ?? '', 'waiting'),

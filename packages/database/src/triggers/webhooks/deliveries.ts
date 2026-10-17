@@ -18,6 +18,7 @@ import { WebhookTriggerNotFoundError } from './errors.js';
  */
 const HTTP_STATUS = Object.freeze({
   accepted: 202,
+  skipped: 202,
   replayed: 202,
   authentication_failed: 401,
   invalid_request: 400,
@@ -27,6 +28,7 @@ const HTTP_STATUS = Object.freeze({
 } as const);
 const OUTCOMES = [
   'accepted',
+  'skipped',
   'replayed',
   'authentication_failed',
   'invalid_request',
@@ -57,7 +59,7 @@ export type WebhookDeliveryEndpoint = Readonly<{
 
 export type RejectedWebhookDelivery = Readonly<{
   endpoint: WebhookDeliveryEndpoint;
-  outcome: Exclude<WebhookDeliveryOutcome, 'accepted' | 'replayed'>;
+  outcome: Exclude<WebhookDeliveryOutcome, 'accepted' | 'replayed' | 'skipped'>;
   signatureCheck: WebhookSignatureCheck;
   replayCheck: WebhookReplayCheck;
   bodyBytes: number;
@@ -72,6 +74,7 @@ export type WebhookDeliveryRecord = Readonly<{
   replayCheck: WebhookReplayCheck;
   bodyBytes: number | null;
   runId: string | null;
+  skipReason?: 'concurrency_limit';
 }>;
 
 /** Newest-first keyset position: `(received_at desc, id asc)`. */
@@ -160,12 +163,12 @@ export async function insertWebhookDelivery(
   await transaction.db.execute(sql`
     insert into app.webhook_trigger_deliveries
       (id,workspace_id,trigger_id,endpoint_id,workflow_run_id,dedupe_kind,
-       outcome,http_status,signature_check,replay_check,body_bytes)
+       outcome,http_status,signature_check,replay_check,body_bytes,skip_reason)
     values(${delivery.id ?? generatePersistedId()},${transaction.workspaceId},
       ${uuidSchema.parse(endpoint.triggerId)},${uuidSchema.parse(endpoint.endpointId)},
       ${delivery.runId ?? null},${delivery.dedupeKind ?? null},${delivery.outcome},
       ${HTTP_STATUS[delivery.outcome]},${delivery.signatureCheck},
-      ${delivery.replayCheck},${bodyBytesSchema.parse(delivery.bodyBytes)})
+      ${delivery.replayCheck},${bodyBytesSchema.parse(delivery.bodyBytes)},${delivery.outcome === 'skipped' ? 'concurrency_limit' : null})
   `);
 }
 
@@ -180,6 +183,9 @@ function mapDelivery(row: Record<string, unknown>): WebhookDeliveryRecord {
     replayCheck: z.enum(REPLAY_CHECKS).parse(row.replay_check),
     bodyBytes: bodyBytesSchema.nullable().parse(row.body_bytes),
     runId: uuidSchema.nullable().parse(row.workflow_run_id),
+    ...(outcome === 'skipped'
+      ? { skipReason: z.literal('concurrency_limit').parse(row.skip_reason) }
+      : {}),
   });
 }
 
@@ -195,7 +201,7 @@ async function readDeliveryPage(
   // Rows past their ADR 013 expiry are never served, even before the bounded
   // retention stage removes them.
   const result = await client.query<Record<string, unknown>>(
-    `select id,outcome,http_status,signature_check,replay_check,body_bytes,
+    `select id,outcome,http_status,signature_check,replay_check,body_bytes,skip_reason,
             workflow_run_id,
             to_char(received_at at time zone 'UTC',
               'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') received_at_cursor

@@ -1,3 +1,4 @@
+import { recoveryError } from '@/features/workflow-runs/model/commands/recovery';
 import { expect, it } from 'vitest';
 import { ApiError } from '@/lib/api/error';
 import { commandErrorMessage } from '@/features/workflow-publish/data/mutations/command-utils';
@@ -55,5 +56,26 @@ it('keeps compile setup findings first and unrelated validation errors generic',
     commandErrorMessage(failure('workflow.invalid', []), 'publishing'),
   ).toBe(
     'Publishing was stopped by issues in the workflow. Fix them and try again.',
+  );
+});
+
+it('shows the same definite admission refusal for manual starts and step recovery', () => {
+  const error = new ApiError({
+    kind: 'problem',
+    status: 409,
+    message: 'Refused',
+    problem: {
+      type: 'about:blank',
+      title: 'Workflow already running',
+      status: 409,
+      code: 'workflow.already_running',
+      requestId: 'test',
+    },
+  });
+  expect(commandErrorMessage(error, 'starting this run')).toBe(
+    'This workflow is already running. Try again shortly.',
+  );
+  expect(recoveryError(error)).toBe(
+    'This workflow is already running. Try again shortly.',
   );
 });

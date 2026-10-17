@@ -331,6 +331,13 @@ async function acceptWebhook(
       checkpointFactory: dependencies.checkpointFactory,
       ...(traceparent === undefined ? {} : { traceparent }),
     });
+    if ('skipped' in result) {
+      record(() => {
+        telemetry.delivery('skipped');
+      });
+      await reply.code(202).send(result);
+      return;
+    }
     record(() => {
       telemetry.delivery(result.replayed ? 'replayed' : 'accepted');
     });

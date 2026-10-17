@@ -5862,66 +5862,128 @@
       },
       "FormSubmissionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "accepted": {
-            "type": "boolean",
-            "const": true
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "accepted": {
+                "type": "boolean",
+                "const": true
+              },
+              "thankYouMessage": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "redirectUrl": {
+                "type": "string",
+                "maxLength": 2048,
+                "format": "uri"
+              },
+              "runId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "replayed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "accepted",
+              "thankYouMessage",
+              "replayed"
+            ],
+            "additionalProperties": false
           },
-          "thankYouMessage": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1000
-          },
-          "redirectUrl": {
-            "type": "string",
-            "maxLength": 2048,
-            "format": "uri"
-          },
-          "runId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "replayed": {
-            "type": "boolean"
+          {
+            "type": "object",
+            "properties": {
+              "accepted": {
+                "type": "boolean",
+                "const": false
+              },
+              "skipped": {
+                "type": "boolean",
+                "const": true
+              },
+              "reason": {
+                "type": "string",
+                "const": "concurrency_limit"
+              },
+              "replayed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "accepted",
+              "skipped",
+              "reason",
+              "replayed"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "accepted",
-          "thankYouMessage",
-          "replayed"
-        ],
-        "additionalProperties": false
+        ]
       },
       "PublicFormSubmissionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "accepted": {
-            "type": "boolean",
-            "const": true
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "accepted": {
+                "type": "boolean",
+                "const": true
+              },
+              "thankYouMessage": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "redirectUrl": {
+                "type": "string",
+                "maxLength": 2048,
+                "format": "uri"
+              },
+              "replayed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "accepted",
+              "thankYouMessage",
+              "replayed"
+            ],
+            "additionalProperties": false
           },
-          "thankYouMessage": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1000
-          },
-          "redirectUrl": {
-            "type": "string",
-            "maxLength": 2048,
-            "format": "uri"
-          },
-          "replayed": {
-            "type": "boolean"
+          {
+            "type": "object",
+            "properties": {
+              "accepted": {
+                "type": "boolean",
+                "const": false
+              },
+              "skipped": {
+                "type": "boolean",
+                "const": true
+              },
+              "reason": {
+                "type": "string",
+                "const": "concurrency_limit"
+              },
+              "replayed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "accepted",
+              "skipped",
+              "reason",
+              "replayed"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "accepted",
-          "thankYouMessage",
-          "replayed"
-        ],
-        "additionalProperties": false
+        ]
       },
       "FormAccess": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6522,6 +6584,7 @@
               "workflow.name_conflict",
               "workflow.pause_conflict",
               "workflow.auto_pause_settings_conflict",
+              "workflow.already_running",
               "workflow.concurrency_revision_conflict",
               "workflow.concurrency_limit_exceeded",
               "workflow.concurrency_limit_unavailable",
@@ -8119,6 +8182,11 @@
                 "minimum": 0,
                 "maximum": 9007199254740991
               },
+              "skippedTriggerEvents": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
               "byStatus": {
                 "type": "object",
                 "properties": {
@@ -9172,6 +9240,7 @@
                       "target_not_published",
                       "workspace_unavailable",
                       "queue_full",
+                      "concurrency_limit",
                       "invalid_target"
                     ]
                   },

@@ -26,7 +26,7 @@ async function settingsReads(page: Parameters<typeof installEditorRoutes>[0]) {
   );
 }
 
-test('workflow concurrency preserves conflict edits, exact retries and queue-only settings on a narrow screen', async ({
+test('workflow concurrency preserves conflict edits, exact retries and Queue/Skip settings on a narrow screen', async ({
   page,
   baseURL,
 }, testInfo) => {
@@ -69,11 +69,15 @@ test('workflow concurrency preserves conflict edits, exact retries and queue-onl
           },
         });
       }
-      const body = request.postDataJSON() as { limit: number | null };
+      const body = request.postDataJSON() as {
+        limit: number | null;
+        overflow: 'queue' | 'skip';
+      };
       if (writes.length !== 3)
         settings = {
           ...settings,
           limit: body.limit,
+          overflow: body.overflow,
           revision: settings.revision + 1,
         };
       if (writes.length === 2) return route.abort('failed');
@@ -98,7 +102,15 @@ test('workflow concurrency preserves conflict edits, exact retries and queue-onl
   await section.getByRole('button', { name: 'Retry same change' }).click();
   await expect(page.getByText('Concurrency settings saved')).toBeVisible();
   expect(writes[2]).toEqual(writes[1]);
-  expect(writes[2]?.body).toEqual({ limit: 1, expectedRevision: 2 });
+  expect(writes[2]?.body).toEqual({
+    limit: 1,
+    expectedRevision: 2,
+    overflow: 'queue',
+  });
+  await section
+    .getByRole('combobox', { name: 'When the limit is reached' })
+    .click();
+  await page.getByRole('option', { name: 'Skip', exact: true }).click();
   await input.fill('');
   await section.getByRole('button', { name: 'Save concurrency limit' }).click();
   await expect(
@@ -106,8 +118,16 @@ test('workflow concurrency preserves conflict edits, exact retries and queue-onl
       'Current limit: no additional workflow limit. Workspace limits still apply.',
     ),
   ).toBeVisible();
-  expect(writes[3]?.body).toEqual({ limit: null, expectedRevision: 3 });
+  expect(writes[3]?.body).toEqual({
+    limit: null,
+    expectedRevision: 3,
+    overflow: 'skip',
+  });
   await input.focus();
+  await page.keyboard.press('Tab');
+  await expect(
+    section.getByRole('combobox', { name: 'When the limit is reached' }),
+  ).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(
     section.getByRole('button', { name: 'Save concurrency limit' }),

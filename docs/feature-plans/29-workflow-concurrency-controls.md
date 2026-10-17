@@ -1,168 +1,132 @@
-# F29 — Per-workflow concurrency controls
+# F29 — Workflow concurrency
 
-Status: first queue-only slice qualified and merged; skip overflow deferred.
-Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
-Scope: Extends run admission. Relative size: **M–L**, not a calendar estimate.
+Status: Queue and Skip implemented; local qualification complete.
+Updated: 2026-10-17. [Roadmap](../product-roadmap.md).
+Decision: [ADR 058](../adr/058-workflow-concurrency-queue-admission.md), amended below.
 
-## Outcome
+## Outcome and current owners
 
-A workflow can say how many of its runs may be active at once, and what
-happens to the rest: wait their turn or be skipped. Schedules no longer overlap
-themselves and webhook bursts no longer race on the same records.
+A current workflow setting limits its runs across published versions. Existing
+admission serialization, acceptance tickets, reservations and ordered promotion
+remain authoritative. This increment adds **Queue** (default) or **Skip** to the
+existing settings command; it does not add another scheduler or change workspace
+capacity. Current code lives in database authoring/settings/concurrency,
+runs/commands/acceptance, trigger admission, contracts, and web workflow settings.
 
-## Current implementation and evidence
+## Decisions — 2026-10-17
 
-Runs are admitted against workspace-wide queued and active limits with fair
-backpressure ([ADR 012](../adr/012-fair-admission-backpressure-entitlements.md)).
-A schedule's misfire policy decides whether late occurrences run
-([ADR 049](../adr/049-skip-misfire-on-time-window.md)). The local ADR058 slice
-adds a current, optional per-workflow cap across published versions, queue-only
-overflow, durable acceptance tickets, settings commands/UI, and timestamped
-queued-run blockers. This first slice is qualified and merged in PR138; skip
-overflow and independent queue settings remain deferred.
+- The overflow choice belongs to the workflow, not each trigger or version.
+  Existing policies default to Queue. No limit means Skip has no effect.
+- Under the existing workspace admission lock, Skip counts active-slot occupancy,
+  reservations and already accepted queued runs of this workflow. Each run counts
+  once. Counting queued admissions prevents simultaneous arrivals from both
+  passing before a dispatcher reserves their slots. Existing backlog is not
+  canceled when changing the setting. Ordinary timed waits occupy their slot;
+  quiescent human waits release/reacquire it under ADR 076, unchanged.
+  Cancellation/deadline settlement releases
+  occupancy through existing transitions.
+- Resolve exact accepted or skipped request replays before applying current
+  policy. A skipped event never becomes a run when the same request is retried.
+- Webhooks return 202 `{ skipped: true, reason: "concurrency_limit" }`, including
+  response-mode webhooks. Authentication, endpoint eligibility, validation,
+  deduplication, CORS and ingress limits still apply first.
+- Schedules record a skipped occurrence with reason `concurrency_limit` and
+  advance normally. Misfire skips retain their separate meaning.
+- Forms commit a skip receipt and show “This workflow is busy. Try again
+  shortly.” They keep the entered values. A new submission attempt uses a new
+  idempotency key; an uncertain retry keeps the old key.
+- Manual/API starts, replay and recovery return a typed 409 “This workflow is
+  already running.” They create no run. Calls and draft tests keep queuing.
+  Error-workflow intents are automatic triggers: record a visible concurrency
+  refusal instead of silently dropping the intent or retrying it as queue-full.
+- The existing append-only `usage_events` ledger records logical automatic
+  skips under `trigger.skipped`, without event payloads, credentials or submitter identity. Existing
+  webhook deliveries and schedule occurrences retain their native outcomes;
+  this shared record supplies workflow skip history and usage accounting once
+  per logical event. Exact replays do not increment usage. Retain these summaries
+  for 90 days, matching ordinary run summaries; follow existing ledger scrubbing on workspace purge.
+- Usage shows skipped trigger events separately from run totals in the selected
+  retained-activity window. Skips are not failed or successful runs.
 
-Inspected anchors (paths may move):
+## Structure
 
-- [docs/adr/012-fair-admission-backpressure-entitlements.md](../adr/012-fair-admission-backpressure-entitlements.md)
-- [docs/adr/049-skip-misfire-on-time-window.md](../adr/049-skip-misfire-on-time-window.md)
+- Database: extend the current concurrency policy with `overflow`; a focused
+  runs admission helper owns the Skip decision and typed refusal. A triggers
+  skip-record owner writes the bounded metadata used for history and usage.
+- Existing trigger adapters translate that refusal inside their transaction:
+  webhook replay/delivery, schedule occurrence, form receipt, error intent.
+- Contracts/API: extend existing settings and trigger responses; add a bounded
+  workflow skip-history read in the concurrency settings snapshot. Preserve authorization,
+  CSRF, command revisions and idempotency. No public history endpoint.
+- Web: use existing settings fields and Query ownership for Queue/Skip and a
+  bounded recent-skip list. Public forms render the busy result without losing
+  input. Existing delivery/occurrence lists explain the concurrency reason.
+- Additive migration, Drizzle snapshot, existing forced workspace RLS, role grants,
+  readiness/schema checks and retention/purge inventory change together. No
+  table, package, service, role, CI job, queue or stored workflow format is added.
 
-## Dependencies and planning gate
+## Lock order
 
-F12 so limits and queue depth are visible. Independent of subworkflows; F08
-must decide whether child runs count against their own workflow's limit.
+Admission preflight takes workspace/entitlement share locks, not the capacity
+counter. The Skip check takes the existing admission counter only after the
+request claim, variable revision and artifact-reference locks, immediately before
+run insertion. Calls/test runs bypass this decision and retain their existing
+counter order. Settings serialize on the same counter. Trigger adapters use a
+savepoint around run acceptance: a skip rolls back its temporary acceptance
+claim, then commits only the trigger receipt, native history and usage fact.
 
-Resolve in an ADR before code:
+## Rollout
 
-- **Limit** per published workflow (recommended: unset by default, or 1 for
-  in-order processing), versioned with publication or a workflow setting.
-- **Overflow**: queue in arrival order up to a bound, or skip with a recorded
-  reason; schedules default to skip-if-running, webhooks to queue.
-- **Admission point**: enforced in the same admission transaction as the
-  workspace limits, without a hot row per workflow on every run.
-- **Interactions**: replay and manual runs, cancellation freeing a slot,
-  deadlines while queued, and F26 pausing a queued backlog.
+Migrate before the new readers/writers. A writer protocol fence refuses old run
+writers for an enabled Skip policy; the database checks writer compatibility,
+not the TypeScript decision. Deploy API/worker together with ingress quiesced
+before selecting Skip. To roll back, change policies to Queue using new code
+first. Existing reservations/backlog retain their ordinary lifecycle.
 
-### Reviewed first-slice resolution
+## Verification
 
-[ADR058](../adr/058-workflow-concurrency-queue-admission.md) governs the first
-slice. It selects a current operational workflow cap, unset by default,
-queue-only overflow bounded by the existing workspace queue limit, and durable
-acceptance-order tickets with ordered start transitions. Already committed
-reservations are grandfathered when a cap is enabled or lowered. Workspace
-limits remain authoritative; no second scheduler is introduced.
+- Real PostgreSQL races: concurrent arrivals, same/different workflows,
+  active/reserved/queued occupancy, exact skipped/accepted replay, policy
+  changes, terminal release, Calls/test exceptions and workspace limits.
+- Real API/worker: signed and Secret URL webhooks, response-mode fallback,
+  schedule advancement/restart and form busy/retry behavior. Assert no run,
+  checkpoint or advance outbox exists for a skip; metadata and usage agree.
+- Permissions, cross-workspace RLS, migration/protocol fence, bounded query
+  plans, retention and workspace purge.
+- Web units, mocked journeys and real desktop/phone settings/form flows;
+  lint, types, unit, build, contracts/schema/architecture and React Doctor.
+- One PR, green CI, rebase merge. No production deployment or image download.
 
-The interaction question above is resolved by preserving ADR056: trigger pause
-does **not** pause already accepted backlog. Cancellation/deadline terminal
-processing remains deliverable even at full capacity. Skip overflow, per-trigger
-defaults and separate queue-length settings in the broader recommendations below
-are deferred, not part of this first slice. No enabled placeholder controls ship.
+## Tracker
 
-The manager owns this plan and ADR review; the implementation chat owns code and
-verification. Implementation starts only after the decision is recorded, with a
-lock-order and mixed-version rollout check before enforcement changes.
+- [x] Reconcile the current admission, replay and trigger owners.
+- [x] Record decisions and amend ADR 058.
+- [x] Implement persistence, admission, trigger receipts and usage.
+- [x] Implement settings/history and public-form feedback.
+- [x] Qualify real races and browser flows; record evidence.
 
-## User-configurable settings
+CI and merge receipts are recorded in the implementation PR.
 
-Recommended values, confirmed in this feature's ADR. The server enforces every
-range; the control states its consequence.
+## Evidence — 2026-10-17
 
-| Setting | Default | Range | Who changes it | Consequence shown |
-| --- | --- | --- | --- | --- |
-| Runs at once | Unlimited within workspace limits | 1 to the workspace active-run limit | Workflow editors | “At most N runs of this workflow run at the same time” |
-| When the limit is reached | Schedules skip; webhooks and manual runs queue | Queue or skip, per trigger | Workflow editors | “Extra runs wait their turn” or “are skipped and recorded” |
-| Queue length | 100 | 1–1,000, capped by the workspace | Workflow editors | “Runs beyond this are refused with a clear reason” |
+- Real PostgreSQL qualification covers admission races, native webhook/form/
+  schedule/error receipts, separate skip statistics, existing queue behavior and
+  workspace isolation. Migration fixtures preserve a prior limit/revision and
+  default its overflow to Queue. The old-writer fence refuses incompatible inserts.
+- Bounded retention removes expired skip summaries in pages, preserving recent
+  skips and other usage categories; workspace purge scrubs skip facts through the
+  existing ledger owner. Settings return only the latest 20 retained events.
+- Eleven real webhook HTTP cases include signed and Secret URL skips. The real
+  settings browser/worker fixture exercises Queue backlog, restart, manual 409,
+  Skip and removal of the cap at desktop and phone widths. Screenshots were
+  inspected at 1280px and 375px. Public-form busy/retry rendering is qualified
+  with web units and mocked browser journeys; admission/replay uses real PostgreSQL.
+- React Doctor: 100/100 for the 17 changed frontend files. Full units passed;
+  all 198 mocked browser journeys, eight focused form journeys and the full
+  repository check passed. No production rollout.
 
-## Ownership and structure
+## Later
 
-Database admission and queue order; worker coordinator start; contracts;
-web workflow settings and run history.
-
-Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
-
-## Frontend work
-
-A concurrency setting with its overflow choice; queued-by-limit and
-skipped-by-limit states in run history with the reason.
-
-## Backend work
-
-Per-workflow admission and ordered promotion when a run finishes, bounded
-queue depth, skip records for schedules, metrics for queued time.
-
-## Delivery slices
-
-1. ADR for limit, overflow and admission semantics.
-2. Admission, ordered promotion and skip records with real-database race tests.
-3. Settings and run-history UI.
-
-Each slice ends in a usable, tested behavior; do not ship enabled placeholder
-controls backed by invented responses.
-
-## Acceptance evidence
-
-Concurrent starts never exceed the limit; queued runs start in arrival order
-exactly once when a slot frees; skips are recorded; cancellation and deadlines
-free slots; workspace limits still apply; no deadlock across workflows.
-
-## Non-goals
-
-Business-event deduplication or debouncing (F25), rate limits toward a
-provider's API.
-
-## Rollout and rollback
-
-Unset by default, so existing workflows behave as today; removing a limit
-admits queued runs under workspace limits.
-
-No production rollout, paid provisioning or real external calls are authorized
-by this plan.
-
-## Competitor context
-
-Make can process a scenario's data in order, finishing each run before the next
-starts ([scenario settings](https://help.make.com/scenario-settings)).
-
-Research checked 2026-09-29; product editions and availability can change.
-This context informs the outcome, not Pertexo's implementation.
-
-## Delivery tracker
-
-- [x] First-slice baseline reconciled against current code and accepted decisions.
-- [x] First-slice product choices resolved; ADR058 accepted. Broader skip and
-  independent queue-setting choices remain deferred.
-- [x] Contracts and concurrency model reviewed.
-- [x] Backend behavior implemented and independently verified where needed.
-- [x] Frontend behavior implemented and independently verified where needed.
-- [x] Real integrated acceptance evidence recorded.
-- [x] Rollout/rollback and limitations documented.
-- [x] Scoped PR merged with required checks; natural postmerge result inspected.
-
-Evidence log:
-
-- 2026-10-01: independent specification and standards rereviews closed all
-  findings. [PR138](https://github.com/vigani1/pertexo/pull/138) merged exact
-  reviewed head `7561e822` as `02750811c0bbb8545042f96f9f6f53784c9ff5d2`.
-  Exact-head [CI36810146630](https://github.com/vigani1/pertexo/actions/runs/36810146630)
-  and [CodeQL36810146584](https://github.com/vigani1/pertexo/actions/runs/36810146584)
-  passed. Natural postmerge [CI36811514908](https://github.com/vigani1/pertexo/actions/runs/36811514908)
-  and [CodeQL36811514931](https://github.com/vigani1/pertexo/actions/runs/36811514931)
-  succeeded on that exact merge head. The main-push dependency-review skip is
-  expected. First-slice qualification is complete; Phase 7 remains open and no
-  production deployment or activation is claimed.
-
-- 2026-10-01: local implementation has 22 real PostgreSQL concurrency proofs,
-  a final full database suite of 103 files / 741 tests, three real HTTP cases,
-  and a real API/worker/browser cap-setting, queued-blocker, runtime-restart, and removal
-  proof. Ordered starts do not promise completion or external-effect ordering.
-  Receipt reaping is executed; tenant-purge inventory is verified without
-  claiming actual purge execution. The historical enforcement note (retained in Git)
-  records lock order, readiness/role boundaries, old-writer rejection, quiesced
-  rollout and rollback. Manager implementation review, full release gates,
-  scoped merge, and natural postmerge checks remain open. See the
-  delivery tracker.
-- 2026-10-01: manager reviewed the F29 proposal against ADR012/056, current
-  reservation and coordinator capacity paths, and dispatcher ordering. Outbox
-  `available_at,id` ordering does not establish acceptance FIFO; reservations
-  consume active capacity. ADR058 records queue-only scope, ordered promotion,
-  control-path liveness, authorization and rollout proof obligations. No code,
-  race-test, browser, CI or release completion is claimed by this planning entry.
+Separate workflow queue limits and per-trigger policies; business-key event
+coordination is F25. Ordered start does not promise ordered completion or
+external effects. Earlier Queue delivery history remains in Git (PR #138).

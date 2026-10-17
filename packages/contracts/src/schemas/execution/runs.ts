@@ -325,6 +325,7 @@ export const workflowRunStatisticsResponseSchema = z
         createdAtFrom: workflowRunStatisticsTimestampSchema,
         createdAtBefore: workflowRunStatisticsTimestampSchema,
         total: workflowRunCountSchema,
+        skippedTriggerEvents: workflowRunCountSchema.optional(),
         byStatus: workflowRunStatusCountsSchema,
       })
       .strict(),
@@ -443,6 +444,7 @@ export const workflowRunErrorWorkflowSchema = z
         'target_not_published',
         'workspace_unavailable',
         'queue_full',
+        'concurrency_limit',
         'invalid_target',
       ])
       .nullable(),

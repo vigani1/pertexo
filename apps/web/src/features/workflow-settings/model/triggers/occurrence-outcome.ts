@@ -19,14 +19,17 @@ const LATE_AFTER_MS = 60_000;
 export function describeOccurrence(
   occurrence: Pick<
     ScheduleOccurrenceResponse,
-    'outcome' | 'scheduledAt' | 'recordedAt'
+    'outcome' | 'scheduledAt' | 'recordedAt' | 'skipReason'
   >,
 ): OccurrenceOutcome {
   if (occurrence.outcome === 'skipped')
     return {
       tone: 'skipped',
       label: 'Skipped',
-      detail: 'The missed-run setting skipped this run time. No run started.',
+      detail:
+        occurrence.skipReason === 'concurrency_limit'
+          ? 'Concurrency limit reached. No run started.'
+          : 'The missed-run setting skipped this run time. No run started.',
     };
   if (occurrence.outcome === 'paused')
     return {

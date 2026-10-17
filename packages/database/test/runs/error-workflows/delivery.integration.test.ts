@@ -785,3 +785,54 @@ it('refuses a deadline that expires while admission waits for released capacity'
     await waitingStore.close();
   }
 });
+
+it('records a visible concurrency refusal once when an error-workflow target selects Skip', async () => {
+  const f = await fixture();
+  await withWorkspaceTransaction(pool, f.workspaceId, (tx) =>
+    acceptWorkflowRun(tx, {
+      workflowId: f.childWorkflowId,
+      workflowVersionId: f.childVersionId,
+      initialCheckpoint: createCheckpoint({
+        workflowVersionId: f.childVersionId,
+        iterationBudget: 200,
+      }),
+      keyHash: 'd'.repeat(64),
+      requestHash: 'e'.repeat(64),
+      operation: 'workflow.run.accept',
+      scope: 'error-busy',
+      triggerType: 'api',
+    }),
+  );
+  await admin.query(
+    `insert into app.workflow_concurrency_policies(workspace_id,workflow_id,active_run_limit,overflow) values($1,$2,1,'skip')`,
+    [f.workspaceId, f.childWorkflowId],
+  );
+  await f.produce();
+  const input = await delivery(f);
+  await Promise.all([store.dispatch(input), store.dispatch(input)]);
+  expect(await intent(f)).toMatchObject({
+    status: 'refused',
+    refusal_code: 'concurrency_limit',
+    accepted_run_id: null,
+  });
+  expect(
+    (
+      await admin.query(
+        `select metadata from app.usage_events where workspace_id=$1 and category='trigger.skipped'`,
+        [f.workspaceId],
+      )
+    ).rows,
+  ).toEqual([
+    {
+      metadata: { triggerType: 'workflow_error', reason: 'concurrency_limit' },
+    },
+  ]);
+  expect(
+    (
+      await admin.query(
+        `select id from app.workflow_runs where workspace_id=$1 and trigger_type='workflow_error'`,
+        [f.workspaceId],
+      )
+    ).rows,
+  ).toEqual([]);
+});

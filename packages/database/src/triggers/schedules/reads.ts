@@ -20,7 +20,7 @@ import { ScheduleTriggerError } from './errors.js';
  * the metadata the scanner already records; fire times are projected by the
  * scheduler's own recurrence engine from database time. Nothing here writes.
  */
-const OUTCOMES = ['accepted', 'skipped'] as const;
+const OUTCOMES = ['accepted', 'skipped', 'paused'] as const;
 const DEFAULT_PAGE_LIMIT = 25;
 
 export type ScheduleOccurrenceOutcome = (typeof OUTCOMES)[number];
@@ -31,6 +31,7 @@ export type ScheduleOccurrenceRecord = Readonly<{
   recordedAt: string;
   outcome: ScheduleOccurrenceOutcome;
   runId: string | null;
+  skipReason?: 'concurrency_limit';
 }>;
 
 /** Newest-first keyset position: `(scheduled_at desc, id asc)`. */
@@ -130,6 +131,9 @@ function mapOccurrence(row: Record<string, unknown>): ScheduleOccurrenceRecord {
     recordedAt: instantSchema.parse(row.recorded_at),
     outcome,
     runId,
+    ...(row.skip_reason == null
+      ? {}
+      : { skipReason: z.literal('concurrency_limit').parse(row.skip_reason) }),
   });
 }
 
@@ -142,7 +146,7 @@ async function readOccurrencePage(
   // Occurrences past ADR 013's 90-day trigger-summary cutoff are never
   // served, even before the bounded retention stage removes them.
   const result = await client.query<Record<string, unknown>>(
-    `select id,disposition,workflow_run_id,
+    `select id,disposition,workflow_run_id,skip_reason,
             ${utcInstant('scheduled_at')} scheduled_at_cursor,
             ${utcInstant('created_at')} recorded_at
        from app.trigger_schedule_occurrences

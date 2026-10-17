@@ -1,30 +1,16 @@
+import { workflowConcurrencySettingsSchema as settings } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { RUN_SUMMARY_RETENTION_SQL } from '../../runs/data-policy.js';
 import { ROLES, type Role } from '../../tenant-access/policy.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 
 const revision = z.number().int().min(1).max(2_147_483_647);
 const limit = z.number().int().min(1).max(10_000).nullable();
-const settings = z
-  .object({
-    asOf: z.iso.datetime({ precision: 6 }),
-    limit,
-    revision,
-    workspaceActiveRunLimit: limit,
-    workspacePolicyState: z.enum([
-      'active',
-      'suspended',
-      'not_yet_effective',
-      'expired',
-      'unavailable',
-    ]),
-    overflow: z.literal('queue'),
-  })
-  .strict();
 export type WorkflowConcurrencySettings = z.infer<typeof settings>;
 type Scope = Readonly<{
   workspaceId: string;
@@ -38,6 +24,7 @@ export interface WorkflowConcurrencyDatabase {
     input: Scope &
       Readonly<{
         limit: number | null;
+        overflow?: 'queue' | 'skip';
         expectedRevision: number;
         idempotencyKey: string;
         requestId?: string;
@@ -114,14 +101,19 @@ async function readPolicy(
   const result = await client.query<{
     active_run_limit: number | null;
     revision: number;
+    overflow: 'queue' | 'skip';
   }>(
-    `select active_run_limit, revision from app.workflow_concurrency_policies
+    `select active_run_limit, revision, overflow from app.workflow_concurrency_policies
      where workspace_id = $1 and workflow_id = $2`,
     [workspaceId, workflowId],
   );
   const row = result.rows[0];
   // A workflow without a policy has no limit, at revision 1.
-  return { limit: row?.active_run_limit ?? null, revision: row?.revision ?? 1 };
+  return {
+    limit: row?.active_run_limit ?? null,
+    revision: row?.revision ?? 1,
+    overflow: row?.overflow ?? 'queue',
+  };
 }
 
 async function requireWorkflow(
@@ -138,7 +130,11 @@ async function requireWorkflow(
 }
 
 function settingsOf(
-  policy: Readonly<{ limit: number | null; revision: number }>,
+  policy: Readonly<{
+    limit: number | null;
+    revision: number;
+    overflow: 'queue' | 'skip';
+  }>,
   entitlement: Awaited<ReturnType<typeof readEntitlement>>,
 ): WorkflowConcurrencySettings {
   return settings.parse({
@@ -147,7 +143,7 @@ function settingsOf(
     revision: policy.revision,
     workspaceActiveRunLimit: entitlement.maximum,
     workspacePolicyState: entitlement.state,
-    overflow: 'queue',
+    overflow: policy.overflow,
   });
 }
 
@@ -171,10 +167,32 @@ export function createWorkflowConcurrencyStore(
             ROLES,
           );
           await requireWorkflow(client, workspaceId, workflowId);
-          return settingsOf(
+          const policy = settingsOf(
             await readPolicy(client, workspaceId, workflowId),
             await readEntitlement(client, workspaceId),
           );
+          const history = await client.query<{
+            id: string;
+            at: string;
+            trigger_type: string;
+            reason: string;
+          }>(
+            `select id,to_char(occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') at,
+                    metadata->>'triggerType' trigger_type,metadata->>'reason' reason
+             from app.usage_events where workspace_id=$1 and resource_type='workflow' and resource_id=$2
+               and category='trigger.skipped' and occurred_at>statement_timestamp()-${RUN_SUMMARY_RETENTION_SQL}
+             order by occurred_at desc,id limit 20`,
+            [workspaceId, workflowId],
+          );
+          return settings.parse({
+            ...policy,
+            recentSkips: history.rows.map((row) => ({
+              id: row.id,
+              at: row.at,
+              triggerType: row.trigger_type,
+              reason: row.reason,
+            })),
+          });
         },
         input.signal,
       );
@@ -187,6 +205,9 @@ export function createWorkflowConcurrencyStore(
       const request = {
         limit: limit.parse(input.limit),
         expectedRevision: revision.parse(input.expectedRevision),
+        ...(input.overflow === undefined
+          ? {}
+          : { overflow: z.enum(['queue', 'skip']).parse(input.overflow) }),
       };
       return transact(
         workspaceId,
@@ -232,16 +253,27 @@ export function createWorkflowConcurrencyStore(
               );
           }
           let current = policy;
-          if (policy.limit !== request.limit) {
-            current = { limit: request.limit, revision: policy.revision + 1 };
+          const overflow = request.overflow ?? policy.overflow;
+          if (policy.limit !== request.limit || policy.overflow !== overflow) {
+            current = {
+              limit: request.limit,
+              revision: policy.revision + 1,
+              overflow,
+            };
             await client.query(
               `insert into app.workflow_concurrency_policies
-                 (workspace_id, workflow_id, active_run_limit, revision)
-               values ($1, $2, $3, $4)
+                 (workspace_id, workflow_id, active_run_limit, revision, overflow)
+               values ($1, $2, $3, $4, $5)
                on conflict (workspace_id, workflow_id) do update
                set active_run_limit = excluded.active_run_limit,
-                   revision = excluded.revision`,
-              [workspaceId, workflowId, current.limit, current.revision],
+                   revision = excluded.revision, overflow = excluded.overflow`,
+              [
+                workspaceId,
+                workflowId,
+                current.limit,
+                current.revision,
+                current.overflow,
+              ],
             );
             await client.query(
               `insert into app.audit_events
@@ -259,7 +291,7 @@ export function createWorkflowConcurrencyStore(
                 JSON.stringify({
                   limit: current.limit,
                   revision: current.revision,
-                  overflow: 'queue',
+                  overflow: current.overflow,
                 }),
               ],
             );

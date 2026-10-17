@@ -11,6 +11,14 @@ export const workflowConcurrencyLimitSchema = z
   .int()
   .min(1)
   .max(10_000);
+const workflowConcurrencySkipSchema = z
+  .object({
+    id: z.uuid(),
+    at: z.iso.datetime({ precision: 6 }),
+    triggerType: z.enum(['webhook', 'schedule', 'form', 'workflow_error']),
+    reason: z.literal('concurrency_limit'),
+  })
+  .strict();
 export const workflowConcurrencySettingsSchema = z
   .object({
     asOf: z.iso.datetime({ precision: 6 }),
@@ -24,13 +32,15 @@ export const workflowConcurrencySettingsSchema = z
       'expired',
       'unavailable',
     ]),
-    overflow: z.literal('queue'),
+    overflow: z.enum(['queue', 'skip']),
+    recentSkips: z.array(workflowConcurrencySkipSchema).max(20).optional(),
   })
   .strict();
 export const workflowConcurrencySettingsRequestSchema = z
   .object({
     limit: workflowConcurrencyLimitSchema.nullable(),
     expectedRevision: workflowConcurrencyRevisionSchema,
+    overflow: z.enum(['queue', 'skip']).exactOptional(),
   })
   .strict();
 export const workflowConcurrencyCommandResponseSchema = z
