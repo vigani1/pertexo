@@ -392,6 +392,15 @@ migration/readiness gate with matching readers/workers.
   main (82/100, the same 13 existing diagnostics). Changed-scope score is 91/100
   with zero diagnostics. No rule suppression or configuration changes.
 
+## Input-case dialog follow-up (2026-10-17)
+
+Keep focused content mounted through
+the popup's exit transition. Removing it immediately on close scheduled Base UI
+focus repair after Run opened, dismissing that newer menu. Qualification covers
+the same menu element across three full-editor cache refetches, an overlapping
+dialog close in Chromium (red before the fix), and repeated owned live
+input-cases journeys. Polling and editor scope keys retain their existing rules.
+
 ## Later work
 
 Binary/file-backed pinned samples remain later. Keep the current single-step preview seam; never label a published real
