@@ -1,3 +1,7 @@
+import {
+  workspaceVariableNameSchema,
+  WORKSPACE_VARIABLE_LIMITS,
+} from '@pertexo/workflow-model';
 import { ROLES } from '../../tenant-access/policy.js';
 import type { AuditEvent } from '@pertexo/contracts';
 
@@ -19,6 +23,8 @@ const numberKeys = new Set([
   'versionNumber',
   'affected',
   'roleRevision',
+  'fromRevision',
+  'toRevision',
   'auditRetentionDays',
   'columnCount',
   'tableLimit',
@@ -26,6 +32,9 @@ const numberKeys = new Set([
   'rowLimit',
   'byteLimit',
 ]);
+const changedNamesSchema = workspaceVariableNameSchema
+  .array()
+  .max(WORKSPACE_VARIABLE_LIMITS.count);
 const booleanKeys = new Set(['reused', 'dryRun']);
 export function projectAuditMetadata(
   metadata: unknown,
@@ -34,7 +43,10 @@ export function projectAuditMetadata(
   if (typeof metadata !== 'object' || metadata === null) return result;
   const entries: readonly [string, unknown][] = Object.entries(metadata);
   for (const [key, value] of entries) {
-    if (
+    if (key === 'changedNames') {
+      const names = changedNamesSchema.safeParse(value);
+      if (names.success) result[key] = names.data;
+    } else if (
       key === 'actorRef' &&
       typeof value === 'string' &&
       /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(value)
@@ -76,7 +88,7 @@ export function projectAuditMetadata(
     )
       result[key] = value;
     else if (
-      key === 'role' &&
+      ['role', 'fromRole', 'toRole'].includes(key) &&
       typeof value === 'string' &&
       ROLES.some((role) => role === value)
     )
