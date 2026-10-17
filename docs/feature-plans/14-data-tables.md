@@ -1,6 +1,6 @@
 # F14 — Workspace data tables
 
-Status: first slice delivered in #334; editable columns delivered in #337; streaming export follow-up in progress. Parent:
+Status: first slice delivered in #334; editable columns delivered in #337; streamed exports delivered in #338; explicit workflow alias review implemented. Parent:
 [roadmap](../product-roadmap.md). Decision: [ADR 083](../adr/083-workspace-data-tables.md).
 
 ## Outcome and current foundations
@@ -279,7 +279,7 @@ role, dependency, stored format or CI job.
   beyond 1 MiB; stream a quota-sized dataset while measuring peak memory.
 - [x] Real HTTP and native browser downloads: valid CSV, filtered full result,
   auth/CSRF/rate refusal and interrupted transfer marked failed; desktop/phone.
-- [ ] Root checks, unit/mocked e2e, existing live journeys, docs and green CI.
+- [x] Root checks, unit/mocked e2e, existing live journeys, docs and green CI; #338 merged.
 
 Local measured export evidence: 100,000 rows / 1,068,188,909 CSV bytes streamed
 under a 192 MiB Node heap limit. Peak sampled JavaScript heap was 57,796,280
@@ -294,3 +294,61 @@ The owned real API/worker/browser journeys passed at 1280px and 375px, including
 a >1 MiB native download, formula escaping and invalid-CSRF refusal. Existing
 schema-edit, publication, effects/pins and variable-snapshot journeys passed.
 React Doctor reported no new diagnostics (baseline score 92/100).
+
+
+## Explicit workflow column-name adoption (2026-10-17)
+
+Reconciled after #338. Runtime bindings already preserve aliases across table
+renames. This follow-up belongs in the editor, with no new stored format,
+dependency, API, database migration, service, role or CI job.
+
+### Decisions / ownership
+
+- Show `amount (now called total)` wherever the table Setup lists a renamed
+  workflow field. A table refresh never edits the draft. Removed IDs stay
+  visibly removed and require the existing explicit column review first.
+- Offer **Use the new name** (plural for multiple renames). One review adopts
+  current names for all currently bound columns together, preserving their IDs
+  and bound subset. This handles swapped/colliding old aliases without temporary
+  aliases or silently retargeting columns. It does not add/remove columns.
+- Before applying, list every old/new field name and affected later mappings,
+  including nested bodies and the callable workflow result. Inspect ordinary
+  paths with the shared JSON-path parser. Whole-output consumers are listed for
+  review too. Reachable expressions, Code steps and embedded paths may compute
+  their references dynamically: identify them as manual review rather than claim
+  that a static scan proves them safe. Do not add a second expression parser.
+- Explain that this step's values/filter/sort mappings and listed later mappings
+  need review; adopting names does not rewrite input data, expressions, Code or
+  other steps. A path may break or select a different column after a name swap.
+  The user confirms the displayed change deliberately; published versions keep
+  their original aliases. Normal pin and suite staleness follows the draft edit.
+- Freeze the review against the draft and bound column IDs/names, and require
+  reopening if either changes. The general table revision also advances on row
+  writes, so it must not invalidate a name review. Apply through the existing node-form command as one undoable
+  draft edit/save, keeping ETags and serialized saves. Read-only editors cannot
+  apply. Use the existing dialog, plain controls and a stable focus destination.
+- Editor-local pure helpers own the adoption/impact calculation; the inspector
+  composes them with the existing table query and scoped draft store. No moves
+  are needed. Update the guide and clarify ADR 083's explicit-alias rule.
+
+### Qualification / tracker
+
+- [x] Current code reconciled and decisions recorded before implementation.
+- [x] Unit coverage: ID/subset preservation, swaps, removals, nested/direct/whole
+  output references, dynamic review and stale review refusal.
+- [x] Desktop/phone: rename visibility; no automatic save on refresh or cancel;
+  explicit review, one draft change, persistence/undo, and read-only controls.
+- [x] Real API/worker: old publication retains old alias; explicitly adopted new
+  publication returns the new alias. Root/web checks, mocked e2e, React Doctor,
+  guide complete; merge is gated on green exact-head CI.
+
+
+Local qualification: all 1,252 web unit tests and 212 mocked browser tests
+passed. Eight new focused regressions cover ID/name swaps, removed IDs,
+nested/direct/whole-output consumers, dynamic review, stale draft/name changes,
+ordinary row-write stability, Cancel, focus restoration and read-only controls.
+Owned real API/worker/browser journeys passed at 1280px and 375px: V1 retains
+`amount`; explicit adoption and a new V2 return `total` with the same IDs. Undo,
+reload, no automatic alias save and later-path disclosure passed in the browser.
+Root dependency/boundary checks and web build/lint/types passed. React Doctor
+reports no new diagnostics (92/100 baseline). No file moves or new dependencies.

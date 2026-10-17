@@ -75,7 +75,7 @@ test('selects human field aliases for later-added opaque column IDs', async ({
   await page.getByRole('option', { name: 'Orders', exact: true }).click();
   await expect(
     page.getByRole('region', { name: 'Table column bindings' }),
-  ).toContainText('currency ← currency');
+  ).toContainText('currency');
   await expect.poll(() => remote.revision).toBe(2);
   expect(remote.graph.nodes).toContainEqual(
     expect.objectContaining({

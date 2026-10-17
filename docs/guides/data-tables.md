@@ -35,6 +35,21 @@ their original aliases, including downstream output paths. For example, renaming
 `amount` to `total` changes the table page and CSV header; a workflow configured
 with `amount` still reads/writes that same column and returns `values.amount`.
 
+Setup shows **amount (now called total)**. **Use the new name** opens a review
+before changing this draft. For several renamed fields it adopts the new names
+together, keeping each field attached to the same column, even when names have
+swapped. It keeps the same set of bound columns; review removed columns first.
+
+The review lists later output paths, whole-output consumers and paths inside
+nested bodies. Expressions and Code can compute paths dynamically, so review the
+listed programs manually too. Check this step's values, filters and sorting.
+Mappings and input data are not rewritten for you: old paths can break or refer
+to a different column after a swap. Cancel changes nothing. Confirm creates one
+undoable draft edit; published versions keep their original names. A draft or
+column-name change while the review is open requires reopening it. Row writes do
+not invalidate the review. Test again before
+publishing; normal pin and test-suite staleness rules apply.
+
 Deleting asks for confirmation and removes that column's cells from every row.
 Deleting the key column also clears the unique key. Workflows bound to a removed
 column fail validation or are refused when starting an older published version.

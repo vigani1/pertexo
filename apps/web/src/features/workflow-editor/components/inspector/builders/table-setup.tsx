@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { TableColumnNames } from '../data-tables/column-names';
 import { Button } from '@/components/ui/button';
 import { reviewTableBindings } from '../../../model/inspector/table-bindings';
 import type { DataTableBindings } from '@pertexo/node-sdk';
@@ -19,6 +21,7 @@ export function DataTableSetup({
   form: NodeFormApi;
 }>) {
   const query = useQuery(tablesQuery(scope));
+  const reviewButton = useRef<HTMLButtonElement>(null);
   const selected = typeof config.table === 'string' ? config.table : '';
   const tables = query.data?.tables ?? [];
   const table = tables.find((table) => table.name === selected);
@@ -59,21 +62,14 @@ export function DataTableSetup({
             Input and output field names stay stable when table columns are
             renamed.
           </p>
-          <ul className="grid gap-1 text-xs">
-            {Object.entries(
-              bindings ??
-                Object.fromEntries(
-                  table.columns.map((column) => [column.id, column.id]),
-                ),
-            ).map(([alias, id]) => (
-              <li key={alias} className="break-words">
-                {alias} ←{' '}
-                {table.columns.find((column) => column.id === id)?.name ??
-                  'Removed column'}
-              </li>
-            ))}
-          </ul>
+          <TableColumnNames
+            table={table}
+            bindings={bindings}
+            form={form}
+            returnFocus={reviewButton}
+          />
           <Button
+            ref={reviewButton}
             type="button"
             variant="outline"
             size="sm"
