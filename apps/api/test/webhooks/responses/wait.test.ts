@@ -1,9 +1,37 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { createWebhookResponseWaiter } from '../../../src/webhooks/responses/wait.js';
 import type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
 } from '@pertexo/database/triggers';
+// Node promises timers need their own controlled-clock seam. Wake one ms early
+// to exercise the real boundary without relying on CI scheduling luck.
+vi.mock('node:timers/promises', () => ({
+  setTimeout: (
+    millis: number,
+    value: unknown,
+    options: { signal: AbortSignal },
+  ) =>
+    new Promise((resolve, reject) => {
+      const abort = () => {
+        clearTimeout(timer);
+        options.signal.removeEventListener('abort', abort);
+        reject(new Error('Aborted'));
+      };
+      const timer = setTimeout(
+        () => {
+          options.signal.removeEventListener('abort', abort);
+          resolve(value);
+        },
+        Math.max(1, millis - 1),
+      );
+      if (options.signal.aborted) abort();
+      else options.signal.addEventListener('abort', abort, { once: true });
+    }),
+}));
+beforeEach(() => {
+  vi.useFakeTimers();
+});
 const scope = {
   workspaceId: 'workspace',
   runId: 'run',
@@ -11,6 +39,7 @@ const scope = {
   signal: new AbortController().signal,
 };
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 describe('bounded webhook waits', () => {
@@ -30,13 +59,27 @@ describe('bounded webhook waits', () => {
     const waiter = createWebhookResponseWaiter(read);
     const waiting = Array.from({ length: 32 }, () => waiter.wait(scope));
     expect(await waiter.wait(scope)).toBeNull();
+    await vi.advanceTimersByTimeAsync(1000);
     expect(await Promise.all(waiting)).toEqual(
       Array.from({ length: 32 }, () => null),
     );
-    expect(read.mock.calls.length).toBeGreaterThanOrEqual(32);
-    expect(read.mock.calls.length).toBeLessThanOrEqual(128);
+    expect(read).toHaveBeenCalledTimes(128);
+    expect(vi.getTimerCount()).toBe(0);
     read.mockResolvedValue({ state: 'finished' });
     expect(await waiter.wait(scope)).toEqual({ state: 'finished' });
+    waiter.close();
+  });
+  it('discards a late read even when the deadline callback has not run yet', async () => {
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const read = vi.fn(() => {
+      now = 1001;
+      return Promise.resolve({ state: 'finished' as const });
+    });
+    const waiter = createWebhookResponseWaiter(read);
+    expect(await waiter.wait(scope)).toBeNull();
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
     waiter.close();
   });
   it('aborts an in-flight read at the deadline, and frees the slot', async () => {
