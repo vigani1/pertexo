@@ -13,7 +13,7 @@ test. **Check setup** still checks the real settings.
 
 Published runs always execute their real steps. Publishing, running, replaying,
 recovering, duplicating and exporting never carry pins along. Importing a workflow
-doesn’t import them either. Use **Test workflow** to apply the pins across a saved draft. Test suites stay later.
+doesn’t import them either. Use **Test workflow** to apply the pins across a saved draft. Use **Run all tests** to check all saved input cases as a suite.
 
 ## Test the whole draft
 
@@ -42,6 +42,50 @@ pause streaks. They keep their input, frozen pins, results and generated files f
 seven days, and have a five-minute execution budget including queue time (or the
 draft’s shorter limit). Published runs, replay and recovery always use real
 published execution; a draft test cannot become their source.
+
+## Run a saved test suite
+
+Create or edit cases under **Input cases** after the workflow has a published
+version. Each case has an expected outcome (**Succeeds** by default) and optional
+value checks. Choose a step's output, enter a JSON path such as `$.amount`, choose
+**Equals** or **Contains**, and enter an expected JSON value (`12`, `"USD"`, or
+`{"currency":"USD"}`). A declared workflow result is available as **Final
+output**; ordinary workflows should choose their result step instead. Pertexo
+does not guess a last output across branches or loops.
+
+Equals compares complete JSON values, including object keys and array order.
+Contains checks a case-sensitive substring, one structurally equal array member,
+or an object's properties with equal values. Missing paths, steps that did not
+run, repeated step invocations and file-backed results are explicit failed
+checks. For a loop, check a downstream summary step instead of an arbitrary
+iteration. Use up to 20 checks per case, 4 KB per expected value and 16 KB total
+expectations per case.
+
+Choose **Run all tests** in the editor, review the ordered cases and acknowledge
+all unpinned effectful steps once. Every case runs on the worker, one after
+another, against the same saved draft, pins and workspace variables. Later edits
+do not rewrite that suite. The suite uses workspace capacity just like a single
+draft test. Its next case waits for queue space, with a five-hour total bound;
+each admitted test still has at most five minutes including queue time.
+
+Open **Test history → Suites** for pass/fail/error per case. **Report** shows
+expected and actual values (large actual values have a labeled preview).
+**View test** opens the existing step results, including **Pin output…**. An
+ordinary failure continues to the next case. Unknown outcomes and timeouts are
+errors, even when a case expects failure. **Cancel suite** cancels the current
+test and skips the remaining cases; effects already performed cannot be undone.
+Lost access or archiving stops later cases visibly.
+
+The publish dialog shows the latest suite result and warns if it failed or if the
+draft, cases, pins or variables changed. It never blocks publishing. Results are
+shared with workflow editors who can read and start runs, retained seven days,
+and listed only in the editor. Suite runs have the same test isolation from
+alerts, inbox, error workflows and published execution as individual draft tests.
+
+A workflow can have up to **50 active cases**, a workspace up to 200. Each input
+fits within 64 KB; all retained inputs and expectations share the existing 4 MB
+workspace case budget. Remove unneeded cases if that budget is full. Suites do
+not add cases, pins or private reports to workflow exports.
 
 ## Review changed settings
 

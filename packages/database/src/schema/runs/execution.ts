@@ -239,6 +239,9 @@ export const workflowRuns = appSchema.table(
       columns: [table.workspaceId, table.replaySourceRunId],
       foreignColumns: [table.workspaceId, table.id],
     }),
+    index('workflow_runs_test_source_idx')
+      .on(table.workspaceId, table.workflowVersionId)
+      .where(sql`${sql.raw(testRunSql())}`),
     uniqueIndex('workflow_runs_one_active_test')
       .on(table.workspaceId, table.workflowId, table.startedBy)
       .where(
@@ -541,6 +544,12 @@ export const nodeRuns = appSchema.table(
       columns: [table.workspaceId, table.workflowRunId],
       foreignColumns: [workflowRuns.workspaceId, workflowRuns.id],
     }).onDelete('cascade'),
+    index('node_runs_run_node_idx').on(
+      table.workspaceId,
+      table.workflowRunId,
+      table.nodeId,
+      table.id,
+    ),
     index('node_runs_due_idx')
       .on(table.workspaceId, table.retryDueAt, table.resumeAt, table.id)
       .where(sql`((status)::text = 'waiting'::text)`),

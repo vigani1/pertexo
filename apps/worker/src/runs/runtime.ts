@@ -1,4 +1,8 @@
 import {
+  createWorkflowTestSuiteScanner,
+  type WorkflowTestSuiteScanner,
+} from '@pertexo/database/previews';
+import {
   CoordinatorDeliveryMismatchError,
   createDueNodeWakeupScanner,
   createDeadlineWakeupScanner,
@@ -71,6 +75,7 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   clock?: Readonly<{ now(): string }>;
   consumerFactory?: typeof createQueueConsumer;
   dueWakeupScanner?: DueNodeWakeupScanner;
+  testSuiteScanner?: WorkflowTestSuiteScanner;
   deadlineWakeupScanner?: DeadlineWakeupScanner;
   notifications?: RunEventNotificationPublisher;
   runStore?: RunAdvanceStore;
@@ -83,6 +88,7 @@ export type CoordinatorCompositionFactories = Readonly<{
   consumer: typeof createQueueConsumer;
   deadlineScanner: typeof createDeadlineWakeupScanner;
   dueScanner: typeof createDueNodeWakeupScanner;
+  testSuiteScanner: typeof createWorkflowTestSuiteScanner;
   notifications(redisUrl: string): RunEventNotificationPublisher;
   runStore: typeof createRunAdvanceStore;
   callStore: typeof createWorkflowCallStore;
@@ -94,6 +100,7 @@ const productionFactories: CoordinatorCompositionFactories = {
   consumer: createQueueConsumer,
   deadlineScanner: createDeadlineWakeupScanner,
   dueScanner: createDueNodeWakeupScanner,
+  testSuiteScanner: createWorkflowTestSuiteScanner,
   notifications: (redisUrl) =>
     new RedisRunEventNotificationPublisher({ redisUrl }),
   runStore: createRunAdvanceStore,
@@ -149,6 +156,7 @@ export async function createCoordinatorRuntime(
   let notifications: RunEventNotificationPublisher | undefined;
   let dueWakeupScanner: DueNodeWakeupScanner | undefined;
   let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
+  let testSuiteScanner: WorkflowTestSuiteScanner | undefined;
   let consumer: QueueConsumer | undefined;
   const expressionEvaluator =
     dependencies.advance === undefined ? new JsonataEvaluator() : undefined;
@@ -174,6 +182,20 @@ export async function createCoordinatorRuntime(
     deadlineWakeupScanner =
       dependencies.deadlineWakeupScanner ??
       factories.deadlineScanner(options.database, options.databaseRuntime);
+    testSuiteScanner =
+      dependencies.testSuiteScanner ??
+      (await factories.testSuiteScanner(
+        options.database,
+        options.maintenanceDatabase,
+        {
+          ...(options.databaseRuntime === undefined
+            ? {}
+            : { runtime: options.databaseRuntime }),
+          ...(options.maintenanceDatabaseRuntime === undefined
+            ? {}
+            : { maintenanceRuntime: options.maintenanceDatabaseRuntime }),
+        },
+      ));
     const clock = dependencies.clock ?? systemClock();
     const advanceDependencies = Object.freeze({
       runs: runStore,
@@ -202,6 +224,7 @@ export async function createCoordinatorRuntime(
       [
         dueWakeupScanner,
         deadlineWakeupScanner,
+        testSuiteScanner,
         notifications,
         runStore,
         callStore,
@@ -218,12 +241,14 @@ export async function createCoordinatorRuntime(
   }
   const dueScanner = dueWakeupScanner;
   const deadlineScanner = deadlineWakeupScanner;
+  const suiteScanner = testSuiteScanner;
   return createScannerRuntime({
     name: 'Coordinator',
     consumer,
     owners: [
       dueWakeupScanner,
       deadlineWakeupScanner,
+      testSuiteScanner,
       notifications,
       runStore,
       callStore,
@@ -235,6 +260,8 @@ export async function createCoordinatorRuntime(
       await dueScanner.claimDueWakeups(dueWakeupBatchSize, signal);
       if (signal.aborted) return;
       await deadlineScanner.claimDueWakeups(dueWakeupBatchSize, signal);
+      signal.throwIfAborted();
+      await suiteScanner.scan(Math.min(25, dueWakeupBatchSize), signal);
     },
     scanFailed: (error) => {
       dependencies.logger?.error(

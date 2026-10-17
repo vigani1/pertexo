@@ -86,6 +86,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0023_webhook_authentication.sql',
       '0024_concurrency_skip.sql',
       '0025_capacity_warnings.sql',
+      '0026_workflow_test_suites.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

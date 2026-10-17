@@ -1,3 +1,4 @@
+import type { WorkflowTestSuiteStore } from '../../previews/suites/contract.js';
 import type { WorkflowTestStore } from '../../previews/workflows/contract.js';
 import type { WorkflowStepSampleStore } from '../step-samples/contract.js';
 import type { WorkflowErrorDatabase } from '../settings/error-workflow.js';
@@ -192,6 +193,7 @@ export type RenameWorkflowResult = Readonly<{
 export type WorkflowAuthoringDatabase = Readonly<{
   stepSamples: WorkflowStepSampleStore;
   workflowTests: WorkflowTestStore;
+  workflowTestSuites: WorkflowTestSuiteStore;
   exportWorkflow(input: ExportWorkflowInput): Promise<WorkflowPortableManifest>;
   previewWorkflowImport(
     input: PreviewWorkflowImportInput,

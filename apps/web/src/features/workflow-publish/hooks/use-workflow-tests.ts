@@ -1,3 +1,4 @@
+import { useTestSuites } from './use-test-suites';
 import { getStepSample } from '../data/samples/api';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +35,7 @@ export function useWorkflowTests({
   ensureSaved: () => Promise<{ revision: number }>;
   verifyIdentity: () => Promise<void>;
 }>) {
+  const suites = useTestSuites({ scope, enabled, ensureSaved, verifyIdentity });
   const queryClient = useQueryClient();
   const lifetime = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
@@ -169,6 +171,7 @@ export function useWorkflowTests({
     }
   }
   return {
+    suites,
     loadTriggerInput,
     scope,
     open,
@@ -185,7 +188,7 @@ export function useWorkflowTests({
     progress,
     activeId,
     selectRun,
-    blocked,
+    blocked: blocked || suites.blocked,
     enabled,
   };
 }

@@ -1,4 +1,3 @@
-import { testRunSql } from '../../data-policy.js';
 import type { FrozenWorkflowTestPins } from '../../../schema/runs/tests.js';
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import { z } from 'zod';
@@ -36,9 +35,8 @@ export interface WorkflowExecutionReader extends Omit<
 }
 /** Both sources are immutable; a test snapshot never enters publication queries. */
 export const EXECUTION_SOURCE_SQL = `select id,workspace_id,workflow_id,version_number,checksum,executable_json,null::jsonb test_dispositions,null::timestamptz test_expires_at from app.workflow_versions
- union all select snapshot.run_id,snapshot.workspace_id,run.workflow_id,snapshot.draft_revision,snapshot.checksum,snapshot.executable_json,snapshot.dispositions,snapshot.expires_at
- from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.id=snapshot.run_id
- where ${testRunSql('run')}`;
+ union all select snapshot.id,snapshot.workspace_id,snapshot.workflow_id,snapshot.draft_revision,snapshot.checksum,snapshot.executable_json,snapshot.dispositions,snapshot.expires_at
+ from app.workflow_test_snapshots snapshot`;
 
 export function parseExecutionSource(
   row: Record<string, unknown> | undefined,
@@ -89,7 +87,7 @@ export function createWorkflowExecutionReader(
           const pin = await transaction.db.execute<{
             sample: FrozenWorkflowTestPins[string] | null;
           }>(
-            sql`select pins -> ${input.nodeId}::text sample from app.workflow_test_snapshots where workspace_id=${input.workspaceId} and run_id=${input.workflowVersionId}`,
+            sql`select pins -> ${input.nodeId}::text sample from app.workflow_test_snapshots where workspace_id=${input.workspaceId} and id=${input.workflowVersionId}`,
           );
           const sample = pin.rows[0]?.sample;
           if (sample === undefined || sample === null)

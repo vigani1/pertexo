@@ -1,17 +1,12 @@
 import { z } from 'zod';
+import {
+  isStorageText,
+  workflowTestExpectationsSchema,
+} from '@pertexo/workflow-model';
 
 const WORKFLOW_INPUT_CASE_MAX_BYTES = 65_536;
 const WORKFLOW_INPUT_CASE_MAX_DEPTH = 64;
 const WORKFLOW_INPUT_CASE_MAX_MEMBERS = 10_000;
-
-function supportedString(value: string): boolean {
-  return (
-    !value.includes('\u0000') &&
-    !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(
-      value,
-    )
-  );
-}
 
 /** Inspect descriptors before recursive JSON parsing; never invoke input accessors. */
 function boundedCaseJson(value: unknown): boolean {
@@ -20,7 +15,7 @@ function boundedCaseJson(value: unknown): boolean {
   function normalize(current: unknown, depth: number): unknown {
     if (current === null || typeof current === 'boolean') return current;
     if (typeof current === 'string') {
-      if (!supportedString(current)) throw new TypeError();
+      if (!isStorageText(current)) throw new TypeError();
       return current;
     }
     if (typeof current === 'number' && Number.isFinite(current))
@@ -54,7 +49,7 @@ function boundedCaseJson(value: unknown): boolean {
         ? []
         : (Object.create(null) as Record<string, unknown>);
       for (const key of keys) {
-        if (!supportedString(key)) throw new TypeError();
+        if (!isStorageText(key)) throw new TypeError();
         const descriptor = Object.getOwnPropertyDescriptor(current, key);
         if (descriptor === undefined || !('value' in descriptor))
           throw new TypeError();
@@ -146,7 +141,7 @@ const workflowInputCaseNameSchema = z
   .trim()
   .min(1)
   .max(128)
-  .refine(supportedString, 'Case names must contain supported Unicode text');
+  .refine(isStorageText, 'Case names must contain supported Unicode text');
 export const workflowInputCaseMetadataSchema = z
   .object({
     id: z.uuid(),
@@ -162,7 +157,10 @@ export const workflowInputCaseMetadataSchema = z
   })
   .strict();
 export const workflowInputCaseSchema = workflowInputCaseMetadataSchema
-  .extend({ input: workflowInputCaseJsonSchema })
+  .extend({
+    input: workflowInputCaseJsonSchema,
+    expectations: workflowTestExpectationsSchema.optional(),
+  })
   .strict();
 export const workflowInputCaseResponseSchema = z
   .object({ case: workflowInputCaseSchema })
@@ -187,12 +185,14 @@ export const workflowInputCaseCreateRequestSchema = z
     workflowVersionId: z.uuid(),
     name: workflowInputCaseNameSchema,
     input: workflowInputCaseJsonSchema,
+    expectations: workflowTestExpectationsSchema.optional(),
   })
   .strict();
 export const workflowInputCaseUpdateRequestSchema = z
   .object({
     name: workflowInputCaseNameSchema,
     input: workflowInputCaseJsonSchema,
+    expectations: workflowTestExpectationsSchema.optional(),
   })
   .strict();
 export const workflowInputCaseCommandResponseSchema = z

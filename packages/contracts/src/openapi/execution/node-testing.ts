@@ -1,4 +1,8 @@
 import {
+  workflowTestSuiteContractSchemas,
+  workflowTestSuitePaths,
+} from './test-suites.js';
+import {
   workflowTestPaths,
   workflowTestContractSchemas,
 } from './workflow-tests.js';
@@ -32,6 +36,7 @@ function contractSchemas(target: 'client' | 'openapi') {
   return Object.freeze({
     ...stepSampleContractSchemas(target),
     ...workflowTestContractSchemas(target),
+    ...workflowTestSuiteContractSchemas(target),
     ApiProblem: projectContractSchema(
       'ApiProblem',
       apiProblemSchema,
@@ -116,6 +121,7 @@ export const nodeTestingOpenApiDocument = Object.freeze({
   paths: {
     ...stepSamplePaths,
     ...workflowTestPaths,
+    ...workflowTestSuitePaths,
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test':
       {
         post: {

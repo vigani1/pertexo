@@ -184,6 +184,7 @@ it('blocks new case and run commands until a reviewed publication is actually di
     workflowVersionId: reviewedId,
     name: 'Reviewed case',
     input: {},
+    expectations: { outcome: 'succeeds', assertions: [] },
   });
   expect(start).not.toHaveBeenCalled();
   await screen.findByRole('button', { name: 'New input case' });

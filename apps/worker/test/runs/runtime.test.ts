@@ -70,6 +70,7 @@ function runtimeDependencies(
     },
     dueWakeupScanner,
     deadlineWakeupScanner,
+    testSuiteScanner: { scan: vi.fn().mockResolvedValue(0), close: vi.fn() },
   };
 }
 
@@ -86,7 +87,7 @@ describe('coordinator runtime', () => {
       ['runStore', 'callStore', 'notifications', 'dueScanner'],
     ],
     [
-      'consumer',
+      'testSuiteScanner',
       [
         'runStore',
         'callStore',
@@ -95,12 +96,30 @@ describe('coordinator runtime', () => {
         'deadlineScanner',
       ],
     ],
+    [
+      'consumer',
+      [
+        'runStore',
+        'callStore',
+        'notifications',
+        'dueScanner',
+        'deadlineScanner',
+        'testSuiteScanner',
+      ],
+    ],
   ] as const)(
     'rolls back every owner acquired before %s construction fails',
     async (failedStage, expectedClosed) => {
       const constructionFailure = new Error(`${failedStage} failed`);
       const closed: string[] = [];
       const owned = {
+        testSuiteScanner: {
+          scan: vi.fn(),
+          close: vi.fn(() => {
+            closed.push('testSuiteScanner');
+            return Promise.resolve();
+          }),
+        },
         callStore: {
           performActions: vi.fn(),
           close: vi.fn(() => {
@@ -149,6 +168,9 @@ describe('coordinator runtime', () => {
             isReady: vi.fn(),
             waitUntilReady: vi.fn(),
           }),
+        ),
+        testSuiteScanner: vi.fn(() =>
+          Promise.resolve(acquire('testSuiteScanner', owned.testSuiteScanner)),
         ),
         deadlineScanner: vi.fn(() =>
           acquire('deadlineScanner', owned.deadlineScanner),
@@ -277,6 +299,7 @@ describe('coordinator runtime', () => {
           throw failures.due;
         }),
       },
+      testSuiteScanner: { scan: vi.fn().mockResolvedValue(0), close: vi.fn() },
       deadlineWakeupScanner: {
         claimDueWakeups: vi.fn().mockResolvedValue(0),
         close: vi.fn().mockRejectedValue(failures.deadline),
@@ -363,6 +386,10 @@ describe('coordinator runtime', () => {
         runStore: { ...adapter, advance: vi.fn() },
         callStore: { ...adapter, performActions: vi.fn() },
         dueWakeupScanner: scanner,
+        testSuiteScanner: {
+          scan: vi.fn().mockResolvedValue(0),
+          close: vi.fn(),
+        },
         deadlineWakeupScanner: {
           claimDueWakeups: vi.fn().mockResolvedValue(0),
           close: vi.fn().mockResolvedValue(undefined),
@@ -511,6 +538,10 @@ describe('coordinator runtime', () => {
         dueWakeupScanner: {
           claimDueWakeups: vi.fn().mockResolvedValue(0),
           close: vi.fn().mockResolvedValue(undefined),
+        },
+        testSuiteScanner: {
+          scan: vi.fn().mockResolvedValue(0),
+          close: vi.fn(),
         },
         deadlineWakeupScanner: {
           claimDueWakeups: vi.fn().mockResolvedValue(0),

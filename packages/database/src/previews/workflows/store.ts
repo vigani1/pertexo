@@ -1,34 +1,31 @@
-import {
-  testRunSql,
-  TEST_RUN_RETENTION_MILLIS,
-} from '../../runs/data-policy.js';
+import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
 import { lockArtifactReferences } from '../../artifacts/references.js';
-import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { cancelInTransaction } from '../../runs/runs.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { databaseSchema } from '../../schema.js';
-import {
-  withTenantScopedClient,
-  parseWorkspaceId,
-} from '../../tenant-access/transactions.js';
+import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import {
-  acceptWorkflowRun,
-  prepareWorkflowRunAcceptance,
-} from '../../runs/commands/acceptance.js';
 import { WorkflowTestError, type WorkflowTestStore } from './contract.js';
-import { loadTestSnapshot, sameTestSamples } from './snapshot.js';
+import {
+  loadTestSnapshot,
+  sameTestSamples,
+  saveTestSnapshot,
+} from './snapshot.js';
+import { withTestAuthority } from './authority.js';
+import {
+  requireNoActiveSuite,
+  requireNoActiveTest,
+  admitTestRun,
+} from './admit.js';
 import { readTestDetail, listTests } from './read.js';
 
-const digest = (value: string) =>
-  createHash('sha256').update(value).digest('hex');
 export function createWorkflowTestStore(
   pool: Pool,
   catalogs: AuthoringCatalogs,
@@ -36,26 +33,7 @@ export function createWorkflowTestStore(
   const transact = <T>(
     input: SampleScope,
     work: (client: PoolClient) => Promise<T>,
-  ) =>
-    withTenantScopedClient(
-      pool,
-      { workspaceId: input.workspaceId, actorId: input.actorId },
-      async (client) => {
-        for (const capability of [
-          'workflow:update',
-          'run:read',
-          'run:start',
-        ] as const)
-          await lockWorkflowAuthoringAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability(capability),
-          );
-        return work(client);
-      },
-      input.signal === undefined ? {} : { signal: input.signal },
-    );
+  ) => withTestAuthority(pool, input, work);
   return {
     prepare: (input) =>
       transact(
@@ -111,58 +89,34 @@ export function createWorkflowTestStore(
             input.actorId,
             rolesForCapability('connection:use'),
           );
-        const active = await client.query(
-          `select id from app.workflow_runs where workspace_id=$1 and workflow_id=$2 and started_by=$3 and ${testRunSql()} and status in ('queued','running','waiting') limit 1`,
-          [input.workspaceId, input.workflowId, input.actorId],
-        );
-        if (active.rows.length > 0)
-          throw new WorkflowTestError('already_running');
-        const transaction = {
-          db: drizzle(client, { schema: databaseSchema }),
-          workspaceId: parseWorkspaceId(input.workspaceId),
-        };
-        const preparation = await prepareWorkflowRunAcceptance(
-          transaction,
-          input.workflowId,
-        );
+        await requireNoActiveSuite(client, input);
+        await requireNoActiveTest(client, input);
         await lockArtifactReferences(client, input.workspaceId, snapshot.graph);
-        const accepted = await acceptWorkflowRun(
-          transaction,
-          {
-            operation: 'workflow.run.accept',
+        const accepted = await admitTestRun(client, {
+          ...input,
+          runId,
+          snapshotId: runId,
+          input: input.request.input,
+          initialCheckpoint: snapshot.compiled.initialCheckpoint(runId),
+          deadlineAt: new Date(
+            snapshot.now.getTime() +
+              Math.min(
+                5 * 60 * 1000,
+                snapshot.graph.settings.maxRunDurationMs ?? 5 * 60 * 1000,
+              ),
+          ),
+          command: {
             scope: `test:${input.actorId}:${input.workflowId}`,
-            keyHash: digest(input.idempotencyKey),
-            requestHash: digest(canonicalJson(input.request)),
-            workflowId: input.workflowId,
-            workflowVersionId: runId,
-            startedBy: input.actorId,
-            triggerType: 'test',
-            runInput: input.request.input,
-            initialCheckpoint: snapshot.compiled.initialCheckpoint(runId),
-            deadlineAt: new Date(
-              snapshot.now.getTime() +
-                Math.min(
-                  5 * 60 * 1000,
-                  snapshot.graph.settings.maxRunDurationMs ?? 5 * 60 * 1000,
-                ),
-            ),
+            key: input.idempotencyKey,
+            request: input.request,
           },
-          { ...preparation, runId, failureNotificationPolicy: undefined },
-        );
-        await client.query(
-          `insert into app.workflow_test_snapshots(run_id,workspace_id,draft_revision,graph_json,executable_json,pins,expires_at,checksum,dispositions)
-            values($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,$7,$8,$9::jsonb)`,
-          [
-            runId,
-            input.workspaceId,
-            snapshot.preparation.draftRevision,
-            canonicalJson(snapshot.graph),
-            canonicalJson(snapshot.compiled.executableJson),
-            canonicalJson(snapshot.frozenPins),
-            new Date(accepted.acceptedAt.getTime() + TEST_RUN_RETENTION_MILLIS),
-            snapshot.compiled.checksum,
-            JSON.stringify(snapshot.compiled.dispositions),
-          ],
+        });
+        await saveTestSnapshot(
+          client,
+          input,
+          runId,
+          snapshot,
+          new Date(accepted.acceptedAt.getTime() + TEST_RUN_RETENTION_MILLIS),
         );
         const result = { runId };
         await completeCommand(client, command, result);

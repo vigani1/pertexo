@@ -183,6 +183,13 @@
       "when": 1792218860077,
       "tag": "0025_capacity_warnings",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792224984382,
+      "tag": "0026_workflow_test_suites",
+      "breakpoints": true
     }
   ]
 }

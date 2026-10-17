@@ -24,3 +24,5 @@ export type {
   PreviewStatus,
   PreviewTerminalOutcome,
 } from './repository.js';
+export { createWorkflowTestSuiteScanner } from './suites/scanner.js';
+export type { WorkflowTestSuiteScanner } from './suites/contract.js';

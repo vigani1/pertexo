@@ -1,3 +1,4 @@
+import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
 import { createWorkflowTestStore } from '../../previews/workflows/store.js';
 import { createWorkflowStepSampleStore } from '../step-samples/store.js';
 import { createWorkflowErrorStore } from '../settings/error-workflow.js';
@@ -231,6 +232,7 @@ export function createWorkflowAuthoringDatabase(
   return Object.freeze({
     stepSamples: createWorkflowStepSampleStore(pool),
     workflowTests: createWorkflowTestStore(pool, catalogs),
+    workflowTestSuites: createWorkflowTestSuiteStore(pool, catalogs),
     autoPause: createWorkflowAutoPauseStore(transact),
     concurrency: createWorkflowConcurrencyStore(transact),
     errorWorkflow: createWorkflowErrorStore(transact),

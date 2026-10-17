@@ -209,7 +209,7 @@ A personal Inbox, follow/mute and notification email schedules:
 Current capacity, approaching-limit warnings and retained run trends:
 [usage guide](docs/guides/usage.md).
 
-Shared sample output for isolated editor tests:
+Pinned samples, whole-draft tests and saved-case suites with publish warnings:
 [pinned samples guide](docs/guides/pinned-samples.md).
 
 Receive events with Signed, Secret URL or Header secret authentication:

@@ -355,7 +355,7 @@ describe('whole-draft test admission', () => {
       [accepted.runId],
     );
     await execute(
-      `update app.workflow_test_snapshots set expires_at=clock_timestamp()-interval '1 day' where run_id=$1`,
+      `update app.workflow_test_snapshots set expires_at=clock_timestamp()-interval '1 day' where id=$1`,
       [accepted.runId],
     );
     expect(
@@ -457,7 +457,7 @@ describe('whole-draft test admission', () => {
     const accepted = await database.workflowTests.start(await command(f));
     const stored = (
       await query<{ bytes: number }>(
-        'select octet_length(pins::text) bytes from app.workflow_test_snapshots where run_id=$1',
+        'select octet_length(pins::text) bytes from app.workflow_test_snapshots where id=$1',
         [accepted.runId],
       )
     )[0];
@@ -485,7 +485,7 @@ describe('whole-draft test admission', () => {
     expect(steps).toContain('workflow_test_snapshots');
     expect(
       await query(
-        'select run_id from app.workflow_test_snapshots where workspace_id=$1',
+        'select id from app.workflow_test_snapshots where workspace_id=$1',
         [workspaceId],
       ),
     ).toEqual([]);

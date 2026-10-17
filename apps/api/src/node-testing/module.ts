@@ -1,3 +1,5 @@
+import { WorkflowTestSuitesController } from './suites/controller.js';
+import { WorkflowTestSuitesUseCase } from './suites/use-case.js';
 import { WorkflowTestsController } from './workflows/controller.js';
 import { WorkflowTestsUseCase } from './workflows/use-case.js';
 import { StepSamplesController } from './samples/controller.js';
@@ -25,6 +27,13 @@ export class NodeTestingModule {
         useValue: dependencies.authorization,
       },
       NodeTestingUpdateGuard,
+      {
+        provide: WorkflowTestSuitesUseCase,
+        useValue: new WorkflowTestSuitesUseCase(
+          dependencies.persistence.workflowTestSuites,
+          dependencies.authorization,
+        ),
+      },
       {
         provide: WorkflowTestsUseCase,
         useValue: new WorkflowTestsUseCase(
@@ -64,6 +73,7 @@ export class NodeTestingModule {
         NodeTestingController,
         StepSamplesController,
         WorkflowTestsController,
+        WorkflowTestSuitesController,
       ],
       providers,
       exports: [TestWorkflowNodeUseCase, GetPreviewRunUseCase],

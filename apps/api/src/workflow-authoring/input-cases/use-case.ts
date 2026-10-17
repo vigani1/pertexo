@@ -60,16 +60,22 @@ export class WorkflowInputCasesUseCase {
       caseId: input.caseId,
     });
     return workflowInputCaseResponseSchema.parse({
-      case: { ...metadata(result.case), input: result.case.input },
+      case: {
+        ...metadata(result.case),
+        input: result.case.input,
+        expectations: result.case.expectations,
+      },
     });
   }
   public async create(input: CommandInput) {
     await this.authorize(input, 'workflow:update');
-    const request = workflowInputCaseCreateRequestSchema.parse(input.request);
+    const { expectations, ...request } =
+      workflowInputCaseCreateRequestSchema.parse(input.request);
     return workflowInputCaseCommandResponseSchema.parse(
       await this.persistence.createCase({
         ...this.commandContext(input),
         ...request,
+        ...(expectations === undefined ? {} : { expectations }),
       }),
     );
   }
@@ -81,13 +87,15 @@ export class WorkflowInputCasesUseCase {
       input.representationTag,
       input.caseId,
     );
-    const request = workflowInputCaseUpdateRequestSchema.parse(input.request);
+    const { expectations, ...request } =
+      workflowInputCaseUpdateRequestSchema.parse(input.request);
     return workflowInputCaseCommandResponseSchema.parse(
       await this.persistence.updateCase({
         ...this.commandContext(input),
         caseId: input.caseId,
         expectedRevision,
         ...request,
+        ...(expectations === undefined ? {} : { expectations }),
       }),
     );
   }

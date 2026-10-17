@@ -71,6 +71,11 @@ export function mapNodeTestingError(error: unknown): ApplicationError {
     });
   if (error instanceof WorkflowTestError) {
     const messages: Record<WorkflowTestError['reason'], string> = {
+      cases_changed:
+        'The input cases or variables changed. Prepare the suite again.',
+      cases_required: 'Save at least one input case before running the suite.',
+      case_invalid:
+        'A case names a step missing from this draft. Review its expectations.',
       draft_changed: 'The draft changed. Save and prepare the test again.',
       samples_changed: 'The pins changed. Review them before testing again.',
       not_supported: 'Workflow testing is unavailable on this server.',

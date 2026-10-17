@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { ArrowUpFromLineIcon, MonitorIcon } from 'lucide-react';
 import { useRef } from 'react';
@@ -43,6 +44,7 @@ export function PublishDialog({
   recoveryPending,
   blockingGroups,
   unchangedVersionNumber,
+  suiteNotice,
   onPublish,
   onFix,
 }: Readonly<{
@@ -57,6 +59,7 @@ export function PublishDialog({
   recoveryPending: boolean;
   blockingGroups: readonly WorkflowIssueGroup[];
   unchangedVersionNumber: number | undefined;
+  suiteNotice?: ReactNode;
   onPublish: () => void;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
@@ -94,6 +97,7 @@ export function PublishDialog({
                 already live.
               </Notice>
             )}
+            {suiteNotice}
             <PublishChanges summary={summary} state={summaryState} />
             {blockingGroups.length === 0 ? null : (
               <section aria-label="Blocking issues">

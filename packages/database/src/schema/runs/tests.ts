@@ -5,12 +5,13 @@ import {
   integer,
   jsonb,
   timestamp,
+  unique,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 import type { WorkflowTestCompilation } from '@pertexo/workflow-engine';
 import { appSchema } from '../namespace.js';
-import { workflowRuns } from './execution.js';
+import { workflows } from '../authoring/workflows.js';
 
 /** Preserve the existing value encoding instead of expanding numbers inside JSONB. */
 export type FrozenWorkflowTestPins = Readonly<
@@ -20,7 +21,8 @@ export type FrozenWorkflowTestPins = Readonly<
 export const workflowTestSnapshots = appSchema.table(
   'workflow_test_snapshots',
   {
-    runId: uuid('run_id').primaryKey(),
+    id: uuid('id').primaryKey(),
+    workflowId: uuid('workflow_id').notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     draftRevision: integer('draft_revision').notNull(),
     graphJson: jsonb('graph_json').notNull(),
@@ -37,10 +39,14 @@ export const workflowTestSnapshots = appSchema.table(
   },
   (table) => [
     foreignKey({
-      name: 'workflow_test_snapshots_run_fk',
-      columns: [table.workspaceId, table.runId],
-      foreignColumns: [workflowRuns.workspaceId, workflowRuns.id],
-    }).onDelete('cascade'),
+      name: 'workflow_test_snapshots_workflow_fk',
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [workflows.workspaceId, workflows.id],
+    }),
+    unique('workflow_test_snapshots_workspace_id_key').on(
+      table.workspaceId,
+      table.id,
+    ),
     check(
       'workflow_test_snapshots_checksum_valid',
       sql`checksum ~ '^wf:sha256:[0-9a-f]{64}$'`,

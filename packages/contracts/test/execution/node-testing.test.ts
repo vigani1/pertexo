@@ -313,6 +313,11 @@ describe('node-testing public contracts', () => {
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/tests',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/tests/{runId}',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/tests/{runId}/cancel',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/test-suites/prepare',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/test-suites',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/test-suites/{suiteId}',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/test-suites/{suiteId}/cases/{ordinal}',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/test-suites/{suiteId}/cancel',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test',
       '/v1/workspaces/{workspaceId}/previews/{previewRunId}',
     ]);

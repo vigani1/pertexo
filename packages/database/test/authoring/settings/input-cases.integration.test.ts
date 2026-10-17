@@ -178,7 +178,7 @@ describe('bounded version-contextual run-input cases', () => {
   it('makes concurrent active-count admission atomic and deletion only releases counts, not retained bytes', async () => {
     const scope = await fixture();
     const created = await Promise.all(
-      Array.from({ length: 19 }, (_, index) =>
+      Array.from({ length: 49 }, (_, index) =>
         database.createCase({
           ...scope,
           name: `Fixture ${String(index)}`,

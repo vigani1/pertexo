@@ -226,3 +226,20 @@ export { formRedirectUrlSchema, formLinkUrlSchema } from './forms/links.js';
 
 export { stepSampleIdentity, stepSampleBindings } from './samples/identity.js';
 export type { StepSampleSource } from './samples/contract.js';
+
+export { isStorageText } from './json/text.js';
+export {
+  workflowTestExpectationsSchema,
+  testAssertionSchema,
+  testExpectationValueSchema,
+  DEFAULT_TEST_EXPECTATIONS,
+  type WorkflowTestExpectations,
+  type TestAssertion,
+} from './test-suites/contract.js';
+export {
+  matchesTestAssertion,
+  observeTestAssertion,
+  type TestAssertionObservation,
+} from './test-suites/compare.js';
+
+export { workflowTestStepChoices } from './test-suites/steps.js';

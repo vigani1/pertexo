@@ -21,6 +21,9 @@ export class WorkflowTestError extends Error {
   constructor(
     readonly reason:
       | 'draft_changed'
+      | 'cases_changed'
+      | 'cases_required'
+      | 'case_invalid'
       | 'samples_changed'
       | 'stale_sample'
       | 'pin_invalid'
