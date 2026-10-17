@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Transform } from 'node:stream';
+import { pipeline, Transform } from 'node:stream';
 import type { TransformCallback, Readable } from 'node:stream';
 
 import {
@@ -78,8 +78,10 @@ export function verifiedBody(
     maxObjectBytes,
     source,
   );
-  body.once('error', (error: Error) => {
-    verifier.destroy(error);
+  // Own transfer errors before the caller attaches its reader; consumers still
+  // observe the same terminal error through the returned stream.
+  pipeline(body, verifier, (error) => {
+    if (error !== null) verifier.destroy(error);
   });
   const abort = (): void => {
     verifier.destroy(abortError(signal));
@@ -93,11 +95,8 @@ export function verifiedBody(
   }
   verifier.once('close', () => {
     signal?.removeEventListener('abort', abort);
-    if (!body.destroyed) {
-      body.destroy();
-    }
   });
-  return body.pipe(verifier);
+  return verifier;
 }
 
 function abortError(signal: AbortSignal | undefined): Error {

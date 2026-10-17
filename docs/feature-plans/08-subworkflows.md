@@ -542,13 +542,20 @@ refusal pass in the final measurement run. Four real worker stress/control
 cases, 36 storage/capacity cases, 376 model tests, 458 engine tests and 244
 core-node tests pass. The history follow-up adds a 26-case database API pass,
 including exact 5,000-entry boundaries and overflow refusals. Full build, lint,
-type checks, 9,475 unit tests (658 Vitest files), 198 mocked browser tests,
+type checks, 9,478 unit tests (659 Vitest files), 198 mocked browser tests,
 contracts, 97-table schema ownership, architecture, dependencies and formatting
 pass. A contended default-worker unit pass timed out unrelated editor cases;
 all unchanged assertions pass with two workers, without raising timeouts or
 changing test configuration. The final two ready-control storage cases pass
 again after fixture cleanup. React Doctor's eight-file changed scan is 100/100;
-no whole-application score is claimed. CI remains required before merge.
+no whole-application score is claimed. A later live file-input job exposed an
+existing verifier error before its reader attached: the worker crashed and the
+next run stayed queued. Node's pipeline now owns transfer errors immediately,
+while returning the original terminal error to the consumer. Three subprocess
+regressions reproduce pre-reader timeout, upstream failure and premature close;
+they also prove source cleanup and abort-listener removal. Storage integrity,
+file limits, formats and the loop measurements are unchanged. CI remains
+required before merge.
 
 ## Delivery slices and evidence
 
