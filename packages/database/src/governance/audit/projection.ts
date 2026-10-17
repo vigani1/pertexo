@@ -17,6 +17,7 @@ const identityKeys = new Set([
   'invocationId',
   'userId',
   'requestId',
+  'publicationRequestId',
 ]);
 const numberKeys = new Set([
   'revision',
@@ -36,7 +37,12 @@ const numberKeys = new Set([
 const changedNamesSchema = workspaceVariableNameSchema
   .array()
   .max(WORKSPACE_VARIABLE_LIMITS.count * 2);
-const booleanKeys = new Set(['reused', 'dryRun', 'changedNamesTruncated']);
+const booleanKeys = new Set([
+  'reused',
+  'dryRun',
+  'changedNamesTruncated',
+  'requirePublishApproval',
+]);
 export function projectAuditMetadata(
   metadata: unknown,
 ): AuditEvent['metadata'] {

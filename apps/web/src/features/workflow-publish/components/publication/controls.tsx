@@ -1,4 +1,6 @@
+import { publicationAction } from '../../model/publication/action';
 import { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
@@ -6,10 +8,14 @@ import type {
   WorkflowSummary,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
+import { Button } from '@/components/ui/button';
+import { Notice } from '@/components/ui/notice';
 import { SuitePublishNotice } from '../test-suites/publish-notice';
 import { PublishButton } from './publish-button';
 import { PublishDialog } from './publish-dialog';
 import { latestVersionQueryOptions } from '../../data/workflow-publish.queries';
+import { reviewOverviewOptions } from '../../data/reviews/queries';
+import type { ReviewScope } from '../../data/reviews/api';
 import type {
   PublicationReceipt,
   WorkflowPublication,
@@ -21,10 +27,6 @@ import type { emptyDraftHint } from '../../model/publication/readiness';
 import { summarizePublish } from '../../model/publication/summary';
 import { unchangedLiveVersion } from '../../model/publication/unchanged';
 
-/**
- * What publishing would change and the version it would make, once the
- * latest version (or that there is none) and the workflow are known.
- */
 function usePublishPreview({
   apiClient,
   userId,
@@ -81,36 +83,37 @@ export function PublicationControls({
   workflowId,
   workflow,
   graph,
+  revision,
   publication,
   isSavedDraftCurrent,
   issues,
   emptyHint,
   savedDraftCurrent,
   capabilities,
-  canPublish,
   onFix,
   onPublished,
 }: Readonly<{
-  scope: Readonly<{
-    apiClient: ApiClient;
-    userId: string;
-    workspaceId: string;
-  }>;
+  scope: ReviewScope;
   workflowId: string;
   workflow: WorkflowSummary | undefined;
   graph: WorkflowGraphContract;
+  revision: number;
   publication: WorkflowPublication;
   isSavedDraftCurrent: WorkflowCommandSession['isSavedDraftCurrent'];
   issues: WorkflowIssuesView;
   emptyHint: ReturnType<typeof emptyDraftHint>;
   savedDraftCurrent: boolean;
   capabilities: AccessibleWorkspace['capabilities'];
-  canPublish: boolean;
   onFix: (target: WorkflowValidationTarget) => void;
   onPublished: (receipt: PublicationReceipt, hasTriggers: boolean) => void;
 }>) {
   const { apiClient, userId, workspaceId } = scope;
   const [publishOpen, setPublishOpen] = useState(false);
+  const navigate = useNavigate();
+  const policy = useQuery({
+    ...reviewOverviewOptions(scope, workflowId, revision),
+    retry: false,
+  });
   const { summary, versionLabel, ...preview } = usePublishPreview({
     apiClient,
     userId,
@@ -125,40 +128,68 @@ export function PublicationControls({
     workflow?.publishedVersionId,
     isSavedDraftCurrent,
   );
-  const unchangedReason =
-    unchangedVersionNumber === undefined
-      ? undefined
-      : `No changes since v${String(unchangedVersionNumber)}`;
-  async function confirmPublish() {
-    const result = await publication.publish();
-    if (result.kind !== 'published') return;
-    setPublishOpen(false);
-    onPublished(result.receipt, (summary?.triggerNames.length ?? 0) > 0);
+  const action = publicationAction({
+    policy: policy.data,
+    savedDraftCurrent,
+    unchangedVersionNumber,
+    versionLabel,
+    emptyReason: emptyHint?.label,
+    retry: publication.publishRecoveryPending
+      ? (publication.recoveryCommand ?? 'publish')
+      : undefined,
+  });
+  async function confirmPublish(note?: string) {
+    if (action.unavailable) return;
+    const result = await publication.publish(
+      action.mode === 'review'
+        ? { kind: 'review', note: note ?? '' }
+        : { kind: 'publish' },
+    );
+    if (result.kind === 'published') {
+      setPublishOpen(false);
+      onPublished(result.receipt, (summary?.triggerNames.length ?? 0) > 0);
+    } else if (result.kind === 'review_requested') {
+      setPublishOpen(false);
+      await navigate({
+        to: '/w/$workspaceId/publish-reviews/$requestId',
+        params: { workspaceId, requestId: result.request.id },
+      });
+    }
+  }
+
+  function open() {
+    if (action.pendingReviewId !== undefined) {
+      void navigate({
+        to: '/w/$workspaceId/publish-reviews/$requestId',
+        params: { workspaceId, requestId: action.pendingReviewId },
+      });
+      return;
+    }
+    publication.clearPublishError();
+    setPublishOpen(true);
   }
   return (
     <>
-      {canPublish ? (
-        <PublishButton
-          {...(unchangedVersionNumber === undefined
-            ? {}
-            : {
-                compactLabel: 'No changes',
-              })}
-          label={
-            unchangedReason ??
-            (versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`)
-          }
-          blockedReason={unchangedReason ?? emptyHint?.label}
-          onClick={() => {
-            publication.clearPublishError();
-            setPublishOpen(true);
-          }}
-        />
-      ) : null}
+      <PublishButton
+        label={action.label}
+        {...(action.compactLabel === undefined
+          ? {}
+          : { compactLabel: action.compactLabel })}
+        blockedReason={action.blockedReason}
+        onClick={open}
+      />
       <PublishDialog
         open={publishOpen}
         onOpenChange={setPublishOpen}
         versionLabel={versionLabel ?? 'this draft'}
+        mode={action.mode}
+        unavailable={action.unavailable}
+        policyNotice={
+          <PublishingPolicyNotice
+            status={policy.status}
+            onRetry={() => void policy.refetch()}
+          />
+        }
         summary={summary}
         summaryState={preview.summaryState}
         graph={graph}
@@ -169,15 +200,40 @@ export function PublicationControls({
         unchangedVersionNumber={unchangedVersionNumber}
         suiteNotice={
           <SuitePublishNotice
-            scope={{ apiClient, userId, workspaceId: workspaceId, workflowId }}
+            scope={{ apiClient, userId, workspaceId, workflowId }}
             savedDraftCurrent={savedDraftCurrent}
             enabled={publishOpen}
             capabilities={capabilities}
           />
         }
-        onPublish={() => void confirmPublish()}
+        onPublish={(note) => void confirmPublish(note)}
         onFix={onFix}
       />
     </>
   );
+}
+function PublishingPolicyNotice({
+  status,
+  onRetry,
+}: Readonly<{ status: 'pending' | 'error' | 'success'; onRetry: () => void }>) {
+  if (status === 'pending')
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Checking publishing policy…
+      </p>
+    );
+  if (status === 'error')
+    return (
+      <Notice
+        tone="warning"
+        action={
+          <Button type="button" variant="outline" onClick={onRetry}>
+            Retry publishing policy
+          </Button>
+        }
+      >
+        Publishing policy could not be loaded. Check it before publishing.
+      </Notice>
+    );
+  return null;
 }

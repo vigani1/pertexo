@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import type { GovernanceSettings } from '@pertexo/contracts';
+import {
+  governanceSettingsSchema,
+  type GovernanceSettings,
+} from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../audit/append.js';
 import { GovernanceError, type GovernanceStore } from '../contract.js';
@@ -12,8 +15,9 @@ export async function readGovernanceSettings(
     await client.query<{
       governance_revision: number;
       audit_retention_days: number;
+      require_publish_approval: boolean;
     }>(
-      'select governance_revision,audit_retention_days from app.workspaces where id=$1',
+      'select governance_revision,audit_retention_days,require_publish_approval from app.workspaces where id=$1',
       [workspaceId],
     )
   ).rows[0];
@@ -25,6 +29,7 @@ export async function readGovernanceSettings(
   return {
     revision: row.governance_revision,
     auditRetentionDays: row.audit_retention_days,
+    requirePublishApproval: row.require_publish_approval,
   };
 }
 export async function configureGovernance(
@@ -42,14 +47,20 @@ export async function configureGovernance(
     resourceId: input.workspaceId,
     requestHash: createHash('sha256')
       .update(
-        `${String(input.expectedRevision)}:${String(input.auditRetentionDays)}`,
+        `${String(input.expectedRevision)}:${String(input.auditRetentionDays)}${input.requirePublishApproval === undefined ? '' : `:${String(input.requirePublishApproval)}`}`,
       )
       .digest('hex'),
   });
-  if (replay !== null) return replay as GovernanceSettings;
+  if (replay !== null) return governanceSettingsSchema.parse(replay);
+  const previous = await readGovernanceSettings(client, input.workspaceId);
   const saved = await client.query<{ governance_revision: number }>(
-    'update app.workspaces set audit_retention_days=$3,governance_revision=governance_revision+1,updated_at=clock_timestamp() where id=$1 and governance_revision=$2 returning governance_revision',
-    [input.workspaceId, input.expectedRevision, input.auditRetentionDays],
+    'update app.workspaces set audit_retention_days=coalesce($3,audit_retention_days),require_publish_approval=coalesce($4,require_publish_approval),governance_revision=governance_revision+1,updated_at=clock_timestamp() where id=$1 and governance_revision=$2 returning governance_revision',
+    [
+      input.workspaceId,
+      input.expectedRevision,
+      input.auditRetentionDays ?? null,
+      input.requirePublishApproval ?? null,
+    ],
   );
   const row = saved.rows[0];
   if (row === undefined)
@@ -59,8 +70,15 @@ export async function configureGovernance(
     );
   const result = {
     revision: row.governance_revision,
-    auditRetentionDays: input.auditRetentionDays,
+    auditRetentionDays: input.auditRetentionDays ?? previous.auditRetentionDays,
+    requirePublishApproval:
+      input.requirePublishApproval ?? previous.requirePublishApproval,
   };
+  if (result.requirePublishApproval !== previous.requirePublishApproval)
+    await client.query(
+      "update app.workflow_publication_requests set status='stale' where workspace_id=$1 and status='pending'",
+      [input.workspaceId],
+    );
   await appendAuditFact(client, {
     workspaceId: input.workspaceId,
     actorId: input.actorId,

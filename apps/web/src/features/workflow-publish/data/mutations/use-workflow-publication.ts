@@ -1,3 +1,6 @@
+import type { PublicationReview } from '@pertexo/contracts';
+import { requestPublicationReview } from '../reviews/api';
+import { publicationReviewKeys } from '../reviews/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
@@ -10,7 +13,10 @@ import {
   type SavedDraft,
 } from './use-workflow-draft-validation';
 
-type PublishAttempt = SavedDraft & Readonly<{ idempotencyKey: string }>;
+type PublicationCommand =
+  Readonly<{ kind: 'publish' }> | Readonly<{ kind: 'review'; note: string }>;
+type PublishAttempt = SavedDraft &
+  Readonly<{ idempotencyKey: string; command: PublicationCommand }>;
 
 export type PublicationReceipt = SavedDraft &
   Readonly<{
@@ -22,6 +28,7 @@ export type PublicationReceipt = SavedDraft &
 export type PublishStage = 'saving' | 'checking' | 'publishing';
 export type PublishResult =
   | Readonly<{ kind: 'published'; receipt: PublicationReceipt }>
+  | Readonly<{ kind: 'review_requested'; request: PublicationReview }>
   | Readonly<{ kind: 'blocked' | 'failed' }>;
 
 const failed: PublishResult = { kind: 'failed' };
@@ -56,6 +63,8 @@ export function useWorkflowPublication({
   const [publicationReceipt, setPublicationReceipt] =
     useState<PublicationReceipt>();
   const [publishRecoveryPending, setPublishRecoveryPending] = useState(false);
+  const [recoveryCommand, setRecoveryCommand] =
+    useState<PublicationCommand['kind']>();
   const publishAttempt = useRef<PublishAttempt | undefined>(undefined);
   const owner = useRef<symbol | undefined>(undefined);
   const {
@@ -91,6 +100,7 @@ export function useWorkflowPublication({
 
   async function prepareAttempt(
     publishOwner: symbol,
+    command: PublicationCommand,
   ): Promise<PublishAttempt | 'blocked' | undefined> {
     setPublishStage('saving');
     const saved = await ensureSaved();
@@ -114,10 +124,12 @@ export function useWorkflowPublication({
       );
       return 'blocked';
     }
-    return { ...saved, idempotencyKey: crypto.randomUUID() };
+    return { ...saved, idempotencyKey: crypto.randomUUID(), command };
   }
 
-  async function publish(): Promise<PublishResult> {
+  async function publish(
+    command: PublicationCommand = { kind: 'publish' },
+  ): Promise<PublishResult> {
     const publishOwner = owner.current;
     if (publishStage !== undefined || publishOwner === undefined) return failed;
     let dispatched = false;
@@ -128,7 +140,7 @@ export function useWorkflowPublication({
       if (owner.current !== publishOwner) return failed;
       if (publishAttempt.current === undefined) assertValidationAvailable();
       const prepared =
-        publishAttempt.current ?? (await prepareAttempt(publishOwner));
+        publishAttempt.current ?? (await prepareAttempt(publishOwner, command));
       if (prepared === undefined) return failed;
       if (prepared === 'blocked') return { kind: 'blocked' };
       if (owner.current !== publishOwner) return failed;
@@ -145,6 +157,21 @@ export function useWorkflowPublication({
       publishAttempt.current = prepared;
       dispatched = true;
       setPublishStage('publishing');
+      if (prepared.command.kind === 'review') {
+        const scope = { apiClient, userId, workspaceId };
+        const request = await requestPublicationReview(scope, workflowId, {
+          etag: prepared.etag,
+          idempotencyKey: prepared.idempotencyKey,
+          note: prepared.command.note,
+        });
+        if (owner.current !== publishOwner) return failed;
+        publishAttempt.current = undefined;
+        setPublishRecoveryPending(false);
+        void queryClient.invalidateQueries({
+          queryKey: publicationReviewKeys.scope(scope),
+        });
+        return { kind: 'review_requested', request };
+      }
       const response = await publishWorkflow(
         apiClient,
         workspaceId,
@@ -177,6 +204,15 @@ export function useWorkflowPublication({
       if (dispatched && !isUncertainOutcome(error))
         publishAttempt.current = undefined;
       setPublishRecoveryPending(publishAttempt.current !== undefined);
+      setRecoveryCommand(publishAttempt.current?.command.kind);
+      if (dispatched && !isUncertainOutcome(error))
+        void queryClient.invalidateQueries({
+          queryKey: publicationReviewKeys.scope({
+            apiClient,
+            userId,
+            workspaceId,
+          }),
+        });
       recordValidationCooldown(error);
       setPublishError(commandErrorMessage(error, 'publishing'));
       return failed;
@@ -195,6 +231,7 @@ export function useWorkflowPublication({
     publishPending: publishStage !== undefined,
     publishError,
     publishRecoveryPending,
+    recoveryCommand,
     clearPublishError: () => {
       setPublishError(undefined);
     },

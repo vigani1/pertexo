@@ -1,3 +1,4 @@
+import { publicationReviewProblems } from './workflows/publication-review.js';
 import { stepSampleProblems } from './step-samples.js';
 import { notificationProblems } from './notifications.js';
 import { variableProblems } from './variables.js';
@@ -60,6 +61,8 @@ export const API_PROBLEM_CODES = [
   'workflow.concurrency_revision_conflict',
   'workflow.concurrency_limit_exceeded',
   'workflow.concurrency_limit_unavailable',
+  'workflow.publish_approval_required',
+  'workflow.publication_review_conflict',
   'workflow.error_policy_conflict',
   'workflow.error_target_unavailable',
   'pending_task.already_resolved',
@@ -372,6 +375,7 @@ const apiProblemDetails = {
     exposeDetail: true,
   },
   ...workflowConcurrencyProblems,
+  ...publicationReviewProblems,
   ...workflowErrorProblems,
   ...pendingTaskProblems,
   ...notificationProblems,

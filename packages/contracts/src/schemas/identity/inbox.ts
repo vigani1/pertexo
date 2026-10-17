@@ -41,6 +41,7 @@ export const workspaceNoticeKindSchema = z.enum([
   'limit_reached',
   'limit_approaching',
   'approval_waiting',
+  'publication_review_waiting',
 ]);
 export const workspaceInboxFilterSchema = z.enum(['all', 'unread']);
 export const workspaceInboxLimitSchema = z.coerce
@@ -94,6 +95,7 @@ export const workspaceInboxAttentionThreadSchema = z
       'limit_reached',
       'limit_approaching',
       'approval_waiting',
+      'publication_review_waiting',
     ]),
     subjectId: z.uuid(),
     workflowId: z.uuid().nullable(),

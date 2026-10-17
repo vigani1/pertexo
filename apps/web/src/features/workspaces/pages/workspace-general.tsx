@@ -152,7 +152,7 @@ export function WorkspaceGeneralPage({
         {workspace.capabilities.includes('audit:read') ? (
           <SettingsSection
             title="Audit log"
-            description="Who changed what and how long audit events are kept."
+            description="Who changed what, audit retention and publishing approval."
           >
             <Link
               className="text-sm text-action underline underline-offset-4"

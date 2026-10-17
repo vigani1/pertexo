@@ -14,6 +14,7 @@ const labels = {
   limit_reached: 'Workspace limit reached',
   limit_approaching: 'Workspace nearing a limit',
   approval_waiting: 'Approval waiting',
+  publication_review_waiting: 'Publication review waiting',
 } as const;
 function AttentionLink({
   workspaceId,
@@ -25,6 +26,16 @@ function AttentionLink({
   onOpen: () => void;
 }) {
   const params = { workspaceId };
+  if (thread.noticeKind === 'publication_review_waiting')
+    return (
+      <Link
+        onClick={onOpen}
+        to="/w/$workspaceId/publish-reviews/$requestId"
+        params={{ ...params, requestId: thread.subjectId }}
+      >
+        Review publication
+      </Link>
+    );
   if (thread.noticeKind === 'approval_waiting')
     return (
       <Link
@@ -90,7 +101,10 @@ export function NoticeThreadRow(
     >
       <StatusGlyph
         tone={
-          thread.noticeKind === 'approval_waiting' ? 'waiting' : 'attention'
+          thread.noticeKind === 'approval_waiting' ||
+          thread.noticeKind === 'publication_review_waiting'
+            ? 'waiting'
+            : 'attention'
         }
       />
       <div className="min-w-0">

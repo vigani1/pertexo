@@ -1399,6 +1399,8 @@
               "workflow.concurrency_revision_conflict",
               "workflow.concurrency_limit_exceeded",
               "workflow.concurrency_limit_unavailable",
+              "workflow.publish_approval_required",
+              "workflow.publication_review_conflict",
               "workflow.error_policy_conflict",
               "workflow.error_target_unavailable",
               "pending_task.already_resolved",

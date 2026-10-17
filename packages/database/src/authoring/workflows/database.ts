@@ -1,3 +1,4 @@
+import { createPublicationReviewStore } from '../reviews/store.js';
 import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
 import { createWorkflowTestStore } from '../../previews/workflows/store.js';
 import { createWorkflowStepSampleStore } from '../step-samples/store.js';
@@ -230,6 +231,7 @@ export function createWorkflowAuthoringDatabase(
     transact,
   });
   return Object.freeze({
+    publicationReviews: createPublicationReviewStore(authoringContext),
     stepSamples: createWorkflowStepSampleStore(pool),
     workflowTests: createWorkflowTestStore(pool, catalogs),
     workflowTestSuites: createWorkflowTestSuiteStore(pool, catalogs),

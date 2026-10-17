@@ -32,6 +32,13 @@ eligibility and F27 delivery own reviewer notices. Review records are workspace
 scoped, expire, follow deletion/purge, and do not duplicate a stored executable.
 The short plan owns exact operational bounds and delivery slices.
 
+Implementation clarification, 2026-10-18: the requester and decider must differ;
+this does not exclude every person who previously edited the draft. Decisions
+reuse `governance:manage`. A policy change invalidates pending requests, so an
+off/on toggle cannot revive earlier review authority. One TypeScript request-state
+owner supplies authoring and inbox eligibility; the existing attention observer
+and F27 delivery discover requests without another notice producer.
+
 ## Consequences
 
 Review requires another eligible person while enabled. A request cannot authorize

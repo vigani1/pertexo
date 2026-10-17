@@ -88,6 +88,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0028_trigger_event_coordination.sql',
       '0029_data_table_column_identity.sql',
       '0030_audit_retention.sql',
+      '0031_publication_review.sql',
     ]);
     expect(
       (

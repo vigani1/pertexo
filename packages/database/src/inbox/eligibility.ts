@@ -1,3 +1,7 @@
+import {
+  REVIEW_SOURCE_SQL,
+  reviewDecisionAllowedSql,
+} from '../authoring/reviews/eligibility.js';
 import type { WorkspaceNoticeKind } from '@pertexo/contracts';
 import {
   rolesForCapability,
@@ -24,6 +28,7 @@ export function noticeVisibilitySql(actorParameter: string): string {
     connection_attention: capabilityAudienceSql('connection:manage'),
     limit_reached: operational,
     limit_approaching: operational,
+    publication_review_waiting: `exists(select 1 ${REVIEW_SOURCE_SQL} where review.workspace_id=thread.workspace_id and review.id=thread.publication_request_id and ${reviewDecisionAllowedSql(actorParameter, 'member.role')})`,
     approval_waiting: `exists(select 1 from app.pending_run_tasks task join app.workflow_runs run
       on run.workspace_id=task.workspace_id and run.id=task.run_id
       where task.workspace_id=thread.workspace_id and task.id=thread.task_id and task.kind='approval'

@@ -10,6 +10,7 @@ const labels = {
   limit_reached: 'Workspace limit reached',
   limit_approaching: 'Workspace nearing a limit',
   approval_waiting: 'Approval waiting',
+  publication_review_waiting: 'Publication review waiting',
 } as const;
 /** Only the database's safe projection enters personal mail. */
 export function sealNoticeMail(

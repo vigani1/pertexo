@@ -24,7 +24,8 @@ export interface GovernanceStore {
   configure(
     input: GovernanceScope & {
       expectedRevision: number;
-      auditRetentionDays: number;
+      auditRetentionDays?: number | undefined;
+      requirePublishApproval?: boolean | undefined;
       idempotencyKey: string;
     },
   ): Promise<GovernanceSettings>;

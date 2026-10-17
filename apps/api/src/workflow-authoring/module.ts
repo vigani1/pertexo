@@ -1,3 +1,8 @@
+import { PublicationReviewUseCase } from './reviews/use-case.js';
+import {
+  WorkflowPublicationReviewController,
+  PublicationReviewController,
+} from './reviews/controller.js';
 import { WorkflowErrorUseCase } from './settings/error-workflow.js';
 import { WorkflowErrorController } from './settings/error-workflow-controller.js';
 import { Module } from '@nestjs/common';
@@ -17,6 +22,7 @@ import {
   WorkflowCreateGuard,
   WorkflowPublishGuard,
   WorkflowReadGuard,
+  WorkflowReviewGuard,
   WorkflowUpdateGuard,
   WorkflowPauseDefaultGuard,
   WorkspaceAutoPauseReadGuard,
@@ -62,6 +68,18 @@ export class WorkflowAuthoringModule {
     const portabilityPersistence = dependencies.portabilityPersistence;
     const providers: Provider[] = [
       ...workflowOrganizationProviders(dependencies),
+      ...(dependencies.publicationReviewPersistence === undefined
+        ? []
+        : [
+            WorkflowReviewGuard,
+            {
+              provide: PublicationReviewUseCase,
+              useValue: new PublicationReviewUseCase(
+                dependencies.publicationReviewPersistence,
+                dependencies.authorization,
+              ),
+            },
+          ]),
       ...(portabilityPersistence === undefined
         ? []
         : [
@@ -232,6 +250,9 @@ export class WorkflowAuthoringModule {
       imports: [identityModule],
       controllers: [
         WorkflowAuthoringController,
+        ...(dependencies.publicationReviewPersistence === undefined
+          ? []
+          : [WorkflowPublicationReviewController, PublicationReviewController]),
         ...workflowOrganizationControllers,
         ...(dependencies.portabilityPersistence === undefined
           ? []

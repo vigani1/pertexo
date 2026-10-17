@@ -229,6 +229,9 @@ export async function createApiWorkflowRuntime(
       dependencies: Object.freeze({
         persistence: database,
         portabilityPersistence: database,
+        ...(database.publicationReviews === undefined
+          ? {}
+          : { publicationReviewPersistence: database.publicationReviews }),
         ...(metadataRuntime.inputCases === undefined
           ? {}
           : { inputCasePersistence: metadataRuntime.inputCases }),

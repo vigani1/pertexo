@@ -1,7 +1,11 @@
+import { publicationDialogCopy } from '../../model/publication/dialog-copy';
 import type { ReactNode } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { ArrowUpFromLineIcon, MonitorIcon } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useId } from 'react';
+import { LabelledField, FieldGroup } from '@/components/ui/field';
+import { Textarea } from '@/components/ui/textarea';
+import { useFieldValues } from '@/components/ui/use-field-validation';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
@@ -45,6 +49,9 @@ export function PublishDialog({
   blockingGroups,
   unchangedVersionNumber,
   suiteNotice,
+  mode = 'publish',
+  unavailable = false,
+  policyNotice,
   onPublish,
   onFix,
 }: Readonly<{
@@ -60,10 +67,31 @@ export function PublishDialog({
   blockingGroups: readonly WorkflowIssueGroup[];
   unchangedVersionNumber: number | undefined;
   suiteNotice?: ReactNode;
-  onPublish: () => void;
+  mode?: 'publish' | 'review';
+  unavailable?: boolean;
+  policyNotice?: ReactNode;
+  onPublish: (note?: string) => void;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
   const pending = stage !== undefined;
+  const noteId = useId();
+  const fields = useFieldValues(
+    {
+      note: (value: string) =>
+        value.trim().length >= 1 && value.trim().length <= 1000
+          ? undefined
+          : 'Add a note of 1 to 1,000 characters for the reviewer.',
+    },
+    { note: '' },
+  );
+  const requesting = mode === 'review';
+  const copy = publicationDialogCopy({
+    mode,
+    pending,
+    recoveryPending,
+    failed: error !== undefined,
+    versionLabel,
+  });
   // Fix moves focus to the field it names; closing must not take it back.
   const fixing = useRef(false);
   return (
@@ -78,16 +106,10 @@ export function PublishDialog({
         className={cn(pending && 'live-edge')}
         finalFocus={() => !fixing.current}
       >
-        <DialogTitle>
-          {pending ? `Publishing ${versionLabel}…` : `Publish ${versionLabel}`}
-        </DialogTitle>
-        <DialogDescription>
-          {recoveryPending
-            ? 'Retrying sends the same publish again, for the same saved draft. It can’t create two versions, and newer edits aren’t included.'
-            : 'Publishing makes the saved draft the version that runs. The draft stays editable.'}
-        </DialogDescription>
+        <DialogTitle>{copy.title}</DialogTitle>
+        <DialogDescription>{copy.description}</DialogDescription>
         {pending ? (
-          <PublishProgress stage={stage} />
+          <PublishProgress stage={stage} requesting={requesting} />
         ) : (
           <div className="mt-5 flex flex-col gap-5">
             {unchangedVersionNumber === undefined ||
@@ -97,6 +119,27 @@ export function PublishDialog({
                 already live.
               </Notice>
             )}
+            {policyNotice}
+            {requesting ? (
+              <FieldGroup>
+                <LabelledField
+                  id={noteId}
+                  label="Note for the reviewer"
+                  error={fields.error('note')}
+                  description="Explain what changed and what to check. This note stays on the request, outside audit metadata and email."
+                >
+                  {(control) => (
+                    <Textarea
+                      {...control}
+                      {...fields.control('note')}
+                      maxLength={1000}
+                      rows={3}
+                      disabled={recoveryPending}
+                    />
+                  )}
+                </LabelledField>
+              </FieldGroup>
+            ) : null}
             {suiteNotice}
             <PublishChanges summary={summary} state={summaryState} />
             {blockingGroups.length === 0 ? null : (
@@ -117,7 +160,15 @@ export function PublishDialog({
                 </div>
               </section>
             )}
-            <WhatHappens summary={summary} versionLabel={versionLabel} />
+            {requesting ? (
+              <p className="text-sm text-muted-foreground">
+                The live version keeps running until an eligible reviewer
+                approves. An approval publishes only this saved draft; it cannot
+                include later edits.
+              </p>
+            ) : (
+              <WhatHappens summary={summary} versionLabel={versionLabel} />
+            )}
             <p className="flex items-start gap-2 text-xs text-subtle-foreground lg:hidden">
               <MonitorIcon aria-hidden="true" className="mt-px size-3.5" />
               Publishing works here, but reviewing changes is easier on a larger
@@ -140,18 +191,22 @@ export function PublishDialog({
             type="button"
             variant="primary"
             pending={pending}
-            pendingLabel="Publishing…"
+            pendingLabel={copy.pendingLabel}
             icon={<ArrowUpFromLineIcon data-icon="inline-start" />}
             disabled={
-              blockingGroups.length > 0 || unchangedVersionNumber !== undefined
+              unavailable ||
+              blockingGroups.length > 0 ||
+              unchangedVersionNumber !== undefined
             }
-            onClick={onPublish}
+            onClick={() => {
+              if (!requesting || recoveryPending) onPublish();
+              else {
+                const values = fields.validate();
+                if (values !== undefined) onPublish(values.note.trim());
+              }
+            }}
           >
-            {recoveryPending
-              ? 'Retry original publish'
-              : error === undefined
-                ? `Publish ${versionLabel}`
-                : 'Try again'}
+            {copy.confirmLabel}
           </ProgressButton>
         </div>
       </DialogContent>
@@ -159,7 +214,10 @@ export function PublishDialog({
   );
 }
 
-function PublishProgress({ stage }: Readonly<{ stage: PublishStage }>) {
+function PublishProgress({
+  stage,
+  requesting,
+}: Readonly<{ stage: PublishStage; requesting: boolean }>) {
   const activeIndex = stages.findIndex(
     (candidate) => candidate.stage === stage,
   );
@@ -184,7 +242,9 @@ function PublishProgress({ stage }: Readonly<{ stage: PublishStage }>) {
                 index > activeIndex && 'text-subtle-foreground',
               )}
             >
-              {step.label}
+              {requesting && step.stage === 'publishing'
+                ? 'Sending the exact draft for review'
+                : step.label}
             </Status>
           </li>
         );

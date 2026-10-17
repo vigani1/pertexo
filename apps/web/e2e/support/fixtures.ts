@@ -10,6 +10,13 @@ export {
 /** Shell requests stay mocked even when a scenario does not exercise the Inbox. */
 export const test = base.extend({
   page: async ({ page }, runWithPage) => {
+    await page.route(
+      '**/v1/workspaces/*/workflows/*/publication-review',
+      (route) =>
+        route.request().method() === 'GET'
+          ? route.fulfill({ json: { required: false, request: null } })
+          : route.fallback(),
+    );
     // Selected-step tests share this metadata read; pin journeys override it.
     await page.route('**/v1/workspaces/*/workflows/*/draft/samples', (route) =>
       route.request().method() === 'GET'
