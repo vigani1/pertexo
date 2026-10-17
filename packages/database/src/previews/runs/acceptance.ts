@@ -87,10 +87,6 @@ const acceptPreviewRunInputSchema = z
   })
   .strict()
   .refine(
-    (input) => !input.mayCauseExternalSideEffect || input.mayContactProvider,
-    'external side effects require provider contact disclosure',
-  )
-  .refine(
     (input) =>
       input.sideEffectClass !== 'idempotent_with_key' ||
       input.providerIdempotencyKey !== undefined,

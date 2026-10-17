@@ -433,3 +433,5 @@ export type {
 } from './code/contract.js';
 
 export { readCodeFrame, writeCodeFrame } from './code/framing.js';
+
+export { NodeDataTableFailure } from './data-tables/failure.js';

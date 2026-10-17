@@ -1,4 +1,10 @@
 import {
+  workspaceDataTableQuotas,
+  workspaceDataTables,
+  workspaceDataTableRows,
+  dataTableWriteReceipts,
+} from './schema/data-tables.js';
+import {
   workflowTestSuites,
   workflowTestSuiteCases,
 } from './schema/runs/suites.js';
@@ -189,6 +195,10 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
+  workspaceDataTableQuotas,
+  workspaceDataTables,
+  workspaceDataTableRows,
+  dataTableWriteReceipts,
   workflowTestSuites,
   workflowTestSuiteCases,
   workflowTestSnapshots,

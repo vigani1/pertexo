@@ -1,3 +1,4 @@
+import { DataTableSetup } from '../builders/table-setup';
 import type { CodeSettings } from '@pertexo/node-sdk';
 import { lazy, Suspense } from 'react';
 import { SkeletonLines } from '@/components/ui/skeleton';
@@ -231,6 +232,8 @@ function SetupControls({
         scope={callScope}
       />
     );
+  if (node.definition.key.startsWith('core.table_') && callScope !== undefined)
+    return <DataTableSetup scope={callScope} config={config} form={form} />;
   if (node.definition.key === 'core.code')
     return (
       <Suspense fallback={<SkeletonLines label="Loading JavaScript editor" />}>

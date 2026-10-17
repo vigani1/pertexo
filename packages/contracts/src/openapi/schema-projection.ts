@@ -1,4 +1,10 @@
 import {
+  dataTableValueSchema,
+  dataTableValuesSchema,
+  dataTableValueStructuralSchema,
+  dataTableValuesStructuralSchema,
+} from '@pertexo/node-sdk';
+import {
   workflowGraphSchema,
   workflowGraphStructuralSchema,
   workflowPortableManifestSchema,
@@ -129,6 +135,22 @@ export function projectContractSchema(
       }
       if (zodSchema === (workflowGraphSchema as unknown as typeof zodSchema))
         replaceWorkflowGraph(jsonSchema);
+      if (
+        zodSchema === (dataTableValueSchema as unknown as typeof zodSchema) ||
+        zodSchema === (dataTableValuesSchema as unknown as typeof zodSchema)
+      ) {
+        replaceObject(
+          jsonSchema,
+          z.toJSONSchema(
+            zodSchema === (dataTableValuesSchema as unknown as typeof zodSchema)
+              ? dataTableValuesStructuralSchema
+              : dataTableValueStructuralSchema,
+            { target: 'draft-2020-12', reused: 'inline' },
+          ),
+        );
+        jsonSchema.description =
+          'Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing.';
+      }
       if (
         zodSchema ===
         (boundedNodeTestJsonInputSchema as unknown as typeof zodSchema)

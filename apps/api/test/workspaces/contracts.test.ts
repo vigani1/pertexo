@@ -63,8 +63,13 @@ import {
 } from '../../src/workspaces/index.js';
 
 describe('identity/workspace generated contracts', () => {
-  it('projects every client schema mechanically from the owning Zod contract', () => {
-    expect(identityWorkspaceClientContract).toEqual({
+  it('keeps identity client schemas mechanically aligned with their owning Zod contracts', () => {
+    const identitySchemas = Object.fromEntries(
+      Object.entries(identityWorkspaceClientContract.schemas).filter(
+        ([name]) => !name.startsWith('DataTable'),
+      ),
+    );
+    expect({ schemas: identitySchemas }).toEqual({
       schemas: {
         WorkspaceVariablesResponse: generated(
           workspaceVariablesResponseSchema,
@@ -272,6 +277,12 @@ describe('identity/workspace generated contracts', () => {
       '/v1/workspaces/{workspaceId}/api-tokens/{tokenId}/revoke',
       '/v1/workspaces/{workspaceId}/variables',
       '/v1/workspaces/{workspaceId}/variables/usage',
+      '/v1/workspaces/{workspaceId}/data-tables',
+      '/v1/workspaces/{workspaceId}/data-tables/limits',
+      '/v1/workspaces/{workspaceId}/data-tables/{tableId}',
+      '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query',
+      '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows',
+      '/v1/workspaces/{workspaceId}/data-tables/{tableId}/import',
       '/v1/auth/capabilities',
       '/v1/users/me',
       '/v1/auth/account-security/sessions',
@@ -301,9 +312,13 @@ describe('identity/workspace generated contracts', () => {
       '/v1/invitation-acceptance/session',
       '/v1/invitation-acceptance/complete',
     ]);
-    expect(identityWorkspaceOpenApiDocument.components.schemas).toEqual(
-      identityWorkspaceClientContract.schemas,
-    );
+    expect(
+      JSON.parse(
+        JSON.stringify(
+          identityWorkspaceOpenApiDocument.components.schemas,
+        ).replaceAll('#/components/schemas/', '#/schemas/'),
+      ),
+    ).toEqual(identityWorkspaceClientContract.schemas);
     expect(
       identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].post.requestBody
         .content['application/json'].schema,

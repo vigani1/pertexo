@@ -1,6 +1,7 @@
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
+  Table2Icon,
   BoxIcon,
   FileJsonIcon,
   BracesIcon,
@@ -46,6 +47,40 @@ type RegistryEntry = Omit<StepPresentation, 'family'> &
   Readonly<{ family: StepFamily }>;
 
 const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
+  'core.table_find': {
+    name: 'Find rows',
+    description: 'Find rows in a workspace data table',
+    icon: Table2Icon,
+    family: 'transform',
+  },
+  'core.table_insert': {
+    name: 'Insert row',
+    description: 'Insert row in a workspace data table',
+    icon: Table2Icon,
+    family: 'action',
+    sideEffect: 'This changes real rows in a workspace data table.',
+  },
+  'core.table_update': {
+    name: 'Update rows',
+    description: 'Update rows in a workspace data table',
+    icon: Table2Icon,
+    family: 'action',
+    sideEffect: 'This changes real rows in a workspace data table.',
+  },
+  'core.table_upsert': {
+    name: 'Upsert by key',
+    description: 'Upsert by key in a workspace data table',
+    icon: Table2Icon,
+    family: 'action',
+    sideEffect: 'This changes real rows in a workspace data table.',
+  },
+  'core.table_delete': {
+    name: 'Delete rows',
+    description: 'Delete rows in a workspace data table',
+    icon: Table2Icon,
+    family: 'action',
+    sideEffect: 'This changes real rows in a workspace data table.',
+  },
   'core.code': {
     name: 'Code',
     description: 'Transform JSON with JavaScript in an isolated process',

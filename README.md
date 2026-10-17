@@ -200,6 +200,9 @@ Run a separate workflow after a failure:
 Published member/public forms and durable input requests:
 [forms guide](docs/guides/forms.md).
 
+Typed workspace records, CSV imports and retry-safe table steps:
+[data tables guide](docs/guides/data-tables.md).
+
 Shared non-secret configuration with immutable run snapshots:
 [workspace variables guide](docs/guides/variables.md).
 

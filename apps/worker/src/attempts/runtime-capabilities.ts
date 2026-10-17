@@ -1,3 +1,7 @@
+import {
+  createWorkerDataTablesStore,
+  type WorkerDataTablesStore,
+} from '@pertexo/database/data-tables';
 import { retainCodeOutput } from './code/output.js';
 import {
   createCodeRunnerClient,
@@ -67,6 +71,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
 export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   databaseRuntime?: DatabaseRuntime;
   webhookResponses?: Pick<WebhookResponseStore, 'respond'>;
+  dataTables?: Pick<WorkerDataTablesStore, 'execute'>;
   connectionDatabase?: Parameters<
     typeof createProviderConnectionRuntimeFactory
   >[0];
@@ -163,6 +168,7 @@ export async function createWorkerNodeRuntimeCapabilities(
   const retentionMillis =
     options.artifactRetentionMillis ?? DEFAULT_ARTIFACT_RETENTION_MILLIS;
 
+  let ownedDataTables: WorkerDataTablesStore | undefined;
   let ownedWebhookResponses: WebhookResponseStore | undefined;
   let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   let ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;
@@ -184,6 +190,7 @@ export async function createWorkerNodeRuntimeCapabilities(
       ? undefined
       : createCodeRunnerClient(options.codeRunner);
   const factories: {
+    dataTables?: NonNullable<NodeExecutionCapabilityFactories['dataTables']>;
     code?: NonNullable<NodeExecutionCapabilityFactories['code']>;
     connections?: NonNullable<NodeExecutionCapabilityFactories['connections']>;
     artifacts?: NonNullable<NodeExecutionCapabilityFactories['artifacts']>;
@@ -200,6 +207,7 @@ export async function createWorkerNodeRuntimeCapabilities(
       closePromise = (async (): Promise<void> => {
         codeClient?.close();
         const closeOperations = [
+          ownedDataTables?.close.bind(ownedDataTables),
           ownedWebhookResponses?.close.bind(ownedWebhookResponses),
           ownedConnectionDatabase?.close.bind(ownedConnectionDatabase),
           ownedArtifactDatabase?.close.bind(ownedArtifactDatabase),
@@ -223,6 +231,18 @@ export async function createWorkerNodeRuntimeCapabilities(
     return closePromise;
   };
   try {
+    const dataTables =
+      dependencies.dataTables ??
+      (ownedDataTables = createWorkerDataTablesStore(
+        options.database,
+        dependencies.databaseRuntime,
+      ));
+    factories.dataTables = (context) => ({
+      execute: ({ command, signal }) => {
+        assertCapabilityRuntimeOpen(lifecycle);
+        return dataTables.execute({ ...context, command, signal });
+      },
+    });
     if (codeClient !== undefined && options.codeRunner !== undefined) {
       const settings = options.codeRunner.settings;
       factories.code = (context) => ({

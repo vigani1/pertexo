@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { LinkProps } from '@tanstack/react-router';
 import {
+  Table2Icon,
   BellIcon,
   CheckCheckIcon,
   GaugeIcon,
@@ -19,6 +20,7 @@ export type SpineDestination = Readonly<{
     LinkProps['to'],
     | '/w/$workspaceId'
     | '/w/$workspaceId/workflows'
+    | '/w/$workspaceId/data-tables'
     | '/w/$workspaceId/runs'
     | '/w/$workspaceId/inbox'
     | '/w/$workspaceId/requests'
@@ -80,6 +82,12 @@ export function spineDestinations(
       to: '/w/$workspaceId/requests',
       label: 'Requests',
       icon: <CheckCheckIcon />,
+    });
+  if (can('workspace:read'))
+    primary.push({
+      to: '/w/$workspaceId/data-tables',
+      label: 'Data tables',
+      icon: <Table2Icon />,
     });
   if (can('connection:read'))
     primary.push({

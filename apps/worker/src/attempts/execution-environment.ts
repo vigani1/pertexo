@@ -61,6 +61,7 @@ export function createNodeExecutionEnvironment(
   const artifacts = input.runtimeCapabilities?.artifacts?.(capabilityContext);
   const webhookResponse =
     input.runtimeCapabilities?.webhookResponse?.(capabilityContext);
+  const dataTables = input.runtimeCapabilities?.dataTables?.(capabilityContext);
   const code = input.runtimeCapabilities?.code?.({
     ...capabilityContext,
     variables: input.variables ?? {},
@@ -68,6 +69,7 @@ export function createNodeExecutionEnvironment(
   let diagnostics: CodeDiagnostics | undefined;
   const runtime: NodeExecutionRuntime = Object.freeze({
     ...(code === undefined ? {} : { code }),
+    ...(dataTables === undefined ? {} : { dataTables }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {
       if (dispatchState === 'marked') diagnostics ??= value;
     },

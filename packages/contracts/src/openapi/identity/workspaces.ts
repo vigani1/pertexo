@@ -1,3 +1,7 @@
+import {
+  dataTableContractSchemas,
+  dataTableContractPaths,
+} from './data-tables.js';
 import { variableContractSchemas, variableContractPaths } from './variables.js';
 import {
   apiTokenContractPaths,
@@ -115,8 +119,10 @@ const schemas = Object.freeze({
   ...authenticationContractSchemas,
 });
 
+const clientSchemas = { ...schemas, ...dataTableContractSchemas('client') };
+const openApiSchemas = { ...schemas, ...dataTableContractSchemas('openapi') };
 export const identityWorkspaceClientContract = Object.freeze({
-  schemas,
+  schemas: clientSchemas,
 });
 
 const problemResponses = Object.freeze({
@@ -138,6 +144,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
   paths: {
     ...apiTokenContractPaths,
     ...variableContractPaths,
+    ...dataTableContractPaths,
     ...authenticationContractPaths,
     '/v1/workspaces': {
       get: {
@@ -325,9 +332,10 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
     ...workspaceInvitationContractPaths,
   },
   components: {
-    ...authenticatedComponents(schemas, problemResponses),
+    ...authenticatedComponents(openApiSchemas, problemResponses),
     securitySchemes: {
-      ...authenticatedComponents(schemas, problemResponses).securitySchemes,
+      ...authenticatedComponents(openApiSchemas, problemResponses)
+        .securitySchemes,
       invitationBinding: {
         type: 'apiKey',
         in: 'cookie',

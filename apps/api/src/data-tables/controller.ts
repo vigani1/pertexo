@@ -1,0 +1,193 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Req,
+  UseGuards,
+  Header,
+  HttpCode,
+} from '@nestjs/common';
+import {
+  workspaceIdentifierSchema,
+  dataTableCreateSchema,
+  dataTableLimitsSchema,
+  dataTableRemoveSchema,
+  dataTableQuerySchema,
+  dataTableWriteSchema,
+  dataTableCsvImportSchema,
+} from '@pertexo/contracts';
+import {
+  SessionAuthenticationGuard,
+  CsrfProtectionGuard,
+  authenticatedSession,
+} from '../workspaces/index.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
+import {
+  requestIdempotencyKey,
+  withRequestOperationSignal,
+} from '../platform/http/index.js';
+import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { DataTablesReadGuard, DataTablesManageGuard } from './guards.js';
+import { DataTablesService } from './service.js';
+type Request = IdentityWorkspaceRequest & AbortableRequest;
+@Controller('v1/workspaces/:workspaceId/data-tables')
+@UseGuards(SessionAuthenticationGuard)
+@RateLimit('authenticated_read')
+export class DataTablesController {
+  constructor(private readonly tables: DataTablesService) {}
+  private scope(request: Request, workspace: unknown) {
+    return {
+      workspaceId: workspaceIdentifierSchema.parse(workspace),
+      actorId: authenticatedSession(request).userId,
+    };
+  }
+  @Get()
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(DataTablesReadGuard)
+  list(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.store.list({ ...this.scope(request, workspace), signal }),
+    );
+  }
+  @Post()
+  @Header('Cache-Control', 'private, no-store')
+  @HttpCode(200)
+  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
+  @RateLimit('ordinary_mutation')
+  create(
+    @Req() request: Request,
+    @Param('workspaceId') workspace: unknown,
+    @Body() body: unknown,
+  ) {
+    const input = dataTableCreateSchema.parse(body);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.store.create({
+        ...this.scope(request, workspace),
+        ...input,
+        keyColumn: input.keyColumn ?? null,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
+  }
+  @Put('limits')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
+  @RateLimit('ordinary_mutation')
+  limits(
+    @Req() request: Request,
+    @Param('workspaceId') workspace: unknown,
+    @Body() body: unknown,
+  ) {
+    const input = dataTableLimitsSchema.parse(body);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.store.configure({
+        ...this.scope(request, workspace),
+        ...input,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
+  }
+  @Delete(':tableId')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
+  @RateLimit('ordinary_mutation')
+  remove(
+    @Req() request: Request,
+    @Param('workspaceId') workspace: unknown,
+    @Param('tableId') table: unknown,
+    @Body() body: unknown,
+  ) {
+    const input = dataTableRemoveSchema.parse(body);
+    const tableId = workspaceIdentifierSchema.parse(table);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.store.remove({
+        ...this.scope(request, workspace),
+        ...input,
+        tableId,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
+  }
+  @Post(':tableId/rows/query')
+  @Header('Cache-Control', 'private, no-store')
+  @HttpCode(200)
+  @UseGuards(DataTablesReadGuard, CsrfProtectionGuard)
+  find(
+    @Req() request: Request,
+    @Param('workspaceId') workspace: unknown,
+    @Param('tableId') table: unknown,
+    @Body() body: unknown,
+  ) {
+    const query = dataTableQuerySchema.parse(body);
+    const tableId = workspaceIdentifierSchema.parse(table);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.store.find({
+        ...this.scope(request, workspace),
+        query,
+        tableId,
+        signal,
+      }),
+    );
+  }
+  @Post(':tableId/rows')
+  @Header('Cache-Control', 'private, no-store')
+  @HttpCode(200)
+  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
+  @RateLimit('ordinary_mutation')
+  write(
+    @Req() request: Request,
+    @Param('workspaceId') workspace: unknown,
+    @Param('tableId') table: unknown,
+    @Body() body: unknown,
+  ) {
+    const input = dataTableWriteSchema.parse(body);
+    const tableId = workspaceIdentifierSchema.parse(table);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.store.write({
+        ...this.scope(request, workspace),
+        command: input.command,
+        ...(input.rowId === undefined
+          ? {}
+          : {
+              rowId: input.rowId,
+              expectedRevision: input.expectedRevision ?? 0,
+            }),
+        tableId,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
+  }
+  @Post(':tableId/import')
+  @Header('Cache-Control', 'private, no-store')
+  @HttpCode(200)
+  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
+  @RateLimit('ordinary_mutation')
+  importCsv(
+    @Req() request: Request,
+    @Param('workspaceId') workspace: unknown,
+    @Param('tableId') table: unknown,
+    @Body() body: unknown,
+  ) {
+    const input = dataTableCsvImportSchema.parse(body);
+    const tableId = workspaceIdentifierSchema.parse(table);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.importCsv({
+        ...this.scope(request, workspace),
+        ...input,
+        tableId,
+        rows: [],
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
+  }
+}

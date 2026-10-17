@@ -53,7 +53,7 @@ for (const width of [375, 1280]) {
     });
     await expect(
       dialog
-        .getByRole('region', { name: 'Steps with external effects' })
+        .getByRole('region', { name: 'Steps with effects' })
         .getByText('Send invoice', { exact: true }),
     ).toBeVisible();
     const start = dialog.getByRole('button', {

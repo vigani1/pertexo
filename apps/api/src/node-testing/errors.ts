@@ -84,9 +84,9 @@ export function mapNodeTestingError(error: unknown): ApplicationError {
       stale_sample:
         'A pin is stale or expired. Confirm, replace or remove it before testing.',
       effects_changed:
-        'The steps with external effects changed. Prepare the test again and review the current list.',
+        'The steps with effects changed. Prepare the test again and review the current list.',
       effects_acknowledgement_required:
-        'Confirm the listed steps may cause real external effects before testing.',
+        'Confirm the listed steps may change real data before testing.',
       already_running:
         'You already have a test running for this workflow. Cancel it or wait for it to finish.',
       not_found: 'That retained workflow test is unavailable.',

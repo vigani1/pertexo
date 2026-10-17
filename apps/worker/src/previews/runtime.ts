@@ -1,3 +1,4 @@
+import { NodeDataTableFailure } from '@pertexo/node-sdk/server';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
@@ -116,6 +117,11 @@ export function createPlatformPreviewNodeInvoker(
           error.code === 'variable_missing'
         )
           return failedWith('preview.variable_missing');
+        if (
+          error instanceof NodeDataTableFailure &&
+          error.code !== 'unavailable'
+        )
+          return failedWith(`execution.table_${error.code}`);
         if (error instanceof NodeCodeFailure) return failedWith(error.code);
         if (error instanceof z.ZodError)
           return failedWith('preview.executable_invalid');

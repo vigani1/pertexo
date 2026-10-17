@@ -249,12 +249,7 @@ async function createProductionNodeAttemptRuntime(
 
   let capabilityRuntime: WorkerNodeRuntimeCapabilities | undefined;
   let runtimeCapabilities = dependencies.runtimeCapabilities;
-  if (
-    runtimeCapabilities === undefined &&
-    (options.codeRunner !== undefined ||
-      options.connectionEncryption !== undefined ||
-      options.artifactStore !== undefined)
-  )
+  if (runtimeCapabilities === undefined)
     capabilityRuntime = await (
       dependencies.capabilityFactory ?? createWorkerNodeRuntimeCapabilities
     )(

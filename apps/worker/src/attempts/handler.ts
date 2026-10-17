@@ -1,3 +1,4 @@
+import { NodeDataTableFailure } from '@pertexo/node-sdk/server';
 import { codeCompletionFields } from './code/diagnostics.js';
 import { NodeCodeFailure } from '@pertexo/node-sdk/server';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
@@ -262,11 +263,13 @@ async function executePreparedNodeAttempt(
           errorKind: error.errorKind,
           possiblyDispatched: error.possiblyDispatched,
           safeErrorCode:
-            error instanceof NodeCodeFailure
-              ? error.code
-              : error instanceof FileInputFailure
-                ? FILE_INPUT_ERROR_CODE
-                : `execution.${error.errorKind}`,
+            error instanceof NodeDataTableFailure
+              ? `execution.table_${error.code}`
+              : error instanceof NodeCodeFailure
+                ? error.code
+                : error instanceof FileInputFailure
+                  ? FILE_INPUT_ERROR_CODE
+                  : `execution.${error.errorKind}`,
           ...(error instanceof FileInputFailure
             ? { errorSummary: describeFileInputFailure(error.diagnostic) }
             : {}),

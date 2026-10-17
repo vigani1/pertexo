@@ -146,3 +146,25 @@ export {
   type WorkflowTestSuiteDetail,
   type WorkflowTestSuiteReport,
 } from './schemas/execution/test-suites.js';
+
+export {
+  dataTableCreateSchema,
+  dataTableLimitsSchema,
+  dataTableQuotasSchema,
+  dataTablesResponseSchema,
+  dataTableCreatedSchema,
+  dataTableRemovedSchema,
+  dataTableRemoveSchema,
+  dataTableWriteSchema,
+  dataTableImportedSchema,
+  dataTableCsvImportSchema,
+  dataTableQuerySchema,
+  dataTableResultSchema,
+  dataTableWriteReceiptSchema,
+  type DataTablesResponse,
+  type DataTableDefinition,
+  type DataTableCreate,
+  type DataTableWrite,
+  type DataTableLimits,
+  type DataTableWriteReceipt,
+} from './schemas/identity/data-tables.js';

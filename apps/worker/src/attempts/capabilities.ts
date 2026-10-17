@@ -1,3 +1,4 @@
+import type { NodeDataTableRuntime } from '@pertexo/node-sdk';
 import type { NodeCodeRuntime, JsonValue } from '@pertexo/node-sdk/server';
 import type {
   NodeArtifactRuntime,
@@ -22,6 +23,9 @@ export type NodeExecutionCapabilityContext = Readonly<{
 
 /** Per-attempt factories shared by production and preview execution modes. */
 export type NodeExecutionCapabilityFactories = Readonly<{
+  dataTables?: (
+    context: NodeExecutionCapabilityContext & Readonly<{ fenceToken: number }>,
+  ) => NodeDataTableRuntime;
   code?: (
     context: NodeExecutionCapabilityContext &
       Readonly<{ variables: Readonly<Record<string, JsonValue>> }>,

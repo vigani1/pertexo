@@ -190,6 +190,13 @@
       "when": 1792224984382,
       "tag": "0026_workflow_test_suites",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792230926486,
+      "tag": "0027_workspace_data_tables",
+      "breakpoints": true
     }
   ]
 }

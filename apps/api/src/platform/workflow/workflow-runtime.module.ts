@@ -1,3 +1,5 @@
+import { DataTablesModule } from '../../data-tables/module.js';
+import type { DataTablesStore } from '@pertexo/database/data-tables';
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import { WorkspaceVariablesModule } from '../../workspace-variables/module.js';
 import type { WorkspaceVariablesStore } from '@pertexo/database/variables';
@@ -74,6 +76,7 @@ export type ApiWorkflowRuntime = Readonly<{
   pendingTasks?: PendingTaskStore;
   forms?: FormStore;
   variables?: WorkspaceVariablesStore;
+  dataTables?: DataTablesStore;
   checkReadiness?(): Promise<void>;
   close(): Promise<void>;
 }>;
@@ -218,6 +221,7 @@ export async function createApiWorkflowRuntime(
       pendingTasks,
       forms,
       variables: metadataRuntime.variables,
+      dataTables: metadataRuntime.dataTables,
       dependencies: Object.freeze({
         persistence: database,
         portabilityPersistence: database,
@@ -422,6 +426,15 @@ export class WorkflowRuntimeModule {
               ),
             ]),
         WorkflowRunsModule.register(runtime.runDependencies, identityModule),
+        ...(runtime.dataTables === undefined
+          ? []
+          : [
+              DataTablesModule.register(
+                runtime.dataTables,
+                runtime.dependencies.authorization,
+                identityModule,
+              ),
+            ]),
         ...(runtime.variables === undefined
           ? []
           : [

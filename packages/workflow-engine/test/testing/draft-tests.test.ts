@@ -20,7 +20,11 @@ import {
 } from '../support/executable-workflow.js';
 import { callGraph, completion } from '../compilation/calls/fixtures.js';
 
-function runtime(source: unknown, pins: WorkflowTestPins) {
+function runtime(
+  source: unknown,
+  pins: WorkflowTestPins,
+  options: Parameters<typeof nodeCatalog>[0] = {},
+) {
   const catalog = composeExecutableCatalog(
     nodeCatalog({
       call: true,
@@ -28,6 +32,7 @@ function runtime(source: unknown, pins: WorkflowTestPins) {
       inputRequest: true,
       forEach: true,
       condition: true,
+      ...options,
     }),
   );
   const executable = buildWorkflowExecutable({ graph: source, catalog });
@@ -61,6 +66,38 @@ const pin = (output: WorkflowTestPins[string]['output']) => ({
 });
 
 describe('whole-draft test policy', () => {
+  it('removes provider keys from pinned idempotent steps while keeping ordinary writes keyed', async () => {
+    for (const pinned of [true, false]) {
+      const run = runtime(
+        graph(),
+        pinned ? { set: pin({ sample: true }) } : {},
+        { setRetryClass: 'idempotent-with-key' },
+      );
+      const start = await run.initial();
+      const step = await run.advance(start.checkpoint, completion(start));
+      expect(step.attempts[0]?.nodeId).toBe('set');
+      expect(step.attempts[0]?.sideEffectClass).toBe(
+        pinned ? 'safe' : 'idempotent_with_key',
+      );
+      expect(step.nodeRunAdmissions[0]?.sideEffectClass).toBe(
+        pinned ? 'safe' : 'idempotent_with_key',
+      );
+      if (pinned) {
+        expect(step.attempts[0]?.providerIdempotencyKey).toBeUndefined();
+        expect(
+          step.nodeRunAdmissions[0]?.providerIdempotencyKey,
+        ).toBeUndefined();
+      } else {
+        expect(step.attempts[0]?.providerIdempotencyKey).toEqual(
+          expect.any(String),
+        );
+        expect(step.nodeRunAdmissions[0]?.providerIdempotencyKey).toBe(
+          step.attempts[0]?.providerIdempotencyKey,
+        );
+      }
+    }
+  });
+
   it('uses a pinned Call result without declaring a child or blocking its successor', async () => {
     const run = runtime(callGraph(), { call: pin({ answer: 42 }) });
     const start = await run.initial();

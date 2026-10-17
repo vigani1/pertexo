@@ -81,6 +81,7 @@ const errorWorkflowCase = process.env.EDITOR_BROWSER_CASE === 'error-workflows';
 const webhookResponseCase =
   process.env.EDITOR_BROWSER_CASE === 'webhook-responses';
 const previewCase =
+  process.env.EDITOR_BROWSER_CASE === 'variables' ||
   process.env.EDITOR_BROWSER_CASE === 'transforms' ||
   process.env.EDITOR_BROWSER_CASE === 'pinned-samples' ||
   webhookResponseCase ||
@@ -431,7 +432,7 @@ async function constructRuntimes(
     resources.capabilities = controlledCapabilities;
     assertSetupActive();
   }
-  if (webhookResponseCase) {
+  if (webhookResponseCase || process.env.EDITOR_BROWSER_CASE === 'variables') {
     controlledCapabilities = await createWorkerNodeRuntimeCapabilities({
       database,
     });
@@ -457,6 +458,9 @@ async function constructRuntimes(
       controlledHttpClient === undefined
         ? {
             runtimeCapabilities: {
+              ...(controlledCapabilities?.factories.dataTables === undefined
+                ? {}
+                : { dataTables: controlledCapabilities.factories.dataTables }),
               ...(controlledCapabilities?.factories.webhookResponse ===
               undefined
                 ? {}

@@ -158,3 +158,19 @@ configuration while executing. Snapshots expire with execution details; missing
 historical snapshots refuse replay rather than substitute current values. See
 [the guide](docs/guides/variables.md) and
 [ADR 078](docs/adr/078-run-variable-snapshots.md).
+
+## Workspace data tables
+
+A **data table** is a workspace-owned, bounded dataset with fixed typed columns
+and an optional single unique key. Its stable name is what workflow steps and
+portable workflow files reference. A **data row** has its own ID and revision;
+interactive edits compare that revision to avoid lost updates. Table data is
+shared with active workspace members and is not secret storage.
+
+A **table write receipt** records a workflow mutation and its bounded result in
+the same transaction as the row change. The identity is the run/node invocation,
+so attempts reuse the result after a lost acknowledgement. New replay runs have
+new identities. Receipts follow execution retention; table rows persist until
+explicit deletion or workspace purge. See
+[ADR 083](docs/adr/083-workspace-data-tables.md) and the
+[data tables guide](docs/guides/data-tables.md).
