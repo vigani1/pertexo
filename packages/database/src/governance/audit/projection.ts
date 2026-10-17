@@ -27,6 +27,7 @@ const numberKeys = new Set([
   'toRevision',
   'auditRetentionDays',
   'columnCount',
+  'changedCount',
   'tableLimit',
   'columnLimit',
   'rowLimit',
@@ -34,18 +35,23 @@ const numberKeys = new Set([
 ]);
 const changedNamesSchema = workspaceVariableNameSchema
   .array()
-  .max(WORKSPACE_VARIABLE_LIMITS.count);
-const booleanKeys = new Set(['reused', 'dryRun']);
+  .max(WORKSPACE_VARIABLE_LIMITS.count * 2);
+const booleanKeys = new Set(['reused', 'dryRun', 'changedNamesTruncated']);
 export function projectAuditMetadata(
   metadata: unknown,
 ): AuditEvent['metadata'] {
   const result: AuditEvent['metadata'] = {};
+  let legacyChangedCount: number | undefined;
   if (typeof metadata !== 'object' || metadata === null) return result;
   const entries: readonly [string, unknown][] = Object.entries(metadata);
   for (const [key, value] of entries) {
     if (key === 'changedNames') {
       const names = changedNamesSchema.safeParse(value);
-      if (names.success) result[key] = names.data;
+      if (names.success) {
+        result[key] = names.data.slice(0, WORKSPACE_VARIABLE_LIMITS.count);
+        if (names.data.length > WORKSPACE_VARIABLE_LIMITS.count)
+          legacyChangedCount = names.data.length;
+      }
     } else if (
       key === 'actorRef' &&
       typeof value === 'string' &&
@@ -93,6 +99,10 @@ export function projectAuditMetadata(
       ROLES.some((role) => role === value)
     )
       result[key] = value;
+  }
+  if (legacyChangedCount !== undefined) {
+    result.changedCount = legacyChangedCount;
+    result.changedNamesTruncated = true;
   }
   return result;
 }

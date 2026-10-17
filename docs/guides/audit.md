@@ -16,6 +16,8 @@ The log records actions from the time their audit coverage was introduced. It
 does not reconstruct earlier missing events. A person's current display name may
 change after an event. Old free-text metadata is hidden, even for administrators.
 The underlying audit ledger remains append-only for application commands.
+Variable replacements list up to 100 changed names, with the total count and an
+explicit truncation marker for larger changes; variable values are never included.
 
 ## Export
 

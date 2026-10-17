@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { canonicalJson } from '@pertexo/workflow-model';
+import {
+  canonicalJson,
+  WORKSPACE_VARIABLE_LIMITS,
+} from '@pertexo/workflow-model';
 import { workspaceVariablesResponseSchema } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
@@ -108,7 +111,13 @@ export async function replaceWorkspaceVariables(
         input.actorId,
         input.requestId ?? null,
         input.traceId ?? null,
-        JSON.stringify({ revision, changedNames: names }),
+        JSON.stringify({
+          revision,
+          changedNames: names.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
+          ...(names.length > WORKSPACE_VARIABLE_LIMITS.count
+            ? { changedCount: names.length, changedNamesTruncated: true }
+            : {}),
+        }),
       ],
     );
   }
