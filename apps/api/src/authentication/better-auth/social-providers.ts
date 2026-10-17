@@ -1,14 +1,14 @@
 import type { BetterAuthOptions } from 'better-auth';
 
-import type { LinkProviderGateway } from '../account-security/linking.js';
+import type { SocialProviderGateway } from '../providers/contract.js';
 import type { PertexoBetterAuth } from './options.js';
 
 const LINKABLE_PROVIDERS = ['google', 'github', 'microsoft', 'apple'] as const;
 
 /** Providers that can take part in linking are exactly the configured ones. */
-export function configuredLinkProviders(
+export function configuredSocialProviders(
   socialProviders: BetterAuthOptions['socialProviders'],
-): LinkProviderGateway['available'] {
+): SocialProviderGateway['available'] {
   return LINKABLE_PROVIDERS.filter(
     (name) => socialProviders?.[name] !== undefined,
   );
@@ -19,16 +19,16 @@ export function configuredLinkProviders(
  * Pertexo-derived state, PKCE and nonce. Verification fails closed on an
  * issuer mismatch, a rejected code or an unusable account subject.
  */
-export function betterAuthLinkProviders(
+export function betterAuthSocialProviders(
   auth: PertexoBetterAuth,
   socialProviders: BetterAuthOptions['socialProviders'],
-): LinkProviderGateway {
+): SocialProviderGateway {
   const configuredProvider = async (providerId: string) =>
     (await auth.$context).socialProviders.find(
       (provider) => provider.id === providerId,
     );
   return {
-    available: configuredLinkProviders(socialProviders),
+    available: configuredSocialProviders(socialProviders),
     authorize: async (input) => {
       const provider = await configuredProvider(input.provider);
       if (provider === undefined) throw new Error('Provider unavailable');

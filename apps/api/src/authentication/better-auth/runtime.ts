@@ -1,15 +1,13 @@
 import type { BetterAuthOptions } from 'better-auth';
 import { Pool } from 'pg';
 
-import {
-  AccountLinking,
-  type LinkProviderGateway,
-} from '../account-security/linking.js';
+import { AccountLinking } from '../account-security/linking.js';
+import type { SocialProviderGateway } from '../providers/contract.js';
 import type { AuthenticationMail } from '../mail/delivery.js';
 import {
-  betterAuthLinkProviders,
-  configuredLinkProviders,
-} from './link-providers.js';
+  betterAuthSocialProviders,
+  configuredSocialProviders,
+} from './social-providers.js';
 import { createPertexoBetterAuth, type PertexoBetterAuth } from './options.js';
 import {
   authenticateBrowserRequest,
@@ -33,7 +31,7 @@ export type BetterAuthRuntimeConfig = Readonly<{
   mail: AuthenticationMail;
   socialProviders?: BetterAuthOptions['socialProviders'];
   /** Local provider fixtures may use this seam; production uses pinned providers. */
-  linkProviderGateway?: LinkProviderGateway;
+  linkProviderGateway?: SocialProviderGateway;
 }>;
 
 export type BetterAuthRuntime = Readonly<{
@@ -76,11 +74,11 @@ export function createBetterAuthRuntime(
       : { socialProviders: config.socialProviders }),
     availableLinkProviders:
       config.linkProviderGateway?.available ??
-      configuredLinkProviders(config.socialProviders),
+      configuredSocialProviders(config.socialProviders),
   });
   const providers =
     config.linkProviderGateway ??
-    betterAuthLinkProviders(auth, config.socialProviders);
+    betterAuthSocialProviders(auth, config.socialProviders);
   const sessions = createTrustedSessions(auth, pool);
   const deliver: DeliverSessionCookies = async (token) =>
     (await sessions.deliver(token)).setCookies;

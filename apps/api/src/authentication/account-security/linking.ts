@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import type { Pool } from 'pg';
 import { AccountLinkingCommands } from '@pertexo/database/tenant-access';
-import type { z } from 'zod';
 import { accountSecurityLinkStartRequestSchema } from '@pertexo/contracts';
-import type { authenticationProviderSchema } from '@pertexo/contracts';
+import type {
+  SocialProviderGateway,
+  SocialProviderName,
+} from '../providers/contract.js';
 
 import {
   deriveJourneySecret,
@@ -14,41 +16,12 @@ import {
   landWithReplacementSession,
   newJourneyToken,
   readCookie,
-} from './linking-journey.js';
+} from '../journeys/browser-proof.js';
 
-type ProviderName = z.infer<typeof authenticationProviderSchema>;
 type BrowserSession = Readonly<{
   userId: string;
   sessionId: string;
   emailVerified: boolean;
-}>;
-type ProviderIdentity = Readonly<{
-  accountId: string;
-  email: string | null;
-  emailVerified: boolean;
-}>;
-
-export type LinkProviderGateway = Readonly<{
-  available: readonly ProviderName[];
-  authorize(
-    input: Readonly<{
-      provider: ProviderName;
-      state: string;
-      codeVerifier: string;
-      nonce: string;
-      redirectUri: string;
-    }>,
-  ): Promise<string>;
-  verify(
-    input: Readonly<{
-      provider: ProviderName;
-      code: string;
-      codeVerifier: string;
-      nonce: string;
-      redirectUri: string;
-      issuer: string | null;
-    }>,
-  ): Promise<ProviderIdentity | undefined>;
 }>;
 
 const LINK_COOKIE = 'pertexo_link';
@@ -64,7 +37,7 @@ export class AccountLinking {
       baseUrl: string;
       secureCookies: boolean;
       sessionTtlSeconds: number;
-      providers: LinkProviderGateway;
+      providers: SocialProviderGateway;
       authenticate(request: Request): Promise<BrowserSession | undefined>;
       verifyPassword(userId: string, password: string): Promise<boolean>;
       deliver(token: string): Promise<readonly string[]>;
@@ -83,7 +56,7 @@ export class AccountLinking {
       'u',
     ).exec(url.pathname);
     if (callback !== null && request.method === 'GET')
-      return this.callback(request, callback[1] as ProviderName);
+      return this.callback(request, callback[1] as SocialProviderName);
     return new Response(null, { status: 404 });
   }
 
@@ -128,7 +101,7 @@ export class AccountLinking {
     const state = newJourneyToken();
     const phase = sourceProvider === 'credential' ? 'target' : 'source';
     const activeProvider =
-      phase === 'target' ? provider : (sourceProvider as ProviderName);
+      phase === 'target' ? provider : (sourceProvider as SocialProviderName);
     const authorizationUrl = await this.authorizationUrl(
       attemptId,
       phase,
@@ -156,7 +129,7 @@ export class AccountLinking {
 
   private async callback(
     request: Request,
-    provider: ProviderName,
+    provider: SocialProviderName,
   ): Promise<Response> {
     const url = new URL(request.url);
     const state = url.searchParams.get('state') ?? '';
@@ -227,7 +200,7 @@ export class AccountLinking {
   private async authorizationUrl(
     attemptId: string,
     phase: 'source' | 'target',
-    provider: ProviderName,
+    provider: SocialProviderName,
     state: string,
   ): Promise<string> {
     return this.input.providers.authorize({
@@ -246,7 +219,7 @@ export class AccountLinking {
     );
   }
 
-  private callbackUrl(provider: ProviderName): string {
+  private callbackUrl(provider: SocialProviderName): string {
     return new URL(
       `${LINK_PATH}/callback/${provider}`,
       this.input.baseUrl,

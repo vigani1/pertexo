@@ -16,7 +16,7 @@ import {
   createBetterAuthRuntime,
   type BetterAuthRuntime,
 } from '../../src/authentication/better-auth/runtime.js';
-import type { LinkProviderGateway } from '../../src/authentication/account-security/linking.js';
+import type { SocialProviderGateway } from '../../src/authentication/providers/contract.js';
 import {
   DurableAuthenticationMail,
   authenticationMailAssociatedData,
@@ -144,7 +144,7 @@ describe('Better Auth on PostgreSQL', () => {
     const bothProviderProofs = Promise.withResolvers<undefined>();
     let providerProofs = 0;
     let gateProviderProofs = false;
-    const gateway: LinkProviderGateway = {
+    const gateway: SocialProviderGateway = {
       available: ['google', 'github'],
       authorize: (input) => {
         authorizations.set(`${input.provider}:${input.state}`, input);
