@@ -73,7 +73,13 @@ export class CsrfProtectionGuard implements CanActivate {
   public constructor(private readonly csrf: DoubleSubmitCsrfPolicy) {}
 
   public canActivate(context: ExecutionContext): boolean {
-    const request = requestFrom(context);
+    return this.assertRequestAllowed(requestFrom(context));
+  }
+
+  public assertRequestAllowed(
+    request: IdentityWorkspaceRequest,
+    suppliedToken = firstRequestHeader(request.headers, CSRF_HEADER_NAME),
+  ): boolean {
     const authorization = request.authorizedWorkspace;
     if (
       authorization?.actor.kind === 'api_key' &&
@@ -91,10 +97,7 @@ export class CsrfProtectionGuard implements CanActivate {
       this.csrf.assertMutationAllowed({
         method: request.method ?? 'GET',
         ...optionalToken('cookieToken', readCookie(request, CSRF_COOKIE_NAME)),
-        ...optionalToken(
-          'headerToken',
-          firstRequestHeader(request.headers, CSRF_HEADER_NAME),
-        ),
+        ...optionalToken('headerToken', suppliedToken),
       });
       return true;
     } catch (error: unknown) {

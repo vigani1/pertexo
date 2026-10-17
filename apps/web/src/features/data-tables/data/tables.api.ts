@@ -7,7 +7,6 @@ import {
   dataTableWriteReceiptSchema,
   dataTableImportedSchema,
   dataTableSchemaEditedSchema,
-  dataTableExportedSchema,
   type DataTableSchemaEdit,
   type DataTableExportQuery,
   type DataTableCreate,
@@ -134,16 +133,9 @@ export function exportRows(
   scope: TableScope,
   tableId: string,
   query: DataTableExportQuery,
-  signal: AbortSignal,
-) {
-  return scope.apiClient.request({
+): void {
+  scope.apiClient.download({
     path: `${path(scope)}/${encodeURIComponent(tableId)}/export`,
-    method: 'POST',
     body: query,
-    signal,
-    response: {
-      kind: 'json',
-      decode: (value) => dataTableExportedSchema.parse(value),
-    },
   });
 }

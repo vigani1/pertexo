@@ -152,7 +152,6 @@ export {
   dataTableSchemaEditSchema,
   dataTableSchemaEditedSchema,
   dataTableExportQuerySchema,
-  dataTableExportedSchema,
   type DataTableSchemaEdit,
   type DataTableSchemaChange,
   type DataTableExportQuery,

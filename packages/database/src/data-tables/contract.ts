@@ -43,8 +43,15 @@ export interface DataTablesStore {
   ): Promise<{ revision: number }>;
   exportCsv(
     input: DataTableScope &
-      Readonly<{ tableId: string; query: DataTableExportQuery }>,
-  ): Promise<{ csv: string; rowCount: number }>;
+      Readonly<{
+        tableId: string;
+        query: DataTableExportQuery;
+        consume: (
+          csv: AsyncIterable<string>,
+          table: DataTableDefinition,
+        ) => Promise<void>;
+      }>,
+  ): Promise<void>;
   remove(
     input: DataTableScope &
       DataTableMutation &

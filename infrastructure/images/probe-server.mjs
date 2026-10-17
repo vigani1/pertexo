@@ -1,7 +1,32 @@
 import { startWebhookPeer } from '../../apps/api/test/support/webhooks/edge-peer.mjs';
 
+const pendingCsv = new Map();
+
 await startWebhookPeer((request, response, rawBody) => {
   const url = new URL(request.url ?? '/', 'http://api');
+  if (url.pathname === '/v1/csv-probe/release') {
+    const target = pendingCsv.get(url.searchParams.get('key'));
+    if (target === undefined) {
+      response.writeHead(404).end();
+      return;
+    }
+    target.destroy();
+    response.writeHead(204).end();
+    return;
+  }
+  if (url.pathname === '/v1/csv-probe') {
+    response.writeHead(200, {
+      'content-type': 'text/csv',
+      'content-disposition': 'attachment; filename="probe.csv"',
+    });
+    response.write('"value"\r\n"first"\r\n');
+    const failure = url.searchParams.get('fail');
+    if (failure !== null) {
+      pendingCsv.set(failure, response);
+      response.once('close', () => pendingCsv.delete(failure));
+    } else response.end(`"${'a'.repeat(2 * 1024 * 1024)}"\r\n"last"\r\n`);
+    return;
+  }
   if (url.pathname === '/v1/notifications/unsubscribe/one-click') {
     if (request.method === 'GET') {
       response

@@ -1,3 +1,6 @@
+import type { FastifyRequest, FastifyReply } from 'fastify';
+import { decodeTableExportRequest } from './export/request.js';
+import { sendTableExport } from './export/response.js';
 import {
   Body,
   Controller,
@@ -7,6 +10,7 @@ import {
   Delete,
   Param,
   Req,
+  Res,
   UseGuards,
   Header,
   HttpCode,
@@ -15,7 +19,6 @@ import {
   workspaceIdentifierSchema,
   dataTableCreateSchema,
   dataTableSchemaEditSchema,
-  dataTableExportQuerySchema,
   dataTableLimitsSchema,
   dataTableRemoveSchema,
   dataTableQuerySchema,
@@ -41,7 +44,10 @@ type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')
 export class DataTablesController {
-  constructor(private readonly tables: DataTablesService) {}
+  constructor(
+    private readonly tables: DataTablesService,
+    private readonly csrf: CsrfProtectionGuard,
+  ) {}
   private scope(request: Request, workspace: unknown) {
     return {
       workspaceId: workspaceIdentifierSchema.parse(workspace),
@@ -141,24 +147,30 @@ export class DataTablesController {
     );
   }
   @Post(':tableId/export')
-  @Header('Cache-Control', 'private, no-store')
   @HttpCode(200)
-  @UseGuards(DataTablesReadGuard, CsrfProtectionGuard)
-  exportCsv(
-    @Req() request: Request,
+  @UseGuards(DataTablesReadGuard)
+  @RateLimit('data_table_export')
+  async exportCsv(
+    @Req() request: Request & FastifyRequest,
+    @Res() reply: FastifyReply,
     @Param('workspaceId') workspace: unknown,
     @Param('tableId') table: unknown,
     @Body() body: unknown,
   ) {
-    const query = dataTableExportQuerySchema.parse(body);
-    const tableId = workspaceIdentifierSchema.parse(table);
-    return withRequestOperationSignal(request, (signal) =>
-      this.tables.store.exportCsv({
+    const { query, csrfToken } = decodeTableExportRequest(
+      body,
+      request.headers['content-type'],
+    );
+    this.csrf.assertRequestAllowed(request, csrfToken);
+    await sendTableExport(
+      this.tables.store,
+      {
         ...this.scope(request, workspace),
+        tableId: workspaceIdentifierSchema.parse(table),
         query,
-        tableId,
-        signal,
-      }),
+      },
+      request,
+      reply,
     );
   }
   @Post(':tableId/rows/query')

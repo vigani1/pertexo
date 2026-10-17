@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { useRetainedSubmission } from '@/features/workflow-runs/data/mutations/use-retained-submission';
-const apiClient: ApiClient = { request: vi.fn(), stream: vi.fn() };
+const apiClient: ApiClient = {
+  request: vi.fn(),
+  stream: vi.fn(),
+  download: vi.fn(),
+};
 const scope = {
   apiClient,
   userId: 'user',

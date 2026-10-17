@@ -1,3 +1,4 @@
+import { DataTablesController } from '../../src/data-tables/controller.js';
 import { WebhookPreflightController } from '../../src/webhooks/authentication/preflight.controller.js';
 import { UnconfiguredConnectionsController } from '../../src/connections/http/unavailable.js';
 import { Reflector } from '@nestjs/core';
@@ -35,6 +36,15 @@ const routes: readonly (readonly [
   string,
   ExpectedClassification,
 ])[] = [
+  [DataTablesController, 'exportCsv', 'data_table_export'],
+  [DataTablesController, 'list', 'authenticated_read'],
+  [DataTablesController, 'find', 'authenticated_read'],
+  [DataTablesController, 'create', 'ordinary_mutation'],
+  [DataTablesController, 'editSchema', 'ordinary_mutation'],
+  [DataTablesController, 'remove', 'ordinary_mutation'],
+  [DataTablesController, 'limits', 'ordinary_mutation'],
+  [DataTablesController, 'write', 'ordinary_mutation'],
+  [DataTablesController, 'importCsv', 'ordinary_mutation'],
   [WebhookPreflightController, 'handle', 'webhook_preflight'],
   [SessionController, 'logout', 'actor_mutation'],
   [UserController, 'me', 'authenticated_read'],

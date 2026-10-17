@@ -16,6 +16,7 @@ export type AbortableRequest = Readonly<{
 export async function withRequestOperationSignal<T>(
   request: AbortableRequest,
   work: (signal: AbortSignal) => Promise<T>,
+  options: Readonly<{ timeoutMillis?: number }> = {},
 ): Promise<T> {
   const disconnected = new AbortController();
   const onDisconnected = (): void => {
@@ -26,7 +27,7 @@ export async function withRequestOperationSignal<T>(
   if (request.raw?.socket?.destroyed === true) onDisconnected();
   const signal = AbortSignal.any([
     disconnected.signal,
-    AbortSignal.timeout(EXTERNAL_OPERATION_TIMEOUT_MS),
+    AbortSignal.timeout(options.timeoutMillis ?? EXTERNAL_OPERATION_TIMEOUT_MS),
   ]);
   try {
     return await work(signal);

@@ -66,7 +66,7 @@ export function boundedResult(
     );
   return result;
 }
-export function rowOrderClause(
+function rowOrderClause(
   query: DataTableQuery,
   parameters: unknown[],
 ): string {

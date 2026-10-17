@@ -1,13 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import type { DataTableQuery } from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { isApiError } from '@/lib/api/error';
 import { exportRows, type TableScope } from '../../data/tables.api';
-import { downloadTableCsv } from '../../model/export';
 
 export function ExportTableRows({
   scope,
@@ -18,69 +15,41 @@ export function ExportTableRows({
   table: DataTableDefinition;
   query: DataTableQuery;
 }>) {
-  const request = useRef<AbortController | undefined>(undefined);
-  useEffect(
-    () => () => {
-      request.current?.abort();
-    },
-    [scope.apiClient, scope.userId, scope.workspaceId, table.id],
-  );
-  const download = useMutation({
-    mutationFn: async (filtered: boolean) => {
-      if (request.current !== undefined) return;
-      const controller = new AbortController();
-      request.current = controller;
-      try {
-        const result = await exportRows(
-          scope,
-          table.id,
-          {
-            filters: filtered ? query.filters : [],
-            ...(query.sort === undefined ? {} : { sort: query.sort }),
-          },
-          controller.signal,
-        );
-        if (!controller.signal.aborted)
-          downloadTableCsv(table.name, result.csv);
-      } catch (cause) {
-        if (!controller.signal.aborted) throw cause;
-      } finally {
-        if (request.current === controller) request.current = undefined;
-      }
-    },
-    retry: false,
-  });
-  const error =
-    download.error === null
-      ? undefined
-      : isApiError(download.error)
-        ? (download.error.problem?.detail ??
-          describeCommandError(download.error, 'exporting this table'))
-        : describeCommandError(download.error, 'exporting this table');
+  const [error, setError] = useState<string>();
+  function download(filtered: boolean) {
+    setError(undefined);
+    try {
+      exportRows(scope, table.id, { filters: filtered ? query.filters : [] });
+    } catch (cause) {
+      setError(describeCommandError(cause, 'starting this download'));
+    }
+  }
   return (
     <>
       <Button
         type="button"
         variant="outline"
-        disabled={download.isPending}
         onClick={() => {
-          download.mutate(false);
+          download(false);
         }}
       >
-        {download.isPending ? 'Preparing CSV…' : 'Export all rows'}
+        Export all rows
       </Button>
       {query.filters.length === 0 ? null : (
         <Button
           type="button"
           variant="outline"
-          disabled={download.isPending}
           onClick={() => {
-            download.mutate(true);
+            download(true);
           }}
         >
           Export filtered rows
         </Button>
       )}
+      <p className="text-xs text-muted-foreground">
+        CSV exports use row creation order. Your browser tracks progress and
+        reports interrupted downloads.
+      </p>
       {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
     </>
   );
