@@ -1,5 +1,6 @@
+import { GovernanceSettings } from '../components/settings';
 import { useState } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace, AuditFilter } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SettingsSection } from '@/components/patterns/settings-section';
@@ -10,11 +11,7 @@ import { StatusGlyph } from '@/components/ui/status';
 import { formatDateTime } from '@/lib/format/time';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { AuditFilters } from '../components/filters';
-import { AuditRetention } from '../components/retention';
-import {
-  auditQueryOptions,
-  governanceQueryOptions,
-} from '../data/audit.queries';
+import { auditQueryOptions } from '../data/audit.queries';
 import { exportAudit, type GovernanceScope } from '../data/audit.api';
 export function AuditPage({
   scope,
@@ -30,10 +27,6 @@ export function AuditPage({
   const allowed = workspace.capabilities.includes('audit:read');
   const events = useInfiniteQuery({
     ...auditQueryOptions(scope, filters),
-    enabled: allowed,
-  });
-  const settings = useQuery({
-    ...governanceQueryOptions(scope),
     enabled: allowed,
   });
   const [downloadError, setDownloadError] = useState<string>();
@@ -169,38 +162,7 @@ export function AuditPage({
           }}
         />
       </section>
-      <SettingsSection
-        title="Audit retention"
-        description="Owners and admins can keep events for 30 to 2,555 days. Run data retention is separate."
-      >
-        {settings.isError ? (
-          <Notice
-            tone="warning"
-            action={
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void settings.refetch()}
-              >
-                Retry settings
-              </Button>
-            }
-          >
-            Retention settings could not be loaded.
-          </Notice>
-        ) : settings.data === undefined ? (
-          <p role="status">Loading retention…</p>
-        ) : (
-          <AuditRetention
-            scope={scope}
-            snapshot={settings.data}
-            editable={
-              workspace.status === 'active' &&
-              workspace.capabilities.includes('governance:manage')
-            }
-          />
-        )}
-      </SettingsSection>
+      <GovernanceSettings scope={scope} workspace={workspace} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { SuitePublishNotice } from './test-suites/publish-notice';
+import { PublicationControls } from './publication/controls';
 import type { ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/queries.public';
@@ -12,19 +12,14 @@ import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { IssuesChip } from './validation/issues-chip';
-import { PublishButton } from './publication/publish-button';
-import { PublishDialog } from './publication/publish-dialog';
 import { PublishedStamp } from './publication/published-stamp';
 import { RunInputDialog } from './run-submission/run-input-dialog';
 import { PublishedRunAction } from './run-submission/published-run-action';
 import type { WorkflowIssuesView } from '../model/validation/issues-state';
 import { emptyDraftHint } from '../model/publication/readiness';
-import { summarizePublish } from '../model/publication/summary';
 import type { WorkflowValidationTarget } from '../model/validation/target';
 import type { PublicationReceipt } from '../data/mutations/use-workflow-publication';
 import type { WorkflowCommandSession } from '../hooks/use-workflow-command-session';
-import { latestVersionQueryOptions } from '../data/workflow-publish.queries';
-import { unchangedLiveVersion } from '../model/publication/unchanged';
 
 function usePublishedFormEntry(
   apiClient: ApiClient,
@@ -87,61 +82,6 @@ function EditedSinceNote({
 }
 
 /**
- * What publishing would change and the version it would make, once the
- * latest version (or that there is none) and the workflow are known.
- */
-function usePublishPreview({
-  apiClient,
-  userId,
-  workspaceId,
-  workflowId,
-  workflow,
-  graph,
-  receipt,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  workflowId: string;
-  workflow: WorkflowSummary | undefined;
-  graph: WorkflowGraphContract;
-  receipt: PublicationReceipt | undefined;
-}>) {
-  const everPublished =
-    receipt !== undefined || (workflow?.publishedVersionId ?? null) !== null;
-  const latest = useQuery({
-    ...latestVersionQueryOptions(apiClient, userId, workspaceId, workflowId),
-    enabled: everPublished,
-  });
-  const latestVersion = everPublished ? latest.data : null;
-  const known = workflow !== undefined || receipt !== undefined;
-  const summary =
-    latestVersion === undefined || !known
-      ? undefined
-      : summarizePublish(graph, latestVersion);
-  return {
-    everPublished,
-    summary,
-    versionLabel:
-      summary === undefined
-        ? undefined
-        : `v${String(summary.nextVersionNumber)}`,
-    summaryState: summaryState(
-      summary !== undefined,
-      everPublished && latest.isPending,
-    ),
-  } as const;
-}
-
-function summaryState(
-  ready: boolean,
-  loading: boolean,
-): 'ready' | 'loading' | 'error' {
-  if (ready) return 'ready';
-  return loading ? 'loading' : 'error';
-}
-
-/**
  * The Build tab's commands in the hub bar: the issues chip, Run ▾ and the
  * one filled action, Publish vN. Each opens its own lens; the published stamp
  * follows a successful publish. The issues lens is the editor's to place, so
@@ -184,10 +124,15 @@ export function WorkflowCommandActions({
   onFix: (target: WorkflowValidationTarget) => void;
   onPublished: (receipt: PublicationReceipt) => void;
 }>) {
-  const [publishOpen, setPublishOpen] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
   const [stamp, setStamp] =
-    useState<Readonly<{ receipt: PublicationReceipt; liveAgain: boolean }>>();
+    useState<
+      Readonly<{
+        receipt: PublicationReceipt;
+        liveAgain: boolean;
+        hasTriggers: boolean;
+      }>
+    >();
   const queryClient = useQueryClient();
   const { publication, runSubmission } = commandSession;
   const receipt = publication.publicationReceipt;
@@ -198,41 +143,11 @@ export function WorkflowCommandActions({
     workflowId,
     workflow?.publishedVersionId ?? receipt?.versionId,
   );
-  const { everPublished, summary, versionLabel, ...preview } =
-    usePublishPreview({
-      apiClient,
-      userId,
-      workspaceId: workspace.id,
-      workflowId,
-      workflow,
-      graph,
-      receipt,
-    });
+  const everPublished =
+    receipt !== undefined || (workflow?.publishedVersionId ?? null) !== null;
   const canPublish = workspace.capabilities.includes('workflow:publish');
   const canRun = workspace.capabilities.includes('run:start');
   const emptyHint = emptyDraftHint(graph, triggersAvailable);
-  const unchangedVersionNumber = unchangedLiveVersion(
-    publication,
-    workflow?.publishedVersionId,
-    commandSession.isSavedDraftCurrent,
-  );
-  const unchangedReason =
-    unchangedVersionNumber === undefined
-      ? undefined
-      : `No changes since v${String(unchangedVersionNumber)}`;
-
-  async function confirmPublish() {
-    const result = await publication.publish();
-    if (result.kind !== 'published') return;
-    setPublishOpen(false);
-    setStamp({
-      receipt: result.receipt,
-      liveAgain:
-        workflow?.publishedVersionId != null &&
-        workflow.publishedVersionId !== result.receipt.versionId,
-    });
-    onPublished(result.receipt);
-  }
 
   /**
    * Starts the live version with no input. When that can't start (it needs
@@ -280,50 +195,31 @@ export function WorkflowCommandActions({
         {receipt === undefined ? null : (
           <EditedSinceNote receipt={receipt} draft={draft} />
         )}
-        {canPublish ? (
-          <PublishButton
-            {...(unchangedVersionNumber === undefined
-              ? {}
-              : {
-                  compactLabel: 'No changes',
-                })}
-            label={
-              unchangedReason ??
-              (versionLabel === undefined
-                ? 'Publish'
-                : `Publish ${versionLabel}`)
-            }
-            blockedReason={unchangedReason ?? emptyHint?.label}
-            onClick={() => {
-              publication.clearPublishError();
-              setPublishOpen(true);
-            }}
-          />
-        ) : null}
+        <PublicationControls
+          canPublish={canPublish}
+          scope={{ apiClient, userId, workspaceId: workspace.id }}
+          workflowId={workflowId}
+          workflow={workflow}
+          graph={graph}
+          publication={publication}
+          isSavedDraftCurrent={commandSession.isSavedDraftCurrent}
+          issues={issues}
+          emptyHint={emptyHint}
+          savedDraftCurrent={savedDraftCurrent}
+          capabilities={workspace.capabilities}
+          onFix={onFix}
+          onPublished={(nextReceipt, hasTriggers) => {
+            setStamp({
+              receipt: nextReceipt,
+              hasTriggers,
+              liveAgain:
+                workflow?.publishedVersionId != null &&
+                workflow.publishedVersionId !== nextReceipt.versionId,
+            });
+            onPublished(nextReceipt);
+          }}
+        />
       </div>
-      <PublishDialog
-        open={publishOpen}
-        onOpenChange={setPublishOpen}
-        versionLabel={versionLabel ?? 'this draft'}
-        summary={summary}
-        summaryState={preview.summaryState}
-        graph={graph}
-        stage={publication.publishStage}
-        error={publication.publishError}
-        recoveryPending={publication.publishRecoveryPending}
-        blockingGroups={issues.blockingGroups}
-        unchangedVersionNumber={unchangedVersionNumber}
-        suiteNotice={
-          <SuitePublishNotice
-            scope={{ apiClient, userId, workspaceId: workspace.id, workflowId }}
-            savedDraftCurrent={savedDraftCurrent}
-            enabled={publishOpen}
-            capabilities={workspace.capabilities}
-          />
-        }
-        onPublish={() => void confirmPublish()}
-        onFix={onFix}
-      />
       <RunInputDialog
         key={`${userId}:${workspace.id}:${workflowId}`}
         open={runOpen}
@@ -362,7 +258,7 @@ export function WorkflowCommandActions({
           versionNumber={stamp.receipt.versionNumber}
           reused={stamp.receipt.reused}
           liveAgain={stamp.liveAgain}
-          hasTriggers={(summary?.triggerNames.length ?? 0) > 0}
+          hasTriggers={stamp.hasTriggers}
           canRun={canRun}
           onRunNow={() => {
             setStamp(undefined);
