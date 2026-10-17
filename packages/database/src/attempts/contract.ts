@@ -413,13 +413,6 @@ export class NodeAttemptConnectionFenceError extends Error {
   }
 }
 
-export class NodeAttemptControlActiveError extends Error {
-  public override readonly name = 'NodeAttemptControlActiveError';
-  public constructor() {
-    super('Node attempt cannot start after durable run control activation');
-  }
-}
-
 export class NodeAttemptStateCorruptError extends Error {
   public override readonly name = 'NodeAttemptStateCorruptError';
   public constructor() {

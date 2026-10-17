@@ -230,14 +230,14 @@ export async function runtime(registry = createPlatformNodeRegistry()) {
     owners.push(deadlines);
     await startWorkers();
     return {
-      async until(check: () => Promise<void>) {
+      async until(check: () => Promise<void>, timeout = 15_000) {
         await vi.waitFor(
           async () => {
             await deadlines.claimDueWakeups(20);
             await dispatcher.dispatchOnce();
             await check();
           },
-          { timeout: 15_000, interval: 25 },
+          { timeout, interval: 25 },
         );
       },
       pause: stopWorkers,

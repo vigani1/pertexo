@@ -45,7 +45,7 @@ this release. This does not mark those deferred capabilities done.
 | Summarize | `$count/$sum/$min/$max/$average`, already allowed | One visible bounded grouping/numeric summary, not separate cosmetic arithmetic nodes |
 | Text/number preparation | Existing allowed `$trim/$uppercase/$lowercase/$join/$number` | Editable examples in the existing expression field |
 | Date conversion | No clock/date built-ins in the restricted evaluator | Strict explicit-offset instant ↔ epoch milliseconds, always UTC output |
-| Batch work | Existing For each, maximum 1,000 items | Operate once on a bounded collection; no new scheduler/streaming claims |
+| Batch work | Existing For each, maximum 4,998 items (F08 slice 5) | Operate once on a bounded collection; no new scheduler/streaming claims |
 
 Canonical paths are `packages/nodes-core/src/{triggers,flow,data}/<step>/` with
 `definition.ts`, `validation.ts`, `executor.ts`, `index.ts`. List steps live in
@@ -363,9 +363,10 @@ Accepted cap: **4,998 items**, up from 1,000. One-item batches use 2N+3 JSON
 members including count fields: 4,998 fits 9,999 members; 4,999 exceeds the existing
 10,000-member envelope. Complex records and summary groups remain subject to
 whole-input/output limits; this is not a guarantee every 4,998-record shape fits.
-Keep 1 MiB/64-depth/10,000-member SDK bounds, retained-value limits and For each's
-1,000-item limit. Batch size at least five turns 4,998 items into at most 1,000
-batches. Prove the new maximum through registry and ordinary compiled workers;
+Keep 1 MiB/64-depth/10,000-member SDK bounds and retained-value limits.
+[F08 slice 5](08-subworkflows.md#slice-5-measured-loop-limits-2026-10-17) later
+raises For each to 4,998 items, within the total expansion/frontier budgets.
+Batch operations still reduce the number of iterations needed for bulk APIs. Prove the new maximum through registry and ordinary compiled workers;
 record bounded CPU/memory observations before accepting the larger cap.
 
 - [x] Runtime, hostile/invalid/empty/bounds/cancel and calendar/DST/host-TZ tests.

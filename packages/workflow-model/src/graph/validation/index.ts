@@ -66,6 +66,14 @@ export function validateWorkflowGraph(
       issue,
       limits,
     });
+    // Retired iteration history is pruned, but each concurrent body retains its
+    // intermediate records. Bound that frontier before increasing total work.
+    if (totals.concurrent > limits.maxConcurrentInvocations)
+      issue(
+        'expansion_limit',
+        '$',
+        `concurrent loop expansion ${String(totals.concurrent)} exceeds ${String(limits.maxConcurrentInvocations)}; reduce Items at a time, including in nested loops`,
+      );
     expandedInvocations = totals.expanded;
     worstCaseLoopIterations = totals.iterations;
     for (const candidate of formDeclarationIssues(graph))

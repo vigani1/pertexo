@@ -216,3 +216,6 @@ Reply to a waiting webhook caller:
 [webhook responses](docs/guides/webhook-responses.md).
 
 Write JavaScript transforms with the isolated [Code step](docs/guides/code.md).
+
+Process lists with [For each](docs/guides/for-each.md) and
+[Batch items](docs/guides/data-transforms.md#batching-work-for-for-each).

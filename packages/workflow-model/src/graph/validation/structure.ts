@@ -10,6 +10,7 @@ type Issue = (code: GraphIssueCode, path: string, message: string) => void;
 interface Totals {
   readonly expanded: number;
   readonly iterations: number;
+  readonly concurrent: number;
 }
 interface Aggregate {
   nodes: number;
@@ -248,7 +249,8 @@ function validateStructuredNode(
       'core.foreach@1 must own exactly one For Each body and no other definition may own one',
     );
   }
-  if (node.structured === undefined) return { expanded: 1, iterations: 0 };
+  if (node.structured === undefined)
+    return { expanded: 1, iterations: 0, concurrent: 1 };
   const structured: unknown = node.structured;
   if (!isForEachStructure(structured)) {
     context.issue(
@@ -256,7 +258,7 @@ function validateStructuredNode(
       `${path}.structured.kind`,
       'structured nodes must use kind for_each',
     );
-    return { expanded: 1, iterations: 0 };
+    return { expanded: 1, iterations: 0, concurrent: 1 };
   }
   const loopPath = `${path}.structured`;
   const bodyPath = `${loopPath}.body`;
@@ -296,6 +298,7 @@ function validateStructuredNode(
   return {
     expanded: 1 + maxIterations * body.expanded,
     iterations: maxIterations * (1 + body.iterations),
+    concurrent: 1 + Math.max(0, structured.maxConcurrency) * body.concurrent,
   };
 }
 
@@ -326,6 +329,7 @@ export function validateGraphStructure(
   );
   let expanded = 0;
   let iterations = 0;
+  let concurrent = 0;
   for (const node of graph.nodes) {
     const totals = validateStructuredNode(
       node,
@@ -334,6 +338,7 @@ export function validateGraphStructure(
     );
     expanded += totals.expanded;
     iterations += totals.iterations;
+    concurrent += totals.concurrent;
   }
-  return { expanded, iterations };
+  return { expanded, iterations, concurrent };
 }

@@ -125,9 +125,24 @@ format or a different zone instead. No host timezone or clock supplies defaults.
 | Take first items | Count `3` | `items: [1, 2, 3, 4, 5]` | `items: [1, 2, 3]`, `inputCount: 5`, `removedCount: 2` |
 | Concatenate lists | None | `items: [1, 2]`, `otherItems: [2, 3]` | `items: [1, 2, 2, 3]`, `inputCount: 4` |
 
-Batch keeps order and the final partial batch. Map `$.batches` into **For each**
-to process a batch per iteration; it does not add a scheduler. For each keeps its
-1,000-iteration bound: choose a batch size of at least five for 4,998 items.
+Batch keeps order and the final partial batch. Use the [For each guide](for-each.md)
+for iteration, expansion and concurrency limits.
+
+### Batching work for For each
+
+Map Batch items' `$.batches` to For each's `items`. With 4,998 IDs and a batch
+size of 100, the body runs 50 times (the last batch has 98 IDs). Map **Current
+item** to an HTTP step's bulk-list input, so one iteration sends one batch.
+Start with **Items at a time** `1` and increase only within the service's limits.
+
+For each accepts up to 4,998 items, but the run's 5,000 expanded invocations
+include triggers, body steps and called children. Batching makes room for
+longer bodies by processing a whole batch per iteration. A nested For each over
+every batch member still counts every inner iteration; it does not reset the
+5,000-iteration or expanded-invocation budgets. Batch itself also obeys the
+4,998-item collection and existing value-size limits. Larger source datasets
+need separate bounded runs, split before they enter these steps.
+
 Take permits zero and returns the whole list if the requested count exceeds its
 length. Concatenate preserves duplicates and nested lists; it does not join
 records by key or flatten them. Its combined length must fit the collection cap.

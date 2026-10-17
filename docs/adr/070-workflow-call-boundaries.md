@@ -94,3 +94,41 @@ unstarted sibling Calls retain their remaining recorded budget across the same
 parent pause. An already expired Call is never revived, and retry still cannot
 reset a deadline. Target/version/input identity and ordinary Call handoff remain
 unchanged.
+
+## 2026-10-17: measured loop limit increase
+
+The owner authorized F08 slice 5. Set each loop's item limit to 4,998, total
+run loop iterations to 5,000 and expanded invocations to 5,000, including weighted
+Call dependencies. Keep static nodes (200), identifier length (64), loop
+concurrency (200), workspace/run/worker capacity and all value/checkpoint bounds.
+
+Pruning limits retired history, not the live frontier. A model-owned publication
+check keeps conservative concurrent expansion at 200: multiply nested body
+counts by each loop's `maxConcurrency` and sum ordinary nodes. A wider graph is
+rejected with a request to lower Items at a time; every previously legal graph
+under the 200 total-expansion bound remains legal. This does not change stored
+formats, accepted-run budgets, admission, slot handoff or recovery.
+
+The maximum nested, parallel, Call and out-of-order measurements and their
+PostgreSQL write-volume scope are recorded in the [F08 plan](../feature-plans/08-subworkflows.md#slice-5-measured-loop-limits-2026-10-17).
+Eight maximum-size cases each execute 5,000 weighted invocations in the engine/
+PostgreSQL checkpoint-write fixture. Peak checkpoint size is 186,426 of 262,144
+bytes; measured checkpoint WAL ranges from about 5.2 to 54.8 MB. These are
+checkpoint costs, not full run transaction WAL. Real workers finish short runs
+in the same and another workspace in roughly 4–10 seconds while maximum loops
+are active, then settle cancel/deadline and release admissions. Exact inputs,
+write counts, settings and scope are in the plan.
+
+Maximum total work remains useful with bounded concurrency; count-only increases
+without this check overflow the existing 256 KiB checkpoint. Batching processes
+a whole bounded batch in each body operation. It does not reset run budgets or
+increase JSON limits; Call children still serialize through slot handoff.
+This amendment supersedes the unchanged-200 limit statements in ADR 020's
+pruning amendment; its loop identity, budget and durability rules still apply.
+
+Qualification also corrects ready-delivery control settlement: an already
+admitted attempt can acquire its fenced lease after cancellation/deadline
+activation so the existing handler records its control outcome before execution.
+Rejecting that claim stranded running checkpoint invocations. The input-control
+check, physical dispatch uncertainty, receipt idempotency and capacity ownership
+remain unchanged; no new scanner or completion rule is introduced.

@@ -130,9 +130,14 @@ describe('core orchestration node contracts', () => {
     ).toBe(false);
     expect(
       CORE_FOR_EACH_INPUT_SCHEMA.safeParse({
-        items: Array.from({ length: 1_001 }, () => null),
+        items: Array.from({ length: 4_999 }, () => null),
       }).success,
     ).toBe(false);
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.parse({
+        items: Array.from({ length: 4_998 }, () => null),
+      }).items,
+    ).toHaveLength(4_998);
     expect(CORE_FOR_EACH_CONFIG_SCHEMA.safeParse({}).success).toBe(true);
     expect(
       CORE_FOR_EACH_CONFIG_SCHEMA.safeParse({ maxIterations: 3 }).success,
@@ -216,7 +221,7 @@ describe('core orchestration node contracts', () => {
     ).toBe(true);
     expect(
       CORE_FOR_EACH_INPUT_SCHEMA.safeParse({
-        items: Array.from({ length: 1_001 }, () => null),
+        items: Array.from({ length: 4_999 }, () => null),
       }).success,
     ).toBe(false);
   });

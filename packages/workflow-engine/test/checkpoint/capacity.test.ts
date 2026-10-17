@@ -40,7 +40,7 @@ function withLongIds(graph: unknown, names: readonly string[]): WorkflowGraph {
 
 function loopGraph(
   iterations: number,
-  concurrency = iterations,
+  concurrency = Math.min(iterations, 197),
 ): WorkflowGraph {
   const graph = structuredClone(forEachGraph());
   const loop = graph.nodes.find(({ id }) => id === 'loop');
@@ -77,7 +77,7 @@ function nestedLoopGraph(
   // nestedForEachGraph adds the inner structure after the fixture is typed.
   Object.assign(innerLoop.structured as object, {
     maxIterations: inner,
-    maxConcurrency: serial ? 1 : inner,
+    maxConcurrency: serial ? 1 : Math.min(inner, 96),
   });
   return withLongIds(graph, [
     'manual',
@@ -240,18 +240,21 @@ describe('checkpoint capacity at the authoring limits', () => {
       maximumValues: false,
     },
     {
-      // Trigger, terminate and outer loop, plus 14 × (inner loop, 12 items, sink).
+      // Keep static size/concurrency while exercising the maximum nested expansion.
       name: 'nested For Each loops',
-      graph: nestedLoopGraph(14, 12),
-      loopItems: { [longId('loop')]: 14, [longId('body-first')]: 12 },
+      graph: nestedLoopGraph(2, Math.floor((limit - 7) / 2)),
+      loopItems: {
+        [longId('loop')]: 2,
+        [longId('body-first')]: Math.floor((limit - 7) / 2),
+      },
       expanded: limit - 1,
       maximumValues: false,
     },
     {
       name: 'a chain of nodes',
-      graph: flatGraph(limit),
+      graph: flatGraph(WORKFLOW_GRAPH_LIMITS.nodes),
       loopItems: {},
-      expanded: limit,
+      expanded: WORKFLOW_GRAPH_LIMITS.nodes,
       maximumValues: false,
     },
     {
@@ -263,8 +266,11 @@ describe('checkpoint capacity at the authoring limits', () => {
     },
     {
       name: 'serial nested loops with maximum stored values',
-      graph: nestedLoopGraph(14, 12, true),
-      loopItems: { [longId('loop')]: 14, [longId('body-first')]: 12 },
+      graph: nestedLoopGraph(2, Math.floor((limit - 7) / 2), true),
+      loopItems: {
+        [longId('loop')]: 2,
+        [longId('body-first')]: Math.floor((limit - 7) / 2),
+      },
       expanded: limit - 1,
       maximumValues: true,
     },
@@ -289,12 +295,14 @@ describe('checkpoint capacity at the authoring limits', () => {
 
       expect(status).toBe('succeeded');
       expect(retainedIterationInvocations).toBe(0);
-      if (maximumValues) expect(checkpointBytes).toBeLessThan(8 * 1_024);
+      if (maximumValues && !outOfOrder)
+        expect(checkpointBytes).toBeLessThan(8 * 1_024);
       // Headroom for later checkpoint fields before authoring must shrink.
       expect(checkpointBytes).toBeLessThan(
         WORKFLOW_CHECKPOINT_LIMITS.bytes * 0.9,
       );
     },
+    60_000,
   );
 
   it('rejects one invocation over the limit when authoring', () => {

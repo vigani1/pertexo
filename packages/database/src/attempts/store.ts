@@ -14,7 +14,6 @@ import {
 
 import {
   NodeAttemptConnectionFenceError,
-  NodeAttemptControlActiveError,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,
@@ -31,7 +30,6 @@ import {
 
 export {
   NodeAttemptConnectionFenceError,
-  NodeAttemptControlActiveError,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,

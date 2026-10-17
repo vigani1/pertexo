@@ -3,7 +3,6 @@ import type { z } from 'zod';
 
 import {
   DeliveryMismatch,
-  NodeAttemptControlActiveError,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
@@ -93,17 +92,8 @@ export async function claimNodeAttemptDelivery(
         );
         if (candidate.rows[0]?.run_id !== input.runId)
           throw new NodeAttemptStateCorruptError();
-        const run = await client.query<{
-          cancel_requested_at: Date | null;
-          control_active: boolean;
-          deadline_at: Date | null;
-          workflow_version_id: string;
-        }>(
-          `select workflow_version_id,cancel_requested_at,deadline_at,
-                      (cancel_requested_at is not null or
-                       (deadline_at is not null and
-                        deadline_at <= clock_timestamp())) control_active
-               from app.workflow_runs
+        const run = await client.query<{ workflow_version_id: string }>(
+          `select workflow_version_id from app.workflow_runs
                where workspace_id=$1 and id=$2 for update`,
           [input.workspaceId, input.runId],
         );
@@ -175,7 +165,9 @@ export async function claimNodeAttemptDelivery(
         }
         if (row.attempt_status !== 'ready' || row.node_status !== 'ready')
           throw new NodeAttemptStateCorruptError();
-        if (runRow.control_active) throw new NodeAttemptControlActiveError();
+
+        // Already-admitted work needs a lease to commit its control outcome.
+        // The handler reads durable cancellation/deadline state before execution.
         if (
           row.side_effect_class !== 'safe' &&
           row.side_effect_class !== 'idempotent_with_key' &&
