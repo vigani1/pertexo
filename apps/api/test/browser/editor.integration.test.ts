@@ -736,7 +736,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       }
       if (request.method === 'POST' && url.pathname === '/readonly-setup') {
         if (
-          !['readonly', 'approvals'].includes(scenario) ||
+          !['readonly', 'approvals', 'governance'].includes(scenario) ||
           readonlyFixture !== undefined ||
           readonlySetupPending
         ) {
@@ -1055,7 +1055,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             '--config',
             'playwright.live.config.ts',
             scenario === 'governance'
-              ? 'editor/governance/audit.spec.ts'
+              ? 'editor/governance'
               : scenario === 'code'
                 ? 'editor/code.spec.ts'
                 : scenario === 'webhook-responses'

@@ -63,14 +63,22 @@ export const governanceSettingsSchema = z
   .object({
     revision: z.number().int().positive(),
     auditRetentionDays: auditRetentionSchema,
+    requirePublishApproval: z.boolean().default(false),
   })
   .strict();
 export const governanceUpdateSchema = z
   .object({
     expectedRevision: z.number().int().positive(),
-    auditRetentionDays: auditRetentionSchema,
+    auditRetentionDays: auditRetentionSchema.optional(),
+    requirePublishApproval: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) =>
+      value.auditRetentionDays !== undefined ||
+      value.requirePublishApproval !== undefined,
+    { message: 'Choose a setting to change.' },
+  );
 export type AuditFilter = z.output<typeof auditFilterSchema>;
 export type AuditQuery = z.output<typeof auditQuerySchema>;
 export type AuditEvent = z.output<typeof auditEventSchema>;

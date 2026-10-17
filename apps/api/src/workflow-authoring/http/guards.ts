@@ -84,3 +84,16 @@ export class WorkflowPublishGuard extends WorkflowCapabilityGuard {
     super('workflow:publish', authorization, contexts);
   }
 }
+
+@Injectable()
+export class WorkflowReviewGuard extends WorkspaceCapabilityGuard {
+  constructor(
+    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('governance:manage', authorization, contexts, 'not_found', [
+      'active',
+    ]);
+  }
+}

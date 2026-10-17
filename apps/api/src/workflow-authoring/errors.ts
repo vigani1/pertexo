@@ -1,3 +1,4 @@
+import { PublicationReviewError } from '@pertexo/database/authoring';
 import {
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
@@ -66,6 +67,13 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof PublicationReviewError)
+    return applicationError(
+      error.reason === 'required'
+        ? 'workflow.publish_approval_required'
+        : 'workflow.publication_review_conflict',
+      { safeDetail: error.message },
+    );
   if (error instanceof ArtifactMetadataNotFoundError)
     return applicationError('request.invalid', {
       safeDetail:

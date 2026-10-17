@@ -1,4 +1,8 @@
 import {
+  publicationReviewContractPaths,
+  publicationReviewContractSchemas,
+} from './publication-review.js';
+import {
   workflowErrorContractPaths,
   workflowErrorContractSchemas,
 } from './error-workflow.js';
@@ -86,6 +90,7 @@ function contractSchemas(target: 'client' | 'openapi') {
     ...workflowAutoPauseContractSchemas(project),
     ...workflowConcurrencyContractSchemas(project),
     ...workflowErrorContractSchemas(project),
+    ...publicationReviewContractSchemas(project),
     ...workflowInputCaseContractSchemas(project),
     ...workflowOrganizationContractSchemas(project),
     WorkflowRevisionConflictProblem: project(
@@ -218,6 +223,7 @@ const problemResponses = Object.freeze({
   NotFound: problemResponse('Resource not found'),
   Conflict: problemResponse('Request conflict'),
   UnprocessableEntity: problemResponse('Workflow is not publishable'),
+  RateLimited: problemResponse('Rate limited'),
   Unexpected: problemResponse('Unexpected server error'),
 });
 
@@ -505,6 +511,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     ...workflowAutoPauseContractPaths,
     ...workflowConcurrencyContractPaths,
     ...workflowErrorContractPaths,
+    ...publicationReviewContractPaths,
     ...workflowInputCaseContractPaths,
     ...workflowOrganizationContractPaths,
   },

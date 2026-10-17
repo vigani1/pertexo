@@ -195,3 +195,16 @@ export {
   type AuditPage,
   type GovernanceSettings,
 } from './schemas/identity/governance.js';
+
+export {
+  publicationReviewRequestSchema,
+  publicationReviewDecisionSchema,
+  publicationReviewParamsSchema,
+  publicationReviewSchema,
+  publicationReviewOverviewSchema,
+  publicationReviewDetailSchema,
+  type PublicationReview,
+  type PublicationReviewOverview,
+  type PublicationReviewDetail,
+  type PublicationReviewDecision,
+} from './schemas/workflows/publication-review.js';

@@ -65,6 +65,9 @@ export const workspaces = appSchema.table(
     revision: integer('revision').notNull().default(1),
     auditRetentionDays: smallint('audit_retention_days').notNull().default(365),
     governanceRevision: integer('governance_revision').notNull().default(1),
+    requirePublishApproval: boolean('require_publish_approval')
+      .notNull()
+      .default(false),
     createdBy: uuid('created_by'),
     deletionRequestedAt: timestamp('deletion_requested_at', {
       withTimezone: true,

@@ -40,7 +40,11 @@ export function readSettings(scope: GovernanceScope, signal: AbortSignal) {
 }
 export function saveSettings(
   scope: GovernanceScope,
-  body: { expectedRevision: number; auditRetentionDays: number },
+  body: {
+    expectedRevision: number;
+    auditRetentionDays?: number;
+    requirePublishApproval?: boolean;
+  },
   key: string,
 ): Promise<GovernanceSettings> {
   return scope.apiClient.request({

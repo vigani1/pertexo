@@ -1,6 +1,6 @@
 # F18 — Audit log and publishing approval
 
-Status: implementation in progress. Updated: 2026-10-17.
+Status: audit slice merged; publication review implemented, final gates and merge pending. Updated: 2026-10-18.
 Parent: [roadmap](../product-roadmap.md). Decision: [ADR 085](../adr/085-audit-and-publication-review.md).
 
 ## Current code
@@ -52,6 +52,10 @@ those rather than adding another task engine or mail path.
   stale. Approval rechecks requester/reviewer authority, policy and freshness and
   publishes through the existing publisher in the same transaction. One decision
   wins; exact idempotency replays return the original result.
+  Separation applies to the requester and decider, rather than every person who
+  previously edited the draft. Reuse `governance:manage` for the decision; no new
+  capability or role. Changing the policy invalidates pending requests so toggling
+  it off and back on cannot resurrect an earlier authorization.
 - Notes/comments are plain text, at most 1,000 characters, stored on the request
   rather than in audit metadata. At most 100 pending requests per workspace;
   requests expire after seven days. Terminal requests retain 30 days; audit facts
@@ -60,6 +64,10 @@ those rather than adding another task engine or mail path.
   and email contain safe identities/names only and honor F27. Stale, expired or
   decided requests are no longer actionable. UI shows the reviewed draft and
   revision, policy, requester, note and explicit approve/reject outcomes.
+  The existing attention observer discovers requests; there is no second notice
+  producer. Reads and inbox eligibility share one request-state rule. A stale
+  request never displays a newer graph as the reviewed candidate. The publisher
+  keeps one transaction core, with separate normal-publish and decision receipts.
 
 ## Ownership and slices
 
@@ -101,8 +109,8 @@ is F17. No unrelated authorization rewrite.
 
 - [x] Current-code coverage and decisions reconciled; ADR accepted.
 - [x] Audit coverage, settings, API and page implemented.
-- [ ] Audit integration/browser evidence and green PR merged.
-- [ ] Exact publication review, policy and inbox implemented.
+- [x] Audit integration/browser evidence and green PR merged: [#342](https://github.com/vigani1/pertexo/pull/342).
+- [x] Exact publication review, policy and inbox implemented.
 - [ ] Review integration/browser evidence and green PR merged.
 
 Audit evidence (2026-10-17): ten real PostgreSQL governance cases cover
@@ -115,3 +123,17 @@ stay responsive. Real browser journeys pass at 1280 and 375 pixels, including
 native CSV, filters and retention after reload. The journey joins the existing
 live-3 browser shard, with no new CI job. Publishing review is not delivered
 by the audit slice; remaining gates and merge evidence will be recorded below.
+
+Review evidence (2026-10-18): eleven real PostgreSQL cases cover exact publication,
+owner/self-review, racing decisions, policy toggles, saved edits and catalog drift,
+requester/reviewer demotion, cross-workspace reads, compilation rollback, retention,
+the 100-pending-request bound and freeing a slot, and maintenance purge. The existing
+observer/inbox/personal-mail path is exercised without including notes in mail.
+Populated-database upgrade suites pass. Seven API application cases cover audience,
+strict bounded inputs, command attribution and explicit conflicts. The editor's
+uncertain request test proves retries preserve the original note, ETag and key.
+Real browser qualification covers a builder requesting on a 375-pixel phone, an
+owner publishing revision 2 exactly at 1280 pixels, and a later edit hiding the
+stale candidate and decision controls. React Doctor reports 100/100 on the changed
+frontend files after separating publication controls, settings and view-state copy.
+Final full checks and the green review PR remain the merge gate.

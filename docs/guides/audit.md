@@ -1,4 +1,4 @@
-# Audit log
+# Audit log and publishing approval
 
 Workspace owners and admins can open **Settings → Audit log** to see who changed
 what and when. Builders, operators and viewers cannot read or export it. Events
@@ -45,3 +45,35 @@ a conflicting save preserves your edit and asks you to reload settings.
 
 Run inputs/outputs retain their existing separate policy. Workspace deletion
 continues to minimize preserved audit facts under the existing deletion policy.
+
+## Publishing approval
+
+In **Settings → Audit log → Publishing approval**, owners and admins can enable
+**Require approval to publish**. It is off by default. When enabled, every
+publisher, including an owner, needs a different current owner or admin to
+approve. If you are the only eligible person, add another admin first. Explicitly
+turning the policy off is audited and invalidates pending requests.
+
+A builder uses **Request review** in the editor and writes a short note describing
+the change. The editor saves and validates the draft first. The request records
+that exact saved revision; it does not authorize later edits. Notes and review
+comments are plain text, limited to 1,000 characters, and kept outside audit
+metadata and notification email. Do not include credentials in them.
+
+Eligible reviewers see requests in their Inbox, following their normal personal
+notification preferences. **Review publication** shows the requester, note,
+revision, step changes and complete read-only draft alongside the live version.
+**Approve and publish** publishes that revision atomically; **Reject** leaves the
+live version unchanged. One decision wins, and an uncertain response can retry
+the same decision without publishing twice.
+
+Saving a later edit, incompatible step-catalog changes, expiry or loss of required
+access prevents approval. A stale page never substitutes the newer draft for
+what was requested: return to the editor and request a new review. API and CLI
+publish commands also enforce the policy; they cannot bypass review. Restoring a
+version only changes the draft and still needs review before publication.
+
+Requests expire after seven days, with at most 100 pending requests per workspace.
+Finished request content is kept for 30 days; audit facts follow audit retention.
+Workflow/workspace deletion removes request content. Folder access lists remain
+later work.

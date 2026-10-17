@@ -1,3 +1,7 @@
+import {
+  REVIEW_SOURCE_SQL,
+  REVIEW_STATE_SQL,
+} from '../../authoring/reviews/eligibility.js';
 import type { PoolClient } from 'pg';
 import { readCapacityWarning } from './capacity.js';
 import type {
@@ -26,6 +30,7 @@ export type AttentionFact = Readonly<{
   workflowId: string | null;
   connectionId: string | null;
   taskId: string | null;
+  publicationRequestId: string | null;
 }>;
 /** Current source facts, read under the observation's workspace/source fence. */
 export async function readAttentionFact(
@@ -38,6 +43,7 @@ export async function readAttentionFact(
     workflowId: null,
     connectionId: null,
     taskId: null,
+    publicationRequestId: null,
   };
   const values = [subject.workspaceId, subject.subjectId];
   switch (subject.noticeKind) {
@@ -71,6 +77,21 @@ export async function readAttentionFact(
         connectionId: subject.subjectId,
         active: row?.status === 'reauthorization_required',
         sourceRevision: row?.health_revision ?? 'removed',
+      };
+    }
+    case 'publication_review_waiting': {
+      const row = (
+        await client.query<{ workflow_id: string; active: boolean }>(
+          `select review.workflow_id,((${REVIEW_STATE_SQL})='pending') active ${REVIEW_SOURCE_SQL} where review.workspace_id=$1 and review.id=$2`,
+          values,
+        )
+      ).rows[0];
+      return {
+        ...base,
+        workflowId: row?.workflow_id ?? null,
+        publicationRequestId: subject.subjectId,
+        active: row?.active === true,
+        sourceRevision: subject.subjectId,
       };
     }
     case 'approval_waiting': {

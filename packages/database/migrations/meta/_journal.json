@@ -218,6 +218,13 @@
       "when": 1792271245731,
       "tag": "0030_audit_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792275081299,
+      "tag": "0031_publication_review",
+      "breakpoints": true
     }
   ]
 }

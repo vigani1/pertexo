@@ -566,3 +566,13 @@ export const dataTableDetailRoute = createRoute({
     'DataTablesRoute',
   ),
 });
+
+export const publicationReviewRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'publish-reviews/$requestId',
+  staticData: { crumb: 'Publication review' },
+  component: lazyRouteComponent(
+    () => import('./review'),
+    'PublicationReviewRoute',
+  ),
+});

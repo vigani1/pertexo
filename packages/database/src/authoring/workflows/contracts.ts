@@ -1,3 +1,4 @@
+import type { PublicationReviewStore } from '../reviews/contract.js';
 import type { WorkflowTestSuiteStore } from '../../previews/suites/contract.js';
 import type { WorkflowTestStore } from '../../previews/workflows/contract.js';
 import type { WorkflowStepSampleStore } from '../step-samples/contract.js';
@@ -191,6 +192,7 @@ export type RenameWorkflowResult = Readonly<{
 }>;
 
 export type WorkflowAuthoringDatabase = Readonly<{
+  readonly publicationReviews?: PublicationReviewStore;
   stepSamples: WorkflowStepSampleStore;
   workflowTests: WorkflowTestStore;
   workflowTestSuites: WorkflowTestSuiteStore;

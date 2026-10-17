@@ -25,6 +25,10 @@ import {
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
   {
+    name: 'publication_requests',
+    statement: `with page as(select workspace_id,id from app.workflow_publication_requests where coalesce(decided_at,expires_at)<=clock_timestamp()-interval '30 days' order by coalesce(decided_at,expires_at),id limit $1) delete from app.workflow_publication_requests review using page where review.workspace_id=page.workspace_id and review.id=page.id and coalesce(review.decided_at,review.expires_at)<=clock_timestamp()-interval '30 days'`,
+  },
+  {
     name: 'data_table_write_receipts',
     statement: `with page as(select receipt.workspace_id,receipt.execution_id,receipt.invocation_id from app.data_table_write_receipts receipt join app.workflow_runs run on run.workspace_id=receipt.workspace_id and run.id=receipt.run_id where ${expiredRunSql('run')} order by receipt.execution_id,receipt.invocation_id limit $1) delete from app.data_table_write_receipts receipt using page where receipt.workspace_id=page.workspace_id and receipt.execution_id=page.execution_id and receipt.invocation_id=page.invocation_id`,
   },

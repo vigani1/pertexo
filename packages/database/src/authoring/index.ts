@@ -125,3 +125,8 @@ export { WorkflowTestError } from '../previews/workflows/contract.js';
 export type { WorkflowTestStore } from '../previews/workflows/contract.js';
 
 export type { WorkflowTestSuiteStore } from '../previews/suites/contract.js';
+
+export {
+  PublicationReviewError,
+  type PublicationReviewStore,
+} from './reviews/contract.js';

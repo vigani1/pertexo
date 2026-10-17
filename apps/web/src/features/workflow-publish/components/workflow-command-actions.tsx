@@ -82,6 +82,10 @@ function EditedSinceNote({
 }
 
 /**
+ * What publishing would change and the version it would make, once the
+ * latest version (or that there is none) and the workflow are known.
+ */
+/**
  * The Build tab's commands in the hub bar: the issues chip, Run ▾ and the
  * one filled action, Publish vN. Each opens its own lens; the published stamp
  * follows a successful publish. The issues lens is the editor's to place, so
@@ -125,14 +129,13 @@ export function WorkflowCommandActions({
   onPublished: (receipt: PublicationReceipt) => void;
 }>) {
   const [runOpen, setRunOpen] = useState(false);
-  const [stamp, setStamp] =
-    useState<
-      Readonly<{
-        receipt: PublicationReceipt;
-        liveAgain: boolean;
-        hasTriggers: boolean;
-      }>
-    >();
+  const [stamp, setStamp] = useState<
+    Readonly<{
+      receipt: PublicationReceipt;
+      liveAgain: boolean;
+      hasTriggers: boolean;
+    }>
+  >();
   const queryClient = useQueryClient();
   const { publication, runSubmission } = commandSession;
   const receipt = publication.publicationReceipt;
@@ -195,30 +198,32 @@ export function WorkflowCommandActions({
         {receipt === undefined ? null : (
           <EditedSinceNote receipt={receipt} draft={draft} />
         )}
-        <PublicationControls
-          canPublish={canPublish}
-          scope={{ apiClient, userId, workspaceId: workspace.id }}
-          workflowId={workflowId}
-          workflow={workflow}
-          graph={graph}
-          publication={publication}
-          isSavedDraftCurrent={commandSession.isSavedDraftCurrent}
-          issues={issues}
-          emptyHint={emptyHint}
-          savedDraftCurrent={savedDraftCurrent}
-          capabilities={workspace.capabilities}
-          onFix={onFix}
-          onPublished={(nextReceipt, hasTriggers) => {
-            setStamp({
-              receipt: nextReceipt,
-              hasTriggers,
-              liveAgain:
-                workflow?.publishedVersionId != null &&
-                workflow.publishedVersionId !== nextReceipt.versionId,
-            });
-            onPublished(nextReceipt);
-          }}
-        />
+        {canPublish ? (
+          <PublicationControls
+            scope={{ apiClient, userId, workspaceId: workspace.id }}
+            workflowId={workflowId}
+            workflow={workflow}
+            graph={graph}
+            revision={draft.revision}
+            publication={publication}
+            isSavedDraftCurrent={commandSession.isSavedDraftCurrent}
+            issues={issues}
+            emptyHint={emptyHint}
+            savedDraftCurrent={savedDraftCurrent}
+            capabilities={workspace.capabilities}
+            onFix={onFix}
+            onPublished={(nextReceipt, hasTriggers) => {
+              setStamp({
+                receipt: nextReceipt,
+                hasTriggers,
+                liveAgain:
+                  workflow?.publishedVersionId != null &&
+                  workflow.publishedVersionId !== nextReceipt.versionId,
+              });
+              onPublished(nextReceipt);
+            }}
+          />
+        ) : null}
       </div>
       <RunInputDialog
         key={`${userId}:${workspace.id}:${workflowId}`}

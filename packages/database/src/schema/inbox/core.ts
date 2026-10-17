@@ -1,3 +1,4 @@
+import { workflowPublicationRequests } from '../authoring/publication-requests.js';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -85,6 +86,7 @@ export const workspaceInboxThreads = appSchema.table(
     subjectId: uuid('subject_id').notNull(),
     connectionId: uuid('connection_id'),
     taskId: uuid('task_id'),
+    publicationRequestId: uuid('publication_request_id'),
     active: boolean('active').notNull().default(true),
     sourceRevision: varchar('source_revision', { length: 128 }),
     capacityLimit: varchar('capacity_limit', { length: 16 }),
@@ -121,7 +123,7 @@ export const workspaceInboxThreads = appSchema.table(
       .where(sql`notice_kind='limit_approaching'`),
     check(
       'workspace_inbox_threads_subject_valid',
-      sql`((notice_kind='limit_approaching' AND subject_id=id AND capacity_limit IN ('active','queue','artifact_bytes','artifact_count') AND workflow_id IS NULL AND connection_id IS NULL AND task_id IS NULL) OR (capacity_limit IS NULL AND ((notice_kind IN ('workflow_failure','workflow_auto_paused') AND workflow_id=subject_id AND connection_id IS NULL AND task_id IS NULL) OR (notice_kind='connection_attention' AND connection_id=subject_id AND workflow_id IS NULL AND task_id IS NULL) OR (notice_kind='approval_waiting' AND task_id=subject_id AND workflow_id IS NOT NULL AND connection_id IS NULL) OR (notice_kind='limit_reached' AND subject_id=workspace_id AND workflow_id IS NULL AND connection_id IS NULL AND task_id IS NULL)))) IS TRUE`,
+      sql`((notice_kind='publication_review_waiting' AND publication_request_id=subject_id AND workflow_id IS NOT NULL AND connection_id IS NULL AND task_id IS NULL AND capacity_limit IS NULL) OR (publication_request_id IS NULL AND ((notice_kind='limit_approaching' AND subject_id=id AND capacity_limit IN ('active','queue','artifact_bytes','artifact_count') AND workflow_id IS NULL AND connection_id IS NULL AND task_id IS NULL) OR (capacity_limit IS NULL AND ((notice_kind IN ('workflow_failure','workflow_auto_paused') AND workflow_id=subject_id AND connection_id IS NULL AND task_id IS NULL) OR (notice_kind='connection_attention' AND connection_id=subject_id AND workflow_id IS NULL AND task_id IS NULL) OR (notice_kind='approval_waiting' AND task_id=subject_id AND workflow_id IS NOT NULL AND connection_id IS NULL) OR (notice_kind='limit_reached' AND subject_id=workspace_id AND workflow_id IS NULL AND connection_id IS NULL AND task_id IS NULL)))))) IS TRUE`,
     ),
     check(
       'workspace_inbox_threads_failure_valid',
@@ -132,6 +134,14 @@ export const workspaceInboxThreads = appSchema.table(
       columns: [table.workspaceId, table.connectionId],
       foreignColumns: [connections.workspaceId, connections.id],
     }).onDelete('restrict'),
+    foreignKey({
+      name: 'workspace_inbox_threads_publication_request_fk',
+      columns: [table.workspaceId, table.publicationRequestId],
+      foreignColumns: [
+        workflowPublicationRequests.workspaceId,
+        workflowPublicationRequests.id,
+      ],
+    }).onDelete('cascade'),
     foreignKey({
       name: 'workspace_inbox_threads_task_fk',
       columns: [table.workspaceId, table.taskId],

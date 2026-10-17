@@ -1,3 +1,4 @@
+import { workflowPublicationRequests } from './schema/authoring/publication-requests.js';
 import {
   triggerEventWindows,
   triggerCoordinatedEvents,
@@ -207,6 +208,7 @@ export {
 } from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
+  workflowPublicationRequests,
   triggerEventWindows,
   triggerCoordinatedEvents,
   workspaceDataTableQuotas,

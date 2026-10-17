@@ -59,6 +59,11 @@ replay
 version's graph. It is an authoring operation, not a publication or execution.
 _Avoid_: Workflow restoration, rollback of execution history
 
+**Publication review**: A request for a different current owner/admin to publish
+one exact saved draft revision when workspace approval is required. Editing the
+draft makes the request stale. Approval and publication commit together.
+_Avoid_: Run approval, permission to publish future edits
+
 **Run replay**: A new execution with an explicitly selected retained version and
 input, linked to a source run whose history remains unchanged. _Avoid_: Queue
 redelivery, retry

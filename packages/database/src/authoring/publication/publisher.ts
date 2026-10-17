@@ -1,3 +1,4 @@
+import { PublicationReviewError } from '../reviews/contract.js';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.js';
 import { lockWorkspaceVariableNames } from '../../variables/read.js';
 import { revokeRemovedFormAccess } from '../../triggers/forms/publication.js';
@@ -89,6 +90,11 @@ export type WorkflowPublicationDependencies = Readonly<{
   ): Promise<T>;
 }>;
 
+type PublicationCandidateInput = Omit<
+  PublishWorkflowInput,
+  'idempotencyKey' | 'requestHash' | 'commandCredentialId'
+>;
+
 type PublicationClaim = Readonly<{
   command: CommandIdentity;
   replay: PublishWorkflowResult | null;
@@ -148,7 +154,7 @@ async function claimPublication(
 
 async function lockAndCompilePublication(
   client: PoolClient,
-  input: PublishWorkflowInput,
+  input: PublicationCandidateInput,
   workflowId: string,
   dependencies: WorkflowPublicationDependencies,
 ): Promise<CompiledPublication> {
@@ -230,7 +236,7 @@ async function lockAndCompilePublication(
 
 async function persistVersion(
   client: PoolClient,
-  input: PublishWorkflowInput,
+  input: PublicationCandidateInput,
   workflowId: string,
   publication: CompiledPublication,
 ): Promise<Readonly<{ reused: boolean; version: WorkflowVersionRecord }>> {
@@ -274,7 +280,7 @@ async function persistVersion(
 
 async function persistPublicationProjections(
   client: PoolClient,
-  input: PublishWorkflowInput,
+  input: PublicationCandidateInput,
   workflowId: string,
   publication: CompiledPublication,
   version: WorkflowVersionRecord,
@@ -322,8 +328,8 @@ async function persistPublicationProjections(
 
 async function finalizePublication(
   client: PoolClient,
-  input: PublishWorkflowInput,
-  claim: PublicationClaim,
+  input: PublicationCandidateInput,
+  workflowId: string,
   version: WorkflowVersionRecord,
   reused: boolean,
 ): Promise<void> {
@@ -331,13 +337,13 @@ async function finalizePublication(
     `update app.workflows set published_version_id=$1,
        activation_status='activating',updated_at=transaction_timestamp()
      where workspace_id=$2 and id=$3`,
-    [version.id, input.workspaceId, claim.workflowId],
+    [version.id, input.workspaceId, workflowId],
   );
   const eventId = generatePersistedId();
   const payload = reconcileWorkflowTriggersPayload({
     workspaceId: input.workspaceId,
     outboxEventId: eventId,
-    workflowId: claim.workflowId,
+    workflowId: workflowId,
     publishedVersionId: version.id,
     ...(input.traceparent === undefined
       ? {}
@@ -351,7 +357,7 @@ async function finalizePublication(
     [
       eventId,
       input.workspaceId,
-      claim.workflowId,
+      workflowId,
       JSON.stringify(payload),
       canonicalOutboxPayloadChecksum(payload),
     ],
@@ -365,7 +371,7 @@ async function finalizePublication(
       generatePersistedId(),
       input.workspaceId,
       input.actorId,
-      claim.workflowId,
+      workflowId,
       input.requestId ?? null,
       input.traceId ?? null,
       JSON.stringify({
@@ -376,10 +382,36 @@ async function finalizePublication(
       }),
     ],
   );
-  await completeCommand(client, claim.command, {
-    versionId: version.id,
-    reused,
-  });
+}
+
+/** One publication transaction core; only authoring command owners may call it. */
+export async function publishWorkflowCandidate(
+  dependencies: WorkflowPublicationDependencies,
+  client: PoolClient,
+  input: PublicationCandidateInput,
+): Promise<PublishWorkflowResult> {
+  const workflowId = input.workflowId;
+  const publication = await lockAndCompilePublication(
+    client,
+    input,
+    workflowId,
+    dependencies,
+  );
+  const { reused, version } = await persistVersion(
+    client,
+    input,
+    workflowId,
+    publication,
+  );
+  await persistPublicationProjections(
+    client,
+    input,
+    workflowId,
+    publication,
+    version,
+  );
+  await finalizePublication(client, input, workflowId, version, reused);
+  return Object.freeze({ replayed: false, reused, version });
 }
 
 export function createWorkflowPublisher(
@@ -397,27 +429,26 @@ export function createWorkflowPublisher(
         );
         const claim = await claimPublication(client, input);
         if (claim.replay !== null) return claim.replay;
-        const publication = await lockAndCompilePublication(
-          client,
-          input,
-          claim.workflowId,
+        const policy = await client.query<{
+          require_publish_approval: boolean;
+        }>('select require_publish_approval from app.workspaces where id=$1', [
+          input.workspaceId,
+        ]);
+        if (policy.rows[0]?.require_publish_approval === true)
+          throw new PublicationReviewError(
+            'required',
+            'This workspace requires publication review. Request approval for the saved draft.',
+          );
+        const result = await publishWorkflowCandidate(
           dependencies,
-        );
-        const { reused, version } = await persistVersion(
           client,
           input,
-          claim.workflowId,
-          publication,
         );
-        await persistPublicationProjections(
-          client,
-          input,
-          claim.workflowId,
-          publication,
-          version,
-        );
-        await finalizePublication(client, input, claim, version, reused);
-        return Object.freeze({ replayed: false, reused, version });
+        await completeCommand(client, claim.command, {
+          versionId: result.version.id,
+          reused: result.reused,
+        });
+        return result;
       },
       input.signal,
     );
