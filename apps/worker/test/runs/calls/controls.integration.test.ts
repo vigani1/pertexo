@@ -43,12 +43,14 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       const rows = await fixture.workerQuery<{
         child_run_id: string;
         status: string;
+        slot_lent: boolean;
       }>(
-        'select call.child_run_id,child.status from app.workflow_calls call join app.workflow_runs child on child.id=call.child_run_id and child.workspace_id=call.workspace_id where call.parent_run_id=$1',
+        'select call.child_run_id,child.status,call.slot_lent from app.workflow_calls call join app.workflow_runs child on child.id=call.child_run_id and child.workspace_id=call.workspace_id where call.parent_run_id=$1',
         [parentRunId],
       );
       expect(rows).toHaveLength(1);
       expect(rows[0]?.status).toBe('waiting');
+      expect(rows[0]?.slot_lent).toBe(true);
       childId = rows[0]?.child_run_id ?? '';
     });
     return childId;
@@ -201,10 +203,7 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
 
   it('dispatches inherited deadline controls while the parent has lent its slot', async () => {
     const child = await publishGraph(childGraph(60));
-    const parent = await publishGraph({
-      ...parentGraph(child.pin),
-      settings: { maxRunDurationMs: 2_000 },
-    });
+    const parent = await publishGraph(parentGraph(child.pin));
     const accepted = await accept(parent);
     const workers = await runtime();
     try {
@@ -214,7 +213,16 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
         [[accepted.runId, childId]],
       );
       expect(deadlines).toHaveLength(2);
+      expect(deadlines[0]?.deadline_at).toBeInstanceOf(Date);
       expect(deadlines[0]?.deadline_at).toEqual(deadlines[1]?.deadline_at);
+      // Expire only after observing inheritance and handoff. Statement time is
+      // shared by both rows and remains later than their creation timestamps.
+      await fixture.ownerQuery(
+        `update app.workflow_runs
+         set deadline_at=statement_timestamp(),deadline_wakeup_at=null
+         where workspace_id=$1 and id=any($2::uuid[])`,
+        [fixture.workspaceId, [accepted.runId, childId]],
+      );
       await settled(workers, accepted.runId, 'timed_out');
       // At the shared deadline, the child's own timeout and its parent's
       // close intent are ordinary competing controls; the first one settles it.
@@ -230,15 +238,30 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
     }
   }, 30_000);
   it('narrows the recorded child deadline and fails the required Call when the child times out first', async () => {
-    const child = await publishGraph({
-      ...childGraph(60),
-      settings: { maxRunDurationMs: 2_000 },
+    const child = await publishGraph(childGraph(60));
+    const parent = await publishGraph({
+      ...parentGraph(child.pin),
+      settings: { maxRunDurationMs: 120_000 },
     });
-    const parent = await publishGraph(parentGraph(child.pin));
     const accepted = await accept(parent);
     const workers = await runtime();
     try {
       const childId = await activeChild(workers, accepted.runId);
+      expect(
+        await fixture.workerQuery(
+          `select child.deadline_at < parent.deadline_at as narrowed
+           from app.workflow_runs child
+           join app.workflow_runs parent on parent.workspace_id=child.workspace_id
+           where child.workspace_id=$1 and child.id=$2 and parent.id=$3`,
+          [fixture.workspaceId, childId, accepted.runId],
+        ),
+      ).toEqual([{ narrowed: true }]);
+      await fixture.ownerQuery(
+        `update app.workflow_runs
+         set deadline_at=statement_timestamp(),deadline_wakeup_at=null
+         where workspace_id=$1 and id=$2`,
+        [fixture.workspaceId, childId],
+      );
       await settled(workers, childId, 'timed_out');
       await settled(workers, accepted.runId, 'failed');
       expect(
