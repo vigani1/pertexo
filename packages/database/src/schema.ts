@@ -108,12 +108,16 @@ import {
 import {
   webhookTriggerSecretVersions,
   webhookTriggerEndpoints,
+} from './schema/triggers/endpoints.js';
+import {
   webhookTriggerDeliveries,
   webhookEndpointIngressLimits,
   webhookTriggerReplayRecords,
+} from './schema/triggers/deliveries.js';
+import {
   triggerSchedules,
   triggerScheduleOccurrences,
-} from './schema/triggers.js';
+} from './schema/triggers/schedules.js';
 
 import {
   workflowFolders,
@@ -188,11 +192,15 @@ export { workflowIntegrationUsage } from './schema/authoring/integrations.js';
 export {
   webhookTriggerSecretVersions,
   webhookTriggerEndpoints,
+} from './schema/triggers/endpoints.js';
+export {
   webhookTriggerDeliveries,
   webhookTriggerReplayRecords,
+} from './schema/triggers/deliveries.js';
+export {
   triggerSchedules,
   triggerScheduleOccurrences,
-} from './schema/triggers.js';
+} from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
   workspaceDataTableQuotas,
