@@ -3,6 +3,8 @@ import {
   WorkflowAlreadyRunningError,
 } from '@pertexo/database/runs';
 import { z } from 'zod';
+import { DataTableError } from '@pertexo/node-sdk';
+import { mapDataTableError } from '../data-tables/errors.js';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 
 import {
@@ -27,6 +29,7 @@ export class WorkflowRunIdempotencyConflictError extends Error {
 }
 
 export function mapWorkflowRunError(error: unknown): ApplicationError {
+  if (error instanceof DataTableError) return mapDataTableError(error);
   if (error instanceof WorkflowAlreadyRunningError)
     return applicationError('workflow.already_running', {
       safeDetail: error.message,

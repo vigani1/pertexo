@@ -3,6 +3,9 @@ import {
   DATA_TABLE_LIMITS,
   dataTableNameSchema,
   dataTableColumnsSchema,
+  dataTableNewColumnsSchema,
+  dataTableNewColumnSchema,
+  dataTableValueSchema,
   dataTableQuerySchema,
   dataTableWriteCommandSchema,
   dataTableResultSchema,
@@ -10,13 +13,15 @@ import {
 export const dataTableCreateSchema = z
   .object({
     name: dataTableNameSchema,
-    columns: dataTableColumnsSchema,
+    columns: dataTableNewColumnsSchema,
     keyColumn: dataTableNameSchema.nullable().optional(),
   })
   .strict();
 export const dataTableDefinitionSchema = dataTableCreateSchema
   .extend({
     id: z.uuid(),
+    columns: dataTableColumnsSchema,
+    hasRemovedColumns: z.boolean(),
     keyColumn: dataTableNameSchema.nullable(),
     rowCount: z.number().int().nonnegative(),
     storedBytes: z.number().int().nonnegative(),
@@ -88,3 +93,55 @@ export const dataTableWriteReceiptSchema = z
   })
   .strict();
 export type DataTableWriteReceipt = z.infer<typeof dataTableWriteReceiptSchema>;
+
+export const dataTableSchemaChangeSchema = z.discriminatedUnion('operation', [
+  z
+    .object({
+      operation: z.literal('add_column'),
+      column: dataTableNewColumnSchema,
+      defaultValue: dataTableValueSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      operation: z.literal('rename_column'),
+      columnId: dataTableNameSchema,
+      name: dataTableNameSchema,
+    })
+    .strict(),
+  z
+    .object({
+      operation: z.literal('remove_column'),
+      columnId: dataTableNameSchema,
+      confirm: z.literal(true),
+    })
+    .strict(),
+  z
+    .object({
+      operation: z.literal('set_key'),
+      columnId: dataTableNameSchema.nullable(),
+    })
+    .strict(),
+]);
+export const dataTableSchemaEditSchema = z
+  .object({
+    expectedRevision: z.number().int().positive(),
+    change: dataTableSchemaChangeSchema,
+  })
+  .strict();
+export const dataTableSchemaEditedSchema = z
+  .object({ revision: z.number().int().positive() })
+  .strict();
+export const dataTableExportQuerySchema = dataTableQuerySchema.omit({
+  limit: true,
+  offset: true,
+});
+export const dataTableExportedSchema = z
+  .object({
+    csv: z.string().max(DATA_TABLE_LIMITS.resultBytes),
+    rowCount: z.number().int().nonnegative().max(DATA_TABLE_LIMITS.maxRows),
+  })
+  .strict();
+export type DataTableSchemaEdit = z.infer<typeof dataTableSchemaEditSchema>;
+export type DataTableSchemaChange = z.infer<typeof dataTableSchemaChangeSchema>;
+export type DataTableExportQuery = z.infer<typeof dataTableExportQuerySchema>;

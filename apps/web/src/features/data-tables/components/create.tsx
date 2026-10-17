@@ -4,7 +4,7 @@ import {
   dataTableCreateSchema,
   type DataTableCreate,
 } from '@pertexo/contracts';
-import type { DataTableColumn } from '@pertexo/node-sdk';
+import type { DataTableNewColumn } from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel as Label } from '@/components/ui/field';
@@ -21,7 +21,7 @@ import { sendTableCommand, type TableScope } from '../data/tables.api';
 import { tableKeys } from '../data/tables.queries';
 import { TableChoice } from './choice';
 import { TableCommandFeedback } from './command-feedback';
-type Column = DataTableColumn & { id: string };
+type Column = DataTableNewColumn & { id: string };
 const types = ['text', 'number', 'boolean', 'date', 'json'] as const;
 function newColumn(): Column {
   return { id: crypto.randomUUID(), name: '', type: 'text', required: false };
@@ -53,7 +53,7 @@ export function CreateDataTable({
     { action: 'creating this table' },
   );
   const locked = command.pending || command.uncertain;
-  function change(id: string, patch: Partial<DataTableColumn>) {
+  function change(id: string, patch: Partial<DataTableNewColumn>) {
     setColumns((current) =>
       current.map((column) =>
         column.id === id ? { ...column, ...patch } : column,
@@ -140,7 +140,7 @@ export function CreateDataTable({
                     }))}
                     onChange={(value) => {
                       change(column.id, {
-                        type: value as DataTableColumn['type'],
+                        type: value as DataTableNewColumn['type'],
                       });
                     }}
                   />

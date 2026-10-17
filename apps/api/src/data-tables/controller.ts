@@ -14,6 +14,8 @@ import {
 import {
   workspaceIdentifierSchema,
   dataTableCreateSchema,
+  dataTableSchemaEditSchema,
+  dataTableExportQuerySchema,
   dataTableLimitsSchema,
   dataTableRemoveSchema,
   dataTableQuerySchema,
@@ -116,6 +118,49 @@ export class DataTablesController {
       }),
     );
   }
+  @Put(':tableId/schema')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
+  @RateLimit('ordinary_mutation')
+  editSchema(
+    @Req() request: Request,
+    @Param('workspaceId') workspace: unknown,
+    @Param('tableId') table: unknown,
+    @Body() body: unknown,
+  ) {
+    const input = dataTableSchemaEditSchema.parse(body);
+    const tableId = workspaceIdentifierSchema.parse(table);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.store.editSchema({
+        ...this.scope(request, workspace),
+        ...input,
+        tableId,
+        idempotencyKey: requestIdempotencyKey(request.headers),
+        signal,
+      }),
+    );
+  }
+  @Post(':tableId/export')
+  @Header('Cache-Control', 'private, no-store')
+  @HttpCode(200)
+  @UseGuards(DataTablesReadGuard, CsrfProtectionGuard)
+  exportCsv(
+    @Req() request: Request,
+    @Param('workspaceId') workspace: unknown,
+    @Param('tableId') table: unknown,
+    @Body() body: unknown,
+  ) {
+    const query = dataTableExportQuerySchema.parse(body);
+    const tableId = workspaceIdentifierSchema.parse(table);
+    return withRequestOperationSignal(request, (signal) =>
+      this.tables.store.exportCsv({
+        ...this.scope(request, workspace),
+        query,
+        tableId,
+        signal,
+      }),
+    );
+  }
   @Post(':tableId/rows/query')
   @Header('Cache-Control', 'private, no-store')
   @HttpCode(200)
@@ -184,7 +229,6 @@ export class DataTablesController {
         ...this.scope(request, workspace),
         ...input,
         tableId,
-        rows: [],
         idempotencyKey: requestIdempotencyKey(request.headers),
         signal,
       }),

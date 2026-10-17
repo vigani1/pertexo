@@ -5,7 +5,7 @@ import type { DataTableQuery, DataTableRow } from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { exportTablePage } from '../model/export';
+import { ExportTableRows } from './transfer/export';
 import {
   sendTableCommand,
   type TableScope,
@@ -31,7 +31,10 @@ export function DataTableRows({
     limit: 50,
     offset: 0,
   });
-  const [editing, setEditing] = useState<{ row?: DataTableRow }>();
+  const [editing, setEditing] = useState<{
+    row?: DataTableRow;
+    table: DataTableDefinition;
+  }>();
   const [importing, setImporting] = useState(false);
   const rows = useQuery(tableRowsQuery(scope, table.id, query));
   const command = useRetainedCommand(
@@ -42,9 +45,6 @@ export function DataTableRows({
     { action: 'deleting this row' },
   );
   const locked = command.pending || command.uncertain;
-  function exportPage() {
-    exportTablePage(table.name, table.columns, rows.data?.rows ?? []);
-  }
   return (
     <div className="grid min-w-0 gap-4">
       <div className="flex flex-wrap gap-2">
@@ -54,7 +54,7 @@ export function DataTableRows({
               type="button"
               variant="primary"
               onClick={() => {
-                setEditing({});
+                setEditing({ table });
               }}
             >
               Add row
@@ -70,14 +70,7 @@ export function DataTableRows({
             </Button>
           </>
         ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={exportPage}
-          disabled={rows.data === undefined}
-        >
-          Export this page
-        </Button>
+        <ExportTableRows scope={scope} table={table} query={query} />
         <Button
           type="button"
           variant="ghost"
@@ -144,7 +137,7 @@ export function DataTableRows({
                         size="sm"
                         disabled={locked}
                         onClick={() => {
-                          setEditing({ row });
+                          setEditing({ row, table });
                         }}
                       >
                         Edit
@@ -225,7 +218,11 @@ export function DataTableRows({
       {editing === undefined ? null : (
         <TableRowEditor
           scope={scope}
-          table={table}
+          table={editing.table}
+          schemaChanged={
+            JSON.stringify(editing.table.columns) !==
+            JSON.stringify(table.columns)
+          }
           row={editing.row}
           onClose={() => {
             setEditing(undefined);

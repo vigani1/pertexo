@@ -27,6 +27,8 @@ import {
   type StoredTable,
 } from './read.js';
 import { findRows } from './queries.js';
+import { editTableSchema } from './columns/change.js';
+import { exportTableCsv } from './csv/export.js';
 import {
   mutateRows,
   insertTableBatch,
@@ -154,7 +156,12 @@ export function createDataTablesStore(
                 input.workspaceId,
                 id,
                 input.name,
-                JSON.stringify(input.columns),
+                JSON.stringify(
+                  input.columns.map((column) => ({
+                    ...column,
+                    id: column.name,
+                  })),
+                ),
                 input.keyColumn ?? null,
               ],
             );
@@ -164,6 +171,29 @@ export function createDataTablesStore(
             );
             return { id };
           },
+        ),
+      ),
+    editSchema: (input) =>
+      write(input, (client) =>
+        command(
+          client,
+          input,
+          'data.tables.schema.edit',
+          {
+            tableId: input.tableId,
+            expectedRevision: input.expectedRevision,
+            change: input.change,
+          },
+          () => editTableSchema(client, input),
+        ),
+      ),
+    exportCsv: (input) =>
+      read(input, async (client) =>
+        exportTableCsv(
+          client,
+          input.workspaceId,
+          await requireTable(client, input.workspaceId, { id: input.tableId }),
+          input.query,
         ),
       ),
     remove: (input) =>
@@ -310,7 +340,9 @@ export function createDataTablesStore(
           client,
           input,
           'data.tables.rows.import',
-          { tableId: input.tableId, rows: input.rows },
+          'prepareRows' in input
+            ? { tableId: input.tableId, csv: input.csv }
+            : { tableId: input.tableId, rows: input.rows },
           async () => {
             const quota = await readQuotas(client, input.workspaceId, true);
             const table = await requireTable(
@@ -324,7 +356,7 @@ export function createDataTablesStore(
               input.workspaceId,
               table,
               quota,
-              input.rows,
+              'prepareRows' in input ? input.prepareRows(table) : input.rows,
             );
           },
         ),

@@ -161,11 +161,12 @@ historical snapshots refuse replay rather than substitute current values. See
 
 ## Workspace data tables
 
-A **data table** is a workspace-owned, bounded dataset with fixed typed columns
-and an optional single unique key. Its stable name is what workflow steps and
-portable workflow files reference. A **data row** has its own ID and revision;
-interactive edits compare that revision to avoid lost updates. Table data is
-shared with active workspace members and is not secret storage.
+A **data table** is a workspace-owned, bounded dataset with typed columns and
+stable column identities and an optional single unique key. Its stable name is
+what workflow steps and portable workflow files reference. A **data row** has
+its own ID and revision; interactive edits compare that revision to avoid lost
+updates. Table data is shared with active workspace members and is not secret
+storage.
 
 A **table write receipt** records a workflow mutation and its bounded result in
 the same transaction as the row change. The identity is the run/node invocation,

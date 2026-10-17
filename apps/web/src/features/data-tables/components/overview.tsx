@@ -19,7 +19,7 @@ export function TablePageActions({
   admin: boolean;
   table: DataTableDefinition | undefined;
   onOpen: (id: string | undefined) => void;
-  onDialog: (dialog: 'create' | 'limits' | 'remove') => void;
+  onDialog: (dialog: 'create' | 'limits' | 'remove' | 'columns') => void;
 }>) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -53,6 +53,17 @@ export function TablePageActions({
           }}
         >
           Table limits
+        </Button>
+      ) : null}
+      {table !== undefined && editable ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            onDialog('columns');
+          }}
+        >
+          Edit columns
         </Button>
       ) : null}
       {table !== undefined && editable ? (

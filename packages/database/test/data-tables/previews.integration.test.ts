@@ -129,6 +129,90 @@ it('requires dispatch authority and returns the exact receipt after row edits an
   });
   expect(await worker.execute(f.input)).toEqual(result);
 });
+
+it('preserves scoped workflow aliases and receipts through renames and refuses deleted bindings', async () => {
+  const f = await fixture();
+  await markPreviewDispatched(workerPool, {
+    lease: f.claimed.lease,
+    workerId: f.claimed.workerId,
+  });
+  const input = {
+    ...f.input,
+    columnBindings: { key: 'key', amount: 'amount' },
+  };
+  const accepted = await worker.execute(input);
+  for (const [columnId, name] of [
+    ['key', 'order_key'],
+    ['amount', 'total'],
+  ] as const) {
+    const table = (
+      await tables.list({ workspaceId, actorId: actorUserId })
+    ).tables.find((table) => table.id === f.table.id);
+    if (table === undefined) throw new Error('Table missing');
+    await tables.editSchema({
+      workspaceId,
+      actorId: actorUserId,
+      tableId: table.id,
+      expectedRevision: table.revision,
+      change: { operation: 'rename_column', columnId, name },
+      idempotencyKey: randomUUID(),
+    });
+  }
+  const found = await worker.execute({
+    ...input,
+    command: {
+      operation: 'find',
+      table: input.command.table,
+      query: {
+        filters: [{ column: 'key', operator: 'equals', value: 'a' }],
+        sort: { column: 'amount', direction: 'desc' },
+        limit: 100,
+        offset: 0,
+      },
+    },
+  });
+  expect(found.rows[0]?.values).toEqual({ key: 'a', amount: 1 });
+  expect(await worker.execute(input)).toEqual(accepted);
+  await expect(
+    worker.execute({
+      ...input,
+      columnBindings: { key: 'amount', amount: 'key' },
+    }),
+  ).rejects.toMatchObject({ code: 'conflict' });
+  const table = (
+    await tables.list({ workspaceId, actorId: actorUserId })
+  ).tables.find((table) => table.id === f.table.id);
+  if (table === undefined) throw new Error('Table missing');
+  await tables.editSchema({
+    workspaceId,
+    actorId: actorUserId,
+    tableId: table.id,
+    expectedRevision: table.revision,
+    change: { operation: 'remove_column', columnId: 'amount', confirm: true },
+    idempotencyKey: randomUUID(),
+  });
+  expect(await worker.execute(input)).toEqual(accepted);
+  await expect(
+    worker.execute({
+      ...input,
+      command: {
+        operation: 'find',
+        table: input.command.table,
+        query: { filters: [], limit: 100, offset: 0 },
+      },
+    }),
+  ).rejects.toThrow('removed');
+  await expect(
+    worker.execute({
+      ...f.input,
+      command: {
+        operation: 'find',
+        table: input.command.table,
+        query: { filters: [], limit: 100, offset: 0 },
+      },
+    }),
+  ).rejects.toThrow('legacy');
+});
 it('retains preview effects until preview retention and then cascades their private receipt', async () => {
   const f = await fixture();
   await markPreviewDispatched(workerPool, {

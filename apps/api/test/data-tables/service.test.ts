@@ -3,28 +3,37 @@ import { DataTableError } from '@pertexo/node-sdk';
 import type { DataTablesStore } from '@pertexo/database/data-tables';
 import { DataTablesService } from '../../src/data-tables/service.js';
 function fixture() {
+  const prepared: unknown[] = [];
+  const definition = {
+    id: 'table',
+    name: 'Orders',
+    columns: [
+      { id: 'id', name: 'id', type: 'text', required: true },
+      { id: 'amount', name: 'amount', type: 'number', required: true },
+      { id: 'active', name: 'active', type: 'boolean', required: false },
+    ],
+    keyColumn: 'id',
+    hasRemovedColumns: false,
+    rowCount: 0,
+    storedBytes: 0,
+    revision: 1,
+  } as const;
   const imported = vi
     .fn<DataTablesStore['importRows']>()
-    .mockImplementation((input) =>
-      Promise.resolve({ affected: input.rows.length }),
-    );
+    .mockImplementation((input) => {
+      const rows =
+        'prepareRows' in input
+          ? input.prepareRows({
+              ...definition,
+              columns: [...definition.columns],
+            })
+          : input.rows;
+      prepared.push(rows);
+      return Promise.resolve({ affected: rows.length });
+    });
   const store = {
     list: vi.fn<DataTablesStore['list']>().mockResolvedValue({
-      tables: [
-        {
-          id: 'table',
-          name: 'Orders',
-          columns: [
-            { name: 'id', type: 'text', required: true },
-            { name: 'amount', type: 'number', required: true },
-            { name: 'active', type: 'boolean', required: false },
-          ],
-          keyColumn: 'id',
-          rowCount: 0,
-          storedBytes: 0,
-          revision: 1,
-        },
-      ],
+      tables: [{ ...definition, columns: [...definition.columns] }],
       quotas: {
         tableLimit: 20,
         columnLimit: 20,
@@ -34,6 +43,8 @@ function fixture() {
         tableCount: 1,
       },
     }),
+    editSchema: vi.fn<DataTablesStore['editSchema']>(),
+    exportCsv: vi.fn<DataTablesStore['exportCsv']>(),
     create: vi.fn<DataTablesStore['create']>(),
     remove: vi.fn<DataTablesStore['remove']>(),
     configure: vi.fn<DataTablesStore['configure']>(),
@@ -42,7 +53,7 @@ function fixture() {
     importRows: imported,
     close: vi.fn<DataTablesStore['close']>(),
   } satisfies DataTablesStore;
-  return { service: new DataTablesService(store), imported };
+  return { service: new DataTablesService(store), imported, prepared };
 }
 const input = {
   workspaceId: 'workspace',
@@ -53,14 +64,14 @@ const input = {
 };
 describe('typed CSV import', () => {
   it('handles a BOM, quoted commas and newlines and converts only declared types', async () => {
-    const { service, imported } = fixture();
+    const { service, prepared } = fixture();
     expect(
       await service.importCsv({
         ...input,
         csv: '\ufeffid,amount,active\r\n"001,23",12.5,false\r\n"two\nlines",0,true',
       }),
     ).toEqual({ affected: 2 });
-    expect(imported.mock.calls[0]?.[0].rows).toEqual([
+    expect(prepared[0]).toEqual([
       { id: '001,23', amount: 12.5, active: false },
       { id: 'two\nlines', amount: 0, active: true },
     ]);
@@ -74,7 +85,7 @@ describe('typed CSV import', () => {
     async (csv) => {
       const { service, imported } = fixture();
       await expect(service.importCsv({ ...input, csv })).rejects.toThrow();
-      expect(imported).not.toHaveBeenCalled();
+      expect(imported).toHaveBeenCalledOnce();
     },
   );
   it('reports the exact bad record and column without partially importing', async () => {
@@ -105,6 +116,6 @@ describe('typed CSV import', () => {
     await expect(
       service.importCsv({ ...input, csv: 'x'.repeat(1048577) }),
     ).rejects.toThrow('Split');
-    expect(imported).not.toHaveBeenCalled();
+    expect(imported).toHaveBeenCalledTimes(2);
   });
 });

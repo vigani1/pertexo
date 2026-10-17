@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import {
   generateSchemaDocument,
-  dataTableNameSchema,
+  dataTableConfigSchema,
+  DATA_TABLE_OPERATIONS,
   dataTableQuerySchema,
   dataTableValuesSchema,
   dataTableResultSchema,
@@ -9,16 +10,8 @@ import {
 } from '@pertexo/node-sdk';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
-export const DATA_TABLE_OPERATIONS = [
-  'find',
-  'insert',
-  'update',
-  'upsert',
-  'delete',
-] as const;
-const DATA_TABLE_CONFIG_SCHEMA = z
-  .object({ table: dataTableNameSchema })
-  .strict();
+export { DATA_TABLE_OPERATIONS } from '@pertexo/node-sdk';
+const DATA_TABLE_CONFIG_SCHEMA = dataTableConfigSchema;
 const query = dataTableQuerySchema.default({
   filters: [],
   limit: 100,

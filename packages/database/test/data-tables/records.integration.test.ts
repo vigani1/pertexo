@@ -2,7 +2,7 @@ import { withTenantScopedReadClient } from '../../src/tenant-access/transactions
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, it, expect } from 'vitest';
 import {
-  dataTableColumnsSchema,
+  dataTableNewColumnsSchema,
   DataTableError,
   type DataTableQuery,
 } from '@pertexo/node-sdk';
@@ -28,7 +28,7 @@ beforeAll(() => {
 });
 afterAll(() => store.close());
 const scope = () => ({ workspaceId, actorId });
-const columns = dataTableColumnsSchema.parse([
+const columns = dataTableNewColumnsSchema.parse([
   { name: 'key', type: 'text', required: true },
   { name: 'amount', type: 'number' },
   { name: 'active', type: 'boolean' },

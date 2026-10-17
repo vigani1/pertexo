@@ -5,22 +5,24 @@ import {
   type DataTableColumn,
 } from '@pertexo/node-sdk';
 import type { DataTableDefinition, DataTableQuotas } from './contract.js';
-export interface StoredTable {
+export interface StoredTable extends Record<string, unknown> {
   id: string;
   name: string;
   columns_json: DataTableColumn[];
+  has_removed_columns: boolean;
   key_column: string | null;
   row_count: number;
   stored_bytes: number;
   revision: number;
 }
 export const TABLE_COLUMNS =
-  'id,name,columns_json,key_column,row_count,stored_bytes,revision';
+  'id,name,columns_json,has_removed_columns,key_column,row_count,stored_bytes,revision';
 export function projectTable(row: StoredTable): DataTableDefinition {
   return {
     id: row.id,
     name: row.name,
     columns: row.columns_json,
+    hasRemovedColumns: row.has_removed_columns,
     keyColumn: row.key_column,
     rowCount: row.row_count,
     storedBytes: row.stored_bytes,

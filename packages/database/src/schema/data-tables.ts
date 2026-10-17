@@ -2,6 +2,7 @@ import { DATA_TABLE_LIMITS } from '@pertexo/node-sdk';
 import { sql } from 'drizzle-orm';
 import {
   check,
+  boolean,
   foreignKey,
   integer,
   jsonb,
@@ -50,6 +51,7 @@ export const workspaceDataTables = appSchema.table(
     id: uuid().primaryKey(),
     name: varchar({ length: 64 }).notNull(),
     columns: jsonb('columns_json').notNull(),
+    hasRemovedColumns: boolean('has_removed_columns').notNull().default(false),
     keyColumn: varchar('key_column', { length: 64 }),
     rowCount: integer('row_count').notNull().default(0),
     storedBytes: integer('stored_bytes').notNull().default(0),

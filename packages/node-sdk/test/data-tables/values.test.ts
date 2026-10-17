@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  dataTableColumnsSchema,
+  dataTableNewColumnsSchema,
   dataTableValuesSchema,
   dataTableCommandSchema,
   validateDataTableValues,
@@ -9,7 +9,7 @@ import {
   escapeDataTableCsv,
   DataTableError,
 } from '../../src/index.js';
-const columns = dataTableColumnsSchema.parse([
+const columns = dataTableNewColumnsSchema.parse([
   { name: 'id', type: 'text', required: true },
   { name: 'amount', type: 'number' },
   { name: 'active', type: 'boolean' },
@@ -87,7 +87,7 @@ describe('typed data table boundary', () => {
       });
     }).toThrow('Unknown');
     expect(() =>
-      dataTableColumnsSchema.parse([
+      dataTableNewColumnsSchema.parse([
         { name: 'x', type: 'text' },
         { name: 'x', type: 'number' },
       ]),

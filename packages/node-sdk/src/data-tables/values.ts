@@ -1,14 +1,14 @@
 import {
   DataTableError,
   DATA_TABLE_LIMITS,
-  type DataTableColumn,
+  type DataTableNewColumn,
   type DataTableValues,
   type DataTableQuery,
 } from './contract.js';
 import { inspectBoundedJson } from '../values/bounds.js';
 
 export function validateDataTableValues(
-  columns: readonly DataTableColumn[],
+  columns: readonly DataTableNewColumn[],
   values: DataTableValues,
   partial = false,
 ): DataTableValues {
@@ -101,7 +101,7 @@ export function validateDataTableValues(
   return result;
 }
 export function validateDataTableQuery(
-  columns: readonly DataTableColumn[],
+  columns: readonly DataTableNewColumn[],
   query: DataTableQuery,
 ): void {
   for (const filter of query.filters) {
@@ -145,7 +145,7 @@ export function validateDataTableQuery(
     throw new DataTableError('invalid_values', 'Unknown sort column.');
 }
 export function dataTableCsvValue(
-  column: DataTableColumn,
+  column: DataTableNewColumn,
   text: string,
 ): unknown {
   if (text === '' && !column.required) return null;
