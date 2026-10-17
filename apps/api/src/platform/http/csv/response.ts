@@ -4,7 +4,7 @@ import { EXPORT_MAX_MILLIS, exportBudgetMillis } from './limits.js';
 import { watchExportProgress } from './progress.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { DataTablesStore } from '@pertexo/database/data-tables';
-import { withRequestOperationSignal } from '../../platform/http/index.js';
+import { withRequestOperationSignal } from '../index.js';
 
 type ExportInput = Omit<
   Parameters<DataTablesStore['exportCsv']>[0],

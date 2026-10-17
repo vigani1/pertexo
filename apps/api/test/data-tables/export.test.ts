@@ -9,7 +9,7 @@ import type {
   DataTablesStore,
   DataTableDefinition,
 } from '@pertexo/database/data-tables';
-import { sendTableExport } from '../../src/data-tables/export/response.js';
+import { sendTableExport } from '../../src/platform/http/csv/response.js';
 import { decodeTableExportRequest } from '../../src/data-tables/export/request.js';
 import { CsrfProtectionGuard } from '../../src/workspaces/http/guards.js';
 import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';

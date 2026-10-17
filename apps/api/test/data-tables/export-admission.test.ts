@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { expect, it, vi } from 'vitest';
-import { TableExportAdmission } from '../../src/data-tables/export/admission.js';
+import { TableExportAdmission } from '../../src/platform/http/csv/admission.js';
 
 function slots() {
   const active = new Set<string>();
