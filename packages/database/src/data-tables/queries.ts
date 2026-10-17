@@ -66,10 +66,7 @@ export function boundedResult(
     );
   return result;
 }
-function rowOrderClause(
-  query: DataTableQuery,
-  parameters: unknown[],
-): string {
+function rowOrderClause(query: DataTableQuery, parameters: unknown[]): string {
   if (query.sort === undefined) return 'id';
   parameters.push(query.sort.column);
   return `values_json::jsonb -> $${String(parameters.length)}::text ${query.sort.direction === 'desc' ? 'desc' : 'asc'} nulls last,id`;
