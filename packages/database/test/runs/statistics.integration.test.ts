@@ -465,6 +465,79 @@ const zero = {
 };
 
 describe('workspace run statistics', () => {
+  it('excludes tests from lists and all history statistics while counting their capacity', async () => {
+    await addRuns(busyWorkspace, intake, 'queued', 1, '1 hour');
+    await addRuns(busyWorkspace, intake, 'succeeded', 1, '1 hour');
+    for (const status of [
+      'queued',
+      'running',
+      'waiting',
+      'succeeded',
+      'failed',
+      'canceled',
+      'timed_out',
+      'outcome_unknown',
+    ])
+      await addRuns(busyWorkspace, sync, status, 1, '5 minutes');
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      `update app.workflow_runs set trigger_type='test' where workspace_id=$1 and workflow_id=$2`,
+      [busyWorkspace, sync],
+    );
+
+    const page = await runs.list({
+      workspaceId: busyWorkspace,
+      limit: 100,
+      includeWorkflowName: true,
+    });
+    expect(page.items).toHaveLength(2);
+    expect(
+      page.items.every(
+        (run) => run.workflowId === intake && run.triggerType === 'api',
+      ),
+    ).toBe(true);
+    expect(
+      (
+        await runs.list({
+          workspaceId: busyWorkspace,
+          workflowId: sync,
+          limit: 100,
+        })
+      ).items,
+    ).toEqual([]);
+    const firstPage = await runs.list({ workspaceId: busyWorkspace, limit: 1 });
+    expect(firstPage.items[0]?.workflowId).toBe(intake);
+    expect(firstPage.nextCursor).toBeDefined();
+    const statistics = await runs.statistics({
+      workspaceId: busyWorkspace,
+      window: '24h',
+      includeWorkflows: true,
+      includeWorkflowName: true,
+    });
+    expect(statistics.current).toEqual({ queued: 1, running: 0, waiting: 0 });
+    expect(statistics.window.total).toBe(2);
+    expect(statistics.window.byStatus).toEqual({
+      queued: 1,
+      running: 0,
+      waiting: 0,
+      succeeded: 1,
+      failed: 0,
+      canceled: 0,
+      timed_out: 0,
+      outcome_unknown: 0,
+    });
+    expect(statistics.workflows?.items).toHaveLength(1);
+    expect(statistics.workflows?.items[0]).toMatchObject({
+      workflowId: intake,
+      total: 2,
+      byStatus: statistics.window.byStatus,
+    });
+    expect(
+      (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution,
+    ).toMatchObject({ activeRuns: 2, queuedRuns: 2 });
+  });
+
   it('counts current, windowed and per-workflow runs exactly in one snapshot', async () => {
     await addRuns(busyWorkspace, intake, 'succeeded', 3, '10 minutes');
     await addRuns(busyWorkspace, intake, 'failed', 1, '10 minutes');

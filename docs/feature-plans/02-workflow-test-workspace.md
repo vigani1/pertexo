@@ -214,6 +214,28 @@ counters. The API and browser never execute the workflow.
   Doctor; green PR CI before rebase merge. Matching readers/writers deploy
   together; existing exact migration-head readiness refuses mixed writers.
 
+## Shared run policy follow-up (2026-10-17)
+
+Status: implemented and locally qualified; green CI required before merge.
+
+Keep test classification and run-data lifetimes in `database/runs/data-policy`.
+Use shared SQL fragments for lists, statistics, retained reads and maintenance,
+plus the same discriminator and test lifetime for TypeScript decisions and test
+snapshot creation. Keep schema vocabulary declarations as stored constraints.
+No stored retention date, migration, new query mechanism or public entry point.
+
+Preserve current semantics exactly: tests expire seven days after creation;
+ordinary details retain their existing 30-day window and ordinary summaries
+90 days after completion. Preserve each read's existing statement/clock timestamp,
+completion checks and purge fences. Capacity continues to count tests; ordinary
+run lists, activity statistics and failure-day history exclude them. Existing
+preview/snapshot and source-run rules remain unchanged.
+
+Qualification: existing reader, replay, preview, retention and capacity tests
+stay unchanged. Add a database regression with ordinary and test runs across
+statuses: workspace/workflow lists and every statistics projection exclude tests,
+while the capacity read still includes them.
+
 ## Later work
 
 Suites/assertions, batch tests and binary/file-backed pinned samples remain

@@ -1,3 +1,4 @@
+import { isTestRun } from '../../data-policy.js';
 import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.js';
 import { synchronizeHumanWait } from '../../pending-tasks/time-capacity.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.js';
@@ -101,7 +102,7 @@ export async function persistCoordinatorRunTransition(
     workflowVersionId,
     workspaceId,
   } = input;
-  if (row.trigger_type !== 'test') {
+  if (!isTestRun(row.trigger_type)) {
     await persistFailureNotificationIntent(client, {
       workspaceId,
       runId,

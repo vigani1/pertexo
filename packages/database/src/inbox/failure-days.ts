@@ -1,3 +1,4 @@
+import { ordinaryRunSql } from '../runs/data-policy.js';
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { databaseSchema } from '../schema.js';
@@ -23,7 +24,7 @@ export async function readFailureDays(
     .where(
       and(
         eq(workflowRuns.workspaceId, workspaceId),
-        sql`${workflowRuns.triggerType} <> 'test'`,
+        sql.raw(ordinaryRunSql('workflow_runs')),
         inArray(workflowRuns.workflowId, [...workflowIds]),
         inArray(workflowRuns.status, [
           'failed',

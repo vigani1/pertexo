@@ -1,3 +1,4 @@
+import { isTestRun } from '../data-policy.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -89,7 +90,7 @@ export async function lockReplaySource(
   const run = await transaction.db.execute<{ trigger_type: string }>(
     sql`select trigger_type from app.workflow_runs where workspace_id=${transaction.workspaceId} and id=${sourceRunId}`,
   );
-  if (run.rows[0]?.trigger_type === 'test')
+  if (isTestRun(run.rows[0]?.trigger_type))
     throw new WorkflowRunNotExecutableError();
   const source = result.rows[0];
   if (source === undefined) throw new WorkflowRunNotFoundError();

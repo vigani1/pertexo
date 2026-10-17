@@ -1,3 +1,4 @@
+import { ordinaryRunSql } from '../runs/data-policy.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -548,7 +549,7 @@ export async function requestRunReplay(
           and version.id = ${input.workflowVersionId}
           and version.executable_json is not null) target_workflow_id
     from app.workflow_runs run
-    where run.workspace_id = ${transaction.workspaceId} and run.id = ${input.sourceRunId} and run.trigger_type <> 'test'
+    where run.workspace_id = ${transaction.workspaceId} and run.id = ${input.sourceRunId} and ${sql.raw(ordinaryRunSql('run'))}
   `);
   const found = rows.rows[0];
   const outcome =

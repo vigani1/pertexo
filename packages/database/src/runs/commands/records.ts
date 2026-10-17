@@ -1,3 +1,4 @@
+import { retainedTestRunSql } from '../data-policy.js';
 import type { WorkflowRecoverySummary } from '../recovery/contract.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
 import {
@@ -150,7 +151,7 @@ export async function readWorkflowRunReadRecord(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
         eq(workflowRuns.id, runId),
-        sql`(${workflowRuns.triggerType} <> 'test' OR ${workflowRuns.createdAt} > statement_timestamp()-interval '7 days')`,
+        sql.raw(retainedTestRunSql('workflow_runs')),
       ),
     )
     .limit(1);

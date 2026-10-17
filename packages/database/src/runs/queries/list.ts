@@ -1,3 +1,4 @@
+import { ordinaryRunSql } from '../data-policy.js';
 import { workflows } from '../../schema/authoring/workflows.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
 import { workflowRunReadQuery, runAdmissionBlockers } from './admission.js';
@@ -130,7 +131,7 @@ async function listWorkflowRunsInTransaction(
     .where(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
-        sql`${workflowRuns.triggerType} <> 'test'`,
+        sql.raw(ordinaryRunSql('workflow_runs')),
         input.workflowId === undefined
           ? undefined
           : eq(workflowRuns.workflowId, input.workflowId),

@@ -1,3 +1,4 @@
+import { testRunSql } from '../data-policy.js';
 import type { FrozenWorkflowTestPins } from '../../schema/runs/tests.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { z } from 'zod';
@@ -37,7 +38,7 @@ export interface WorkflowExecutionReader extends Omit<
 export const EXECUTION_SOURCE_SQL = `select id,workspace_id,workflow_id,version_number,checksum,executable_json,null::jsonb test_dispositions,null::timestamptz test_expires_at from app.workflow_versions
  union all select snapshot.run_id,snapshot.workspace_id,run.workflow_id,snapshot.draft_revision,snapshot.checksum,snapshot.executable_json,snapshot.dispositions,snapshot.expires_at
  from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.id=snapshot.run_id
- where run.trigger_type='test'`;
+ where ${testRunSql('run')}`;
 
 export function parseExecutionSource(
   row: Record<string, unknown> | undefined,

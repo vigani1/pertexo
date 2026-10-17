@@ -1,3 +1,4 @@
+import { RUN_DETAILS_RETENTION_SQL } from '../data-policy.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { workflowRuns } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
@@ -20,7 +21,7 @@ export async function variableRevisionForAcceptance(
     const [source] = await transaction.db
       .select({
         revision: workflowRuns.variableSetRevision,
-        retained: sql<boolean>`(${workflowRuns.detailsPurgedAt} IS NULL AND (${workflowRuns.completedAt} IS NULL OR ${workflowRuns.completedAt}>clock_timestamp()-interval '30 days'))`,
+        retained: sql<boolean>`(${workflowRuns.detailsPurgedAt} IS NULL AND (${workflowRuns.completedAt} IS NULL OR ${workflowRuns.completedAt}>clock_timestamp()-${sql.raw(RUN_DETAILS_RETENTION_SQL)}))`,
       })
       .from(workflowRuns)
       .where(
