@@ -15,7 +15,7 @@ const scope = () => ({ actorId, workspaceId });
 let store: ReturnType<typeof createDataTablesStore>;
 beforeAll(() => {
   store = createDataTablesStore(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+    parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
   );
 });
 afterAll(() => store.close());
@@ -30,7 +30,7 @@ async function create() {
     idempotencyKey: randomUUID(),
   });
 }
-it('releases its snapshot/client when the destination fails or the caller cancels', async () => {
+it('releases its client when the destination fails or the caller cancels', async () => {
   const table = await create();
   await expect(
     store.exportCsv({
@@ -67,6 +67,130 @@ it('releases its snapshot/client when the destination fails or the caller cancel
     ).tables.some((entry) => entry.id === table.id),
   ).toBe(true);
 });
+it('keeps a one-connection API pool available while several export consumers are stalled', async () => {
+  const table = await create();
+  await store.importRows({
+    ...scope(),
+    tableId: table.id,
+    idempotencyKey: randomUUID(),
+    rows: Array.from({ length: 600 }, (_, i) => ({
+      key: String(i),
+      note: 'before',
+    })),
+  });
+  const release = Promise.withResolvers<undefined>();
+  const opened = Array.from({ length: 3 }, () =>
+    Promise.withResolvers<undefined>(),
+  );
+  const downloads = opened.map((ready) =>
+    store.exportCsv({
+      ...scope(),
+      tableId: table.id,
+      query: { filters: [] },
+      consume: async (csv) => {
+        let rows = 0;
+        let first = '',
+          last = '';
+        for await (const chunk of csv) {
+          if (rows === 1) {
+            first = chunk;
+            ready.resolve(undefined);
+            await release.promise;
+          }
+          last = chunk;
+          rows += 1;
+        }
+        expect(rows).toBe(601);
+        expect(first).toContain('before');
+        expect(last).toContain('after');
+      },
+    }),
+  );
+  const readyTimeout = setTimeout(() => {
+    for (const ready of opened)
+      ready.reject(new Error('An export retained the only pooled connection'));
+  }, 5000);
+  try {
+    await Promise.all(opened.map((ready) => ready.promise));
+    // The only client must be available before any download is allowed to advance.
+    const list = await store.list({
+      ...scope(),
+      signal: AbortSignal.timeout(3000),
+    });
+    const definition = list.tables.find((entry) => entry.id === table.id);
+    if (definition === undefined) throw new Error('Missing table');
+    await store.write({
+      ...scope(),
+      tableId: table.id,
+      idempotencyKey: randomUUID(),
+      signal: AbortSignal.timeout(3000),
+      command: {
+        operation: 'update',
+        table: definition.name,
+        values: { note: 'after' },
+        query: {
+          filters: [{ column: 'note', operator: 'equals', value: 'before' }],
+          limit: 1000,
+          offset: 0,
+        },
+      },
+    });
+  } finally {
+    clearTimeout(readyTimeout);
+    release.resolve(undefined);
+    await Promise.all(downloads);
+  }
+});
+
+it('bounds wide-row batches by bytes while fetching more than sixteen rows', async () => {
+  const table = await create();
+  await store.importRows({
+    ...scope(),
+    tableId: table.id,
+    idempotencyKey: randomUUID(),
+    rows: Array.from({ length: 100 }, (_, i) => ({
+      key: String(i),
+      note: 'x'.repeat(60_000),
+    })),
+  });
+  const definition = (await store.list(scope())).tables.find(
+    (entry) => entry.id === table.id,
+  );
+  if (definition === undefined) throw new Error('Missing table');
+  let bytes = 0,
+    rows = 0;
+  await store.exportCsv({
+    ...scope(),
+    tableId: table.id,
+    query: { filters: [] },
+    consume: async (csv) => {
+      for await (const chunk of csv) {
+        bytes += Buffer.byteLength(chunk);
+        if (rows++ === 1) {
+          // Delete after the first batch is checked in; only its buffered rows remain.
+          await store.write({
+            ...scope(),
+            tableId: table.id,
+            idempotencyKey: randomUUID(),
+            command: {
+              operation: 'delete',
+              table: definition.name,
+              query: {
+                filters: [{ column: 'note', operator: 'contains', value: 'x' }],
+                limit: 1000,
+                offset: 0,
+              },
+            },
+          });
+        }
+      }
+    },
+  });
+  expect(rows - 1).toBeGreaterThan(16);
+  expect(rows - 1).toBeLessThan(100);
+  expect(bytes).toBeLessThanOrEqual(4 * 1024 * 1024);
+});
+
 it('rejects a stale filter before offering its CSV iterable to a download consumer', async () => {
   const table = await create();
   let consumed = false;

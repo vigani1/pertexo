@@ -10,9 +10,13 @@ import {
   type RateLimitMetricRecorder,
 } from './interceptor.js';
 import { createRateLimitMetricRecorder } from './metrics.js';
-import { ApiShutdownCoordinator } from '../health/drain-state.js';
+import {
+  ApiLifecycleModule,
+  ApiShutdownCoordinator,
+} from '../health/drain-state.js';
 
 export const RATE_LIMIT_CONSUMER = Symbol('RATE_LIMIT_CONSUMER');
+export const RATE_LIMIT_CONCURRENCY = Symbol('RATE_LIMIT_CONCURRENCY');
 const RATE_LIMIT_METRICS = Symbol('RATE_LIMIT_METRICS');
 
 @Module({})
@@ -25,17 +29,22 @@ export class RateLimitModule {
   ): DynamicModule {
     return {
       module: RateLimitModule,
-      exports: [HttpRateLimitAdmission],
+      imports: [ApiLifecycleModule],
+      exports: [HttpRateLimitAdmission, RATE_LIMIT_CONCURRENCY],
       providers: [
+        {
+          provide: RATE_LIMIT_CONCURRENCY,
+          inject: [ApiShutdownCoordinator],
+          useFactory: (shutdown: ApiShutdownCoordinator) => {
+            const runtime = new RedisRateLimitRuntime(redisUrl);
+            shutdown.register('rate-limit', () => runtime.close());
+            return runtime;
+          },
+        },
         override === undefined
           ? {
               provide: RATE_LIMIT_CONSUMER,
-              inject: [ApiShutdownCoordinator],
-              useFactory: (shutdown: ApiShutdownCoordinator) => {
-                const runtime = new RedisRateLimitRuntime(redisUrl);
-                shutdown.register('rate-limit', () => runtime.close());
-                return runtime;
-              },
+              useExisting: RATE_LIMIT_CONCURRENCY,
             }
           : { provide: RATE_LIMIT_CONSUMER, useValue: override },
         {

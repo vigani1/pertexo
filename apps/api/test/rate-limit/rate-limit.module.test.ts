@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   RATE_LIMIT_CONSUMER,
+  RATE_LIMIT_CONCURRENCY,
   RateLimitModule,
 } from '../../src/platform/rate-limit/rate-limit.module.js';
 import type { ApiShutdownCoordinator } from '../../src/platform/health/drain-state.js';
 
 describe('rate-limit module wiring', () => {
-  it('uses an explicitly supplied consumer without creating a runtime', () => {
+  it('uses an explicitly supplied rate consumer', () => {
     const override = { consume: vi.fn() };
     const module = RateLimitModule.register(
       'redis://unused.example.test',
@@ -26,10 +27,10 @@ describe('rate-limit module wiring', () => {
       (candidate) =>
         typeof candidate === 'object' &&
         'provide' in candidate &&
-        candidate.provide === RATE_LIMIT_CONSUMER,
+        candidate.provide === RATE_LIMIT_CONCURRENCY,
     );
 
-    expect(provider).toMatchObject({ provide: RATE_LIMIT_CONSUMER });
+    expect(provider).toMatchObject({ provide: RATE_LIMIT_CONCURRENCY });
     expect(provider).toHaveProperty('useFactory');
     const candidate: unknown = provider;
     if (

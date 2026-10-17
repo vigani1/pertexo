@@ -1,5 +1,7 @@
 import { PassThrough, Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import { finished, pipeline } from 'node:stream/promises';
+import { EXPORT_MAX_MILLIS, exportBudgetMillis } from './limits.js';
+import { watchExportProgress } from './progress.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { DataTablesStore } from '@pertexo/database/data-tables';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
@@ -21,6 +23,9 @@ export async function sendTableExport(
   };
   reply.raw.once('close', onClose);
   let output: PassThrough | undefined;
+  let completion: Promise<void> | undefined;
+  let deadline: NodeJS.Timeout | undefined;
+  let stopWatching: (() => void) | undefined;
   const abortResponse = () => {
     reply.raw.destroy();
   };
@@ -33,6 +38,19 @@ export async function sendTableExport(
           ...input,
           signal,
           consume: async (csv, table) => {
+            deadline = setTimeout(() => {
+              disconnected.abort(new Error('CSV export time budget exceeded'));
+            }, exportBudgetMillis(table));
+            deadline.unref();
+            stopWatching = watchExportProgress(reply.raw, () => {
+              disconnected.abort(
+                new Error('CSV export stalled for 60 seconds'),
+              );
+              abortResponse();
+            });
+            completion = finished(reply.raw, { signal, cleanup: true });
+            // Observe early socket errors while the producer is still running.
+            void completion.catch(() => undefined);
             output = new PassThrough({ highWaterMark: 64 * 1024 });
             output.once('error', abortResponse);
             reply.header('Content-Type', 'text/csv; charset=utf-8');
@@ -53,10 +71,11 @@ export async function sendTableExport(
             );
           },
         });
-        // A clean EOF certifies that the transaction and its cleanup succeeded too.
+        // A clean EOF certifies that every batch and its cleanup succeeded.
         output?.end();
+        await completion;
       },
-      { timeoutMillis: 30 * 60 * 1000 },
+      { timeoutMillis: EXPORT_MAX_MILLIS },
     );
   } catch (error) {
     if (output === undefined) throw error;
@@ -66,6 +85,8 @@ export async function sendTableExport(
     // A queued stream can still become an empty 200 before headers are sent.
     abortResponse();
   } finally {
+    if (deadline !== undefined) clearTimeout(deadline);
+    stopWatching?.();
     reply.raw.off('close', onClose);
   }
 }

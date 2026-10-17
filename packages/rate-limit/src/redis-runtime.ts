@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { Redis } from 'ioredis';
 
 import {
@@ -48,6 +49,43 @@ export class RedisRateLimitRuntime {
     decision: RateLimitDecision,
   ): Promise<DistributedRateLimitResult> {
     return this.limiter.consume(decision);
+  }
+
+  /** A bounded exclusive slot shared by instances; a crash cannot retain it forever. */
+  public async acquireExclusiveSlot(
+    scope: string,
+    ttlMs: number,
+  ): Promise<{ release(): Promise<void> } | null> {
+    if (!Number.isSafeInteger(ttlMs) || ttlMs < 1 || ttlMs > 3_600_000)
+      throw new RangeError(
+        'Slot lifetime must be 1 through 3600000 milliseconds',
+      );
+    const key = `pertexo:admission:${createHash('sha256').update(scope).digest('hex')}`;
+    const owner = randomUUID();
+    const acquired = await this.withDeadline(async () => {
+      await this.connect();
+      return this.redis.eval(
+        "return redis.call('SET', KEYS[1], ARGV[1], 'NX', 'PX', ARGV[2])",
+        1,
+        key,
+        owner,
+        String(ttlMs),
+      );
+    });
+    if (acquired === null) return null;
+    if (acquired !== 'OK') throw new Error('Invalid concurrency slot result');
+    return {
+      release: () =>
+        this.withDeadline(async () => {
+          await this.connect();
+          await this.redis.eval(
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
+            1,
+            key,
+            owner,
+          );
+        }),
+    };
   }
 
   public close(): Promise<void> {

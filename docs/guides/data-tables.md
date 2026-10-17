@@ -94,15 +94,25 @@ JSON framing counts too. Split larger files into smaller imports.
 
 **Export all rows** downloads the whole table. **Export filtered rows** downloads
 every matching row. Neither is limited to the visible page or to 1 MB. Exports
-use row creation order, independently of the page's current sort. Headers and
-rows come from one consistent snapshot, even if another member edits the table.
+use row creation order, independently of the page's current sort. Each batch
+reads the current rows; this is not a snapshot. Rows changed during a
+long export may or may not appear, depending on when their batch is read. Avoid
+editing while exporting when you need a consistent copy. A column change or
+loss of access interrupts the export; download it again after the change.
 
 The server streams small batches directly to your browser's download manager,
 which shows progress and lets you cancel. An interrupted export is a failed
 download, never a successful partial CSV. An error before the transfer starts
 opens a separate error page and keeps your table open. Retry the download after
-addressing the error. Exports have a 30-minute time budget; filter very slow
-exports. Starts are limited to five per person and ten per workspace per minute.
+addressing the error. Only one export per workspace and two per API instance
+can run at once. Extra
+requests say an export is already running; wait or cancel the active download.
+The server releases its database connection between batches, including while
+waiting for your browser. No write progress for about 60 seconds aborts the
+transfer. The total budget is one minute plus one second per stored MB, capped
+at five minutes (based on the whole table, even for a filtered export). Filter
+very slow exports. Starts remain limited to five per person and ten per
+workspace per minute.
 
 Text that could execute as a spreadsheet formula is prefixed with an apostrophe.
 This protects spreadsheet users; remove that prefix deliberately if importing

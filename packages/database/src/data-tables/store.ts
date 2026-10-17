@@ -187,16 +187,19 @@ export function createDataTablesStore(
           () => editTableSchema(client, input),
         ),
       ),
-    exportCsv: (input) =>
-      read(input, async (client) => {
-        const table = await requireTable(client, input.workspaceId, {
-          id: input.tableId,
-        });
-        await input.consume(
-          exportTableCsv(client, input.workspaceId, table, input.query),
-          table,
-        );
-      }),
+    exportCsv: async (input) => {
+      const table = await read(input, (client) =>
+        requireTable(client, input.workspaceId, { id: input.tableId }),
+      );
+      const csv = exportTableCsv(
+        (work) => read(input, work),
+        input.workspaceId,
+        table,
+        input.query,
+        input.signal,
+      );
+      await input.consume(csv, table);
+    },
     remove: (input) =>
       write(input, (client) =>
         command(

@@ -13,9 +13,6 @@ import {
   apiPool,
   workflowId,
 } from '../support/workflow-authoring.js';
-import { withTenantScopedReadClient } from '../../src/tenant-access/transactions.js';
-import { requireTable } from '../../src/data-tables/read.js';
-import { exportTableCsv } from '../../src/data-tables/csv/export.js';
 import {
   withWorkspaceTransaction,
   withTenantScopedClient,
@@ -371,7 +368,7 @@ it('streams complete CSV beyond the former cap with UTF-8 and quoting', async ()
   expect(filtered.rowCount).toBe(2);
 });
 
-it('exports one schema/data snapshot while a concurrent rename commits', async () => {
+it('aborts an export rather than mixing headers and rows after a column rename', async () => {
   const table = await create();
   await store.importRows({
     ...scope(),
@@ -379,28 +376,25 @@ it('exports one schema/data snapshot while a concurrent rename commits', async (
     idempotencyKey: randomUUID(),
     rows: [{ key: 'a', amount: 2 }],
   });
-  const exported = await withTenantScopedReadClient(
-    apiPool,
-    scope(),
-    async (client) => {
-      const snapshot = await requireTable(client, workspaceId, {
-        id: table.id,
-      });
-      await edit(table.id, {
-        operation: 'rename_column',
-        columnId: 'amount',
-        name: 'total',
-      });
-      let csv = '';
-      for await (const chunk of exportTableCsv(client, workspaceId, snapshot, {
-        filters: [],
-      }))
-        csv += chunk;
-      return { csv };
-    },
-  );
-  expect(exported.csv).toContain('"key","amount","note"');
-  expect(exported.csv).toContain('"a","2",""');
+  await expect(
+    store.exportCsv({
+      ...scope(),
+      tableId: table.id,
+      query: { filters: [] },
+      consume: async (csv) => {
+        const iterator = csv[Symbol.asyncIterator]();
+        expect((await iterator.next()).value).toContain(
+          '"key","amount","note"',
+        );
+        await edit(table.id, {
+          operation: 'rename_column',
+          columnId: 'amount',
+          name: 'total',
+        });
+        await iterator.next();
+      },
+    }),
+  ).rejects.toThrow(/columns changed during export/iu);
   expect((await current(table.id)).columns[1]?.name).toBe('total');
 });
 
