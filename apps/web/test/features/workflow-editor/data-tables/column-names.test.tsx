@@ -15,7 +15,7 @@ import {
 import { createEditorStore } from '@/features/workflow-editor/model/state/store';
 import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/commands';
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
-import { step, link } from '../../support/fixtures/for-each';
+import { step, link } from '../../../support/fixtures/for-each';
 const amountColumn = {
   id: 'amount',
   name: 'amount',
