@@ -51,7 +51,7 @@ function composeProject(env: Environment): string | undefined {
   if (
     project === undefined ||
     project !== env.COMPOSE_PROJECT_NAME ||
-    !/^(?:pertexo-ci-[0-9]+-[0-9]+-browser|pertexo-concurrency-browser-[a-z0-9][a-z0-9-]{6,30}[a-z0-9])$/u.test(
+    !/^(?:pertexo-ci-[0-9]+-[0-9]+-(?:browser|integration)|pertexo-concurrency-browser-[a-z0-9][a-z0-9-]{6,30}[a-z0-9])$/u.test(
       project,
     )
   )

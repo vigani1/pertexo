@@ -1,6 +1,7 @@
 import {
   expiredRunSql,
   RUN_DETAILS_RETENTION_SQL,
+  RUN_SUMMARY_RETENTION_SQL,
 } from '../runs/data-policy.js';
 import { VARIABLE_SET_RETENTION_RULE } from '../variables/retention.js';
 import { API_TOKEN_RETENTION_RULE } from './identity/api-tokens.js';
@@ -21,6 +22,10 @@ import {
  */
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
+  {
+    name: 'trigger_skips',
+    statement: `with page as (select id from app.usage_events where category='trigger.skipped' and occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL} order by occurred_at,id limit $1) delete from app.usage_events event using page where event.id=page.id and event.category='trigger.skipped' and event.occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
+  },
   {
     name: 'workflow_test_snapshots',
     statement: `with page as (

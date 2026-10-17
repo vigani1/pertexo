@@ -1,3 +1,5 @@
+import { WorkflowAlreadyRunningError } from '../commands/concurrency.js';
+import { recordWorkflowTriggerSkip } from '../../triggers/skips.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -149,14 +151,16 @@ export async function acceptErrorWorkflow(
     await client.query('release savepoint error_workflow_admission');
   } catch (error) {
     const reason =
-      error instanceof WorkspaceRunQuotaExceededError
-        ? 'queue_full'
-        : error instanceof WorkspaceRunAdmissionDeniedError
-          ? 'workspace_unavailable'
-          : error instanceof ErrorWorkflowVersionUnavailableError ||
-              error instanceof CallableInputInvalidError
-            ? 'invalid_target'
-            : undefined;
+      error instanceof WorkflowAlreadyRunningError
+        ? 'concurrency_limit'
+        : error instanceof WorkspaceRunQuotaExceededError
+          ? 'queue_full'
+          : error instanceof WorkspaceRunAdmissionDeniedError
+            ? 'workspace_unavailable'
+            : error instanceof ErrorWorkflowVersionUnavailableError ||
+                error instanceof CallableInputInvalidError
+              ? 'invalid_target'
+              : undefined;
     if (reason === undefined) throw error;
     await client.query('rollback to savepoint error_workflow_admission');
     await client.query('release savepoint error_workflow_admission');
@@ -165,6 +169,15 @@ export async function acceptErrorWorkflow(
       (await deferErrorWorkflowForQueue(client, input))
     )
       return;
+    if (reason === 'concurrency_limit')
+      await recordWorkflowTriggerSkip(
+        {
+          db: drizzle(client, { schema: databaseSchema }),
+          workspaceId: parseWorkspaceId(input.workspaceId),
+        },
+        candidate.target_workflow_id,
+        'workflow_error',
+      );
     await refuse(reason);
   }
 }

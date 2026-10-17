@@ -152,6 +152,7 @@
               "workflow.name_conflict",
               "workflow.pause_conflict",
               "workflow.auto_pause_settings_conflict",
+              "workflow.already_running",
               "workflow.concurrency_revision_conflict",
               "workflow.concurrency_limit_exceeded",
               "workflow.concurrency_limit_unavailable",
@@ -269,22 +270,44 @@
       },
       "WebhookIngressResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "runId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "runId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "replayed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "runId",
+              "replayed"
+            ],
+            "additionalProperties": false
           },
-          "replayed": {
-            "type": "boolean"
+          {
+            "type": "object",
+            "properties": {
+              "skipped": {
+                "type": "boolean",
+                "const": true
+              },
+              "reason": {
+                "type": "string",
+                "const": "concurrency_limit"
+              }
+            },
+            "required": [
+              "skipped",
+              "reason"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "runId",
-          "replayed"
-        ],
-        "additionalProperties": false
+        ]
       },
       "WebhookManagementCommandResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -886,6 +909,7 @@
                   "type": "string",
                   "enum": [
                     "accepted",
+                    "skipped",
                     "replayed",
                     "authentication_failed",
                     "invalid_request",
@@ -940,6 +964,10 @@
                       "type": "null"
                     }
                   ]
+                },
+                "skipReason": {
+                  "type": "string",
+                  "const": "concurrency_limit"
                 }
               },
               "required": [

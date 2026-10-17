@@ -143,7 +143,7 @@ describe('workflow concurrency application boundary', () => {
       { limit: 10_001, expectedRevision: 1 },
       { limit: 1, expectedRevision: 2_147_483_648 },
       { limit: null, expectedRevision: 0 },
-      { limit: 1, expectedRevision: 1, overflow: 'skip' },
+      { limit: 1, expectedRevision: 1, overflow: 'drop' },
     ])
       await expect(
         controls.update({ ...commandInput, request }),

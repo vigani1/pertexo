@@ -125,3 +125,41 @@ it('retains an uncertain original command across a schema refresh', async () => 
     screen.getByText('Original accepted message.', { exact: true }),
   ).toBeVisible();
 });
+
+it('keeps entered values after a definite busy response and uses a new key for a fresh attempt', async () => {
+  const keys: (string | null)[] = [];
+  mockServer.use(
+    http.get(path, () => HttpResponse.json({ versionId, form })),
+    http.post(`${path}/submit`, ({ request }) => {
+      keys.push(request.headers.get('Idempotency-Key'));
+      return HttpResponse.json(
+        keys.length === 1
+          ? {
+              accepted: false,
+              skipped: true,
+              reason: 'concurrency_limit',
+              replayed: false,
+            }
+          : { accepted: true, replayed: false, thankYouMessage: 'Received.' },
+      );
+    }),
+  );
+  mount();
+  const user = userEvent.setup();
+  await user.type(
+    await screen.findByLabelText('Message', { exact: true }),
+    'Keep this response',
+  );
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  expect(
+    await screen.findByText('This workflow is busy.', { exact: false }),
+  ).toBeVisible();
+  expect(screen.getByLabelText('Message', { exact: true })).toHaveValue(
+    'Keep this response',
+  );
+  expect(screen.queryByRole('heading', { name: 'Response sent' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  await screen.findByRole('heading', { name: 'Response sent' });
+  expect(keys).toHaveLength(2);
+  expect(keys[1]).not.toBe(keys[0]);
+});

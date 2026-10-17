@@ -1,4 +1,7 @@
-import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
+import {
+  ArtifactMetadataNotFoundError,
+  WorkflowAlreadyRunningError,
+} from '@pertexo/database/runs';
 import { z } from 'zod';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 
@@ -24,6 +27,10 @@ export class WorkflowRunIdempotencyConflictError extends Error {
 }
 
 export function mapWorkflowRunError(error: unknown): ApplicationError {
+  if (error instanceof WorkflowAlreadyRunningError)
+    return applicationError('workflow.already_running', {
+      safeDetail: error.message,
+    });
   if (error instanceof ArtifactMetadataNotFoundError)
     return applicationError('request.invalid', {
       safeDetail:

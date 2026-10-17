@@ -118,6 +118,7 @@ describe.runIf(fixture.enabled)(
           values: { message: 'Original', channels: ['SMS', 'Email'] },
           idempotencyKey: randomUUID(),
         });
+        if (!run.accepted) throw new Error('Expected an admitted form run');
         let taskId = '';
         await workers.until(async () => {
           const rows = await fixture.workerQuery<{ id: string }>(
@@ -207,6 +208,7 @@ describe.runIf(fixture.enabled)(
           values: { message: 'Expiry' },
           idempotencyKey: randomUUID(),
         });
+        if (!run.accepted) throw new Error('Expected an admitted form run');
         await workers.until(async () => {
           expect(
             await fixture.workerQuery(

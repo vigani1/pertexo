@@ -45,7 +45,7 @@ export const runErrorWorkflowIntents = appSchema.table(
     ),
     check(
       'run_error_workflow_intents_state_valid',
-      sql`((status = 'pending' AND accepted_run_id IS NULL AND refusal_code IS NULL AND completed_at IS NULL) OR (status = 'accepted' AND accepted_run_id IS NOT NULL AND refusal_code IS NULL AND completed_at IS NOT NULL) OR (status = 'refused' AND accepted_run_id IS NULL AND refusal_code IN ('target_unavailable','workspace_unavailable','queue_full','invalid_target','target_not_published') AND completed_at IS NOT NULL)) IS TRUE`,
+      sql`((status = 'pending' AND accepted_run_id IS NULL AND refusal_code IS NULL AND completed_at IS NULL) OR (status = 'accepted' AND accepted_run_id IS NOT NULL AND refusal_code IS NULL AND completed_at IS NOT NULL) OR (status = 'refused' AND accepted_run_id IS NULL AND refusal_code IN ('target_unavailable','workspace_unavailable','queue_full','invalid_target','target_not_published','concurrency_limit') AND completed_at IS NOT NULL)) IS TRUE`,
     ),
     check(
       'run_error_workflow_intents_target_valid',

@@ -1,3 +1,5 @@
+import { requireWorkflowConcurrency } from './concurrency.js';
+export { WorkflowAlreadyRunningError } from './concurrency.js';
 import { runInputRetentionSql } from '../data-policy.js';
 import { variableRevisionForAcceptance } from './variables.js';
 import { requireFormAdmission } from './forms.js';
@@ -408,6 +410,11 @@ export async function acceptWorkflowRun(
   let insertedRuns;
   await lockExecutionArtifactReferences(transaction, parsed.runInput);
   try {
+    await requireWorkflowConcurrency(
+      transaction,
+      parsed.workflowId,
+      parsed.triggerType,
+    );
     insertedRuns = await transaction.db
       .insert(workflowRuns)
       .values({

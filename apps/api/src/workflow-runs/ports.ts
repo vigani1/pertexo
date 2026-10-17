@@ -184,6 +184,7 @@ export type WorkflowRunStatisticsRecord = Readonly<{
     createdAtFrom: string;
     createdAtBefore: string;
     total: number;
+    skippedTriggerEvents?: number;
     byStatus: WorkflowRunStatusCounts;
   }>;
   workflows?: Readonly<{

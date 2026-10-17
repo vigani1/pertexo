@@ -1,3 +1,4 @@
+import { runAdmissionError } from '@/features/workflow-runs/commands.public';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import { sampleErrorDetail } from '../../model/testing/samples';
 import { isApiError } from '@/lib/api/error';
@@ -15,6 +16,8 @@ export function parseCommandJson(value: string, message: string): unknown {
  * such as "publishing" or "this run", used as "Your role doesn’t allow …".
  */
 export function commandErrorMessage(error: unknown, action: string): string {
+  const admissionError = runAdmissionError(error);
+  if (admissionError !== undefined) return admissionError;
   const sampleDetail = sampleErrorDetail(error);
   if (sampleDetail !== undefined) return sampleDetail;
   if (error instanceof Error && !isApiError(error)) return error.message;

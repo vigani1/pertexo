@@ -286,6 +286,14 @@ describe('workspace purge', () => {
           { tenant: 'secret' },
         ],
       );
+      const skipId = randomUUID();
+      await owner.query(
+        `insert into app.usage_events
+          (id,workspace_id,category,quantity,resource_type,resource_id,idempotency_key,metadata)
+         values($1::uuid,$2,'trigger.skipped',1,'workflow',$3,$1::text,
+           '{"triggerType":"webhook","reason":"concurrency_limit"}')`,
+        [skipId, workspaceId, workflowId],
+      );
       const securityFactId = randomUUID();
       await owner.query(
         `insert into app.transport_security_audit_facts

@@ -276,3 +276,7 @@ workspace as well as the token. Cancellation retries reuse state, not a new run.
 Keep the command keys and reviewed files in your deployment records, protect any
 sensitive workflow inputs there, and use the JSON code/request ID when asking the
 operator for help. Do not copy secrets or Authorization headers into diagnostics.
+
+With a workflow’s [Skip concurrency policy](concurrency.md), manual and API
+starts at the workflow limit return HTTP 409 `workflow.already_running`. No run
+is created; retry when space is available.

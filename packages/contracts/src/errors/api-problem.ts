@@ -56,6 +56,7 @@ export const API_PROBLEM_CODES = [
   'workflow.name_conflict',
   'workflow.pause_conflict',
   'workflow.auto_pause_settings_conflict',
+  'workflow.already_running',
   'workflow.concurrency_revision_conflict',
   'workflow.concurrency_limit_exceeded',
   'workflow.concurrency_limit_unavailable',

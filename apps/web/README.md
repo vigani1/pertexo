@@ -15,10 +15,12 @@ retained run activity, with independent snapshots and exact server-window
 drilldowns (ADR 057). It does not introduce billing, an operation meter,
 warnings, quota editing or calendar reporting.
 
-ADR 058's first workflow concurrency slice adds a current queue-only cap to
-workflow Settings and timestamped queued-run blocker explanations. It preserves
-workspace limits and explains grandfathered active/reserved runs. Skip overflow,
-per-trigger defaults and independent workflow queue limits remain deferred.
+ADR 058's workflow concurrency settings add a current Queue/Skip cap to workflow
+Settings and timestamped queued-run blocker explanations. It preserves workspace
+limits and explains grandfathered active/reserved runs. Skip records automatic
+trigger events without creating runs and refuses manual starts at the workflow
+limit. Per-trigger defaults and independent workflow queue limits remain
+deferred.
 
 Named synthetic JSON input cases live in the workflow hub and Run with input
 dialog. They retain their published-version context; loading makes a detached

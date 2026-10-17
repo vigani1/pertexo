@@ -311,6 +311,37 @@ describe('retention rules', () => {
     expect(audit.rows.map(({ id }) => id)).toEqual([recentAudit]);
   });
 
+  it('expires skip summaries in bounded pages while keeping recent skips and other usage', async () => {
+    const old = [randomUUID(), randomUUID(), randomUUID()];
+    const recent = randomUUID();
+    const other = randomUUID();
+    for (const id of [...old, recent, other])
+      await admin.query(
+        `insert into app.usage_events
+          (id,workspace_id,category,quantity,resource_type,resource_id,idempotency_key,metadata,occurred_at)
+         values($1::uuid,$2,$3,1,'workflow',$4,$1::text,'{}',$5)`,
+        [
+          id,
+          workspaceId,
+          id === other ? 'preview.execution' : 'trigger.skipped',
+          randomUUID(),
+          daysAgo(id === recent ? 80 : 100),
+        ],
+      );
+
+    const first = await retention.enforce();
+    expect(first.removed.trigger_skips).toBe(2);
+    expect(first.more).toBe(true);
+    await enforceUntilIdle();
+    const remaining = await admin.query<{ id: string }>(
+      'select id from app.usage_events where id=any($1::uuid[])',
+      [[...old, recent, other]],
+    );
+    expect(remaining.rows.map(({ id }) => id).sort()).toEqual(
+      [recent, other].sort(),
+    );
+  });
+
   it('skips a rule another worker is running', async () => {
     const old = await insertRun({ completedDaysAgo: 40 });
     await insertExecutionDetail(old);

@@ -26,7 +26,7 @@ export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
     const loaded = await query.refetch();
     if (loaded.isSuccess) command.reset();
   }
-  if (command.data !== undefined)
+  if (command.data?.accepted === true)
     return <SubmissionReceipt scope={scope} receipt={command.data} />;
   if (query.isPending) return <Skeleton className="h-72 w-full" />;
   if (query.isError)
@@ -57,7 +57,10 @@ export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
 function SubmissionReceipt({
   scope,
   receipt,
-}: Readonly<{ scope: FormScope; receipt: FormSubmissionResponse }>) {
+}: Readonly<{
+  scope: FormScope;
+  receipt: Extract<FormSubmissionResponse, { accepted: true }>;
+}>) {
   useEffect(() => {
     if (receipt.redirectUrl !== undefined)
       window.location.replace(receipt.redirectUrl);
@@ -131,6 +134,12 @@ function PublishedForm({
         submitLabel="Send response"
         onSubmit={(values) => command.send({ versionId, values })}
       />
+      {command.data?.accepted === false ? (
+        <Notice tone="warning">
+          This workflow is busy. Try again shortly. Your response has not been
+          sent.
+        </Notice>
+      ) : null}
       {command.error === undefined ? null : (
         <Notice
           tone={command.uncertain ? 'warning' : 'destructive'}

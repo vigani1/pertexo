@@ -398,5 +398,8 @@ function publicDelivery(
     replayCheck: delivery.replayCheck,
     byteLength: delivery.bodyBytes,
     runId: delivery.runId,
+    ...(delivery.skipReason === undefined
+      ? {}
+      : { skipReason: delivery.skipReason }),
   };
 }

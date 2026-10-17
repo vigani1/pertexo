@@ -74,7 +74,7 @@ export const workflowConcurrencyContractPaths = {
     put: {
       operationId: 'updateWorkflowConcurrencySettings',
       description:
-        'Update queue-only concurrency policy at its independent revision. Requires workflow:update and active workspace. Positive cap requires active workspace entitlement; committed reservations are grandfathered. Does not publish or change trigger pause.',
+        'Update workflow Queue/Skip concurrency policy at its independent revision. Requires workflow:update and active workspace. Positive cap requires active workspace entitlement; committed reservations are grandfathered. Does not publish or change trigger pause.',
       security: [{ cookieSession: [] }],
       parameters: [
         ...parameters,

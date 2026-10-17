@@ -34,6 +34,12 @@ export function describeDelivery(
   >,
 ): DeliveryOutcome {
   switch (delivery.outcome) {
+    case 'skipped':
+      return {
+        tone: 'skipped',
+        label: 'Skipped',
+        detail: 'Concurrency limit reached. No run started.',
+      };
     case 'accepted':
       return { tone: 'success', label: 'Accepted', detail: 'Started a run.' };
     case 'replayed':

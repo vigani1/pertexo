@@ -121,3 +121,8 @@ and cannot create a second run or overwrite another person's response.
 
 Later work: file fields, public mid-run input, email links, conditional fields and
 richer validation. These are not available in this release.
+
+## When the workflow is busy
+
+A workflow can [queue or skip at its concurrency limit](concurrency.md).
+Skipped events create no run and remain visible in trigger history and Usage.

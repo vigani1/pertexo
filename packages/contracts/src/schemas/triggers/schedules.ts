@@ -83,6 +83,7 @@ export const scheduleOccurrenceSchema = z
     recordedAt: z.iso.datetime(),
     outcome: scheduleOccurrenceOutcomeSchema,
     runId: z.uuid().nullable(),
+    skipReason: z.literal('concurrency_limit').optional(),
   })
   .strict();
 export const scheduleOccurrenceListResponseSchema = z

@@ -109,3 +109,29 @@ then settings and reporting with integrated evidence. Keep F29's tracker explici
 that skip behavior and independent queue configuration are not delivered. F12
 must be merged and its natural checks inspected before F29 release; implementation
 may proceed on the reviewed F12 base while its CI runs.
+
+## Amendment — 2026-10-17: Skip overflow
+
+The owner approved a workflow-wide Queue/Skip choice. Queue remains the default;
+this supersedes the earlier deferral of Skip and per-trigger default proposals.
+The operational cap still spans versions and uses existing workspace admission
+serialization. Skip also counts already accepted queued work so racing arrivals
+cannot both pass before a reservation exists; active and reserved work count once.
+Existing backlog is grandfathered. No cap means no additional refusal. Ordinary
+timed waits count; quiescent human waits release/reacquire capacity under ADR 076,
+unchanged.
+
+Exact request replays resolve first. A skipped webhook gets 202 with
+`{ skipped: true, reason: "concurrency_limit" }`; a schedule advances with a
+reasoned skipped occurrence; a form keeps its input and explains that the
+workflow is busy. Manual/API starts, replay and recovery get a typed 409. Calls
+and draft tests keep queuing. An error-workflow trigger records a visible
+concurrency refusal on its source intent.
+
+Skipped logical trigger events have metadata-only 90-day summaries, counted
+separately from retained runs and visible in authorized workflow trigger history.
+Native webhook delivery and schedule occurrence logs keep their outcomes.
+Idempotent retries do not count another logical skip or later create a run.
+The new writer protocol fence rejects incompatible run writers when Skip is
+configured. Quiesced API/worker deployment and reverting policies to Queue before
+rollback preserve enforcement. See F29 for the implementation and evidence.

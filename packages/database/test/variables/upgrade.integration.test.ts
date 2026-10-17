@@ -85,6 +85,12 @@ async function legacyDatabase(
 it('backfills current and retained historical sets, fixed empty sets and purged runs without copies', async () => {
   await legacyDatabase(
     async ({ admin, upgrade, workspaceId, workflowId, owner }) => {
+      await admin.query(
+        `insert into app.workflow_concurrency_policies
+          (workspace_id,workflow_id,active_run_limit,revision)
+         values($1,$2,3,7)`,
+        [workspaceId, workflowId],
+      );
       const retained = randomUUID(),
         empty = randomUUID(),
         purged = randomUUID(),
@@ -118,7 +124,16 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0021_code_diagnostics.sql',
         '0022_draft_workflow_tests.sql',
         '0023_webhook_authentication.sql',
+        '0024_concurrency_skip.sql',
       ]);
+      expect(
+        (
+          await admin.query(
+            'select active_run_limit,revision,overflow from app.workflow_concurrency_policies where workspace_id=$1 and workflow_id=$2',
+            [workspaceId, workflowId],
+          )
+        ).rows,
+      ).toEqual([{ active_run_limit: 3, revision: 7, overflow: 'queue' }]);
       expect(
         (
           await admin.query(

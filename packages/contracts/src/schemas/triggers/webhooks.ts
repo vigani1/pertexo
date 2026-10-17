@@ -62,7 +62,15 @@ export const webhookManagementCommandResponseSchema = z.discriminatedUnion(
 );
 export const webhookIngressResponseSchema = z
   .object({ runId: z.uuid(), replayed: z.boolean() })
-  .strict();
+  .strict()
+  .or(
+    z
+      .object({
+        skipped: z.literal(true),
+        reason: z.literal('concurrency_limit'),
+      })
+      .strict(),
+  );
 
 /**
  * ADR 045: what happened to one attributed request, metadata only. ADR 056
@@ -71,6 +79,7 @@ export const webhookIngressResponseSchema = z
  */
 const webhookDeliveryOutcomeSchema = z.enum([
   'accepted',
+  'skipped',
   'replayed',
   'authentication_failed',
   'invalid_request',
@@ -112,6 +121,7 @@ export const webhookDeliverySchema = z
     replayCheck: webhookDeliveryReplayCheckSchema,
     byteLength: z.number().int().min(0).max(262_144).nullable(),
     runId: z.uuid().nullable(),
+    skipReason: z.literal('concurrency_limit').optional(),
   })
   .strict();
 export const webhookDeliveryListResponseSchema = z

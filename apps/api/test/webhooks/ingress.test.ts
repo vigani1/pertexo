@@ -71,6 +71,38 @@ describe('generic webhook ingress', () => {
     );
   });
 
+  it.each(['signed', 'secret_url'] as const)(
+    'returns a plain 202 skip for verified %s deliveries without opening a workflow-response wait',
+    async (mode) => {
+      const f = setup({
+        ...verification,
+        authentication: { mode, allowedOrigins: [] },
+      });
+      f.database.acceptVerifiedDelivery.mockResolvedValue({
+        skipped: true,
+        reason: 'concurrency_limit',
+      });
+      const input =
+        mode === 'signed'
+          ? request('{}', currentSecret)
+          : {
+              method: 'POST' as const,
+              url: `/hooks/${endpointKey}`,
+              headers: { 'content-type': 'application/json' },
+              payload: '{}',
+            };
+      const response = await f.application.inject(input);
+      expect(response.statusCode).toBe(202);
+      expect(response.json()).toEqual({
+        skipped: true,
+        reason: 'concurrency_limit',
+      });
+      expect(f.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+      expect(f.database.readResponse).not.toHaveBeenCalled();
+      expect(f.database.recordRejectedDelivery).not.toHaveBeenCalled();
+      expect(f.delivery).toHaveBeenCalledWith('skipped');
+    },
+  );
   it.each(['secret_url', 'header_secret'] as const)(
     'authenticates %s without a Pertexo signature',
     async (mode) => {

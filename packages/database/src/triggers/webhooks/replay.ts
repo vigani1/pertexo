@@ -8,6 +8,7 @@ export type WebhookReplayRecord = Readonly<{
   request_fingerprint: string;
   workflow_run_id: string | null;
   active: boolean;
+  skip_reason: 'concurrency_limit' | null;
 }>;
 export type WebhookReplayIdentity = Readonly<{
   endpointId: string;
@@ -28,7 +29,7 @@ export async function readLockedReplay(
   identity: WebhookReplayIdentity,
 ): Promise<WebhookReplayRecord | undefined> {
   const result = await transaction.db.execute<WebhookReplayRecord>(sql`
-    select request_fingerprint,workflow_run_id,
+    select request_fingerprint,workflow_run_id,skip_reason,
            expires_at>clock_timestamp() active
       from app.webhook_trigger_replay_records
      where workspace_id=${transaction.workspaceId}
@@ -42,9 +43,13 @@ export async function readLockedReplay(
 export function resolveExactReplay(
   replay: WebhookReplayRecord,
   requestFingerprint: string,
-): Readonly<{ runId: string; replayed: true }> {
+):
+  | Readonly<{ runId: string; replayed: true }>
+  | Readonly<{ skipped: true; reason: 'concurrency_limit' }> {
   if (replay.request_fingerprint !== requestFingerprint)
     throw new WebhookDeliveryReplayMismatchError();
+  if (replay.skip_reason === 'concurrency_limit')
+    return Object.freeze({ skipped: true, reason: 'concurrency_limit' });
   if (replay.workflow_run_id === null)
     throw new Error('Webhook replay record is incomplete');
   return Object.freeze({ runId: replay.workflow_run_id, replayed: true });
