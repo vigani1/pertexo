@@ -328,8 +328,9 @@ dependency, API, database migration, service, role or CI job.
   draft edit/save, keeping ETags and serialized saves. Read-only editors cannot
   apply. Use the existing dialog, plain controls and a stable focus destination.
 - Editor-local pure helpers own the adoption/impact calculation; the inspector
-  composes them with the existing table query and scoped draft store. No moves
-  are needed. Update the guide and clarify ADR 083's explicit-alias rule.
+  composes them with the existing table query and scoped draft store. Production
+  files stay in place; the new component test lives in its data-tables area,
+  relocated in a separate move-only commit. Update the guide and clarify ADR 083's explicit-alias rule.
 
 ### Qualification / tracker
 
@@ -351,4 +352,5 @@ Owned real API/worker/browser journeys passed at 1280px and 375px: V1 retains
 `amount`; explicit adoption and a new V2 return `total` with the same IDs. Undo,
 reload, no automatic alias save and later-path disclosure passed in the browser.
 Root dependency/boundary checks and web build/lint/types passed. React Doctor
-reports no new diagnostics (92/100 baseline). No file moves or new dependencies.
+reports no new diagnostics (92/100 baseline). No production file moves or new dependencies. The new component test was
+relocated into its data-tables area in a separate move-only commit.
