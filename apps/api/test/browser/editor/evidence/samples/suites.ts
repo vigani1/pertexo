@@ -23,7 +23,7 @@ export async function verifySuiteEvidence(database: Pool) {
     'select run.id,run.workflow_version_id,run.trigger_type,run.status,run.created_at,run.completed_at from app.workflow_test_suite_cases entry join app.workflow_runs run on run.id=entry.run_id where entry.suite_id=$1 order by entry.ordinal',
     [one.id],
   );
-  expect(runs.rows).toHaveLength(2);
+  expect(runs.rows).toHaveLength(50);
   for (const run of runs.rows)
     expect(run).toMatchObject({
       workflow_version_id: one.snapshot_id,
@@ -37,11 +37,20 @@ export async function verifySuiteEvidence(database: Pool) {
     'select status,report from app.workflow_test_suite_cases where suite_id=$1 order by ordinal',
     [one.id],
   );
-  expect(reports.rows.map((row) => row.status)).toEqual(['passed', 'failed']);
+  expect(reports.rows.map((row) => row.status)).toEqual([
+    'passed',
+    'failed',
+    ...Array.from({ length: 48 }, () => 'passed'),
+  ]);
   expect(JSON.parse(reports.rows[1]?.report ?? 'null')).toMatchObject({
     assertions: [{ actual: { value: 8, matched: false } }],
   });
   const ids = runs.rows.map((run) => run.id);
+  expect(new Set(runs.rows.map((run) => run.workflow_version_id)).size).toBe(1);
+  for (let index = 1; index < runs.rows.length; index++)
+    expect(runs.rows[index - 1]?.completed_at.getTime()).toBeLessThanOrEqual(
+      runs.rows[index]?.created_at.getTime() ?? 0,
+    );
   expect(
     (
       await database.query(

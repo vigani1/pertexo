@@ -382,8 +382,8 @@ migration/readiness gate with matching readers/workers.
   workflow FK validation temporarily releases FORCE under the migration's table
   lock, then restores it in the same transaction.
 - Real browser/API/worker: saved cases created through the editor, one passing
-  and one failing comparison, selected-step reports with frozen names, test-history
-  output access, advisory failed/outdated publish warning, no ordinary run-list
+  and one failing comparison among 50 real serial worker runs, selected-step reports with frozen names, test-history
+  output access even for cases older than the 20-item standalone history, advisory failed/outdated publish warning, no ordinary run-list
   entries and no test-triggered notices. The existing standalone draft/pin and
   real publication journeys also pass. Desktop 1280 and phone 375 inspected.
 - Mocked browser: 202 existing journeys and two suite-specific desktop/phone
