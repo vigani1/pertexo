@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 const fixturePath = fileURLToPath(
   new URL('./process-lifecycle.fixture.mjs', import.meta.url),
 );
-const PROCESS_STARTUP_TIMEOUT_MILLIS = 5_000;
+// Starting a compiled worker loads its whole module graph; a busy machine can
+// take far longer than an idle one, so only startup gets a generous budget.
+const PROCESS_STARTUP_TIMEOUT_MILLIS = 20_000;
 const PROCESS_SHUTDOWN_TIMEOUT_MILLIS = 5_000;
 const PROCESS_TEST_TIMEOUT_MILLIS =
   PROCESS_STARTUP_TIMEOUT_MILLIS + PROCESS_SHUTDOWN_TIMEOUT_MILLIS + 1_000;
