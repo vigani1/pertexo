@@ -1,14 +1,18 @@
-import type { NodeConfig } from '../../../model/inspector/draft';
+import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
+import { EventCoordinationSetup } from '../event-coordination/setup';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { SchemaField } from '../fields/schema-field';
 
 export function WebhookTriggerSetup({
-  config,
+  node,
+  graph,
   form,
-}: Readonly<{ config: NodeConfig; form: NodeFormApi }>) {
+}: Readonly<{ node: WorkflowNode; graph: GraphLevel; form: NodeFormApi }>) {
+  const config = node.config;
   const mode = config.responseMode ?? 'immediate';
   return (
     <>
+      <EventCoordinationSetup node={node} graph={graph} form={form} />
       <SchemaField
         config={{ ...config, responseMode: mode }}
         form={form}

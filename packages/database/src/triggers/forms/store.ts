@@ -1,3 +1,11 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { lockEventCoordination } from '../coordination/keys.js';
+import { readCoordinatedEventHistory } from '../coordination/history.js';
+import { prepareFormEvent } from './prepare.js';
+import {
+  createEventCoordinationPreparation,
+  closeEventCoordinationStore,
+} from '../coordination/prepare.js';
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
@@ -18,8 +26,10 @@ export function createFormStore(
   runtime?: DatabaseRuntime,
 ): FormStore {
   const lease = acquireDatabasePool(config, runtime);
+  const eventPreparation = createEventCoordinationPreparation();
   return Object.freeze({
-    close: () => lease.close(),
+    close: () =>
+      closeEventCoordinationStore(() => lease.close(), eventPreparation),
     discover: async (input) => {
       const result = await lease.pool.query<{
         workspaceId: string;
@@ -64,8 +74,14 @@ export function createFormStore(
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),
-    submit: (input, grant) =>
-      withTenantScopedClient(
+    submit: async (input, grant) => {
+      const prepared = await prepareFormEvent(
+        lease.pool,
+        input,
+        grant,
+        eventPreparation,
+      );
+      return withTenantScopedClient(
         lease.pool,
         {
           workspaceId: input.workspaceId,
@@ -75,6 +91,12 @@ export function createFormStore(
           await client.query('select app.lock_workspace_run_admission($1)', [
             input.workspaceId,
           ]);
+          if (
+            prepared !== undefined &&
+            !('error' in prepared) &&
+            prepared.coordination !== undefined
+          )
+            await lockEventCoordination(input.workspaceId, drizzle(client));
           if (grant === undefined)
             await authorizeForm(client, input, undefined, true);
           const loaded = await readFormVersion(client, input, 'share');
@@ -88,7 +110,19 @@ export function createFormStore(
             prepare,
             grant !== undefined,
             loaded,
+            prepared,
           );
+        },
+        input.signal === undefined ? {} : { signal: input.signal },
+      );
+    },
+    history: (input) =>
+      withTenantScopedReadClient(
+        lease.pool,
+        { workspaceId: input.workspaceId, actorId: input.actorId },
+        async (client) => {
+          await authorizeForm(client, input, undefined, false, true);
+          return readCoordinatedEventHistory(client, input);
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),

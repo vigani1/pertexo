@@ -397,6 +397,9 @@ function publicDelivery(
     signatureCheck: delivery.signatureCheck,
     replayCheck: delivery.replayCheck,
     byteLength: delivery.bodyBytes,
+    ...(delivery.coordination === undefined
+      ? {}
+      : { coordination: delivery.coordination }),
     runId: delivery.runId,
     ...(delivery.skipReason === undefined
       ? {}

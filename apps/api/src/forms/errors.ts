@@ -1,5 +1,6 @@
 import {
   FormUnavailableError,
+  EventCoordinationUnavailableError,
   FormChangedError,
   FormAccessConflictError,
 } from '@pertexo/database/triggers';
@@ -20,6 +21,10 @@ export async function formOperation<T>(
   try {
     return await operation();
   } catch (error) {
+    if (error instanceof EventCoordinationUnavailableError)
+      return throwApplicationError(
+        applicationError('trigger.coordination_unavailable'),
+      );
     if (error instanceof FormUnavailableError)
       return throwApplicationError(
         applicationError('form.unavailable', {

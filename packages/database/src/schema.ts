@@ -1,4 +1,8 @@
 import {
+  triggerEventWindows,
+  triggerCoordinatedEvents,
+} from './schema/event-coordination/records.js';
+import {
   workspaceDataTableQuotas,
   workspaceDataTables,
   workspaceDataTableRows,
@@ -203,6 +207,8 @@ export {
 } from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
+  triggerEventWindows,
+  triggerCoordinatedEvents,
   workspaceDataTableQuotas,
   workspaceDataTables,
   workspaceDataTableRows,

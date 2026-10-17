@@ -30,7 +30,7 @@ export const RETENTION_RULES = Object.freeze([
   },
   {
     name: 'trigger_skips',
-    statement: `with page as (select id from app.usage_events where category='trigger.skipped' and occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL} order by occurred_at,id limit $1) delete from app.usage_events event using page where event.id=page.id and event.category='trigger.skipped' and event.occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
+    statement: `with page as (select id from app.usage_events where category in ('trigger.skipped','trigger.coordinated') and occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL} order by occurred_at,id limit $1) delete from app.usage_events event using page where event.id=page.id and event.category in ('trigger.skipped','trigger.coordinated') and event.occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
   },
   {
     name: 'workflow_test_suites',
@@ -168,6 +168,14 @@ export const RETENTION_RULES = Object.freeze([
       where delivery.id = page.id`,
   },
   {
+    name: 'coordinated_events',
+    statement: `with page as(select event.id from app.trigger_coordinated_events event where event.status<>'pending' and event.expires_at<=clock_timestamp() and not exists(select 1 from app.webhook_trigger_deliveries delivery where delivery.workspace_id=event.workspace_id and delivery.coordination_event_id=event.id) and not exists(select 1 from app.webhook_trigger_replay_records replay where replay.workspace_id=event.workspace_id and replay.coordination_event_id=event.id) order by event.expires_at,event.id limit $1) delete from app.trigger_coordinated_events event using page where event.id=page.id and event.status<>'pending' and event.expires_at<=clock_timestamp()`,
+  },
+  {
+    name: 'event_windows',
+    statement: `with page as(select state.id from app.trigger_event_windows state where state.expires_at<=clock_timestamp() and not exists(select 1 from app.trigger_coordinated_events event where event.workspace_id=state.workspace_id and event.key_id=state.id) order by state.expires_at,state.id limit $1) delete from app.trigger_event_windows state using page where state.id=page.id and state.expires_at<=clock_timestamp() and not exists(select 1 from app.trigger_coordinated_events event where event.workspace_id=state.workspace_id and event.key_id=state.id)`,
+  },
+  {
     name: 'schedule_occurrences',
     statement: `
       with page as (
@@ -202,6 +210,7 @@ export const RETENTION_RULES = Object.freeze([
           and not exists (select 1 from app.webhook_trigger_replay_records replay
             where replay.workspace_id = run.workspace_id
               and replay.workflow_run_id = run.id)
+          and not exists (select 1 from app.trigger_coordinated_events event where event.workspace_id=run.workspace_id and event.run_id=run.id)
           and not exists (select 1 from app.trigger_schedule_occurrences occurrence
             where occurrence.workspace_id = run.workspace_id
               and occurrence.workflow_run_id = run.id)

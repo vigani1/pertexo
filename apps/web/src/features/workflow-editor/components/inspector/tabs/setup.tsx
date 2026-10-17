@@ -241,7 +241,7 @@ function SetupControls({
       </Suspense>
     );
   if (node.definition.key === 'core.webhook')
-    return <WebhookTriggerSetup config={config} form={form} />;
+    return <WebhookTriggerSetup node={node} graph={graph} form={form} />;
   if (node.definition.key === 'core.respond_webhook')
     return <WebhookResponseSetup config={config} form={form} />;
   if (node.definition.key === 'core.read_file')

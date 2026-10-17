@@ -24,3 +24,5 @@ export {
   type WorkflowVariableReference,
   type WorkflowVariableSource,
 } from './expressions/variable-usage.js';
+
+export { resolveEventCoordinationKey } from './event-coordination/key.js';

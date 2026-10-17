@@ -1,9 +1,11 @@
+import { eventCoordinationPolicySchema } from '@pertexo/workflow-model';
 import { boundedNodeJsonSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 // Endpoint keys and signing secrets belong to materialized trigger state.
 export const CORE_WEBHOOK_CONFIG_SCHEMA = z
   .object({
+    coordination: eventCoordinationPolicySchema.exactOptional(),
     responseMode: z
       .enum(['immediate', 'workflow'])
       .optional()

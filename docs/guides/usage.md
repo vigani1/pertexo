@@ -35,3 +35,8 @@ while the page is visible; **Refresh** requests a fresh snapshot. A temporary re
 failure marks an old snapshot stale; losing access removes it. Workflow names and
 links require the existing workflow-read permission. There is no billing, quota
 editor or lifetime reporting in this page.
+
+Coordinated trigger events appear as a separate activity count. Each new business
+event counts once, including events later replaced or refused; exact transport
+retries and worker scans do not add usage. These events can also start ordinary
+runs, so the counts are separate measures. See [event coordination](event-coordination.md).

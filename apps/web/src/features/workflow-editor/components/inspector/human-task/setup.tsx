@@ -1,8 +1,12 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import { EventCoordinationSetup } from '../event-coordination/setup';
 import { TaskContextEditor } from './context-editor';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import { FormDestination } from './destination';
-import { FormAccessControl } from '@/features/forms/sharing.public';
+import {
+  FormAccessControl,
+  FormEventHistory,
+} from '@/features/forms/sharing.public';
 import type { MemberFormScope } from '@/features/forms/queries.public';
 import {
   approvalConfigSchema,
@@ -92,7 +96,9 @@ export function HumanFormSetup({
         />
         <FormDestination value={captured.redirectUrl} form={form} />
         <FormFields fields={captured.fields} form={form} />
+        <EventCoordinationSetup node={node} graph={graph} form={form} />
         <FormAccessControl scope={scope} editable={form.editable} />
+        {form.editable ? <FormEventHistory scope={scope} /> : null}
       </>
     );
   function changeAudience(next: TaskAudience) {

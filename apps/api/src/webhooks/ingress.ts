@@ -328,9 +328,17 @@ async function acceptWebhook(
         ? {}
         : { idempotencyKeyHash: sha256(idempotency) }),
       payload,
+      signal: encryptionSignal,
       checkpointFactory: dependencies.checkpointFactory,
       ...(traceparent === undefined ? {} : { traceparent }),
     });
+    if ('coordinated' in result) {
+      record(() => {
+        telemetry.delivery('accepted');
+      });
+      await reply.code(202).send(result);
+      return;
+    }
     if ('skipped' in result) {
       record(() => {
         telemetry.delivery('skipped');

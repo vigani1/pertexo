@@ -1,3 +1,13 @@
+import { lockEventCoordination } from '../coordination/keys.js';
+import { coordinateVerifiedWebhook } from './coordinate.js';
+import {
+  createEventCoordinationPreparation,
+  closeEventCoordinationStore,
+} from '../coordination/prepare.js';
+import type {
+  EventCoordinationPolicy,
+  EventCoordinationReceipt,
+} from '@pertexo/workflow-model';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
 import { recordWorkflowTriggerSkip } from '../skips.js';
 import {
@@ -59,6 +69,7 @@ import {
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
+  withWorkspaceReadTransaction,
   type WorkspaceTransaction,
 } from '../../tenant-access/transactions.js';
 const uuidSchema = z.uuid();
@@ -104,6 +115,7 @@ export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
   payload: unknown;
   checkpointFactory: InitialCheckpointFactory;
   traceparent?: string;
+  signal?: AbortSignal;
 }>;
 
 export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
@@ -158,6 +170,7 @@ export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
         responseWaitSeconds?: number;
       }>
     | Readonly<{ skipped: true; reason: 'concurrency_limit' }>
+    | EventCoordinationReceipt
   >;
   close(): Promise<void>;
 }
@@ -325,6 +338,7 @@ export function createWebhookTriggerDatabase(
 ): WebhookTriggerDatabase {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
+  const eventPreparation = createEventCoordinationPreparation();
   const command = <T>(
     input: Command,
     work: (client: PoolClient) => Promise<T>,
@@ -587,10 +601,46 @@ export function createWebhookTriggerDatabase(
         dedupeKind,
         dedupeKeyHash,
       };
+      const candidate = await withWorkspaceReadTransaction(
+        pool,
+        verification.workspaceId,
+        async (transaction) => {
+          const replay = await transaction.db.execute(
+            sql`select 1 from app.webhook_trigger_replay_records where workspace_id=${transaction.workspaceId} and endpoint_id=${replayIdentity.endpointId} and dedupe_kind=${dedupeKind} and dedupe_key_hash=${dedupeKeyHash} and expires_at>clock_timestamp()`,
+          );
+          if (replay.rows.length > 0) return { replay: true as const };
+          const row = (
+            await transaction.db.execute<{
+              desired_config: { coordination?: EventCoordinationPolicy };
+            }>(
+              sql`select desired_config from app.workflow_triggers where workspace_id=${transaction.workspaceId} and id=${verification.triggerId} and workflow_version_id=${verification.workflowVersionId}`,
+            )
+          ).rows[0];
+          return {
+            replay: false as const,
+            policy: row?.desired_config.coordination,
+          };
+        },
+      );
+      const prepared = candidate.replay
+        ? undefined
+        : await eventPreparation.prepare(
+            candidate.policy,
+            input.payload,
+            input.signal,
+          );
       return withWorkspaceTransaction(
         pool,
         uuidSchema.parse(verification.workspaceId),
         async (transaction) => {
+          await transaction.db.execute(
+            sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
+          );
+          if (prepared !== undefined)
+            await lockEventCoordination(
+              transaction.workspaceId,
+              transaction.db,
+            );
           await lockEndpointDedupeKey(transaction, replayIdentity);
           const replay = await readLockedReplay(transaction, replayIdentity);
           await lockEligibleEndpoint(
@@ -602,14 +652,27 @@ export function createWebhookTriggerDatabase(
           if (replay?.active === true) {
             const replayed = resolveExactReplay(replay, requestFingerprint);
             await insertWebhookDelivery(transaction, verification, {
-              outcome: 'skipped' in replayed ? 'skipped' : 'replayed',
+              outcome:
+                'skipped' in replayed
+                  ? 'skipped'
+                  : 'coordinated' in replayed
+                    ? 'coordinated'
+                    : 'replayed',
               signatureCheck: 'verified',
               replayCheck: 'duplicate',
               bodyBytes: input.bodyBytes,
-              ...('skipped' in replayed ? {} : { runId: replayed.runId }),
+              ...(replay.coordination_event_id === null
+                ? {}
+                : { coordinationEventId: replay.coordination_event_id }),
+              ...('runId' in replayed
+                ? { runId: replayed.runId }
+                : 'coordinated' in replayed
+                  ? { coordinationEventId: replayed.eventId }
+                  : {}),
               dedupeKind,
             });
-            if ('skipped' in replayed) return replayed;
+            if ('skipped' in replayed || 'coordinated' in replayed)
+              return replayed;
             const seconds = await webhookReplayWait(
               transaction,
               replayed.runId,
@@ -638,6 +701,15 @@ export function createWebhookTriggerDatabase(
             transaction,
             verification.workflowVersionId,
           );
+          if (prepared !== undefined)
+            return coordinateVerifiedWebhook(
+              transaction,
+              input,
+              prepared,
+              projection,
+              deliveryId,
+              dedupeKind,
+            );
           const initial = input.checkpointFactory(projection);
           let accepted;
           await transaction.db.execute(sql`savepoint webhook_run_admission`);
@@ -718,6 +790,7 @@ export function createWebhookTriggerDatabase(
       );
     },
     ...createWebhookDeliveryLog(pool),
-    close: () => lease.close(),
+    close: () =>
+      closeEventCoordinationStore(() => lease.close(), eventPreparation),
   });
 }

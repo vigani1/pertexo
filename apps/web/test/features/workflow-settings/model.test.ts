@@ -173,3 +173,72 @@ describe('webhook delivery outcomes', () => {
     },
   );
 });
+
+it.each(['accepted', 'replayed', 'coordinated'] as const)(
+  'shows current coordinated status for an originally %s delivery',
+  (outcome) => {
+    const event = {
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      nodeId: 'webhook',
+      source: 'webhook' as const,
+      mode: 'debounce' as const,
+      outcome: 'debounced' as const,
+      status: 'started' as const,
+      reason: null,
+      runId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      versionNumber: 1,
+      receivedAt: '2026-10-17T00:00:00Z',
+      dueAt: null,
+      finishedAt: '2026-10-17T00:00:02Z',
+    };
+    expect(
+      describeDelivery({
+        outcome,
+        signatureCheck: 'verified',
+        replayCheck: 'new',
+        coordination: event,
+      }),
+    ).toMatchObject({ tone: 'success', label: 'Started' });
+    expect(
+      describeDelivery({
+        outcome,
+        signatureCheck: 'verified',
+        replayCheck: 'new',
+        coordination: {
+          ...event,
+          status: 'coalesced',
+          reason: 'newer_event',
+          runId: null,
+        },
+      }),
+    ).toMatchObject({ tone: 'skipped', label: 'Replaced by a newer event' });
+  },
+);
+
+it('keeps a transport retry distinct from a second coordinated run', () => {
+  const coordination = {
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    nodeId: 'webhook',
+    source: 'webhook' as const,
+    mode: 'debounce' as const,
+    outcome: 'debounced' as const,
+    status: 'started' as const,
+    reason: null,
+    runId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    versionNumber: 1,
+    receivedAt: '2026-10-17T00:00:00Z',
+    dueAt: null,
+    finishedAt: '2026-10-17T00:00:02Z',
+  };
+  const described = describeDelivery({
+    outcome: 'replayed',
+    signatureCheck: 'verified',
+    replayCheck: 'duplicate',
+    coordination,
+  });
+  expect(described).toMatchObject({
+    tone: 'neutral',
+    label: 'Duplicate · Started',
+  });
+  expect(described.detail).toContain('No additional run.');
+});

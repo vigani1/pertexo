@@ -60,6 +60,7 @@ describe('workflow-run public contracts', () => {
       '/v1/workspaces/{workspaceId}/pending-tasks/audience',
       '/v1/workspaces/{workspaceId}/pending-tasks/{taskId}',
       '/v1/workspaces/{workspaceId}/pending-tasks/{taskId}/decide',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/form/events',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/form',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/form/submit',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/form/access',

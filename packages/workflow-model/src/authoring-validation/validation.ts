@@ -1,3 +1,8 @@
+import {
+  eventCoordinationPolicySchema,
+  isEventCoordinationTrigger,
+} from '../event-coordination/contract.js';
+import { inspectEventCoordinationExpression } from '../event-coordination/key.js';
 import { workspaceVariableNameSchema } from '../variables/contract.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
@@ -163,6 +168,31 @@ export function validateAuthoringBatch(
           graph: node.structured.body,
           path: `${nodePath}.structured.body`,
         });
+      if (
+        isEventCoordinationTrigger(node.definition) &&
+        node.config.coordination !== undefined
+      ) {
+        const coordination = eventCoordinationPolicySchema.safeParse(
+          node.config.coordination,
+        );
+        const message = !coordination.success
+          ? 'Correct the event coordination settings.'
+          : coordination.data.key.kind === 'expression'
+            ? inspectEventCoordinationExpression(
+                coordination.data.key.expression,
+              )
+            : undefined;
+        if (message !== undefined) {
+          const issue = {
+            code: 'invalid_expression' as const,
+            path: `${nodePath}.config.coordination.key`,
+            message,
+          };
+          admitIssue(issue);
+          issues.push(issue);
+          if (issues.length === WORKFLOW_VALIDATION_MAX_ISSUES) break;
+        }
+      }
       const supportsExpressions = expressionDefinitions.has(
         `${node.definition.key}\u0000${String(node.definition.version)}`,
       );

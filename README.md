@@ -218,6 +218,10 @@ Pinned samples, whole-draft tests and saved-case suites with publish warnings:
 Receive events with Signed, Secret URL or Header secret authentication:
 [webhooks guide](docs/guides/webhooks.md).
 
+Group webhook/form business events by an input key with optional deduplication,
+debounce or throttle:
+[event coordination guide](docs/guides/event-coordination.md).
+
 Reply to a waiting webhook caller:
 [webhook responses](docs/guides/webhook-responses.md).
 

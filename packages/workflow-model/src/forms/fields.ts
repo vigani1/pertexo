@@ -1,3 +1,4 @@
+import { eventCoordinationPolicySchema } from '../event-coordination/contract.js';
 import { formRedirectUrlSchema } from './links.js';
 import { storageTextSchema } from '../json/text.js';
 import { inspectJsonValue } from '../json/canonical.js';
@@ -108,6 +109,7 @@ export const formThankYouMessageSchema = storageTextSchema
   .max(FORM_LIMITS.thankYouCharacters);
 export const formConfigSchema = z
   .object({
+    coordination: eventCoordinationPolicySchema.exactOptional(),
     title: storageTextSchema.trim().min(1).max(160).default('Send a request'),
     instructions: storageTextSchema.max(2_000).default(''),
     thankYouMessage: formThankYouMessageSchema.exactOptional(),

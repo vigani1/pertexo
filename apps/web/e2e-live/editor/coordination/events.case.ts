@@ -1,0 +1,396 @@
+import { createHmac, randomUUID } from 'node:crypto';
+import { expect, type Page } from '@playwright/test';
+import {
+  formConfigSchema,
+  type EventCoordinationPolicy,
+} from '@pertexo/workflow-model';
+import {
+  webhookTriggerListResponseSchema,
+  webhookIngressResponseSchema,
+  workflowRunListResponseSchema,
+} from '@pertexo/contracts';
+import { test } from '../../support/browser-fixture';
+import {
+  registerEditorUser,
+  createEditorWorkspace,
+} from '../../support/ordinary-editor-session';
+import {
+  createEditorWorkflow,
+  readEditorDraft,
+  publishSingleStep,
+  waitForRun,
+} from '../../support/authoring/single-step';
+const node = (id: string, key: string, x: number) => ({
+  id,
+  definition: { key, version: 1 },
+  configVersion: 1,
+  config: {},
+  position: { x, y: 0 },
+  inputMappings: {},
+  connectionRefs: {},
+});
+async function csrf(page: Page) {
+  const cookie = (await page.context().cookies()).find(
+    (c) => c.name === 'pertexo_csrf',
+  );
+  if (cookie === undefined) throw new Error('CSRF missing');
+  return decodeURIComponent(cookie.value);
+}
+async function save(
+  page: Page,
+  path: string,
+  trigger: 'core.webhook' | 'core.form',
+) {
+  const first = node('entry', trigger, 0);
+  const finish = node('finish', 'core.terminate', 280);
+  const graph = {
+    settings: {},
+    nodes: [
+      {
+        ...first,
+        config:
+          trigger === 'core.form'
+            ? formConfigSchema.parse({
+                title: 'Order request',
+                fields: [
+                  {
+                    id: 'order',
+                    name: 'orderId',
+                    label: 'Order',
+                    type: 'text',
+                  },
+                  {
+                    id: 'message',
+                    name: 'message',
+                    label: 'Message',
+                    type: 'text',
+                  },
+                ],
+              })
+            : { responseMode: 'workflow', responseWaitSeconds: 1 },
+      },
+      finish,
+    ],
+    edges: [
+      {
+        id: 'finish',
+        source: { nodeId: 'entry', port: 'out' },
+        target: { nodeId: 'finish', port: 'in' },
+      },
+    ],
+  };
+  const draft = await page.request.get(`${path}/draft`);
+  const result = await page.request.put(`${path}/draft`, {
+    headers: {
+      'If-Match': draft.headers().etag ?? '',
+      'x-csrf-token': await csrf(page),
+    },
+    data: { graph },
+  });
+  expect(result.status()).toBe(200);
+  await page.reload();
+  await page.getByTestId('rf__node-entry').focus();
+  await page.keyboard.press('Enter');
+}
+async function configure(
+  page: Page,
+  path: string,
+  mode: EventCoordinationPolicy['mode'],
+  isForm = false,
+) {
+  await page.getByLabel('Policy', { exact: true }).click();
+  await page
+    .getByRole('option', {
+      name:
+        mode === 'deduplicate'
+          ? 'Deduplicate'
+          : mode === 'debounce'
+            ? 'Debounce'
+            : 'Throttle',
+      exact: true,
+    })
+    .click();
+  await page
+    .getByLabel('Run input path', { exact: true })
+    .fill(isForm ? '$.values.orderId' : '$.orderId');
+  await page.keyboard.press('Tab');
+  if (mode === 'debounce')
+    await page.getByLabel('Quiet time (seconds)', { exact: true }).fill('2');
+  if (mode === 'throttle') {
+    await page.getByLabel('Window (seconds)', { exact: true }).fill('5');
+    await page.getByLabel('Extra events', { exact: true }).click();
+    await page
+      .getByRole('option', { name: 'Delay in arrival order', exact: true })
+      .click();
+    const limit = page.getByLabel('Runs per window', { exact: true });
+    await limit.fill('');
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByText('Use a whole number from 1 to 1000.', { exact: true }),
+    ).toBeVisible();
+    await expect
+      .poll(
+        async () =>
+          (await readEditorDraft(page, path)).graph.nodes[0]?.config
+            .coordination,
+      )
+      .toMatchObject({ limit: 1 });
+    await limit.fill('1');
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByText('Use a whole number from 1 to 1000.', { exact: true }),
+    ).toHaveCount(0);
+  }
+  await page.keyboard.press('Tab');
+  await expect
+    .poll(
+      async () =>
+        (await readEditorDraft(page, path)).graph.nodes[0]?.config.coordination,
+    )
+    .toMatchObject({ mode });
+}
+async function send(
+  origin: string,
+  endpoint: string,
+  secret: string,
+  key: string,
+  payload: unknown,
+) {
+  const body = JSON.stringify(payload),
+    timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = `v1=${createHmac('sha256', Buffer.from(secret, 'base64url'))
+    .update(timestamp + '.' + body)
+    .digest('hex')}`;
+  try {
+    const response = await fetch(new URL(`/hooks/${endpoint}`, origin), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-pertexo-timestamp': timestamp,
+        'x-pertexo-signature': signature,
+        'idempotency-key': key,
+      },
+      body,
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok)
+      throw new Error(
+        `Owned webhook returned HTTP ${String(response.status)}.`,
+      );
+    return {
+      status: response.status,
+      body: (await response.json()) as unknown,
+    };
+  } catch {
+    throw new Error('Owned coordination request failed; credentials omitted');
+  }
+}
+test('coordinates all three real signed webhook policies with visible history', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120000);
+  const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN,
+    origin = process.env.PERTEXO_API_PROXY_TARGET;
+  if (mail === undefined || origin === undefined)
+    throw new Error('Owned fixture required');
+  await registerEditorUser(page, request, mail, 'Coordination owner');
+  const workspaceId = await createEditorWorkspace(
+    page,
+    'Coordination qualification',
+  );
+  for (const mode of ['deduplicate', 'debounce', 'throttle'] as const) {
+    const path = await createEditorWorkflow(
+      page,
+      workspaceId,
+      `Coordinated ${mode}`,
+    );
+    const workflowId = path.split('/').at(-1);
+    if (workflowId === undefined) throw new Error('Missing workflow');
+    const editorUrl = new URL(page.url()).pathname;
+    await save(page, path, 'core.webhook');
+    await configure(page, path, mode);
+    await page.setViewportSize({ width: 375, height: 768 });
+    await page
+      .getByRole('navigation', { name: 'Editor panels' })
+      .getByRole('button', { name: 'Step', exact: true })
+      .click();
+    await page.getByLabel('Policy', { exact: true }).scrollIntoViewIfNeeded();
+    await expect(page.getByLabel('Policy', { exact: true })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `/tmp/pertexo-f25-${mode}-phone.png`,
+      animations: 'disabled',
+    });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await publishSingleStep(page, path);
+    await expect
+      .poll(async () => {
+        const response = await page.request.get(`${path}/triggers`);
+        return webhookTriggerListResponseSchema.parse(await response.json())
+          .items[0]?.status;
+      })
+      .toBe('configuration_required');
+    await page.goto(`${editorUrl}/triggers`);
+    await page
+      .getByRole('button', { name: 'Create endpoint', exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', {
+      name: 'Store these now',
+      exact: true,
+    });
+    await expect(dialog).toBeVisible();
+    const codes = await dialog.locator('code').allTextContents();
+    const endpoint = codes[0],
+      secret = codes.at(-1);
+    if (endpoint === undefined || secret === undefined)
+      throw new Error('Reveal missing');
+    await dialog.getByRole('switch', { name: 'I’ve stored these' }).click();
+    await dialog.getByRole('button', { name: 'Done', exact: true }).click();
+    const key = randomUUID(),
+      payload = { orderId: 'order-42', message: 'first' };
+    const first = await send(origin, endpoint, secret, key, payload);
+    expect(first.status).toBe(202);
+    const replay = await send(origin, endpoint, secret, key, payload);
+    expect(replay.status).toBe(202);
+    const receipt = webhookIngressResponseSchema.parse(first.body);
+    expect(replay.body).toEqual(
+      'runId' in receipt ? { ...receipt, replayed: true } : receipt,
+    );
+    const next = await send(origin, endpoint, secret, randomUUID(), {
+      ...payload,
+      message: 'latest',
+    });
+    expect(next.status).toBe(202);
+    expect(next.body).toMatchObject({
+      coordinated: true,
+      outcome:
+        mode === 'deduplicate'
+          ? 'deduplicated'
+          : mode === 'debounce'
+            ? 'debounced'
+            : 'throttled',
+    });
+    const read = async () => {
+      const result = await page.request.get(
+        `/v1/workspaces/${workspaceId}/runs?workflowId=${workflowId}&limit=10`,
+      );
+      expect(result.status()).toBe(200);
+      return workflowRunListResponseSchema.parse(await result.json());
+    };
+    const expected = mode === 'throttle' ? 2 : 1;
+    await expect
+      .poll(async () => (await read()).items.length, { timeout: 20000 })
+      .toBe(expected);
+    for (const run of (await read()).items)
+      await waitForRun(page, workspaceId, run.id, 'succeeded');
+    await page.reload();
+    await expect(
+      page
+        .getByText(
+          mode === 'debounce' ? 'Replaced by a newer event' : 'Started',
+          { exact: true },
+        )
+        .first(),
+    ).toBeVisible();
+    await page.screenshot({
+      path: `/tmp/pertexo-f25-${mode}-history.png`,
+      animations: 'disabled',
+    });
+    await page.goto(`/w/${workspaceId}/settings/usage?window=24h`);
+    await expect(
+      page.getByText(
+        new RegExp(
+          `${mode === 'deduplicate' ? '2' : mode === 'debounce' ? '4' : '6'} events evaluated by trigger coordination`,
+          'u',
+        ),
+      ),
+    ).toBeVisible();
+  }
+});
+test('a public coordinated form shows pending without redirect and editor history follows the admitted run', async ({
+  page,
+  request,
+}) => {
+  const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
+  if (mail === undefined) throw new Error('Owned fixture required');
+  await registerEditorUser(page, request, mail, 'Coordinated form owner');
+  const workspaceId = await createEditorWorkspace(page, 'Coordinated forms');
+  const path = await createEditorWorkflow(
+    page,
+    workspaceId,
+    'Coordinated form',
+  );
+  const editorUrl = new URL(page.url()).pathname;
+  await save(page, path, 'core.form');
+  await configure(page, path, 'debounce', true);
+  await publishSingleStep(page, path);
+  const capability = Buffer.from(
+    crypto.getRandomValues(new Uint8Array(32)),
+  ).toString('base64url');
+  const result = await page.request.post(`${path}/form/access`, {
+    headers: {
+      'x-csrf-token': await csrf(page),
+      'Idempotency-Key': randomUUID(),
+    },
+    data: { access: 'public', capability, expectedRevision: 0 },
+  });
+  expect(result.status()).toBe(200);
+  const access = (await result.json()) as { publicId: string };
+  await page.setViewportSize({ width: 375, height: 768 });
+  await page.goto(`/forms/${access.publicId}#${capability}`);
+  await page.getByLabel('Order', { exact: true }).fill('order-42');
+  await page.getByLabel('Message', { exact: true }).fill('Safe pending input');
+  await page
+    .getByRole('button', { name: 'Send response', exact: true })
+    .click();
+  await expect(page.getByText('Pending', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Accepted for later. No run has started yet.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: '/tmp/pertexo-f25-form-phone.png',
+    animations: 'disabled',
+  });
+  await expect
+    .poll(
+      async () => {
+        const r = await page.request.get(`${path}/form/events`);
+        expect(r.status()).toBe(200);
+        const data = (await r.json()) as { items: { status: string }[] };
+        return data.items[0]?.status;
+      },
+      { timeout: 20000 },
+    )
+    .toBe('started');
+  await page.goto(editorUrl);
+  await page.getByTestId('rf__node-entry').focus();
+  await page.keyboard.press('Enter');
+  await page
+    .getByRole('navigation', { name: 'Editor panels' })
+    .getByRole('button', { name: 'Step', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Coordinated form events', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Started', { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page
+    .getByRole('heading', { name: 'Coordinated form events', exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: '/tmp/pertexo-f25-form-history.png',
+    animations: 'disabled',
+  });
+});

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { describeCoordinatedEvent } from '@/features/trigger-events/presentation.public';
 import { ThankYouMessage } from '../components/thank-you';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -28,6 +29,20 @@ export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
   }
   if (command.data?.accepted === true)
     return <SubmissionReceipt scope={scope} receipt={command.data} />;
+  if (command.data !== undefined && 'coordinated' in command.data) {
+    const look = describeCoordinatedEvent(command.data);
+    return (
+      <section className="flex flex-col gap-4">
+        <h1>
+          <Status tone={look.tone}>{look.label}</Status>
+        </h1>
+        <p>{look.detail}</p>
+        <Button variant="outline" onClick={command.reset}>
+          Send another response
+        </Button>
+      </section>
+    );
+  }
   if (query.isPending) return <Skeleton className="h-72 w-full" />;
   if (query.isError)
     return (

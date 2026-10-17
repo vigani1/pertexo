@@ -1,6 +1,8 @@
 import type { InitialCheckpointFactory } from '@pertexo/database/runs';
 import {
   createScheduleTriggerScanner,
+  createTriggerEventScanner,
+  type TriggerEventScanner,
   createWorkflowTriggerReconciliationDatabase,
   type ScheduleTriggerScanner,
   type WorkflowTriggerReconciliationDatabase,
@@ -54,6 +56,7 @@ export type TriggerCompositionFactories = Readonly<{
   consumer: typeof createQueueConsumer;
   reconciliation: typeof createWorkflowTriggerReconciliationDatabase;
   scanner: typeof createScheduleTriggerScanner;
+  coordination: typeof createTriggerEventScanner;
   telemetry: typeof createTriggerRuntimeTelemetry;
   traceRunner: typeof createQueueTraceRunner;
 }>;
@@ -62,6 +65,7 @@ const productionFactories: TriggerCompositionFactories = {
   consumer: createQueueConsumer,
   reconciliation: createWorkflowTriggerReconciliationDatabase,
   scanner: createScheduleTriggerScanner,
+  coordination: createTriggerEventScanner,
   telemetry: createTriggerRuntimeTelemetry,
   traceRunner: createQueueTraceRunner,
 };
@@ -71,6 +75,7 @@ export type TriggerRuntimeDependencies = Readonly<{
   consumerFactory?: typeof createQueueConsumer;
   reconciliation?: WorkflowTriggerReconciliationDatabase;
   scanner?: ScheduleTriggerScanner;
+  coordination?: TriggerEventScanner;
   logger?: StructuredLogger;
   telemetry?: TriggerRuntimeTelemetry;
 }>;
@@ -93,6 +98,7 @@ export async function createTriggerRuntime(
   const traceRunner = factories.traceRunner();
   let reconciliation: WorkflowTriggerReconciliationDatabase | undefined;
   let scanner: ScheduleTriggerScanner | undefined;
+  let coordination: TriggerEventScanner | undefined;
   let consumer: QueueConsumer | undefined;
   try {
     reconciliation =
@@ -110,6 +116,9 @@ export async function createTriggerRuntime(
               claim: options.databaseRuntime,
             },
       );
+    coordination =
+      dependencies.coordination ??
+      factories.coordination(options.database, options.databaseRuntime);
     const handler = createTriggerReconciliationHandler({ reconciliation });
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.triggerLifecycle,
@@ -136,7 +145,7 @@ export async function createTriggerRuntime(
     });
   } catch (error: unknown) {
     const cleanup = await closeOwners(
-      [scanner, reconciliation],
+      [coordination, scanner, reconciliation],
       backgroundTaskShutdownTimeoutMillis,
     );
     if (cleanup.length > 0)
@@ -148,39 +157,50 @@ export async function createTriggerRuntime(
   }
 
   const scheduleScanner = scanner;
+  const eventScanner = coordination;
   return createScannerRuntime({
     name: 'Trigger',
     consumer,
-    owners: [scanner, reconciliation],
+    owners: [coordination, scanner, reconciliation],
     pollIntervalMillis: options.pollIntervalMillis,
     shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
     scan: async (signal) => {
       const started = performance.now();
       const seconds = () => (performance.now() - started) / 1_000;
-      try {
-        const result = await scheduleScanner.scanDue({
+      const outcomes = await Promise.allSettled([
+        scheduleScanner.scanDue({
           leaseOwner: options.leaseOwner,
           limit: options.batchSize,
           leaseSeconds: options.leaseDurationSeconds,
           onTimeWindowSeconds: options.onTimeWindowSeconds,
           checkpointFactory,
           signal,
-        });
+        }),
+        eventScanner.scanDue({
+          limit: options.batchSize,
+          checkpointFactory,
+          signal,
+        }),
+      ]);
+      const scheduled = outcomes[0];
+      if (scheduled.status === 'fulfilled')
         reportDiagnostic(() => {
-          telemetry.scanCompleted(result, seconds());
+          telemetry.scanCompleted(scheduled.value, seconds());
         });
-      } catch (error: unknown) {
-        if (!signal.aborted)
-          reportDiagnostic(() => {
-            telemetry.scanFailed(seconds());
-          });
-        throw error;
-      }
+      else if (!signal.aborted)
+        reportDiagnostic(() => {
+          telemetry.scanFailed(seconds());
+        });
+      const failures = outcomes.flatMap((outcome) =>
+        outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+      );
+      if (failures.length > 0)
+        throw new AggregateError(failures, 'Trigger scan failed');
     },
     scanFailed: (error) => {
       dependencies.logger?.error(
-        'trigger.schedule_scan_failed',
-        { safeErrorCode: 'trigger.schedule_scan_failed' },
+        'trigger.scan_failed',
+        { safeErrorCode: 'trigger.scan_failed' },
         error,
       );
     },

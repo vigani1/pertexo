@@ -1,109 +1,183 @@
-# F25 — Business-event deduplication, debounce and throttling
+# F25 — Trigger event coordination
 
-Status: proposed plan; not implementation-authorized by this document.
-Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
-Scope: Optional durable coordination beyond queue reliability. Relative size: **XL**, not a calendar estimate.
+Status: Deduplicate, Debounce and Throttle implemented; locally qualified
+2026-10-17. Plan reconciled against main after
+F29 #331, F12 #332, F02 #333 and F14 #334. [Roadmap](../product-roadmap.md).
+Decision: [ADR 084](../adr/084-durable-trigger-event-coordination.md).
 
-## Outcome
+## Current foundations and ownership
 
-A workflow can intentionally coalesce bursts or suppress repeated business events with an explicit, inspectable policy.
+Webhooks use database/triggers/webhooks for authenticated delivery, transport
+replay and atomic admission; forms use triggers/forms and ordinary run acceptance.
+Forms have no materialized workflow_triggers row. Their stable identity is the
+workflow and root node. The worker already polls its trigger scanner. PostgreSQL
+owns durable state, RLS, transactions and admission; Redis is delivery only.
 
-## Current implementation and evidence
+| Owner | Responsibility |
+| --- | --- |
+| workflow-model/event-coordination | Shared settings, event-only key rules and pure window decisions |
+| workflow-model/mapping | Shared path/expression contracts and existing resolution, grouped without behavior changes |
+| nodes-core/triggers/webhook; workflow-model/forms | Optional published coordination settings |
+| database/triggers/coordination | Key windows, bounded pending events, history, atomic run admission and due scans |
+| schema/event-coordination | Two shared workspace-scoped physical tables and queue-discovery fence |
+| database/triggers/webhooks and forms | Existing auth/replay checks, prepared event input and shared coordination call |
+| worker/triggers | Run the due scan in the existing trigger runtime and lifecycle |
+| api/webhooks and forms | Existing routes, 202 outcomes and authorized metadata history |
+| web/editor and workflow-settings | Normal key mapping controls, settings and metadata history |
+| lifecycle; usage | Payload removal, bounded expiry/purge and immutable usage facts |
 
-Transport dedupe, idempotency, distributed rate limiting and fair admission exist. These do not automatically provide user-configured debounce windows or business-key event coalescing.
+No service, role, package, queue or CI job is added. Use the existing bounded
+JSONata evaluator, not evaluation on the API event loop. Prepare keys before
+acquiring admission/state locks, then recheck the exact version and current
+authority in the acceptance transaction. Evaluator owners close with their store.
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
+## Decisions
 
-- [packages/queue/src/jobs/contracts.ts](../../packages/queue/src/jobs/contracts.ts)
-- [packages/rate-limit/src/policy.ts](../../packages/rate-limit/src/policy.ts)
-- [Current architecture](../architecture.md)
+- Off by default. One mutually exclusive policy per webhook/Form trigger:
+  Deduplicate, Debounce or Throttle. This implements all three requested modes;
+  composing several policies and a workflow deduplicate step remain later.
+  Settings are part of the saved/published trigger config, not a mutable override.
+- A key is the normal run-input path mapping or a JSONata expression over the
+  event. Webhook input is its JSON payload; Form input is values/submittedBy/
+  submittedAt, so a form field uses `$.values.orderId`. There are no earlier
+  steps and no workspace-variable dependency in a coordination key. A constant
+  expression can intentionally group every event together.
+- Keys are case-sensitive typed text/finite number/boolean, never null, arrays
+  or objects. Text must be nonempty and fit 512 UTF-8 bytes. Canonicalize and
+  SHA-256 hash; store only the hash as the coordination key. No raw key or input
+  in logs/history/usage. Pending input follows existing bounded run-value storage.
+- Scope is workspace/workflow/node/policy fingerprint/key hash. A policy change
+  starts a new namespace; unchanged policies keep their window across publication.
+  Database processing time owns all windows, never a sender timestamp.
+- Deduplicate: fixed window from the first admitted event, default 24 hours,
+  1 second–7 days. Later business-key matches are suppressed without extending
+  that window. Existing transport replay happens first and keeps its behavior;
+  an exact transport retry is not a new business event or usage fact.
+- Debounce: trailing edge, latest complete input wins, default 5 seconds,
+  1 second–1 hour. A new event replaces the pending input and postpones its due
+  time; old history says coalesced. One burst may wait at most 24 hours from its
+  first event, preventing indefinite retention. Expiry is a visible refusal.
+- Throttle: fixed processing-time windows, default 1 run/minute; N is 1–1,000,
+  window 1 second–24 hours. At the limit, choose Skip (default) or Delay.
+  Delayed events keep FIFO order per key and wait at most 24 hours. Tokens are
+  charged only when a run actually starts, including delayed admission; capacity
+  deferral cannot release a burst above the throttle limit. New arrivals cannot
+  overtake a pending delayed event. No global ordering promise across keys.
+- Bound active windows to 10,000/workspace, pending events to 1,000/workspace and
+  64 MiB of stored input. Existing per-event input and ingress rate bounds stay.
+  Replacing a debounce event charges the net input; a refused replacement keeps
+  the prior accepted pending event. These fixed safety bounds are not billing
+  or a new configurable capacity subsystem.
+- One event row owns pending input and its later metadata history. Clear input
+  immediately on start, coalescing, skip or refusal. Keep metadata and usage for
+  90 days, matching trigger delivery/run-summary history. Expired key windows
+  can be removed without retaining input or breaking history. Read expiry is
+  enforced even before bounded maintenance deletes rows.
 
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+## Admission, races and lifecycle
 
-## Dependencies and planning gate
+- Auth, CORS, transport replay, public-form grants, form validation and ordinary
+  rate limits remain before coordination. Exact request retries return the
+  original receipt and never create another event or extend debounce.
+- After the existing workspace admission fence, acquire one transaction-scoped
+  workspace coordination advisory lock before publication/state locks. The
+  existing fence is shared, so this serializes first-key creation and bounded
+  pending budgets. Atomically decide the key window,
+  event, usage and either the normal run/checkpoint/outbox or durable pending
+  state. Worker scanners use the same acceptance owner. Pending row locking and
+  stable event-based run idempotency prevent two scanners or a restart from
+  starting a debounce/delayed event twice. No external effect happens here.
+- A narrow SECURITY DEFINER due-discovery function returns bounded event and
+  workspace identities only, like existing schedule discovery. Real processing
+  runs through workspace RLS. Use the existing trigger polling interval, one
+  eligible head per key and bounded workspace-fair batches; no new job or timer
+  process. The database scan remains authoritative after restart.
+- F29 concurrency applies at actual run admission. Its Skip result is visible
+  as concurrency_limit; Queue keeps ordinary admission. Calls/manual/API starts
+  never use coordination. Test runs/previews/suites bypass ingress coordination.
+- If the ordinary queue is full at release, keep pending for up to 15 minutes
+  from the first due admission attempt, rechecking capacity without consuming a
+  throttle token. Then refuse visibly. This is bounded by the earlier of that deadline and the 24-hour event
+  lifetime. A caller disconnect never cancels an accepted pending event.
+- Recheck active workspace/workflow, unpaused trigger and the pinned publication
+  before release. A changed publication, disabled webhook endpoint, removed
+  trigger, archive or inactive workspace refuses pending work with a safe reason.
+  Already admitted runs keep ordinary semantics. Changing a public Form link
+  affects future submissions; it does not revoke an already accepted event.
+- Retention removes terminal event history before referenced run summaries;
+  workspace purge removes event/window state before workflows and versions.
+  No deletion leaves a payload, key window or blocking foreign key behind.
 
-12 and 13 for bounded policy; one concrete automation demand before implementation.
+## HTTP and editor behavior
 
-Leading/trailing edge, late arrivals, key cardinality, ordering and fairness; do not confuse business dedupe with exactly-once external delivery.
+- Webhooks return 202 with a typed coordinated outcome (deduplicated, debounced,
+  throttled or refused) and event ID when no run is admitted immediately. Normal
+  admitted responses and F29 skips keep their existing shape. Deferred events
+  always acknowledge asynchronously, including response-mode webhooks; later
+  Respond to webhook steps cannot send a second HTTP response.
+- Forms show an explicit pending, duplicate, throttled or refusal message.
+  Accepted pending work is not presented as an already running workflow. Retain
+  the ordinary thank-you/redirect only for immediate admitted submissions.
+  Public responses expose no run link, key, policy expression or internal data.
+- Webhook delivery history retains its original HTTP admission outcome and joins
+  current coordination status/reason/run. Forms gain the same metadata history
+  for editors. Show pending due time, coalesced, started, skipped and refused
+  clearly. No payload/history viewer or operator replay subsystem.
+- Usage shows coordinated-event counts beside ordinary run and skip counts;
+  one immutable fact per new event, not per scan/retry. These counts are separate
+  measures, never a bill or an additive run total.
+- Reuse Weft controls, Status and RecentLog. Key controls use the ordinary value
+  mapping model. Explain fixed windows, latest-event behavior, bounded delays,
+  current publication cancellation and asynchronous acknowledgement. Keep phone,
+  keyboard, reduced-motion and uncertain-command behavior.
 
-Recommendations are not accepted ADRs. Resolve consequential choices before code;
-use the next free ADR number when required. Do not create ADRs for routine fixes.
+## Delivery and acceptance
 
-## User-configurable settings
+One F25 PR. Move-only commits first group shared mapping contracts/resolution
+and split trigger schemas into endpoint, delivery and schedule owners, keeping
+new coordination references acyclic. Imports change with each move. Logic/docs follow separately; every commit is buildable and
+passes its relevant lint, type and tests. No new infrastructure or accounts.
 
-Recommended values, confirmed in this feature's ADR. The server enforces every
-range; the control states its consequence.
+Prove real PostgreSQL same-key races, tenant isolation, expiry boundaries,
+latest-event replacement, FIFO/token behavior at actual admission, queue and
+concurrency refusals, double scans/restart, publication/endpoint invalidation,
+budgets, exact replay, payload clearing, populated upgrade, retention and purge.
+Run real worker and API/browser webhook + form journeys with controlled local
+requests, desktop/phone settings and visible history/usage. Normal repository
+checks, mocked e2e, React Doctor and green exact-head CI gate merge.
 
-| Setting | Default | Range | Who changes it | Consequence shown |
-| --- | --- | --- | --- | --- |
-| Coalescing window | None | 1 second–1 hour | Workflow editors | “Events with the same key within this window start one run” |
+## Qualification — 2026-10-17
 
-## Ownership and structure
+- Real PostgreSQL: 18 coordination cases, 27 webhook cases, and 37 existing
+  form/statistics/populated-upgrade cases pass (82 total). Covers same-key races,
+  workspace isolation, fixed expiry, latest-event replacement, concurrent scanners
+  after restart, FIFO/token accounting, queue deferral and 15-minute refusal,
+  concurrency, invalidated publication/endpoint, budgets, payload clearing,
+  metadata pagination, discovery fences, retention and workspace purge.
+- The existing owned `webhook-responses` browser scenario passes four journeys:
+  all three policies through signed ingress and the real worker; a public Form
+  pending receipt and editor history; ordinary synchronous replies; Secret URL,
+  CORS and CSV reply regression coverage. UI setup, numeric scratch validation,
+  metadata history and usage are exercised at desktop and 375px. Screenshots
+  inspected. No external service or new scenario/job.
+- Full unit, mocked browser, lint/type/build, generated contract, schema,
+  architecture and dependency gates are required. The implementation PR records
+  their final counts and exact-head CI. React Doctor reports 100/100, no findings.
+- Qualification caught and fixed first-key creation races (the old admission
+  fence uses shared locks), timestamp decoding at raw SQL boundaries, the new
+  replay-reference column grant and current-status presentation for retried
+  deliveries. Exact retries retain their original receipt and count once.
 
-Application coordination policy; database durable event/window authority; worker scheduling; model/node contracts; web editor/inspection.
+## Later work
 
-Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
-These are responsibility owners, not a mandate to create empty folders/packages.
-Reuse the post-cleanup canonical owners; do not restore old duplicated paths.
+Policy composition, workflow deduplicate step, external coordination providers,
+per-customer bounds, payload inspection, replaying refused events and billing.
 
-## Frontend work
+## Tracker
 
-Business-key/window configuration, dropped/coalesced status explanations, monitoring and operator recovery where justified.
-
-## Backend work
-
-Durable tenant-scoped coordination state with event-time/processing-time definition, bounded window expiry, atomic winner/wakeup and retention. Redis-only ephemeral locks cannot define durable accepted-event truth.
-
-## Delivery slices
-
-1. Select one operation (for example debounce latest event), not a universal coordination engine.
-2. Define accepted/suppressed/coalesced semantics, quotas and cancellation, then ADR and crash-safe persistence.
-3. Expose UI and real multiworker/time-window proofs before adding other operations.
-
-Each slice ends in a usable, tested behavior; do not ship enabled placeholder
-controls backed by invented responses.
-
-## Acceptance evidence
-
-Boundary races, same key across tenants, crash around window expiry, duplicate wakeup, clock skew, late input, hot-key limits and canceled workflow.
-
-Apply the shared completion checklist: contract/authorization tests, real
-persistence and restart/race tests when relevant, real browser/backend flow for
-visible behavior, and exact reviewed source/CI evidence. Mocks alone cannot close
-the live gate. Record unsupported environments explicitly.
-
-## Non-goals
-
-Changing global admission policy or pretending transport receipts already solve business-event identity.
-
-## Rollout and rollback
-
-Disable new policies while existing accepted windows drain with original semantics.
-
-No production rollout, paid provisioning or real external calls are authorized by
-this plan. New persistent behavior requires additive reader/writer rollout and
-retention/membership-deletion handling before enablement.
-
-## Competitor context
-
-Demand-driven future capability, not claimed as a verified one-to-one competitor parity requirement in this research.
-
-Research checked 2026-09-28; product editions and availability can change.
-This context informs the outcome, not Pertexo's implementation or billing policy.
-
-## Delivery tracker
-
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
-- [ ] Contracts and failure/security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
-
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+- [x] Current code reconciled; recommended decisions recorded before code.
+- [x] Shared persistence and admission qualified.
+- [x] All three modes qualified with real worker/API flows.
+- [x] Editor/history/usage and guides qualified.
+- [x] Local acceptance and release gate recorded. The implementation PR must
+  have green exact-head CI before merge and records the release receipt.

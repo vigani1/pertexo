@@ -822,6 +822,7 @@
             "variables.changed",
             "variables.usage_changed",
             "workflow.variable_snapshot_unavailable",
+            "trigger.coordination_unavailable",
             "form.unavailable",
             "form.changed",
             "form.access_conflict",

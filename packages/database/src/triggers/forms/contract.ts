@@ -4,6 +4,7 @@ import type {
   FormSchemaResponse,
   FormSubmissionRequest,
   FormSubmissionResponse,
+  CoordinatedEventHistory,
 } from '@pertexo/contracts';
 export type FormScope = Readonly<{
   workspaceId: string;
@@ -35,6 +36,15 @@ export interface FormStore {
       Readonly<{ idempotencyKey: string }>,
     grant?: PublicFormGrant,
   ): Promise<FormSubmissionResponse>;
+  history(
+    input: FormScope &
+      Readonly<{
+        actorId: string;
+        limit: number;
+        before?: string;
+        beforeId?: string;
+      }>,
+  ): Promise<CoordinatedEventHistory>;
   access(input: FormScope & Readonly<{ actorId: string }>): Promise<FormAccess>;
   setAccess(
     input: FormScope &

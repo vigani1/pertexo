@@ -212,3 +212,22 @@ describe('webhook public contracts', () => {
     }
   });
 });
+
+it('describes asynchronous coordination without exposing keys or pretending a run started', () => {
+  const receipt = {
+    coordinated: true,
+    eventId: trigger.id,
+    outcome: 'throttled',
+    status: 'pending',
+    reason: null,
+  };
+  expect(webhookIngressResponseSchema.parse(receipt)).toEqual(receipt);
+  for (const extra of [
+    { runId: trigger.id },
+    { keyHash: 'a'.repeat(64) },
+    { input: { secret: true } },
+  ])
+    expect(
+      webhookIngressResponseSchema.safeParse({ ...receipt, ...extra }).success,
+    ).toBe(false);
+});
