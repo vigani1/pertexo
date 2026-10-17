@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
-import { TableExportAdmission } from '../../src/platform/http/csv/admission.js';
+import { CsvExportAdmission } from '../../src/platform/http/csv/admission.js';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 
 const requested = process.env.REDIS_RATE_LIMIT_INTEGRATION === 'true';
@@ -24,8 +24,8 @@ describe.runIf(requested)('export admission on real Redis', () => {
   });
 
   it('allows only one workspace export across API instances and frees the slot on cancellation', async () => {
-    const first = new TableExportAdmission(runtime());
-    const second = new TableExportAdmission(runtime());
+    const first = new CsvExportAdmission(runtime());
+    const second = new CsvExportAdmission(runtime());
     const workspace = randomUUID();
     const opened = Promise.withResolvers<undefined>();
     const release = Promise.withResolvers<undefined>();
@@ -39,7 +39,12 @@ describe.runIf(requested)('export admission on real Redis', () => {
       await opened.promise;
       await expect(
         second.run(workspace, () => Promise.resolve()),
-      ).rejects.toThrow('export is already running');
+      ).rejects.toMatchObject({
+        code: 'workspace.conflict',
+        safeDetail: expect.stringContaining(
+          'export is already running',
+        ) as unknown,
+      });
       await expect(
         second.run(randomUUID(), () => Promise.resolve()),
       ).resolves.toBeUndefined();

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { expect, it, vi } from 'vitest';
-import { TableExportAdmission } from '../../src/platform/http/csv/admission.js';
+import { CsvExportAdmission } from '../../src/platform/http/csv/admission.js';
 
 function slots() {
   const active = new Set<string>();
@@ -19,8 +19,8 @@ function slots() {
 }
 it('refuses concurrent workspace exports across instances and releases after failure', async () => {
   const backend = slots();
-  const first = new TableExportAdmission(backend);
-  const second = new TableExportAdmission(backend);
+  const first = new CsvExportAdmission(backend);
+  const second = new CsvExportAdmission(backend);
   const opened = Promise.withResolvers<undefined>();
   const release = Promise.withResolvers<undefined>();
   const running = first.run('workspace', async () => {
@@ -33,7 +33,12 @@ it('refuses concurrent workspace exports across instances and releases after fai
     await opened.promise;
     await expect(
       second.run('workspace', () => Promise.resolve()),
-    ).rejects.toThrow('export is already running');
+    ).rejects.toMatchObject({
+      code: 'workspace.conflict',
+      safeDetail: expect.stringContaining(
+        'export is already running',
+      ) as unknown,
+    });
     await expect(
       second.run('another', () => Promise.resolve('ok')),
     ).resolves.toBe('ok');
@@ -47,7 +52,7 @@ it('refuses concurrent workspace exports across instances and releases after fai
 });
 it('caps each instance at two and does not acquire another workspace slot', async () => {
   const backend = slots();
-  const admission = new TableExportAdmission(backend);
+  const admission = new CsvExportAdmission(backend);
   const release = Promise.withResolvers<undefined>();
   const opened = Promise.withResolvers<undefined>();
   let count = 0;
@@ -60,7 +65,12 @@ it('caps each instance at two and does not acquire another workspace slot', asyn
     await opened.promise;
     await expect(
       admission.run('three', () => Promise.resolve()),
-    ).rejects.toThrow('export is already running');
+    ).rejects.toMatchObject({
+      code: 'workspace.conflict',
+      safeDetail: expect.stringContaining(
+        'export is already running',
+      ) as unknown,
+    });
     expect(backend.acquireExclusiveSlot).toHaveBeenCalledTimes(2);
   } finally {
     release.resolve(undefined);
@@ -73,7 +83,7 @@ it('caps each instance at two and does not acquire another workspace slot', asyn
 it('fails closed on backend failure without consuming instance capacity', async () => {
   const backend = slots();
   backend.acquireExclusiveSlot.mockRejectedValueOnce(new Error('offline'));
-  const admission = new TableExportAdmission(backend);
+  const admission = new CsvExportAdmission(backend);
   const work = vi.fn(() => Promise.resolve());
   await expect(admission.run('one', work)).rejects.toMatchObject({
     code: 'request.rate_limit_unavailable',
@@ -86,7 +96,7 @@ it('keeps the download outcome when Redis closes before slot cleanup', async () 
   const warn = vi
     .spyOn(Logger.prototype, 'warn')
     .mockImplementation(() => undefined);
-  const admission = new TableExportAdmission({
+  const admission = new CsvExportAdmission({
     acquireExclusiveSlot: () =>
       Promise.resolve({
         release: () => Promise.reject(new Error('runtime closed')),

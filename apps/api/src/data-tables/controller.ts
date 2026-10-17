@@ -1,7 +1,7 @@
-import { TableExportAdmission } from '../platform/http/csv/admission.js';
+import { CsvExportAdmission } from '../platform/http/csv/admission.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { decodeTableExportRequest } from './export/request.js';
-import { sendTableExport } from '../platform/http/csv/response.js';
+import { sendTableExport } from './export/response.js';
 import {
   Body,
   Controller,
@@ -48,7 +48,7 @@ export class DataTablesController {
   constructor(
     private readonly tables: DataTablesService,
     private readonly csrf: CsrfProtectionGuard,
-    private readonly exports: TableExportAdmission,
+    private readonly exports: CsvExportAdmission,
   ) {}
   private scope(request: Request, workspace: unknown) {
     return {

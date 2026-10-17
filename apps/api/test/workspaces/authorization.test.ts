@@ -53,6 +53,8 @@ describe('workspace authorization policy', () => {
     expect(AUTHORIZATION_CAPABILITIES).toEqual([
       'workspace:read',
       'workspace:manage',
+      'audit:read',
+      'governance:manage',
       'variable:manage',
       'artifact:read',
       'artifact:upload',
@@ -100,6 +102,8 @@ describe('workspace authorization policy', () => {
   it('keeps the complete role policy explicit and duplicate-free', () => {
     expect(capabilitiesForRole('owner')).toEqual(AUTHORIZATION_CAPABILITIES);
     expect(capabilitiesForRole('admin')).toEqual([
+      'audit:read',
+      'governance:manage',
       'variable:manage',
       'artifact:read',
       'workspace:read',

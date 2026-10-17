@@ -1,3 +1,5 @@
+import { GovernanceModule } from '../../governance/module.js';
+import type { GovernanceStore } from '@pertexo/database/governance';
 import { DataTablesModule } from '../../data-tables/module.js';
 import type { DataTablesStore } from '@pertexo/database/data-tables';
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
@@ -77,6 +79,7 @@ export type ApiWorkflowRuntime = Readonly<{
   forms?: FormStore;
   variables?: WorkspaceVariablesStore;
   dataTables?: DataTablesStore;
+  governance?: GovernanceStore;
   checkReadiness?(): Promise<void>;
   close(): Promise<void>;
 }>;
@@ -222,6 +225,7 @@ export async function createApiWorkflowRuntime(
       forms,
       variables: metadataRuntime.variables,
       dataTables: metadataRuntime.dataTables,
+      governance: metadataRuntime.governance,
       dependencies: Object.freeze({
         persistence: database,
         portabilityPersistence: database,
@@ -426,6 +430,16 @@ export class WorkflowRuntimeModule {
               ),
             ]),
         WorkflowRunsModule.register(runtime.runDependencies, identityModule),
+        ...(runtime.governance === undefined
+          ? []
+          : [
+              GovernanceModule.register(
+                runtime.governance,
+                runtime.dependencies.authorization,
+                identityModule,
+                admission,
+              ),
+            ]),
         ...(runtime.dataTables === undefined
           ? []
           : [

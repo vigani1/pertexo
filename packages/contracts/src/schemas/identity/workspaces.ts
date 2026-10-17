@@ -289,6 +289,8 @@ export const accessibleWorkspacesQuerySchema = z
 const workspaceCapabilitySchema = z.enum([
   'workspace:read',
   'workspace:manage',
+  'audit:read',
+  'governance:manage',
   'variable:manage',
   'artifact:read',
   'artifact:upload',

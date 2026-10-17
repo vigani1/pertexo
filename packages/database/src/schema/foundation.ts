@@ -63,6 +63,8 @@ export const workspaces = appSchema.table(
       .notNull()
       .default(sql`'active'::character varying`),
     revision: integer('revision').notNull().default(1),
+    auditRetentionDays: smallint('audit_retention_days').notNull().default(365),
+    governanceRevision: integer('governance_revision').notNull().default(1),
     createdBy: uuid('created_by'),
     deletionRequestedAt: timestamp('deletion_requested_at', {
       withTimezone: true,
@@ -81,6 +83,14 @@ export const workspaces = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'workspaces_audit_retention_valid',
+      sql`audit_retention_days between 30 and 2555`,
+    ),
+    check(
+      'workspaces_governance_revision_positive',
+      sql`governance_revision > 0`,
+    ),
     check(
       'workspaces_auto_pause_threshold_valid',
       sql`((auto_pause_threshold >= 3) AND (auto_pause_threshold <= 100))`,

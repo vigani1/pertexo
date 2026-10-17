@@ -19,6 +19,8 @@ export type Role = (typeof ROLES)[number];
 export const AUTHORIZATION_CAPABILITIES = Object.freeze([
   'workspace:read',
   'workspace:manage',
+  'audit:read',
+  'governance:manage',
   'variable:manage',
   'artifact:read',
   'artifact:upload',
@@ -55,6 +57,8 @@ const ownerCapabilities = Object.freeze([
 ] as const satisfies readonly AuthorizationCapability[]);
 
 const adminCapabilities = Object.freeze([
+  'audit:read',
+  'governance:manage',
   'variable:manage',
   ...readCapabilities,
   'artifact:upload',

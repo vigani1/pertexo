@@ -1,3 +1,4 @@
+import { parseAuditSearch } from '@/features/governance/search.public';
 import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
 import { parseTaskSearch } from '@/features/pending-tasks/queries.public';
 import {
@@ -424,6 +425,17 @@ export const usageRoute = createRoute({
     meta: [{ title: pageTitle('Usage', match.context.workspace.name) }],
   }),
   component: lazyRouteComponent(() => import('./usage'), 'UsageRoute'),
+});
+
+export const auditRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings/audit',
+  staticData: { crumb: 'Audit log' },
+  validateSearch: parseAuditSearch,
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Audit log', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(() => import('./audit'), 'AuditRoute'),
 });
 
 export const workspaceVariablesRoute = createRoute({

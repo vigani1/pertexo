@@ -1,111 +1,115 @@
-# F18 — Audit visibility, publishing approval and advanced access
+# F18 — Audit log and publishing approval
 
-Status: proposed plan; not implementation-authorized by this document.
-Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
-Scope: Existing tenancy foundation + new governance UX. Relative size: **XL**, not a calendar estimate.
+Status: implementation in progress. Updated: 2026-10-17.
+Parent: [roadmap](../product-roadmap.md). Decision: [ADR 085](../adr/085-audit-and-publication-review.md).
 
-## Outcome
+## Current code
 
-Teams can answer who changed what and restrict consequential changes without duplicating authorization rules.
+`app.audit_events` is the canonical append-only metadata ledger. Membership,
+invitations, workflow authoring/publication/restore, tokens, variables, form
+access, schedules and operator commands already append facts. The coverage pass
+found gaps in webhook credential/authentication commands, connection revocation
+and credential use/rotation, and data-table creation/deletion/quotas/row writes.
+Connection-specific events remain useful operational history; they do not replace
+the canonical audit fact. No historical facts will be invented.
 
-## Current implementation and evidence
+The publisher already locks the draft, checks its opaque representation tag,
+validates and compiles it, persists/reuses the immutable version, projects triggers,
+and records the command receipt in one transaction. Reviews must use this owner.
+The inbox has one TypeScript audience policy and F27 delivery/preferences. Reuse
+those rather than adding another task engine or mail path.
 
-Workspace membership/roles, auth and audit facts exist. Complete product audit browsing, publication review and enterprise identity provisioning are not established.
+## Decisions and rules
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
+- Owners and admins read/export the audit log and change governance settings.
+  Existing workspace roles remain unchanged. Add explicit capabilities to the
+  existing policy owner; recheck active membership in each database transaction.
+- Audit entries contain actor, action, target, time and bounded metadata only.
+  Never include credentials, tokens, URLs containing endpoint keys, provider
+  messages, run inputs/outputs, variable values, table rows or review notes.
+  The reader uses a safe projection for older metadata too.
+- Filters: person, action, target type/ID and inclusive/exclusive UTC date range.
+  Stable keyset pagination uses time and ID. Page size is at most 100.
+- Audit retention defaults to 365 days, adjustable from 30 through 2,555 days.
+  The existing retention runner owns deletion; this does not change run retention
+  or introduce legal holds. Reducing retention can permanently remove old facts.
+- CSV uses the existing data-table transport, extracted into the API HTTP area
+  in a move-only commit before logic changes. Both consumers share one workspace
+  export slot and two instance slots through existing Redis admission. Each batch
+  checks authority, reads briefly, releases the connection, then writes. No snapshot
+  guarantee; concurrent changes may be absent. Keep 60-second write-idle timeout,
+  five-minute maximum, byte-bounded batches and aborted downloads on failure.
+  Audit exports accept at most 100,000 matching events; larger requests fail before
+  sending CSV and ask for a narrower date range. Escape spreadsheet formulas.
+- `Require approval to publish` defaults off. When on, every publisher requests
+  review, including owners/admins. A different current owner/admin approves or
+  rejects. A sole owner must add a reviewer or explicitly turn the audited policy
+  off; no hidden emergency bypass. Ordinary publish/API/CLI commands cannot bypass it.
+- A request binds the exact draft revision and representation tag, not a second
+  copy of the graph. Any later draft edit or incompatible catalog change makes it
+  stale. Approval rechecks requester/reviewer authority, policy and freshness and
+  publishes through the existing publisher in the same transaction. One decision
+  wins; exact idempotency replays return the original result.
+- Notes/comments are plain text, at most 1,000 characters, stored on the request
+  rather than in audit metadata. At most 100 pending requests per workspace;
+  requests expire after seven days. Terminal requests retain 30 days; audit facts
+  follow audit retention. Workflow/workspace deletion removes request content.
+- Pending reviews appear in the existing inbox for eligible reviewers. Notices
+  and email contain safe identities/names only and honor F27. Stale, expired or
+  decided requests are no longer actionable. UI shows the reviewed draft and
+  revision, policy, requester, note and explicit approve/reject outcomes.
 
-- [apps/api/src/workspaces](../../apps/api/src/workspaces)
-- [docs/adr/039-better-auth-and-session-authority.md](../../docs/adr/039-better-auth-and-session-authority.md)
-- [Reset tracker](../architecture-reset-plan.md)
+## Ownership and slices
 
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+1. **Audit log:** close coverage gaps in the existing command transactions;
+   `database/src/governance/{audit,settings}` owns read/export/settings commands;
+   the existing lifecycle owner applies retention. API `governance` owns guarded
+   routes; contracts own boundary schemas; web `features/governance` owns the lazy
+   settings page. Extend the database's accepted per-area Node entry points.
+   Additive migration, RLS/grants, schema registration and readiness move together.
+2. **Publishing approval:** authoring owns review commands and the publication
+   transaction; schema stores request identity/state only. Governance settings,
+   inbox eligibility, authoring contracts and publish UI compose those commands.
+   No new queue, service, role, runtime dependency or CI job.
 
-## Dependencies and planning gate
+Each slice is its own PR. Moves are separate commits from logic. Verify lint,
+types, unit and integration tests, mocked browser journeys and the real UI at
+phone/desktop widths. Merge only after required checks are green.
 
-00; 17 for promotion approval, 03 for review notices optional.
+## Acceptance
 
-Which events may users read, separation of duties, owner emergency policy, retention/export constraints; do not infer organization roles from external email domain.
+- Audit coverage for every listed sensitive command, exact idempotent replay,
+  same-transaction rollback, workspace isolation and removal/role-change fences.
+- Filters, cursor ties, CSV formula protection, bounds, retention boundaries,
+  slow/disconnected export and a responsive pool while the client is blocked.
+- Review off/on, owner-authored review, self-approval refusal, draft/catalog change,
+  role loss, racing decisions, exact version published, API/CLI refusal, inbox
+  audience/preferences, purge and retention.
+- Browser: audit filters/export/settings; builder request; another owner/admin
+  reviews the exact revision; stale request cannot publish. Accessible controls,
+  keyboard navigation, reduced motion and the existing Weft language.
 
-Recommendations are not accepted ADRs. Resolve consequential choices before code;
-use the next free ADR number when required. Do not create ADRs for routine fixes.
+## Later
 
-## User-configurable settings
+Folder-level workflow access lists, custom roles, workspace run-retention controls,
+external secret stores and compliance claims. SSO/provisioning is F28; promotion
+is F17. No unrelated authorization rewrite.
 
-Recommended values, confirmed in this feature's ADR. The server enforces every
-range; the control states its consequence.
+## Tracker
 
-| Setting | Default | Range | Who changes it | Consequence shown |
-| --- | --- | --- | --- | --- |
-| Keep run data | Platform default | 1 day to the platform default | Workspace owners and admins; audited | “Run inputs and outputs older than this are deleted; legal holds still apply” |
-| Require review before publishing | Off | Off or on | Workspace owners | “Publishing waits for an approving reviewer who is not the author” |
+- [x] Current-code coverage and decisions reconciled; ADR accepted.
+- [x] Audit coverage, settings, API and page implemented.
+- [ ] Audit integration/browser evidence and green PR merged.
+- [ ] Exact publication review, policy and inbox implemented.
+- [ ] Review integration/browser evidence and green PR merged.
 
-## Ownership and structure
-
-Identity/workspace policy plus authoring review commands; database audit/read/review ownership; contracts; web audit/review.
-
-Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
-These are responsibility owners, not a mandate to create empty folders/packages.
-Reuse the post-cleanup canonical owners; do not restore old duplicated paths.
-
-## Frontend work
-
-Audit viewer with authorized filters, revision diff and publishing review status; later service-account/enterprise identity settings if demanded.
-
-## Backend work
-
-Safe audit read projection and bounded indexes/retention; review record bound to immutable candidate hash; execution command rechecks permission and review freshness. Workspace-configurable retention of run data within ADR 013's bounds and legal holds. SSO/SCIM is planned in [F28](28-single-sign-on-and-provisioning.md); external secret stores require a separately approved security/provider slice.
-
-## Delivery slices
-
-1. Expose sanitized audit events with retention coverage and exact actor attribution.
-2. Add publish-review policy with stale-review invalidation and reasoned decisions.
-3. Add workspace run-data retention settings (shorter than the platform default, never beyond it or past a legal hold) with their audit trail.
-4. Only then evaluate custom roles or credential-sharing granularity from concrete team requirements; SSO/SCIM is F28.
-
-Each slice ends in a usable, tested behavior; do not ship enabled placeholder
-controls backed by invented responses.
-
-## Acceptance evidence
-
-Reviewer loses role, draft changed after approval, self-approval restrictions, tenant isolation, sensitive fields absent, pagination/retention and denied publication.
-
-Apply the shared completion checklist: contract/authorization tests, real
-persistence and restart/race tests when relevant, real browser/backend flow for
-visible behavior, and exact reviewed source/CI evidence. Mocks alone cannot close
-the live gate. Record unsupported environments explicitly.
-
-## Non-goals
-
-General ACL rewrite, unsupported compliance claims, merging audit logs with personal notifications.
-
-## Rollout and rollback
-
-Disable new policy creation; existing enforced review policies require explicit safe transition, not silent bypass.
-
-No production rollout, paid provisioning or real external calls are authorized by
-this plan. New persistent behavior requires additive reader/writer rollout and
-retention/membership-deletion handling before enablement.
-
-## Competitor context
-
-n8n documents workflow review and sharing; Zapier version docs describe publishing restrictions. Scope and entitlement details vary. Sources: [n8n current documentation index](https://docs.n8n.io/sitemap.md); [Zapier drafts and versions](https://help.zapier.com/hc/en-us/articles/9693520498445-Create-Zap-drafts-and-versions).
-
-Research checked 2026-09-28; product editions and availability can change.
-This context informs the outcome, not Pertexo's implementation or billing policy.
-
-## Delivery tracker
-
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
-- [ ] Contracts and failure/security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
-
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+Audit evidence (2026-10-17): nine real PostgreSQL governance cases cover
+microsecond cursor ties, safe legacy metadata, 100,000-event export refusal,
+formula protection, exact settings retries/conflicts, retention, cross-workspace
+access, builder refusal, mid-export demotion and a stalled one-client pool.
+Existing data-table/connection integration journeys pass (88 tests); real API
+export tests prove table/audit downloads share admission while ordinary requests
+stay responsive. Real browser journeys pass at 1280 and 375 pixels, including
+native CSV, filters and retention after reload. The journey joins the existing
+live-3 browser shard, with no new CI job. Publishing review is not delivered
+by the audit slice; remaining gates and merge evidence will be recorded below.

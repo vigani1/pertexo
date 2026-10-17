@@ -1,4 +1,8 @@
 import {
+  governanceContractSchemas,
+  governanceContractPaths,
+} from './governance.js';
+import {
   dataTableContractSchemas,
   dataTableContractPaths,
 } from './data-tables.js';
@@ -119,8 +123,16 @@ const schemas = Object.freeze({
   ...authenticationContractSchemas,
 });
 
-const clientSchemas = { ...schemas, ...dataTableContractSchemas('client') };
-const openApiSchemas = { ...schemas, ...dataTableContractSchemas('openapi') };
+const clientSchemas = {
+  ...schemas,
+  ...dataTableContractSchemas('client'),
+  ...governanceContractSchemas('client'),
+};
+const openApiSchemas = {
+  ...schemas,
+  ...dataTableContractSchemas('openapi'),
+  ...governanceContractSchemas('openapi'),
+};
 export const identityWorkspaceClientContract = Object.freeze({
   schemas: clientSchemas,
 });
@@ -145,6 +157,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
     ...apiTokenContractPaths,
     ...variableContractPaths,
     ...dataTableContractPaths,
+    ...governanceContractPaths,
     ...authenticationContractPaths,
     '/v1/workspaces': {
       get: {

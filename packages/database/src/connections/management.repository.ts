@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../governance/audit/append.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 
 import type { Pool } from 'pg';
@@ -240,6 +241,15 @@ export function createConnectionManagementPersistence(
               metadata.traceId,
             ],
           );
+          await appendAuditFact(client, {
+            workspaceId,
+            actorId,
+            action: 'connection.revoked',
+            targetType: 'connection',
+            targetId: connectionId,
+            ...metadata,
+            metadata: {},
+          });
           const row = updated.rows[0];
           if (row === undefined)
             throw new Error('Connection revocation returned no row');

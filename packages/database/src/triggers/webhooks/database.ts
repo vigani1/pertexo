@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/append.js';
 import { lockEventCoordination } from '../coordination/keys.js';
 import { coordinateVerifiedWebhook } from './coordinate.js';
 import {
@@ -212,6 +213,14 @@ async function completeWebhookCommand(
   input: Command,
   operation: string,
 ): Promise<void> {
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action: operation,
+    targetType: 'webhook_trigger',
+    targetId: input.triggerId,
+    metadata: { workflowId: input.workflowId },
+  });
   await completeCommand(client, webhookCommand(input, operation), {
     triggerId: input.triggerId,
   });

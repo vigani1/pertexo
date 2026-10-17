@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0029_data_table_column_identity.sql';
+export const EXPECTED_MIGRATION_HEAD = '0030_audit_retention.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

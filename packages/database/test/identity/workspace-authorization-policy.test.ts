@@ -19,6 +19,8 @@ import {
 const expectedCapabilitiesByRole = {
   owner: AUTHORIZATION_CAPABILITIES,
   admin: [
+    'audit:read',
+    'governance:manage',
     'variable:manage',
     'artifact:read',
     'workspace:read',

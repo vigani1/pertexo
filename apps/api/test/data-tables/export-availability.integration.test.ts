@@ -89,6 +89,21 @@ describe.runIf(betterAuthIntegrationEnabled)(
             ((await response.json()) as { rows: unknown[] }).rows,
           ).toHaveLength(1);
         }
+        const audit = await fetch(
+          `${base}/v1/workspaces/${workspaceId}/governance/settings`,
+          { headers, signal: AbortSignal.timeout(3000) },
+        );
+        expect(audit.status).toBe(200);
+        const competingAudit = await fetch(
+          `${base}/v1/workspaces/${workspaceId}/governance/audit/export`,
+          {
+            method: 'POST',
+            headers,
+            body: '{}',
+            signal: AbortSignal.timeout(3000),
+          },
+        );
+        expect(competingAudit.status).toBe(409);
         const extra = await fetch(`${base}${path}/${tableId}/export`, {
           method: 'POST',
           headers,

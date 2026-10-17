@@ -3,17 +3,19 @@ import { finished, pipeline } from 'node:stream/promises';
 import { EXPORT_MAX_MILLIS, exportBudgetMillis } from './limits.js';
 import { watchExportProgress } from './progress.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { DataTablesStore } from '@pertexo/database/data-tables';
-import { withRequestOperationSignal } from '../index.js';
+import { withRequestOperationSignal } from '../request-operation-signal.js';
 
-type ExportInput = Omit<
-  Parameters<DataTablesStore['exportCsv']>[0],
-  'consume' | 'signal'
->;
+export type CsvDownload = Readonly<{
+  filename: string;
+  storedBytes: number;
+}>;
+export type CsvProducer = (
+  signal: AbortSignal,
+  consume: (csv: AsyncIterable<string>, metadata: CsvDownload) => Promise<void>,
+) => Promise<void>;
 
-export async function sendTableExport(
-  store: Pick<DataTablesStore, 'exportCsv'>,
-  input: ExportInput,
+export async function sendCsvDownload(
+  produce: CsvProducer,
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<void> {
@@ -34,42 +36,36 @@ export async function sendTableExport(
       request,
       async (operation) => {
         const signal = AbortSignal.any([operation, disconnected.signal]);
-        await store.exportCsv({
-          ...input,
-          signal,
-          consume: async (csv, table) => {
-            deadline = setTimeout(() => {
-              disconnected.abort(new Error('CSV export time budget exceeded'));
-            }, exportBudgetMillis(table));
-            deadline.unref();
-            stopWatching = watchExportProgress(reply.raw, () => {
-              disconnected.abort(
-                new Error('CSV export stalled for 60 seconds'),
-              );
-              abortResponse();
-            });
-            completion = finished(reply.raw, { signal, cleanup: true });
-            // Observe early socket errors while the producer is still running.
-            void completion.catch(() => undefined);
-            output = new PassThrough({ highWaterMark: 64 * 1024 });
-            output.once('error', abortResponse);
-            reply.header('Content-Type', 'text/csv; charset=utf-8');
-            reply.header(
-              'Content-Disposition',
-              `attachment; filename="${table.name}-rows.csv"`,
-            );
-            reply.header('Cache-Control', 'private, no-store');
-            reply.header('X-Content-Type-Options', 'nosniff');
-            void reply.send(output);
-            await pipeline(
-              Readable.from(csv, {
-                objectMode: false,
-                highWaterMark: 64 * 1024,
-              }),
-              output,
-              { signal, end: false },
-            );
-          },
+        await produce(signal, async (csv, metadata) => {
+          deadline = setTimeout(() => {
+            disconnected.abort(new Error('CSV export time budget exceeded'));
+          }, exportBudgetMillis(metadata));
+          deadline.unref();
+          stopWatching = watchExportProgress(reply.raw, () => {
+            disconnected.abort(new Error('CSV export stalled for 60 seconds'));
+            abortResponse();
+          });
+          completion = finished(reply.raw, { signal, cleanup: true });
+          // Observe early socket errors while the producer is still running.
+          void completion.catch(() => undefined);
+          output = new PassThrough({ highWaterMark: 64 * 1024 });
+          output.once('error', abortResponse);
+          reply.header('Content-Type', 'text/csv; charset=utf-8');
+          reply.header(
+            'Content-Disposition',
+            `attachment; filename="${metadata.filename}"`,
+          );
+          reply.header('Cache-Control', 'private, no-store');
+          reply.header('X-Content-Type-Options', 'nosniff');
+          void reply.send(output);
+          await pipeline(
+            Readable.from(csv, {
+              objectMode: false,
+              highWaterMark: 64 * 1024,
+            }),
+            output,
+            { signal, end: false },
+          );
         });
         // A clean EOF certifies that every batch and its cleanup succeeded.
         output?.end();
