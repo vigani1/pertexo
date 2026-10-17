@@ -184,7 +184,6 @@ export type { InsertedOutboxEvent, OutboxEventInput } from './outbox/events.js';
 export {
   createNodeAttemptRunStore,
   NodeAttemptConnectionFenceError,
-  NodeAttemptControlActiveError,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,

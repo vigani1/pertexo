@@ -264,6 +264,81 @@ describe('workflow graph validation', () => {
         ]),
       );
   });
+  it('separates total iteration work from the retained concurrent frontier', () => {
+    const loop = forEachNode('loop');
+    const bounded = {
+      ...loop,
+      structured: {
+        ...loop.structured,
+        maxIterations: 4_998,
+        maxConcurrency: 199,
+      },
+    };
+    expect(validateWorkflowGraph(graph([bounded]))).toMatchObject({
+      ok: true,
+      expandedInvocations: 4_999,
+    });
+    expect(
+      validateWorkflowGraph(
+        graph([
+          {
+            ...bounded,
+            structured: { ...bounded.structured, maxConcurrency: 200 },
+          },
+        ]),
+      ).issues.find(({ code }) => code === 'expansion_limit')?.message,
+    ).toContain('reduce Items at a time');
+    const inner = {
+      ...forEachNode('inner'),
+      structured: {
+        ...forEachNode('inner').structured,
+        maxIterations: 2_498,
+        maxConcurrency: 98,
+      },
+    };
+    const outer = {
+      ...forEachNode('outer', [inner]),
+      structured: {
+        ...forEachNode('outer', [inner]).structured,
+        maxIterations: 2,
+        maxConcurrency: 2,
+      },
+    };
+    expect(validateWorkflowGraph(graph([outer]))).toMatchObject({
+      ok: true,
+      expandedInvocations: 4_999,
+    });
+    const wider = {
+      ...outer,
+      structured: {
+        ...outer.structured,
+        body: {
+          ...outer.structured.body,
+          nodes: [
+            {
+              ...inner,
+              structured: { ...inner.structured, maxConcurrency: 100 },
+            },
+          ],
+        },
+      },
+    };
+    expect(
+      validateWorkflowGraph(graph([wider])).issues.find(
+        ({ code }) => code === 'expansion_limit',
+      )?.message,
+    ).toContain('concurrent loop expansion');
+    expect(
+      validateWorkflowGraph(
+        graph([
+          {
+            ...bounded,
+            structured: { ...bounded.structured, maxIterations: 4_999 },
+          },
+        ]),
+      ).issues,
+    ).toContainEqual(expect.objectContaining({ code: 'invalid_loop_limit' }));
+  });
   it('caps issue cardinality', () => {
     const duplicated = graph(
       Array.from({ length: WORKFLOW_VALIDATION_MAX_ISSUES + 2 }, () =>

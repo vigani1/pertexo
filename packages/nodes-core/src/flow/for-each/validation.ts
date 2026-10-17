@@ -1,7 +1,9 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { boundedNodeJsonSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
-export const CORE_FOR_EACH_MAX_ITEMS = 1_000;
+export const CORE_FOR_EACH_MAX_ITEMS =
+  WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopIterations;
 
 const boundedItemsSnapshotSchema = z.unknown().transform((items, context) => {
   const bounded = boundedNodeJsonSchema.safeParse({ items });

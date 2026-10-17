@@ -256,8 +256,9 @@ describe('building a For each body', { timeout: 30_000 }, () => {
     expect(items).toHaveValue('1');
     expect(concurrent).toHaveValue('1');
     const maximum = WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopIterations;
+    const concurrency = WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopConcurrency;
     fireEvent.change(items, { target: { value: String(maximum) } });
-    fireEvent.change(concurrent, { target: { value: String(maximum) } });
+    fireEvent.change(concurrent, { target: { value: String(concurrency) } });
     pressSave();
     await waitFor(() => {
       expect(
@@ -265,7 +266,7 @@ describe('building a For each body', { timeout: 30_000 }, () => {
       ).toEqual({
         ...graph.nodes[1]?.structured,
         maxIterations: maximum,
-        maxConcurrency: maximum,
+        maxConcurrency: concurrency,
       });
     });
   });

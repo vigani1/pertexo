@@ -54,6 +54,7 @@ async function claimDispatchAttempt(
   nodeId: string,
   options: Readonly<{
     explicitEmptyScope?: boolean;
+    control?: 'canceled' | 'timed_out';
     runInput?: unknown;
     sideEffectClass?: 'safe' | 'idempotent_with_key' | 'unsafe';
     workerId?: string;
@@ -147,6 +148,18 @@ async function claimDispatchAttempt(
           where workspace_id=$1 and id=$2`,
         [workspaceA, admission.nodeRunId],
       ),
+    );
+  if (options.control !== undefined)
+    await asAdmin((client) =>
+      options.control === 'canceled'
+        ? client.query(
+            "update app.workflow_runs set cancel_requested_at=clock_timestamp(),cancel_requested_by=$2,cancel_reason='user_requested' where id=$1",
+            [runId, actorId],
+          )
+        : client.query(
+            'update app.workflow_runs set deadline_at=clock_timestamp() where id=$1',
+            [runId],
+          ),
     );
   const claimed = await nodeAttemptStore.claimDelivery({
     workspaceId: workspaceA,
@@ -247,6 +260,45 @@ async function seedSlackDispatchPublication(connectionId: string) {
 }
 
 describe('Coordinator node-attempt persistence invariants', () => {
+  it.each(['canceled', 'timed_out'] as const)(
+    'leases admitted but unstarted work solely to settle %s',
+    async (control) => {
+      const lease = await claimDispatchAttempt(`control-${randomUUID()}`, {
+        sideEffectClass: 'unsafe',
+        control,
+      });
+      await expect(
+        nodeAttemptStore.loadInputs({
+          lease,
+          upstreamNodeOutputs: [],
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({ abortRequested: true, abortReason: control });
+      await expect(
+        nodeAttemptStore.complete({
+          lease,
+          outcome: {
+            status: control,
+            safeErrorCode:
+              control === 'canceled'
+                ? 'execution.canceled'
+                : 'execution.deadline_exceeded',
+          },
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({ kind: 'committed' });
+      const result = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          'select status,dispatch_marked_at from app.node_attempts where id=$1',
+          [lease.attemptId],
+        ),
+      );
+      expect(result.rows).toEqual([
+        { status: control, dispatch_marked_at: null },
+      ]);
+    },
+  );
+
   it('commits private Code diagnostics with completion, compares duplicates and hides expired or foreign data', async () => {
     const lease = await claimDispatchAttempt(
       `code-diagnostic-${randomUUID()}`,

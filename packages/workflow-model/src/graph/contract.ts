@@ -76,18 +76,16 @@ export interface WorkflowGraph {
   readonly callable?: CallableDeclaration | undefined;
 }
 
-/**
- * Node and loop counts are sized so a run's checkpoint, which keeps one record
- * per invocation, fits the engine's checkpoint limits even with
- * maximum-length identifiers (measured in workflow-engine's
- * checkpoint-capacity test).
- */
+/** Static size and concurrency stay bounded independently of pruned iteration history. */
 export const WORKFLOW_GRAPH_CONTRACT_LIMITS = Object.freeze({
   nodes: 200,
   edges: 4_000,
   graphBytes: 1_048_576,
   identifierLength: 64,
-  maxLoopIterations: 200,
+  maxLoopIterations: 4_998,
+  maxTotalLoopIterations: 5_000,
+  maxExpandedInvocations: 5_000,
+  maxConcurrentInvocations: 200,
   maxLoopConcurrency: 200,
   structuredDepth: 32,
   inputDepth: 256,

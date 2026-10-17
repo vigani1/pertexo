@@ -2,7 +2,7 @@
 
 Status: accepted by the owner on 2026-10-10; slices 1–4 implement and qualify
 finished-loop pruning, callable contracts, durable Calls, controls and history.
-All existing limits remain unchanged; slice 5 requires a separate owner decision. This document
+Slice 5 was authorized on 2026-10-17; its measured limit decision is recorded below. This document
 replaces the former F08 outline; it does not restore the
 reverted implementation. [ADR 070](../adr/070-workflow-call-boundaries.md)
 records the accepted decisions. [Architecture](../architecture.md) and
@@ -398,6 +398,143 @@ total run WAL. Serial/nested checkpoint WAL falls by about 84%; a fully parallel
 live frontier remains much larger than a serial one. No bound is raised, and
 Call-in-loop evidence remains required before any later increase.
 
+## Slice 5: measured loop limits (2026-10-17)
+
+Status: implemented and locally qualified; green CI required before merge.
+The owner authorized a
+measured increase to at least 1,000 and at most 5,000, retaining the checkpoint
+cap and ordinary capacity. No new infrastructure, subsystem, role or stored
+format.
+
+Choose **4,998 items per loop**, matching the collection cap, **5,000 total loop
+iterations** and **5,000 expanded invocations**, including the weighted Call
+closure. Static graph size stays 200 nodes, identifiers stay 64 characters, and
+per-loop concurrency stays at most 200. Actual legal concurrency also depends
+on a conservative **200-invocation concurrent expansion** check. It uses the
+existing graph traversal, multiplying each body by `maxConcurrency` instead of
+`maxIterations`, and sums retained ordinary nodes. Publish errors tell the author
+to reduce Items at a time, including in nested loops. All previously accepted
+200-expansion graphs pass this check. No checkpoint field or scheduler behavior
+changes; loop history is pruned by its existing owner.
+
+A naive count-only increase fails the nested 2 × 2,498 case with 2 × 200 active
+items: the real engine rejects a checkpoint over 256 KiB. The frontier check
+rejects this graph before publishing. With outer concurrency 2 and inner 98,
+the same maximum total work fits with 200 retained invocations. This is why the
+concurrency/frontier bounds remain separate from total work.
+
+Limits include the whole graph: a minimal Manual → For each → one body step
+uses 5,000 invocations for 4,998 items. A following Stop lowers that to 4,997;
+more body steps reduce it further. A minimal one-step callable child permits
+2,499 Call iterations (2 local controls plus two invocations per iteration).
+Batching is a bulk-operation pattern, not a refund or a bypass for nested loops,
+Call closure or JSON limits. The guides explain 4,998 IDs → batches of 100 → 50
+iterations, and splitting oversized source datasets into separate bounded runs.
+
+### Cancellation correction found by qualification
+
+A wide loop exposed an existing attempt-claim refusal: cancellation/deadline
+activation rejected an already-admitted ready delivery before it could acquire
+a lease. Its checkpoint invocation remained running with no physical completion.
+The serial fixture passed; the same wide fixture reproduced the stuck run and
+failed ready jobs. Allow the existing lease claim so the handler's existing
+input-control check records the ordinary canceled/timed-out outcome before SDK
+execution. Lease/fence/receipt ownership and prior-dispatch uncertainty remain
+unchanged. Remove the obsolete refusal and its unused error type; do not add a
+reconciliation subsystem or duplicate completion policy. Real storage tests set
+control before claim, then verify control input, terminal completion and no
+dispatch marker. Worker tests cover cancel and deadline after a maximum loop
+has started, and prove newly claimed work after activation never dispatches.
+Already in-flight work retains ordinary cooperative-control semantics.
+
+### Reproducible evidence
+
+`database/test/runs/loops/capacity.integration.test.ts` exercises eight maximum
+weighted-expansion scenarios through the real engine and checkpoint restart
+parser. Collection values approach the unchanged 256 KiB retained-value bound;
+node IDs have 64 characters (the Parallel control uses 63 to reach the existing
+256-character scoped invocation-key bound). Identifier and combined-key bounds
+remain unchanged. Every checkpoint stays below 90% of the unchanged
+256 KiB engine cap. Completed iteration records are pruned; a held first item
+also measures the bounded out-of-order ordinal frontier.
+
+The optional WAL measurement runs with `PERTEXO_LOOP_CAPACITY_MEASURE=1` in the
+existing database integration runner and requires its ordinary isolated
+PostgreSQL fixture/config. No new CI job or production test hook. It creates a
+logged `LIKE run_checkpoints INCLUDING ALL` table in a disposable database and
+uses `EXPLAIN (ANALYZE, WAL, BUFFERS, FORMAT JSON)` for committed checkpoint
+inserts/updates. It includes child checkpoints, but excludes run history,
+receipts, Call/admission/outbox rows, foreign keys and artifact triggers. Its WAL
+numbers are checkpoint-write costs, **not whole-run WAL**. Serialized bytes sum
+every parent and child checkpoint submitted; initial inserts and updates are
+reported separately. Normal CI keeps maximum-size engine cases, over-limit
+publication checks and real worker fairness tests; WAL timing is an opt-in
+qualification, not a machine-speed assertion.
+
+Measured on 2026-10-17 with Node 24.15.0, arm64 macOS and the existing isolated
+PostgreSQL 18.6 container (`full_page_writes=on`, `wal_compression=off`). Every
+case uses exactly 5,000 weighted invocations. WAL varies with page/checkpoint
+state; these observations are not machine-independent thresholds.
+
+| Scenario | Inserts | Updates | Peak checkpoint bytes | Submitted bytes | Checkpoint WAL bytes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Serial 4,998; concurrency 1 | 1 | 5,000 | 2,552 | 12,745,316 | 6,323,377 |
+| Concurrent 4,998; concurrency 198 | 1 | 502 | 148,335 | 67,236,435 | 7,875,214 |
+| 4,998; first item held, concurrency 2 | 1 | 5,000 | 27,038 | 73,218,811 | 54,783,601 |
+| Nested 2 × 2,498; concurrency 1 × 1 | 1 | 5,002 | 4,394 | 21,880,888 | 7,693,731 |
+| Nested 2 × 2,498; concurrency 2 × 98 | 1 | 504 | 183,758 | 66,975,612 | 5,172,239 |
+| Parallel/Merge body, 1,249 × 4 steps; concurrency 49 | 1 | 504 | 186,426 | 85,410,128 | 8,000,919 |
+| 2,499 Calls; concurrency 1 | 2,500 | 7,499 | 2,582 | 16,420,796 | 11,325,711 |
+| 2,499 Calls; concurrency 198 | 2,500 | 5,001 | 141,516 | 331,597,068 | 31,642,634 |
+
+The widest measured checkpoint is **186,426 bytes** (71.1% of 262,144), leaving
+75,718 bytes of headroom. Fully nested and Call frontiers stay at 200 invocation
+records. A held first item reaches only 27,038 checkpoint bytes but rewrites its
+growing ordinal frontier many times; that case generates about 55 MB of
+checkpoint WAL. The default serial Call case submits about 16 MB versus 332 MB
+at concurrency 198. Keep the default `1` for Calls; higher concurrency cannot
+parallelize their borrowed-slot children. No checkpoint, member, value or
+ordinary capacity cap is raised to make these results fit.
+
+The real PostgreSQL/Redis worker fixtures first start each maximum numeric-list
+workload, then accept short workflows in the same and another workspace. Both
+short runs finish while the large run remains active. The measured interval
+starts after their acceptance, includes dispatcher/worker progress, and is not a
+latency SLA. The default workspace limit stays five; no extra worker concurrency
+or bypass is used. Cancellation/deadline then settle the large run and release
+all admissions. New claims after control activation have no dispatch marker.
+
+| Maximum workload | Control tested | Quiet-run completion (ms) | Peak occupied workspace slots |
+| --- | --- | ---: | ---: |
+| parallel | canceled | 3,990 | 2 |
+| nested | canceled | 4,677 | 2 |
+| call | canceled | 9,537 | 2 |
+| parallel | timed_out | 3,988 | 2 |
+
+These worker cases cancel after the fairness witness; they do **not** claim the
+wall time or full transaction WAL for completing 2,499 real child runs. The
+complete eight-case engine/checkpoint-write fixtures simulate executor/child
+facts and finish every iteration, recovering through the parser each time. The
+existing Call capacity/control suites separately qualify real slot handoff,
+returns, restart, receipts and unchanged default-five/capacity-one behavior.
+
+Reproduce with the ordinary database integration fixture environment:
+
+```sh
+PERTEXO_LOOP_CAPACITY_MEASURE=1 pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts test/runs/loops/capacity.integration.test.ts
+pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts test/runs/loops/fairness.integration.test.ts
+```
+
+Qualification so far: all eight maximum-size scenarios and the over-limit
+refusal pass in the final measurement run. Four real worker stress/control
+cases, 36 storage/capacity cases, 376 model tests, 458 engine tests and 244
+core-node tests pass. Full build, lint, type checks, 9,474 unit tests, 196 mocked
+browser tests, contracts, 97-table schema ownership, architecture, dependencies
+and formatting pass. The final two ready-control storage cases pass again after
+fixture cleanup. React Doctor's one-file changed scan is 100/100; no frontend
+source change or whole-application score is claimed. CI remains required before
+merge.
+
 ## Delivery slices and evidence
 
 ### Slice 2 implementation and evidence (2026-10-11)
@@ -714,8 +851,11 @@ references inform the accepted behavior, not acceptance evidence.
 - [x] Real integrated editor/history/recovery evidence recorded.
 - [x] Call waits inside pruned loops qualified with the slice 3 runtime.
 - [x] Call retention and forward-fix rollout guidance verified; limits unchanged.
-- [ ] Slice 5: propose a measured limit change only after separate owner review.
+- [x] Slice 5: owner-authorized 4,998-item / 5,000-total increase implemented and
+      locally qualified with the unchanged checkpoint/capacity bounds, a bounded
+      active frontier, maximum-size write measurements and real worker fairness.
+      Green CI is required before merging the independently reviewable limit PR.
 
 Reusable Workflow Calls, pruning and standalone callable contracts are
-implemented. Larger execution limits and the intentionally excluded input/entry
-features remain outside this delivery.
+implemented. Slice 5 records the owner-authorized larger loop limits; the
+intentionally excluded input/entry features remain outside this delivery.
