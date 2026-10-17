@@ -1,3 +1,5 @@
+import { useHistoryPage } from '../../hooks/use-history-page';
+import { HistoryPager } from './history/pager';
 import { RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
@@ -58,6 +60,11 @@ export function RunOutputsView({
 }>) {
   const ran = rows.filter((row) => row.nodeRunId !== undefined);
   const summarise = ran.length <= SUMMARISED_STEPS;
+  const history = useHistoryPage(
+    ran,
+    selectedKey,
+    ran.findIndex((row) => row.key === selectedKey),
+  );
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <section className="min-w-0">
@@ -89,7 +96,7 @@ export function RunOutputsView({
           <p className="text-sm text-muted-foreground">No step has run yet.</p>
         ) : (
           <ul className="flex flex-col">
-            {ran.map((row) => (
+            {history.items.map((row) => (
               <li key={row.key}>
                 <button
                   type="button"
@@ -115,6 +122,7 @@ export function RunOutputsView({
             ))}
           </ul>
         )}
+        <HistoryPager label="Step result pages" {...history} />
       </section>
     </div>
   );

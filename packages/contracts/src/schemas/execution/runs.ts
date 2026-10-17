@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { workflowNameSchema } from '../workflows/authoring.js';
@@ -454,8 +455,13 @@ export type WorkflowRunErrorWorkflow = z.infer<
 export const workflowRunResponseSchema = z
   .object({
     run: workflowRunReadSummarySchema,
-    nodes: z.array(workflowNodeRunSummarySchema).max(1_000),
-    calls: z.array(workflowCallSummarySchema).max(200).optional(),
+    nodes: z
+      .array(workflowNodeRunSummarySchema)
+      .max(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations),
+    calls: z
+      .array(workflowCallSummarySchema)
+      .max(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations)
+      .optional(),
     parentCall: workflowParentCallSchema.optional(),
     errorWorkflow: workflowRunErrorWorkflowSchema.optional(),
   })

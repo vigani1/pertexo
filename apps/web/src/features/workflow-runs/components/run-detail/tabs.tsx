@@ -1,3 +1,5 @@
+import { useHistoryPage } from '../../hooks/use-history-page';
+import { HistoryPager } from './history/pager';
 import type {
   WorkflowGraphContract,
   WorkflowRunEvent,
@@ -86,6 +88,11 @@ export function RunDetailTabs({
   compact: boolean;
 }>) {
   const [tab, setTab] = useState<RunTab>('thread');
+  const history = useHistoryPage(
+    view.rows,
+    selectedKey,
+    view.rows.findIndex((row) => row.key === selectedKey),
+  );
   const selectedNodeId = view.rows.find(
     (row) => row.key === selectedKey,
   )?.nodeId;
@@ -110,7 +117,7 @@ export function RunDetailTabs({
       <TabsContent value="thread" className="pt-5">
         {compact ? (
           <RunStepList
-            rows={view.rows}
+            rows={history.items}
             active={active}
             nowMs={nowMs}
             selectedKey={selectedKey}
@@ -118,13 +125,14 @@ export function RunDetailTabs({
           />
         ) : (
           <RunTimeline
-            view={view}
+            view={{ ...view, rows: history.items }}
             nowMs={nowMs}
             active={active}
             selectedKey={selectedKey}
             onSelectStep={onSelectStep}
           />
         )}
+        <HistoryPager label="Step history pages" {...history} />
       </TabsContent>
       <TabsContent value="graph" className="pt-5">
         {graph === undefined ? (
