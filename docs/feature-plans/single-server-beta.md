@@ -61,7 +61,7 @@ published:
 
 | Service | Image | Role |
 | --- | --- | --- |
-| `proxy` | Caddy (pinned) | TLS for two hostnames with Let's Encrypt. `<app host>` goes to `web`, `<files host>` goes to `storage`. |
+| `proxy` | Caddy (pinned) | TLS for two hostnames with Let's Encrypt. `<app host>` routes `/hooks/*` and one-click unsubscribe directly to `api`, other paths to `web`; `<files host>` goes to `storage`. |
 | `web` | New `web` target of the root Dockerfile | The existing `apps/web/deployment/nginx.conf.template` serving `apps/web/dist` and passing `/v1` to `api` |
 | `api` | Root image | `node apps/api/dist/main.js` |
 | `worker` | Root image | `node apps/worker/dist/main.js` |
@@ -292,3 +292,19 @@ deployment is configured here; those remain owner-assisted slice 6.
 - The owner reaches the beta over HTTPS and the smoke run passes.
 - A backup restores into a fresh stack and the restored workspace opens.
 - A deploy of a bad build returns to the previous release by itself.
+
+## Public ingress follow-up (2026-10-17)
+
+Webhook addresses are `https://<app host>/hooks/<key>`, on the application
+host. Caddy routes every `/hooks/*` method directly to the API, including POST
+and OPTIONS; nginx never receives credential paths. The existing one-click
+route keeps the same direct path. Replace the entire URI in Caddy's default
+log encoder, preserving status and operational errors without paths, query
+capabilities or request headers.
+
+The existing image qualification now always runs the pinned Caddy with the
+real nginx image and production webhook ingress/controller, using isolated
+storage/admission ports. Prove Signed and Secret URL acceptance, invalid-signature
+refusal, CORS preflight, existing one-click behavior, and API-down privacy in
+Caddy/nginx logs. Reuse the image jobs, production Caddyfile and Compose image
+pin; no new service, role, dependency or CI job. Owner-assisted slice 6 stays open.

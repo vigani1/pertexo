@@ -5,9 +5,7 @@
 		format filter {
 			wrap json
 			fields {
-				request>uri query {
-					replace token REDACTED
-				}
+				request>uri replace REDACTED
 				request>headers delete
 				resp_headers>Location delete
 			}
@@ -22,7 +20,10 @@
 
 {$APP_HOST} {
 	import https_only
-	# Keep the one-click capability out of nginx request/error logs.
+	# Capability paths must bypass nginx request/error logs.
+	handle /hooks/* {
+		reverse_proxy api:3000
+	}
 	handle /v1/notifications/unsubscribe/one-click {
 		reverse_proxy api:3000
 	}

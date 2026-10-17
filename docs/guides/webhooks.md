@@ -5,6 +5,14 @@ endpoint. Store the address and secret when shown: Pertexo cannot show them
 again. Send a POST with UTF-8 JSON, at most 256 KB. Every accepted event starts
 work on the worker. The default response is 202 with the run ID.
 
+For a single-server installation, the public address is
+`https://<app host>/hooks/<key>`, on the same host as the editor, for example
+`https://app.example.com/hooks/<key>`. Use the exact address from **Triggers**;
+there is no `/v1` prefix. Caddy sends POST and OPTIONS directly to the API,
+keeping credential paths out of nginx. Its default log encoder redacts the
+entire URI, including when the API is unavailable. Preserve that protection in
+any customized proxy or access logger.
+
 ## Choose authentication
 
 **Signed** is the default and recommended when the sender supports it. Send

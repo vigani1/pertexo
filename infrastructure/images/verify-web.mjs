@@ -70,11 +70,13 @@ try {
     '--tmpfs',
     '/tmp',
     '--mount',
-    `type=bind,src=${fileURLToPath(new URL('./probe-server.mjs', import.meta.url))},dst=/probe.mjs,readonly`,
+    `type=bind,src=${fileURLToPath(new URL('./probe-server.mjs', import.meta.url))},dst=/workspace/infrastructure/images/probe-server.mjs,readonly`,
+    '--mount',
+    `type=bind,src=${fileURLToPath(new URL('../../apps/api/test/support/webhooks/edge-peer.mjs', import.meta.url))},dst=/workspace/apps/api/test/support/webhooks/edge-peer.mjs,readonly`,
     '--entrypoint',
     'node',
     runtimeImage,
-    '/probe.mjs',
+    '/workspace/infrastructure/images/probe-server.mjs',
   ]);
   owned.push(backend);
   const web = await docker([

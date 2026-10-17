@@ -375,7 +375,9 @@ jobs:
           set -euo pipefail
           docker buildx build --load --target web --build-arg SOURCE_COMMIT=${{ github.sha }} \
             --tag pertexo-web-ci:${{ github.sha }} .
-          node infrastructure/images/verify-web.mjs pertexo-ci:${{ github.sha }} pertexo-web-ci:${{ github.sha }}
+          proxy_image="$(node infrastructure/images/proxy/image.mjs)"
+          docker pull "$proxy_image"
+          node infrastructure/images/verify-web.mjs pertexo-ci:${{ github.sha }} pertexo-web-ci:${{ github.sha }} "$proxy_image"
 
   publish-arm-images:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -414,7 +416,9 @@ jobs:
             ])"
           node infrastructure/single-server/backup/verify-runtime.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA"
           node infrastructure/images/code/verify.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA"
-          node infrastructure/images/verify-web.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA" ghcr.io/vigani1/pertexo-web:"$GITHUB_SHA"
+          proxy_image="$(node infrastructure/images/proxy/image.mjs)"
+          docker pull "$proxy_image"
+          node infrastructure/images/verify-web.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA" ghcr.io/vigani1/pertexo-web:"$GITHUB_SHA" "$proxy_image"
       - name: Publish commit tags to GHCR
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

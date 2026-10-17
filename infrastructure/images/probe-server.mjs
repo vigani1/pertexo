@@ -1,7 +1,6 @@
-import { createServer } from 'node:http';
+import { startWebhookPeer } from '../../apps/api/test/support/webhooks/edge-peer.mjs';
 
-// An isolated transport peer for the real nginx image, not the application API.
-const server = createServer((request, response) => {
+await startWebhookPeer((request, response, rawBody) => {
   const url = new URL(request.url ?? '/', 'http://api');
   if (url.pathname === '/v1/notifications/unsubscribe/one-click') {
     if (request.method === 'GET') {
@@ -12,18 +11,12 @@ const server = createServer((request, response) => {
         .end();
       return;
     }
-    let body = '';
-    request.on('data', (chunk) => {
-      body += chunk;
-    });
-    request.on('end', () =>
-      response.writeHead(200, { 'content-type': 'application/json' }).end(
-        JSON.stringify({
-          method: request.method,
-          body,
-          token: url.searchParams.get('token'),
-        }),
-      ),
+    response.writeHead(200, { 'content-type': 'application/json' }).end(
+      JSON.stringify({
+        method: request.method,
+        body: rawBody.toString(),
+        token: url.searchParams.get('token'),
+      }),
     );
     return;
   }
@@ -47,4 +40,3 @@ const server = createServer((request, response) => {
     }),
   );
 });
-server.listen(3000, '0.0.0.0');

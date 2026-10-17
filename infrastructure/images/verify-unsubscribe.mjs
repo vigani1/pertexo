@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -58,6 +58,73 @@ export async function verifyUnsubscribeProxy({
       throw new Error('Unsubscribe edge did not become ready');
     await delay(100);
   }
+  const signedKey = 'a'.repeat(43);
+  const secretKey = 'b'.repeat(43);
+  const body = '{\n  "event": "proxy qualification"\n}\n';
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature =
+    'v1=' +
+    createHmac('sha256', Buffer.alloc(32, 4))
+      .update(timestamp + '.' + body)
+      .digest('hex');
+  const signedHeaders = {
+    ...headers,
+    'content-type': 'application/json',
+    'x-pertexo-timestamp': timestamp,
+    'x-pertexo-signature': signature,
+  };
+  const signed = await probe(`${origin}/hooks/${signedKey}`, signedHeaders, {
+    method: 'POST',
+    body,
+  });
+  assert.equal(
+    signed.status,
+    202,
+    'Signed webhook must reach API through the edge',
+  );
+  assert.deepEqual(signed.value, {
+    runId: '99999999-9999-4999-8999-999999999999',
+    replayed: false,
+  });
+  const invalidSignature = await probe(
+    `${origin}/hooks/${signedKey}`,
+    { ...signedHeaders, 'x-pertexo-signature': 'v1=' + '0'.repeat(64) },
+    { method: 'POST', body },
+  );
+  assert.equal(
+    invalidSignature.status,
+    401,
+    'The peer must exercise real authentication',
+  );
+  const secret = await probe(
+    `${origin}/hooks/${secretKey}`,
+    { ...headers, 'content-type': 'application/json' },
+    { method: 'POST', body },
+  );
+  assert.equal(
+    secret.status,
+    202,
+    'Secret URL webhook must reach API through the edge',
+  );
+  const preflight = await probe(
+    `${origin}/hooks/${secretKey}`,
+    {
+      ...headers,
+      origin: 'https://caller.example',
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type',
+    },
+    { method: 'OPTIONS' },
+  );
+  assert.equal(preflight.status, 204);
+  assert.equal(
+    preflight.headers['access-control-allow-origin'],
+    'https://caller.example',
+  );
+  assert.equal(
+    preflight.headers['access-control-allow-credentials'],
+    undefined,
+  );
   const token = 'synthetic_' + randomUUID().replaceAll('-', '');
   const url = `${origin}/v1/notifications/unsubscribe/one-click?token=${token}`;
   const confirmation = await probe(url, headers);
@@ -82,6 +149,18 @@ export async function verifyUnsubscribeProxy({
     form,
   );
   assert.equal(failed.status, 502);
+  for (const key of [signedKey, secretKey]) {
+    const unavailable = await probe(
+      `${origin}/hooks/${key}`,
+      {
+        ...headers,
+        'content-type': 'application/json',
+        'x-private-probe': key,
+      },
+      { method: 'POST', body },
+    );
+    assert.equal(unavailable.status, 502);
+  }
   const edgeLogs = await docker(['logs', caddy]);
   assert.match(edgeLogs, /REDACTED/u);
   assert.match(edgeLogs, /502/u);
@@ -94,7 +173,18 @@ export async function verifyUnsubscribeProxy({
     !webLogs.includes(token),
     'Canonical capability requests must bypass nginx logs',
   );
+  for (const key of [signedKey, secretKey]) {
+    assert.ok(
+      !edgeLogs.includes(key),
+      'Caddy must redact credential paths, including API-down errors',
+    );
+    assert.ok(!webLogs.includes(key), 'Webhook credentials must bypass nginx');
+  }
+  assert.ok(
+    !webLogs.includes('/hooks'),
+    'nginx must never see the webhook path',
+  );
   console.log(
-    'One-click edge: exact POST, inert manual GET and API-down log privacy passed.',
+    'Single-server edge: signed/Secret URL webhooks, preflight, one-click and API-down log privacy passed.',
   );
 }
