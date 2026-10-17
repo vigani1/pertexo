@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
 import { readErrorWorkflow } from '../error-workflows/read.js';
 import {
@@ -143,9 +144,10 @@ async function readRunModel(
     where workspace_id = ${transaction.workspaceId}
       and workflow_run_id = ${runId}
     order by created_at, id
-    limit 1001
+    limit ${WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 1}
   `);
-  if (nodes.rows.length > 1_000) throw new WorkflowRunReadCapacityError();
+  if (nodes.rows.length > WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations)
+    throw new WorkflowRunReadCapacityError();
   return Object.freeze({
     run,
     ...(await readWorkflowCalls(transaction, runId)),

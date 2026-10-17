@@ -8823,7 +8823,7 @@
             "additionalProperties": false
           },
           "nodes": {
-            "maxItems": 1000,
+            "maxItems": 5000,
             "type": "array",
             "items": {
               "type": "object",
@@ -8992,7 +8992,7 @@
             }
           },
           "calls": {
-            "maxItems": 200,
+            "maxItems": 5000,
             "type": "array",
             "items": {
               "type": "object",

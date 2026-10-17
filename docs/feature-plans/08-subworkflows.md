@@ -431,6 +431,18 @@ Batching is a bulk-operation pattern, not a refund or a bypass for nested loops,
 Call closure or JSON limits. The guides explain 4,998 IDs → batches of 100 → 50
 iterations, and splitting oversized source datasets into separate bounded runs.
 
+### Reading large histories
+
+Run snapshots and Call history now use the model-owned expanded-invocation bound
+rather than the old 1,000-node / 200-Call read limits. The response shape stays
+the same. Database boundary tests read 5,000 records and reject overflow.
+Thread, step results and child Calls show 50 entries per page, while the full
+snapshot still supplies graph statuses and selected-step inspection. A newly
+selected step opens its page; live refreshes preserve manual page navigation.
+Desktop and phone browser cases cover a maximum 5,000-weighted-invocation Call
+history (2,501 parent invocations and 2,499 child Calls). Output summaries retain
+the existing 25-step threshold to avoid a request per output on large runs.
+
 ### Cancellation correction found by qualification
 
 A wide loop exposed an existing attempt-claim refusal: cancellation/deadline
@@ -528,12 +540,15 @@ pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config
 Qualification so far: all eight maximum-size scenarios and the over-limit
 refusal pass in the final measurement run. Four real worker stress/control
 cases, 36 storage/capacity cases, 376 model tests, 458 engine tests and 244
-core-node tests pass. Full build, lint, type checks, 9,474 unit tests, 196 mocked
-browser tests, contracts, 97-table schema ownership, architecture, dependencies
-and formatting pass. The final two ready-control storage cases pass again after
-fixture cleanup. React Doctor's one-file changed scan is 100/100; no frontend
-source change or whole-application score is claimed. CI remains required before
-merge.
+core-node tests pass. The history follow-up adds a 26-case database API pass,
+including exact 5,000-entry boundaries and overflow refusals. Full build, lint,
+type checks, 9,475 unit tests (658 Vitest files), 198 mocked browser tests,
+contracts, 97-table schema ownership, architecture, dependencies and formatting
+pass. A contended default-worker unit pass timed out unrelated editor cases;
+all unchanged assertions pass with two workers, without raising timeouts or
+changing test configuration. The final two ready-control storage cases pass
+again after fixture cleanup. React Doctor's eight-file changed scan is 100/100;
+no whole-application score is claimed. CI remains required before merge.
 
 ## Delivery slices and evidence
 

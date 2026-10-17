@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
@@ -1051,11 +1052,17 @@ describe('workflow run API persistence', () => {
           branch_context,status,side_effect_class)
        select gen_random_uuid(),$1,$2,'node-'||ordinal,'node-'||ordinal,
               '{}'::jsonb,'pending','safe'
-       from generate_series(1,1000) ordinal`,
-      [workspaceId, started.run.id],
+       from generate_series(1,$3::int) ordinal`,
+      [
+        workspaceId,
+        started.run.id,
+        WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations,
+      ],
     );
     const exact = await database.get({ workspaceId, runId: started.run.id });
-    expect(exact?.nodes).toHaveLength(1_000);
+    expect(exact?.nodes).toHaveLength(
+      WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations,
+    );
     expect(
       exact?.nodes.find((node) => node.invocationKey === 'node-1'),
     ).toMatchObject({
@@ -1071,6 +1078,43 @@ describe('workflow run API persistence', () => {
        values(gen_random_uuid(),$1,$2,'overflow','overflow','{}','pending','safe')`,
       [workspaceId, started.run.id],
     );
+    await expect(
+      database.get({ workspaceId, runId: started.run.id }),
+    ).rejects.toBeInstanceOf(WorkflowRunReadCapacityError);
+  });
+
+  it('reads a full Call history and rejects an overflowing history', async () => {
+    const started = await database.start(startInput());
+    const insert = (count: number, offset = 0) =>
+      ownerQuery(
+        `insert into app.workflow_calls
+        (id,workspace_id,parent_run_id,invocation_key,target_workflow_id,
+         target_version_id,target_checksum,input_checksum,status)
+       select gen_random_uuid(),$1,$2,'call-'||(ordinal+$6::int),$3,$4,
+         'sha256:'||repeat('a',64),repeat('b',64),'pending'
+       from generate_series(1,$5::int) ordinal`,
+        [
+          workspaceId,
+          started.run.id,
+          workflowId,
+          workflowVersionId,
+          count,
+          offset,
+        ],
+      );
+    await insert(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations);
+    const exact = await database.get({ workspaceId, runId: started.run.id });
+    expect(exact?.calls).toHaveLength(
+      WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations,
+    );
+    expect(
+      exact?.calls?.find((call) => call.invocationKey === 'call-2499'),
+    ).toMatchObject({
+      status: 'pending',
+      childHistory: 'not_started',
+      childRunId: null,
+    });
+    await insert(1, WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations);
     await expect(
       database.get({ workspaceId, runId: started.run.id }),
     ).rejects.toBeInstanceOf(WorkflowRunReadCapacityError);

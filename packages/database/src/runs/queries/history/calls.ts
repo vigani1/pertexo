@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { WorkflowRunReadCapacityError } from '../../errors.js';
@@ -57,9 +58,11 @@ export async function readWorkflowCalls(
     from app.workflow_calls
     where workspace_id=${transaction.workspaceId}
       and (parent_run_id=${runId} or child_run_id=${runId})
-    order by invocation_key limit 202
+    order by invocation_key
+    limit ${WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 2}
   `);
-  if (result.rows.length > 201) throw new WorkflowRunReadCapacityError();
+  if (result.rows.length > WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 1)
+    throw new WorkflowRunReadCapacityError();
   const calls: WorkflowCallReadRecord[] = [];
   let parentCall: WorkflowParentCallReadRecord | undefined;
   for (const value of result.rows) {
@@ -90,6 +93,8 @@ export async function readWorkflowCalls(
       safeErrorCode: row.safe_error_code,
     });
   }
+  if (calls.length > WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations)
+    throw new WorkflowRunReadCapacityError();
   return {
     ...(calls.length === 0 ? {} : { calls }),
     ...(parentCall === undefined ? {} : { parentCall }),

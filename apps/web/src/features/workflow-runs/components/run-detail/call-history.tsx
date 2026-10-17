@@ -1,3 +1,5 @@
+import { useHistoryPage } from '../../hooks/use-history-page';
+import { HistoryPager } from './history/pager';
 import type {
   WorkflowCallSummary,
   WorkflowParentCall,
@@ -18,6 +20,7 @@ export function CallHistory({
   labels: ReadonlyMap<string, string>;
   workspace: AccessibleWorkspace;
 }>) {
+  const history = useHistoryPage(calls);
   if (calls.length === 0 && parentCall === undefined) return null;
   return (
     <section aria-label="Workflow Calls" className="space-y-3 text-sm">
@@ -40,11 +43,11 @@ export function CallHistory({
         <>
           <h2 className="font-medium">Called workflows</h2>
           <ul className="space-y-3">
-            {calls.map((call, index) => (
+            {history.items.map((call, index) => (
               <li key={call.id} className="rounded-lg border p-3">
                 <p className="font-medium">
                   {labels.get(call.invocationKey) ??
-                    `Call ${String(index + 1)}`}
+                    `Call ${String(history.start + index + 1)}`}
                 </p>
                 <p className="mt-1 text-muted-foreground">
                   {call.status === 'pending'
@@ -84,6 +87,7 @@ export function CallHistory({
               </li>
             ))}
           </ul>
+          <HistoryPager label="Called workflow pages" {...history} />
         </>
       )}
     </section>

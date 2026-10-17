@@ -132,3 +132,8 @@ activation so the existing handler records its control outcome before execution.
 Rejecting that claim stranded running checkpoint invocations. The input-control
 check, physical dispatch uncertainty, receipt idempotency and capacity ownership
 remain unchanged; no new scanner or completion rule is introduced.
+
+Run reads and their public response bounds use the model-owned expanded limit,
+so maximum runs remain inspectable. History lists page 50 entries locally;
+graph statuses and inspection retain the complete bounded snapshot. No new read
+endpoint, stored format or server pagination mechanism is introduced.
