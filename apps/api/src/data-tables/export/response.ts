@@ -21,6 +21,9 @@ export async function sendTableExport(
   };
   reply.raw.once('close', onClose);
   let output: PassThrough | undefined;
+  const abortResponse = () => {
+    reply.raw.destroy();
+  };
   try {
     await withRequestOperationSignal(
       request,
@@ -31,6 +34,7 @@ export async function sendTableExport(
           signal,
           consume: async (csv, table) => {
             output = new PassThrough({ highWaterMark: 64 * 1024 });
+            output.once('error', abortResponse);
             reply.header('Content-Type', 'text/csv; charset=utf-8');
             reply.header(
               'Content-Disposition',
@@ -59,7 +63,8 @@ export async function sendTableExport(
     output.destroy(
       error instanceof Error ? error : new Error('CSV export interrupted'),
     );
-    if (reply.raw.headersSent) reply.raw.destroy();
+    // A queued stream can still become an empty 200 before headers are sent.
+    abortResponse();
   } finally {
     reply.raw.off('close', onClose);
   }

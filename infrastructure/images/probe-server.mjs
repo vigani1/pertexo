@@ -14,6 +14,10 @@ await startWebhookPeer((request, response, rawBody) => {
     response.writeHead(204).end();
     return;
   }
+  if (url.pathname === '/v1/csv-probe/early-failure') {
+    response.destroy();
+    return;
+  }
   if (url.pathname === '/v1/csv-probe') {
     response.writeHead(200, {
       'content-type': 'text/csv',

@@ -1,6 +1,6 @@
 # F14 — Workspace data tables
 
-Status: first slice delivered in #334; editable columns delivered in #337; streamed exports delivered in #338; explicit workflow alias review implemented. Parent:
+Status: first slice delivered in #334; editable columns delivered in #337; streamed exports delivered in #338; explicit workflow alias review delivered in #339. Parent:
 [roadmap](../product-roadmap.md). Decision: [ADR 083](../adr/083-workspace-data-tables.md).
 
 ## Outcome and current foundations
@@ -247,6 +247,11 @@ role, dependency, stored format or CI job.
 - The database owns the snapshot, keyset and encoder. Its export method lends an
   async CSV iterable to an awaited consumer inside the transaction; it never
   returns a live client or lets a consumer outlive the transaction.
+- Prepare and validate the current-column query before lending the iterable to
+  the HTTP consumer, so a stale filter remains an ordinary problem response.
+  Once the stream is handed to Fastify, every failure aborts the socket, including
+  failure before the first byte. `headersSent` is too late a fence: destroying a
+  queued stream before headers can otherwise become a complete empty 200 CSV.
 - API owns HTTP streaming, cancellation and finalization: a bounded PassThrough
   and `pipeline` feed Fastify's normal response stream. End the download only
   after the read transaction finishes successfully. Any later failure destroys
@@ -352,5 +357,21 @@ Owned real API/worker/browser journeys passed at 1280px and 375px: V1 retains
 `amount`; explicit adoption and a new V2 return `total` with the same IDs. Undo,
 reload, no automatic alias save and later-path disclosure passed in the browser.
 Root dependency/boundary checks and web build/lint/types passed. React Doctor
-reports no new diagnostics (92/100 baseline). No production file moves or new dependencies. The new component test was
-relocated into its data-tables area in a separate move-only commit.
+reports no new diagnostics (92/100 baseline). No production file moves or new
+dependencies. The new component test was relocated into its data-tables area in a separate move-only commit.
+
+## Stream initiation failure correction (2026-10-17)
+
+An actual HTTP regression reproduced an empty
+200 attachment when its producer threw before its first byte. The correction
+aborts every failed stream after hand-off and moves current-schema query
+validation before hand-off. The regression also distinguishes ordinary
+pre-consumer problem responses. Existing mid-stream and transaction-end failure
+checks remain, and nginx/Caddy also prove a before-header upstream loss is a
+non-download error response. No new format, service, role or decision is introduced.
+
+- [x] Reproduce the empty-200 failure with actual HTTP before fixing it.
+- [x] Prepare current-schema filters before hand-off; qualify ordinary errors,
+  zero-byte, partial and transaction-end failures through HTTP and proxies.
+- [x] Requalify the 100,000-row export under a 192 MiB heap and local checks.
+  The correction merges only after green exact-head CI.
