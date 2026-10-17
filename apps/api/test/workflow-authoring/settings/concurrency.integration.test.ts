@@ -36,7 +36,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         {
           browser: owner,
           headers: { 'idempotency-key': randomUUID() },
-          payload: { name: 'Queue-only workflow' },
+          payload: { name: 'Concurrency workflow' },
         },
       );
       expect(workflow.statusCode, workflow.payload).toBe(201);
@@ -50,7 +50,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         route: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/concurrency`,
       };
     }
-    it('requires session, CSRF, one command key and strict queue-only bodies', async () => {
+    it('requires session, CSRF, one command key and strict Queue/Skip bodies', async () => {
       const { owner, route } = await fixture();
       const payload = { limit: null, expectedRevision: 1 };
       expectProblem(await api.send('GET', route), 401, 'auth.unauthenticated');
@@ -71,7 +71,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       for (const invalid of [
         { ...payload, limit: 0 },
         { ...payload, expectedRevision: 0 },
-        { ...payload, overflow: 'skip' },
+        { ...payload, overflow: 'cancel' },
         { ...payload, queueLength: 10 },
       ])
         expectProblem(
@@ -83,6 +83,45 @@ describe.runIf(betterAuthIntegrationEnabled)(
           400,
           'request.invalid',
         );
+    });
+    it('persists Queue and Skip with the same command revision and replay rules', async () => {
+      const { owner, route } = await fixture();
+      for (const [overflow, expectedRevision] of [
+        ['skip', 1],
+        ['queue', 2],
+      ] as const) {
+        const headers = { 'idempotency-key': randomUUID() };
+        const payload = { limit: 1, overflow, expectedRevision };
+        const first = await api.send('PUT', route, {
+          browser: owner,
+          headers,
+          payload,
+        });
+        expect(first.statusCode, first.payload).toBe(200);
+        expect(first.json()).toMatchObject({
+          settings: { limit: 1, overflow, revision: expectedRevision + 1 },
+          replayed: false,
+        });
+        const replay = await api.send('PUT', route, {
+          browser: owner,
+          headers,
+          payload,
+        });
+        expect(replay.statusCode, replay.payload).toBe(200);
+        expect(replay.json()).toEqual({
+          ...first.json<WorkflowConcurrencyCommandResponse>(),
+          replayed: true,
+        });
+        const current = await api.send('GET', route, { browser: owner });
+        expect(current.statusCode, current.payload).toBe(200);
+        expect(
+          workflowConcurrencySettingsSchema.parse(current.json()),
+        ).toMatchObject({
+          limit: 1,
+          overflow,
+          revision: expectedRevision + 1,
+        });
+      }
     });
     it('preserves exact replay/CAS, no-op revision and removal with no execution entitlement', async () => {
       const { owner, route, workspaceId, workflowId } = await fixture();
