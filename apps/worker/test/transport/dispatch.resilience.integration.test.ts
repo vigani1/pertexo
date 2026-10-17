@@ -797,8 +797,22 @@ describeResilience(
           expect(measurements.forcedConsumerCloseMs).toBeLessThan(2_000);
           consumer = undefined;
 
+          // Qualify the BullMQ release the queue package actually ships.
+          const queuePackage = z
+            .object({ dependencies: z.object({ bullmq: z.string().min(1) }) })
+            .parse(
+              JSON.parse(
+                await readFile(
+                  new URL(
+                    '../../../../packages/queue/package.json',
+                    import.meta.url,
+                  ),
+                  'utf8',
+                ),
+              ),
+            );
           expect(measurements).toMatchObject({
-            bullmqVersion: '6.3.11',
+            bullmqVersion: queuePackage.dependencies.bullmq,
             migrationHead: EXPECTED_MIGRATION_HEAD,
           });
           proofCompleted = true;
