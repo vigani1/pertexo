@@ -31,6 +31,20 @@ scripts; `deploy.sh` extracts each chosen commit into `releases/<commit>`.
 Persistent Compose volumes belong to the stable `pertexo-beta` project. Never
 run `down -v` on a serving installation.
 
+## Public webhook address
+
+Send webhooks to `https://<app host>/hooks/<key>`, for example
+`https://app.example.com/hooks/<key>`, using the exact address shown in
+**Triggers**. Use the app host, not the files host, and do not add `/v1`.
+POST and browser OPTIONS go directly from Caddy to the API. Other application
+traffic goes through the web container.
+
+Webhook paths can contain credentials. They never reach nginx. Caddy replaces
+the entire request URI in its default log encoder and removes request headers;
+API-down errors retain their status and diagnostic information without the
+credential. Preserve these rules when customizing the proxy or adding access
+logging. See [webhook authentication and browser callers](../guides/webhooks.md).
+
 ## Code runner
 
 Code steps use the same runtime image in a separate `code-runner` service.

@@ -60,6 +60,10 @@ and durable multi-instance response record.
   header, with no preflight cache lifetime, so changing settings takes effect.
   No global API CORS or new browser session authentication is introduced.
   This follows the [Fetch CORS protocol](https://fetch.spec.whatwg.org/#http-cors-protocol).
+- Single-server Caddy routes `/hooks/*` directly to the API on the app host,
+  including OPTIONS, bypassing nginx. Its default log encoder replaces the
+  entire URI; qualify successful authentication and API-down log privacy through
+  the real edge and web images.
 - Keep URL credentials and arbitrary credential-header values out of logs and
   telemetry. Do not capture request headers/body. Redact `/hooks/<key>` paths.
 - Respond to webhook adds `text/csv` and `application/xml` as explicit text
