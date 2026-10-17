@@ -14,8 +14,8 @@ import { Textarea } from '@/components/ui/textarea';
 import type { RunIntent } from '@/features/workflow-runs/commands.public';
 import { useRunInput } from '@/features/workflow-runs/run-input.public';
 import { DeadlineField } from '@/components/ui/deadline-field';
-import { runInputAvailability } from '../../model/run-input-availability';
-import { expectedRunVersion } from '../../model/run-input-version';
+import { runInputAvailability } from '../../model/run-input/availability';
+import { expectedRunVersion } from '../../model/run-input/version';
 
 /** A fetched confirmation target must also reach the displayed Query snapshot. */
 function usePublicationReview(

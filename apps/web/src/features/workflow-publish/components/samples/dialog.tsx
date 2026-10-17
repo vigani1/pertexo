@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { stepSampleSourceSchema } from '@pertexo/contracts';
-import type { SampleDialogSource } from '../../model/step-samples';
+import type { SampleDialogSource } from '../../model/testing/samples';
 import { SampleContent } from './content';
 import { Button } from '@/components/ui/button';
 import {

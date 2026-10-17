@@ -4,7 +4,7 @@ import {
   API_PROBLEM_MANIFEST,
   apiProblemSchema,
 } from '../../../src/errors/api-problem.js';
-import { WORKFLOW_ORGANIZATION_PROBLEM_CODES } from '../../../src/errors/workflow-organization.js';
+import { WORKFLOW_ORGANIZATION_PROBLEM_CODES } from '../../../src/errors/workflows/organization.js';
 import { workflowOrganizationContractPaths } from '../../../src/openapi/workflows/organization.js';
 import {
   workflowAuthoringClientContract,

@@ -7,7 +7,7 @@ import {
   resolveWorkflowValidationTarget,
   type WorkflowValidationIssue,
   type WorkflowValidationTarget,
-} from './validation-target';
+} from './target';
 
 export type WorkflowIssue = Readonly<{
   id: string;

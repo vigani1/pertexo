@@ -4,10 +4,10 @@ import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { StatusGlyph } from '@/components/ui/status';
-import type { IssuesState } from '../../model/issues-state';
-import { emptyDraftHint } from '../../model/publish-readiness';
-import type { WorkflowValidationTarget } from '../../model/validation-target';
-import { countIssues } from '../../model/workflow-issues';
+import type { IssuesState } from '../../model/validation/issues-state';
+import { emptyDraftHint } from '../../model/publication/readiness';
+import type { WorkflowValidationTarget } from '../../model/validation/target';
+import { countIssues } from '../../model/validation/issues';
 import { ISSUES_CHIP_ID, ISSUES_LENS_ID } from './issues-chip';
 import { IssuesList } from './issues-list';
 

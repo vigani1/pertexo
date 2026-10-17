@@ -10,7 +10,7 @@ import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { consumeInboxMessage } from '../outbox/receipts.js';
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
-import { parsePublishedWorkflowRow } from '../runs/queries/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../runs/queries/execution/published.js';
 
 const inputSchema = z
   .object({

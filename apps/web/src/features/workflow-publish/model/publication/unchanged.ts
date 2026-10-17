@@ -1,5 +1,5 @@
-import type { WorkflowPublication } from '../data/mutations/use-workflow-publication';
-import type { SavedDraft } from '../data/mutations/use-workflow-draft-validation';
+import type { WorkflowPublication } from '../../data/mutations/use-workflow-publication';
+import type { SavedDraft } from '../../data/mutations/use-workflow-draft-validation';
 
 /** A comparison only describes the saved draft and publication it names. */
 export function unchangedLiveVersion(

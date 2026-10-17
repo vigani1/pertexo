@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { workflowGraphStepSql } from '../queries/graph-step.js';
+import { workflowGraphStepSql } from '../queries/execution/graph-step.js';
 import {
   workflowFailureClassificationSchema,
   type WorkflowErrorInput,

@@ -12,7 +12,7 @@ import { migrateDatabase } from '../../src/migrations.js';
 import {
   appendRunEvent,
   readRunEventsAfter,
-} from '../../src/runs/queries/events.js';
+} from '../../src/runs/queries/history/events.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 
 const adminUrl =

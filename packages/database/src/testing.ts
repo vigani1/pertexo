@@ -127,12 +127,12 @@ export {
   appendRunEvent,
   readRunEventsAfter,
   RUN_EVENT_TYPE,
-} from './runs/queries/events.js';
+} from './runs/queries/history/events.js';
 export type {
   PersistedRunEvent,
   RunEventPage,
   RunEventType,
-} from './runs/queries/events.js';
+} from './runs/queries/history/events.js';
 export {
   ExecutionStateConflictError,
   RunEventGapError,
@@ -141,12 +141,12 @@ export { requestWorkflowRunCancellation } from './runs/commands/cancel.js';
 export {
   createPublishedWorkflowReader,
   PublishedWorkflowVersionCorruptError,
-} from './runs/queries/published-workflow.js';
+} from './runs/queries/execution/published.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
-} from './runs/queries/published-workflow.js';
+} from './runs/queries/execution/published.js';
 export { createOutboxDispatcherDatabase } from './outbox/dispatcher/database.js';
 export type {
   ClaimOutboxBatchInput,

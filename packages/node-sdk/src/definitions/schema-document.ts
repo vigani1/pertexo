@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import { inspectBoundedJson, NODE_JSON_LIMITS } from '../bounded-json.js';
-import { cloneAndFreeze } from '../freeze.js';
+import { inspectBoundedJson, NODE_JSON_LIMITS } from '../values/bounds.js';
+import { cloneAndFreeze } from '../values/freeze.js';
 
-export { NODE_JSON_LIMITS } from '../bounded-json.js';
+export { NODE_JSON_LIMITS } from '../values/bounds.js';
 
 export type SchemaJson =
   null | boolean | number | string | readonly SchemaJson[] | SchemaObject;

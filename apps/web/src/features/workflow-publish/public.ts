@@ -4,12 +4,12 @@ export {
   NodeTestPanel,
   type NodeTestHandle,
 } from './components/node-preview/node-test-panel';
-export { describePreviewStatus } from './model/preview-observation';
+export { describePreviewStatus } from './model/testing/preview-observation';
 export {
   workflowIssuesView,
   type WorkflowIssuesView,
-} from './model/issues-state';
-export type { WorkflowValidationTarget } from './model/validation-target';
-export type { WorkflowIssue } from './model/workflow-issues';
+} from './model/validation/issues-state';
+export type { WorkflowValidationTarget } from './model/validation/target';
+export type { WorkflowIssue } from './model/validation/issues';
 export { useAutoValidation } from './hooks/use-auto-validation';
 export { useWorkflowCommandSession } from './hooks/use-workflow-command-session';

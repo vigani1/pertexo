@@ -1,4 +1,4 @@
-import { ordinaryRunSql } from '../data-policy.js';
+import { ordinaryRunSql } from '../../data-policy.js';
 import { sql, type SQL } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -6,7 +6,7 @@ import { z } from 'zod';
 import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
-} from '../../tenant-access/transactions.js';
+} from '../../../tenant-access/transactions.js';
 
 /** How many of a workflow's newest runs step history looks at (ADR 051). */
 const STEP_HISTORY_RUN_WINDOW = 100;

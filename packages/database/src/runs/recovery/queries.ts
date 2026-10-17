@@ -26,13 +26,13 @@ import {
 } from '../errors.js';
 import { readWorkflowRunRecord } from '../commands/records.js';
 import { lockReplaySource, lockReplayVersion } from '../commands/replay.js';
-import { parsePublishedWorkflowRow } from '../queries/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../queries/execution/published.js';
 import type { WorkflowRecoveryMetadata } from './contract.js';
 import { nodeStatusSchema } from '../queries/read.js';
 import {
   readWorkflowRunFailedSteps,
   runInputInTransaction,
-} from '../queries/run-data.js';
+} from '../queries/history/details.js';
 
 const maximumAttemptRecords = 1_000;
 

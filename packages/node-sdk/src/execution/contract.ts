@@ -1,7 +1,7 @@
-import type { NodeCodeRuntime, CodeDiagnostics } from './code/contract.js';
+import type { NodeCodeRuntime, CodeDiagnostics } from '../code/contract.js';
 import type { NodeWebhookResponseRuntime } from './webhooks.js';
-import type { NodeArtifactReference } from './artifacts.js';
-export type { NodeArtifactReference } from './artifacts.js';
+import type { NodeArtifactReference } from '../artifacts/reference.js';
+export type { NodeArtifactReference } from '../artifacts/reference.js';
 import type { ZodType } from 'zod';
 
 import type {
@@ -9,7 +9,7 @@ import type {
   ExecutorIdentity,
   NodeManifest,
   NodeCatalog,
-} from './catalog.js';
+} from '../definitions/catalog.js';
 export type JsonValue =
   null | boolean | number | string | readonly JsonValue[] | JsonObject;
 

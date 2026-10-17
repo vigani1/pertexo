@@ -13,9 +13,9 @@ import {
 } from '@/components/ui/dialog';
 import { Status, type StatusTone } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
-import type { PublishSummary } from '../../model/publish-summary';
-import type { WorkflowIssueGroup } from '../../model/workflow-issues';
-import type { WorkflowValidationTarget } from '../../model/validation-target';
+import type { PublishSummary } from '../../model/publication/summary';
+import type { WorkflowIssueGroup } from '../../model/validation/issues';
+import type { WorkflowValidationTarget } from '../../model/validation/target';
 import type { PublishStage } from '../../data/mutations/use-workflow-publication';
 import { IssuesList } from '../validation/issues-list';
 import { PublishChanges } from './publish-changes';

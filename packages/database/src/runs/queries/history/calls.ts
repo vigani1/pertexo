@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { WorkflowRunReadCapacityError } from '../errors.js';
-import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
+import { WorkflowRunReadCapacityError } from '../../errors.js';
+import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 
 const callRow = z
   .object({

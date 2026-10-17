@@ -1,4 +1,4 @@
-import { ordinaryRunSql } from '../data-policy.js';
+import { ordinaryRunSql } from '../../data-policy.js';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -6,8 +6,8 @@ import { z } from 'zod';
 import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
-} from '../../tenant-access/transactions.js';
-import { runStatusSchema } from '../commands/records.js';
+} from '../../../tenant-access/transactions.js';
+import { runStatusSchema } from '../../commands/records.js';
 
 // Exact run counts for one workspace snapshot (ADR 044). Every statement
 // reads one bounded index range: the non-terminal statuses, or the runs

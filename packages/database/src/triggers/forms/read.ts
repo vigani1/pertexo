@@ -1,6 +1,6 @@
 import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';
-import { parsePublishedWorkflowRow } from '../../runs/queries/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.js';
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import type { DefinitionIdentity, ExecutorIdentity } from './catalog.js';
+import type {
+  DefinitionIdentity,
+  ExecutorIdentity,
+} from '../definitions/catalog.js';
 
 export type NodeExecutorErrorKind =
   | 'authentication'

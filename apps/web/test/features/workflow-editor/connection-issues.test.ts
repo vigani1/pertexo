@@ -4,7 +4,7 @@ import {
 } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { workflowConnectionIssues } from '@/features/workflow-editor/model/connection-issues';
-import { workflowIssuesView } from '@/features/workflow-publish/model/issues-state';
+import { workflowIssuesView } from '@/features/workflow-publish/model/validation/issues-state';
 import { emptyLoopStructure } from '@/features/workflow-editor/model/graph/scopes';
 import { slackConnection } from '../../support/fixtures/slack-channels';
 import {

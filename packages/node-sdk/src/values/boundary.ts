@@ -1,10 +1,10 @@
-import type { JsonValue } from './executor-contracts.js';
-import { InvalidBoundedJsonError } from './executor-errors.js';
+import type { JsonValue } from '../execution/contract.js';
+import { InvalidBoundedJsonError } from '../execution/errors.js';
 import {
   inspectBoundedJson,
   NODE_JSON_LIMITS,
   type BoundedJsonLimits,
-} from './bounded-json.js';
+} from './bounds.js';
 
 // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
 interface JsonObject {

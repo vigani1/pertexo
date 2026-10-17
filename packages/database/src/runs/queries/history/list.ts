@@ -1,7 +1,7 @@
-import { ordinaryRunSql } from '../data-policy.js';
-import { workflows } from '../../schema/authoring/workflows.js';
-import { workflowRuns } from '../../schema/runs/execution.js';
-import { workflowRunReadQuery, runAdmissionBlockers } from './admission.js';
+import { ordinaryRunSql } from '../../data-policy.js';
+import { workflows } from '../../../schema/authoring/workflows.js';
+import { workflowRuns } from '../../../schema/runs/execution.js';
+import { workflowRunReadQuery, runAdmissionBlockers } from '../admission.js';
 import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -9,15 +9,15 @@ import { z } from 'zod';
 import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
-} from '../../tenant-access/transactions.js';
+} from '../../../tenant-access/transactions.js';
 import {
   readWorkflowRunFailedSteps,
   type WorkflowRunFailedStep,
-} from './run-data.js';
+} from './details.js';
 import {
   toWorkflowRunReadRecord,
   type WorkflowRunReadRecord,
-} from '../commands/records.js';
+} from '../../commands/records.js';
 
 const runStatusSchema = z.enum([
   'queued',

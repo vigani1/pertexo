@@ -1,5 +1,5 @@
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
-import { sampleErrorDetail } from '../../model/step-samples';
+import { sampleErrorDetail } from '../../model/testing/samples';
 import { isApiError } from '@/lib/api/error';
 
 export function parseCommandJson(value: string, message: string): unknown {

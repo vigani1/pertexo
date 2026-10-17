@@ -10,8 +10,8 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import { appSchema } from '../namespace.js';
-import { workspaces } from '../foundation.js';
+import { appSchema } from '../../namespace.js';
+import { workspaces } from '../../foundation.js';
 
 export const workspaceExecutionEntitlements = appSchema.table(
   'workspace_execution_entitlements',

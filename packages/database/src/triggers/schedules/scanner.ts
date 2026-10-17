@@ -14,7 +14,7 @@ import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
 } from '../../runs/commands/acceptance.js';
-import { parsePublishedWorkflowRow } from '../../runs/queries/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.js';
 import {
   scheduleOccurrenceDisposition,
   type ScheduleOccurrenceDisposition,

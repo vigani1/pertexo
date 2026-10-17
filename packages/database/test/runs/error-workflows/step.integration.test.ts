@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { apiPool } from '../../support/workflow-authoring.js';
-import { workflowGraphStepSql } from '../../../src/runs/queries/graph-step.js';
+import { workflowGraphStepSql } from '../../../src/runs/queries/execution/graph-step.js';
 
 it('reads only declared steps, including structured bodies, without interpreting configuration as metadata', async () => {
   const decoy = {

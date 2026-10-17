@@ -3,7 +3,7 @@ import { SkeletonLines } from '@/components/ui/skeleton';
 import type {
   PublishSummary,
   PublishSummaryLine,
-} from '../../model/publish-summary';
+} from '../../model/publication/summary';
 
 const kindIcon = {
   added: PlusIcon,

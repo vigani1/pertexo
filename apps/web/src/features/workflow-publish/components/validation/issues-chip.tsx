@@ -4,9 +4,9 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { StatusGlyph } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
-import type { IssuesState } from '../../model/issues-state';
-import type { EmptyDraftHint } from '../../model/publish-readiness';
-import { countIssues } from '../../model/workflow-issues';
+import type { IssuesState } from '../../model/validation/issues-state';
+import type { EmptyDraftHint } from '../../model/publication/readiness';
+import { countIssues } from '../../model/validation/issues';
 
 /** The issues lens the chip opens; the editor places it at the bottom. */
 export const ISSUES_LENS_ID = 'editor-issues-lens';

@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
-import { workflowIssuesView } from '@/features/workflow-publish/model/issues-state';
+import { workflowIssuesView } from '@/features/workflow-publish/model/validation/issues-state';
 import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
 import { validateWorkflow } from '@/features/workflow-publish/data/workflow-publish.api';
 

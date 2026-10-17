@@ -22,7 +22,7 @@ vi.mock('../../src/platform/pool/telemetry.js', () => ({
 
 import type { DatabaseConfig } from '../../src/config.js';
 import { createDatabaseRuntime } from '../../src/platform/pool/runtime.js';
-import { createPublishedWorkflowReader } from '../../src/runs/queries/published-workflow.js';
+import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/published.js';
 import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/database.js';
 import { createWorkflowRunDatabase } from '../../src/runs/runs.repository.js';
 import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';

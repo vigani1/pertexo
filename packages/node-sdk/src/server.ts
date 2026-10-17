@@ -1,5 +1,5 @@
 import { z, type ZodType } from 'zod';
-import { ARTIFACT_INPUT_CAPABILITY } from './artifacts.js';
+import { ARTIFACT_INPUT_CAPABILITY } from './artifacts/reference.js';
 
 import type {
   NodeDefinitionRegistration,
@@ -8,7 +8,7 @@ import type {
   NodeExecutionRuntime,
   NodeExecutorRegistration,
   NodeRegistryOptions,
-} from './executor-contracts.js';
+} from './execution/contract.js';
 import {
   DefinitionNotFoundError,
   ExecutorNotFoundError,
@@ -21,8 +21,8 @@ import {
   NodeOutputValidationError,
   NodeRegistryCompatibilityError,
   type NodeSdkError,
-} from './executor-errors.js';
-import { canonicalizeBoundedJson, isJsonObject } from './json-boundary.js';
+} from './execution/errors.js';
+import { canonicalizeBoundedJson, isJsonObject } from './values/boundary.js';
 
 import {
   type DefinitionIdentity,
@@ -37,7 +37,7 @@ import {
   generateSchemaDocument,
   parseNodeCatalog,
   TERMINATES_RUN_CAPABILITY,
-} from './catalog.js';
+} from './definitions/catalog.js';
 
 export type {
   JsonValue,
@@ -55,7 +55,7 @@ export type {
   NodeRegistryOptions,
   NodeSideEffectClass,
   ResolvedNodeConnection,
-} from './executor-contracts.js';
+} from './execution/contract.js';
 export {
   DefinitionNotFoundError,
   ExecutorNotFoundError,
@@ -74,12 +74,12 @@ export {
   type NodeErrorCode,
   type NodeExecutorErrorKind,
   type NodeExecutorFailureOutcome,
-} from './executor-errors.js';
+} from './execution/errors.js';
 export {
   canonicalizeBoundedJson,
   NODE_EXECUTION_LIMITS,
-} from './json-boundary.js';
-import { identityToken, sameIdentity } from './identity.js';
+} from './values/boundary.js';
+import { identityToken, sameIdentity } from './definitions/identity.js';
 
 export const DISPATCH_AWARE_EXECUTOR_ABI_VERSION = 2 as const;
 const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
@@ -423,7 +423,7 @@ export type {
   NodeWebhookResponseRuntime,
   NodeWebhookResponse,
   NodeWebhookResponseReceipt,
-} from './webhooks.js';
+} from './execution/webhooks.js';
 
 export { NodeCodeFailure } from './code/failure.js';
 export type {

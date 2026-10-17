@@ -132,7 +132,7 @@ existing tables and row locks, stop for the owner rather than introduce it.
 
 | Owner | Change | Must not own |
 | --- | --- | --- |
-| `packages/node-sdk/src/executor-contracts.ts` | Scoped server read interface, existing reference | SQL/browser upload |
+| `packages/node-sdk/src/execution/contract.ts` | Scoped server read interface, existing reference | SQL/browser upload |
 | `apps/worker/src/attempts/artifacts/` | Read adapter, authority, cleanup, wiring | Graph policy/public API |
 | `packages/artifact-store/src/` | Reuse verified stream | Tenant grants/accounting |
 | `packages/integrations/src/http-request/` | Body union and exact-byte consumption | Direct SQL/S3 |

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { SampleScope } from '../../data/samples/api';
 import { stepSamplesQueryOptions } from '../../data/samples/queries';
-import { currentSampleState } from '../../model/step-samples';
+import { currentSampleState } from '../../model/testing/samples';
 /** Query owns the saved sample; the live draft only derives whether it is still usable. */
 export function useStepSample(
   scope: SampleScope,

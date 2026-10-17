@@ -16,14 +16,14 @@ import { PublishDialog } from './publication/publish-dialog';
 import { PublishedStamp } from './publication/published-stamp';
 import { RunInputDialog } from './run-submission/run-input-dialog';
 import { PublishedRunAction } from './run-submission/published-run-action';
-import type { WorkflowIssuesView } from '../model/issues-state';
-import { emptyDraftHint } from '../model/publish-readiness';
-import { summarizePublish } from '../model/publish-summary';
-import type { WorkflowValidationTarget } from '../model/validation-target';
+import type { WorkflowIssuesView } from '../model/validation/issues-state';
+import { emptyDraftHint } from '../model/publication/readiness';
+import { summarizePublish } from '../model/publication/summary';
+import type { WorkflowValidationTarget } from '../model/validation/target';
 import type { PublicationReceipt } from '../data/mutations/use-workflow-publication';
 import type { WorkflowCommandSession } from '../hooks/use-workflow-command-session';
 import { latestVersionQueryOptions } from '../data/workflow-publish.queries';
-import { unchangedLiveVersion } from '../model/unchanged-publication';
+import { unchangedLiveVersion } from '../model/publication/unchanged';
 
 function usePublishedFormEntry(
   apiClient: ApiClient,

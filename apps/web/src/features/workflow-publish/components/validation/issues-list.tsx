@@ -3,11 +3,11 @@ import { WrenchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
-import type { WorkflowIssueGroup } from '../../model/workflow-issues';
+import type { WorkflowIssueGroup } from '../../model/validation/issues';
 import {
   findWorkflowStep,
   type WorkflowValidationTarget,
-} from '../../model/validation-target';
+} from '../../model/validation/target';
 
 /** Findings grouped under the step they belong to, each with a Fix. */
 export function IssuesList({

@@ -3,7 +3,7 @@ import { PinIcon } from 'lucide-react';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { formatRelativeTime } from '@/lib/format/time';
-import { sampleStateLabel } from '../../model/step-samples';
+import { sampleStateLabel } from '../../model/testing/samples';
 export function SampleSummary({
   sample,
   state,

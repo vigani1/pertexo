@@ -14,7 +14,7 @@ import {
   type NodeManifest,
   type PolicyReference,
   TERMINATES_RUN_CAPABILITY,
-} from '../src/catalog.js';
+} from '../src/definitions/catalog.js';
 import {
   DefinitionNotFoundError,
   ExecutorNotFoundError,

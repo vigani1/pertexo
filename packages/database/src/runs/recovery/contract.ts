@@ -8,7 +8,7 @@ import type {
   RecoveryRefused,
   RecoveryValues,
 } from '@pertexo/workflow-engine';
-import type { PublishedWorkflow } from '../queries/published-workflow.js';
+import type { PublishedWorkflow } from '../queries/execution/published.js';
 import type { WorkflowRunRecord } from '../commands/records.js';
 
 export type WorkflowRecoverySummary = Readonly<{
