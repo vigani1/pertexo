@@ -66,8 +66,10 @@ function InputCasesDialog({
       onOpenChange={(next) => {
         if (next || !locked) {
           onOpenChange(next);
-          if (!next) setLoaded(undefined);
         }
+      }}
+      onOpenChangeComplete={(next) => {
+        if (!next) setLoaded(undefined);
       }}
     >
       <DialogTrigger
@@ -90,53 +92,52 @@ function InputCasesDialog({
         <DialogDescription>
           Browse shared run inputs. Nothing here starts or tests a workflow.
         </DialogDescription>
-        {open ? (
-          <div className="mt-5 flex flex-col gap-5">
-            <InputCasesPanel
-              key={`${userId}:${workspace.id}:${workflow.id}`}
-              cases={cases}
-              workspace={workspace}
-              workflow={workflow}
-              onAccessLost={clearLoaded}
-              onLoad={setLoaded}
-            />
-            {loaded === undefined ? null : (
-              <FieldGroup>
-                <LabelledField
-                  id="loaded-case-copy"
-                  label={
-                    <span className="wrap-anywhere">
-                      Loaded input: {loaded.name}
-                    </span>
-                  }
-                  description="Detached copy. Later saved-case changes do not rewrite it. To execute, open Run with input and load the case there."
-                >
-                  {(control) => (
-                    <Textarea
-                      {...control}
-                      readOnly
-                      autoComplete="off"
-                      spellCheck={false}
-                      className="min-h-32 font-mono"
-                      value={JSON.stringify(loaded.input, null, 2)}
-                    />
-                  )}
-                </LabelledField>
-              </FieldGroup>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={locked}
-              onClick={() => {
-                onOpenChange(false);
-                setLoaded(undefined);
-              }}
-            >
-              Close input cases
-            </Button>
-          </div>
-        ) : null}
+        {/* Let the popup unmount its focused content after the exit transition;
+            removing it on close queues focus repair into the next open menu. */}
+        <div className="mt-5 flex flex-col gap-5">
+          <InputCasesPanel
+            key={`${userId}:${workspace.id}:${workflow.id}`}
+            cases={cases}
+            workspace={workspace}
+            workflow={workflow}
+            onAccessLost={clearLoaded}
+            onLoad={setLoaded}
+          />
+          {loaded === undefined ? null : (
+            <FieldGroup>
+              <LabelledField
+                id="loaded-case-copy"
+                label={
+                  <span className="wrap-anywhere">
+                    Loaded input: {loaded.name}
+                  </span>
+                }
+                description="Detached copy. Later saved-case changes do not rewrite it. To execute, open Run with input and load the case there."
+              >
+                {(control) => (
+                  <Textarea
+                    {...control}
+                    readOnly
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="min-h-32 font-mono"
+                    value={JSON.stringify(loaded.input, null, 2)}
+                  />
+                )}
+              </LabelledField>
+            </FieldGroup>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={locked}
+            onClick={() => {
+              onOpenChange(false);
+            }}
+          >
+            Close input cases
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
