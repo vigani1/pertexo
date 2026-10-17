@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { isTestRun } from '../data-policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 export class WorkflowAlreadyRunningError extends Error {
@@ -14,7 +15,7 @@ export async function requireWorkflowConcurrency(
   workflowId: string,
   triggerType: string,
 ): Promise<void> {
-  if (triggerType === 'workflow_call' || triggerType === 'test') {
+  if (triggerType === 'workflow_call' || isTestRun(triggerType)) {
     await transaction.db.execute(
       sql`select set_config('app.workflow_concurrency_skip_protocol','1',true)`,
     );
