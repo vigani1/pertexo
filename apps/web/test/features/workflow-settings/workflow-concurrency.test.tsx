@@ -573,7 +573,7 @@ it('saves Skip with the workflow limit and shows metadata-only skip history', as
   await user.click(
     await screen.findByRole('combobox', { name: 'When the limit is reached' }),
   );
-  await user.click(screen.getByRole('option', { name: 'Skip' }));
+  await user.click(await screen.findByRole('option', { name: 'Skip' }));
   await user.click(
     screen.getByRole('button', { name: 'Save concurrency limit' }),
   );
