@@ -500,7 +500,11 @@ describe('shared workflow input cases', () => {
     });
     await screen.findByRole('button', { name: 'Retry exact case change' });
     expect(captures).toEqual([
-      { name: metadata.name, input: { customer: 'synthetic' } },
+      {
+        name: metadata.name,
+        input: { customer: 'synthetic' },
+        expectations: { outcome: 'succeeds', assertions: [] },
+      },
     ]);
     expect(screen.getByLabelText('Case name')).toBeDisabled();
   });
@@ -531,6 +535,7 @@ describe('shared workflow input cases', () => {
     expect(writes[0]?.body).toEqual({
       name: metadata.name,
       input: { customer: 'changed' },
+      expectations: { outcome: 'succeeds', assertions: [] },
     });
     expect(writes[0]?.tag).toBe(metadata.representationTag);
     expect(

@@ -69,6 +69,7 @@ export const workflowInputCasePayloads = appSchema.table(
     caseId: uuid('case_id').notNull(),
     revision: integer('revision').notNull(),
     input: text('input').notNull(),
+    expectations: text('expectations'),
     canonicalBytes: integer('canonical_bytes').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
@@ -77,15 +78,19 @@ export const workflowInputCasePayloads = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'workflow_input_case_payloads_canonical_bytes_check',
-      sql`((canonical_bytes >= 1) AND (canonical_bytes <= 65536))`,
+      sql`((canonical_bytes >= 1) AND (canonical_bytes <= 81920))`,
     ),
     check(
       'workflow_input_case_payloads_check',
-      sql`(octet_length(input) = canonical_bytes)`,
+      sql`(octet_length(input)+coalesce(octet_length(expectations),0) = canonical_bytes)`,
     ),
     check(
       'workflow_input_case_payloads_input_check',
       sql`((input)::jsonb IS NOT NULL)`,
+    ),
+    check(
+      'workflow_input_case_payloads_expectations_bound',
+      sql`octet_length(input)<=65536 AND (expectations IS NULL OR (octet_length(expectations)<=16384 AND jsonb_typeof(expectations::jsonb)='object'))`,
     ),
     check('workflow_input_case_payloads_revision_check', sql`(revision > 0)`),
     primaryKey({

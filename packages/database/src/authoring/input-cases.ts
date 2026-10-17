@@ -1,7 +1,13 @@
 import { lockArtifactReferences } from '../artifacts/references.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { canonicalJson, inspectJsonValue } from '@pertexo/workflow-model';
+import {
+  canonicalJson,
+  inspectJsonValue,
+  DEFAULT_TEST_EXPECTATIONS,
+  workflowTestExpectationsSchema,
+  type WorkflowTestExpectations,
+} from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '../config.js';
 import {
   acquireDatabasePool,
@@ -46,14 +52,18 @@ export interface WorkflowInputCaseDatabase {
     items: readonly WorkflowInputCaseMetadata[];
     nextCursor?: { createdAt: Date; id: string };
   }>;
-  getCase(
-    input: Scope & { caseId: string },
-  ): Promise<{ case: WorkflowInputCaseMetadata & { input: unknown } }>;
+  getCase(input: Scope & { caseId: string }): Promise<{
+    case: WorkflowInputCaseMetadata & {
+      input: unknown;
+      expectations?: WorkflowTestExpectations;
+    };
+  }>;
   createCase(
     input: Command & {
       workflowVersionId: string;
       name: string;
       input: unknown;
+      expectations?: WorkflowTestExpectations;
     },
   ): Promise<WorkflowInputCaseResult>;
   updateCase(
@@ -62,6 +72,7 @@ export interface WorkflowInputCaseDatabase {
       expectedRevision: number;
       name: string;
       input: unknown;
+      expectations?: WorkflowTestExpectations;
     },
   ): Promise<WorkflowInputCaseResult>;
   deleteCase(
@@ -165,10 +176,7 @@ async function mutate(
     if (stored !== null)
       return Object.freeze({ ...resultSchema.parse(stored), replayed: true });
     await workflow(client, input, true);
-    // Case counts and retained bytes are checked under one lock per workspace.
-    await client.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [
-      `workflow-input-case-quota:${input.workspaceId}`,
-    ]);
+    await lockInputCaseQuota(client, input.workspaceId);
     const result = await work(client);
     await client.query(
       "insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,$4,'workflow_input_case',$5,$6,$7,$8::jsonb)",
@@ -206,7 +214,7 @@ async function quota(
   );
   const row = result.rows[0];
   if (!row) throw new Error('Case quota authority unavailable');
-  if (create && Number(row.workflow_count) >= 20)
+  if (create && Number(row.workflow_count) >= 50)
     throw new WorkflowInputCaseLimitError('workflow_count');
   if (create && Number(row.workspace_count) >= 200)
     throw new WorkflowInputCaseLimitError('workspace_count');
@@ -296,8 +304,10 @@ export function createWorkflowInputCaseDatabase(
       transact(input, false, async (client) => {
         z.uuid().parse(input.caseId);
         await workflow(client, input, false);
-        const result = await client.query<Record<string, unknown>>(
-          `select c.*,p.input from app.workflow_input_cases c join app.workflow_input_case_payloads p on p.workspace_id=c.workspace_id and p.case_id=c.id and p.revision=c.revision where c.workspace_id=$1 and c.workflow_id=$2 and c.id=$3 and c.deleted_at is null`,
+        const result = await client.query<
+          Record<string, unknown> & { expectations: string | null }
+        >(
+          `select c.*,p.input,p.expectations from app.workflow_input_cases c join app.workflow_input_case_payloads p on p.workspace_id=c.workspace_id and p.case_id=c.id and p.revision=c.revision where c.workspace_id=$1 and c.workflow_id=$2 and c.id=$3 and c.deleted_at is null`,
           [input.workspaceId, input.workflowId, input.caseId],
         );
         if (!result.rows[0])
@@ -305,6 +315,12 @@ export function createWorkflowInputCaseDatabase(
         return {
           case: {
             ...metadata(result.rows[0]),
+            expectations:
+              result.rows[0].expectations === null
+                ? DEFAULT_TEST_EXPECTATIONS
+                : (JSON.parse(
+                    result.rows[0].expectations,
+                  ) as WorkflowTestExpectations),
             input: JSON.parse(
               z.string().parse(result.rows[0].input),
             ) as unknown,
@@ -315,6 +331,12 @@ export function createWorkflowInputCaseDatabase(
       const name = z.string().trim().min(1).max(128).parse(input.name);
       z.uuid().parse(input.workflowVersionId);
       const json = payload(input.input);
+      const expectations =
+        input.expectations === undefined
+          ? null
+          : canonicalJson(
+              workflowTestExpectationsSchema.parse(input.expectations),
+            );
       const caseId = generatePersistedId();
       return mutate(
         transact,
@@ -325,6 +347,9 @@ export function createWorkflowInputCaseDatabase(
           workflowVersionId: input.workflowVersionId,
           name,
           input: JSON.parse(json.text),
+          ...(input.expectations === undefined
+            ? {}
+            : { expectations: input.expectations }),
         },
         async (client) => {
           const version = await client.query<{ checksum: string }>(
@@ -333,7 +358,13 @@ export function createWorkflowInputCaseDatabase(
           );
           if (!version.rows[0])
             throw new WorkflowNotFoundError('Workflow version is not visible');
-          await quota(client, input, json.bytes, true);
+          await quota(
+            client,
+            input,
+            json.bytes +
+              (expectations === null ? 0 : Buffer.byteLength(expectations)),
+            true,
+          );
           await lockArtifactReferences(client, input.workspaceId, input.input);
           await client.query(
             'insert into app.workflow_input_cases(id,workspace_id,workflow_id,workflow_version_id,version_checksum,name) values($1,$2,$3,$4,$5,$6)',
@@ -347,8 +378,15 @@ export function createWorkflowInputCaseDatabase(
             ],
           );
           await client.query(
-            'insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes) values($1,$2,1,$3,$4)',
-            [input.workspaceId, caseId, json.text, json.bytes],
+            'insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes,expectations) values($1,$2,1,$3,$4,$5)',
+            [
+              input.workspaceId,
+              caseId,
+              json.text,
+              json.bytes +
+                (expectations === null ? 0 : Buffer.byteLength(expectations)),
+              expectations,
+            ],
           );
           return { caseId, revision: 1 };
         },
@@ -367,15 +405,38 @@ export function createWorkflowInputCaseDatabase(
           expectedRevision: input.expectedRevision,
           name,
           input: JSON.parse(json.text),
+          ...(input.expectations === undefined
+            ? {}
+            : { expectations: input.expectations }),
         },
         async (client) => {
           const item = await lockedCase(client, input);
-          await quota(client, input, json.bytes, false);
+          const previous = await client.query<{ expectations: string | null }>(
+            'select expectations from app.workflow_input_case_payloads where workspace_id=$1 and case_id=$2 and revision=$3',
+            [input.workspaceId, input.caseId, item.revision],
+          );
+          const expectations =
+            input.expectations === undefined
+              ? (previous.rows[0]?.expectations ?? null)
+              : canonicalJson(
+                  workflowTestExpectationsSchema.parse(input.expectations),
+                );
+          const bytes =
+            json.bytes +
+            (expectations === null ? 0 : Buffer.byteLength(expectations));
+          await quota(client, input, bytes, false);
           await lockArtifactReferences(client, input.workspaceId, input.input);
           const revision = item.revision + 1;
           await client.query(
-            'insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes) values($1,$2,$3,$4,$5)',
-            [input.workspaceId, input.caseId, revision, json.text, json.bytes],
+            'insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes,expectations) values($1,$2,$3,$4,$5,$6)',
+            [
+              input.workspaceId,
+              input.caseId,
+              revision,
+              json.text,
+              bytes,
+              expectations,
+            ],
           );
           await client.query(
             'update app.workflow_input_cases set name=$1,revision=$2,updated_at=clock_timestamp() where workspace_id=$3 and id=$4',
@@ -408,4 +469,14 @@ export function createWorkflowInputCaseDatabase(
       return closing;
     },
   });
+}
+
+/** Cases and a suite's frozen manifest share one quota/mutation fence. */
+export async function lockInputCaseQuota(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  await client.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [
+    `workflow-input-case-quota:${workspaceId}`,
+  ]);
 }

@@ -1,5 +1,7 @@
 import {
   expiredRunSql,
+  retainedTestRunSql,
+  testRunSql,
   RUN_DETAILS_RETENTION_SQL,
   RUN_SUMMARY_RETENTION_SQL,
 } from '../runs/data-policy.js';
@@ -27,11 +29,18 @@ export const RETENTION_RULES = Object.freeze([
     statement: `with page as (select id from app.usage_events where category='trigger.skipped' and occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL} order by occurred_at,id limit $1) delete from app.usage_events event using page where event.id=page.id and event.category='trigger.skipped' and event.occurred_at<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
   },
   {
+    name: 'workflow_test_suites',
+    statement: `with page as(select id from app.workflow_test_suites where expires_at<=clock_timestamp() order by expires_at,id limit $1)
+     delete from app.workflow_test_suites suite using page where suite.id=page.id and suite.expires_at<=clock_timestamp()`,
+  },
+  {
     name: 'workflow_test_snapshots',
-    statement: `with page as (
-    select snapshot.run_id from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.id=snapshot.run_id
-    where snapshot.expires_at<=clock_timestamp() and run.status not in ('queued','running','waiting') order by snapshot.run_id limit $1
-  ) delete from app.workflow_test_snapshots snapshot using page where snapshot.run_id=page.run_id`,
+    statement: `with page as(select snapshot.id from app.workflow_test_snapshots snapshot
+     where snapshot.expires_at<=clock_timestamp() and not exists(select 1 from app.workflow_test_suites suite where suite.workspace_id=snapshot.workspace_id and suite.snapshot_id=snapshot.id)
+     and not exists(select 1 from app.workflow_runs run where run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id and ${testRunSql('run')} and (run.status in ('queued','running','waiting') or ${retainedTestRunSql('run')}))
+     order by snapshot.expires_at,snapshot.id limit $1)
+     delete from app.workflow_test_snapshots snapshot using page where snapshot.id=page.id and snapshot.expires_at<=clock_timestamp()
+      and not exists(select 1 from app.workflow_runs run where run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id and ${testRunSql('run')} and (run.status in ('queued','running','waiting') or ${retainedTestRunSql('run')}))`,
   },
   {
     name: 'webhook_responses',
@@ -463,7 +472,7 @@ export const RETENTION_RULES = Object.freeze([
   },
   {
     name: 'workflow_step_samples',
-    statement: `with page as (select workspace_id,id from app.workflow_step_samples where expires_at <= clock_timestamp() order by expires_at,id limit $1 for update skip locked) delete from app.workflow_step_samples sample using page where sample.workspace_id=page.workspace_id and sample.id=page.id`,
+    statement: `with page as (select workspace_id,id from app.workflow_step_samples where expires_at <= clock_timestamp() order by expires_at,id limit $1) delete from app.workflow_step_samples sample using page where sample.workspace_id=page.workspace_id and sample.id=page.id`,
   },
   VARIABLE_SET_RETENTION_RULE,
 ] as const);

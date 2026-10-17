@@ -293,6 +293,9 @@ function WorkflowEditorSession({
                     workflow={workflow.data}
                     graph={graph}
                     draft={{ generation, revision }}
+                    savedDraftCurrent={
+                      saveStatus === 'clean' && !inspectorScratch
+                    }
                     commandSession={commandSession}
                     testAction={chrome.workflowTestAction}
                     issues={issues}

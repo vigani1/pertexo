@@ -81,6 +81,8 @@ const DUE_ARTIFACT = `
 const REFERENCED = `
   select exists (select 1 from app.workflow_test_snapshots snapshot
       where snapshot.workspace_id=$1 and snapshot.expires_at>clock_timestamp() and app.jsonb_references_artifact(snapshot.graph_json,$2))
+    or exists (select 1 from app.workflow_test_suite_cases entry join app.workflow_test_suites suite on suite.workspace_id=entry.workspace_id and suite.id=entry.suite_id
+      where entry.workspace_id=$1 and suite.expires_at>clock_timestamp() and app.jsonb_references_artifact(entry.input::jsonb,$2))
     or exists (select 1 from app.workflow_drafts draft
       where draft.workspace_id = $1 and app.jsonb_references_artifact(draft.graph_json, $2))
     or exists (select 1 from app.workflow_versions version

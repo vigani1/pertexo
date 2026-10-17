@@ -4,7 +4,9 @@ import {
   listWorkflowTests,
   type WorkflowTestScope,
 } from './api';
-export function workflowTestsKey(scope: WorkflowTestScope) {
+export function workflowTestsKey(
+  scope: Pick<WorkflowTestScope, 'userId' | 'workspaceId' | 'workflowId'>,
+) {
   return [
     'identity',
     scope.userId,

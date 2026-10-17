@@ -281,6 +281,7 @@ export function useInputCases(
     }
   }
   return {
+    scope: { apiClient: api, userId, workspaceId, workflowId },
     query,
     selected,
     error,

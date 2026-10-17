@@ -1,3 +1,4 @@
+import { SuitePublishNotice } from './test-suites/publish-notice';
 import type { ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/queries.public';
@@ -162,8 +163,10 @@ export function WorkflowCommandActions({
   onFix,
   onPublished,
   testAction,
+  savedDraftCurrent = false,
 }: Readonly<{
   testAction?: ReactNode;
+  savedDraftCurrent?: boolean;
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
@@ -310,6 +313,14 @@ export function WorkflowCommandActions({
         recoveryPending={publication.publishRecoveryPending}
         blockingGroups={issues.blockingGroups}
         unchangedVersionNumber={unchangedVersionNumber}
+        suiteNotice={
+          <SuitePublishNotice
+            scope={{ apiClient, userId, workspaceId: workspace.id, workflowId }}
+            savedDraftCurrent={savedDraftCurrent}
+            enabled={publishOpen}
+            capabilities={workspace.capabilities}
+          />
+        }
         onPublish={() => void confirmPublish()}
         onFix={onFix}
       />

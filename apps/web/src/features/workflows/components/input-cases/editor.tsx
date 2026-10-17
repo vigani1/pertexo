@@ -1,3 +1,5 @@
+import { CaseExpectations } from './expectations';
+import { expectationDraft } from '../../model/input-cases/expectations';
 import { useId, useState } from 'react';
 import {
   workflowInputCaseCreateRequestSchema,
@@ -17,7 +19,14 @@ import type { InputCaseCommand } from '../../data/input-cases/api';
 
 type CaseCommands = Pick<
   ReturnType<typeof useInputCases>,
-  'selected' | 'pending' | 'uncertain' | 'conflict' | 'read' | 'send' | 'retry'
+  | 'scope'
+  | 'selected'
+  | 'pending'
+  | 'uncertain'
+  | 'conflict'
+  | 'read'
+  | 'send'
+  | 'retry'
 >;
 
 /** A local draft survives revision conflicts and current-case reads. */
@@ -38,6 +47,10 @@ export function InputCaseEditor({
   const [input, setInput] = useState(() =>
     JSON.stringify(cases.selected?.input ?? {}, null, 2),
   );
+  const [expectations, setExpectations] = useState(() =>
+    expectationDraft(cases.selected?.expectations),
+  );
+  const [expectationError, setExpectationError] = useState<string>();
   const [deleting, setDeleting] = useState(false);
   const [creatingVersionId] = useState(
     workflow.publishedVersionId ?? undefined,
@@ -53,9 +66,29 @@ export function InputCaseEditor({
     } catch {
       value = undefined;
     }
+    let parsedExpectations: unknown;
+    try {
+      parsedExpectations = {
+        outcome: expectations.outcome,
+        assertions: expectations.assertions.map((item) => ({
+          source:
+            item.source === ''
+              ? { kind: 'final' }
+              : { kind: 'step', nodeId: item.source },
+          path: item.path,
+          operator: item.operator,
+          expected: JSON.parse(item.expected) as unknown,
+        })),
+      };
+    } catch {
+      setExpectationError('Enter valid JSON for each expected value.');
+      return;
+    }
+    setExpectationError(undefined);
     const body = workflowInputCaseUpdateRequestSchema.safeParse({
       name,
       input: value,
+      expectations: parsedExpectations,
     });
     const errors = {
       name: undefined as string | undefined,
@@ -64,6 +97,8 @@ export function InputCaseEditor({
     if (!body.success)
       for (const issue of body.error.issues) {
         if (issue.path[0] === 'name') errors.name = issue.message;
+        else if (issue.path[0] === 'expectations')
+          setExpectationError(issue.message);
         else errors.input = issue.message;
       }
     if (!validation.submit(errors) || !body.success) return;
@@ -160,6 +195,13 @@ export function InputCaseEditor({
           )}
         </LabelledField>
       </FieldGroup>
+      <CaseExpectations
+        value={expectations}
+        onChange={setExpectations}
+        scope={cases.scope}
+        disabled={locked || deleting || !writable}
+        error={expectationError}
+      />
       {cases.conflict && cases.selected !== undefined ? (
         <Button
           type="button"

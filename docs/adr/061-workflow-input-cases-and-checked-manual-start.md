@@ -169,3 +169,14 @@ historical selector, automatic input retargeting, preview isolation, recorded
 sample reuse, arbitrary assertions or production rollout is added. Required
 qualification is specified in the F02 first-slice plan; this ADR is not evidence
 that any behavior has been implemented or tested.
+
+## Amendment — suite expectations (2026-10-17)
+
+F02 slice 3 raises the active per-workflow case count to 50. Other case limits
+and published-version creation context remain. Optional bounded expectations
+join the existing immutable payload revision as canonical JSON text; retained
+byte accounting includes both input and expectations. Old rows keep their
+charges and default to expected success with no assertions. Editing without an
+expectation field preserves the existing expectation. A suite copies the exact
+case revision and uses its frozen draft, regardless of the case's publication
+context. The F02 plan defines comparator semantics and bounded result disclosure.

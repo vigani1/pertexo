@@ -8,12 +8,13 @@ import {
 import type { WorkflowTestStore } from '@pertexo/database/authoring';
 import { authorizeWorkspaceOperation } from '../../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
-import type { NodeTestUseCaseInput } from '../use-case.js';
+import {
+  authorizeWorkflowTesting,
+  workflowTestScope,
+  type WorkflowTestUseCaseInput,
+} from './authorization.js';
 
-type Input = Pick<
-  NodeTestUseCaseInput,
-  'actor' | 'routeWorkspaceId' | 'authorizedWorkspace' | 'workflowId'
-> & { signal?: AbortSignal };
+type Input = WorkflowTestUseCaseInput;
 export class WorkflowTestsUseCase {
   constructor(
     private readonly store: WorkflowTestStore,
@@ -61,31 +62,9 @@ export class WorkflowTestsUseCase {
     return { canceled: true };
   }
   private scope(input: Input) {
-    return {
-      workspaceId: input.routeWorkspaceId,
-      workflowId: input.workflowId,
-      actorId: input.actor.actorId,
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-    };
+    return workflowTestScope(input);
   }
-  private async authorize(input: Input) {
-    for (const capability of [
-      'workflow:update',
-      'run:read',
-      'run:start',
-    ] as const)
-      await authorizeWorkspaceOperation({
-        access: this.authorization,
-        actor: input.actor,
-        routeWorkspaceId: input.routeWorkspaceId,
-        ...(capability !== 'workflow:update' ||
-        input.authorizedWorkspace === undefined
-          ? {}
-          : { authorizedWorkspace: input.authorizedWorkspace }),
-        ...(input.signal === undefined ? {} : { signal: input.signal }),
-        capability,
-        allowedWorkspaceStatuses: ['active'],
-        disclosure: 'not_found',
-      });
+  private authorize(input: Input) {
+    return authorizeWorkflowTesting(this.authorization, input);
   }
 }

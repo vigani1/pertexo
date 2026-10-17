@@ -1,3 +1,4 @@
+import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { FrozenWorkflowTestPins } from '../../schema/runs/tests.js';
 import { sampleDraft } from '../../authoring/step-samples/records.js';
 import type { PoolClient } from 'pg';
@@ -53,14 +54,7 @@ export async function loadTestSnapshot(
   if (compiled.invalidPinIds.length > 0)
     throw new WorkflowTestError('pin_invalid');
   const labels = new Map(
-    (function flatten(nodes: typeof graph.nodes): typeof graph.nodes {
-      return nodes.flatMap((node) => [
-        node,
-        ...(node.structured === undefined
-          ? []
-          : flatten(node.structured.body.nodes)),
-      ]);
-    })(graph.nodes).map((node) => [node.id, node.label ?? node.definition.key]),
+    workflowTestStepChoices(graph).map((node) => [node.nodeId, node.label]),
   );
   return {
     graph,
@@ -90,4 +84,30 @@ export function sameTestSamples(
       a.nodeId < b.nodeId ? -1 : a.nodeId > b.nodeId ? 1 : 0,
     );
   return canonicalJson(sort(left)) === canonicalJson(sort(right));
+}
+
+/** One immutable source may serve a standalone test or all serial suite cases. */
+export async function saveTestSnapshot(
+  client: PoolClient,
+  input: SampleScope,
+  id: string,
+  snapshot: Awaited<ReturnType<typeof loadTestSnapshot>>,
+  expiresAt: Date,
+): Promise<void> {
+  await client.query(
+    `insert into app.workflow_test_snapshots(id,workspace_id,workflow_id,draft_revision,graph_json,executable_json,pins,expires_at,checksum,dispositions)
+  values($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8,$9,$10::jsonb)`,
+    [
+      id,
+      input.workspaceId,
+      input.workflowId,
+      snapshot.preparation.draftRevision,
+      canonicalJson(snapshot.graph),
+      canonicalJson(snapshot.compiled.executableJson),
+      canonicalJson(snapshot.frozenPins),
+      expiresAt,
+      snapshot.compiled.checksum,
+      JSON.stringify(snapshot.compiled.dispositions),
+    ],
+  );
 }

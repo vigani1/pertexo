@@ -37,3 +37,22 @@ terminal operational effects from real runs. Shared pins are copied at admission
 later changes never affect an accepted test. Test-only substitution cannot be
 requested by published start, replay or recovery. See the F02 plan for the
 execution rules and required isolation evidence.
+
+## Amendment — serial test suites (2026-10-17)
+
+Owner-approved suites execute up to 50 saved input cases through the same draft
+test machinery. One immutable test source freezes graph, executable and pins for
+the suite; cases reference it through the existing execution-source identity.
+The source is owned by its workflow and retained references, rather than by its
+first run. Backfill standalone snapshots without changing their value encoding
+or letting them enter published execution. This avoids multiplying the largest
+pin set by 50 and permits ordinary per-test retention without deleting a source
+still used by another retained case. Only retention metadata may extend.
+
+PostgreSQL stores the frozen manifest and serial progress; the existing worker
+scanner settles and admits cases through ordinary test/run acceptance. One active
+suite or standalone test per starter/workflow, current authority checks, unique
+case/run bindings and existing receipts prevent duplicate work across crashes.
+One acknowledgement covers the frozen suite's unpinned effects. No new engine,
+service, queue, public testing authority or published override is introduced.
+Publishing receives an advisory latest-result/freshness warning, never a gate.

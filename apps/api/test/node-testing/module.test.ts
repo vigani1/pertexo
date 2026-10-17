@@ -64,6 +64,14 @@ function dependencies() {
       }),
     },
     persistence: {
+      workflowTestSuites: {
+        prepare: vi.fn(),
+        start: vi.fn(),
+        list: vi.fn(),
+        get: vi.fn(),
+        report: vi.fn(),
+        cancel: vi.fn(),
+      },
       workflowTests: {
         prepare: vi.fn(),
         start: vi.fn(),

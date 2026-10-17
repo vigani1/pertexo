@@ -1,3 +1,5 @@
+import { TestSuiteHistory } from '../test-suites/history';
+import { TestSuiteDialog } from '../test-suites/dialog';
 import { WorkflowTestResults } from './results';
 import { WorkflowTestButton } from './controls';
 import {
@@ -88,6 +90,7 @@ export function WorkflowTestHistory({
           </Button>
         </p>
       ) : null}
+      <TestSuiteDialog key={String(tests.suites.open)} suites={tests.suites} />
       {expanded ? (
         <div className="mt-3 flex flex-col gap-3">
           {tests.history.data?.items.length === 0 ? (
@@ -119,6 +122,11 @@ export function WorkflowTestHistory({
             </Select>
           ) : null}
           <WorkflowTestResults tests={tests} ensureSaved={ensureSaved} />
+          <TestSuiteHistory
+            suites={tests.suites}
+            canCancel={canCancel}
+            onViewRun={tests.selectRun}
+          />
         </div>
       ) : null}
     </section>
@@ -147,6 +155,19 @@ function WorkflowTestRunControls({
     <>
       <div className="flex flex-wrap items-center gap-3">
         <WorkflowTestButton tests={tests} className="sm:hidden" />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={
+            tests.blocked ||
+            tests.suites.preparing ||
+            tests.suites.start.pending ||
+            tests.start.pending
+          }
+          onClick={() => void tests.suites.prepare()}
+        >
+          Run all tests
+        </Button>
         {look === undefined ? (
           <span className="text-sm font-medium">Workflow tests</span>
         ) : (

@@ -1,6 +1,6 @@
 # F02 — Run-input cases and pinned samples
 
-Status: slices 1 and 2 and whole-draft tests implemented (#324). Slice 3 stays later.
+Status: slices 1/2 and whole-draft tests delivered (#324); slice 3 implemented and locally qualified; green CI required before merge.
 Updated: 2026-10-17. [Roadmap](../product-roadmap.md).
 Decisions: [ADR 061](../adr/061-workflow-input-cases-and-checked-manual-start.md)
 and [ADR 080](../adr/080-draft-step-samples.md). History stays in git.
@@ -194,7 +194,7 @@ counters. The API and browser never execute the workflow.
 | 1. Named run-input cases and checked published starts | Delivered (#145) |
 | 2. Bound draft samples, atomic preview substitution and editor/history | Implemented |
 | Whole-draft tests and live editor test history | Implemented |
-| 3. Suites, assertions and batch regression | Later |
+| 3. Suites, assertions and batch regression | Implemented and locally qualified; green CI before merge |
 
 ## Required evidence
 
@@ -236,9 +236,164 @@ stay unchanged. Add a database regression with ordinary and test runs across
 statuses: workspace/workflow lists and every statistics projection exclude tests,
 while the capacity read still includes them.
 
+## Slice 3 — suites (2026-10-17)
+
+The owner authorizes suites now. Reconciled against main after F29 #331 and
+F12 #332. One suite is the workflow's active saved input cases, in existing
+creation/ID order, run serially against one frozen saved draft. No browser-owned
+execution loop, second test engine, new service, role or queue is introduced.
+
+### Decisions and bounds
+
+- Raise the active case cap from 20 to **50/workflow**. Preserve 200/workspace,
+  64 KiB/input and the 4 MiB retained-payload workspace budget. Cases retain their
+  existing published-version creation context; suites detach their inputs and
+  execute the current draft, not that publication. Creating cases before a first
+  publication remains later work.
+- Each case defaults to expected **succeeds**, with up to 20 assertions (16 KiB
+  aggregate expectation JSON/case, 4 KiB/expected value). Extend the existing
+  immutable case payload revision with optional canonical expectation text.
+  Charge input plus expectation bytes in the existing budget; omitted expectations
+  preserve an edited case's settings. Existing cases keep their current charges
+  and default to success with no assertions.
+- An assertion selects the existing stored final output (a declared workflow result; ordinary workflows use a chosen step, with no implicit last-step rule) or a step, a platform JSON path (root `$`,
+  own properties and array indexes; 512 characters/64 segments), and equals or
+  contains. Reuse the shared parser and canonical JSON. Equals is structural JSON
+  equality; contains is case-sensitive substring, a structurally equal array
+  member, or object properties with equal values. No expression/pattern language.
+  Reject identical duplicate checks; distinct contains checks on one path are allowed.
+- A selected step must have exactly one retained successful invocation. Missing,
+  unexecuted, repeated or file-backed output produces an explicit failed assertion;
+  never silently choose a first/last loop result. Assert final output or add a
+  downstream summary for repeated steps. Read at most two candidate invocations
+  per selected step through an indexed workspace/run/node lookup; pin-required
+  checks probe only frozen required-step IDs. Decode requested outputs through the stored-value
+  owner. Do not download files or scan all execution history.
+- Only terminal `succeeded` satisfies success, and `failed` satisfies expected
+  failure. Unknown, timed-out and canceled outcomes cannot pass as expected
+  failures. Business/expectation failures do not stop subsequent cases. Never
+  automatically retry an unknown case as a new run. Canceling the current test
+  stops its suite; explicit suite cancellation also fences that current test.
+- Show pass/fail/error per case and expected/actual observations. Return full
+  ordinary actual JSON up to 4 KiB; larger values have an explicitly truncated
+  display and original byte count. Missing/unavailable/ambiguous are separate
+  states, never invented null values. Summary reads contain metadata/counts only;
+  fetch one case's bounded report on demand. Output/expectations are private run
+  data, never logs, notices, exports or audit payloads.
+
+### Admission, progress and storage
+
+- Preparation uses existing draft/pin compilation, lists all unpinned effectful
+  steps once, and adds ordered case IDs/revisions and the variable-set revision.
+  Start rechecks these facts under current authoring authority and saved-draft
+  locks, freezes cases/expectations, and requires one explicit effects acknowledgement
+  for the whole suite. Recover an accepted idempotent receipt before mutable reads.
+- Freeze graph/executable/pins **once per suite**, not once per case. Generalize
+  existing `workflow_test_snapshots` to an independent source ID and workflow ID:
+  backfill current rows, remove their originating-run ownership FK, and resolve
+  test execution through each run's existing `workflow_version_id`. Keep the one
+  existing snapshot/value format and published readers unchanged (ADR080 amendment).
+  Standalone tests use the same source owner. Sources expire only after their last
+  retained test reference; extending expiry changes no frozen behavior or data.
+- New `workflow_test_suites` and ordered `workflow_test_suite_cases` store frozen
+  source/variable revision, initial checkpoint in its existing format, case inputs,
+  expectations and bounded results. Forced workspace RLS, existing app/maintenance
+  roles, unique active suite per starter/workflow, unique case ordinal/run binding
+  and existing command receipts fence races. No per-case copies of graph or pins.
+- First case admission and suite creation commit atomically through ordinary run
+  acceptance/outbox. Subsequent cases use the same acceptance owner, source,
+  variables and initial checkpoint. Tests remain `test` and preserve all current
+  effects suppression, pins, Wait/control behavior, capacity and seven-day rules.
+- Extend the coordinator's existing bounded scanner with a PostgreSQL suite driver,
+  using its existing app/maintenance pools. Discovery selects due active suites;
+  each scoped transaction rechecks authority, takes the suite row, records the
+  terminal case once, and admits at most one next test. A crash/repeated/concurrent
+  scan cannot duplicate a case. No transition callback acquires authoring locks
+  while holding a run row; retain workspace → actor/member → workflow/suite →
+  source/variables → ordinary admission order. Cancellation takes suite before run.
+- Recheck current starter authority before admitting another case; removal,
+  suspension, lost capabilities or workflow archival stop further work visibly.
+  An already accepted test settles under its existing controls. Queue-full waits
+  retry after five seconds. Each test retains its five-minute maximum; a suite has
+  a five-hour total bound, including capacity waits, then stops visibly.
+- Show the latest 20 suites and retain private suite data seven days. Extend bounded
+  retention, variable-set references, artifact reachability for frozen pending
+  inputs, and workspace purge. Shared sources survive until all retained tests
+  stop referring to them; add the necessary indexed test-source reference lookup.
+  Active-suite and active-test exclusion apply together, including the gap between
+  cases. All suite steps still run on ordinary workers.
+
+### HTTP, editor and ownership
+
+| Owner | Change |
+| --- | --- |
+| workflow-model/test-suites | Bounded expectation contracts, JSON-path comparison and observation rules |
+| database/authoring/input-cases; schema/authoring | Expectations in existing payload revisions, 50-case cap and byte accounting |
+| database/previews/workflows and suites | Shared snapshot admission/read; suite prepare/start/read/cancel/driver |
+| database/schema/runs; lifecycle/variables | Suite/source constraints, RLS/grants, retention, purge and references |
+| API node-testing/suites; contracts | Session-only prepare/start/list/detail/case-report/cancel under draft tests' existing authority/rate/CSRF rules |
+| worker/runs runtime | Existing scanner drives bounded serial progress; ordinary outbox runs cases |
+| web/workflows input cases | Plain expected-outcome/assertion fields, current step names and validation |
+| web/workflow-publish | Run all tests, one effects dialog, case results/history and publish warning |
+
+- Use `/draft/test-suites`: prepare, idempotent start (202), latest bounded history,
+  suite detail, one case report and idempotent cancellation. Exact uncertain starts
+  retain their original request/key. Session/scope changes clear private queries
+  and fence late responses. Preparation/outputs stay private/no-store.
+- Reuse plain dialogs, JSON inputs, Select, Status and existing command/query
+  patterns. The suite view shows serial case progress and links to ordinary editor
+  test results, where successful outputs can still be pinned. No second canvas
+  state or global suite store. Keep phone, keyboard and reduced-motion behavior.
+- Publish shows the latest shared suite result and warns for a failure or when
+  draft revision, cases/expectations, pins (including expiry) or variable revision differ. Running,
+  unavailable and never-run stay honest. This is advisory and never disables
+  Publish. A cheap shared freshness owner compares metadata, without compiling
+  the draft just to open Publish.
+
+### Delivery and evidence
+
+One implementation PR; no file moves currently required. Extend ADR080 and
+ADR061 for the shared source and case-budget decisions. Use the coordinated
+migration/readiness gate with matching readers/workers.
+
+- Prove shared snapshot/variable/case isolation after edits, effects refusal,
+  stale preparation, exact response-loss recovery, first/next admission races,
+  restart recovery, mutual single-test/suite exclusion, queue waits, cancellation,
+  authority loss and bounded expiry. Qualify 50 serial cases and storage reuse.
+- Check equality/contains/path edge cases, missing/repeated/file outputs,
+  truncation, expected failure versus unknown/timeout, output access and test
+  effects suppression. Exercise worker/API/database end to end and actual browser
+  setup/results/publish feedback on desktop/phone.
+- Build, lint, types, unit, mocked e2e, contract/schema/boundary checks and React
+  Doctor; green CI, then rebase merge before F14.
+
+### Local qualification (2026-10-17)
+
+- Whole repository unit suite: 9,501 Vitest tests plus Node checks; three new
+  focused evaluator tests also pass. Case contracts/defaults, comparison bounds,
+  report truncation and file-backed unavailability are covered.
+- Real PostgreSQL: 40 admission/case/upgrade regressions, then the expanded
+  14-case suite integration including frozen empty/nonempty variables and access
+  loss. Fifty serial admissions share one snapshot; competing/restarted scanners
+  admit each case once. Queue pressure, cancellation, suite deadlines, output
+  ambiguity, report privacy, seven-day retention and maintenance purge pass.
+- Populated 0025→0026 upgrade preserves existing test identity and old case byte
+  charges, backfills workflow ownership and restores forced row security. The
+  workflow FK validation temporarily releases FORCE under the migration's table
+  lock, then restores it in the same transaction.
+- Real browser/API/worker: saved cases created through the editor, one passing
+  and one failing comparison, selected-step reports with frozen names, test-history
+  output access, advisory failed/outdated publish warning, no ordinary run-list
+  entries and no test-triggered notices. The existing standalone draft/pin and
+  real publication journeys also pass. Desktop 1280 and phone 375 inspected.
+- Mocked browser: 202 existing journeys and two suite-specific desktop/phone
+  effects/report journeys pass. Reduced motion and horizontal containment checked.
+- React Doctor: no new diagnostics; full-scope results exactly match current
+  main (82/100, the same 13 existing diagnostics). Changed-scope score is 91/100
+  with zero diagnostics. No rule suppression or configuration changes.
+
 ## Later work
 
-Suites/assertions, batch tests and binary/file-backed pinned samples remain
-later. Keep the current single-step preview seam; never label a published real
+Binary/file-backed pinned samples remain later. Keep the current single-step preview seam; never label a published real
 run as an isolated test. No automatic production-data capture or
 automatic redaction claim.

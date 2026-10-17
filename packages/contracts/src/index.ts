@@ -130,3 +130,19 @@ export * from './schemas/workflows/step-samples.js';
 export * from './schemas/execution/workflow-tests.js';
 
 export * from './schemas/execution/usage-trends.js';
+export {
+  workflowTestSuitePreparationSchema,
+  workflowTestSuiteStartRequestSchema,
+  workflowTestSuiteAcceptedSchema,
+  workflowTestSuiteListSchema,
+  workflowTestSuiteDetailSchema,
+  workflowTestSuiteCaseReportSchema,
+  workflowTestSuiteParamsSchema,
+  workflowTestSuiteCaseParamsSchema,
+  type WorkflowTestSuiteCurrent,
+  type WorkflowTestSuitePreparation,
+  type WorkflowTestSuiteStartRequest,
+  type WorkflowTestSuiteSummary,
+  type WorkflowTestSuiteDetail,
+  type WorkflowTestSuiteReport,
+} from './schemas/execution/test-suites.js';

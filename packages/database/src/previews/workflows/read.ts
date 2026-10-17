@@ -1,3 +1,8 @@
+import {
+  testRunSql,
+  retainedTestRunSql,
+  runRetentionIntervalSql,
+} from '../../runs/data-policy.js';
 import type { PoolClient } from 'pg';
 
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
@@ -29,9 +34,9 @@ function summary(row: TestRow): WorkflowTestSummary {
 }
 export async function listTests(client: PoolClient, input: SampleScope) {
   const rows = await client.query<TestRow>(
-    `select snapshot.run_id,snapshot.draft_revision,run.status,run.created_at,run.started_by,snapshot.expires_at
-    from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.id=snapshot.run_id
-    where snapshot.workspace_id=$1 and run.workflow_id=$2 and snapshot.expires_at>clock_timestamp()
+    `select run.id run_id,snapshot.draft_revision,run.status,run.created_at,run.started_by,(run.created_at + ${runRetentionIntervalSql('run')}) expires_at
+    from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id
+    where snapshot.workspace_id=$1 and run.workflow_id=$2 and ${testRunSql('run')} and ${retainedTestRunSql('run')} and snapshot.expires_at>clock_timestamp()
     order by (run.started_by=$3 and run.status in ('queued','running','waiting')) desc nulls last,run.created_at desc,run.id desc limit 20`,
     [input.workspaceId, input.workflowId, input.actorId],
   );
@@ -42,9 +47,9 @@ export async function readTestDetail(
   input: SampleScope & { runId: string },
 ): Promise<WorkflowTestDetail> {
   const rows = await client.query<TestRow>(
-    `select snapshot.run_id,snapshot.draft_revision,snapshot.expires_at,snapshot.graph_json,snapshot.dispositions,run.status,run.created_at,run.started_by
-    from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.id=snapshot.run_id
-    where snapshot.workspace_id=$1 and run.workflow_id=$2 and run.id=$3 and snapshot.expires_at>clock_timestamp()`,
+    `select run.id run_id,snapshot.draft_revision,(run.created_at + ${runRetentionIntervalSql('run')}) expires_at,snapshot.graph_json,snapshot.dispositions,run.status,run.created_at,run.started_by
+    from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id
+    where snapshot.workspace_id=$1 and run.workflow_id=$2 and ${testRunSql('run')} and ${retainedTestRunSql('run')} and run.id=$3 and snapshot.expires_at>clock_timestamp()`,
     [input.workspaceId, input.workflowId, input.runId],
   );
   const row = rows.rows[0];

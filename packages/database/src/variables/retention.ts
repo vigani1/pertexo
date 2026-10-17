@@ -2,6 +2,7 @@ const unreferenced = `not exists (select 1 from app.workspace_variables head
   where head.workspace_id=revision.workspace_id and head.revision=revision.revision)
   and not exists (select 1 from app.workflow_runs run
     where run.workspace_id=revision.workspace_id and run.variable_set_revision=revision.revision)
+  and not exists (select 1 from app.workflow_test_suites suite where suite.workspace_id=revision.workspace_id and suite.variable_set_revision=revision.revision)
   and not exists (select 1 from app.preview_runs preview
     where preview.workspace_id=revision.workspace_id and preview.variable_set_revision=revision.revision)`;
 

@@ -82,7 +82,10 @@ function InputCasesDialog({
       >
         Input cases
       </DialogTrigger>
-      <DialogContent finalFocus={finalFocus}>
+      <DialogContent
+        finalFocus={finalFocus}
+        className="max-h-[calc(100svh-2rem)] overflow-y-auto"
+      >
         <DialogTitle>Input cases</DialogTitle>
         <DialogDescription>
           Browse shared run inputs. Nothing here starts or tests a workflow.

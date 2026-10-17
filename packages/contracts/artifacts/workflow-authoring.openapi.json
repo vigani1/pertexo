@@ -6769,6 +6769,92 @@
                 "x-pertexo-runtime-max-depth": 64,
                 "x-pertexo-runtime-max-members": 10000,
                 "$ref": "#/components/schemas/WorkflowInputCaseResponse/$defs/__schema0"
+              },
+              "expectations": {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "default": "succeeds",
+                    "type": "string",
+                    "enum": [
+                      "succeeds",
+                      "fails"
+                    ]
+                  },
+                  "assertions": {
+                    "default": [],
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "final"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "step"
+                                },
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 256
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "nodeId"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 512
+                        },
+                        "operator": {
+                          "type": "string",
+                          "enum": [
+                            "equals",
+                            "contains"
+                          ]
+                        },
+                        "expected": {
+                          "$ref": "#/components/schemas/WorkflowInputCaseResponse/$defs/__schema1"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "path",
+                        "operator",
+                        "expected"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "outcome",
+                  "assertions"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -6819,6 +6905,37 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/WorkflowInputCaseResponse/$defs/__schema0"
+                }
+              }
+            ]
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowInputCaseResponse/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WorkflowInputCaseResponse/$defs/__schema1"
                 }
               }
             ]
@@ -6929,6 +7046,86 @@
             "x-pertexo-runtime-max-bytes": 65536,
             "x-pertexo-runtime-max-depth": 64,
             "x-pertexo-runtime-max-members": 10000
+          },
+          "expectations": {
+            "type": "object",
+            "properties": {
+              "outcome": {
+                "default": "succeeds",
+                "type": "string",
+                "enum": [
+                  "succeeds",
+                  "fails"
+                ]
+              },
+              "assertions": {
+                "default": [],
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "final"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "step"
+                            },
+                            "nodeId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "nodeId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "equals",
+                        "contains"
+                      ]
+                    },
+                    "expected": {}
+                  },
+                  "required": [
+                    "source",
+                    "path",
+                    "operator",
+                    "expected"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [
@@ -6952,6 +7149,86 @@
             "x-pertexo-runtime-max-bytes": 65536,
             "x-pertexo-runtime-max-depth": 64,
             "x-pertexo-runtime-max-members": 10000
+          },
+          "expectations": {
+            "type": "object",
+            "properties": {
+              "outcome": {
+                "default": "succeeds",
+                "type": "string",
+                "enum": [
+                  "succeeds",
+                  "fails"
+                ]
+              },
+              "assertions": {
+                "default": [],
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "final"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "step"
+                            },
+                            "nodeId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "nodeId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "equals",
+                        "contains"
+                      ]
+                    },
+                    "expected": {}
+                  },
+                  "required": [
+                    "source",
+                    "path",
+                    "operator",
+                    "expected"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [
