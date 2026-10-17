@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   InvalidWorkflowGraphError,
+  WORKFLOW_GRAPH_LIMITS,
   type WorkflowCallPin,
   type WorkflowGraph,
   type WorkflowNode,
@@ -210,11 +211,16 @@ describe('immutable Call publication dependencies', () => {
     });
   });
 
-  it('applies For Each products to the closure bound', async () => {
+  it('accepts weighted For Each products at the closure bound and refuses the next iteration', async () => {
     const child = await create('Weighted child');
     const target = await publish(child, graph());
     const parent = await create('Overflow parent');
-    const repeated: WorkflowGraph = {
+    // Parent controls use three invocations; every item adds its Call and
+    // the child's two steps, including its trigger.
+    const iterations = Math.floor(
+      (WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations - 3) / 3,
+    );
+    const repeated = (maxIterations: number): WorkflowGraph => ({
       ...graph(),
       nodes: [
         node('manual', 'core.manual'),
@@ -222,7 +228,7 @@ describe('immutable Call publication dependencies', () => {
           ...node('loop', 'core.foreach'),
           structured: {
             kind: 'for_each',
-            maxIterations: 70,
+            maxIterations,
             maxConcurrency: 1,
             body: {
               settings: {},
@@ -237,10 +243,22 @@ describe('immutable Call publication dependencies', () => {
         },
         node('finish', 'core.terminate'),
       ],
-    };
-    await expect(publish(parent, repeated)).rejects.toMatchObject({
+    });
+    await expect(publish(parent, repeated(iterations))).resolves.toHaveProperty(
+      'version.id',
+    );
+    await expect(
+      publish(parent, repeated(iterations + 1)),
+    ).rejects.toMatchObject({
       issues: [{ code: 'expansion_limit' }],
     });
+    expect(
+      await queryAsOwner(
+        'select count(*)::int versions from app.workflow_versions where workflow_id=$1',
+        [parent],
+        workspaceId,
+      ),
+    ).toEqual([{ versions: 1 }]);
   });
 
   it('cannot bind a target in another workspace', async () => {
