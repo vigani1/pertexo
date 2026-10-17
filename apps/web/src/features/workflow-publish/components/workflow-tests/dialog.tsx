@@ -147,11 +147,11 @@ export function WorkflowTestDialog({
             </LabelledField>
             {tests.preparation.effectfulSteps.length === 0 ? null : (
               <section
-                aria-label="Steps with external effects"
+                aria-label="Steps with effects"
                 className="flex flex-col gap-3"
               >
                 <p className="text-sm">
-                  These unpinned steps can change data outside Pertexo:
+                  These unpinned steps can change real data:
                 </p>
                 <ul className="list-inside list-disc text-sm">
                   {tests.preparation.effectfulSteps.map((step) => (

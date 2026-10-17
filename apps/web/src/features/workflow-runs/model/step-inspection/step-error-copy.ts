@@ -37,6 +37,50 @@ const outcomeUnknown: StepErrorCopy = {
 };
 
 const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
+  'execution.table_unavailable': {
+    sentence: 'Data table storage was temporarily unavailable.',
+    advice:
+      'Pertexo retries using the same write receipt, so an accepted write is not repeated.',
+  },
+  'execution.table_not_found': {
+    sentence: 'The workspace data table is unavailable.',
+    advice:
+      'Choose an existing table in this step\u2019s setup, then publish and start again.',
+  },
+  'execution.table_invalid_values': {
+    sentence: 'The row values or query do not match the table schema.',
+    advice:
+      'Check required columns, cell types and filter values. Rows fit up to 64 KB.',
+  },
+  'execution.table_quota_exceeded': {
+    sentence: 'The table\u2019s row or workspace storage limit was reached.',
+    advice:
+      'Remove unneeded rows, split the data or ask an admin to raise the table limits.',
+  },
+  'execution.table_key_conflict': {
+    sentence: 'Another row already uses this unique key.',
+    advice:
+      'Use Upsert by key to update an existing row, or choose a different key.',
+  },
+  'execution.table_conflict': {
+    sentence: 'The retried table command changed.',
+    advice: 'Check the current table and mappings before starting a new run.',
+  },
+  'execution.table_result_too_large': {
+    sentence: 'Too much table data matched this query.',
+    advice:
+      'Narrow the filters or lower the row limit to fit the execution value bounds.',
+  },
+  'execution.table_unsafe_filter': {
+    sentence: 'This table write needs a filter.',
+    advice:
+      'Choose at least one filter. At most 1,000 rows can be changed in one step.',
+  },
+  'execution.table_attempt_expired': {
+    sentence: 'This table attempt is no longer current.',
+    advice: 'Check the run\u2019s cancellation, deadline or workspace status.',
+  },
+
   'pending_task.expired': {
     sentence: 'The approval expired before an eligible person decided.',
     advice:

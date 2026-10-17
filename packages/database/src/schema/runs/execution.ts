@@ -784,10 +784,6 @@ export const previewRuns = appSchema.table(
       sql`definition_key ~ ${sql.raw('$node_key$' + NODE_IDENTITY_KEY_PATTERN + '$node_key$')}`,
     ),
     check(
-      'preview_runs_disclosure_consistent',
-      sql`((may_cause_external_side_effect IS FALSE) OR (may_contact_provider IS TRUE))`,
-    ),
-    check(
       'preview_runs_draft_fingerprint_format',
       sql`(draft_fingerprint ~ '^[0-9a-f]{64}$'::text)`,
     ),

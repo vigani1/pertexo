@@ -1,3 +1,4 @@
+import { DATA_TABLE_DEFINITIONS } from './data/tables/definitions.js';
 import {
   CORE_CODE_MANIFEST,
   CORE_CODE_CONFIG_SCHEMA,
@@ -172,6 +173,7 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    ...DATA_TABLE_DEFINITIONS,
     Object.freeze({
       manifest: CORE_CODE_MANIFEST,
       configSchema: CORE_CODE_CONFIG_SCHEMA,

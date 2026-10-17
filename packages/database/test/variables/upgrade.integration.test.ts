@@ -127,6 +127,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0024_concurrency_skip.sql',
         '0025_capacity_warnings.sql',
         '0026_workflow_test_suites.sql',
+        '0027_workspace_data_tables.sql',
       ]);
       expect(
         (

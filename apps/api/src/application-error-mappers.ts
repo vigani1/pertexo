@@ -1,3 +1,4 @@
+import { mapDataTableError } from './data-tables/errors.js';
 import { mapApiTokenError } from './api-tokens/errors.js';
 import { mapConnectionError } from './connections/errors.js';
 import { mapArtifactError } from './artifacts/errors.js';
@@ -27,6 +28,10 @@ function mappedFeatureError(
 }
 
 const ROUTE_ERROR_MAPPERS: readonly RouteErrorMapper[] = Object.freeze([
+  {
+    route: /^\/v1\/workspaces\/[^/]+\/data-tables(?:\/|$)/u,
+    map: mapDataTableError,
+  },
   {
     route: /^\/v1\/workspaces\/[^/]+\/api-tokens(?:\/|$)/u,
     map: mapApiTokenError,

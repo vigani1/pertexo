@@ -55,6 +55,10 @@
     "./variables": {
       "types": "./dist/variables/index.d.ts",
       "default": "./dist/variables/index.js"
+    },
+    "./data-tables": {
+      "types": "./dist/data-tables/index.d.ts",
+      "default": "./dist/data-tables/index.js"
     }
   },
   "scripts": {

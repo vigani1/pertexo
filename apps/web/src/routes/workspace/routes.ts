@@ -532,3 +532,25 @@ export const notificationPreferencesRoute = createRoute({
     'NotificationPreferencesRoute',
   ),
 });
+
+export const dataTablesRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'data-tables',
+  staticData: { crumb: 'Data tables' },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Data tables', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./data-tables'),
+    'DataTablesRoute',
+  ),
+});
+export const dataTableDetailRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'data-tables/$tableId',
+  staticData: { crumb: 'Data table' },
+  component: lazyRouteComponent(
+    () => import('./data-tables'),
+    'DataTablesRoute',
+  ),
+});

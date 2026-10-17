@@ -1,6 +1,6 @@
 # F02 — Run-input cases and pinned samples
 
-Status: slices 1/2 and whole-draft tests delivered (#324); slice 3 implemented and locally qualified; green CI required before merge.
+Status: slices 1/2 and whole-draft tests delivered (#324); slice 3 delivered (#333).
 Updated: 2026-10-17. [Roadmap](../product-roadmap.md).
 Decisions: [ADR 061](../adr/061-workflow-input-cases-and-checked-manual-start.md)
 and [ADR 080](../adr/080-draft-step-samples.md). History stays in git.
@@ -216,7 +216,7 @@ counters. The API and browser never execute the workflow.
 
 ## Shared run policy follow-up (2026-10-17)
 
-Status: implemented and locally qualified; green CI required before merge.
+Status: delivered in #333 (2026-10-17); exact-head CI and all browser lanes passed.
 
 Keep test classification and run-data lifetimes in `database/runs/data-policy`.
 Use shared SQL fragments for lists, statistics, retained reads and maintenance,

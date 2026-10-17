@@ -206,6 +206,8 @@ function createPreviewExecutionEnvironment(
     dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
   const webhookResponse =
     dependencies.runtimeCapabilities?.webhookResponse?.(capabilityContext);
+  const dataTables =
+    dependencies.runtimeCapabilities?.dataTables?.(capabilityContext);
   const code = dependencies.runtimeCapabilities?.code?.({
     ...capabilityContext,
     variables: lease.variables ?? {},
@@ -214,6 +216,7 @@ function createPreviewExecutionEnvironment(
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const runtime: NodeExecutionRuntime = Object.freeze({
     ...(code === undefined ? {} : { code }),
+    ...(dataTables === undefined ? {} : { dataTables }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {
       // Safe previews do not need an external-dispatch marker. Completion
       // still fences this private data to the claimed preview attempt.

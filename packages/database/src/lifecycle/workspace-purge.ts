@@ -198,6 +198,10 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
       reapInvitationReplacementClaims(client, pageSize, workspaceId),
   },
   ...[
+    'data_table_write_receipts',
+    'workspace_data_table_rows',
+    'workspace_data_tables',
+    'workspace_data_table_quotas',
     'webhook_trigger_replay_records',
     'webhook_trigger_deliveries',
     'run_failure_notification_audit_facts',

@@ -37,9 +37,9 @@ export function SuitePreparation({
         Canceling stops the suite; it cannot undo effects already performed.
       </p>
       {preparation.effectfulSteps.length === 0 ? null : (
-        <section aria-label="Suite external effects" className="space-y-3">
+        <section aria-label="Suite effects" className="space-y-3">
           <p className="text-sm">
-            These unpinned steps can change data outside Pertexo for every case:
+            These unpinned steps can change real data for every case:
           </p>
           <ul className="list-inside list-disc text-sm">
             {preparation.effectfulSteps.map((step) => (

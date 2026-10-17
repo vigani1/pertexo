@@ -346,6 +346,7 @@ export async function advanceWorkflow(
         nodesById.get(attempt.nodeId),
         input.runId,
         attempt.invocationKey,
+        attempt.sideEffectClass,
       );
       return Object.freeze({
         ...attempt,
@@ -357,6 +358,7 @@ export async function advanceWorkflow(
         nodesById.get(admission.nodeId),
         input.runId,
         admission.invocationKey,
+        admission.sideEffectClass,
       );
       return Object.freeze({
         ...admission,

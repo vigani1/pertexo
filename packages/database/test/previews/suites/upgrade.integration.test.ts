@@ -84,6 +84,7 @@ it('upgrades a populated standalone test without changing its source identity or
     );
     expect(await migrateDatabase(config)).toEqual([
       '0026_workflow_test_suites.sql',
+      '0027_workspace_data_tables.sql',
     ]);
     expect(
       (

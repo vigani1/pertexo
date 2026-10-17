@@ -89,6 +89,7 @@ it('renames populated mail without changing row, grant, index or referenced rela
       '0024_concurrency_skip.sql',
       '0025_capacity_warnings.sql',
       '0026_workflow_test_suites.sql',
+      '0027_workspace_data_tables.sql',
     ]);
     expect(await catalog('app.system_mail_deliveries')).toEqual(before);
     expect(

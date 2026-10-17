@@ -1,4 +1,8 @@
 import {
+  createDataTablesStore,
+  type DataTablesStore,
+} from '@pertexo/database/data-tables';
+import {
   createWorkspaceVariablesStore,
   type WorkspaceVariablesStore,
 } from '@pertexo/database/variables';
@@ -21,6 +25,7 @@ import type { ApiWorkflowRuntimeOverrides } from './workflow-runtime.module.js';
 export type ApiWorkflowMetadataRuntime = Readonly<{
   inputCases?: WorkflowInputCaseDatabase;
   variables: WorkspaceVariablesStore;
+  dataTables: DataTablesStore;
   organization: WorkflowAuthoringDependencies['organization'];
   close(): Promise<void>;
 }>;
@@ -63,6 +68,8 @@ export async function createApiWorkflowMetadataRuntime(
             createWorkflowInputCaseDatabase
           )(config, lease));
     if (inputCases !== undefined) resources.push(inputCases);
+    const dataTables = createDataTablesStore(config, runtime);
+    resources.push(dataTables);
     const variables = createWorkspaceVariablesStore(config, runtime);
     resources.push(variables);
     const tags = createWorkflowTagDatabase(config, lease);
@@ -77,6 +84,7 @@ export async function createApiWorkflowMetadataRuntime(
     resources.push(batches);
     return Object.freeze({
       variables,
+      dataTables,
       ...(inputCases === undefined ? {} : { inputCases }),
       organization: Object.freeze({
         tags,
