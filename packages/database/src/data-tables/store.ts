@@ -188,14 +188,15 @@ export function createDataTablesStore(
         ),
       ),
     exportCsv: (input) =>
-      read(input, async (client) =>
-        exportTableCsv(
-          client,
-          input.workspaceId,
-          await requireTable(client, input.workspaceId, { id: input.tableId }),
-          input.query,
-        ),
-      ),
+      read(input, async (client) => {
+        const table = await requireTable(client, input.workspaceId, {
+          id: input.tableId,
+        });
+        await input.consume(
+          exportTableCsv(client, input.workspaceId, table, input.query),
+          table,
+        );
+      }),
     remove: (input) =>
       write(input, (client) =>
         command(

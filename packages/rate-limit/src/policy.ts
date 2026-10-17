@@ -8,6 +8,7 @@ export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'automation_authentication',
   'identity_callback',
   'authenticated_read',
+  'data_table_export',
   'actor_mutation',
   'ordinary_mutation',
   'workflow_compile',
@@ -116,6 +117,13 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
     dimensions: [
       { kind: 'client_address', subject: 'clientAddress', limit: 30 },
       { kind: 'origin', subject: 'origin', limit: 60 },
+    ],
+  },
+  data_table_export: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'actor', subject: 'actorId', limit: 5 },
+      { kind: 'workspace', subject: 'workspaceId', limit: 10 },
     ],
   },
   authenticated_read: {

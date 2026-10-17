@@ -135,13 +135,8 @@ export const dataTableSchemaEditedSchema = z
 export const dataTableExportQuerySchema = dataTableQuerySchema.omit({
   limit: true,
   offset: true,
+  sort: true,
 });
-export const dataTableExportedSchema = z
-  .object({
-    csv: z.string().max(DATA_TABLE_LIMITS.resultBytes),
-    rowCount: z.number().int().nonnegative().max(DATA_TABLE_LIMITS.maxRows),
-  })
-  .strict();
 export type DataTableSchemaEdit = z.infer<typeof dataTableSchemaEditSchema>;
 export type DataTableSchemaChange = z.infer<typeof dataTableSchemaChangeSchema>;
 export type DataTableExportQuery = z.infer<typeof dataTableExportQuerySchema>;

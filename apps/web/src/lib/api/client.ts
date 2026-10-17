@@ -5,6 +5,7 @@ import {
   csrfTokenSchema,
 } from '@pertexo/contracts';
 import { ApiError, isApiError } from './error';
+import { submitNativeDownload } from './download';
 import { requestController } from './request-controller';
 
 type ApiPath = `/v1${string}`;
@@ -59,6 +60,7 @@ export interface ApiClient {
   request<Value>(request: ApiJsonRequest<Value>): Promise<Value>;
   request(request: ApiEmptyRequest): Promise<void>;
   stream(request: ApiStreamRequest): Promise<ApiByteStream>;
+  download(request: Readonly<{ path: ApiPath; body: unknown }>): void;
 }
 
 type ApiClientOptions = Readonly<{
@@ -465,5 +467,17 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     }
   }
 
-  return Object.freeze({ request, stream });
+  function download(input: Readonly<{ path: ApiPath; body: unknown }>): void {
+    validatePath(input.path);
+    const request = { ...input, response: { kind: 'empty' as const } };
+    const headers = createHeaders(request, 'POST', options.readCsrfToken);
+    const payload = serializeBody(request, 'POST');
+    if (payload === undefined)
+      throw protocolError('A download request body is required.');
+    const token = headers.get('x-csrf-token');
+    if (token === null)
+      throw protocolError('A valid CSRF cookie is required for this request.');
+    submitNativeDownload(input.path, payload, token);
+  }
+  return Object.freeze({ request, stream, download });
 }

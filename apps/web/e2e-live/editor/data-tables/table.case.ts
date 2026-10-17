@@ -21,6 +21,7 @@ import {
   startSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
+import { qualifyLargeDownload } from './qualify-download';
 for (const width of [1280, 375])
   test(`real typed data tables create, import, edit, export and execute at ${String(width)}px`, async ({
     page,
@@ -166,7 +167,7 @@ for (const width of [1280, 375])
     const csv = await readFile(local, 'utf8');
     expect(csv).toContain('"alpha","20"');
     expect(csv).toContain('"extra119","119"');
-    expect(csv.split('\r\n')).toHaveLength(124);
+    expect(csv.trimEnd().split('\r\n')).toHaveLength(124);
     await expect
       .poll(() =>
         page.evaluate(
@@ -178,6 +179,8 @@ for (const width of [1280, 375])
       path: `/tmp/pertexo-f14-${String(width)}.png`,
       fullPage: true,
     });
+    await qualifyLargeDownload(page, workspaceId);
+    await page.goto(`/w/${workspaceId}/data-tables/${table.id}`);
     await page
       .getByRole('button', { name: 'Edit columns', exact: true })
       .click();

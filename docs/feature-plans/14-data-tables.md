@@ -1,6 +1,6 @@
 # F14 — Workspace data tables
 
-Status: first slice delivered in #334; editable columns/export follow-up in progress. Parent:
+Status: first slice delivered in #334; editable columns delivered in #337; streaming export follow-up in progress. Parent:
 [roadmap](../product-roadmap.md). Decision: [ADR 083](../adr/083-workspace-data-tables.md).
 
 ## Outcome and current foundations
@@ -61,8 +61,8 @@ No service, role, queue, package or CI job is added.
   user-defined indexes stay later.
 - CSV import uses the existing pinned csv-parse dependency, RFC 4180/UTF-8/BOM,
   headers matching columns, a 1 MiB request bound and at most 1,000 rows per
-  atomic import. Export covers the whole selected result within the existing 1 MiB result
-  budget, with safe quoting and spreadsheet formula escaping. No file browser or artifact-storage coupling.
+  atomic import. Complete export streams the whole filtered result within table quotas,
+  with safe quoting and spreadsheet formula escaping; the workflow result envelope stays unchanged. No file browser or artifact-storage coupling.
 
 ## Ownership
 
@@ -94,7 +94,7 @@ exact-head CI. Record measured bounds and any limitations below.
 ## Later work
 
 Type changes, table renaming, composite keys/indexes, larger imports,
-streamed export, row history, external database connectors, formulas and billing.
+row history, external database connectors, formulas and billing.
 
 ## Tracker
 
@@ -189,13 +189,8 @@ No new service, role, package or CI job. Amend ADR 083 rather than create an ADR
   graph's bindings. Pinned test substitutions require no table operation.
   Runtime rechecks under its existing write/read transaction for schema changes
   after acceptance; completed write receipts retain their exact original result.
-- Export all rows or all matching filtered/sorted rows, ignoring UI pagination.
-  Use the existing repeatable-read workspace transaction and a bounded SQL cursor
-  so schema and rows come from one snapshot. Keep the existing 1 MiB result
-  budget for the completed CSV, counting UTF-8 bytes and CSV escaping. Refuse
-  oversized results with instructions to narrow the filter; never download an
-  undisclosed partial result. Preserve spreadsheet-formula escaping. Use the
-  ordinary authenticated API and a bounded CSV download, with no artifact job.
+- Complete CSV export follows the streaming rules below, superseding the earlier
+  1 MiB complete-export limit. Workflow Find output and CSV import limits stay unchanged.
 
 ### Ownership and evidence
 
@@ -232,3 +227,70 @@ No new service, role, package or CI job. Amend ADR 083 rather than create an ADR
   at publish and old versions at start. Existing effects/pins and variable
   snapshot journeys passed alongside it. Mocked regressions cover human aliases,
   whole filtered export and exact retry after a lost schema-edit acknowledgement.
+
+## Streaming complete exports (2026-10-17)
+
+Owner-requested follow-up, one PR before workflow alias adoption. No new service,
+role, dependency, stored format or CI job.
+
+### Decisions and ownership
+
+- Export all rows or all matching rows up to the existing row/storage quotas;
+  remove only the complete-export 1 MiB cap. Snapshot the schema and rows in one
+  existing repeatable-read workspace transaction. Fetch at most 16 rows by
+  `(workspace_id, table_id, id > last_id)` keyset and await downstream backpressure.
+  CSV encoding yields one row at a time with the existing quoting/formula rules.
+- Exports explicitly use creation/row-ID order, including filtered exports.
+  Keep on-screen Find sorting. Explain export order in the UI/guide; reject a
+  sort parameter rather than silently ignore it. Unindexed arbitrary-column
+  sorting per keyset batch would repeatedly scan/sort a quota-sized table.
+- The database owns the snapshot, keyset and encoder. Its export method lends an
+  async CSV iterable to an awaited consumer inside the transaction; it never
+  returns a live client or lets a consumer outlive the transaction.
+- API owns HTTP streaming, cancellation and finalization: a bounded PassThrough
+  and `pipeline` feed Fastify's normal response stream. End the download only
+  after the read transaction finishes successfully. Any later failure destroys
+  the stream/response; never turn a partial export into a successful CSV. Errors
+  before streaming keep ordinary problem responses. Verify abrupt upstream loss
+  through the existing single-server proxy as well as direct HTTP.
+- Native browser form POST downloads avoid Fetch/Blob/whole-file buffering in
+  application memory and work in Chromium, Firefox and WebKit. Reuse the existing
+  bounded raw URL-encoded body transport; decode the form once in the export
+  boundary. Query JSON and the session CSRF token are form fields, never URL
+  credentials. Keep JSON POST for direct API consumers. The existing shared
+  CSRF guard/policy accepts the explicitly supplied transport token; all other
+  routes continue using their header token. No multipart parser or service worker.
+- A generic ApiClient download operation owns same-origin paths, CSRF and native
+  form submission. Feature data code owns the endpoint/query. Download in a
+  separate browsing context so a pre-header error never replaces the table page;
+  the browser owns progress, cancellation and failure feedback. Do not announce
+  successful completion from the initiating button.
+- Add an existing-limiter endpoint class for exports: fail closed, 5 starts per
+  actor and 10 per workspace per minute. Retain session/workspace fences and pool
+  bounds. Export gets a 30-minute operation budget and aborts on disconnect;
+  ordinary request budgets stay 30 seconds. This is a timeout, not a file cap.
+- Amend ADR 083 and the guide. Remove the old buffered response contract and
+  browser Blob download. No file moves are needed.
+
+### Qualification / tracker
+
+- [x] Reconcile current code and record streaming/transport choices.
+- [x] Keyset snapshot, cancellation, slow consumers, formula escaping and export
+  beyond 1 MiB; stream a quota-sized dataset while measuring peak memory.
+- [x] Real HTTP and native browser downloads: valid CSV, filtered full result,
+  auth/CSRF/rate refusal and interrupted transfer marked failed; desktop/phone.
+- [ ] Root checks, unit/mocked e2e, existing live journeys, docs and green CI.
+
+Local measured export evidence: 100,000 rows / 1,068,188,909 CSV bytes streamed
+under a 192 MiB Node heap limit. Peak sampled JavaScript heap was 57,796,280
+bytes; export took 23,915 ms under concurrent local verification load. This is
+an observation, not a CI timing assertion or throughput promise. Direct HTTP
+and nginx/Caddy proofs reject interrupted reads, including failure after the
+last row but before transaction completion. Native form downloads work with
+Chromium, Firefox and WebKit against real HTTP; WebKit's Playwright-intercepted
+attachment does not emit a download, so that mock is not browser qualification.
+
+The owned real API/worker/browser journeys passed at 1280px and 375px, including
+a >1 MiB native download, formula escaping and invalid-CSRF refusal. Existing
+schema-edit, publication, effects/pins and variable-snapshot journeys passed.
+React Doctor reported no new diagnostics (baseline score 92/100).

@@ -96,6 +96,7 @@ describe('run event lifecycle', () => {
       .mockReturnValueOnce(first)
       .mockResolvedValueOnce(openEventStream([event(1)]));
     const apiClient = {
+      download: vi.fn(),
       request: vi.fn(),
       stream,
     } as unknown as ApiClient;
@@ -453,6 +454,7 @@ function queryWrapper(strict: boolean) {
 
 function streamApiClient(open: () => ApiByteStream): ApiClient {
   return {
+    download: vi.fn(),
     request: vi.fn(),
     stream: vi.fn(() => Promise.resolve(open())),
   } as ApiClient;

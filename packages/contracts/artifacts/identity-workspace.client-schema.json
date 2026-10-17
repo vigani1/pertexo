@@ -3147,49 +3147,8 @@
             ],
             "additionalProperties": false
           }
-        },
-        "sort": {
-          "type": "object",
-          "properties": {
-            "column": {
-              "type": "string",
-              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
-            },
-            "direction": {
-              "type": "string",
-              "enum": [
-                "asc",
-                "desc"
-              ]
-            }
-          },
-          "required": [
-            "column",
-            "direction"
-          ],
-          "additionalProperties": false
         }
       },
-      "additionalProperties": false
-    },
-    "DataTableExported": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {
-        "csv": {
-          "type": "string",
-          "maxLength": 1048576
-        },
-        "rowCount": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 100000
-        }
-      },
-      "required": [
-        "csv",
-        "rowCount"
-      ],
       "additionalProperties": false
     },
     "DataTableCreate": {

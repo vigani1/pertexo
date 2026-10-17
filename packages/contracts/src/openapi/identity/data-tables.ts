@@ -14,7 +14,6 @@ export function dataTableContractSchemas(target: 'client' | 'openapi') {
     ['DataTableSchemaEdit', schemas.dataTableSchemaEditSchema, 'input'],
     ['DataTableSchemaEdited', schemas.dataTableSchemaEditedSchema, 'output'],
     ['DataTableExportQuery', schemas.dataTableExportQuerySchema, 'input'],
-    ['DataTableExported', schemas.dataTableExportedSchema, 'output'],
     ['DataTableCreate', schemas.dataTableCreateSchema, 'input'],
     ['DataTableCreated', schemas.dataTableCreatedSchema, 'output'],
     ['DataTableRemove', schemas.dataTableRemoveSchema, 'input'],
@@ -103,12 +102,58 @@ export const dataTableContractPaths = {
     ),
   },
   '/v1/workspaces/{workspaceId}/data-tables/{tableId}/export': {
-    post: operation(
-      'exportDataTableCsv',
-      'DataTableExported',
-      'DataTableExportQuery',
-      true,
-    ),
+    post: {
+      ...operation(
+        'exportDataTableCsv',
+        'DataTablesResponse',
+        'DataTableExportQuery',
+        true,
+      ),
+      parameters: [
+        uuidPathParameter('workspaceId'),
+        uuidPathParameter('tableId'),
+        {
+          ...csrfHeaderParameter(),
+          required: false,
+          description:
+            'Required for JSON POST; native form POST supplies csrfToken in its body.',
+        },
+      ],
+      description:
+        'Streams the complete filtered CSV in row creation order. Interrupted transfers are aborted. Native forms supply query JSON and csrfToken as URL-encoded fields.',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/DataTableExportQuery' },
+          },
+          'application/x-www-form-urlencoded': {
+            schema: {
+              type: 'object',
+              required: ['payload', 'csrfToken'],
+              additionalProperties: false,
+              properties: {
+                payload: {
+                  type: 'string',
+                  description: 'DataTableExportQuery serialized as JSON',
+                },
+                csrfToken: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        ...operation('exportDataTableCsv', 'DataTablesResponse').responses,
+        '200': {
+          description:
+            'Complete CSV; formula-protected, without a complete-file size cap',
+          content: {
+            'text/csv': { schema: { type: 'string', format: 'binary' } },
+          },
+        },
+      },
+    },
   },
   '/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query': {
     post: operation(

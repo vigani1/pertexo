@@ -1569,13 +1569,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required for JSON POST; native form POST supplies csrfToken in its body."
           }
         ],
         "requestBody": {
@@ -1585,16 +1586,36 @@
               "schema": {
                 "$ref": "#/components/schemas/DataTableExportQuery"
               }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "payload",
+                  "csrfToken"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "payload": {
+                    "type": "string",
+                    "description": "DataTableExportQuery serialized as JSON"
+                  },
+                  "csrfToken": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Workspace data tables",
+            "description": "Complete CSV; formula-protected, without a complete-file size cap",
             "content": {
-              "application/json": {
+              "text/csv": {
                 "schema": {
-                  "$ref": "#/components/schemas/DataTableExported"
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -1669,7 +1690,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Streams the complete filtered CSV in row creation order. Interrupted transfers are aborted. Native forms supply query JSON and csrfToken as URL-encoded fields."
       }
     },
     "/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query": {
@@ -7565,49 +7587,8 @@
               ],
               "additionalProperties": false
             }
-          },
-          "sort": {
-            "type": "object",
-            "properties": {
-              "column": {
-                "type": "string",
-                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
-              },
-              "direction": {
-                "type": "string",
-                "enum": [
-                  "asc",
-                  "desc"
-                ]
-              }
-            },
-            "required": [
-              "column",
-              "direction"
-            ],
-            "additionalProperties": false
           }
         },
-        "additionalProperties": false
-      },
-      "DataTableExported": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "csv": {
-            "type": "string",
-            "maxLength": 1048576
-          },
-          "rowCount": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 100000
-          }
-        },
-        "required": [
-          "csv",
-          "rowCount"
-        ],
         "additionalProperties": false
       },
       "DataTableCreate": {

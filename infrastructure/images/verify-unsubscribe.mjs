@@ -1,3 +1,4 @@
+import { verifyCsvProxy } from './verify-csv.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID, createHmac } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -142,6 +143,7 @@ export async function verifyUnsubscribeProxy({
   assert.equal(accepted.status, 200);
   assert.deepEqual(accepted.value, { method: 'POST', body: form.body, token });
   assert.equal(accepted.headers.location, undefined);
+  await verifyCsvProxy({ origin, headers, probe });
   await docker(['stop', backend]);
   const failed = await probe(
     url,

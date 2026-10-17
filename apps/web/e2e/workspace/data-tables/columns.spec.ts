@@ -103,9 +103,11 @@ for (const width of [1280, 375])
       return route.fulfill({ json: { revision: table.revision } });
     });
     const exports: unknown[] = [];
-    await page.route(`${path}/${table.id}/export`, (route) => {
+    await context.route(`${path}/${table.id}/export`, (route) => {
+      const form = new URLSearchParams(route.request().postData() ?? '');
+      expect(form.get('csrfToken')).toBeTruthy();
       const body = dataTableExportQuerySchema.parse(
-        route.request().postDataJSON(),
+        JSON.parse(form.get('payload') ?? ''),
       );
       exports.push(body);
       const count = body.filters.length === 0 ? 120 : 1;
@@ -117,7 +119,13 @@ for (const width of [1280, 375])
             `"${index === 0 ? 'alpha' : `row${String(index)}`}","${String(index)}"`,
         ),
       ].join('\r\n');
-      return route.fulfill({ json: { csv, rowCount: count } });
+      return route.fulfill({
+        contentType: 'text/csv; charset=utf-8',
+        headers: {
+          'Content-Disposition': 'attachment; filename="Orders-rows.csv"',
+        },
+        body: csv,
+      });
     });
     await page.goto(`/w/${workspaceId}/data-tables/${table.id}`);
     await page

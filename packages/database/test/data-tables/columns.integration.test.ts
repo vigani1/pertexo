@@ -50,6 +50,18 @@ async function create() {
   });
   return { id, name };
 }
+async function collectExport(
+  input: Omit<Parameters<typeof store.exportCsv>[0], 'consume'>,
+) {
+  let csv = '';
+  await store.exportCsv({
+    ...input,
+    consume: async (chunks) => {
+      for await (const chunk of chunks) csv += chunk;
+    },
+  });
+  return { csv, rowCount: csv.trimEnd().split('\r\n').length - 1 };
+}
 async function current(id: string) {
   const table = (await store.list(scope())).tables.find(
     (table) => table.id === id,
@@ -269,7 +281,7 @@ it('serializes competing schema edits and keeps authority/quota fences', async (
   });
 });
 
-it('exports beyond page one and the entire filtered/sorted result with formula escaping', async () => {
+it('exports beyond page one and the entire filtered result with formula escaping', async () => {
   const table = await create();
   await store.importRows({
     ...scope(),
@@ -281,25 +293,24 @@ it('exports beyond page one and the entire filtered/sorted result with formula e
       note: amount === 119 ? '=SUM(A1:A2)' : 'plain',
     })),
   });
-  const exported = await store.exportCsv({
+  const exported = await collectExport({
     ...scope(),
     tableId: table.id,
-    query: { filters: [], sort: { column: 'amount', direction: 'asc' } },
+    query: { filters: [] },
   });
   expect(exported.rowCount).toBe(120);
-  expect(exported.csv.split('\r\n')).toHaveLength(121);
+  expect(exported.csv.trimEnd().split('\r\n')).toHaveLength(121);
   expect(exported.csv).toContain('"row119","119","\'=SUM(A1:A2)"');
-  const filtered = await store.exportCsv({
+  const filtered = await collectExport({
     ...scope(),
     tableId: table.id,
     query: {
       filters: [{ column: 'amount', operator: 'greater_than', value: 60 }],
-      sort: { column: 'amount', direction: 'desc' },
     },
   });
   expect(filtered.rowCount).toBe(59);
-  expect(filtered.csv.split('\r\n')[1]).toContain('row119');
-  expect(filtered.csv.split('\r\n').at(-1)).toContain('row61');
+  expect(filtered.csv.split('\r\n')[1]).toContain('row61');
+  expect(filtered.csv.trimEnd().split('\r\n').at(-1)).toContain('row119');
 });
 
 it('claims raw CSV before conversion so a committed import replays after a schema change', async () => {
@@ -333,7 +344,7 @@ it('claims raw CSV before conversion so a committed import replays after a schem
   ).rejects.toThrow('Idempotency');
 });
 
-it('refuses an oversized complete CSV after counting UTF-8 and quoting', async () => {
+it('streams complete CSV beyond the former cap with UTF-8 and quoting', async () => {
   const table = await create();
   await store.importRows({
     ...scope(),
@@ -345,10 +356,14 @@ it('refuses an oversized complete CSV after counting UTF-8 and quoting', async (
       note: 'é"'.repeat(15000),
     })),
   });
-  await expect(
-    store.exportCsv({ ...scope(), tableId: table.id, query: { filters: [] } }),
-  ).rejects.toThrow('complete CSV exceeds 1 MB');
-  const filtered = await store.exportCsv({
+  const exported = await collectExport({
+    ...scope(),
+    tableId: table.id,
+    query: { filters: [] },
+  });
+  expect(Buffer.byteLength(exported.csv)).toBeGreaterThan(1_048_576);
+  expect(exported.rowCount).toBe(25);
+  const filtered = await collectExport({
     ...scope(),
     tableId: table.id,
     query: { filters: [{ column: 'amount', operator: 'less_than', value: 2 }] },
@@ -376,7 +391,12 @@ it('exports one schema/data snapshot while a concurrent rename commits', async (
         columnId: 'amount',
         name: 'total',
       });
-      return exportTableCsv(client, workspaceId, snapshot, { filters: [] });
+      let csv = '';
+      for await (const chunk of exportTableCsv(client, workspaceId, snapshot, {
+        filters: [],
+      }))
+        csv += chunk;
+      return { csv };
     },
   );
   expect(exported.csv).toContain('"key","amount","note"');

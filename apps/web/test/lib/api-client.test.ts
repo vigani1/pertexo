@@ -602,3 +602,53 @@ describe('CSRF cookie adapter', () => {
     expect(readBrowserCsrfToken('other=value')).toBeUndefined();
   });
 });
+
+describe('native streamed downloads', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+  it('submits authenticated same-origin forms without fetching or buffering the response', () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const submitted: {
+      path: string;
+      method: string;
+      target: string;
+      payload: FormData;
+    }[] = [];
+    vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(function (
+      this: HTMLFormElement,
+    ) {
+      submitted.push({
+        path: this.getAttribute('action') ?? '',
+        method: this.method,
+        target: this.target,
+        payload: new FormData(this),
+      });
+    });
+    const client = createApiClient({ fetch, readCsrfToken: () => csrfToken });
+    client.download({ path: '/v1/example/export', body: { filters: [] } });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(submitted[0]).toMatchObject({
+      path: '/v1/example/export',
+      method: 'post',
+      target: '_blank',
+    });
+    expect(submitted[0]?.payload.get('payload')).toBe('{"filters":[]}');
+    expect(submitted[0]?.payload.get('csrfToken')).toBe(csrfToken);
+    expect(document.querySelector('form')).toBeNull();
+  });
+  it('refuses unsafe paths and absent CSRF before starting a download', () => {
+    const submit = vi.spyOn(HTMLFormElement.prototype, 'submit');
+    const client = createApiClient({
+      fetch: vi.fn(),
+      readCsrfToken: () => undefined,
+    });
+    expect(() => {
+      client.download({ path: '/v1/example/export', body: {} });
+    }).toThrow(/CSRF/u);
+    expect(() => {
+      client.download({ path: '/v1/../export', body: {} });
+    }).toThrow();
+    expect(submit).not.toHaveBeenCalled();
+  });
+});

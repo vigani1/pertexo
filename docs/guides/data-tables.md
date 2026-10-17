@@ -78,11 +78,16 @@ record/column where possible. Import at most 1,000 rows and a 1 MB request;
 JSON framing counts too. Split larger files into smaller imports.
 
 **Export all rows** downloads the whole table. **Export filtered rows** downloads
-every matching row in the current sort order. Neither is limited to the visible
-page. Headers and rows come from one consistent snapshot. The completed CSV must
-fit 1 MB, including UTF-8 bytes, quoting and formula protection. An oversized
-result is refused before download: narrow the filter and export the matching
-rows. You never receive an undisclosed partial export.
+every matching row. Neither is limited to the visible page or to 1 MB. Exports
+use row creation order, independently of the page's current sort. Headers and
+rows come from one consistent snapshot, even if another member edits the table.
+
+The server streams small batches directly to your browser's download manager,
+which shows progress and lets you cancel. An interrupted export is a failed
+download, never a successful partial CSV. An error before the transfer starts
+opens a separate error page and keeps your table open. Retry the download after
+addressing the error. Exports have a 30-minute time budget; filter very slow
+exports. Starts are limited to five per person and ten per workspace per minute.
 
 Text that could execute as a spreadsheet formula is prefixed with an apostrophe.
 This protects spreadsheet users; remove that prefix deliberately if importing
@@ -152,9 +157,8 @@ until you delete them or the workspace is purged.
 | Stored cell JSON per workspace | 50 MB | 1 GB |
 | One row | 64 KB | Fixed |
 | Import / one row mutation | 1,000 rows | Fixed |
-| Complete CSV export | 1 MB | Fixed |
+| Complete CSV export | Current table quotas | No separate file-size cap |
 
 Open **Table limits** to raise bounded quotas. Lowering a quota below current
 use is refused. Text/JSON must be valid Unicode without null characters. There
-is no arbitrary SQL, custom index, type changes, row history or unbounded
-import/export in this slice.
+is no arbitrary SQL, custom index, type changes, row history or data beyond the workspace quotas in this slice.

@@ -58,6 +58,13 @@ describe('abuse rate-limit policy', () => {
           ['origin', 60],
         ],
       ],
+      data_table_export: [
+        'closed',
+        [
+          ['actor', 5],
+          ['workspace', 10],
+        ],
+      ],
       authenticated_read: [
         'open',
         [

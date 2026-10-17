@@ -55,7 +55,20 @@ schema edit checks revision, updates bounded batches/counters, and records one
 safe audit event in the same transaction. Required additions backfill a typed
 default; unique-key changes validate all existing values. Type changes stay later.
 
-Complete CSV export uses the existing repeatable-read workspace fence, bounded
-cursor reads and the existing 1 MiB result budget. Oversized exports fail before
-download with a narrowing instruction; formula protection remains enabled.
-No new storage service, role or background export subsystem is introduced.
+Complete CSV export uses the existing repeatable-read workspace fence and the
+streaming amendment below. No new storage service, role or background export
+subsystem is introduced.
+
+## Amendment — streamed complete exports (2026-10-17)
+
+The owner removed the 1 MiB complete-export cap. Keep the stored-data quotas,
+workflow result envelope and import bounds. Use creation/row-ID keysets and
+bounded batches inside one read snapshot; the UI explicitly distinguishes this
+export order from on-screen sorting. Preserve quoting and formula protection.
+
+A native browser form download and a backpressured API stream keep full exports
+out of application buffers. The existing session and CSRF policy authorizes the
+POST, with bounded form decoding only at this endpoint. Successful HTTP EOF is
+sent only after the read transaction completes; failures abort the download.
+The existing rate limiter bounds export starts. No download tickets, temporary
+artifact storage, browser service worker or background export system is added.

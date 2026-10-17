@@ -1,3 +1,4 @@
+import { verifyCsvProxy } from './verify-csv.mjs';
 import { verifyUnsubscribeProxy } from './verify-unsubscribe.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -187,6 +188,11 @@ try {
     clearTimeout(timer);
     controller.abort();
   }
+  await verifyCsvProxy({
+    origin,
+    headers: { host: 'app.beta.test' },
+    probe: readProbe,
+  });
   if (caddyImage !== undefined)
     await verifyUnsubscribeProxy({
       docker,
