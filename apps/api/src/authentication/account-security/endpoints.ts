@@ -9,7 +9,7 @@ import { setSessionCookie } from 'better-auth/cookies';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import type { LinkProviderGateway } from './linking.js';
+import type { SocialProviderGateway } from '../providers/contract.js';
 import {
   changePasswordAndRevokeSessions,
   resetPasswordAndRevokeSessions,
@@ -28,7 +28,7 @@ type SessionUser = Parameters<typeof setSessionCookie>[1]['user'];
  */
 export function accountSecurityEndpoints(
   pool: Pool,
-  availableLinkProviders: LinkProviderGateway['available'],
+  availableLinkProviders: SocialProviderGateway['available'],
 ) {
   return {
     getPertexoAccountSecurity: createAuthEndpoint(

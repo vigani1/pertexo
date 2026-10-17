@@ -11,7 +11,7 @@ import { setSessionCookie } from 'better-auth/cookies';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import type { LinkProviderGateway } from '../account-security/linking.js';
+import type { SocialProviderGateway } from '../providers/contract.js';
 import { accountSecurityEndpoints } from '../account-security/endpoints.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
 
@@ -26,7 +26,7 @@ type BeforeHooks = NonNullable<
  */
 export function createTrustedSessionPlugin(
   pool: Pool,
-  availableLinkProviders: LinkProviderGateway['available'],
+  availableLinkProviders: SocialProviderGateway['available'],
 ) {
   return {
     id: 'pertexo-trusted-session-boundary',

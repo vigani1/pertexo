@@ -5,7 +5,7 @@ import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { PostgresDialect } from 'kysely';
 import type { Pool } from 'pg';
 
-import type { LinkProviderGateway } from '../account-security/linking.js';
+import type { SocialProviderGateway } from '../providers/contract.js';
 import type { AuthenticationMail } from '../mail/delivery.js';
 import { isActiveUser } from './trusted-sessions.js';
 import type { OwnedEmailProofs } from '../mail/email-proofs.js';
@@ -21,7 +21,7 @@ type PertexoBetterAuthInput = Readonly<{
   mail: AuthenticationMail;
   emailProofs: OwnedEmailProofs;
   socialProviders?: BetterAuthOptions['socialProviders'];
-  availableLinkProviders: LinkProviderGateway['available'];
+  availableLinkProviders: SocialProviderGateway['available'];
 }>;
 
 /**
