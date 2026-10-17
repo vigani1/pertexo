@@ -15,8 +15,11 @@ export const fixtureIds = {
 
 export const fixtureTimestamp = '2026-09-15T10:00:00.000Z';
 
-/** The first find on a page also waits for its lazy chunk to load. */
-export const coldStart = { timeout: 5_000 } as const;
+/**
+ * The first find on a page also waits for its lazy chunk to compile and load.
+ * A busy machine can take far longer than a render, so this budget is generous.
+ */
+export const coldStart = { timeout: 20_000 } as const;
 export const apiBase = `http://pertexo.test/v1/workspaces/${fixtureIds.workspace}`;
 
 export function minutesAgo(minutes: number): string {

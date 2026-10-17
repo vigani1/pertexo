@@ -6,6 +6,7 @@ import {
 } from '@pertexo/contracts';
 import { fireEvent, screen, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
+import { coldStart } from './run';
 
 // Shared, contract-valid fixtures for the workflow editor's component tests.
 
@@ -324,7 +325,7 @@ export function deferred<T>() {
 
 /** The canvas once the lazy editor route has loaded. */
 export async function findCanvas() {
-  return within(await screen.findByRole('application', {}, { timeout: 4_000 }));
+  return within(await screen.findByRole('application', {}, coldStart));
 }
 
 /** ⌘S: flush the draft save now. */
