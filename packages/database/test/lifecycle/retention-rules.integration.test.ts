@@ -4,6 +4,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { RETENTION_RULES } from '../../src/lifecycle/retention-rules.js';
 import {
   adminUrl,
+  maintenanceUrl,
+  withApplicationName,
+  waitForPostgresLock,
   randomUUID,
   retention,
   runIds,
@@ -340,6 +343,73 @@ describe('retention rules', () => {
     expect(remaining.rows.map(({ id }) => id).sort()).toEqual(
       [recent, other].sort(),
     );
+  });
+
+  it('keeps a long-active capacity warning without forcing another episode', async () => {
+    const id = randomUUID();
+    await admin.query(
+      `insert into app.workspace_inbox_threads
+       (workspace_id,id,notice_kind,subject_id,capacity_limit,active,source_revision,revision,occurrence_count,first_occurred_at,latest_occurred_at)
+       values($1,$2,'limit_approaching',$2,'active',true,'active',nextval('app.workspace_inbox_revision_seq'),1,clock_timestamp()-interval '100 days',clock_timestamp()-interval '100 days')`,
+      [workspaceId, id],
+    );
+    await enforceUntilIdle();
+    expect(
+      (
+        await admin.query(
+          'select active,occurrence_count::text from app.workspace_inbox_threads where id=$1',
+          [id],
+        )
+      ).rows,
+    ).toEqual([{ active: true, occurrence_count: '1' }]);
+  });
+
+  it('does not delete a warning reactivated while its retention delete waits', async () => {
+    const id = randomUUID();
+    await admin.query(
+      `insert into app.workspace_inbox_threads
+        (workspace_id,id,notice_kind,subject_id,capacity_limit,active,source_revision,revision,occurrence_count,first_occurred_at,latest_occurred_at)
+       values($1,$2,'limit_approaching',$2,'artifact_bytes',false,'artifact_bytes',nextval('app.workspace_inbox_revision_seq'),1,clock_timestamp()-interval '40 days',clock_timestamp()-interval '40 days')`,
+      [workspaceId, id],
+    );
+    const rule = RETENTION_RULES.find(
+      (candidate) => candidate.name === 'workspace_inbox_threads',
+    );
+    if (rule === undefined || !('statement' in rule))
+      throw new Error('Missing inbox retention statement');
+    const applicationName = `retention-warning-${randomUUID()}`;
+    const blocker = new Client({ connectionString: withDatabase(adminUrl) });
+    const cleaner = new Client({
+      connectionString: withApplicationName(maintenanceUrl, applicationName),
+    });
+    await blocker.connect();
+    await cleaner.connect();
+    let outcome: Promise<unknown> | undefined;
+    try {
+      await blocker.query('begin');
+      await blocker.query(
+        'update app.workspace_inbox_threads set active=true,latest_occurred_at=clock_timestamp() where id=$1',
+        [id],
+      );
+      const pending = cleaner.query(rule.statement, [1000]);
+      outcome = pending.catch((error: unknown) => error);
+      await waitForPostgresLock(applicationName);
+      await blocker.query('commit');
+      expect(await pending).toMatchObject({ rowCount: 0 });
+      expect(
+        (
+          await admin.query(
+            'select active from app.workspace_inbox_threads where id=$1',
+            [id],
+          )
+        ).rows,
+      ).toEqual([{ active: true }]);
+    } finally {
+      await blocker.query('rollback');
+      await outcome;
+      await cleaner.end();
+      await blocker.end();
+    }
   });
 
   it('skips a rule another worker is running', async () => {

@@ -176,6 +176,13 @@
       "when": 1792214786067,
       "tag": "0024_concurrency_skip",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792218860077,
+      "tag": "0025_capacity_warnings",
+      "breakpoints": true
     }
   ]
 }

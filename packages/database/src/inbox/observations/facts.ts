@@ -1,10 +1,25 @@
 import type { PoolClient } from 'pg';
-import type { WorkspaceNoticeKind } from '@pertexo/contracts';
+import { readCapacityWarning } from './capacity.js';
+import type {
+  WorkspaceCapacityLimit,
+  WorkspaceNoticeKind,
+} from '@pertexo/contracts';
 export type AttentionSubject = Readonly<{
   workspaceId: string;
-  noticeKind: Exclude<WorkspaceNoticeKind, 'workflow_failure'>;
   subjectId: string;
-}>;
+}> &
+  (
+    | Readonly<{
+        noticeKind: 'limit_approaching';
+        capacityLimit: WorkspaceCapacityLimit;
+      }>
+    | Readonly<{
+        noticeKind: Exclude<
+          WorkspaceNoticeKind,
+          'workflow_failure' | 'limit_approaching'
+        >;
+      }>
+  );
 export type AttentionFact = Readonly<{
   active: boolean;
   sourceRevision: string;
@@ -75,6 +90,16 @@ export async function readAttentionFact(
         sourceRevision: subject.subjectId,
       };
     }
+    case 'limit_approaching':
+      return {
+        ...base,
+        active: await readCapacityWarning(
+          client,
+          subject.workspaceId,
+          subject.capacityLimit,
+        ),
+        sourceRevision: subject.capacityLimit,
+      };
     case 'limit_reached': {
       const found = await client.query<{
         queue: boolean;

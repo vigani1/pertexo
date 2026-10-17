@@ -1,3 +1,4 @@
+import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
 import { parseTaskSearch } from '@/features/pending-tasks/queries.public';
 import {
   createRoute,
@@ -397,6 +398,20 @@ export const workspaceSettingsRoute = createRoute({
   component: lazyRouteComponent(
     () => import('./settings'),
     'WorkspaceSettingsRoute',
+  ),
+});
+
+export const usageTrendsRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings/usage/trends',
+  staticData: { crumb: 'Trends' },
+  validateSearch: parseUsageTrendsSearch,
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Trends', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./usage-trends'),
+    'UsageTrendsRoute',
   ),
 });
 

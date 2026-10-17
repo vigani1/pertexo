@@ -1,189 +1,150 @@
-# F12 — Usage, limits and workflow insights without billing
+# F12 — Capacity warnings and run trends
 
-Status: first read-only capacity/activity slice complete, merged in PR137 with
-required checks and release-owner natural main qualification passed;
-warnings and trends remain deferred. This document does not authorize production rollout.
-Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
-Scope: Backend projection + frontend reporting. Relative size: **L**, not a calendar estimate.
+Status: implemented and qualified locally; CI and merge tracked in the implementation PR.
+Updated: 2026-10-17, against main after F29 (PR #331).
+Decision: [ADR 057](../adr/057-workspace-usage-capacity-and-retained-activity.md).
 
 ## Outcome
 
-Users understand retained execution activity, resource limits and consumption with truthful coverage/freshness.
+Warn about approaching workspace capacity, and show how actual runs have behaved
+across 30 or 90 days. Preserve the existing Usage page's exact current capacity
+and separate retained activity. This is operational reporting, without billing.
 
-## Current implementation and evidence
+## Decisions — 2026-10-17
 
-The ADR057 first slice adds current execution/artifact capacity and separately
-labelled retained activity to the Usage page. Bounded workspace run statistics
-remain owned by ADR044. This is not the complete F12 product and does not rename
-run counts to billable usage.
+### Capacity warnings
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
+- Fixed threshold: 80% of each positive capacity limit. Four independent limits:
+  active slots (including dispatcher reservations), queued runs, charged file
+  bytes and charged file count. Waiting/Call slot handoff follows the existing
+  admission owner. Tests consume real capacity and therefore participate here.
+- Reuse F27's current-attention observer, Inbox audience and personal email
+  preferences/digests. Operational readers see the warnings. No new recipient
+  rule, worker service, transport, threshold setting or quota editor.
+- One warning episode per limit per upward crossing: observing usage still above
+  the threshold does not change its revision or send another notice. An observed
+  drop below it resolves/rearms that limit; a later crossing opens a new episode.
+  Separate limits resolve independently. Existing limit-reached notices remain.
+- Observation and mail are best effort, like existing current-capacity notices:
+  a brief crossing wholly between scans can be missed. A resolved warning is not
+  mailed after capacity is rechecked. Do not add a per-mutation event subsystem.
+- Keep warning state in existing Inbox threads: one stable subject/thread per
+  workspace and capacity key, with a partial uniqueness constraint. An additive
+  nullable `capacity_limit` distinguishes warning subjects; other kinds stay null.
+  Preserve the existing subject key and failure-fold function. Active operational
+  threads already survive retention; resolved threads expire normally. Existing
+  workspace purge, private reads, preferences and mail cleanup still apply.
+- One TypeScript capacity-rule owner supplies discovery and current-fact tests.
+  Compare exact integer ratios, including bigint bytes, without floating-point
+  rounding or bigint multiplication overflow. Missing/suspended/expired execution
+  policy supplies no guessed warning limit; a zero limit uses existing reached
+  feedback rather than an approaching-zero warning.
 
-- [docs/adr/044-bounded-workspace-run-statistics.md](../../docs/adr/044-bounded-workspace-run-statistics.md)
-- [apps/web/src/features/overview](../../apps/web/src/features/overview)
-- [apps/web/ARCHITECTURE.md](../../apps/web/ARCHITECTURE.md)
+### Trends
 
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+- New read-only Trends page linked from Usage, with 30 or 90 **UTC calendar days,
+  including today**. Today's bin is partial. Return fixed server `from`, `before`
+  and `asOf`; do not infer browser-local day boundaries or add timezone settings.
+- Use retained run summaries, never execution values or browser history paging.
+  Exclude tests through the shared runs data-policy owner. Include actual child,
+  replay and error-workflow runs; retries within a run do not add run counts.
+  F29 skipped events remain separate from runs.
+- Show runs per day by current outcome, average and slowest elapsed duration,
+  and the top ten workflows by runs and by failures. Failures include failed,
+  timed-out and unknown-outcome runs; canceled runs remain their own outcome.
+- Elapsed duration is completion minus start, for terminal runs with a start.
+  It includes waits and excludes time queued before starting. Missing durations
+  stay unavailable, not zero. Retained summaries still work after details expire.
+- Explain retained coverage: no lifetime claim or reconstructed deleted history.
+  A late completion appears in the next snapshot. The selected interval is inside
+  ordinary 90-day summary retention; workspace creation can shorten coverage.
+- Preserve run-read authorization, workflow-name disclosure, workspace RLS,
+  cancellation and the existing two-second statement budget. Bound response rows
+  to 90 days and two top-ten lists. Measure indexed workspace/date-range reads;
+  return an honest unavailable state on failure, without an unbounded fallback.
+  No rollup table or reporting service.
 
-## Dependencies and planning gate
+## Structure
 
-00; agree units/period before implementation; can ship before 08 if demand warrants.
+| Owner | Change |
+| --- | --- |
+| database/inbox/observations | Capacity predicate, discovery and per-limit episodes |
+| database/schema/inbox; migrations | Nullable capacity key, warning constraints/index; existing RLS/grants |
+| database/inbox/eligibility, projection, mail | Existing audience, safe metric labels, current-fact recheck |
+| database/runs/queries; runs repository | Bounded trends snapshot with shared test exclusion |
+| contracts; API workflow-runs/usage | Trends read and warning kind on current feature boundaries |
+| web/features/usage; routes/workspace | Scoped Query reads, URL period and Trends page |
+| web/features/inbox; worker/mail | Existing notice row, filter, safe email content |
 
-Period zone/reset, inclusion/exclusion, read capability, freshness, retention coverage, who sets entitlements.
+No file moves are planned. Keep any necessary later moves in separate commits.
 
-Recommendations are not accepted ADRs. Resolve consequential choices before code;
-use the next free ADR number when required. Do not create ADRs for routine fixes.
+## Web direction and self-check
 
-## User-configurable settings
+Keep Weft's existing semantic palette, local fonts, Status glyphs and plain forms.
+The signature moment is a daily woven outcome chart; the duration summary and
+rankings stay quiet. Supply equivalent readable daily data, keyboard-accessible
+controls and exact labels. Fit 375px with reduced motion and no document overflow.
+Reuse existing primitives and formatting; no chart dependency or new design system.
+Query owns snapshots. Clear denied cached trends across periods, while preserving
+ordinary transient-error stale feedback. Do not mirror results into component state.
 
-Deferred proposals, not accepted settings in ADR057 or enabled controls. The
-first slice uses fixed durations and existing configured entitlements; it has no
-warning, timezone/reset or quota-editing settings.
+Review: the reporting period, duration denominator, test inclusion, reservation
+count and warning rearm are explicit. Existing Inbox state is sufficient; no new
+subsystem is needed. Capacity warnings do not promise every transient spike or
+successful email delivery. Publishing/execution behavior and capacity stay unchanged.
 
-| Setting | Default | Range | Who changes it | Consequence shown |
-| --- | --- | --- | --- | --- |
-| Usage warning | At 80% of a limit | 50–95% | Workspace admins | “Admins get a notice when usage reaches this share of a limit” |
-| Reporting time zone | Workspace time zone | Any IANA zone | Workspace admins | “Periods start at midnight in this zone” |
+## Slices and verification
 
-## Ownership and structure
+1. Extend warning persistence/rules and existing F27 delivery. Prove independent
+   crossings, no repeated poll/run notices, restart/races, exact 80% boundaries,
+   reservations, bigint bytes, zero/missing/suspended policy, permissions, mail
+   reauthorization, long-active retention and workspace purge.
+2. Add the trends contract, bounded database/API read and Weft page. Prove UTC
+   edges, partial days, 30/90 selection, retained summaries, test exclusion, outcome
+   and duration math, rankings/ties, tenant/name fences and measured query plans.
+3. Qualify real API/browser behavior at desktop and phone widths; unit, mocked
+   journeys, build, lint, types, contracts/schema/architecture and React Doctor.
+   One PR, green CI, rebase merge before F02 suites.
 
-Application usage/insights reads; database bounded aggregate owner; contracts; web usage. Existing limits/accounting owners remain authoritative.
+## Tracker
 
-Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
-These are responsibility owners, not a mandate to create empty folders/packages.
-Reuse the post-cleanup canonical owners; do not restore old duplicated paths.
+- [x] Existing capacity/activity slice delivered (PR #137; history in Git).
+- [x] Reconcile current code and record this increment's decisions.
+- [x] Implement and qualify warning episodes and F27 email.
+- [x] Implement and qualify bounded trends and frontend.
+- [x] Complete local gates and integrated browser evidence.
 
-## Frontend work
+## Rollout
 
-The first slice shows separate snapshot timestamps, current capacity versus
-configured limits, unavailable versus zero, and exact-bound retained-activity
-drill-downs. Period/zone settings and workflow trends/duration distributions
-remain deferred.
+Use the existing coordinated migration procedure: stop API/workers, apply
+`0025_capacity_warnings.sql`, then start matching builds. Readiness requires this
+head. Older readers cannot decode the new notice kind; any rollback must retain
+head compatibility and notice decoding, rather than redeploying an old image.
+No stored run format, role or execution-capacity policy changes.
 
-## Backend work
+## Qualification evidence — 2026-10-17
 
-Define durable measurement units and authoritative sources; scoped aggregates and indexes, late data/retention semantics, exact retry/cancel/subworkflow treatment. Rollups only when justified, reconcilable from durable facts.
+- PostgreSQL/API checks cover independent exact 80% crossings, bigint boundaries,
+  reservations, audience, stale-mail refusal, purge and retention (including a
+  row-lock/reactivation race). An observed resolved/reopened episode reuses its
+  thread, and no unchanged scan increments it.
+- Trends checks cover UTC midnight/microsecond boundaries, future exclusion,
+  canceled reads, tenant/name fences, test exclusion, elapsed math and top-ten
+  ties. A 48,000-summary fixture has 16,000 own and 32,000 foreign rows across
+  120 days. Aggregating before filling empty bins reduced the daily query from
+  141 ms to 11 ms locally. Final 90-day read: 27 ms; EXPLAIN ANALYZE: daily 11 ms /
+  390 shared-buffer touches, rankings 4.8 ms / 392 touches. Both use existing
+  workspace indexes with no sequential scan and the normal 2-second budget;
+  no new index or rollup. A row-work budget guards against per-day history rescans.
+  These are local measurements, not a throughput SLA.
+- Local gates: full build/lint/types, dependencies, contracts/schema/architecture,
+  9,490 workspace unit tests and 202 mocked browser journeys pass. PostgreSQL
+  warning/audience/mail/upgrade/retention/trends checks and authenticated API reads
+  pass; the updated Trends fixture also refuses unmocked server-error reads.
+- The real browser/API/PostgreSQL Usage fixture passes at 1280px and 375px,
+  including a genuine active-slots warning and 90-day summaries. Mocked journeys
+  verify URL periods, all 90 chart bins, accessible exact data and phone keyboard
+  scrolling. React Doctor: 100/100, no diagnostics on changed React files.
 
-## Delivery slices
-
-1. Approve metric dictionary: runs, attempts or consumed operations are different; storage is separate.
-2. Deliver minimal bounded read contract and UI for selected units.
-3. Add quota warnings and trends with proven query plans; reserve billing ledger changes for 23.
-
-Each slice ends in a usable, tested behavior; do not ship enabled placeholder
-controls backed by invented responses.
-
-## Acceptance evidence
-
-Period/DST edges, retries/canceled runs, duplicate accounting, late events, partial retention, permissions, bounded SQL and no browser-side full-history aggregation.
-
-Apply the shared completion checklist: contract/authorization tests, real
-persistence and restart/race tests when relevant, real browser/backend flow for
-visible behavior, and exact reviewed source/CI evidence. Mocks alone cannot close
-the live gate. Record unsupported environments explicitly.
-
-## Non-goals
-
-Prices, checkout, invoices, treating infrastructure metrics as customer billing, unsupported lifetime totals.
-
-## Rollout and rollback
-
-Hide new reporting reads without changing enforced entitlements or execution acceptance.
-
-No production rollout, paid provisioning or real external calls are authorized by
-this plan. New persistent behavior requires additive reader/writer rollout and
-retention/membership-deletion handling before enablement.
-
-## Competitor context
-
-Operational visibility is useful before paid plans; compare conceptual reporting, not competitor billing units. Sources: [n8n current documentation index](https://docs.n8n.io/sitemap.md).
-
-Research checked 2026-09-28; product editions and availability can change.
-This context informs the outcome, not Pertexo's implementation or billing policy.
-
-## Delivery tracker
-
-- [x] Baseline reconciled against current code and accepted decisions.
-- [x] First-slice product choices resolved; ADR057 accepted. Later warnings,
-  trends and calendar/timezone decisions are not part of this slice.
-- [x] First-slice contracts and failure/security model reviewed locally.
-- [x] First-slice backend behavior implemented and independently verified.
-- [x] First-slice frontend behavior implemented and independently verified.
-- [x] First-slice real integrated acceptance evidence recorded.
-- [x] First-slice rollout/rollback and limitations documented in ADR057.
-- [x] First-slice scoped PR137 merged with required exact-head checks passed.
-- [x] Natural postmerge main qualification inspected and passed by the release owner.
-
-Evidence log:
-
-- 2026-10-01: the release owner confirmed natural main
-  [CI run 36806860550](https://github.com/vigani1/pertexo/actions/runs/36806860550)
-  and [CodeQL run 36806860572](https://github.com/vigani1/pertexo/actions/runs/36806860572)
-  both concluded `SUCCESS` on merged commit `23cc5b45`, and recorded the manager
-  receipt. This closes the first read-only capacity/activity slice's postmerge
-  qualification, not the deferred warnings/trends product or production rollout.
-- 2026-10-01: the release owner reported all exact-head CI checks passed and
-  [PR137](https://github.com/vigani1/pertexo/pull/137) merged at 02:39:28 UTC as
-  `23cc5b452f647788dad704f5f0b3114330122712`; fetch confirmed that commit on
-  `origin/main`. Natural main CI `36806860550` and CodeQL `36806860572` were
-  queued at that point; the subsequent release-owner success receipt above
-  supersedes that pending status. This merge receipt alone did not establish
-  main qualification, production rollout, or the deferred warnings/trends product.
-- 2026-10-01: [ADR057](../adr/057-workspace-usage-capacity-and-retained-activity.md)
-  records the selected metric dictionary, conservative existing-capability
-  intersection, fixed-window activity, exact byte representation and bounded
-  read strategy. Source inspection confirmed dispatch reservations are excluded
-  from admission counters and require their own scoped count; absent execution
-  entitlement is unavailable, while absent artifact capacity in a new active
-  workspace uses the existing writer's lazy defaults. These are implementation
-  decisions and inspected source evidence, not a completed persistence/browser
-  acceptance claim.
-- Existing foundations above are not completion of this increment. Warnings,
-  trends, operation/attempt meters, timezone/reset settings, entitlement editing
-  and billing are explicitly deferred. At that inventory point the first slice
-  remained unmerged; the later PR137 evidence above supersedes that status.
-- 2026-10-01: local first-slice evidence: contracts 135 tests; API focused
-  authorization/persistence tests 94; database unit suite 878 tests plus 64
-  focused readiness/reader tests after the final body pin; isolated PostgreSQL
-  integration 20 tests, including explicit 0125→0126 upgrade, context/role
-  isolation, reader-body/index drift, indexed reservation counting and bounded
-  statement timeout. The reader body fingerprint is pinned in startup readiness
-  and the operations inventory. These are local results, not CI results.
-- 2026-10-01: web unit suite 764 tests passed with two workers. The real
-  BetterAuth/PostgreSQL/Redis/browser fixture passed against isolated owned
-  services: one active run, one queued run, 11 charged bytes, distinct 1-hour
-  (3 runs) and 6-hour (4 runs) activity, exact-bound status drill-down and a
-  settled 390px keyboard-operated view. No production data or external billing
-  calls were used. Full browser suite passed 86 tests (80 Chromium, 3 Firefox,
-  3 WebKit) with two workers and unchanged budgets.
-- 2026-10-01: all repository `pnpm check` gates passed locally, with the final
-  duplication/contracts/typecheck/test sequence resumed after reviewing two
-  stale identity-fixture clone fingerprints. Aggregate clone ceilings stayed
-  unchanged and one per-clone ceiling decreased. The repository unit run passed,
-  including API 1710, database 878 and web 764 tests with their normal commands.
-  An earlier benchmark process-startup timeout passed both in isolation and in
-  the subsequent serial gate run; no timeout budgets were changed. No push, PR,
-  merge or postmerge CI is claimed.
-- 2026-10-01: recorded implementation commits `3abde4ae` (backend/contract)
-  and `6ce2637e` (page/integrated evidence), following ADR commit `5af88e02`.
-  Normal merge `87ec4177` incorporates main cleanup fix `1af50311` without
-  rewriting history. After that local merge, the API dependency build, 47
-  focused cleanup/Usage tests and both real capacity/browser integration tests
-  passed. The two owned temporary services were closed after confirming no
-  fixture databases remained. This is local integration, not a feature PR merge
-  or postmerge CI result; manager review still precedes any push/PR.
-- 2026-10-01: manager review found that a transient failure after an access
-  denial could reveal the pre-denial Query snapshot again. Usage reads now
-  forget denied capacity and all scoped activity-window snapshots in Query;
-  sibling window requests are canceled before clearing to prevent cancellation
-  from restoring earlier data. Only fresh authorized success restores figures.
-  Regression coverage exercises 401/403/404/409, subsequent transient failures,
-  remounts/window changes and independent recovery, while preserving ordinary
-  transient-error stale display. Verification: 22 focused Usage tests, all 771
-  web unit tests, all 87 browser tests (81 Chromium, 3 Firefox, 3 WebKit), build,
-  typecheck, scoped lint, architecture, complexity, duplication and formatting
-  checks pass. Browser regressions include both 503 and network failures after
-  denial. This repair has not been pushed and does not claim new live-backend
-  or CI evidence.
+CI and merge receipts belong to the implementation PR. No production rollout,
+paid service, external provider call or image download is included.

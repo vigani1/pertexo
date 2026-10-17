@@ -679,6 +679,7 @@
                         "workflow_auto_paused",
                         "connection_attention",
                         "limit_reached",
+                        "limit_approaching",
                         "approval_waiting"
                       ]
                     },
@@ -759,11 +760,12 @@
                       "type": "boolean"
                     },
                     "limits": {
-                      "maxItems": 3,
+                      "maxItems": 4,
                       "type": "array",
                       "items": {
                         "type": "string",
                         "enum": [
+                          "active",
                           "queue",
                           "artifact_bytes",
                           "artifact_count"
@@ -1983,6 +1985,7 @@
                 "workflow_auto_paused",
                 "connection_attention",
                 "limit_reached",
+                "limit_approaching",
                 "approval_waiting"
               ]
             }

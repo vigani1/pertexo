@@ -87,6 +87,7 @@ export const workspaceInboxThreads = appSchema.table(
     taskId: uuid('task_id'),
     active: boolean('active').notNull().default(true),
     sourceRevision: varchar('source_revision', { length: 128 }),
+    capacityLimit: varchar('capacity_limit', { length: 16 }),
     workflowId: uuid('workflow_id'),
     revision: bigint('revision', { mode: 'bigint' }).notNull(),
     occurrenceCount: bigint('occurrence_count', { mode: 'bigint' }).notNull(),
@@ -115,9 +116,12 @@ export const workspaceInboxThreads = appSchema.table(
       table.noticeKind,
       table.subjectId,
     ),
+    uniqueIndex('workspace_inbox_threads_capacity_limit_unique')
+      .on(table.workspaceId, table.capacityLimit)
+      .where(sql`notice_kind='limit_approaching'`),
     check(
       'workspace_inbox_threads_subject_valid',
-      sql`((notice_kind IN ('workflow_failure','workflow_auto_paused') AND workflow_id=subject_id AND connection_id IS NULL AND task_id IS NULL) OR (notice_kind='connection_attention' AND connection_id=subject_id AND workflow_id IS NULL AND task_id IS NULL) OR (notice_kind='approval_waiting' AND task_id=subject_id AND workflow_id IS NOT NULL AND connection_id IS NULL) OR (notice_kind='limit_reached' AND subject_id=workspace_id AND workflow_id IS NULL AND connection_id IS NULL AND task_id IS NULL)) IS TRUE`,
+      sql`((notice_kind='limit_approaching' AND subject_id=id AND capacity_limit IN ('active','queue','artifact_bytes','artifact_count') AND workflow_id IS NULL AND connection_id IS NULL AND task_id IS NULL) OR (capacity_limit IS NULL AND ((notice_kind IN ('workflow_failure','workflow_auto_paused') AND workflow_id=subject_id AND connection_id IS NULL AND task_id IS NULL) OR (notice_kind='connection_attention' AND connection_id=subject_id AND workflow_id IS NULL AND task_id IS NULL) OR (notice_kind='approval_waiting' AND task_id=subject_id AND workflow_id IS NOT NULL AND connection_id IS NULL) OR (notice_kind='limit_reached' AND subject_id=workspace_id AND workflow_id IS NULL AND connection_id IS NULL AND task_id IS NULL)))) IS TRUE`,
     ),
     check(
       'workspace_inbox_threads_failure_valid',

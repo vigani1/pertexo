@@ -2,6 +2,8 @@ import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import type {
   UsageCapacityResponse,
+  UsageTrendPeriod,
+  UsageTrendsResponse,
   WorkflowCallSummary,
   WorkflowRunErrorWorkflow,
   WorkflowRecoveryPreview,
@@ -256,6 +258,14 @@ export interface WorkflowRunPersistence {
     input: RecoverWorkflowRunCommand,
   ): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>>;
 
+  usageTrends(
+    input: Readonly<{
+      workspaceId: string;
+      period: UsageTrendPeriod;
+      includeWorkflowNames: boolean;
+      signal?: AbortSignal;
+    }>,
+  ): Promise<UsageTrendsResponse>;
   usageCapacity(
     input: Readonly<{ workspaceId: string; signal?: AbortSignal }>,
   ): Promise<UsageCapacityResponse>;

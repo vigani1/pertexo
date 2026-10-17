@@ -134,3 +134,5 @@ export type {
   WorkflowExecutionReader,
   WorkflowExecutionProjection,
 } from './queries/execution/source.js';
+
+export type { UsageTrendsInput } from './queries/usage-trends.js';

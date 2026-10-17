@@ -90,6 +90,11 @@ it.each([
     'Connection needs attention: Billing key — Operations',
   ],
   ['limit_reached', 'Operations', 'Workspace limit reached — Operations'],
+  [
+    'limit_approaching',
+    'Active runs',
+    'Workspace nearing a limit: Active runs — Operations',
+  ],
 ] as const)(
   'names the %s subject and workspace',
   (noticeKind, name, subject) => {

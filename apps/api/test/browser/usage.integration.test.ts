@@ -1,3 +1,5 @@
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import { createWorkspaceInboxFoldStore } from '@pertexo/database/notifications';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -22,8 +24,27 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
   const openBrowsers = new Set<string>();
   let browserOpened = false;
   let observed = false;
+  let capacityObserver:
+    ReturnType<typeof createWorkspaceInboxFoldStore> | undefined;
   const api = useBetterAuthRealApi('usage_browser', {
     publicWebOrigin: webOrigin,
+    notifications: true,
+    afterMigration: async (databaseUrl) => {
+      const store = createWorkspaceInboxFoldStore(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(process.env.DATABASE_URL ?? ''),
+        }),
+        undefined,
+        parseDatabaseConfig({
+          connectionString: databaseUrl(
+            process.env.DATABASE_MAINTENANCE_URL ?? '',
+          ),
+        }),
+      );
+      capacityObserver = store;
+      owner.acquire('capacity observer', store, () => store.close());
+      await store.checkReadiness();
+    },
     beforeClose: () => owner.close(),
   });
 
@@ -102,6 +123,21 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
         );
       }
       await seed.query(
+        `update app.workflow_runs set started_at=created_at,completed_at=created_at+case when status='succeeded' then interval '20 seconds' else interval '40 seconds' end where workspace_id=$1 and status in ('succeeded','failed')`,
+        [workspaceId],
+      );
+      await seed.query(
+        `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,created_at)
+        select gen_random_uuid(),$1,$2,$3,'manual','running',statement_timestamp()-interval '30 minutes' from generate_series(1,3)`,
+        [workspaceId, workflowId, versionId],
+      );
+      await seed.query(
+        `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,created_at,started_at,completed_at)
+        values($1,$2,$3,$4,'manual','failed',statement_timestamp()-interval '45 days',statement_timestamp()-interval '45 days',statement_timestamp()-interval '45 days'+interval '60 seconds'),
+        ($5,$2,$3,$4,'test','succeeded',statement_timestamp()-interval '30 minutes',statement_timestamp()-interval '30 minutes',statement_timestamp()-interval '20 minutes')`,
+        [randomUUID(), workspaceId, workflowId, versionId, randomUUID()],
+      );
+      await seed.query(
         `insert into app.artifacts
       (id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,status,expires_at)
       values($1,$2,'user-upload',$3,'text/plain',11,repeat('a',64),'pending',now()+interval '15 minutes')`,
@@ -118,6 +154,9 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
     } finally {
       seed.release();
     }
+    if (capacityObserver === undefined)
+      throw new Error('Missing capacity observer');
+    await capacityObserver.observeCurrent?.();
     const capacity = await api.send(
       'GET',
       `/v1/workspaces/${workspaceId}/usage-capacity`,
@@ -125,7 +164,7 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
     );
     expect(capacity.statusCode).toBe(200);
     expect(capacity.json()).toMatchObject({
-      execution: { activeRuns: 1, queuedRuns: 1 },
+      execution: { activeRuns: 4, queuedRuns: 1 },
       artifacts: { chargedBytes: '11', chargedCount: 1 },
     });
 

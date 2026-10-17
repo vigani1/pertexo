@@ -59,6 +59,7 @@ function persistenceFixture() {
   const list = vi.fn<WorkflowRunPersistence['list']>();
   const statistics = vi.fn<WorkflowRunPersistence['statistics']>();
   const usageCapacity = vi.fn<WorkflowRunPersistence['usageCapacity']>();
+  const usageTrends = vi.fn<WorkflowRunPersistence['usageTrends']>();
   const cancel = vi.fn<WorkflowRunPersistence['cancel']>();
   const readInput = vi.fn<WorkflowRunPersistence['readInput']>();
   const readNodeRunOutput =
@@ -76,6 +77,7 @@ function persistenceFixture() {
       list,
       statistics,
       usageCapacity,
+      usageTrends,
       cancel,
       readVariables: () => Promise.resolve({ revision: 0, values: {} }),
       readInput,
@@ -93,6 +95,7 @@ function persistenceFixture() {
     list,
     statistics,
     usageCapacity,
+    usageTrends,
     cancel,
     readInput,
     readNodeRunDiagnostics: () => Promise.resolve(undefined),

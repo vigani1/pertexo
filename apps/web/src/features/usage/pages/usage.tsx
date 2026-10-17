@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -93,6 +94,16 @@ export function UsagePage({
               </span>
             </PageHeaderMeta>
           )}
+          {canReadRuns ? (
+            <Link
+              className="mt-3 inline-block text-sm underline underline-offset-4"
+              to="/w/$workspaceId/settings/usage/trends"
+              params={{ workspaceId: workspace.id }}
+              search={{ period: '30d' }}
+            >
+              View trends
+            </Link>
+          ) : null}
           <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
             What this workspace is using right now, and how many runs started
             recently.
