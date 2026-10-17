@@ -1,10 +1,10 @@
-export * from './catalog.js';
+export * from './definitions/catalog.js';
 export {
   ARTIFACT_INPUT_CAPABILITY,
   ARTIFACT_INPUT_MAX_BYTES,
   nodeArtifactReferenceSchema,
   type NodeArtifactReference,
-} from './artifacts.js';
+} from './artifacts/reference.js';
 
 export {
   FILE_INPUT_ERROR_CODE,
@@ -12,7 +12,7 @@ export {
   type FileInputDiagnostic,
 } from './artifacts/diagnostic.js';
 
-export * from './webhooks.js';
+export * from './execution/webhooks.js';
 
 export * from './code/limits.js';
 export * from './code/source.js';

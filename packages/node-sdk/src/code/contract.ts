@@ -2,8 +2,8 @@ import { z } from 'zod';
 import {
   boundedNodeJsonSchema,
   boundedNodeJsonRecordSchema,
-} from '../catalog.js';
-import type { JsonValue } from '../executor-contracts.js';
+} from '../definitions/catalog.js';
+import type { JsonValue } from '../execution/contract.js';
 import { CODE_LIMITS, codeSettingsSchema } from './limits.js';
 
 export const CODE_ERROR_CODES = Object.freeze([

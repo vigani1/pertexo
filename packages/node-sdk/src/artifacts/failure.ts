@@ -1,4 +1,4 @@
-import { NodeExecutorFailure } from '../executor-errors.js';
+import { NodeExecutorFailure } from '../execution/errors.js';
 import {
   fileInputDiagnosticSchema,
   type FileInputDiagnostic,

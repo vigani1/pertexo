@@ -11,7 +11,7 @@ import { requestWorkflowRunCancellation } from '../runs/commands/cancel.js';
 import {
   appendLockedRunEvent,
   RUN_EVENT_TYPE,
-} from '../runs/queries/events.js';
+} from '../runs/queries/history/events.js';
 import {
   operatorRunReplayRequests,
   operatorUnknownOutcomeEvidence,

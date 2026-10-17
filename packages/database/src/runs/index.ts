@@ -1,6 +1,6 @@
 export { RunRequiresFormError } from './commands/forms.js';
 export { ExecutionStateConflictError } from './state-errors.js';
-export { readRunEventsAfter } from './queries/events.js';
+export { readRunEventsAfter } from './queries/history/events.js';
 export {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
@@ -9,7 +9,7 @@ export {
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
-} from './queries/published-workflow.js';
+} from './queries/execution/published.js';
 export type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
 export {
   createWorkflowRunDatabase,
@@ -25,13 +25,13 @@ export type {
 export type {
   WorkflowRunData,
   WorkflowRunFailedStep,
-} from './queries/run-data.js';
-export type { WorkflowRunListRecord } from './queries/list.js';
+} from './queries/history/details.js';
+export type { WorkflowRunListRecord } from './queries/history/list.js';
 export type {
   WorkflowStepHealthPage,
   WorkflowStepHealthRecord,
   WorkflowStepRunRecord,
-} from './queries/step-history.js';
+} from './queries/history/steps.js';
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
@@ -48,7 +48,7 @@ export { createDeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
 export type { DeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
 export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
 export type { DueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
-export { createPublishedWorkflowReader } from './queries/published-workflow.js';
+export { createPublishedWorkflowReader } from './queries/execution/published.js';
 
 export {
   createOperatorRunReplayStore,
@@ -128,8 +128,8 @@ export {
 
 export { RunVariableSnapshotUnavailableError } from './commands/variables.js';
 
-export { createWorkflowExecutionReader } from './queries/execution-source.js';
+export { createWorkflowExecutionReader } from './queries/execution/source.js';
 export type {
   WorkflowExecutionReader,
   WorkflowExecutionProjection,
-} from './queries/execution-source.js';
+} from './queries/execution/source.js';

@@ -4,7 +4,7 @@ import {
   readWorkflowCalls,
   type WorkflowCallReadRecord,
   type WorkflowParentCallReadRecord,
-} from './calls.js';
+} from './history/calls.js';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';

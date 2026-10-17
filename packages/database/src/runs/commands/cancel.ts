@@ -2,7 +2,10 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { ExecutionStateConflictError } from '../state-errors.js';
-import { appendLockedRunEvent, RUN_EVENT_TYPE } from '../queries/events.js';
+import {
+  appendLockedRunEvent,
+  RUN_EVENT_TYPE,
+} from '../queries/history/events.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 const actorSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);

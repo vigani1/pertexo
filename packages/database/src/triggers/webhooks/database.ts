@@ -26,7 +26,7 @@ import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import {
   parsePublishedWorkflowRow,
   type PublishedWorkflow,
-} from '../../runs/queries/published-workflow.js';
+} from '../../runs/queries/execution/published.js';
 import {
   readHealth,
   refreshWorkflowActivation,

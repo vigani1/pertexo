@@ -4,15 +4,15 @@ import { act, renderHook } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
-import { emptyDraftHint } from '@/features/workflow-publish/model/publish-readiness';
-import { summarizePublish } from '@/features/workflow-publish/model/publish-summary';
+import { emptyDraftHint } from '@/features/workflow-publish/model/publication/readiness';
+import { summarizePublish } from '@/features/workflow-publish/model/publication/summary';
 import {
   AUTO_VALIDATION_MIN_INTERVAL_MS,
   AUTO_VALIDATION_QUIET_MS,
   autoValidationDelay,
   needsAutoValidation,
-} from '@/features/workflow-publish/model/validation-throttle';
-import { groupWorkflowIssues } from '@/features/workflow-publish/model/workflow-issues';
+} from '@/features/workflow-publish/model/validation/throttle';
+import { groupWorkflowIssues } from '@/features/workflow-publish/model/validation/issues';
 import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
 import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 

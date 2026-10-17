@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import {
   autoValidationDelay,
   needsAutoValidation,
-} from '../model/validation-throttle';
+} from '../model/validation/throttle';
 import type { WorkflowPublication } from '../data/mutations/use-workflow-publication';
 
 /**

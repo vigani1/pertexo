@@ -6,7 +6,7 @@ import {
 } from '@pertexo/contracts';
 import { databaseSchema } from '../schema.js';
 import { parseWorkspaceId } from '../tenant-access/transactions.js';
-import { readWorkflowRunFailedSteps } from '../runs/queries/run-data.js';
+import { readWorkflowRunFailedSteps } from '../runs/queries/history/details.js';
 import { readFailureDays } from './failure-days.js';
 export type NoticeRow = Readonly<{
   id: string;

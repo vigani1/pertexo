@@ -13,9 +13,9 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import { appSchema } from '../namespace.js';
-import { failureNotificationDestinationVersions } from '../notifications.js';
-import { workflowRuns } from './execution.js';
+import { appSchema } from '../../namespace.js';
+import { failureNotificationDestinationVersions } from '../../notifications.js';
+import { workflowRuns } from '../execution.js';
 
 export const runFailureNotificationIntents = appSchema.table(
   'run_failure_notification_intents',

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { NODE_JSON_LIMITS } from '../bounded-json.js';
+import { NODE_JSON_LIMITS } from '../values/bounds.js';
 
 export const CODE_LIMITS = Object.freeze({
   sourceBytes: 65_536,

@@ -2,26 +2,26 @@ import {
   retainedTestRunSql,
   runRetentionIntervalSql,
   RUN_DETAILS_RETENTION_SQL,
-} from '../data-policy.js';
+} from '../../data-policy.js';
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
-import { variableSetSnapshotSql } from '../../variables/values.js';
+import { variableSetSnapshotSql } from '../../../variables/values.js';
 import {
   workspaceVariableSnapshotSchema,
   type WorkspaceVariableSnapshot,
 } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
-import { workflowGraphStepSql } from './graph-step.js';
+import { workflowGraphStepSql } from '../execution/graph-step.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
-} from '../../tenant-access/transactions.js';
+} from '../../../tenant-access/transactions.js';
 import {
   parseStoredExecutionValue,
   type StoredExecutionJsonValue,
-} from '../../platform/stored-execution-value.js';
+} from '../../../platform/stored-execution-value.js';
 
 /**
  * A run's input or a node run's output as stored (ADR 050). `expired` is a

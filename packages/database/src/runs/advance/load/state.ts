@@ -6,7 +6,7 @@ import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 import {
   EXECUTION_SOURCE_SQL,
   parseExecutionSource,
-} from '../../queries/execution-source.js';
+} from '../../queries/execution/source.js';
 import {
   CoordinatorRunStateCorruptError,
   type RunAdvanceState,

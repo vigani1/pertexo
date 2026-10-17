@@ -4,7 +4,7 @@ import {
   type CodeDiagnostics,
 } from '@pertexo/node-sdk';
 import { workspaceVariableSetRevisions } from '../variables.js';
-import { workspaceExecutionEntitlementVersions } from './entitlements.js';
+import { workspaceExecutionEntitlementVersions } from './capacity/entitlements.js';
 import { failureNotificationDestinationVersions } from '../notifications.js';
 import { users } from '../foundation.js';
 import { workflows } from '../authoring/workflows.js';

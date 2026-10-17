@@ -3,21 +3,21 @@ import { notificationProblems } from './notifications.js';
 import { variableProblems } from './variables.js';
 import { formProblems } from './forms.js';
 import { pendingTaskProblems } from './pending-tasks.js';
-import { workflowErrorProblems } from './workflow-errors.js';
+import { workflowErrorProblems } from './workflows/error-policy.js';
 import { z } from 'zod';
 import {
   WORKFLOW_PORTABILITY_PROBLEM_CODES,
   WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
-} from './workflow-portability.js';
+} from './workflows/portability.js';
 import {
   checkedStartProblems,
   workflowInputCaseProblems,
-} from './workflow-input-cases.js';
+} from './workflows/input-cases.js';
 import {
   WORKFLOW_ORGANIZATION_PROBLEM_CODES,
   workflowOrganizationProblems,
-} from './workflow-organization.js';
-import { workflowConcurrencyProblems } from './workflow-concurrency.js';
+} from './workflows/organization.js';
+import { workflowConcurrencyProblems } from './workflows/concurrency.js';
 
 export const API_PROBLEM_CODES = [
   'api_token.unavailable',

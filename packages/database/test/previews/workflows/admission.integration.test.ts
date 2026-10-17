@@ -12,8 +12,8 @@ import {
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
-import { createWorkflowExecutionReader } from '../../../src/runs/queries/execution-source.js';
-import { createPublishedWorkflowReader } from '../../../src/runs/queries/published-workflow.js';
+import { createWorkflowExecutionReader } from '../../../src/runs/queries/execution/source.js';
+import { createPublishedWorkflowReader } from '../../../src/runs/queries/execution/published.js';
 import { IdempotencyConflictError } from '../../../src/platform/idempotency.js';
 import {
   apiUrl,

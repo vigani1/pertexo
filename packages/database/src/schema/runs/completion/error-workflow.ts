@@ -9,9 +9,9 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { appSchema } from '../namespace.js';
-import { workflowRuns } from './execution.js';
-import { workflowVersions } from '../authoring/workflows.js';
+import { appSchema } from '../../namespace.js';
+import { workflowRuns } from '../execution.js';
+import { workflowVersions } from '../../authoring/workflows.js';
 
 export const runErrorWorkflowIntents = appSchema.table(
   'run_error_workflow_intents',

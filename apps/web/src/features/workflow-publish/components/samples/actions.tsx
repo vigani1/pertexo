@@ -1,6 +1,6 @@
 import type { PreviewRunSummary, StepSampleMetadata } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import type { SampleDialogSource } from '../../model/step-samples';
+import type { SampleDialogSource } from '../../model/testing/samples';
 export function SampleActions({
   sample,
   state,

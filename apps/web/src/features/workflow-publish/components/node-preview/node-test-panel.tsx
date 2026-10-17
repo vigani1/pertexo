@@ -18,8 +18,8 @@ import { cn } from '@/lib/utils';
 import {
   describePreviewStatus,
   canOfferStepTest,
-} from '../../model/preview-observation';
-import { describeValidationIssue } from '../../model/workflow-issues';
+} from '../../model/testing/preview-observation';
+import { describeValidationIssue } from '../../model/validation/issues';
 import { useNodeTest } from './use-node-test';
 
 export type NodeTestHandle = Readonly<{ runTest: () => void }>;

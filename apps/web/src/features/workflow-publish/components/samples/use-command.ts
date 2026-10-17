@@ -9,7 +9,7 @@ import {
   type SampleCommand,
   type SampleScope,
 } from '../../data/samples/api';
-import { sampleErrorDetail } from '../../model/step-samples';
+import { sampleErrorDetail } from '../../model/testing/samples';
 import { stepSamplesKey } from '../../data/samples/queries';
 export function useSampleCommand(
   scope: SampleScope,

@@ -1,12 +1,12 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import type { WorkflowPublication } from '../data/mutations/use-workflow-publication';
+import type { WorkflowPublication } from '../../data/mutations/use-workflow-publication';
 import {
   groupWorkflowIssues,
   groupWorkflowFindings,
   issueCountsByNode,
   type WorkflowIssue,
   type WorkflowIssueGroup,
-} from './workflow-issues';
+} from './issues';
 
 export type IssuesState = Readonly<{
   checking: boolean;

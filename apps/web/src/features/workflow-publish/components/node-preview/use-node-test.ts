@@ -13,7 +13,7 @@ import {
 import {
   observePreview,
   previewTerminalStatuses,
-} from '../../model/preview-observation';
+} from '../../model/testing/preview-observation';
 import {
   executeWorkflowNodePreview,
   validateWorkflowNode,

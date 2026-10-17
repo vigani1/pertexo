@@ -21,7 +21,7 @@ vi.mock('../../../src/runs/commands/acceptance.js', async (importOriginal) => ({
     seams.acceptWorkflowRun(...arguments_) as Promise<unknown>,
 }));
 vi.mock(
-  '../../../src/runs/queries/published-workflow.js',
+  '../../../src/runs/queries/execution/published.js',
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
     parsePublishedWorkflowRow: () => ({

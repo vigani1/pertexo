@@ -15,7 +15,7 @@ import {
   WorkspaceRunQuotaExceededError,
 } from '../commands/acceptance.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
-import { parsePublishedWorkflowRow } from '../queries/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../queries/execution/published.js';
 import { WorkflowCallRefusedError } from './contract.js';
 import { wakeWorkflowRun } from './wakeup.js';
 

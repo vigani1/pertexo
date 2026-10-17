@@ -4,7 +4,7 @@ import { PinIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import type { SampleScope } from '../../data/samples/api';
-import type { SampleDialogSource } from '../../model/step-samples';
+import type { SampleDialogSource } from '../../model/testing/samples';
 import { SampleSummary } from './summary';
 import { SampleActions } from './actions';
 import { PinSampleDialog } from './dialog';

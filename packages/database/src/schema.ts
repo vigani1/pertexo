@@ -16,7 +16,7 @@ import {
 import { workflowForms } from './schema/triggers/forms.js';
 import { pendingRunTasks } from './schema/runs/pending-task.js';
 import { workflowErrorPolicies } from './schema/authoring/error-workflow.js';
-import { runErrorWorkflowIntents } from './schema/runs/error-workflow.js';
+import { runErrorWorkflowIntents } from './schema/runs/completion/error-workflow.js';
 import { apiTokens } from './schema/identity/api-tokens.js';
 import {
   authAccounts,
@@ -120,7 +120,7 @@ import {
 import {
   runFailureNotificationIntents,
   runFailureNotificationAuditFacts,
-} from './schema/runs/notifications.js';
+} from './schema/runs/completion/notifications.js';
 import {
   operatorCommands,
   operatorRunReplayRequests,
@@ -129,11 +129,11 @@ import {
 import {
   workspaceExecutionAdmissionCounters,
   workflowRunActiveAdmissions,
-} from './schema/runs/admission.js';
+} from './schema/runs/capacity/admission.js';
 import {
   workspaceExecutionEntitlements,
   workspaceExecutionEntitlementVersions,
-} from './schema/runs/entitlements.js';
+} from './schema/runs/capacity/entitlements.js';
 export {
   authAccounts,
   authSessions,

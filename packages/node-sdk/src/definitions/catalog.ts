@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-import { cloneAndFreeze } from './freeze.js';
+import { cloneAndFreeze } from '../values/freeze.js';
 import { compareIdentity, identityToken } from './identity.js';
 import {
   schemaDocumentSchema,
   type SchemaDocument,
-} from './definitions/schema-document.js';
+} from './schema-document.js';
 
 export {
   BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT,
@@ -15,13 +15,13 @@ export {
   boundedNodeJsonSchema,
   generateSchemaDocument,
   isBoundedNodeJson,
-} from './definitions/schema-document.js';
+} from './schema-document.js';
 export type {
   SchemaDocument,
   SchemaJson,
   SchemaObject,
   SchemaProjectionOptions,
-} from './definitions/schema-document.js';
+} from './schema-document.js';
 
 /** A stable identity is never resolved by version ordering or by a latest fallback. */
 export interface DefinitionIdentity {

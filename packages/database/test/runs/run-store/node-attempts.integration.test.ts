@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { readWorkflowNodeRunDiagnostics } from '../../../src/runs/queries/run-data.js';
+import { readWorkflowNodeRunDiagnostics } from '../../../src/runs/queries/history/details.js';
 import { createHash } from 'node:crypto';
 
 import { describe, it, expect } from 'vitest';

@@ -22,7 +22,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   parsePublishedWorkflowRow,
   type PublishedWorkflow,
-} from './queries/published-workflow.js';
+} from './queries/execution/published.js';
 import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
 import {
   withWorkspaceTransaction,
@@ -58,7 +58,7 @@ import {
   readWorkflowRunListPage,
   type ListWorkflowRunsDatabaseInput,
   type WorkflowRunListPage,
-} from './queries/list.js';
+} from './queries/history/list.js';
 import {
   readWorkflowStepHealth,
   readWorkflowStepRuns,
@@ -66,7 +66,7 @@ import {
   type ReadWorkflowStepRunsInput,
   type WorkflowStepHealthPage,
   type WorkflowStepRunRecord,
-} from './queries/step-history.js';
+} from './queries/history/steps.js';
 import {
   readWorkflowRun,
   type GetWorkflowRunInput,
@@ -81,12 +81,12 @@ import {
   type ReadWorkflowNodeRunOutputInput,
   type ReadWorkflowRunInputInput,
   type WorkflowRunData,
-} from './queries/run-data.js';
+} from './queries/history/details.js';
 import {
   readWorkflowRunStatistics,
   type WorkflowRunStatisticsDatabaseInput,
   type WorkflowRunStatisticsRecord,
-} from './queries/statistics.js';
+} from './queries/history/statistics.js';
 import {
   readWorkspaceUsageCapacity,
   type WorkspaceUsageCapacityInput,
