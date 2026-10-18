@@ -1,4 +1,4 @@
-import { useCallback, useState, type ComponentProps } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +22,7 @@ type InputCasesActionProps = Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   triggerClassName?: string;
-  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+  finalFocus?: () => HTMLElement | boolean;
 }>;
 
 export function InputCasesAction(props: InputCasesActionProps) {
@@ -55,6 +55,7 @@ function InputCasesDialog({
       workspace.capabilities.includes('workflow:update'),
     open,
   );
+  const popupRef = useRef<HTMLDivElement>(null);
   const locked = cases.pending || cases.uncertain;
   const [loaded, setLoaded] = useState<LoadedInputCase>();
   const clearLoaded = useCallback(() => {
@@ -85,7 +86,22 @@ function InputCasesDialog({
         Input cases
       </DialogTrigger>
       <DialogContent
-        finalFocus={finalFocus}
+        ref={popupRef}
+        finalFocus={() => {
+          const popup = popupRef.current;
+          // A new control may receive focus before this closing popup unmounts.
+          // Respect that handoff rather than closing its menu via a late restore.
+          if (popup !== null) {
+            const focused = popup.ownerDocument.activeElement;
+            if (
+              focused !== null &&
+              focused !== popup.ownerDocument.body &&
+              !popup.contains(focused)
+            )
+              return false;
+          }
+          return finalFocus?.() ?? true;
+        }}
         className="max-h-[calc(100svh-2rem)] overflow-y-auto"
       >
         <DialogTitle>Input cases</DialogTitle>

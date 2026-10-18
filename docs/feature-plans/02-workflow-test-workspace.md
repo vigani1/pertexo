@@ -401,6 +401,15 @@ the same menu element across three full-editor cache refetches, an overlapping
 dialog close in Chromium (red before the fix), and repeated owned live
 input-cases journeys. Polling and editor scope keys retain their existing rules.
 
+The 2026-10-18 collaboration qualification exposed a second close race: the
+hub's explicit fallback focus callback bypassed Base UI's normal respect for
+focus that had already moved outside the closing dialog. Input cases now returns
+focus to its opener only while it still owns focus (or focus is on the document
+body). Pointer and keyboard regressions keep the same menu item through actual
+popup unmount, repeat the close/open handoff, and check ordinary opener focus.
+The original real input-cases journey remains unchanged; no polling or timeout
+workaround is involved.
+
 ## Later work
 
 Binary/file-backed pinned samples remain later. Keep the current single-step preview seam; never label a published real
