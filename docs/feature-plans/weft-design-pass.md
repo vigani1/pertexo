@@ -44,13 +44,13 @@ result at desktop and phone width, then rebase-merge after CI passes.
   the unread count. Remove the General page's link-only sections that the rail
   replaces. Keep every existing URL working: Alerts moves to settings/alerts and
   its old address redirects.
-- [ ] 2. **Audit log as a ledger.** Sentences from a phrase table keyed by
-  action, using safe metadata names, with a readable fallback for unknown
-  actions. Filters become one row: person, a "What" choice by family
-  (workflows, publishing, people, connections, sign-in, data, settings) and a
-  date range on the shared calendar lens. "Show only this" in an event's details
-  sets the target filter instead of a free-text ID field. Promotion history uses
-  the same ledger rows.
+- [x] 2. **Audit log as a ledger.** Sentences from a phrase table keyed by
+  action, with a spoken fallback for unknown actions. The audit projection keeps
+  no names, so an entry names the kind of thing and links to it; details keep
+  copyable IDs. Entries use the shared recent log, grouped by day. Filters become
+  one row: a person search, what changed (by target kind) and the day range form
+  shared with Runs. "Only this kind of event" and "Only this item" start from an
+  entry and show as removable chips. Promotion history uses the same log rows.
 - [ ] 3. **Workflow settings as sentences.** Group into Identity, Your
   notifications, When it fails (alerts, error workflow, automatic pause), How it
   runs (duration, concurrency) and Lifecycle. Move the step health table to the
