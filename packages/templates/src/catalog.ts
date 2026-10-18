@@ -41,13 +41,13 @@ const templates: CuratedWorkflowTemplate[] = [
       '61c486c65452bfa093ae9cf2c6464848c42415f0298ab23100a885e4226a9115',
     title: 'Validate and route a webhook',
     description:
-      'Check a request type and route valid and invalid inputs to explicit outcomes.',
+      'Check that each incoming request is the kind you expect, then accept it or turn it away.',
     inputSummary:
-      'Webhook request JSON: {"type":"notification"}; missing or other types take the rejected branch.',
+      'A webhook request with JSON like {"type":"notification"}. Anything else is turned away.',
     effectsSummary:
-      'Only validation and routing. No external provider effects. Publishing and webhook activation are separate.',
+      'Only checks and routes the request; it calls no outside service. It runs once you publish it and give the webhook an address.',
     boundsSummary:
-      'Five worst-case expanded invocations; no loop; five-minute run limit.',
+      'Up to five step runs, no loops; runs stop after five minutes.',
     manifest: WEBHOOK_VALIDATION_ROUTING_MANIFEST,
     setupTargets: [],
   },
@@ -56,14 +56,15 @@ const templates: CuratedWorkflowTemplate[] = [
     templateVersion: 2,
     baseManifestDigest:
       '025cc93c5a99a3601e7099a3b12cb438d6e4dedb383d5bcfcad0d17050bd3683',
-    title: 'Schedule a bounded example batch',
-    description: 'Process two fixed instructional items in a sequential loop.',
+    title: 'Work through a small batch on a schedule',
+    description:
+      'Every hour, go through a short list one item at a time. Copy the pattern for your own lists.',
     inputSummary:
-      'A registered hourly interval schedule envelope; batch items are fixed alpha/beta literals, not trigger data.',
+      'An hourly schedule. The list holds two fixed example items, not data from the trigger.',
     effectsSummary:
-      'Local Set results only; no provider effects. Publishing and schedule activation are separate.',
+      'Only sets values inside the run; it calls no outside service. It runs once you publish it and turn the schedule on.',
     boundsSummary:
-      'At most three iterations, concurrency one, six expanded invocations; five-minute run limit.',
+      'At most three items, one at a time, six step runs in all; runs stop after five minutes.',
     manifest: SCHEDULE_BOUNDED_BATCH_MANIFEST,
     setupTargets: [],
   },
@@ -74,13 +75,13 @@ const templates: CuratedWorkflowTemplate[] = [
       'd1c649a2706e36de15f4101a775a531188eb66f318bf2e047e96648e24ea8b95',
     title: 'Check an endpoint and notify Slack',
     description:
-      'Request an explicitly configured HTTPS endpoint and notify an explicitly configured channel only for status 200.',
+      'Call an HTTPS address you choose and post to a Slack channel when it answers 200.',
     inputSummary:
-      'Webhook trigger; configure your endpoint and channel and explicitly bind HTTP and Slack connections before creation.',
+      'A webhook starts it. Before creating it, enter your address and channel and pick an HTTP and a Slack connection.',
     effectsSummary:
-      'When separately published and run, performs HTTP GET and may send one Slack message. Other 2xx statuses skip Slack; non-2xx may fail or have unknown outcome. Placeholder values are not runnable setup.',
+      'Once published and run, it makes one GET request and may send one Slack message. Other 2xx answers skip Slack; errors fail the run or leave its outcome unknown. The sample values don’t run until you replace them.',
     boundsSummary:
-      'No redirects or loop; one-second provider timeouts, 1,024-byte response limits, six expanded invocations; five-minute run limit.',
+      'No redirects or loops; one-second timeouts, answers up to 1,024 bytes, six step runs in all; runs stop after five minutes.',
     manifest: CONTROLLED_HTTP_NOTIFICATION_MANIFEST,
     setupTargets: [
       {

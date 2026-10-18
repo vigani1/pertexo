@@ -245,7 +245,7 @@ describe('Curated template setup in the existing import session', () => {
     });
     await waitFor(() => expect(choose).toBeEnabled());
     await event.click(choose);
-    await event.click(screen.getByRole('button', { name: 'Preview import' }));
+    // An example without setup is checked as soon as it's chosen.
     await waitFor(() => {
       expect(previews).toHaveLength(1);
     });

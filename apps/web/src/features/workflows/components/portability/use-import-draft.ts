@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from 'react';
 import type {
   AccessibleWorkspace,
   WorkflowImportPreviewResponse,
@@ -232,6 +238,22 @@ export function useImportDraft(
     // Destination literals must be supplied explicitly, never reused from demo data.
     setSetupValues(next.setupTargets.map(() => ''));
   }
+  // An example that needs nothing filled in is checked as soon as it's
+  // chosen, so Import is the next click; one with setup waits for values.
+  const checkChosenExample = useEffectEvent(() => {
+    void checkPreview();
+  });
+  const autoChecked = useRef<CuratedTemplate>(undefined);
+  useEffect(() => {
+    if (
+      template === undefined ||
+      template.setupTargets.length > 0 ||
+      autoChecked.current === template
+    )
+      return;
+    autoChecked.current = template;
+    checkChosenExample();
+  }, [template]);
   function changeName(next: string) {
     invalidate();
     setName(next);
