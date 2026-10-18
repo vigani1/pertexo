@@ -323,3 +323,44 @@ export {
   type WorkflowPromotionCandidatesQuery,
   type WorkflowPromotionHistory,
 } from './schemas/workflows/promotions/history.js';
+
+export {
+  COLLABORATION_LIMITS,
+  workflowCommentBodySchema,
+  workflowCommentCreateSchema,
+  workflowCommentEditSchema,
+  workflowCommentDeleteSchema,
+  workflowCommentStatusSchema,
+  workflowCommentListQuerySchema,
+  workflowCommentDetailQuerySchema,
+  workflowCommentListSchema,
+  workflowCommentDetailSchema,
+  workflowCommentCommandResultSchema,
+  type WorkflowCommentBody,
+  type WorkflowCommentCreate,
+  type WorkflowCommentEdit,
+  type WorkflowCommentDelete,
+  type WorkflowCommentStatus,
+  type WorkflowCommentListQuery,
+  type WorkflowCommentDetailQuery,
+  type WorkflowCommentThread,
+  type WorkflowComment,
+  type WorkflowCommentList,
+  type WorkflowCommentDetail,
+  type WorkflowCommentCommandResult,
+} from './schemas/workflows/collaboration/comments.js';
+export {
+  workflowPresenceQuerySchema,
+  workflowPresenceHeartbeatSchema,
+  workflowPresenceSchema,
+  workflowPresenceHeartbeatResultSchema,
+  type WorkflowPresenceHeartbeat,
+  type WorkflowPresence,
+} from './schemas/workflows/collaboration/presence.js';
+
+export {
+  workspacePeopleQuerySchema,
+  workspacePeoplePageSchema,
+  type WorkspacePeopleQuery,
+  type WorkspacePeoplePage,
+} from './schemas/identity/people.js';

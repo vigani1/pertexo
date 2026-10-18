@@ -136,6 +136,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0033_organization_oidc.sql',
         '0034_organization_directory.sql',
         '0035_workflow_promotions.sql',
+        '0036_workflow_collaboration.sql',
       ]);
       expect(
         (

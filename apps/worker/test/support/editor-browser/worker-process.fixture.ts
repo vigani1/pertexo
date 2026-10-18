@@ -316,9 +316,13 @@ async function constructRuntimes(
     max: 6,
   });
   if (
-    ['approvals', 'forms', 'variables', 'notifications'].includes(
-      process.env.EDITOR_BROWSER_CASE ?? '',
-    )
+    [
+      'approvals',
+      'forms',
+      'variables',
+      'notifications',
+      'collaboration',
+    ].includes(process.env.EDITOR_BROWSER_CASE ?? '')
   ) {
     const notifications = await createEditorNotifications(
       database,

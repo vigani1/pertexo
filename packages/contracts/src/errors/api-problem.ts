@@ -1,3 +1,4 @@
+import { collaborationProblems } from './workflows/collaboration.js';
 import { promotionProblems } from './workflows/promotion.js';
 import { publicationReviewProblems } from './workflows/publication-review.js';
 import { stepSampleProblems } from './step-samples.js';
@@ -72,6 +73,7 @@ export const API_PROBLEM_CODES = [
   'workflow.publication_review_conflict',
   'workflow.promotion_conflict',
   'workflow.promotion_unavailable',
+  'workflow.collaboration_conflict',
   'workflow.error_policy_conflict',
   'workflow.error_target_unavailable',
   'pending_task.already_resolved',
@@ -422,6 +424,7 @@ const apiProblemDetails = {
   ...workflowConcurrencyProblems,
   ...publicationReviewProblems,
   ...promotionProblems,
+  ...collaborationProblems,
   ...workflowErrorProblems,
   ...pendingTaskProblems,
   ...notificationProblems,

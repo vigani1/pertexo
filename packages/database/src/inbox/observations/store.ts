@@ -1,3 +1,4 @@
+import { NOTICE_WINDOW_SQL } from '../lifetime.js';
 import { CAPACITY_WARNING_CANDIDATES_SQL } from './capacity.js';
 import type { WorkspaceCapacityLimit } from '@pertexo/contracts';
 import type { Pool } from 'pg';
@@ -33,12 +34,13 @@ export function createAttentionObserver(pool: Pool, maintenance: Pool) {
       `with subjects as (
  select workspace_id,'workflow_auto_paused'::varchar notice_kind,id subject_id,null::varchar capacity_limit from app.workflows where trigger_pause_state='paused'
  union select workspace_id,'connection_attention',id,null::varchar from app.connections where status='reauthorization_required'
+ union select mention.workspace_id,'workflow_mention',mention.id,null::varchar from app.workflow_comment_mentions mention join app.workflow_comments comment on comment.workspace_id=mention.workspace_id and comment.id=mention.comment_id where mention.created_at>clock_timestamp()-${NOTICE_WINDOW_SQL} and mention.user_id is distinct from comment.author_id and not exists(select 1 from app.workspace_inbox_threads known where known.workspace_id=mention.workspace_id and known.notice_kind='workflow_mention' and known.subject_id=mention.id)
  union select workspace_id,'publication_review_waiting',id,null::varchar from app.workflow_publication_requests where status='pending'
  union select workspace_id,'approval_waiting',id,null::varchar from app.pending_run_tasks where kind='approval' and status='pending'
  union select workspace_id,'limit_reached',workspace_id,null::varchar from app.workspace_artifact_capacity where charged_bytes>=byte_limit or charged_count>=artifact_count_limit
  union select counter.workspace_id,'limit_reached',counter.workspace_id,null::varchar from app.workspace_execution_admission_counters counter join app.workspace_execution_entitlements pointer on pointer.workspace_id=counter.workspace_id join app.workspace_execution_entitlement_versions entitlement on entitlement.workspace_id=pointer.workspace_id and entitlement.version=pointer.current_version where counter.queued_runs>=entitlement.queued_run_limit and entitlement.status='active' and entitlement.effective_at<=clock_timestamp() and (entitlement.expires_at is null or entitlement.expires_at>clock_timestamp())
  union select workspace_id,'limit_approaching',workspace_id,capacity_limit from (${CAPACITY_WARNING_CANDIDATES_SQL}) warning
- union select workspace_id,notice_kind,case when notice_kind='limit_approaching' then workspace_id else subject_id end,capacity_limit from app.workspace_inbox_threads where notice_kind<>'workflow_failure' and active)
+ union select workspace_id,notice_kind,case when notice_kind='limit_approaching' then workspace_id else subject_id end,capacity_limit from app.workspace_inbox_threads where notice_kind<>'workflow_failure' and active and (notice_kind<>'workflow_mention' or latest_occurred_at<=clock_timestamp()-${NOTICE_WINDOW_SQL}))
  select subject.* from subjects subject join app.workspaces workspace on workspace.id=subject.workspace_id where workspace.status='active' and ($1::uuid is null or (subject.workspace_id,subject.notice_kind,subject.subject_id,coalesce(subject.capacity_limit,''))>($1::uuid,$2::varchar,$3::uuid,$4::varchar)) order by subject.workspace_id,subject.notice_kind,subject.subject_id,coalesce(subject.capacity_limit,'') limit 100`,
       [
         after?.workspace_id ?? null,
@@ -103,8 +105,8 @@ export function createAttentionObserver(pool: Pool, maintenance: Pool) {
             return null;
           const threadId = row?.id ?? generatePersistedId();
           const result = await client.query<{ revision: string }>(
-            `insert into app.workspace_inbox_threads as thread(workspace_id,id,notice_kind,subject_id,workflow_id,connection_id,task_id,active,source_revision,revision,occurrence_count,first_occurred_at,latest_occurred_at,capacity_limit,publication_request_id)
- values($1,$2,$3,$4,$5,$6,$7,$8,$9,nextval('app.workspace_inbox_revision_seq'),1,clock_timestamp(),clock_timestamp(),$11,$12)
+            `insert into app.workspace_inbox_threads as thread(workspace_id,id,notice_kind,subject_id,workflow_id,connection_id,task_id,active,source_revision,revision,occurrence_count,first_occurred_at,latest_occurred_at,capacity_limit,publication_request_id,comment_mention_id)
+ values($1,$2,$3,$4,$5,$6,$7,$8,$9,nextval('app.workspace_inbox_revision_seq'),1,coalesce($14::timestamptz,clock_timestamp()),coalesce($14::timestamptz,clock_timestamp()),$11,$12,$13)
  on conflict(workspace_id,notice_kind,subject_id) do update set active=excluded.active,source_revision=excluded.source_revision,revision=excluded.revision,occurrence_count=thread.occurrence_count+$10,latest_occurred_at=case when excluded.active then excluded.latest_occurred_at else thread.latest_occurred_at end,updated_at=clock_timestamp() returning revision::text`,
             [
               candidate.workspace_id,
@@ -126,6 +128,8 @@ export function createAttentionObserver(pool: Pool, maintenance: Pool) {
                 : 0,
               candidate.capacity_limit,
               fact.publicationRequestId,
+              fact.commentMentionId,
+              fact.occurredAt,
             ],
           );
           return result.rows[0]?.revision ?? null;

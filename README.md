@@ -26,6 +26,9 @@ monorepo with its own execution engine, API, worker and web app.
 - **Secure by default.** Row-level security scopes every query to one workspace.
   Connection credentials are envelope-encrypted with a managed key, webhooks are
   signed and five roles decide who can do what.
+- **Work together.** Discuss workflows and steps, mention teammates privately,
+  and see advisory viewing/editing presence while draft revision checks keep
+  concurrent saves safe. See [collaboration](docs/guides/collaboration.md).
 - **Weft, its own design language.** Runs are threads, outcomes are knots and
   live work glows. The interface reads like the work it shows.
 

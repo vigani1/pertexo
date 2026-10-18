@@ -1,3 +1,4 @@
+import { createWorkflowCollaborationStore } from '../collaboration/store.js';
 import { createWorkflowPromotionStore } from '../promotion/store.js';
 import { createPublicationReviewStore } from '../reviews/store.js';
 import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
@@ -245,6 +246,7 @@ export function createWorkflowAuthoringDatabase(
     transact,
   });
   return Object.freeze({
+    collaboration: createWorkflowCollaborationStore(authoringContext),
     promotions: createWorkflowPromotionStore({
       ...authoringContext,
       transactScopes,

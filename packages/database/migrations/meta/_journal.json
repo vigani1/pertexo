@@ -253,6 +253,13 @@
       "when": 1792309963394,
       "tag": "0035_workflow_promotions",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792318263182,
+      "tag": "0036_workflow_collaboration",
+      "breakpoints": true
     }
   ]
 }

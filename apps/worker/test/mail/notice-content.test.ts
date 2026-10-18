@@ -138,3 +138,63 @@ it.each([
     ).toMatchObject({ subject });
   },
 );
+
+it('links mentions to their canonical discussion and fits maximum digest names without copying comments', () => {
+  const envelope = createApplicationSecretEnvelope({
+    current: { version: 'v1', key: Buffer.alloc(32, 8).toString('base64') },
+  });
+  const input: NoticeMailToSeal = {
+    id: randomUUID(),
+    expiresAt: new Date(Date.now() + 86400000),
+    toEmail: 'member@example.test',
+    workspaceId: randomUUID(),
+    workspaceName: '🧵'.repeat(70),
+    actorId: randomUUID(),
+    revision: 1,
+    memberRevision: 1,
+    items: Array.from({ length: 100 }, () => ({
+      id: randomUUID(),
+      revision: '1',
+      name: '🧵'.repeat(70),
+      count: 1,
+      noticeKind: 'workflow_mention',
+      subjectId: randomUUID(),
+      workflowId: randomUUID(),
+      discussion: { threadId: randomUUID(), commentId: randomUUID() },
+    })),
+  };
+  const origin =
+    'https://' +
+    ['a'.repeat(63), 'b'.repeat(63), 'c'.repeat(63), 'd'.repeat(61)].join('.');
+  const sealed = sealNoticeMail(
+    envelope,
+    'notices@example.test',
+    origin,
+    input,
+  );
+  const serialized = envelope.open(
+    sealed,
+    `pertexo/authentication-mail/workspace_notice/${input.id}/${input.expiresAt.toISOString()}`,
+  );
+  expect(Buffer.byteLength(serialized)).toBeLessThanOrEqual(12288);
+  const message = JSON.parse(serialized) as { text: string };
+  const urls = message.text
+    .split('\n')
+    .filter(
+      (line) => line.startsWith(origin + '/w/') && line.includes('/comments?'),
+    );
+  expect(urls.length).toBeGreaterThan(0);
+  expect(urls.length).toBeLessThan(25);
+  expect(message.text).toContain(String(100 - urls.length) + ' more notices');
+  const first = input.items[0];
+  if (first?.noticeKind !== 'workflow_mention')
+    throw new Error('Mention missing');
+  const url = new URL(urls[0] ?? '');
+  expect(url.pathname).toBe(
+    `/w/${input.workspaceId}/workflows/${first.workflowId}/comments`,
+  );
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    thread: first.discussion.threadId,
+    comment: first.discussion.commentId,
+  });
+});

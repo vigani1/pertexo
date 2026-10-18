@@ -1,7 +1,7 @@
 # F27 — Personal notifications and system mail
 
 Status: delivered, including shared audiences, named subjects, one-click opt-out
-and the system-mail table rename. Updated: 2026-10-16.
+and the system-mail table rename. Updated: 2026-10-18.
 [Roadmap](../product-roadmap.md). Decision:
 [ADR 079](../adr/079-personal-notices-and-mail.md), including its dated amendments.
 History stays in git and PRs.
@@ -17,14 +17,19 @@ account, queue or CI job. Shared workflow alerts remain independent.
 
 ### Notices and personal choices
 
-- Failure, auto-paused workflow, connection attention, limit reached and approval
-  waiting are the closed kinds. Failure threads retain the 30-day window;
+- Closed kinds are workflow failure, automatic pause, connection attention,
+  approaching/reached limits, approval waiting, publication review waiting and
+  explicit comment mention. Failure and mention notices retain the 30-day window;
   operational notices describe current attention and leave when it resolves.
   Active slots being occupied is ordinary queueing, not a capacity incident.
 - Owners/admins/operators see workflow failures, pauses and limits by default;
   owners/admins see connection attention. Current task eligibility owns approval
   notices, including its captured default-off starter choice. Following adds a
-  workflow through run-read access and grants no other capability.
+  workflow through run-read access and grants no other capability. Publication
+  reviews use current governance eligibility. F19 mentions select one current
+  workflow reader, without copying comment text or adding another recipient queue;
+  unchanged edits/resolution/retry never notify again. See the
+  [F19 plan](19-collaboration.md) and ADR 079's 2026-10-18 amendment.
 - Follow/mute are private and independent. Muting hides that subject's notices
   and personal email, including approval notices, but never resolves/hides the
   underlying task from task lists or changes shared alerts. Requested input stays
@@ -55,9 +60,9 @@ account, queue or CI job. Shared workflow alerts remain independent.
   usable. Keep security-mail priority and one pending notice batch per person.
 - `system_mail_deliveries` is the existing shared global queue, with its existing
   role/column grants. Linked notice batches/items retain workspace isolation.
-  Witness at most 100 changed subjects, display at most 25 lines and cap names at
+  Witness at most 100 changed subjects, display at most 25 notices and cap names at
   64 Unicode code points. Plaintext stays within 12,288 bytes, including headers'
-  URL. Subjects name the workflow/connection and workspace; digests name their
+  URL; fewer rendered items preserve that bound when discussion links need space. Subjects name the workflow/connection and workspace; digests name their
   first non-limit subject and count, or the workspace for limit-only batches.
 - Recipient preparation reads workspace name in its existing query. One owner
   clips/removes control/line separators for body/subject names. Sealed payloads

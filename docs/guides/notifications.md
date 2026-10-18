@@ -1,7 +1,8 @@
 # Personal notifications
 
 The Inbox combines failing workflows, auto-paused workflows, connections needing
-attention, approaching workspace capacity, reached queue/file limits and waiting approvals. Failure threads
+attention, approaching workspace capacity, reached queue/file limits, waiting
+approvals, publication reviews and private comment mentions. Failure threads
 keep their 30-day lanes. Operational cards describe current attention and leave
 when it resolves. A full active-run allowance is ordinary queueing, not a limit
 notice; its 80% approaching-capacity warning is separate. See [Usage and trends](usage.md). Reading a notice changes only your own read state.
@@ -12,6 +13,10 @@ allowed people. Its starter is excluded unless that step explicitly allows
 starter decisions. The Approvals list and authenticated task
 page remain authoritative; email never approves or rejects anything. Input
 requests stay in the Inbox's Requests section, without duplicating approvals.
+Comment mentions are visible only to the selected member with current workflow
+read access. Self-mentions are quiet; editing text or resolving/reopening a thread
+never repeats the mention. Their notices expire after thirty days while comments
+remain available. See [Collaboration](collaboration.md).
 
 In a workflow's Settings, choose **Personal notifications…** to follow or mute it.
 Every member can follow through existing run-read access; following grants no
@@ -47,8 +52,8 @@ Subjects name the workflow or connection and the workspace. Digests name their
 first workflow/connection and the number of notices; a limit-only message names
 the workspace. Mail contains safe names, notice kinds and counts, plus links on your own Pertexo
 origin. It contains no run input/output, variable values, provider error messages,
-credentials, task instructions or comments. Messages show up to 25 lines with
-bounded names and link to the Inbox for more. A batch witnesses at most 100
+credentials, task instructions or comments. Messages show up to 25 notices with
+bounded names (fewer when their links need the remaining envelope) and link to the Inbox for more. A batch witnesses at most 100
 changed subjects and fits the existing application envelope's 12 KiB plaintext
 bound; excess work continues in later passes/windows.
 

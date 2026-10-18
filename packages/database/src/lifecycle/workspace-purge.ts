@@ -239,6 +239,10 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
       reapInvitationReplacementClaims(client, pageSize, workspaceId),
   },
   ...[
+    'workflow_presence_leases',
+    'workflow_comment_mentions',
+    'workflow_comments',
+    'workflow_comment_threads',
     'data_table_write_receipts',
     'workspace_data_table_rows',
     'workspace_data_tables',

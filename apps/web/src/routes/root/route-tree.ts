@@ -15,6 +15,7 @@ import {
 import { rootRoute } from './route';
 import {
   workflowBuildRoute,
+  workflowCommentsRoute,
   workflowHubRoute,
   workflowRunsRoute,
   workflowSettingsRoute,
@@ -99,6 +100,7 @@ export const routeTree = rootRoute.addChildren([
     ]),
     workflowHubRoute.addChildren([
       workflowBuildRoute,
+      workflowCommentsRoute,
       workflowRunsRoute,
       workflowTriggersRoute,
       workflowVersionsRoute,

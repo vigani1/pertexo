@@ -1,3 +1,7 @@
+import { workflowCommentThreads } from './schema/authoring/collaboration/threads.js';
+import { workflowComments } from './schema/authoring/collaboration/comments.js';
+import { workflowCommentMentions } from './schema/authoring/collaboration/mentions.js';
+import { workflowPresenceLeases } from './schema/authoring/collaboration/presence.js';
 import { workspacePromotionTargets } from './schema/authoring/promotions/targets.js';
 import { workflowPromotionOrigins } from './schema/authoring/promotions/origins.js';
 import { workflowVersionPromotions } from './schema/authoring/promotions/versions.js';
@@ -228,6 +232,11 @@ export {
 } from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
+  workflowCommentThreads,
+  workflowComments,
+  workflowCommentMentions,
+  workflowPresenceLeases,
+
   workspacePromotionTargets,
   workflowPromotionOrigins,
   workflowVersionPromotions,

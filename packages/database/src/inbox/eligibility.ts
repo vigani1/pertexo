@@ -1,3 +1,4 @@
+import { NOTICE_WINDOW_SQL } from './lifetime.js';
 import {
   REVIEW_SOURCE_SQL,
   reviewDecisionAllowedSql,
@@ -28,6 +29,7 @@ export function noticeVisibilitySql(actorParameter: string): string {
     connection_attention: capabilityAudienceSql('connection:manage'),
     limit_reached: operational,
     limit_approaching: operational,
+    workflow_mention: `(${capabilityAudienceSql('workflow:read')} and exists(select 1 from app.workflow_comment_mentions mention where mention.workspace_id=thread.workspace_id and mention.id=thread.comment_mention_id and mention.user_id=${actorParameter}::uuid))`,
     publication_review_waiting: `exists(select 1 ${REVIEW_SOURCE_SQL} where review.workspace_id=thread.workspace_id and review.id=thread.publication_request_id and ${reviewDecisionAllowedSql(actorParameter, 'member.role')})`,
     approval_waiting: `exists(select 1 from app.pending_run_tasks task join app.workflow_runs run
       on run.workspace_id=task.workspace_id and run.id=task.run_id
@@ -35,7 +37,7 @@ export function noticeVisibilitySql(actorParameter: string): string {
       and (${pendingTaskBlockedSql(actorParameter, 'member.role')}) is null)`,
   };
   return `thread.active
-    and (thread.notice_kind<>'workflow_failure' or thread.latest_occurred_at>statement_timestamp()-interval '720 hours')
+    and (thread.notice_kind not in ('workflow_failure','workflow_mention') or thread.latest_occurred_at>statement_timestamp()-${NOTICE_WINDOW_SQL})
     and not exists(select 1 from app.notice_subscriptions muted
       where muted.workspace_id=thread.workspace_id and muted.user_id=${actorParameter}::uuid and muted.muted
       and ((muted.subject_kind='workflow' and muted.subject_id=thread.workflow_id)

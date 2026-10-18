@@ -1,3 +1,7 @@
+import {
+  WorkflowPresenceSummary,
+  WorkflowPresenceWarning,
+} from '@/features/workflow-collaboration/presence.public';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -32,6 +36,7 @@ export function WorkflowHubTabFrame({
           workflowId={workflowId}
           workflow={summary.data}
           activeTab={tab}
+          presence={<WorkflowPresenceSummary />}
           {...(actions === undefined ? {} : { actions })}
         />
       </div>
@@ -44,6 +49,7 @@ export function WorkflowHubTabFrame({
           workflowId={workflowId}
           showReadError={tab !== 'settings'}
         />
+        <WorkflowPresenceWarning />
         {children}
       </div>
     </>

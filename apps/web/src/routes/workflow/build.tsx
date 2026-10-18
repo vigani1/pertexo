@@ -1,3 +1,8 @@
+import {
+  WorkflowPresenceSummary,
+  WorkflowPresenceWarning,
+  WorkflowEditingPresence,
+} from '@/features/workflow-collaboration/presence.public';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLoaderData, useNavigate } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -35,14 +40,22 @@ export function WorkflowBuildRoute() {
       user={user}
       workspace={workspace}
       workflowId={workflowId}
+      headerPresence={<WorkflowPresenceSummary />}
+      renderEditingPresence={(source) => (
+        <WorkflowEditingPresence source={source} />
+      )}
       triggerNotice={
-        <WorkflowPausedBanner
-          key={`${user.id}:${workspace.id}:${workflowId}`}
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          workflowId={workflowId}
-        />
+        <>
+          {' '}
+          <WorkflowPresenceWarning />
+          <WorkflowPausedBanner
+            key={`${user.id}:${workspace.id}:${workflowId}`}
+            apiClient={apiClient}
+            userId={user.id}
+            workspace={workspace}
+            workflowId={workflowId}
+          />
+        </>
       }
       onRunAccepted={(runId) => {
         void navigate({

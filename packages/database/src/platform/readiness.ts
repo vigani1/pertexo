@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0035_workflow_promotions.sql';
+export const EXPECTED_MIGRATION_HEAD = '0036_workflow_collaboration.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

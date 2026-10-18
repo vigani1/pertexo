@@ -1,3 +1,4 @@
+import { parseCollaborationSearch } from '@/features/workflow-collaboration/search.public';
 import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
 import { workflowIdentifierSchema } from '@pertexo/contracts';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
@@ -240,5 +241,18 @@ export const workflowSettingsRoute = createRoute({
   component: lazyRouteComponent(
     () => import('../settings'),
     'WorkflowSettingsRoute',
+  ),
+});
+
+export const workflowCommentsRoute = createRoute({
+  getParentRoute: () => workflowHubRoute,
+  path: 'comments',
+  validateSearch: (search) => parseCollaborationSearch(search),
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Comments', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('../comments'),
+    'WorkflowCommentsRoute',
   ),
 });

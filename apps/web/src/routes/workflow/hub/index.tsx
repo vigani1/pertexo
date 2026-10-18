@@ -1,3 +1,4 @@
+import { WorkflowPresenceProvider } from '@/features/workflow-collaboration/presence.public';
 import {
   Link,
   Outlet,
@@ -15,7 +16,7 @@ import { WorkspaceShellFrame } from '../../workspace/shell/layout';
  * so people can move on without reloading.
  */
 export function WorkflowHubRoute() {
-  const { workspace, workflowId } = useRouteContext({
+  const { apiClient, user, workspace, workflowId } = useRouteContext({
     from: '/w/$workspaceId/workflows/$workflowId',
   });
   const { found } = useLoaderData({
@@ -36,11 +37,21 @@ export function WorkflowHubRoute() {
       </WorkspaceShellFrame>
     );
   return (
-    <div className="relative min-h-svh bg-background">
-      <div className="ambient fixed" aria-hidden="true" />
-      <main id="main" className="relative min-h-svh">
-        <Outlet />
-      </main>
-    </div>
+    <WorkflowPresenceProvider
+      key={`${user.id}:${workspace.id}:${workflowId}`}
+      scope={{
+        apiClient,
+        userId: user.id,
+        workspaceId: workspace.id,
+        workflowId,
+      }}
+    >
+      <div className="relative min-h-svh bg-background">
+        <div className="ambient fixed" aria-hidden="true" />
+        <main id="main" className="relative min-h-svh">
+          <Outlet />
+        </main>
+      </div>
+    </WorkflowPresenceProvider>
   );
 }
