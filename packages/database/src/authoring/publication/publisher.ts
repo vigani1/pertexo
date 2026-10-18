@@ -414,6 +414,24 @@ export async function publishWorkflowCandidate(
   return Object.freeze({ replayed: false, reused, version });
 }
 
+async function publishWorkflowDirectly(
+  dependencies: WorkflowPublicationDependencies,
+  client: PoolClient,
+  input: PublicationCandidateInput,
+): Promise<PublishWorkflowResult> {
+  const policy = await client.query<{
+    require_publish_approval: boolean;
+  }>('select require_publish_approval from app.workspaces where id=$1', [
+    input.workspaceId,
+  ]);
+  if (policy.rows[0]?.require_publish_approval === true)
+    throw new PublicationReviewError(
+      'required',
+      'This workspace requires publication review. Request approval for the saved draft.',
+    );
+  return publishWorkflowCandidate(dependencies, client, input);
+}
+
 export function createWorkflowPublisher(
   dependencies: WorkflowPublicationDependencies,
 ): (input: PublishWorkflowInput) => Promise<PublishWorkflowResult> {
@@ -429,17 +447,7 @@ export function createWorkflowPublisher(
         );
         const claim = await claimPublication(client, input);
         if (claim.replay !== null) return claim.replay;
-        const policy = await client.query<{
-          require_publish_approval: boolean;
-        }>('select require_publish_approval from app.workspaces where id=$1', [
-          input.workspaceId,
-        ]);
-        if (policy.rows[0]?.require_publish_approval === true)
-          throw new PublicationReviewError(
-            'required',
-            'This workspace requires publication review. Request approval for the saved draft.',
-          );
-        const result = await publishWorkflowCandidate(
+        const result = await publishWorkflowDirectly(
           dependencies,
           client,
           input,
