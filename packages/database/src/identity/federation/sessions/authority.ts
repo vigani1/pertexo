@@ -8,6 +8,8 @@ import {
 } from '../../../tenant-access/transactions.js';
 import {
   authenticationAllowed,
+  accountPolicy,
+  sessionProof,
   identityEmailChangeAllowed,
   type AuthenticationPolicy,
   type SessionAuthenticationProof,
@@ -40,13 +42,14 @@ async function readAuthenticationPolicy(
       verifiedOrganizationId: null,
       recoveryOwner: false,
     };
-  let recoveryOwner = false;
+  let controlOwner = false;
+  let passwordPresent = false;
   if (
     account.require_sso === true &&
     account.control_workspace_id !== null &&
     account.email_verified
   ) {
-    const owner = await withWorkspaceScope(
+    controlOwner = await withWorkspaceScope(
       client,
       { workspaceId: account.control_workspace_id },
       async (scoped) =>
@@ -57,8 +60,8 @@ async function readAuthenticationPolicy(
           )
         ).rowCount === 1,
     );
-    recoveryOwner =
-      owner &&
+    passwordPresent =
+      controlOwner &&
       (
         await client.query(
           "select 1 from app.auth_accounts where user_id=$1 and provider_id='credential' and password is not null and length(password)>0",
@@ -66,13 +69,11 @@ async function readAuthenticationPolicy(
         )
       ).rowCount === 1;
   }
-  return {
-    active: account.status === 'active',
-    enforcedOrganizationId:
-      account.require_sso === true ? account.organization_id : null,
-    verifiedOrganizationId: account.organization_id,
-    recoveryOwner,
-  };
+  return accountPolicy({
+    ...account,
+    control_owner: controlOwner,
+    password_present: passwordPresent,
+  });
 }
 export async function canCreateAuthenticationSession(
   client: PoolClient,
@@ -92,16 +93,16 @@ export async function canCreateAuthenticationSession(
         [proof.providerId, [...FEDERATION_WORKSPACE_STATUSES]],
       )
     ).rows[0];
-    if (
-      row !== undefined &&
-      !(await directorySessionAllowed(client, row.organization_id, userId))
-    )
-      return false;
     if (row !== undefined)
       provider = {
         organizationId: row.organization_id,
         enabled: row.enabled,
         revision: row.revision,
+        directoryAllowed: await directorySessionAllowed(
+          client,
+          row.organization_id,
+          userId,
+        ),
       };
   }
   return authenticationAllowed(policy, proof, provider);
@@ -128,21 +129,7 @@ export async function readEligibleAuthenticationSession(
     )
   ).rows[0];
   if (session === undefined) return undefined;
-  const proof: SessionAuthenticationProof =
-    session.authentication_method === 'organization' &&
-    session.federation_provider_id !== null &&
-    session.federation_provider_revision !== null
-      ? {
-          method: 'organization',
-          providerId: session.federation_provider_id,
-          providerRevision: session.federation_provider_revision,
-        }
-      : {
-          method:
-            session.authentication_method === 'social'
-              ? 'social'
-              : 'credential',
-        };
+  const proof = sessionProof(session);
   if (!(await canCreateAuthenticationSession(client, session.user_id, proof)))
     return undefined;
   return { id: session.id, userId: session.user_id, proof };
