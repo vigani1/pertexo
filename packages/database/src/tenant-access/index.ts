@@ -97,3 +97,23 @@ export {
 } from '../identity/federation/sessions/authority.js';
 
 export { OrganizationSignInCommands } from '../identity/federation/journeys/store.js';
+
+export { DirectoryError } from '../identity/federation/provisioning/contract.js';
+export type {
+  DirectoryPrincipal,
+  DirectoryUserValues,
+  DirectoryUserProfile,
+  DirectoryGroupValues,
+  DirectoryRole,
+} from '../identity/federation/provisioning/contract.js';
+export type { DirectoryUser } from '../identity/federation/provisioning/resources/users.js';
+export type { DirectoryGroup } from '../identity/federation/provisioning/resources/groups.js';
+export { DIRECTORY_LIMITS } from '../identity/federation/provisioning/limits.js';
+
+export {
+  createDirectoryStore,
+  type DirectoryStore,
+} from '../identity/federation/provisioning/store.js';
+export type { DirectoryQuery } from '../identity/federation/provisioning/resources/queries.js';
+
+export { DirectoryManagedMembershipError } from './errors.js';

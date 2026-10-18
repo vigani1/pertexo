@@ -1,0 +1,63 @@
+import { parse, type Filter } from 'scim2-parse-filter';
+import {
+  DirectoryError,
+  DIRECTORY_LIMITS,
+} from '@pertexo/database/tenant-access';
+
+/** Budget the source before invoking the parser, then its linear AST before walking it. */
+export function parseDirectoryFilter(source: string): Filter {
+  if (source.length > DIRECTORY_LIMITS.filterCharacters)
+    throw new DirectoryError('invalid_filter');
+  let quoted = false,
+    escaped = false,
+    depth = 0;
+  for (const character of source) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quoted && character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (quoted) continue;
+    if (character === '(' || character === '[') depth++;
+    if (character === ')' || character === ']') depth--;
+    if (depth > DIRECTORY_LIMITS.filterDepth || depth < 0)
+      throw new DirectoryError('invalid_filter');
+  }
+  if (quoted || depth !== 0) throw new DirectoryError('invalid_filter');
+  try {
+    const ast = parse(source),
+      pending: { node: Filter; depth: number }[] = [{ node: ast, depth: 0 }];
+    let nodes = 0;
+    while (pending.length > 0) {
+      const next = pending.pop();
+      if (next === undefined) break;
+      if (
+        ++nodes > DIRECTORY_LIMITS.filterNodes ||
+        next.depth > DIRECTORY_LIMITS.filterDepth
+      )
+        throw new DirectoryError('invalid_filter');
+      const { node } = next;
+      const children =
+        node.op === 'and' || node.op === 'or'
+          ? node.filters
+          : node.op === 'not'
+            ? [node.filter]
+            : node.op === '[]'
+              ? [node.valFilter]
+              : [];
+      pending.push(
+        ...children.map((child) => ({ node: child, depth: next.depth + 1 })),
+      );
+    }
+    return ast;
+  } catch {
+    throw new DirectoryError('invalid_filter');
+  }
+}

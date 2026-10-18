@@ -1,3 +1,9 @@
+import { authDirectoryUsers } from './schema/identity/federation/directory/users.js';
+import { authDirectoryGroups } from './schema/identity/federation/directory/groups.js';
+import { authDirectoryGroupMembers } from './schema/identity/federation/directory/members.js';
+import { authDirectoryGroupMappings } from './schema/identity/federation/directory/mappings.js';
+import { authDirectoryMemberships } from './schema/identity/federation/directory/sources.js';
+import { authProvisioningCredentials } from './schema/identity/federation/directory/credentials.js';
 import {
   authOrganizations,
   authOrganizationWorkspaces,
@@ -219,6 +225,12 @@ export {
 } from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
+  authDirectoryUsers,
+  authDirectoryGroups,
+  authDirectoryGroupMembers,
+  authDirectoryGroupMappings,
+  authDirectoryMemberships,
+  authProvisioningCredentials,
   authOrganizations,
   authOrganizationWorkspaces,
   authDomains,

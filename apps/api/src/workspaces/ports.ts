@@ -1,3 +1,4 @@
+import type { DirectoryMembershipSource } from '@pertexo/contracts';
 import type {
   IdentityClock,
   IdentityCrypto,
@@ -361,6 +362,7 @@ export type WorkspaceMemberPersistenceRecord = Readonly<{
   role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
   roleRevision: number;
   membershipStatus: 'active' | 'suspended';
+  directorySource?: DirectoryMembershipSource;
   createdAt: Date;
   updatedAt: Date;
 }>;

@@ -1,3 +1,4 @@
+import { directoryMembershipSourceSchema } from './federation/directory.js';
 import {
   workspaceRoleSchema,
   delegatedWorkspaceRoleSchema,
@@ -107,6 +108,7 @@ export const workspaceMemberSchema = z
     role: workspaceRoleSchema,
     roleRevision: z.number().int().positive(),
     membershipStatus: z.enum(['active', 'suspended']),
+    directorySource: directoryMembershipSourceSchema.optional(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })

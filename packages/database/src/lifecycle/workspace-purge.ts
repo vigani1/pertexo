@@ -1,3 +1,7 @@
+import {
+  claimPurgeWorkspace,
+  purgeDirectoryMemberships,
+} from './identity/directory.js';
 import { reapInvitationReplacementClaims } from './invitation-claims.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -82,6 +86,8 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'notice_preferences',
     'notice_workspace_settings',
   ].map(deleteRows),
+  { name: 'auth_directory_memberships', run: purgeDirectoryMemberships },
+  deleteRows('auth_directory_group_mappings'),
   {
     name: 'identity_federation_attempts',
     statement: `with page as (
@@ -459,14 +465,9 @@ export function createWorkspacePurgeCoordinator(
     signal: AbortSignal | undefined,
   ): Promise<WorkspacePurgeProcessResult | Readonly<{ rowsPurged: string }>> =>
     transaction(signal, async (client) => {
-      const candidates = await client.query(
-        `select id, status from app.workspaces
-         where (status = 'pending_deletion' and purge_after <= clock_timestamp())
-            or status = 'purging'
-         order by purge_after, id limit 1 for update skip locked`,
-      );
-      if (candidates.rows[0] === undefined) return { status: 'idle' as const };
-      const workspace = candidateSchema.parse(candidates.rows[0]);
+      const candidate = await claimPurgeWorkspace(client);
+      if (candidate === undefined) return { status: 'idle' as const };
+      const workspace = candidateSchema.parse(candidate);
       if (workspace.status === 'pending_deletion') {
         await client.query(
           `update app.workspaces set status = 'purging', updated_at = clock_timestamp()

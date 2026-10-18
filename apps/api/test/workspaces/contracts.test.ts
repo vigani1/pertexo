@@ -1,4 +1,15 @@
 import {
+  directoryAdoptionPreviewSchema,
+  directorySettingsSchema,
+  directoryPeoplePageSchema,
+  directoryCredentialCreateSchema,
+  directoryCredentialResultSchema,
+  directoryRevisionSchema,
+  directoryMappingsSchema,
+  directoryAdoptSchema,
+  directoryChangedSchema,
+} from '@pertexo/contracts';
+import {
   federationSettingsSchema,
   samlMetadataSchema,
   federationOrganizationCreateSchema,
@@ -95,6 +106,24 @@ describe('identity/workspace generated contracts', () => {
     );
     expect({ schemas: identitySchemas }).toEqual({
       schemas: {
+        DirectoryAdoptionPreview: generated(
+          directoryAdoptionPreviewSchema,
+          'output',
+        ),
+        DirectorySettings: generated(directorySettingsSchema, 'output'),
+        DirectoryPeoplePage: generated(directoryPeoplePageSchema, 'output'),
+        DirectoryCredentialCreate: generated(
+          directoryCredentialCreateSchema,
+          'input',
+        ),
+        DirectoryCredentialResult: generated(
+          directoryCredentialResultSchema,
+          'output',
+        ),
+        DirectoryRevision: generated(directoryRevisionSchema, 'input'),
+        DirectoryMappings: generated(directoryMappingsSchema, 'input'),
+        DirectoryAdopt: generated(directoryAdoptSchema, 'input'),
+        DirectoryChanged: generated(directoryChangedSchema, 'output'),
         FederationSettings: generated(federationSettingsSchema, 'output'),
         SamlMetadata: generated(samlMetadataSchema, 'output'),
         FederationOrganizationCreate: generated(
@@ -384,6 +413,14 @@ describe('identity/workspace generated contracts', () => {
       '/v1/auth/federation/saml/start',
       '/v1/auth/federation/saml/test',
       '/v1/auth/federation/saml/callback',
+      '/v1/workspaces/{workspaceId}/sso/directory',
+      '/v1/workspaces/{workspaceId}/sso/directory/people',
+      '/v1/workspaces/{workspaceId}/sso/directory/credentials',
+      '/v1/workspaces/{workspaceId}/sso/directory/credentials/{credentialId}/revoke',
+      '/v1/workspaces/{workspaceId}/sso/directory/mappings',
+      '/v1/workspaces/{workspaceId}/sso/directory/adoption',
+      '/v1/workspaces/{workspaceId}/sso/directory/adopt',
+      '/v1/workspaces/{workspaceId}/sso/directory/workspaces/{targetWorkspaceId}/unlink',
       '/v1/workspaces',
       '/v1/workspaces/{workspaceId}/deletion',
       '/v1/workspaces/{workspaceId}/members',

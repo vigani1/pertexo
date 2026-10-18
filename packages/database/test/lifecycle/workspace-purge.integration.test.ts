@@ -108,6 +108,106 @@ afterAll(async () => {
 });
 
 describe('workspace purge', () => {
+  it('removes directory-managed grants in other linked workspaces before deleting the control organization', async () => {
+    const control = await createWorkspace(),
+      linked = await createWorkspace();
+    const inspector = new Pool({ connectionString: adminUrl, max: 1 });
+    const organizationId = randomUUID(),
+      directoryId = randomUUID(),
+      managedId = randomUUID(),
+      manualId = randomUUID();
+    try {
+      await inspector.query(
+        "insert into app.users(id,email,email_verified,display_name,status) values($1,$1::uuid::text||'@purge.test',true,'Managed','active'),($2,$2::uuid::text||'@purge.test',true,'Manual','active')",
+        [managedId, manualId],
+      );
+      await inspector.query(
+        "insert into app.auth_organizations(id,control_workspace_id,name) values($1,$2,'Directory purge')",
+        [organizationId, control],
+      );
+      await inspector.query(
+        'insert into app.auth_organization_workspaces(workspace_id,organization_id) values($1,$3),($2,$3)',
+        [control, linked, organizationId],
+      );
+      await inspector.query(
+        `insert into app.auth_directory_users(id,organization_id,user_id,user_name,normalized_user_name,login_email,profile)
+        values($1,$2,$3,'managed','managed',$3::uuid::text||'@purge.test','{"emails":[{"value":"managed@purge.test","primary":true}]}')`,
+        [directoryId, organizationId, managedId],
+      );
+      await inspector.query(
+        "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$3,'builder','active'),($2,$3,'builder','active'),($2,$4,'operator','active')",
+        [control, linked, managedId, manualId],
+      );
+      await inspector.query(
+        'insert into app.auth_directory_memberships(organization_id,workspace_id,user_id,directory_user_id) values($1,$2,$4,$5),($1,$3,$4,$5)',
+        [organizationId, control, linked, managedId, directoryId],
+      );
+      await inspector.query(
+        "insert into app.auth_sessions(id,user_id,token,expires_at) values($1,$2,$1::uuid::text,clock_timestamp()+interval '1 hour')",
+        [randomUUID(), managedId],
+      );
+      await inspector.query(
+        "insert into app.notice_preferences(workspace_id,user_id,mode) values($1,$2,'immediate')",
+        [linked, managedId],
+      );
+      await purgeWorkspace({
+        adminUrl,
+        maintenanceUrl,
+        workspaceId: control,
+        pageSize: 1,
+      });
+      expect(
+        (
+          await inspector.query(
+            'select role,status,role_revision from app.workspace_memberships where workspace_id=$1 and user_id=$2',
+            [linked, managedId],
+          )
+        ).rows,
+      ).toEqual([{ role: 'builder', status: 'removed', role_revision: 2 }]);
+      expect(
+        (
+          await inspector.query(
+            'select role,status from app.workspace_memberships where workspace_id=$1 and user_id=$2',
+            [linked, manualId],
+          )
+        ).rows,
+      ).toEqual([{ role: 'operator', status: 'active' }]);
+      expect(
+        (
+          await inspector.query(
+            'select id from app.auth_organizations where id=$1',
+            [organizationId],
+          )
+        ).rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await inspector.query(
+            'select user_id from app.auth_directory_memberships where organization_id=$1',
+            [organizationId],
+          )
+        ).rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await inspector.query(
+            'select id from app.auth_sessions where user_id=$1',
+            [managedId],
+          )
+        ).rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await inspector.query(
+            'select user_id from app.notice_preferences where workspace_id=$1 and user_id=$2',
+            [linked, managedId],
+          )
+        ).rowCount,
+      ).toBe(0);
+    } finally {
+      await inspector.end();
+    }
+  });
   it.each(['oidc', 'saml'] as const)(
     'purges %s organization identities in bounded pages without removing ordinary credentials or another workspace',
     async (kind) => {

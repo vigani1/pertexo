@@ -37,6 +37,15 @@ export class WorkspaceRenameCommandConflictError extends Error {
   }
 }
 
+export class DirectoryManagedMembershipError extends Error {
+  override readonly name = 'DirectoryManagedMembershipError';
+  constructor() {
+    super(
+      'This membership is managed by the organization directory. Change its directory policy or unlink the workspace first.',
+    );
+  }
+}
+
 export type WorkspaceMemberRoleCommandConflictReason =
   | 'actor_inactive'
   | 'target_missing'

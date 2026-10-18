@@ -1,3 +1,9 @@
+import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/module.js';
+import { DirectoryManagementService } from '../../authentication/federation/provisioning/management/service.js';
+import {
+  createDirectoryStore,
+  type DirectoryStore,
+} from '@pertexo/database/tenant-access';
 import { FederationManagementModule } from '../../authentication/federation/management/module.js';
 import { FederationManagementService } from '../../authentication/federation/management/service.js';
 import { federationSecretContext } from '../../authentication/federation/protocol/oidc.js';
@@ -44,6 +50,7 @@ export type ApiIdentityRuntime = Readonly<{
   betterAuth: BetterAuthRuntime;
   automation: ApiTokenDependencies;
   federation: FederationManagementService;
+  directory: DirectoryStore;
   close(): Promise<void>;
 }>;
 
@@ -88,6 +95,9 @@ export async function createApiIdentityRuntime(
     );
     const tokenDatabase = resources.own(
       createApiTokenDatabase(databaseConfig, runtime),
+    );
+    const directory = resources.own(
+      createDirectoryStore(databaseConfig, runtime),
     );
     const federationStore = resources.own(
       createFederationManagementStore(databaseConfig, runtime),
@@ -140,6 +150,7 @@ export async function createApiIdentityRuntime(
       }),
       betterAuth,
       federation,
+      directory,
       automation: {
         database: tokenDatabase,
         enabled: config.automationTokensEnabled ?? false,
@@ -254,6 +265,11 @@ export class IdentityRuntimeModule {
       imports: [
         feature,
         tokens,
+        DirectoryManagementModule.register(
+          new DirectoryManagementService(runtime.directory),
+          feature,
+          admission,
+        ),
         FederationManagementModule.register(
           runtime.federation,
           feature,

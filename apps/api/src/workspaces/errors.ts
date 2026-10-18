@@ -1,4 +1,5 @@
 import {
+  DirectoryManagedMembershipError,
   IdentityConflictError,
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
@@ -35,6 +36,8 @@ function workspaceApplicationError(
 }
 
 export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
+  if (error instanceof DirectoryManagedMembershipError)
+    return applicationError('auth.forbidden', { safeDetail: error.message });
   if (error instanceof InvalidAuthenticatedWorkspaceContextError)
     return applicationError('request.invalid', { safeDetail: error.message });
   if (error instanceof z.ZodError) {

@@ -1,3 +1,4 @@
+import type { DirectoryStore } from '@pertexo/database/tenant-access';
 import { FederationManagementService } from '../../src/authentication/federation/management/service.js';
 /** Unrelated API tests still construct the real module; federation storage is deliberately unavailable. */
 export function stubFederationService(): FederationManagementService {
@@ -28,4 +29,33 @@ export function stubFederationService(): FederationManagementService {
     'https://pertexo.test',
     true,
   );
+}
+
+export function stubDirectoryStore(): DirectoryStore {
+  const unused = () =>
+    Promise.reject(
+      new Error('Directory storage was not expected in this test'),
+    );
+  return {
+    close: () => Promise.resolve(),
+    authenticate: unused,
+    user: unused,
+    group: unused,
+    users: unused,
+    groups: unused,
+    createUser: unused,
+    changeUser: unused,
+    deleteUser: unused,
+    createGroup: unused,
+    changeGroup: unused,
+    deleteGroup: unused,
+    adoption: unused,
+    settings: unused,
+    people: unused,
+    createCredential: unused,
+    revokeCredential: unused,
+    replaceMappings: unused,
+    adopt: unused,
+    unlink: unused,
+  };
 }
