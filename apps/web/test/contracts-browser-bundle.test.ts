@@ -63,6 +63,8 @@ describe('browser contract consumer bundle', () => {
       moduleIds.some((id) => /\/node-catalog\/|\/workflow-engine\//u.test(id)),
     ).toBe(false);
     expect(moduleIds.some((id) => id.startsWith('node:'))).toBe(false);
+    // Schemas leave out the Code step's syntax checker; only its editor loads it.
+    expect(moduleIds.some((id) => id.includes('/acorn/'))).toBe(false);
     expect(code).not.toContain('Pertexo Catalog API');
     expect(code).not.toContain('openapi:');
   });

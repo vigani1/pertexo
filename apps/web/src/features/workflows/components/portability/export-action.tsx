@@ -1,9 +1,16 @@
-import type { ComponentProps } from 'react';
+import { lazy, Suspense, type ComponentProps } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import type { DialogContent } from '@/components/ui/dialog';
 import type { ApiClient } from '@/lib/api/client';
-import { WorkflowExportDialog } from './workflow-export-dialog';
+
+// Loaded on first open: the workflow bar is on every hub page and in its
+// loading state, so a static import put the whole dialog in the first load.
+const WorkflowExportDialog = lazy(() =>
+  import('./workflow-export-dialog').then((module) => ({
+    default: module.WorkflowExportDialog,
+  })),
+);
 
 export function WorkflowExportAction({
   apiClient,
@@ -46,19 +53,21 @@ export function WorkflowExportAction({
         Export…
       </Button>
       {open ? (
-        <WorkflowExportDialog
-          key={`${userId}:${workspace.id}:${workflow.id}`}
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          workflow={workflow}
-          source={{ kind: 'draft' }}
-          finalFocus={finalFocus}
-          allowed={!blocked}
-          onClose={() => {
-            onOpenChange(false);
-          }}
-        />
+        <Suspense fallback={null}>
+          <WorkflowExportDialog
+            key={`${userId}:${workspace.id}:${workflow.id}`}
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            workflow={workflow}
+            source={{ kind: 'draft' }}
+            finalFocus={finalFocus}
+            allowed={!blocked}
+            onClose={() => {
+              onOpenChange(false);
+            }}
+          />
+        </Suspense>
       ) : null}
     </>
   );
