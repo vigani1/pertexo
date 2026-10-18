@@ -40,18 +40,33 @@ export async function createMemberships(
   );
   await appendAuditFacts(
     client,
-    additions.map(({ userId, ...details }) => ({
+    additions.map((member) => ({
       workspaceId,
       actorId: audit.actorId,
       requestId: audit.requestId ?? null,
       traceId: audit.traceId ?? null,
       action: 'workspace.member_added',
       targetType: 'workspace_member',
-      targetId: userId,
+      targetId: member.userId,
       metadata: {
-        ...details,
+        role: member.role,
+        source: member.source,
         status: 'active',
         roleRevision: 1,
+        ...(member.source === 'invitation'
+          ? { invitationId: member.invitationId }
+          : {}),
+        ...(member.source === 'jit' || member.source === 'directory'
+          ? { organizationId: member.organizationId }
+          : {}),
+        ...(member.source === 'directory'
+          ? {
+              directoryUserId: member.directoryUserId,
+              ...(member.credentialId === undefined
+                ? {}
+                : { credentialId: member.credentialId }),
+            }
+          : {}),
       },
     })),
   );

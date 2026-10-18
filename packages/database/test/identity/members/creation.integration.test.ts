@@ -125,6 +125,44 @@ describe('membership creation and its canonical audit fact', () => {
         .sort((a, b) => (a.user_id < b.user_id ? -1 : 1)),
     );
   });
+  it('records only the declared metadata when a structural member value carries private fields', async () => {
+    const owner = await db.user('Creation owner'),
+      workspaceId = await db.workspace(owner.id),
+      person = await db.user('New member'),
+      organizationId = randomUUID();
+    const addition: MembershipAddition & { privatePayload: unknown } = {
+      userId: person.id,
+      role: 'viewer',
+      source: 'jit',
+      organizationId,
+      privatePayload: { token: 'PRIVATE', runInput: ['PRIVATE'] },
+    };
+    await withTenantScopedClient(
+      db.authenticationPool(),
+      { workspaceId, actorId: owner.id },
+      (client) =>
+        createMemberships(client, workspaceId, [addition], {
+          actorId: person.id,
+        }),
+    );
+    expect(
+      (await facts(workspaceId)).find((fact) => fact.target_id === person.id),
+    ).toEqual({
+      actor_user_id: person.id,
+      action: 'workspace.member_added',
+      target_type: 'workspace_member',
+      target_id: person.id,
+      request_id: null,
+      trace_id: null,
+      metadata: {
+        role: 'viewer',
+        source: 'jit',
+        status: 'active',
+        roleRevision: 1,
+        organizationId,
+      },
+    });
+  });
   it('rolls every insertion back when recording the facts fails', async () => {
     const f = await setup();
     await expect(

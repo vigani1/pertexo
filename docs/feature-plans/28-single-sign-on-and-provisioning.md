@@ -215,7 +215,8 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
    remains with those callers. Keep the batched SCIM path and use one bounded,
    typed metadata shape: role, active status, initial role revision, source and
    applicable invitation/organization/directory/credential IDs. The target is
-   always the member user ID. Preserve workspace-created/invitation-accepted and
+   always the member user ID. The writer selects these fields explicitly; wider
+   structural caller values cannot expand the audit fact. Preserve workspace-created/invitation-accepted and
    projected-member facts; do not rewrite historical audit rows. Invitation
    rejoin remains an existing-row update, routed through the update owner, with
    its current revision/session semantics. No new transaction, entry point or role.
@@ -225,7 +226,7 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
   sign-in/SCIM cases and all 570 database unit tests pass; strict types/lint pass.
   Merged [#350](https://github.com/vigani1/pertexo/pull/350) after green CI.
 - [x] Shared creation/storage/audit owner and all four production paths qualified:
-  114 actual PostgreSQL cases, 571 database unit tests, strict types and lint pass.
+  115 actual PostgreSQL cases, 571 database unit tests, strict types and lint pass.
   Eight real API cases and all 2,192 API unit tests also pass; creation/replay
   assertions check both correlated facts without assuming an unordered row order.
 
