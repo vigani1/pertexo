@@ -75,9 +75,12 @@ for (const width of [1280, 375])
       });
     });
     await page.goto(`/w/${workspaceId}/settings/audit`);
+    // Events read as sentences; the recorded action stays in the details.
+    await expect(page.getByRole('heading', { name: 'Events' })).toBeVisible();
+    await expect(page.getByText('created the workspace')).toBeVisible();
     await expect(
       page.getByText('workspace.created', { exact: true }),
-    ).toBeVisible();
+    ).toBeHidden();
     await page.getByLabel('Keep audit events (days)').fill('30');
     await page
       .getByRole('button', { name: 'Save retention', exact: true })
@@ -90,10 +93,12 @@ for (const width of [1280, 375])
     ).toBeVisible();
     expect(writes).toHaveLength(2);
     expect(writes[1]).toEqual(writes[0]);
-    await page.getByLabel('Person name').fill('Nobody');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await page.getByRole('searchbox', { name: 'Person' }).fill('Nobody');
+    await page.getByRole('searchbox', { name: 'Person' }).press('Enter');
     await expect(
-      page.getByText('No events match these filters.', { exact: true }),
+      page.getByText('Nothing matches. Widen the dates or clear a filter.', {
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(page).toHaveURL(/person=Nobody/u);
     await expect

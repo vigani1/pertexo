@@ -4,7 +4,11 @@ import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
-import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
+import {
+  formatDateTime,
+  formatDayHeading,
+  formatRelativeTime,
+} from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 
 /** The parts of a paged (infinite) query a recent-activity list reads. */
@@ -22,6 +26,21 @@ export type RecentLogQuery = Readonly<{
   fetchNextPage: () => unknown;
 }>;
 
+/** Newest-first entries in runs of the same day: "Today", "Yesterday", "Oct 12". */
+function byDay<Item>(
+  items: readonly Item[],
+  dayOf: (item: Item) => string,
+): readonly { heading: string; items: Item[] }[] {
+  const days: { heading: string; items: Item[] }[] = [];
+  for (const item of items) {
+    const heading = formatDayHeading(dayOf(item));
+    const last = days.at(-1);
+    if (last?.heading === heading) last.items.push(item);
+    else days.push({ heading, items: [item] });
+  }
+  return days;
+}
+
 /**
  * A short, newest-first log of what happened, one page at a time: loading
  * rows, one failure owner with Retry, an "as of" line when a refresh fails,
@@ -37,9 +56,15 @@ export function RecentLog<Item>({
   items,
   itemKey,
   renderItem,
+  dayOf,
+  headingLevel: Heading = 'h4',
 }: Readonly<{
   /** The list's heading, e.g. "Recent deliveries". */
   title: string;
+  /** Where the log sits in the page outline; a page's main log is an h2. */
+  headingLevel?: 'h2' | 'h3' | 'h4';
+  /** When an entry happened; given, entries are grouped under their day. */
+  dayOf?: (item: Item) => string;
   /** A short mono note beside the heading, e.g. how long entries are kept. */
   note?: string;
   /** What the list holds, in the plural: "deliveries". */
@@ -56,9 +81,9 @@ export function RecentLog<Item>({
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-3">
-        <h4 id={headingId} className="text-sm font-semibold">
+        <Heading id={headingId} className="text-sm font-semibold">
           {title}
-        </h4>
+        </Heading>
         {note === undefined ? null : (
           <span className="font-mono text-[0.72rem] text-subtle-foreground">
             {note}
@@ -81,7 +106,8 @@ export function RecentLog<Item>({
       {items?.length === 0 ? (
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : null}
-      {items === undefined || items.length === 0 ? null : (
+      {items === undefined || items.length === 0 ? null : dayOf ===
+        undefined ? (
         <ul aria-labelledby={headingId} className="flex flex-col">
           {items.map((item) => (
             <li
@@ -92,6 +118,24 @@ export function RecentLog<Item>({
             </li>
           ))}
         </ul>
+      ) : (
+        byDay(items, dayOf).map((day) => (
+          <div key={day.heading} className="flex flex-col">
+            <p className="pt-3 pb-1 text-xs font-medium text-subtle-foreground">
+              {day.heading}
+            </p>
+            <ul aria-label={day.heading} className="flex flex-col">
+              {day.items.map((item) => (
+                <li
+                  key={itemKey(item)}
+                  className="border-t border-border py-2.5 first:border-t-0"
+                >
+                  {renderItem(item)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
       )}
       <LoadMore
         subject={subject}
@@ -118,7 +162,7 @@ export function RecentLogEntry({
   meta,
 }: Readonly<{
   tone: StatusTone;
-  label: string;
+  label: ReactNode;
   /** More about what happened, when there is more to say. */
   detail?: string | undefined;
   action?: ReactNode;
