@@ -1,5 +1,6 @@
-import { lazy, Suspense, useCallback, useRef, useState } from 'react';
+import { Suspense, useCallback, useRef, useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
+import { lazyPiece } from '@/components/patterns/app-update/lazy';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,8 +18,8 @@ import type { LoadedInputCase } from './panel';
 
 // The case editor loads with the dialog's first open, not with the workflow
 // bar that holds its trigger.
-const InputCasesPanel = lazy(() =>
-  import('./panel').then((module) => ({ default: module.InputCasesPanel })),
+const InputCasesPanel = lazyPiece(() =>
+  import('./panel').then((module) => module.InputCasesPanel),
 );
 
 type InputCasesActionProps = Readonly<{

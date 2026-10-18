@@ -3,6 +3,20 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import rootConfig from '../../eslint.config.mjs';
 
+// Lazy code loads through one module, so a chunk that a deployment removed
+// shows the update notice instead of reloading the page or crashing it.
+const lazyLoadPaths = [
+  {
+    name: 'react',
+    importNames: ['lazy'],
+    message: 'Use lazyPiece from @/components/patterns/app-update/lazy.',
+  },
+  {
+    name: '@tanstack/react-router',
+    importNames: ['lazyRouteComponent'],
+    message: 'Use lazyRoute from @/components/patterns/app-update/lazy.',
+  },
+];
 const canonicalJsonOnly = {
   name: '@pertexo/workflow-model',
   allowImportNames: ['canonicalJson'],
@@ -61,6 +75,7 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          paths: lazyLoadPaths,
           patterns: [
             {
               group: ['node:*', '@nestjs/*', '**/packages/**', '**/apps/**'],
@@ -105,9 +120,18 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
-          paths: [canonicalJsonOnly],
+          paths: [canonicalJsonOnly, ...lazyLoadPaths],
           patterns: sharedLayerPatterns,
         },
+      ],
+    },
+  },
+  {
+    files: ['src/components/patterns/app-update/lazy.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: [canonicalJsonOnly], patterns: sharedLayerPatterns },
       ],
     },
   },

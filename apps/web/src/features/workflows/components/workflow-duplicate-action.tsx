@@ -1,16 +1,20 @@
-import { lazy, Suspense, type ComponentProps } from 'react';
+import { Suspense, type ComponentProps } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { useNavigate } from '@tanstack/react-router';
+import { lazyPiece } from '@/components/patterns/app-update/lazy';
+import { AppUpdatedDialog } from '@/components/patterns/app-update/notice';
 import { Button } from '@/components/ui/button';
 import type { DialogContent } from '@/components/ui/dialog';
 import type { ApiClient } from '@/lib/api/client';
 import { canDuplicateWorkflow } from '../model/duplicate/allowed';
 
 // Loaded on first open, like the export dialog beside it in the workflow bar.
-const WorkflowDuplicateDialog = lazy(() =>
-  import('./workflow-duplicate-dialog').then((module) => ({
-    default: module.WorkflowDuplicateDialog,
-  })),
+const WorkflowDuplicateDialog = lazyPiece(
+  () =>
+    import('./workflow-duplicate-dialog').then(
+      (module) => module.WorkflowDuplicateDialog,
+    ),
+  AppUpdatedDialog,
 );
 
 /** Shared detail action; Build supplies its own dirty/save guard. */

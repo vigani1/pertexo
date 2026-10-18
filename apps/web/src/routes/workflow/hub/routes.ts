@@ -1,5 +1,6 @@
 import { parseCollaborationSearch } from '@/features/workflow-collaboration/search.public';
-import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
+import { createRoute } from '@tanstack/react-router';
+import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import { workflowIdentifierSchema } from '@pertexo/contracts';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import {
@@ -56,7 +57,7 @@ export const workflowHubRoute = createRoute({
       ),
     );
   },
-  component: lazyRouteComponent(() => import('./index'), 'WorkflowHubRoute'),
+  component: lazyRoute(() => import('./index'), 'WorkflowHubRoute'),
 });
 
 export const workflowBuildRoute = createRoute({
@@ -79,7 +80,7 @@ export const workflowBuildRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Build', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('../build'), 'WorkflowBuildRoute'),
+  component: lazyRoute(() => import('../build'), 'WorkflowBuildRoute'),
 });
 
 export const workflowRunsRoute = createRoute({
@@ -104,7 +105,7 @@ export const workflowRunsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Workflow runs', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(() => import('../runs'), 'WorkflowRunsRoute'),
+  component: lazyRoute(() => import('../runs'), 'WorkflowRunsRoute'),
 });
 
 export const workflowTriggersRoute = createRoute({
@@ -144,10 +145,7 @@ export const workflowTriggersRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Triggers', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('../triggers'),
-    'WorkflowTriggersRoute',
-  ),
+  component: lazyRoute(() => import('../triggers'), 'WorkflowTriggersRoute'),
 });
 
 export const workflowVersionsRoute = createRoute({
@@ -171,10 +169,7 @@ export const workflowVersionsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Versions', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('../versions'),
-    'WorkflowVersionsRoute',
-  ),
+  component: lazyRoute(() => import('../versions'), 'WorkflowVersionsRoute'),
 });
 
 export const workflowSettingsRoute = createRoute({
@@ -238,10 +233,7 @@ export const workflowSettingsRoute = createRoute({
       { title: pageTitle('Workflow settings', match.context.workspace.name) },
     ],
   }),
-  component: lazyRouteComponent(
-    () => import('../settings'),
-    'WorkflowSettingsRoute',
-  ),
+  component: lazyRoute(() => import('../settings'), 'WorkflowSettingsRoute'),
 });
 
 export const workflowCommentsRoute = createRoute({
@@ -251,8 +243,5 @@ export const workflowCommentsRoute = createRoute({
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Comments', match.context.workspace.name) }],
   }),
-  component: lazyRouteComponent(
-    () => import('../comments'),
-    'WorkflowCommentsRoute',
-  ),
+  component: lazyRoute(() => import('../comments'), 'WorkflowCommentsRoute'),
 });
