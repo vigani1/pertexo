@@ -1,6 +1,7 @@
 # Weft design pass
 
-Status: in progress. Started 2026-10-18 after F18, F28, F17 and F19.
+Status: slices complete; two follow-ups open (below). Started 2026-10-18 after
+F18, F28, F17 and F19.
 
 The core screens (Home, Runs, run detail, the editor, Team, Connections) speak
 Weft well. Screens added feature by feature since then read like admin forms:
@@ -81,8 +82,14 @@ result at desktop and phone width, then rebase-merge after CI passes.
   Load the latest only when stored values moved on. Still open: the editor's
   test bar should wait for test activity, which needs Run all tests in a split
   Test workflow menu first.
-- [ ] 7. **A run's ending.** When a run ends at a Stop run step that names its
-  outcome, run detail says it ("Succeeded as rejected in 0.57s").
+- [x] 7. **A run's ending.** When a run ends at a Stop run step whose outcome
+  is a fixed word, run detail says "Succeeded as “rejected” in 0.57s", read from
+  the run version's graph without another request.
+
+Open follow-ups: the editor's test bar should wait for test activity once Run
+all tests also lives in a split Test workflow menu, and the client-side starters
+and curated examples should become one list once it is decided whether the
+starters become curated examples.
 
 Not in this pass: new backend endpoints (a reviewer's list of waiting
 publication reviews still arrives through Inbox notices), moving existing
