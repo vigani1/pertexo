@@ -3,6 +3,7 @@ import {
   WorkflowPresenceWarning,
   WorkflowEditingPresence,
 } from '@/features/workflow-collaboration/presence.public';
+import { useStepDiscussions } from '@/features/workflow-collaboration/discussions.public';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLoaderData, useNavigate } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -20,6 +21,7 @@ export function WorkflowBuildRoute() {
   });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const stepDiscussions = useStepDiscussions();
   if (!found)
     return (
       <div className="px-4">
@@ -40,6 +42,7 @@ export function WorkflowBuildRoute() {
       user={user}
       workspace={workspace}
       workflowId={workflowId}
+      stepDiscussions={stepDiscussions}
       headerPresence={<WorkflowPresenceSummary />}
       renderEditingPresence={(source) => (
         <WorkflowEditingPresence source={source} />

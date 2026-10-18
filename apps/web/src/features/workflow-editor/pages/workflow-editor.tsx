@@ -54,8 +54,10 @@ import { useEditorSessionVerification } from '../hooks/use-editor-session-verifi
 import { useLeaveGuard } from '../hooks/use-leave-guard';
 import { workflowDraftQueryOptions } from '../data/workflow-editor.queries';
 import { workflowConnectionIssues } from '../model/connection-issues';
+import { StepDiscussionsContext } from '../model/state/discussions';
 
 const NO_CONNECTIONS: readonly ConnectionResponse[] = [];
+const NO_DISCUSSIONS: ReadonlyMap<string, number> = new Map();
 
 export function WorkflowEditorPage({
   apiClient,
@@ -67,11 +69,14 @@ export function WorkflowEditorPage({
   triggerNotice,
   headerPresence,
   renderEditingPresence,
+  stepDiscussions,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   workflowId: string;
+  /** Open discussions about each step, shown on its card. */
+  stepDiscussions?: ReadonlyMap<string, number>;
   onRunAccepted: (runId: string) => void;
   /** After a publish lands, for reads of the workflow outside the editor. */
   onPublished?: () => void;
@@ -99,23 +104,25 @@ export function WorkflowEditorPage({
       }}
     >
       <ReactFlowProvider>
-        <WorkflowEditorSession
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          workflowId={workflowId}
-          definitions={catalog.data.definitions.items}
-          codeSettings={catalog.data.definitions.codeSettings}
-          connections={connections.data?.items ?? NO_CONNECTIONS}
-          connectionsAvailable={connections.data !== null}
-          onRunAccepted={onRunAccepted}
-          triggerNotice={triggerNotice}
-          headerPresence={headerPresence}
-          {...(renderEditingPresence === undefined
-            ? {}
-            : { renderEditingPresence })}
-          {...(onPublished === undefined ? {} : { onPublished })}
-        />
+        <StepDiscussionsContext value={stepDiscussions ?? NO_DISCUSSIONS}>
+          <WorkflowEditorSession
+            apiClient={apiClient}
+            userId={user.id}
+            workspace={workspace}
+            workflowId={workflowId}
+            definitions={catalog.data.definitions.items}
+            codeSettings={catalog.data.definitions.codeSettings}
+            connections={connections.data?.items ?? NO_CONNECTIONS}
+            connectionsAvailable={connections.data !== null}
+            onRunAccepted={onRunAccepted}
+            triggerNotice={triggerNotice}
+            headerPresence={headerPresence}
+            {...(renderEditingPresence === undefined
+              ? {}
+              : { renderEditingPresence })}
+            {...(onPublished === undefined ? {} : { onPublished })}
+          />
+        </StepDiscussionsContext>
       </ReactFlowProvider>
     </EditorProvider>
   );

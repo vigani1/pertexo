@@ -17,6 +17,8 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { COLLABORATION_LIMITS } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
+import { formatInitials } from '@/lib/format/initials';
+import { cn } from '@/lib/utils';
 import { Status } from '@/components/ui/status';
 import {
   heartbeatPresence,
@@ -114,29 +116,59 @@ export function WorkflowPresenceSummary() {
         </PopoverContent>
       </Popover>
     );
-  const people = query.data?.people ?? [];
-  if (people.length === 0) return null;
+  const everyone = query.data?.people ?? [];
+  const people = everyone.filter((person) => person.userId !== scope.userId);
+  const ownTabs = everyone.find((person) => person.userId === scope.userId);
+  if (everyone.length === 0) return null;
+  const names = people.map((person) => person.displayName);
   return (
     <Popover>
       <PopoverTrigger
         render={<Button type="button" variant="ghost" size="sm" />}
-        aria-label="People viewing this workflow"
+        aria-label={
+          people.length === 0
+            ? 'Also open in another of your tabs'
+            : `Here with you: ${names.join(', ')}`
+        }
       >
-        <Status
-          tone={people.some((person) => person.dirty) ? 'attention' : 'live'}
-        >
-          {String(people.length)} here
-        </Status>
+        {people.length === 0 ? (
+          <span className="text-xs text-subtle-foreground">
+            Also in another tab
+          </span>
+        ) : (
+          <span aria-hidden="true" className="flex items-center -space-x-1.5">
+            {people.slice(0, 3).map((person) => (
+              <span
+                key={person.userId}
+                title={person.displayName}
+                className={cn(
+                  'grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-[0.6rem] text-foreground ring-1',
+                  person.dirty
+                    ? 'ring-warning'
+                    : person.editing
+                      ? 'ring-primary'
+                      : 'ring-border-strong',
+                )}
+              >
+                {formatInitials(person.displayName)}
+              </span>
+            ))}
+            {people.length > 3 ? (
+              <span className="grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-[0.6rem] text-muted-foreground ring-1 ring-border-strong">
+                +{people.length - 3}
+              </span>
+            ) : null}
+          </span>
+        )}
       </PopoverTrigger>
       <PopoverContent align="end">
-        <PopoverTitle>Here with you</PopoverTitle>
+        <PopoverTitle>
+          {people.length === 0 ? 'Only you' : 'Here with you'}
+        </PopoverTitle>
         <ul className="mt-3 space-y-3">
           {people.map((person) => (
             <li key={person.userId} className="space-y-1">
-              <p className="wrap-anywhere font-medium">
-                {person.displayName}
-                {person.userId === scope.userId ? ' (your other tab)' : ''}
-              </p>
+              <p className="wrap-anywhere font-medium">{person.displayName}</p>
               <p className="text-xs text-muted-foreground">
                 {person.dirty
                   ? 'Editing · unsaved changes'
@@ -149,6 +181,15 @@ export function WorkflowPresenceSummary() {
               </p>
             </li>
           ))}
+          {ownTabs === undefined ? null : (
+            <li className="text-xs text-muted-foreground">
+              You also have this workflow open in{' '}
+              {ownTabs.tabCount === 1
+                ? 'another tab'
+                : `${String(ownTabs.tabCount)} other tabs`}
+              {ownTabs.dirty ? ', with unsaved changes there' : ''}.
+            </li>
+          )}
         </ul>
       </PopoverContent>
     </Popover>
@@ -159,12 +200,15 @@ export function WorkflowPresenceWarning() {
   const query = useQuery(presenceQuery(scope, tabId));
   const dirty = query.data?.people.filter((person) => person.dirty) ?? [];
   if (dirty.length === 0) return null;
+  const others = dirty.filter((person) => person.userId !== scope.userId);
+  const mine = others.length < dirty.length;
   return (
     <Notice tone="warning">
       <strong>Unsaved changes in another tab.</strong>{' '}
-      {dirty.map((person) => person.displayName).join(', ')}{' '}
-      {dirty.length === 1 ? 'has' : 'have'} edits in progress. Check with them
-      before saving; a stale draft cannot overwrite a newer save.
+      {others.length === 0
+        ? 'You have edits in progress in another tab. Save or discard them there first;'
+        : `${others.map((person) => person.displayName).join(', ')}${mine ? ' and you' : ''} ${others.length === 1 && !mine ? 'has' : 'have'} edits in progress. Check with them before saving;`}{' '}
+      a stale draft can’t overwrite a newer save.
     </Notice>
   );
 }

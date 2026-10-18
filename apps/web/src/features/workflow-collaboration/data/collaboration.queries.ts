@@ -79,3 +79,32 @@ export function presenceQuery(scope: CollaborationScope, tabId: string) {
     retry: false,
   });
 }
+/** Open discussions per step, read from the first pages of open threads. */
+export function stepDiscussionsQuery(scope: CollaborationScope) {
+  return queryOptions({
+    queryKey: [...collaborationKeys.scope(scope), 'step-discussions'],
+    queryFn: async ({ signal }) => {
+      const counts = new Map<string, number>();
+      let after: string | null = null;
+      // Five pages reach the hundred most recent open threads; a canvas
+      // with more open discussions than that has bigger problems.
+      for (let page = 0; page < 5; page += 1) {
+        const threads = await readThreads(
+          scope,
+          { status: 'open', scope: 'all' },
+          after,
+          signal,
+        );
+        for (const thread of threads.items)
+          if (thread.stepId !== null)
+            counts.set(thread.stepId, (counts.get(thread.stepId) ?? 0) + 1);
+        if (threads.nextCursor === null) break;
+        after = threads.nextCursor;
+      }
+      return counts;
+    },
+    refetchInterval: COLLABORATION_LIMITS.pollMs * 3,
+    staleTime: COLLABORATION_LIMITS.pollMs,
+    retry: false,
+  });
+}

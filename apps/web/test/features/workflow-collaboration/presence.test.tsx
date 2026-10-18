@@ -127,3 +127,64 @@ it('keeps presence failures advisory with a compact accessible explanation', asy
     'You can edit and save normally. Presence will retry automatically.',
   );
 });
+
+it('names other people as beads and keeps your own other tab separate', async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockImplementation((_input, init) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            init?.method === 'PUT'
+              ? { accepted: true }
+              : {
+                  people: [
+                    {
+                      userId: '7a1e7a1e-7a1e-4a1e-8a1e-7a1e7a1e7a1e',
+                      displayName: 'Grace Hopper',
+                      editing: true,
+                      dirty: false,
+                      baseRevision: 1,
+                      tabCount: 1,
+                    },
+                    {
+                      userId,
+                      displayName: 'You elsewhere',
+                      editing: false,
+                      dirty: false,
+                      baseRevision: null,
+                      tabCount: 2,
+                    },
+                  ],
+                },
+          ),
+          { headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+  const scope = {
+    apiClient: createApiClient({
+      fetch,
+      readCsrfToken: () =>
+        'csrf-token-for-component-tests-12345678901234567890',
+    }),
+    userId,
+    workspaceId,
+    workflowId,
+  };
+  renderInRouter(
+    <WorkflowPresenceProvider scope={scope}>
+      <WorkflowPresenceSummary />
+    </WorkflowPresenceProvider>,
+  );
+  const user = userEvent.setup();
+  await user.click(
+    await screen.findByRole('button', { name: 'Here with you: Grace Hopper' }),
+  );
+  expect(await screen.findByText('Grace Hopper')).toBeVisible();
+  expect(screen.getByText('Editing')).toBeVisible();
+  expect(
+    screen.getByText('You also have this workflow open in 2 other tabs.'),
+  ).toBeVisible();
+  expect(screen.queryByText('You elsewhere')).not.toBeInTheDocument();
+});

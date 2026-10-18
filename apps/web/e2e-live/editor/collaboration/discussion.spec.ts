@@ -189,12 +189,7 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
       await mkdir('/tmp/pertexo-collaboration-screenshots', {
         recursive: true,
       });
-      await teammate
-        .getByRole('button', {
-          name: 'People viewing this workflow',
-          exact: true,
-        })
-        .click();
+      await teammate.getByRole('button', { name: /^Here with you: /u }).click();
       await expect(
         teammate.getByRole('dialog', { name: 'Here with you', exact: true }),
       ).toBeVisible();

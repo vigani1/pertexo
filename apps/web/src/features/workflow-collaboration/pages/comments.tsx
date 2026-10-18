@@ -20,11 +20,9 @@ export function WorkflowCommentsPage(props: PageProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <p className="eyebrow">Together, one thread at a time</p>
         <h2 className="font-display text-3xl">Comments</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Discuss the workflow or a step. Mention a teammate to bring them into
-          the thread.
+          Talk about the workflow or one step. Mention someone to bring them in.
         </p>
       </div>
       {search.thread === undefined ? (
