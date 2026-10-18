@@ -124,7 +124,16 @@ export function WorkflowPresenceSummary() {
   return (
     <Popover>
       <PopoverTrigger
-        render={<Button type="button" variant="ghost" size="sm" />}
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            // Only your own other tab: worth a word on a wide bar, not a
+            // phone's, where it would wrap the title when it arrives.
+            className={people.length === 0 ? 'max-sm:hidden' : undefined}
+          />
+        }
         aria-label={
           people.length === 0
             ? 'Also open in another of your tabs'

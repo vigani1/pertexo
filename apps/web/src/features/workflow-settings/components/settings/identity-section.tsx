@@ -1,5 +1,8 @@
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import { WorkflowNameField } from '@/features/workflows/rename.public';
+import {
+  WorkflowNameField,
+  WorkflowTemplateOrigin,
+} from '@/features/workflows/rename.public';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { CopyButton } from '@/components/ui/copy-button';
@@ -88,6 +91,15 @@ export function IdentitySection({
           <Moment label="Created" value={workflow.createdAt} />
           <Moment label="Last updated" value={workflow.updatedAt} />
         </dl>
+      )}
+      {workflow === undefined ? null : (
+        <WorkflowTemplateOrigin
+          apiClient={apiClient}
+          userId={userId}
+          workspace={workspace}
+          workflowId={workflow.id}
+          className="text-sm text-muted-foreground"
+        />
       )}
     </SettingsSection>
   );

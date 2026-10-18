@@ -893,11 +893,11 @@
 
 @keyframes validation-sweep {
   0% {
-    left: -8rem;
+    transform: translateX(-100%);
   }
   35%,
   100% {
-    left: 100%;
+    transform: translateX(8rem);
   }
 }
 
