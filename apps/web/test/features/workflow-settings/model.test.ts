@@ -7,7 +7,7 @@ import { describeTriggerState } from '@/features/workflow-settings/model/trigger
 import {
   diffWorkflowGraphs,
   isEmptyDiff,
-} from '@/features/workflow-settings/model/versions/diff';
+} from '@/features/workflows/comparison.public';
 import { versionSteps } from '@/features/workflow-settings/model/versions/steps';
 import { emptyGraph, stepNode } from './fixtures';
 
