@@ -24,7 +24,7 @@ type OverviewTarget =
   | '/w/$workspaceId/workflows'
   | '/w/$workspaceId/team'
   | '/w/$workspaceId/connections'
-  | '/w/$workspaceId/alerts';
+  | '/w/$workspaceId/settings/alerts';
 
 function counted(count: number, one: string, many: string): string {
   return `${String(count)} ${count === 1 ? one : many}`;
@@ -243,7 +243,7 @@ function AlertsTile({
   return (
     <OverviewTile
       workspaceId={workspaceId}
-      to="/w/$workspaceId/alerts"
+      to="/w/$workspaceId/settings/alerts"
       icon={<BellIcon aria-hidden="true" />}
       label={
         destinations.length === 1 ? 'alert destination' : 'alert destinations'

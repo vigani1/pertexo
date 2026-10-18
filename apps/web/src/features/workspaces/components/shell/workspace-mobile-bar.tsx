@@ -16,7 +16,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { spineDestinations } from './spine-destinations';
+import { spineDestinations, useIncludedPage } from './spine-destinations';
 
 const barLinkClass =
   "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-[0.68rem] text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground data-[active=true]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
@@ -51,6 +51,13 @@ export function WorkspaceMobileBar({
     ),
     ...destinations.workspace,
   ];
+  const inbox = destinations.primary.find(
+    (destination) => destination.to === '/w/$workspaceId/inbox',
+  );
+  const inboxIncluded = useIncludedPage(
+    workspace.id,
+    inbox ?? { to: '/w/$workspaceId/inbox', label: 'Inbox', icon: null },
+  );
   const canReadRuns = workspace.capabilities.includes('run:read');
   const canReadInbox = workspace.capabilities.includes('workspace:read');
   const unread = unreadNoticeCount ?? 0;
@@ -111,6 +118,7 @@ export function WorkspaceMobileBar({
             ref={inboxRef}
             to="/w/$workspaceId/inbox"
             params={{ workspaceId: workspace.id }}
+            inactiveProps={inboxIncluded ? { 'aria-current': 'page' } : {}}
             aria-label={
               unread === 0 ? 'Inbox' : `Inbox, ${String(unread)} unread`
             }

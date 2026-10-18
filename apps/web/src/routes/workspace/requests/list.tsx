@@ -1,4 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import { InboxViews } from '@/features/inbox/inbox-page.public';
 import { TasksPage } from '@/features/pending-tasks/pages.public';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function RequestsRoute() {
@@ -9,6 +10,14 @@ export function RequestsRoute() {
     <TasksPage
       key={`${user.id}:${workspace.id}`}
       scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
+      views={
+        <InboxViews
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          current="requests"
+        />
+      }
       filters={search}
       onFilters={(filters) => void navigate({ search: filters })}
     />

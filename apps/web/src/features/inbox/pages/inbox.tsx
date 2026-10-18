@@ -54,6 +54,8 @@ function InboxHeader({
   filter,
   canMarkAll,
   marking,
+  views,
+  kindFilter,
   onFilter,
   onMarkAll,
 }: Readonly<{
@@ -61,22 +63,28 @@ function InboxHeader({
   filter: WorkspaceInboxFilter;
   canMarkAll: boolean;
   marking: boolean;
+  views?: ReactNode;
+  kindFilter?: ReactNode;
   onFilter: (filter: WorkspaceInboxFilter) => void;
   onMarkAll: () => void;
 }>) {
   return (
     <PageHeader>
-      <div>
-        <PageHeaderTitle>Inbox</PageHeaderTitle>
-        {unreadCount === undefined ? null : (
-          <PageHeaderMeta>
-            <span>
-              <b className="text-foreground">{unreadCount}</b> unread
-            </span>
-          </PageHeaderMeta>
-        )}
+      <div className="flex flex-col gap-4">
+        <div>
+          <PageHeaderTitle>Inbox</PageHeaderTitle>
+          {unreadCount === undefined ? null : (
+            <PageHeaderMeta>
+              <span>
+                <b className="text-foreground">{unreadCount}</b> unread
+              </span>
+            </PageHeaderMeta>
+          )}
+        </div>
+        {views}
       </div>
       <PageHeaderActions>
+        {kindFilter}
         <ToggleGroup
           aria-label="Show"
           value={[filter]}
@@ -169,9 +177,10 @@ export function InboxPage({
   onFilterChange,
   noticeKind,
   onNoticeKindChange,
-  children,
+  views,
 }: Readonly<{
-  children?: ReactNode;
+  /** Switches between notices and requests, when this person has both. */
+  views?: ReactNode;
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
@@ -198,7 +207,7 @@ export function InboxPage({
   });
   const markAll = useMarkAllReadMutation(scope);
 
-  if (!canRead && children == null)
+  if (!canRead)
     return (
       <UnavailablePage
         heading="Inbox"
@@ -209,22 +218,6 @@ export function InboxPage({
           'get notified when workflows fail',
         )}
       />
-    );
-  if (!canRead)
-    return (
-      <section>
-        <PageHeader>
-          <PageHeaderTitle>Inbox</PageHeaderTitle>
-        </PageHeader>
-        {children}
-        <p className="mt-3 text-sm text-muted-foreground">
-          {roleLimitSentence(
-            workspace.role,
-            'notification:read',
-            'view workflow failure notices',
-          )}
-        </p>
-      </section>
     );
   if (
     threads.isError &&
@@ -249,19 +242,17 @@ export function InboxPage({
         filter={filter}
         canMarkAll={cut !== undefined && (unreadCount ?? 0) > 0}
         marking={markAll.isPending}
+        views={views}
+        kindFilter={
+          onNoticeKindChange === undefined ? undefined : (
+            <NoticeKindFilter kind={noticeKind} onChange={onNoticeKindChange} />
+          )
+        }
         onFilter={onFilterChange}
         onMarkAll={() => {
           if (cut !== undefined) markAll.mutate(cut);
         }}
       />
-      {onNoticeKindChange === undefined ? null : (
-        <NoticeKindFilter kind={noticeKind} onChange={onNoticeKindChange} />
-      )}
-      {children}
-      <p className="-mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        Notices show what needs attention. Failures are grouped by workflow;
-        reading or muting a notice never changes its runs or pending tasks.
-      </p>
       <InboxThreadResults
         scope={scope}
         threads={threads}

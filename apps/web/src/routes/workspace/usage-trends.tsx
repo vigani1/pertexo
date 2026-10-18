@@ -5,7 +5,9 @@ import { useWorkspaceScope } from './shell/use-workspace-scope';
 export function UsageTrendsRoute() {
   const scope = useWorkspaceScope();
   const search = parseUsageTrendsSearch(
-    useSearch({ from: '/w/$workspaceId/shell/settings/usage/trends' }),
+    useSearch({
+      from: '/w/$workspaceId/shell/settings-hub/settings/usage/trends',
+    }),
   );
   const navigate = useNavigate();
   return (

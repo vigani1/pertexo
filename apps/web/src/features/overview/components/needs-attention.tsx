@@ -48,7 +48,7 @@ function ActionLink({
     case 'alerts':
       return (
         <Link
-          to="/w/$workspaceId/alerts"
+          to="/w/$workspaceId/settings/alerts"
           params={{ workspaceId }}
           className={className}
         >

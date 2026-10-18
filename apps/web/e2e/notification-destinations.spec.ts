@@ -139,11 +139,20 @@ test('creates, versions and disables a notification destination', async ({
     },
   );
 
+  // The old address still arrives at Alerts, now inside Settings.
   await page.goto(`/w/${workspaceId}/alerts`);
+  await expect(page).toHaveURL(
+    new RegExp(`/w/${workspaceId}/settings/alerts$`),
+  );
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Settings' })
+      .getByRole('link', { name: 'Alerts' }),
+  ).toHaveAttribute('aria-current', 'page');
   await expect(
     page
       .getByRole('navigation', { name: 'Workspace' })
-      .getByRole('link', { name: 'Alerts' }),
+      .getByRole('link', { name: 'Settings' }),
   ).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'Add destination' }).click();
   const lens = page.locator('[data-slot="sheet-content"]');

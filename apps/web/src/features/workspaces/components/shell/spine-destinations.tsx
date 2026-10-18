@@ -1,13 +1,9 @@
 import type { ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import type { LinkProps } from '@tanstack/react-router';
+import { useMatchRoute, type LinkProps } from '@tanstack/react-router';
 import {
   Table2Icon,
-  BellIcon,
-  CheckCheckIcon,
-  GaugeIcon,
   InboxIcon,
-  KeyRoundIcon,
   PlugIcon,
   SlidersHorizontalIcon,
   UsersIcon,
@@ -15,36 +11,36 @@ import {
   WorkflowIcon,
 } from 'lucide-react';
 
+type WorkspacePath = Extract<
+  LinkProps['to'],
+  | '/w/$workspaceId/workflows'
+  | '/w/$workspaceId/data-tables'
+  | '/w/$workspaceId/runs'
+  | '/w/$workspaceId/inbox'
+  | '/w/$workspaceId/requests'
+  | '/w/$workspaceId/approvals'
+  | '/w/$workspaceId/connections'
+  | '/w/$workspaceId/team'
+  | '/w/$workspaceId/settings'
+>;
+
 export type SpineDestination = Readonly<{
-  to: Extract<
-    LinkProps['to'],
-    | '/w/$workspaceId'
-    | '/w/$workspaceId/workflows'
-    | '/w/$workspaceId/data-tables'
-    | '/w/$workspaceId/runs'
-    | '/w/$workspaceId/inbox'
-    | '/w/$workspaceId/requests'
-    | '/w/$workspaceId/connections'
-    | '/w/$workspaceId/team'
-    | '/w/$workspaceId/alerts'
-    | '/w/$workspaceId/settings'
-    | '/w/$workspaceId/settings/usage'
-    | '/w/$workspaceId/settings/variables'
-    | '/w/$workspaceId/settings/audit'
-    | '/w/$workspaceId/settings/promotion'
-    | '/w/$workspaceId/settings/sso'
-    | '/w/$workspaceId/settings/notifications'
-    | '/w/$workspaceId/settings/api-tokens'
-  >;
+  to: WorkspacePath;
   label: string;
   icon: ReactNode;
   exact?: boolean;
+  /** Other pages that belong to this destination, so it stays lit there. */
+  includes?: readonly WorkspacePath[];
   badge?: number;
   /** Says what the badge counts, for its accessible name: "running". */
   badgeNoun?: string;
 }>;
 
-/** Which destinations the current role may see, in spine order. */
+/**
+ * Which destinations the current role may see, in spine order. The spine
+ * holds the work; workspace administration lives behind Settings, whose own
+ * rail lists its pages.
+ */
 export function spineDestinations(
   workspace: AccessibleWorkspace,
   liveRunCount: number | undefined,
@@ -76,15 +72,14 @@ export function spineDestinations(
       to: '/w/$workspaceId/inbox',
       label: 'Inbox',
       icon: <InboxIcon />,
+      ...(can('run:read')
+        ? {
+            includes: ['/w/$workspaceId/requests', '/w/$workspaceId/approvals'],
+          }
+        : {}),
       ...(unreadNoticeCount === undefined || unreadNoticeCount === 0
         ? {}
         : { badge: unreadNoticeCount, badgeNoun: 'unread' }),
-    });
-  if (can('run:read'))
-    primary.push({
-      to: '/w/$workspaceId/requests',
-      label: 'Requests',
-      icon: <CheckCheckIcon />,
     });
   if (can('workspace:read'))
     primary.push({
@@ -99,62 +94,27 @@ export function spineDestinations(
       icon: <PlugIcon />,
     });
   const administration: SpineDestination[] = [];
-  if (can('run:read'))
-    administration.push({
-      to: '/w/$workspaceId/settings/usage',
-      label: 'Usage',
-      icon: <GaugeIcon />,
-    });
   if (can('member:read'))
     administration.push({
       to: '/w/$workspaceId/team',
       label: 'Team',
       icon: <UsersIcon />,
     });
-  if (can('workflow:update'))
-    administration.push({
-      to: '/w/$workspaceId/alerts',
-      label: 'Alerts',
-      icon: <BellIcon />,
-    });
   administration.push({
     to: '/w/$workspaceId/settings',
     label: 'Settings',
     icon: <SlidersHorizontalIcon />,
-    exact: true,
   });
-  administration.push({
-    to: '/w/$workspaceId/settings/variables',
-    label: 'Variables',
-    icon: <SlidersHorizontalIcon />,
-  });
-  administration.push({
-    to: '/w/$workspaceId/settings/notifications',
-    label: 'Notifications',
-    icon: <BellIcon />,
-  });
-  administration.push({
-    to: '/w/$workspaceId/settings/api-tokens',
-    label: 'API tokens',
-    icon: <KeyRoundIcon />,
-  });
-  if (workspace.capabilities.includes('workflow:update'))
-    administration.push({
-      to: '/w/$workspaceId/settings/promotion',
-      label: 'Promotion',
-      icon: <WavesIcon />,
-    });
-  if (workspace.capabilities.includes('audit:read'))
-    administration.push({
-      to: '/w/$workspaceId/settings/audit',
-      label: 'Audit log',
-      icon: <SlidersHorizontalIcon />,
-    });
-  if (workspace.capabilities.includes('member:read'))
-    administration.push({
-      to: '/w/$workspaceId/settings/sso',
-      label: 'Single sign-on',
-      icon: <KeyRoundIcon />,
-    });
   return { primary, workspace: administration };
+}
+
+/** Whether the open page is one the destination includes, like Requests in Inbox. */
+export function useIncludedPage(
+  workspaceId: string,
+  destination: SpineDestination,
+): boolean {
+  const matchRoute = useMatchRoute();
+  return (destination.includes ?? []).some(
+    (to) => matchRoute({ to, params: { workspaceId }, fuzzy: true }) !== false,
+  );
 }

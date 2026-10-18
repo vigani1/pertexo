@@ -5,7 +5,7 @@ import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function WorkflowPromotionRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();
   const search = useSearch({
-    from: '/w/$workspaceId/shell/settings/promotion',
+    from: '/w/$workspaceId/shell/settings-hub/settings/promotion',
   });
   const navigate = useNavigate();
   return (

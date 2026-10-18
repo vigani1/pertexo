@@ -3,6 +3,13 @@ import { Link } from '@tanstack/react-router';
 import type { PendingTaskListQuery } from '@pertexo/contracts';
 import { LoadMore } from '@/components/patterns/load-more';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { tasksQueryOptions } from '../data/tasks.queries';
 import type { TaskScope } from '../data/tasks.api';
@@ -32,19 +39,30 @@ export function TaskList({
   const items = query.data.pages.flatMap((page) => page.items);
   return (
     <div>
-      {filters.view === 'mine' &&
-      filters.status === 'pending' &&
-      filters.runId === undefined ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {query.data.pages[0]?.pendingCount ?? 0} ready for your response
-        </p>
-      ) : null}
       {items.length === 0 ? (
-        <p className="py-4 text-sm text-muted-foreground">
-          {filters.status === 'pending'
-            ? 'No requests waiting for you.'
-            : 'No requests match this view.'}
-        </p>
+        compact ? (
+          <p className="py-4 text-sm text-muted-foreground">
+            {filters.status === 'pending'
+              ? 'No requests waiting for you.'
+              : 'No requests match this view.'}
+          </p>
+        ) : (
+          <Empty>
+            <EmptyMedia className="w-full max-w-56">
+              <FinishedThread />
+            </EmptyMedia>
+            <EmptyTitle>
+              {filters.status === 'pending'
+                ? 'Nothing is waiting'
+                : 'No requests here'}
+            </EmptyTitle>
+            <EmptyDescription>
+              {filters.status === 'pending'
+                ? 'When a workflow needs an approval or a person’s input, it pauses and asks here.'
+                : 'Try another status or show everyone’s requests.'}
+            </EmptyDescription>
+          </Empty>
+        )
       ) : (
         <ul>
           {(compact ? items.slice(0, 5) : items).map((task) => (

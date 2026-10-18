@@ -1,6 +1,10 @@
+import type { ReactNode } from 'react';
 import type { PendingTaskListQuery } from '@pertexo/contracts';
-import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { LabelledField } from '@/components/ui/field';
+import {
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
 import {
   Select,
   SelectTrigger,
@@ -8,109 +12,97 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { TaskScope } from '../data/tasks.api';
 import { TaskList } from '../components/task-list';
+
+type TaskFilters = Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'>;
+
+const kinds = [
+  { value: 'all', label: 'All requests' },
+  { value: 'approval', label: 'Approvals' },
+  { value: 'input_request', label: 'Input requests' },
+];
+
 export function TasksPage({
   scope,
   filters,
+  views,
   onFilters,
 }: Readonly<{
   scope: TaskScope;
-  filters: Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'>;
-  onFilters: (
-    filters: Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'>,
-  ) => void;
+  filters: TaskFilters;
+  /** Shown under the Inbox title when requests are one of its views. */
+  views?: ReactNode;
+  onFilters: (filters: TaskFilters) => void;
 }>) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader>
-        <PageHeaderTitle>
-          {filters.kind === 'approval'
-            ? 'Approvals'
-            : filters.kind === 'input_request'
-              ? 'Input requests'
-              : 'Requests'}
-        </PageHeaderTitle>
+        <div className="flex flex-col gap-4">
+          <PageHeaderTitle>
+            {views !== undefined
+              ? 'Inbox'
+              : filters.kind === 'approval'
+                ? 'Approvals'
+                : filters.kind === 'input_request'
+                  ? 'Input requests'
+                  : 'Requests'}
+          </PageHeaderTitle>
+          {views}
+        </div>
+        <PageHeaderActions>
+          <Select
+            items={kinds}
+            value={filters.kind ?? 'all'}
+            onValueChange={(value) => {
+              onFilters({
+                ...filters,
+                kind:
+                  value === 'approval' || value === 'input_request'
+                    ? value
+                    : 'all',
+              });
+            }}
+          >
+            <SelectTrigger aria-label="Show" className="h-8 w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {kinds.map((kind) => (
+                <SelectItem key={kind.value} value={kind.value}>
+                  {kind.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <ToggleGroup
+            aria-label="Whose requests"
+            value={[filters.view]}
+            onValueChange={(values) => {
+              const next: unknown = values[0];
+              if (next === 'mine' || next === 'all')
+                onFilters({ ...filters, view: next });
+            }}
+          >
+            <ToggleGroupItem value="mine">For me</ToggleGroupItem>
+            <ToggleGroupItem value="all">Everyone</ToggleGroupItem>
+          </ToggleGroup>
+          <ToggleGroup
+            aria-label="Status"
+            value={[filters.status]}
+            onValueChange={(values) => {
+              const next: unknown = values[0];
+              if (next === 'pending' || next === 'resolved' || next === 'all')
+                onFilters({ ...filters, status: next });
+            }}
+          >
+            <ToggleGroupItem value="pending">Waiting</ToggleGroupItem>
+            <ToggleGroupItem value="resolved">Resolved</ToggleGroupItem>
+            <ToggleGroupItem value="all">All</ToggleGroupItem>
+          </ToggleGroup>
+        </PageHeaderActions>
       </PageHeader>
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        One eligible member resolves each request. Run starters can supply
-        input; approvals require another person.
-      </p>
-      <div className="flex flex-wrap gap-4">
-        <LabelledField id="request-kind" label="Kind">
-          {(control) => (
-            <Select
-              value={filters.kind ?? 'all'}
-              onValueChange={(value) => {
-                onFilters({
-                  ...filters,
-                  kind:
-                    value === 'approval' || value === 'input_request'
-                      ? value
-                      : 'all',
-                });
-              }}
-            >
-              <SelectTrigger {...control} className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All requests</SelectItem>
-                <SelectItem value="approval">Approvals</SelectItem>
-                <SelectItem value="input_request">Input requests</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </LabelledField>
-        <LabelledField id="approval-view" label="Audience">
-          {(control) => (
-            <Select
-              value={filters.view}
-              onValueChange={(value) => {
-                onFilters({
-                  ...filters,
-                  view: value === 'all' ? 'all' : 'mine',
-                });
-              }}
-            >
-              <SelectTrigger {...control}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mine">Mine</SelectItem>
-                <SelectItem value="all">All in workspace</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </LabelledField>
-        <LabelledField id="approval-status" label="Status">
-          {(control) => (
-            <Select
-              value={filters.status}
-              onValueChange={(value) => {
-                onFilters({
-                  ...filters,
-                  status:
-                    value === 'resolved'
-                      ? 'resolved'
-                      : value === 'all'
-                        ? 'all'
-                        : 'pending',
-                });
-              }}
-            >
-              <SelectTrigger {...control}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Waiting</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
-                <SelectItem value="all">All</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </LabelledField>
-      </div>
       <TaskList scope={scope} filters={filters} />
     </div>
   );
