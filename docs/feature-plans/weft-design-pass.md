@@ -73,13 +73,17 @@ result at desktop and phone width, then rebase-merge after CI passes.
   setup checks it at once, so Import is the next click; one with setup still
   waits for its values. Unavailable primary buttons look unavailable. Merging
   the client-side starters with the curated examples into one list stays open:
-  it needs a decision on whether the starters become curated examples.
+  it needs a decision on whether the starters become curated examples. The step palette should show everyday
+actions before the four data table steps, which could share one bundle once a
+bundle can carry its own tile.
 - [x] 6. **Plain words on the newer screens.** Data tables, notifications,
   usage, single sign-on and promotion open with a sentence or two about what the
   page is for; variables keep their limits in a disclosure. Requests and Inbox
   already speak plainly since slice 1. Save no longer sits beside an
   always-present reload: Discard changes appears only with unsaved edits, and
-  Load the latest only when stored values moved on. Still open: the editor's
+  Load the latest only when stored values moved on. A published version's row
+  keeps Preview and Restore to draft; Promote, Export and Duplicate move into
+  its More menu. Still open: the editor's
   test bar should wait for test activity, which needs Run all tests in a split
   Test workflow menu first.
 - [x] 7. **A run's ending.** When a run ends at a Stop run step whose outcome
