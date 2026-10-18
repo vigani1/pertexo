@@ -1,6 +1,27 @@
 import type { PoolClient } from 'pg';
 import type { MembershipRole } from '../contracts.js';
 
+export type MembershipAddition = Readonly<{
+  userId: string;
+  role: MembershipRole;
+}>;
+
+export async function createMemberships(
+  client: PoolClient,
+  workspaceId: string,
+  additions: readonly MembershipAddition[],
+): Promise<void> {
+  await client.query(
+    `insert into app.workspace_memberships(workspace_id,user_id,role,status)
+        select $1,member.user_id,member.role,'active' from unnest($2::uuid[],$3::text[]) as member(user_id,role)`,
+    [
+      workspaceId,
+      additions.map((member) => member.userId),
+      additions.map((member) => member.role),
+    ],
+  );
+}
+
 export type MembershipChange = Readonly<{
   userId: string;
   role: MembershipRole;
