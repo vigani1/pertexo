@@ -94,6 +94,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0031_publication_review.sql',
       '0032_federated_sign_in.sql',
       '0033_organization_oidc.sql',
+      '0034_organization_directory.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({
