@@ -180,7 +180,8 @@ test('real cross-workspace reviewed exports, explicit rebinding, independent edi
   await page.goto(
     `/w/${seed.sourceWorkspaceId}/workflows/${seed.sourceWorkflowId}/versions`,
   );
-  await page.getByRole('button', { name: 'Export v1', exact: true }).click();
+  await page.getByRole('button', { name: 'More for v1', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Export v1', exact: true }).click();
   const versionFile = await downloadReviewedSource(
     page,
     info,
