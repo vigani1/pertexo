@@ -36,6 +36,22 @@ for (const width of [375, 1280]) {
       const remote = remoteDraft();
       await addCsrfCookie(context);
       await installEditorRoutes(page, remote);
+      await page.route('**/v1/workspaces/*/workflows/*/presence?*', (route) =>
+        route.fulfill({
+          json: {
+            people: [
+              {
+                userId: '12121212-1212-4212-8212-121212121212',
+                displayName: 'Another editor',
+                editing: true,
+                dirty: false,
+                baseRevision: 1,
+                tabCount: 1,
+              },
+            ],
+          },
+        }),
+      );
       await installNodeTestRoute(page, remote);
       await installPublishRoutes(page, remote);
 
@@ -124,6 +140,27 @@ for (const width of [375, 1280]) {
       await lens.getByRole('button', { name: 'Publish v1' }).click();
       await expect(lens).toBeHidden();
       await expect(page.getByText('v1 is live')).toBeVisible();
+      const published = page
+        .getByRole('status')
+        .filter({ hasText: 'v1 is live' });
+      await expect
+        .poll(
+          async () => {
+            const header = await page.locator('header').boundingBox();
+            const feedback = await published.boundingBox();
+            return (
+              header !== null &&
+              feedback !== null &&
+              feedback.y >= header.y + header.height
+            );
+          },
+          {
+            timeout: 5000,
+            message:
+              'Publish feedback must leave all workflow header controls unobstructed',
+          },
+        )
+        .toBe(true);
       await expect(
         page.getByRole('button', { name: 'No changes since v1' }),
       ).toBeDisabled();

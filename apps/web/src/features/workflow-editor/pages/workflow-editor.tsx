@@ -308,6 +308,7 @@ function WorkflowEditorSession({
               commands={
                 paused ? null : (
                   <WorkflowCommandActions
+                    renderFeedback={chrome.renderFeedback}
                     apiClient={apiClient}
                     userId={userId}
                     workspace={workspace}

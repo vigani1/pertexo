@@ -137,6 +137,9 @@ One feature PR with coherent, buildable commits; moves precede logic separately.
    plain, paged history, keyboard access and phone navigation at a fixed header
    height. The hub owns presence, while the editor remains the only draft owner.
    Keep query updates and open menus stable; no revision keys that remount forms.
+   The editor owns the publication feedback layer below its bar and notices;
+   publishing supplies content through that composition slot. Feedback must not
+   cover wrapped header controls or sit behind the phone inspector.
 7. Qualify through actual app-role PostgreSQL, HTTP and two browser sessions;
    document `docs/guides/collaboration.md`, update trackers, normal hooks, exact-head
    green CI and rebase merge. Reuse the existing live-browser job with an owned
