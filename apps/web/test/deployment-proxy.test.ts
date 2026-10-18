@@ -64,6 +64,23 @@ describe('same-origin web proxy configuration', () => {
     );
   });
 
+  it('compresses the app files and passes API responses through as sent', async () => {
+    const configuration = await readFile(
+      new URL('../deployment/nginx.conf.template', import.meta.url),
+      'utf8',
+    );
+    const server = nginxBlock(configuration, 'server {').body;
+    const shared = server.slice(0, server.indexOf('location '));
+    expect(shared).toContain('gzip on;');
+    // Caddy and load balancers forward requests; nginx skips those by default.
+    expect(shared).toContain('gzip_proxied any;');
+    expect(shared).toMatch(/gzip_types [^;]*application\/javascript/u);
+    expect(shared).toMatch(/gzip_types [^;]*text\/css/u);
+    expect(nginxBlock(configuration, 'location /v1').body).toContain(
+      'gzip off;',
+    );
+  });
+
   it('retains a trusted proxy scheme and falls back to the direct scheme', async () => {
     const configuration = await readFile(
       new URL('../deployment/nginx.conf.template', import.meta.url),
