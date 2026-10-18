@@ -591,12 +591,29 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const aggregate = await workspaceAggregate(workspace.id);
     expect(aggregate.memberships).toHaveLength(1);
     expect(aggregate.memberships[0]).toMatchObject({ role: 'owner' });
-    expect(aggregate.events).toHaveLength(1);
-    expect(aggregate.events[0]).toMatchObject({
-      action: 'workspace.created',
-      requestId,
-      traceId,
-    });
+    expect(aggregate.events).toHaveLength(2);
+    expect(aggregate.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'workspace.created',
+          requestId,
+          traceId,
+        }),
+        expect.objectContaining({
+          action: 'workspace.member_added',
+          requestId,
+          traceId,
+          targetType: 'workspace_member',
+          targetId: aggregate.memberships[0]?.userId,
+          metadata: {
+            source: 'workspace_creation',
+            role: 'owner',
+            status: 'active',
+            roleRevision: 1,
+          },
+        }),
+      ]),
+    );
 
     const duplicate = await application.inject({
       method: 'POST',
@@ -607,7 +624,8 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expectProblem(duplicate, 409, 'workspace.conflict');
     const unchanged = await workspaceAggregate(workspace.id);
     expect(unchanged.memberships).toHaveLength(1);
-    expect(unchanged.events).toHaveLength(1);
+    expect(unchanged.events).toHaveLength(2);
+    expect(unchanged.events).toEqual(expect.arrayContaining(aggregate.events));
 
     const forgedRole = await application.inject({
       method: 'POST',
@@ -758,9 +776,10 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       status: 'pending_deletion',
       deletionReason: 'customer requested integration deletion',
     });
-    expect(deleted.events.map(({ action }) => action)).toEqual([
+    expect(deleted.events.map(({ action }) => action).sort()).toEqual([
       'workspace.created',
       'workspace.deletion_requested',
+      'workspace.member_added',
     ]);
 
     const changedReplay = await application.inject({
