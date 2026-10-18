@@ -1,3 +1,8 @@
+import {
+  workspacePeopleQuerySchema as approvalAudienceQuerySchema,
+  workspacePeoplePageSchema as approvalAudiencePageSchema,
+} from '../identity/people.js';
+export { approvalAudienceQuerySchema, approvalAudiencePageSchema };
 import { z } from 'zod';
 import {
   taskAudienceSchema,
@@ -113,28 +118,6 @@ export const pendingTaskDecisionRequestSchema = z
   .strict();
 export const pendingTaskDecisionResponseSchema = z
   .object({ task: pendingTaskDetailSchema, replayed: z.boolean() })
-  .strict();
-export const approvalAudienceQuerySchema = z
-  .object({
-    after: z.uuid().optional(),
-    q: z.string().trim().max(100).default(''),
-  })
-  .strict();
-export const approvalAudiencePageSchema = z
-  .object({
-    items: z
-      .array(
-        z
-          .object({
-            userId: z.uuid(),
-            displayName: z.string().max(256),
-            role: z.enum(['owner', 'admin', 'builder', 'operator', 'viewer']),
-          })
-          .strict(),
-      )
-      .max(50),
-    nextCursor: z.uuid().nullable(),
-  })
   .strict();
 export type PendingTaskSummary = z.output<typeof pendingTaskSummarySchema>;
 export type PendingTaskDetail = z.output<typeof pendingTaskDetailSchema>;
