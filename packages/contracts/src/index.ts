@@ -211,4 +211,4 @@ export {
 export {
   socialSignInStartSchema,
   socialSignInStartedSchema,
-} from './schemas/identity/federation.js';
+} from './schemas/identity/federation/social.js';

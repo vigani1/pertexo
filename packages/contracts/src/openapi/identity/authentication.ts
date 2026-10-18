@@ -27,7 +27,7 @@ import {
 import {
   socialSignInStartSchema,
   socialSignInStartedSchema,
-} from '../../schemas/identity/federation.js';
+} from '../../schemas/identity/federation/social.js';
 
 /**
  * Sign-in, browser-session and account-security operations of the

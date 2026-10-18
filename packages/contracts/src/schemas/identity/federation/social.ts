@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { authenticationProviderSchema } from './authentication.js';
+import { authenticationProviderSchema } from '../authentication.js';
 
 export const socialSignInStartSchema = z
   .object({
