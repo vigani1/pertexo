@@ -1,13 +1,14 @@
 import {
   federationSettingsSchema,
+  samlMetadataSchema,
   type FederationSettings,
   type FederationOrganizationCreate,
   type FederationWorkspaceLink,
   type FederationDomainCreate,
   type FederationRevisionCommand,
   type FederationEnforcement,
-  type OidcProviderCreate,
-  type OidcProviderUpdate,
+  type FederationProviderCreate,
+  type FederationProviderUpdate,
 } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 export type FederationScope = WorkspaceApiScope;
@@ -28,11 +29,11 @@ export type FederationCommand =
       domainId: string;
       input: FederationEnforcement;
     }>
-  | Readonly<{ kind: 'createProvider'; input: OidcProviderCreate }>
+  | Readonly<{ kind: 'createProvider'; input: FederationProviderCreate }>
   | Readonly<{
       kind: 'updateProvider';
       providerId: string;
-      input: OidcProviderUpdate;
+      input: FederationProviderUpdate;
     }>
   | Readonly<{
       kind: 'removeProvider';
@@ -115,6 +116,17 @@ export function applyFederationCommand(
     response: {
       kind: 'json',
       decode: (value) => federationSettingsSchema.parse(value),
+    },
+  });
+}
+
+export function readSamlMetadata(scope: FederationScope, signal: AbortSignal) {
+  return scope.apiClient.request({
+    path: `${base(scope)}/saml/metadata`,
+    signal,
+    response: {
+      kind: 'json',
+      decode: (value) => samlMetadataSchema.parse(value),
     },
   });
 }

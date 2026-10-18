@@ -74,7 +74,7 @@ describe('organization federation management', () => {
     ).rejects.toBeDefined();
     const sealSecret = vi.fn(() => ({ ciphertext: 'never' }));
     await expect(
-      db.federation().createOidcProvider({
+      db.federation().createProvider({
         ...scope,
         actorId: admin.id,
         name: 'Provider',
@@ -286,8 +286,8 @@ describe('organization federation management', () => {
       expectedRevision: 1,
       idempotencyKey: key(),
     };
-    const created = await db.federation().createOidcProvider(command);
-    await expect(db.federation().createOidcProvider(command)).resolves.toEqual(
+    const created = await db.federation().createProvider(command);
+    await expect(db.federation().createProvider(command)).resolves.toEqual(
       created,
     );
     expect(sealSecret).toHaveBeenCalledTimes(1);
@@ -316,13 +316,13 @@ describe('organization federation management', () => {
     await expect(
       db
         .federation()
-        .createOidcProvider({ ...command, secretFingerprint: 'different' }),
+        .createProvider({ ...command, secretFingerprint: 'different' }),
     ).rejects.toHaveProperty('name', 'IdempotencyConflictError');
   });
   it('rolls back a failed seal without persisting a provider, revision or command', async () => {
     const { scope } = await setup();
     await expect(
-      db.federation().createOidcProvider({
+      db.federation().createProvider({
         ...scope,
         name: 'Bad secret',
         issuer: 'https://idp.example.test',

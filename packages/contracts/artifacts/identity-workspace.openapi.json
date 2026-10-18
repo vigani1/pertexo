@@ -4595,7 +4595,7 @@
     },
     "/v1/workspaces/{workspaceId}/sso/providers": {
       "post": {
-        "operationId": "createOidcProvider",
+        "operationId": "createIdentityProvider",
         "security": [
           {
             "cookieSession": []
@@ -4642,7 +4642,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OidcProviderCreate"
+                "$ref": "#/components/schemas/FederationProviderCreate"
               }
             }
           }
@@ -4743,7 +4743,7 @@
     },
     "/v1/workspaces/{workspaceId}/sso/providers/{providerId}": {
       "put": {
-        "operationId": "updateOidcProvider",
+        "operationId": "updateIdentityProvider",
         "security": [
           {
             "cookieSession": []
@@ -4801,7 +4801,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OidcProviderUpdate"
+                "$ref": "#/components/schemas/FederationProviderUpdate"
               }
             }
           }
@@ -4900,9 +4900,124 @@
         }
       }
     },
+    "/v1/workspaces/{workspaceId}/sso/saml/metadata": {
+      "get": {
+        "operationId": "downloadSamlServiceProviderMetadata",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded SP metadata for XML download",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SamlMetadata"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or configuration missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Owner authority or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Settings changed or command conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Identity provider unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/workspaces/{workspaceId}/sso/providers/{providerId}/remove": {
       "post": {
-        "operationId": "removeOidcProvider",
+        "operationId": "removeIdentityProvider",
         "security": [
           {
             "cookieSession": []
@@ -5427,6 +5542,273 @@
         "responses": {
           "302": {
             "description": "Safe same-origin landing after single-use proof consumption"
+          }
+        }
+      }
+    },
+    "/v1/auth/federation/saml/start": {
+      "post": {
+        "operationId": "startOrganizationSamlSignIn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FederationSignInStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Browser-bound Redirect URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationStarted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or configuration missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Owner authority or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Settings changed or command conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Identity provider unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/federation/saml/test": {
+      "post": {
+        "operationId": "startOrganizationSamlTest",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FederationTestStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owner-bound provider test Redirect URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationStarted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or configuration missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Owner authority or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Settings changed or command conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Identity provider unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/federation/saml/callback": {
+      "post": {
+        "operationId": "finishOrganizationSamlSignIn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "SAMLResponse",
+                  "RelayState"
+                ],
+                "properties": {
+                  "SAMLResponse": {
+                    "type": "string",
+                    "maxLength": 349528
+                  },
+                  "RelayState": {
+                    "type": "string",
+                    "maxLength": 43
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Safe same-origin landing after signed, browser-bound, single-use proof verification"
           }
         }
       }
@@ -11733,82 +12115,168 @@
                     "maxItems": 10,
                     "type": "array",
                     "items": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "format": "uuid",
-                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                        },
-                        "kind": {
-                          "type": "string",
-                          "const": "oidc"
-                        },
-                        "name": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 128
-                        },
-                        "issuer": {
-                          "type": "string",
-                          "maxLength": 2048
-                        },
-                        "configuration": {
+                      "oneOf": [
+                        {
                           "type": "object",
                           "properties": {
-                            "clientId": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "const": "oidc"
+                            },
+                            "name": {
                               "type": "string",
                               "minLength": 1,
-                              "maxLength": 512
+                              "maxLength": 128
                             },
-                            "emailClaim": {
-                              "default": "email",
+                            "issuer": {
                               "type": "string",
-                              "minLength": 1,
-                              "maxLength": 256
+                              "maxLength": 2048
                             },
-                            "nameClaim": {
-                              "default": "name",
-                              "type": "string",
-                              "minLength": 1,
-                              "maxLength": 256
+                            "configuration": {
+                              "type": "object",
+                              "properties": {
+                                "clientId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 512
+                                },
+                                "emailClaim": {
+                                  "default": "email",
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 256
+                                },
+                                "nameClaim": {
+                                  "default": "name",
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 256
+                                },
+                                "jitEnabled": {
+                                  "default": false,
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "clientId",
+                                "emailClaim",
+                                "nameClaim",
+                                "jitEnabled"
+                              ],
+                              "additionalProperties": false
                             },
-                            "jitEnabled": {
-                              "default": false,
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "revision": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 2147483647
+                            },
+                            "secretConfigured": {
                               "type": "boolean"
                             }
                           },
                           "required": [
-                            "clientId",
-                            "emailClaim",
-                            "nameClaim",
-                            "jitEnabled"
+                            "id",
+                            "kind",
+                            "name",
+                            "issuer",
+                            "configuration",
+                            "enabled",
+                            "revision",
+                            "secretConfigured"
                           ],
                           "additionalProperties": false
                         },
-                        "enabled": {
-                          "type": "boolean"
-                        },
-                        "revision": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 2147483647
-                        },
-                        "secretConfigured": {
-                          "type": "boolean"
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "const": "saml"
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            },
+                            "issuer": {
+                              "type": "string"
+                            },
+                            "configuration": {
+                              "type": "object",
+                              "properties": {
+                                "signInUrl": {
+                                  "type": "string"
+                                },
+                                "certificates": {
+                                  "minItems": 1,
+                                  "maxItems": 2,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 16384
+                                  }
+                                },
+                                "emailAttribute": {
+                                  "default": "email",
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 256
+                                },
+                                "nameAttribute": {
+                                  "default": "name",
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 256
+                                },
+                                "jitEnabled": {
+                                  "default": false,
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "signInUrl",
+                                "certificates",
+                                "emailAttribute",
+                                "nameAttribute",
+                                "jitEnabled"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "revision": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 2147483647
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "kind",
+                            "name",
+                            "issuer",
+                            "configuration",
+                            "enabled",
+                            "revision"
+                          ],
+                          "additionalProperties": false
                         }
-                      },
-                      "required": [
-                        "id",
-                        "kind",
-                        "name",
-                        "issuer",
-                        "configuration",
-                        "enabled",
-                        "revision",
-                        "secretConfigured"
-                      ],
-                      "additionalProperties": false
+                      ]
                     }
                   }
                 },
@@ -11834,6 +12302,33 @@
           "reason",
           "canManage",
           "organization"
+        ],
+        "additionalProperties": false
+      },
+      "SamlMetadata": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "redirectUri": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "xml": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          }
+        },
+        "required": [
+          "entityId",
+          "redirectUri",
+          "xml"
         ],
         "additionalProperties": false
       },
@@ -11938,139 +12433,295 @@
         ],
         "additionalProperties": false
       },
-      "OidcProviderCreate": {
+      "FederationProviderCreate": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "const": "oidc"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128
-          },
-          "issuer": {
-            "type": "string",
-            "maxLength": 2048,
-            "format": "uri"
-          },
-          "configuration": {
+        "oneOf": [
+          {
             "type": "object",
             "properties": {
-              "clientId": {
+              "kind": {
+                "type": "string",
+                "const": "oidc"
+              },
+              "name": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 512
+                "maxLength": 128
               },
-              "emailClaim": {
-                "default": "email",
+              "issuer": {
+                "type": "string",
+                "maxLength": 2048,
+                "format": "uri"
+              },
+              "configuration": {
+                "type": "object",
+                "properties": {
+                  "clientId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  },
+                  "emailClaim": {
+                    "default": "email",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "nameClaim": {
+                    "default": "name",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "jitEnabled": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "clientId"
+                ],
+                "additionalProperties": false
+              },
+              "clientSecret": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 256
+                "maxLength": 8192
               },
-              "nameClaim": {
-                "default": "name",
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 256
-              },
-              "jitEnabled": {
+              "enabled": {
                 "default": false,
                 "type": "boolean"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
               }
             },
             "required": [
-              "clientId"
+              "kind",
+              "name",
+              "issuer",
+              "configuration",
+              "clientSecret",
+              "expectedRevision"
             ],
             "additionalProperties": false
           },
-          "clientSecret": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 8192
-          },
-          "enabled": {
-            "default": false,
-            "type": "boolean"
-          },
-          "expectedRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 2147483647
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "saml"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "issuer": {
+                "type": "string",
+                "maxLength": 2048,
+                "format": "uri"
+              },
+              "configuration": {
+                "type": "object",
+                "properties": {
+                  "signInUrl": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "format": "uri"
+                  },
+                  "certificates": {
+                    "minItems": 1,
+                    "maxItems": 2,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 16384
+                    }
+                  },
+                  "emailAttribute": {
+                    "default": "email",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "nameAttribute": {
+                    "default": "name",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "jitEnabled": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "signInUrl",
+                  "certificates"
+                ],
+                "additionalProperties": false
+              },
+              "enabled": {
+                "default": false,
+                "type": "boolean"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "kind",
+              "name",
+              "issuer",
+              "configuration",
+              "expectedRevision"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "kind",
-          "name",
-          "issuer",
-          "configuration",
-          "clientSecret",
-          "expectedRevision"
-        ],
-        "additionalProperties": false
+        ]
       },
-      "OidcProviderUpdate": {
+      "FederationProviderUpdate": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128
-          },
-          "configuration": {
+        "anyOf": [
+          {
             "type": "object",
             "properties": {
-              "clientId": {
+              "name": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 512
+                "maxLength": 128
               },
-              "emailClaim": {
-                "default": "email",
+              "configuration": {
+                "type": "object",
+                "properties": {
+                  "clientId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  },
+                  "emailClaim": {
+                    "default": "email",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "nameClaim": {
+                    "default": "name",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "jitEnabled": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "clientId"
+                ],
+                "additionalProperties": false
+              },
+              "clientSecret": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 256
+                "maxLength": 8192
               },
-              "nameClaim": {
-                "default": "name",
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 256
-              },
-              "jitEnabled": {
-                "default": false,
+              "enabled": {
                 "type": "boolean"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
               }
             },
             "required": [
-              "clientId"
+              "name",
+              "configuration",
+              "enabled",
+              "expectedRevision"
             ],
             "additionalProperties": false
           },
-          "clientSecret": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 8192
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "expectedRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 2147483647
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "saml"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "configuration": {
+                "type": "object",
+                "properties": {
+                  "signInUrl": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "format": "uri"
+                  },
+                  "certificates": {
+                    "minItems": 1,
+                    "maxItems": 2,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 16384
+                    }
+                  },
+                  "emailAttribute": {
+                    "default": "email",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "nameAttribute": {
+                    "default": "name",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "jitEnabled": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "signInUrl",
+                  "certificates"
+                ],
+                "additionalProperties": false
+              },
+              "enabled": {
+                "default": false,
+                "type": "boolean"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "kind",
+              "name",
+              "configuration",
+              "expectedRevision"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "name",
-          "configuration",
-          "enabled",
-          "expectedRevision"
-        ],
-        "additionalProperties": false
+        ]
       },
       "FederationTestStart": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12124,7 +12775,10 @@
                 },
                 "kind": {
                   "type": "string",
-                  "const": "oidc"
+                  "enum": [
+                    "oidc",
+                    "saml"
+                  ]
                 }
               },
               "required": [

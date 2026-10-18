@@ -26,7 +26,7 @@ export default defineConfig({
   workers: 1,
   timeout: 60_000,
   use: {
-    baseURL: 'http://127.0.0.1:4174',
+    baseURL: process.env.PERTEXO_LIVE_WEB_ORIGIN ?? 'http://127.0.0.1:4174',
     // Live authentication cookies/verification URLs must not become artifacts.
     trace: 'off',
     screenshot: 'off',

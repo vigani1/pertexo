@@ -135,5 +135,51 @@ cleanup and organization/workspace purge use the existing maintenance worker.
 The single-server authentication proxy route keeps these callback paths and
 endpoint secrets out of nginx access logs.
 
-SAML and directory provisioning are the next
-[F28 slices](../feature-plans/28-single-sign-on-and-provisioning.md).
+## Organization sign-in with SAML
+
+Use the same organization, DNS verification, owner/admin read permissions, JIT
+roles and recovery account as OIDC above. SAML needs an HTTPS public app address
+and secure session cookies, including during local qualification. Ordinary HTTP
+development explains this requirement rather than offering an unusable setup.
+
+1. Open **SAML setup and metadata** after creating the organization. Download
+   **SP metadata** before creating the IdP application. The organization has one
+   stable SP entity ID and ACS URL, for example
+   `https://app.example.com/v1/auth/federation/saml/callback`. Changing the public
+   app origin requires updating the IdP application. Metadata contains no secrets.
+2. Configure an SP-initiated SAML 2.0 application at your IdP. It must accept
+   unsigned HTTP-Redirect requests, return HTTP-POST responses, and sign **both
+   the response and assertion** using RSA-SHA256 or RSA-SHA512. Use a persistent,
+   immutable NameID rather than an email address that someone can change.
+   Include scalar `email` and `name` attributes, or configure their exact names.
+3. Choose **Add SAML provider**. Copy the exact IdP entity ID, HTTPS SSO URL and
+   public PEM signing certificate. Entity IDs may be HTTP/HTTPS identifiers or
+   URNs; Pertexo does not fetch them. RSA certificates need at least 2,048-bit
+   keys. Sign-in and creation of new accounts start off; enable them deliberately.
+4. **Test sign-in** against each verified domain. This works with the provider
+   off, preserves the initiating owner session and creates no user or membership.
+   Then enable sign-in and test its current revision before requiring SSO.
+5. For certificate rotation, add the replacement as the second certificate while
+   the first remains valid. Switch signing at the IdP, test, then remove the old
+   certificate. Only currently valid certificates verify responses. Metadata
+   remains downloadable during certificate expiry so recovery does not depend on
+   an already-working IdP configuration. Provider changes end existing sessions
+   and invalidate earlier tests; required domains need another tested provider
+   or must temporarily make SSO optional before the change.
+
+Pertexo validates signatures, exact issuer/audience/destination/recipient,
+request correlation and assertion time bounds. Assertions must be fresh within
+five minutes, allowing two minutes of clock skew. The exact callback accepts a
+form of at most 512 KiB and signed XML of at most 256 KiB; ask the IdP to send only
+the required attributes if its response exceeds these limits. Journeys succeed
+once across API instances. Assertions, claims and provider tokens are never
+stored in audit entries or run data.
+
+The callback uses a dedicated Secure, HttpOnly, SameSite=None proof cookie;
+ordinary session cookies keep their existing SameSite policy. Blocking that
+purpose cookie prevents sign-in safely. IdP-initiated SAML, encrypted assertions,
+signed SP requests and SAML logout are not supported. Use OIDC when the provider
+requires one of those unsupported SAML options.
+
+Directory provisioning is the next
+[F28 slice](../feature-plans/28-single-sign-on-and-provisioning.md).

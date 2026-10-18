@@ -16,14 +16,15 @@ import {
   federationDomainCreateSchema,
   federationRevisionCommandSchema,
   federationEnforcementSchema,
-  oidcProviderCreateSchema,
-  oidcProviderUpdateSchema,
+  federationProviderCreateSchema,
+  federationProviderUpdateSchema,
   workspaceIdentifierSchema,
 } from '@pertexo/contracts';
 import {
   SessionAuthenticationGuard,
   CsrfProtectionGuard,
   WorkspaceManageGuard,
+  WorkspaceMemberReadGuard,
   authenticatedSession,
 } from '../../../workspaces/index.js';
 import type { IdentityWorkspaceRequest } from '../../../workspaces/types.js';
@@ -36,7 +37,7 @@ import { RateLimit } from '../../../platform/rate-limit/metadata.js';
 import { FederationManagementService } from './service.js';
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 @Controller('v1/workspaces/:workspaceId/sso')
-@UseGuards(SessionAuthenticationGuard, WorkspaceManageGuard)
+@UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')
 export class FederationManagementController {
   constructor(private readonly service: FederationManagementService) {}
@@ -64,6 +65,7 @@ export class FederationManagementController {
     );
   }
   @Get()
+  @UseGuards(WorkspaceMemberReadGuard)
   @Header('Cache-Control', 'private, no-store')
   settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
@@ -74,7 +76,7 @@ export class FederationManagementController {
   }
   @Post('organization')
   @HttpCode(200)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   create(
     @Req() request: Request,
@@ -88,7 +90,7 @@ export class FederationManagementController {
   }
   @Post('workspaces')
   @HttpCode(200)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   link(
     @Req() request: Request,
@@ -107,7 +109,7 @@ export class FederationManagementController {
   }
   @Post('domains')
   @HttpCode(200)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   domain(
     @Req() request: Request,
@@ -121,7 +123,7 @@ export class FederationManagementController {
   }
   @Post('domains/:domainId/verify')
   @HttpCode(200)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   verify(
     @Req() request: Request,
@@ -137,7 +139,7 @@ export class FederationManagementController {
   }
   @Post('domains/:domainId/renew')
   @HttpCode(200)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   renew(
     @Req() request: Request,
@@ -153,7 +155,7 @@ export class FederationManagementController {
   }
   @Post('domains/:domainId/remove')
   @HttpCode(200)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   removeDomain(
     @Req() request: Request,
@@ -168,7 +170,7 @@ export class FederationManagementController {
     );
   }
   @Put('domains/:domainId/enforcement')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   enforce(
     @Req() request: Request,
@@ -184,20 +186,20 @@ export class FederationManagementController {
   }
   @Post('providers')
   @HttpCode(200)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   provider(
     @Req() request: Request,
     @Param('workspaceId') workspace: unknown,
     @Body() raw: unknown,
   ) {
-    const input = oidcProviderCreateSchema.parse(raw);
+    const input = federationProviderCreateSchema.parse(raw);
     return this.command(request, workspace, (scope) =>
       this.service.createProvider({ ...scope, ...input }),
     );
   }
   @Put('providers/:providerId')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   updateProvider(
     @Req() request: Request,
@@ -205,15 +207,25 @@ export class FederationManagementController {
     @Param('providerId') provider: unknown,
     @Body() raw: unknown,
   ) {
-    const input = oidcProviderUpdateSchema.parse(raw),
+    const input = federationProviderUpdateSchema.parse(raw),
       providerId = workspaceIdentifierSchema.parse(provider);
     return this.command(request, workspace, (scope) =>
       this.service.updateProvider({ ...scope, ...input, providerId }),
     );
   }
+  @Get('saml/metadata')
+  @UseGuards(WorkspaceMemberReadGuard)
+  @Header('Cache-Control', 'private, no-store')
+  metadata(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
+    return withRequestOperationSignal(request, (signal) =>
+      this.service.perform(() =>
+        this.service.metadata({ ...this.scope(request, workspace), signal }),
+      ),
+    );
+  }
   @Post('providers/:providerId/remove')
   @HttpCode(200)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   removeProvider(
     @Req() request: Request,
@@ -224,7 +236,7 @@ export class FederationManagementController {
     const input = federationRevisionCommandSchema.parse(raw),
       providerId = workspaceIdentifierSchema.parse(provider);
     return this.command(request, workspace, (scope) =>
-      this.service.store.removeOidcProvider({ ...scope, ...input, providerId }),
+      this.service.store.removeProvider({ ...scope, ...input, providerId }),
     );
   }
 }

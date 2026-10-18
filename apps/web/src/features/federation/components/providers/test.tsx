@@ -37,7 +37,7 @@ export function TestProvider({
     ),
     domainId = chosen ?? verified[0]?.id;
   async function test() {
-    if (requests.pending || domainId === undefined || !provider.enabled) return;
+    if (requests.pending || domainId === undefined) return;
     const attempt = requests.begin();
     setError(undefined);
     try {
@@ -45,6 +45,7 @@ export function TestProvider({
         scope.apiClient,
         { workspaceId: scope.workspaceId, providerId: provider.id, domainId },
         attempt.signal,
+        provider.kind,
       );
       if (attempt.isCurrent()) navigateToProvider(url);
     } catch (cause: unknown) {
@@ -89,19 +90,14 @@ export function TestProvider({
         variant="outline"
         pending={requests.pending}
         pendingLabel="Opening provider…"
-        disabled={
-          !editable ||
-          requests.pending ||
-          domainId === undefined ||
-          !provider.enabled
-        }
+        disabled={!editable || requests.pending || domainId === undefined}
         onClick={() => void test()}
       >
         Test sign-in
       </ProgressButton>
       {provider.enabled ? null : (
         <p className="text-xs text-muted-foreground">
-          Enable this provider before testing sign-in.
+          You can test sign-in while this provider is off.
         </p>
       )}
       {error === undefined ? null : <Notice tone="warning">{error}</Notice>}

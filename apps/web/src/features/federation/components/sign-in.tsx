@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import {
   federationDomainNameSchema,
   type FederationDiscovery,
+  type FederationProtocol,
 } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -74,7 +75,7 @@ export function OrganizationSignInForm({
       attempt.finish();
     }
   }
-  async function start(providerId: string) {
+  async function start(providerId: string, protocol: FederationProtocol) {
     if (found === undefined || request.pending) return;
     const attempt = request.begin();
     setFailure(undefined);
@@ -87,6 +88,7 @@ export function OrganizationSignInForm({
           ...(returnTo === undefined ? {} : { returnPath: returnTo }),
         },
         attempt.signal,
+        protocol,
       );
       if (attempt.isCurrent()) navigateToProvider(url);
     } catch {
@@ -147,7 +149,7 @@ export function OrganizationSignInForm({
           variant="outline"
           className="w-full"
           disabled={request.pending}
-          onClick={() => void start(provider.id)}
+          onClick={() => void start(provider.id, provider.kind)}
         >
           Continue with {provider.name}
         </Button>

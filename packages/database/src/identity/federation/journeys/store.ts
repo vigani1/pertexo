@@ -35,16 +35,17 @@ export class OrganizationSignInCommands {
       require_sso: boolean;
       id: string | null;
       name: string | null;
+      kind: 'oidc' | 'saml' | null;
     }>(
-      `select domain.require_sso,provider.id,provider.name from app.auth_domains domain join app.auth_organizations organization on organization.id=domain.organization_id join app.workspaces control on control.id=organization.control_workspace_id left join app.auth_providers provider on provider.organization_id=domain.organization_id and provider.enabled and provider.kind='oidc' where domain.domain=$1 and control.status=any($2::text[]) and domain.verified_at is not null order by provider.name,provider.id limit $3`,
+      `select domain.require_sso,provider.id,provider.name,provider.kind from app.auth_domains domain join app.auth_organizations organization on organization.id=domain.organization_id join app.workspaces control on control.id=organization.control_workspace_id left join app.auth_providers provider on provider.organization_id=domain.organization_id and provider.enabled where domain.domain=$1 and control.status=any($2::text[]) and domain.verified_at is not null order by provider.name,provider.id limit $3`,
       [domain, [...FEDERATION_WORKSPACE_STATUSES], FEDERATION_LIMITS.providers],
     );
     return {
       required: result.rows[0]?.require_sso ?? false,
       providers: result.rows.flatMap((row) =>
-        row.id === null || row.name === null
+        row.id === null || row.name === null || row.kind === null
           ? []
-          : [{ id: row.id, name: row.name, kind: 'oidc' as const }],
+          : [{ id: row.id, name: row.name, kind: row.kind }],
       ),
     };
   }
@@ -132,7 +133,7 @@ export class OrganizationSignInCommands {
    select $1,provider.organization_id,provider.id,provider.revision,domain.id,$2,$3,$4,$5,$6,$7,clock_timestamp()+interval '5 minutes' from app.auth_providers provider
    join app.auth_organizations organization on organization.id=provider.organization_id join app.workspaces control on control.id=organization.control_workspace_id
    join app.auth_domains domain on domain.organization_id=provider.organization_id and domain.verified_at is not null
-   where provider.id=$8 and provider.revision=$9 and domain.id=$10 and provider.kind='oidc' and control.status=any($11::text[]) and (provider.enabled or $2='test')`,
+   where provider.id=$8 and provider.revision=$9 and domain.id=$10 and control.status=any($11::text[]) and (provider.enabled or $2='test')`,
         [
           input.id,
           input.purpose,

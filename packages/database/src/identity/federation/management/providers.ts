@@ -1,5 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
-import type { FederationSettings, OidcConfiguration } from '@pertexo/contracts';
+import type {
+  FederationSettings,
+  OidcConfiguration,
+  SamlConfiguration,
+} from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { FederationConflictError, type ProviderRow } from './contract.js';
 import { recordFederationAudit } from './authority.js';
@@ -14,11 +18,11 @@ import { requireResourceCapacity } from './organizations.js';
 import { assertRequiredDomainsReady } from './enforcement.js';
 
 type SealedSecret = Readonly<Record<string, unknown>>;
-type ProviderValues = Readonly<{
-  name: string;
-  configuration: OidcConfiguration;
-  enabled: boolean;
-}>;
+type ProviderValues = Readonly<{ name: string; enabled: boolean }> &
+  (
+    | Readonly<{ kind?: 'oidc'; configuration: OidcConfiguration }>
+    | Readonly<{ kind: 'saml'; configuration: SamlConfiguration }>
+  );
 async function requireOrganizationProvider(
   client: PoolClient,
   organizationId: string,
@@ -26,7 +30,7 @@ async function requireOrganizationProvider(
 ): Promise<ProviderRow> {
   const provider = (
     await client.query<ProviderRow>(
-      "select * from app.auth_providers where organization_id=$1 and id=$2 and kind='oidc' for update",
+      'select * from app.auth_providers where organization_id=$1 and id=$2 for update',
       [organizationId, providerId],
     )
   ).rows[0];
@@ -38,15 +42,26 @@ async function requireOrganizationProvider(
   return provider;
 }
 /** The API seals the secret and computes a purpose-bound HMAC for exact retries. Neither plaintext nor an unkeyed secret digest crosses this boundary. */
-export function createOidcProvider(
+export function createProvider(
   pool: Pool,
   input: FederationCommand &
-    ProviderValues &
-    Readonly<{
-      issuer: string;
-      sealSecret: (providerId: string) => SealedSecret;
-      secretFingerprint: string;
-    }>,
+    Readonly<{ issuer: string }> &
+    (
+      | Readonly<{
+          kind?: 'oidc';
+          name: string;
+          enabled: boolean;
+          configuration: OidcConfiguration;
+          sealSecret: (providerId: string) => SealedSecret;
+          secretFingerprint: string;
+        }>
+      | Readonly<{
+          kind: 'saml';
+          name: string;
+          enabled: boolean;
+          configuration: SamlConfiguration;
+        }>
+    ),
 ): Promise<FederationSettings> {
   return runFederationCommand(
     pool,
@@ -57,7 +72,7 @@ export function createOidcProvider(
       issuer: input.issuer,
       configuration: input.configuration,
       enabled: input.enabled,
-      secretFingerprint: input.secretFingerprint,
+      secretFingerprint: input.kind === 'saml' ? null : input.secretFingerprint,
       expectedRevision: input.expectedRevision,
     },
     async (client) => {
@@ -66,15 +81,18 @@ export function createOidcProvider(
       await requireResourceCapacity(client, organization.id, 'providers');
       const providerId = generatePersistedId();
       await client.query(
-        "insert into app.auth_providers(id,organization_id,kind,name,issuer,configuration,sealed_secret,enabled) values($1,$2,'oidc',$3,$4,$5::jsonb,$6::jsonb,$7)",
+        'insert into app.auth_providers(id,organization_id,kind,name,issuer,configuration,sealed_secret,enabled) values($1,$2,$8,$3,$4,$5::jsonb,$6::jsonb,$7)',
         [
           providerId,
           organization.id,
           input.name,
           input.issuer,
           JSON.stringify(input.configuration),
-          JSON.stringify(input.sealSecret(providerId)),
+          input.kind === 'saml'
+            ? null
+            : JSON.stringify(input.sealSecret(providerId)),
           input.enabled,
+          input.kind ?? 'oidc',
         ],
       );
       await recordFederationAudit(
@@ -82,13 +100,13 @@ export function createOidcProvider(
         input,
         'identity.provider_created',
         organization.id,
-        { providerId: providerId, kind: 'oidc', enabled: input.enabled },
+        { providerId, kind: input.kind ?? 'oidc', enabled: input.enabled },
       );
       return advanceOrganization(client, organization);
     },
   );
 }
-export function updateOidcProvider(
+export function updateProvider(
   pool: Pool,
   input: FederationCommand &
     ProviderValues &
@@ -118,6 +136,11 @@ export function updateOidcProvider(
         organization.id,
         input.providerId,
       );
+      if (provider.kind !== (input.kind ?? 'oidc'))
+        throw new FederationConflictError(
+          'unavailable',
+          'That sign-in provider has a different protocol.',
+        );
       await assertRequiredDomainsReady(client, organization.id, provider.id);
       await client.query(
         'update app.auth_providers set name=$2,configuration=$3::jsonb,sealed_secret=coalesce($4::jsonb,sealed_secret),enabled=$5,revision=revision+1 where id=$1',
@@ -154,7 +177,7 @@ export function updateOidcProvider(
     },
   );
 }
-export function removeOidcProvider(
+export function removeProvider(
   pool: Pool,
   input: FederationCommand & Readonly<{ providerId: string }>,
 ): Promise<FederationSettings> {

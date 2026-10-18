@@ -25,11 +25,7 @@ import {
   verifyDomain,
   removeDomain,
 } from './domains.js';
-import {
-  createOidcProvider,
-  updateOidcProvider,
-  removeOidcProvider,
-} from './providers.js';
+import { createProvider, updateProvider, removeProvider } from './providers.js';
 import { configureDomainEnforcement } from './enforcement.js';
 import type { FederationSettings } from '@pertexo/contracts';
 
@@ -180,12 +176,12 @@ export function createFederationManagementStore(
       verifyDomain(lease.pool, input),
     removeDomain: (input: Parameters<typeof removeDomain>[1]) =>
       removeDomain(lease.pool, input),
-    createOidcProvider: (input: Parameters<typeof createOidcProvider>[1]) =>
-      createOidcProvider(lease.pool, input),
-    updateOidcProvider: (input: Parameters<typeof updateOidcProvider>[1]) =>
-      updateOidcProvider(lease.pool, input),
-    removeOidcProvider: (input: Parameters<typeof removeOidcProvider>[1]) =>
-      removeOidcProvider(lease.pool, input),
+    createProvider: (input: Parameters<typeof createProvider>[1]) =>
+      createProvider(lease.pool, input),
+    updateProvider: (input: Parameters<typeof updateProvider>[1]) =>
+      updateProvider(lease.pool, input),
+    removeProvider: (input: Parameters<typeof removeProvider>[1]) =>
+      removeProvider(lease.pool, input),
     configureEnforcement: (
       input: Parameters<typeof configureDomainEnforcement>[1],
     ) => configureDomainEnforcement(lease.pool, input),

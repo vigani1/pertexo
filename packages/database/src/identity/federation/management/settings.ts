@@ -24,7 +24,7 @@ export async function projectOrganization(
     [organization.id],
   );
   const providers = await client.query<ProviderRow>(
-    "select * from app.auth_providers where organization_id=$1 and kind='oidc' order by name,id",
+    'select * from app.auth_providers where organization_id=$1 order by name,id',
     [organization.id],
   );
   const checks = await client.query<{
@@ -68,15 +68,22 @@ export async function projectOrganization(
           testedAt: check.tested_at.toISOString(),
         })),
     })),
-    providers: providers.rows.map((row) => ({
-      id: row.id,
-      kind: 'oidc',
-      name: row.name,
-      issuer: row.issuer,
-      configuration: row.configuration,
-      enabled: row.enabled,
-      revision: row.revision,
-      secretConfigured: row.sealed_secret !== null,
-    })),
+    providers: providers.rows.map((row) => {
+      const common = {
+        id: row.id,
+        name: row.name,
+        issuer: row.issuer,
+        enabled: row.enabled,
+        revision: row.revision,
+      };
+      return row.kind === 'oidc'
+        ? {
+            ...common,
+            kind: row.kind,
+            configuration: row.configuration,
+            secretConfigured: row.sealed_secret !== null,
+          }
+        : { ...common, kind: row.kind, configuration: row.configuration };
+    }),
   };
 }

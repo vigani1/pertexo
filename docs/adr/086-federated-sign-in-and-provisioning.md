@@ -68,6 +68,16 @@ ordinary email changes cannot escape active enforcement. Organization-only
 accounts need another sign-in method before a primary-email change, including at
 proof consumption, to retain access if the new address leaves the verified domain. There is no shared emergency credential.
 
+SAML uses an HTTPS-only purpose cookie with SameSite=None for the cross-site POST;
+ordinary session cookies remain unchanged. A stable SP entity ID per organization
+and public app origin makes metadata available before provider configuration;
+each provider retains its own pinned trust and correlated journey. Response and assertion signatures are
+both required. The protocol library verifies cryptography; explicit semantic
+checks enforce issuer, destination, recipient, correlation, audience, successful
+status, required timestamps and modern algorithms. The existing PostgreSQL journey
+is the sole replay owner. Provider tests recheck the initiating owner's stored
+session and current ownership, without relying on a Lax cookie on the POST.
+
 Organization client secrets reuse the existing application-secret envelope with a
 dedicated private API key ring. Stored secrets must open at startup; retained
 previous keys support rotation and restored databases need their keys supplied
@@ -116,6 +126,6 @@ claims/assertions and arbitrary provider text are excluded. Workspace/organizati
 purge and short-lived proof cleanup are part of rollout. Detailed protocol bounds,
 resource limits and acceptance cases live in the short feature plan.
 
-Private-network IdPs and additional SAML modes remain explicit later work; they
+Private-network OIDC endpoint access and additional SAML modes remain explicit later work; they
 must not weaken the initial public-HTTPS, correlated proof boundary. Actual
 provider account registration is operator setup, not a hosted service dependency.

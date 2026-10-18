@@ -4,12 +4,12 @@ import { SettingsSection } from '@/components/patterns/settings-section';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
-import { Status } from '@/components/ui/status';
 import type { FederationScope } from '../../data/settings.api';
 import { useFederationCommand } from '../../data/use-command';
 import { CommandFeedback } from '../command-feedback';
-import { ProviderForm } from './form';
-import { TestProvider } from './test';
+import { ProviderSelectionDialog, type ProviderSelection } from './selection';
+import { ProviderEntry } from './entry';
+import { SamlMetadata } from './metadata';
 type Organization = NonNullable<FederationSettings['organization']>;
 export function Providers({
   scope,
@@ -22,9 +22,7 @@ export function Providers({
   editable: boolean;
   navigateToProvider: (url: string) => void;
 }>) {
-  const [editing, setEditing] = useState<
-    'new' | Organization['providers'][number]
-  >();
+  const [editing, setEditing] = useState<ProviderSelection>();
   const [removing, setRemoving] = useState<Organization['providers'][number]>();
   const command = useFederationCommand(scope, () => {
     setRemoving(undefined);
@@ -34,23 +32,21 @@ export function Providers({
     '/v1/auth/federation/oidc/callback',
     window.location.origin,
   ).toString();
-  const edited = organization.providers.find(
-    (provider) => provider.id === (editing === 'new' ? undefined : editing?.id),
-  );
   return (
     <SettingsSection
       title="Identity providers"
-      description="Configure a public HTTPS OIDC issuer. Password/social sign-in stays available until a verified domain requires SSO."
+      description="Configure OIDC or SAML identity providers. Password/social sign-in stays available until a verified domain requires SSO."
     >
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground">
-          Register this exact redirect URI at your identity provider:
+          OIDC providers use this exact redirect URI:
         </p>
         <div className="flex min-w-0 items-start gap-2">
           <code className="min-w-0 break-all text-xs">{callback}</code>
           <CopyButton value={callback} label="Copy OIDC redirect URI" />
         </div>
       </div>
+      <SamlMetadata scope={scope} organizationId={organization.id} />
       {organization.providers.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No organization providers configured.
@@ -58,55 +54,21 @@ export function Providers({
       ) : (
         <ul className="divide-y divide-border">
           {organization.providers.map((provider) => (
-            <li key={provider.id} className="space-y-4 py-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">{provider.name}</h3>
-                <Status tone={provider.enabled ? 'success' : 'neutral'}>
-                  {provider.enabled ? 'Enabled' : 'Off'}
-                </Status>
-              </div>
-              <p className="break-all text-sm text-muted-foreground">
-                {provider.issuer}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                New accounts{' '}
-                {provider.configuration.jitEnabled ? 'allowed' : 'off'} · Client
-                secret {provider.secretConfigured ? 'configured' : 'missing'}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={locked}
-                  onClick={() => {
-                    setEditing(provider);
-                  }}
-                >
-                  Edit provider
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={locked}
-                  onClick={() => {
-                    setRemoving(provider);
-                  }}
-                >
-                  Remove provider
-                </Button>
-              </div>
-              <TestProvider
-                scope={scope}
-                organization={organization}
-                provider={provider}
-                editable={editable}
-                navigateToProvider={navigateToProvider}
-              />
-            </li>
+            <ProviderEntry
+              key={provider.id}
+              scope={scope}
+              organization={organization}
+              provider={provider}
+              locked={locked}
+              editable={editable}
+              onEdit={setEditing}
+              onRemove={setRemoving}
+              navigateToProvider={navigateToProvider}
+            />
           ))}
         </ul>
       )}
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant="outline"
@@ -115,29 +77,35 @@ export function Providers({
             organization.providers.length >= FEDERATION_LIMITS.providers
           }
           onClick={() => {
-            setEditing('new');
+            setEditing('new-oidc');
           }}
         >
           Add OIDC provider
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            locked ||
+            organization.providers.length >= FEDERATION_LIMITS.providers ||
+            window.location.protocol !== 'https:'
+          }
+          onClick={() => {
+            setEditing('new-saml');
+          }}
+        >
+          Add SAML provider
+        </Button>
       </div>
       {removing === undefined ? <CommandFeedback command={command} /> : null}
-      {editing === undefined ? null : (
-        <ProviderForm
-          key={editing === 'new' ? 'new' : editing.id}
-          scope={scope}
-          organization={organization}
-          {...(editing === 'new'
-            ? {}
-            : {
-                provider: edited ?? editing,
-                unavailable: edited === undefined,
-              })}
-          onClose={() => {
-            setEditing(undefined);
-          }}
-        />
-      )}
+      <ProviderSelectionDialog
+        selected={editing}
+        scope={scope}
+        organization={organization}
+        onClose={() => {
+          setEditing(undefined);
+        }}
+      />
       <ConfirmDialog
         open={removing !== undefined}
         onOpenChange={(open) => {

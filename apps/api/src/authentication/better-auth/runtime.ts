@@ -1,4 +1,8 @@
 import {
+  createSamlProofGateway,
+  type SamlProofGateway,
+} from '../federation/protocol/saml/gateway.js';
+import {
   createNodeSecureHttpClient,
   type ApplicationSecretEnvelope,
 } from '@pertexo/integrations/server';
@@ -46,6 +50,7 @@ export type BetterAuthRuntimeConfig = Readonly<{
   federation?: Readonly<{
     envelope: ApplicationSecretEnvelope;
     oidcGateway?: OidcProofGateway;
+    samlGateway?: SamlProofGateway;
   }>;
 }>;
 
@@ -128,6 +133,8 @@ export function createBetterAuthRuntime(
     ...(config.federation === undefined
       ? {}
       : {
+          samlGateway:
+            config.federation.samlGateway ?? createSamlProofGateway(),
           gateway:
             config.federation.oidcGateway ??
             createOidcProofGateway({

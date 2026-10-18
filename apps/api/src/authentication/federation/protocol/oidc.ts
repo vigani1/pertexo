@@ -52,7 +52,14 @@ export function createOidcProofGateway(
         method: options.method,
         headers: options.headers,
         redirect: options.redirect,
-        ...(options.body === undefined ? {} : { body: options.body }),
+        ...(options.body === undefined
+          ? {}
+          : {
+              body:
+                options.body instanceof Uint8Array
+                  ? new Uint8Array(options.body)
+                  : options.body,
+            }),
         ...(options.signal === undefined ? {} : { signal: options.signal }),
         ...(options.duplex === undefined ? {} : { duplex: options.duplex }),
       });

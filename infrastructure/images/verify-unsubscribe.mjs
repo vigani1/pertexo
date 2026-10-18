@@ -1,6 +1,6 @@
 import { verifyCsvProxy } from './verify-csv.mjs';
 import assert from 'node:assert/strict';
-import { randomUUID, createHmac } from 'node:crypto';
+import { randomUUID, createHmac, createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -140,6 +140,32 @@ export async function verifyUnsubscribeProxy({
   assert.deepEqual(signIn.headers['set-cookie'], [
     'pertexo_session=synthetic_session; Path=/; HttpOnly; SameSite=Lax',
   ]);
+  const samlProof = 'synthetic_assertion_' + randomUUID().replaceAll('-', '');
+  const samlBinding = 'synthetic_binding_' + randomUUID().replaceAll('-', '');
+  const samlUrl = `${origin}/v1/auth/federation/saml/callback`;
+  const samlBody = new URLSearchParams({
+    SAMLResponse: samlProof,
+    RelayState: authState,
+  }).toString();
+  const samlHeaders = {
+    ...headers,
+    'content-type': 'application/x-www-form-urlencoded',
+    cookie: `__Host-pertexo_organization_saml=${samlBinding}`,
+  };
+  const saml = await probe(samlUrl, samlHeaders, {
+    method: 'POST',
+    body: samlBody,
+  });
+  assert.equal(saml.status, 302, 'SAML POST must reach the API directly');
+  assert.equal(saml.headers.location, '/account/security');
+  assert.equal(
+    saml.headers['x-owned-body-digest'],
+    createHash('sha256').update(samlBody).digest('hex'),
+  );
+  assert.equal(saml.headers['x-owned-proof-cookie'], 'true');
+  assert.deepEqual(saml.headers['set-cookie'], [
+    'pertexo_session=synthetic_saml_session; Path=/; HttpOnly; SameSite=Lax',
+  ]);
   const url = `${origin}/v1/notifications/unsubscribe/one-click?token=${token}`;
   const confirmation = await probe(url, headers);
   assert.equal(confirmation.status, 303);
@@ -159,6 +185,11 @@ export async function verifyUnsubscribeProxy({
   await verifyCsvProxy({ origin, headers, probe });
   await docker(['stop', backend]);
   assert.equal((await probe(authUrl, headers)).status, 502);
+  assert.equal(
+    (await probe(samlUrl, samlHeaders, { method: 'POST', body: samlBody }))
+      .status,
+    502,
+  );
   const failed = await probe(
     url,
     { ...posting, 'x-private-probe': token },
@@ -185,7 +216,7 @@ export async function verifyUnsubscribeProxy({
     'Edge error logs must not contain the capability or private header',
   );
   const webLogs = await docker(['logs', web]);
-  for (const proof of [authCode, authState]) {
+  for (const proof of [authCode, authState, samlProof, samlBinding]) {
     assert.ok(
       !edgeLogs.includes(proof),
       'Edge errors must redact sign-in proof',
@@ -209,6 +240,6 @@ export async function verifyUnsubscribeProxy({
     'nginx must never see the webhook path',
   );
   console.log(
-    'Single-server edge: sign-in, signed/Secret URL webhooks, preflight, one-click and API-down log privacy passed.',
+    'Single-server edge: sign-in/SAML POST, signed/Secret URL webhooks, preflight, one-click and API-down log privacy passed.',
   );
 }
