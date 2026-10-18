@@ -256,3 +256,38 @@ export {
 export { delegatedWorkspaceRoleSchema } from './schemas/identity/membership.js';
 
 export { authenticationProviderSchema } from './schemas/identity/authentication.js';
+
+export {
+  DIRECTORY_LIMITS,
+  directoryCredentialSchema,
+  directoryCredentialCreateSchema,
+  directoryCredentialResultSchema,
+  directoryRevisionSchema,
+  directoryMappingsSchema,
+  directoryAdoptSchema,
+  directorySettingsSchema,
+  directoryPeopleQuerySchema,
+  directoryPeoplePageSchema,
+} from './schemas/identity/federation/directory.js';
+export type {
+  DirectorySettings,
+  DirectoryCredential,
+  DirectoryCredentialResult,
+  DirectoryMappings,
+  DirectoryAdopt,
+  DirectoryPeopleQuery,
+} from './schemas/identity/federation/directory.js';
+
+export { directoryMembershipSourceSchema } from './schemas/identity/federation/directory.js';
+export type { DirectoryMembershipSource } from './schemas/identity/federation/directory.js';
+
+export { directoryChangedSchema } from './schemas/identity/federation/directory.js';
+
+export {
+  directoryAdoptionQuerySchema,
+  directoryAdoptionPreviewSchema,
+} from './schemas/identity/federation/directory.js';
+export type {
+  DirectoryAdoptionQuery,
+  DirectoryAdoptionPreview,
+} from './schemas/identity/federation/directory.js';

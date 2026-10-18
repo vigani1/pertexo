@@ -1,3 +1,4 @@
+import { registerDirectoryTransport } from './authentication/federation/provisioning/transport/register.js';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
@@ -127,6 +128,13 @@ export async function createApiApplication(
           sameSite: config.identity.session.sameSite,
           maxAgeSeconds: Math.floor(config.identity.session.ttlMillis / 1_000),
         },
+      });
+    if (identityRuntime !== undefined && config.identity !== undefined)
+      registerDirectoryTransport(fastifyInstance, {
+        store: identityRuntime.directory,
+        rateLimitConsumer:
+          application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
+        publicOrigin: config.identity.publicWebOrigin,
       });
     await application.init();
     if (webhookRuntime !== undefined) {

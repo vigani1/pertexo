@@ -50,6 +50,10 @@ export const authOrganizationWorkspaces = appSchema.table(
   },
   (table) => [
     index('auth_organization_workspace_org_idx').on(table.organizationId),
+    unique('auth_organization_workspace_identity_unique').on(
+      table.organizationId,
+      table.workspaceId,
+    ),
     foreignKey({
       name: 'auth_organization_workspace_org_fk',
       columns: [table.organizationId],

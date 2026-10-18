@@ -1,3 +1,4 @@
+import { directorySessionAllowed } from '../provisioning/session.js';
 import { authenticationProviderSchema } from '@pertexo/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { appendAuditFact } from '../../../governance/audit/append.js';
@@ -91,6 +92,11 @@ export async function canCreateAuthenticationSession(
         [proof.providerId, [...FEDERATION_WORKSPACE_STATUSES]],
       )
     ).rows[0];
+    if (
+      row !== undefined &&
+      !(await directorySessionAllowed(client, row.organization_id, userId))
+    )
+      return false;
     if (row !== undefined)
       provider = {
         organizationId: row.organization_id,

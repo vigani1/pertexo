@@ -1,0 +1,90 @@
+import type { PoolClient } from 'pg';
+import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
+import { DirectoryError } from '../contract.js';
+import type { DirectoryOrganization } from '../authority.js';
+import { readDirectoryRole } from '../roles.js';
+import type {
+  DirectoryAdoptionQuery,
+  DirectoryAdoptionPreview,
+} from '@pertexo/contracts';
+
+/** The preview is advisory; adoption rechecks every reviewed revision under write locks. */
+export async function previewDirectoryAdoption(
+  client: PoolClient,
+  organization: DirectoryOrganization,
+  canManage: boolean,
+  query: DirectoryAdoptionQuery,
+): Promise<DirectoryAdoptionPreview> {
+  if (!canManage) throw new DirectoryError('forbidden');
+  const workspace = organization.workspaces.find(
+    (entry) => entry.workspace_id === query.targetWorkspaceId,
+  );
+  if (workspace === undefined) throw new DirectoryError('not_found');
+  const directory = (
+    await client.query<{ user_id: string | null; revision: number }>(
+      'select user_id,revision from app.auth_directory_users where organization_id=$1 and id=$2 and active and deleted_at is null',
+      [organization.id, query.directoryUserId],
+    )
+  ).rows[0];
+  if (directory?.user_id === null || directory === undefined)
+    return {
+      eligible: false,
+      reason:
+        'This person must complete organization SSO before an existing membership can be adopted.',
+    };
+  const member = await withWorkspaceScope(
+    client,
+    { workspaceId: workspace.workspace_id },
+    async (scoped) =>
+      (
+        await scoped.query<{
+          role: string;
+          status: string;
+          role_revision: number;
+          managed: boolean;
+          display_name: string;
+        }>(
+          `select member.role,member.status,member.role_revision,person.display_name,
+     exists(select 1 from app.auth_directory_memberships source where source.workspace_id=member.workspace_id and source.user_id=member.user_id) managed
+     from app.workspace_memberships member join app.users person on person.id=member.user_id
+     where member.workspace_id=$1 and member.user_id=$2`,
+          [workspace.workspace_id, directory.user_id],
+        )
+      ).rows[0],
+  );
+  if (member?.role === 'owner')
+    return {
+      eligible: false,
+      reason: 'Keep the recovery owner outside directory management.',
+    };
+  if (member?.status !== 'active')
+    return {
+      eligible: false,
+      reason:
+        'Only an active manual membership can be adopted. Reactivate an existing suspended or removed membership first.',
+    };
+  if (member.managed)
+    return {
+      eligible: false,
+      reason: 'This membership is already directory-managed.',
+    };
+  const role = await readDirectoryRole(
+    client,
+    organization.id,
+    workspace.workspace_id,
+    query.directoryUserId,
+    workspace.default_role,
+  );
+  return {
+    eligible: true,
+    displayName: member.display_name,
+    currentRole: member.role,
+    command: {
+      ...query,
+      expectedRevision: organization.revision,
+      directoryRevision: directory.revision,
+      membershipRevision: member.role_revision,
+      role,
+    },
+  };
+}

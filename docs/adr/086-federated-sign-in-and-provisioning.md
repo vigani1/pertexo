@@ -51,7 +51,9 @@ to ten workspaces with explicit ownership consent. Its current control-workspace
 owner administers authentication and provisioning using `workspace:manage`; this
 creates no organization role system. Each workspace has at most one identity
 organization. Its data remains workspace-scoped. The global authentication catalog
-is deliberately limited to domain/provider/directory identity and proof state;
+is deliberately limited to domain/provider/directory identity and proof state,
+including group-to-linked-workspace policy mappings. Existing memberships and their
+directory source associations retain forced workspace row security;
 management rechecks the control-workspace owner under lock.
 
 Domain ownership requires single-use DNS TXT proof for the exact normalized domain.

@@ -25,6 +25,10 @@ import {
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
   {
+    name: 'provisioning_credentials',
+    statement: `with page as(select id from app.auth_provisioning_credentials where revoked_at<=clock_timestamp()-interval '30 days' order by id limit $1) delete from app.auth_provisioning_credentials credential using page where credential.id=page.id and credential.revoked_at<=clock_timestamp()-interval '30 days'`,
+  },
+  {
     name: 'publication_requests',
     statement: `with page as(select workspace_id,id from app.workflow_publication_requests where coalesce(decided_at,expires_at)<=clock_timestamp()-interval '30 days' order by coalesce(decided_at,expires_at),id limit $1) delete from app.workflow_publication_requests review using page where review.workspace_id=page.workspace_id and review.id=page.id and coalesce(review.decided_at,review.expires_at)<=clock_timestamp()-interval '30 days'`,
   },

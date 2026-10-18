@@ -1,3 +1,4 @@
+import type { DirectoryMembershipSource } from '@pertexo/contracts';
 import type { WorkspaceLifecycleOperation } from '../lifecycle/workspace-deletion.js';
 
 export const USER_STATUS = {
@@ -80,6 +81,7 @@ export type WorkspaceMemberRecord = Readonly<{
   role: MembershipRole;
   roleRevision: number;
   membershipStatus: 'active' | 'suspended';
+  directorySource?: DirectoryMembershipSource;
   createdAt: Date;
   updatedAt: Date;
 }>;

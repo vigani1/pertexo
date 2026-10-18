@@ -239,6 +239,13 @@
       "when": 1792288671493,
       "tag": "0033_organization_oidc",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792300981935,
+      "tag": "0034_organization_directory",
+      "breakpoints": true
     }
   ]
 }

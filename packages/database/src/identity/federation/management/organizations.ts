@@ -1,3 +1,4 @@
+import { projectDirectoryMemberships } from '../provisioning/projection.js';
 import type { Pool, PoolClient } from 'pg';
 import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
@@ -105,6 +106,19 @@ export function linkOrganizationWorkspace(
       await client.query(
         'insert into app.auth_organization_workspaces(workspace_id,organization_id,default_role) values($1,$2,$3) on conflict(workspace_id) do update set default_role=excluded.default_role',
         [input.targetWorkspaceId, organization.id, input.defaultRole],
+      );
+      await projectDirectoryMemberships(
+        client,
+        {
+          ...organization,
+          workspaces: [
+            {
+              workspace_id: input.targetWorkspaceId,
+              default_role: input.defaultRole,
+            },
+          ],
+        },
+        { actorId: input.actorId },
       );
       await recordFederationAudit(
         client,

@@ -182,6 +182,9 @@ export class ListWorkspaceMembersUseCase {
             role: member.role,
             roleRevision: member.roleRevision,
             membershipStatus: member.membershipStatus,
+            ...(member.directorySource === undefined
+              ? {}
+              : { directorySource: member.directorySource }),
             createdAt: member.createdAt.toISOString(),
             updatedAt: member.updatedAt.toISOString(),
           })),

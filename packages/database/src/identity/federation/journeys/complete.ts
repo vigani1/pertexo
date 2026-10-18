@@ -1,3 +1,8 @@
+import { lockDirectoryOrganization } from '../provisioning/authority.js';
+import {
+  bindDirectorySignIn,
+  directorySignInCandidate,
+} from '../provisioning/sign-in.js';
 import { hasSignInMethodCapacity } from '../accounts/limits.js';
 import { randomBytes } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -14,10 +19,7 @@ import {
   readEligibleAuthenticationSession,
 } from '../sessions/authority.js';
 import { findFederationAttempt } from './queries.js';
-import {
-  grantJustInTimeMemberships,
-  type LinkedWorkspace,
-} from './membership.js';
+import { grantJustInTimeMemberships } from './membership.js';
 import type { FederationIdentity, FederationCompletion } from './contract.js';
 
 export type CompleteFederationJourney = Readonly<{
@@ -38,37 +40,11 @@ export async function completeFederationJourney(
     input.browserDigest,
   );
   if (preview?.id !== input.attemptId) throw new SignInProofRejectedError();
-  const workspaces = (
-    await client.query<LinkedWorkspace>(
-      'select workspace_id,default_role from app.auth_organization_workspaces where organization_id=$1 order by workspace_id',
-      [preview.provider.organizationId],
-    )
-  ).rows;
-  for (const workspace of workspaces)
-    await client.query('select id from app.workspaces where id=$1 for update', [
-      workspace.workspace_id,
-    ]);
-  const organization = (
-    await client.query(
-      'select id from app.auth_organizations where id=$1 for update',
-      [preview.provider.organizationId],
-    )
-  ).rowCount;
-  if (organization !== 1) throw new SignInProofRejectedError();
-  const currentWorkspaces = (
-    await client.query<LinkedWorkspace>(
-      'select workspace_id,default_role from app.auth_organization_workspaces where organization_id=$1 order by workspace_id',
-      [preview.provider.organizationId],
-    )
-  ).rows;
-  if (
-    workspaces.length !== currentWorkspaces.length ||
-    workspaces.some(
-      (workspace, index) =>
-        workspace.workspace_id !== currentWorkspaces[index]?.workspace_id,
-    )
-  )
-    throw new SignInProofRejectedError();
+  const organization = await lockDirectoryOrganization(
+    client,
+    preview.provider.organizationId,
+  );
+  const currentWorkspaces = organization.workspaces;
   const attempt = await findFederationAttempt(
     client,
     input.stateDigest,
@@ -140,6 +116,13 @@ export async function completeFederationJourney(
     );
     return { kind: 'tested', returnPath: attempt.returnPath };
   }
+  const directory = await directorySignInCandidate(
+    client,
+    organization.id,
+    input.identity.email,
+    attempt.provider.id,
+    input.identity.subject,
+  );
   const user = await resolveVerifiedSignInUser(client, {
     provider: attempt.provider.id,
     identity: {
@@ -148,10 +131,13 @@ export async function completeFederationJourney(
       emailVerified: true,
       displayName: input.identity.displayName,
     },
-    createUser: attempt.provider.configuration.jitEnabled,
+    createUser:
+      directory !== undefined || attempt.provider.configuration.jitEnabled,
   });
   if (user?.status !== 'active' || !user.email_verified)
     throw new SignInProofRejectedError();
+  if (directory !== undefined)
+    await bindDirectorySignIn(client, organization, directory, user.id);
   const proof = {
     method: 'organization',
     providerId: attempt.provider.id,
@@ -184,7 +170,7 @@ export async function completeFederationJourney(
     await revokeUserSessions(client, user.id);
     await recordIdentitySecurityFact(client, user.id, 'method.linked');
   }
-  if (attempt.provider.configuration.jitEnabled)
+  if (directory === undefined && attempt.provider.configuration.jitEnabled)
     await grantJustInTimeMemberships(
       client,
       currentWorkspaces,

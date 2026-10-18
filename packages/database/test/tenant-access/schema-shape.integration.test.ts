@@ -160,8 +160,10 @@ describe('migrated schema shape contract', () => {
       expect(table.has_primary_key, table.relname).toBe(true);
       // This global authentication-catalog link is not tenant-owned data
       // (ADR 086); its management authority is checked by the identity owner.
-      const globalIdentityLink =
-        table.relname === 'auth_organization_workspaces';
+      const globalIdentityLink = [
+        'auth_organization_workspaces',
+        'auth_directory_group_mappings',
+      ].includes(table.relname);
       if (table.has_workspace_id && !globalIdentityLink) {
         expect(table.relrowsecurity, table.relname).toBe(true);
         expect(table.relforcerowsecurity, table.relname).toBe(true);

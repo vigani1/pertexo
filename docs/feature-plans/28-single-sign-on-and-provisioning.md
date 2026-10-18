@@ -346,6 +346,9 @@ Sources: [Node-SAML](https://github.com/node-saml/node-saml),
   persist earlier changes. Compare read-only id/meta/schemas/User.groups before
   schema coercion (input coercion intentionally drops read-only fields). Reject
   password provisioning and unsupported fields; group roles come from mappings.
+  PATCH selecting a primary email clears prior primary flags before the next
+  operation, as RFC 7644 requires. Groups contain Users only; discovery does not
+  advertise nested Group references.
 
 ### Data, access and transactions
 
@@ -411,11 +414,30 @@ Sources: [Node-SAML](https://github.com/node-saml/node-saml),
   fan-out. Provisioning system audits name the credential ID rather than
   impersonating its creator; metadata only, in each affected workspace.
 
-Storage qualification: a real app-role transaction changed 5,000 memberships,
-revoked their sessions and appended 5,000 individual audit facts in 186 ms locally.
-Mixed removals preserve other workspaces, clear every removed member's private
-state, and roll back all side effects on an RLS failure. Full directory mapping
-fan-out still needs qualification after its schema and projector are implemented.
+Storage qualification (local Node 24 / PostgreSQL 18, 2026-10-18):
+- The existing batch primitive changed 5,000 memberships, revoked sessions and
+  appended 5,000 individual audit facts in 186 ms. Mixed removals clear private
+  state and roll back every side effect on an RLS failure.
+- Full directory fan-out: 5,000 bound people, 10 linked workspaces, 200 groups,
+  100,000 group memberships and 2,000 ordered mappings. One configuration command
+  changed 50,000 grants, revoked 5,000 sessions and recorded 50,000 individual
+  metadata audit facts in 2.1–2.3 seconds. PostgreSQL WAL grew about 77 MB; process
+  resident growth was 31–44 MB. These are local measurements, not deployment SLAs.
+  Reapplying identical roles preserves membership revisions and live sessions.
+  Keep the chosen bounds; ordinary group edits project only changed members.
+- Directory commands lock the linked workspaces first, then the organization,
+  then all affected global users in sorted order **before** proving the owner.
+  An early owner-user lock followed by arbitrary fan-out could otherwise form a
+  cycle with another organization's command. Purge claims use the same sorted
+  workspace plan, with SKIP LOCKED and bounded candidate/page work. Source grants
+  in other workspaces are removed before their control organization is deleted.
+  Maintenance needs membership metadata updates and the existing removal-cleanup
+  function, without access to account passwords or global-user update authority.
+- Standard core resource discovery uses immutable copies of public SDK metadata.
+  Only supported fields are advertised. Case/duplicate-key normalization, parser
+  budgets and safe constant errors happen before storage. Empty DELETE bodies
+  are accepted with either JSON media type; malformed JSON, unsupported media and
+  oversized requests retain SCIM errors even before Nest dispatch.
 
 ### Credentials, UI and qualification
 

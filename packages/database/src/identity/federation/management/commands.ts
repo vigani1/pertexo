@@ -22,6 +22,7 @@ import {
   organizationForWorkspace,
 } from './authority.js';
 import { projectOrganization } from './settings.js';
+import { lockDirectoryParticipants } from '../provisioning/authority.js';
 
 export type FederationCommand = FederationScope &
   Readonly<{ idempotencyKey: string; expectedRevision: number }>;
@@ -62,9 +63,21 @@ export async function runFederationCommand(
   return withPlatformTransaction(
     pool,
     async (client) => {
-      for (const workspaceId of [
+      const workspaceIds = [
         ...new Set([input.workspaceId, ...additionalWorkspaceIds]),
-      ].sort())
+      ].sort();
+      for (const workspaceId of workspaceIds)
+        await client.query(
+          'select id from app.workspaces where id=$1 for update',
+          [workspaceId],
+        );
+      const organization = await organizationForWorkspace(
+        client,
+        input.workspaceId,
+        true,
+      );
+      await lockDirectoryParticipants(client, organization?.id, input.actorId);
+      for (const workspaceId of workspaceIds)
         await lockFederationWorkspace(client, { ...input, workspaceId }, true);
       const identity = {
         workspaceId: input.workspaceId,
@@ -80,12 +93,12 @@ export async function runFederationCommand(
         }),
       );
       if (replay !== null) return federationSettingsSchema.parse(replay);
-      const organization = await change(client);
+      const changedOrganization = await change(client);
       const result: FederationSettings = {
         configured: true,
         reason: null,
         canManage: true,
-        organization: await projectOrganization(client, organization),
+        organization: await projectOrganization(client, changedOrganization),
       };
       await withWorkspaceScope(client, input, (scoped) =>
         completeCommand(scoped, identity, result),

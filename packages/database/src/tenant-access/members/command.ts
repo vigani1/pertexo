@@ -11,6 +11,7 @@ import { commandKeySchema } from '../command-keys.js';
 import type { MembershipRole } from '../contracts.js';
 import { parseIdentityUuid } from '../support.js';
 import { withTenantScopedClient } from '../transactions.js';
+import { DirectoryManagedMembershipError } from '../errors.js';
 
 /*
  * The shared half of the existing-member commands (ADR 037 role change,
@@ -205,6 +206,15 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
           ...command.result.parse(stored),
           replayed: true,
         });
+      if (
+        (
+          await client.query(
+            'select 1 from app.auth_directory_memberships where workspace_id=$1 and user_id=$2',
+            [scope.workspaceId, scope.targetUserId],
+          )
+        ).rowCount !== 0
+      )
+        throw new DirectoryManagedMembershipError();
       const result = command.result.parse(
         await command.apply(client, admitted, scope),
       );

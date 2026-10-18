@@ -184,24 +184,44 @@ async function listWorkspaceMembers(
         throw new WorkspaceAccessDeniedError(
           'Actor is no longer authorized for this workspace',
         );
-      const result = await client.query<{
-        user_id: string;
-        email: string;
-        display_name: string;
-        role: MembershipRole;
-        role_revision: number;
-        membership_status: 'active' | 'suspended';
-        created_at: Date;
-        updated_at: Date;
-        created_at_cursor: string;
-      }>(
+      const result = await client.query<
+        (
+          | {
+              directory_user_id: null;
+              directory_organization_id: null;
+              directory_revision: null;
+              directory_control_workspace_id: null;
+            }
+          | {
+              directory_user_id: string;
+              directory_organization_id: string;
+              directory_revision: number;
+              directory_control_workspace_id: string;
+            }
+        ) & {
+          user_id: string;
+          email: string;
+          display_name: string;
+          role: MembershipRole;
+          role_revision: number;
+          membership_status: 'active' | 'suspended';
+          created_at: Date;
+          updated_at: Date;
+          created_at_cursor: string;
+        }
+      >(
         `select m.user_id, u.email, u.display_name,
+                source.directory_user_id,source.organization_id directory_organization_id,
+                directory.revision directory_revision,organization.control_workspace_id directory_control_workspace_id,
                 m.role, m.role_revision, m.status as membership_status,
                 m.created_at, m.updated_at,
                 to_char(m.created_at at time zone 'UTC',
                   'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
          from app.workspace_memberships m
          join app.users u on u.id = m.user_id and u.status = 'active'
+         left join app.auth_directory_memberships source on source.workspace_id=m.workspace_id and source.user_id=m.user_id
+         left join app.auth_directory_users directory on directory.id=source.directory_user_id
+         left join app.auth_organizations organization on organization.id=source.organization_id
          where m.workspace_id = $1
            and m.status in ('active', 'suspended')
            and ($2::timestamptz is null
@@ -222,6 +242,16 @@ async function listWorkspaceMembers(
             role: row.role,
             roleRevision: row.role_revision,
             membershipStatus: row.membership_status,
+            ...(row.directory_user_id === null
+              ? {}
+              : {
+                  directorySource: {
+                    directoryUserId: row.directory_user_id,
+                    organizationId: row.directory_organization_id,
+                    directoryRevision: row.directory_revision,
+                    controlWorkspaceId: row.directory_control_workspace_id,
+                  },
+                }),
             createdAt: row.created_at,
             updatedAt: row.updated_at,
           }),

@@ -6,6 +6,7 @@ export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'form_workspace_submission',
   'identity_start',
   'automation_authentication',
+  'directory_provisioning',
   'identity_callback',
   'authenticated_read',
   'data_table_export',
@@ -99,6 +100,10 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
     dimensions: [{ kind: 'workspace', subject: 'workspaceId', limit: 60 }],
   },
 
+  directory_provisioning: {
+    failureMode: 'closed',
+    dimensions: [{ kind: 'workspace', subject: 'workspaceId', limit: 300 }],
+  },
   automation_authentication: {
     failureMode: 'closed',
     dimensions: [
