@@ -1,13 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
-import { hasCredentialAccount } from '@pertexo/database/tenant-access';
+import { APIError } from 'better-auth/api';
+import {
+  authorizeCredentialSignIn,
+  hasCredentialAccount,
+} from '@pertexo/database/tenant-access';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { PostgresDialect } from 'kysely';
 import type { Pool } from 'pg';
 
 import type { SocialProviderGateway } from '../providers/contract.js';
 import type { AuthenticationMail } from '../mail/delivery.js';
-import { isActiveUser } from './trusted-sessions.js';
 import type { OwnedEmailProofs } from '../mail/email-proofs.js';
 import { createTrustedSessionPlugin } from './session-plugin.js';
 
@@ -203,7 +206,16 @@ function identityChangeHooks(pool: Pool) {
     session: {
       create: {
         before: async (session) => {
-          if (!(await isActiveUser(pool, session.userId))) return false;
+          const decision = await authorizeCredentialSignIn(
+            pool,
+            session.userId,
+          );
+          if (decision === 'inactive') throw new APIError('UNAUTHORIZED');
+          if (decision === 'sso_required')
+            throw new APIError('FORBIDDEN', {
+              code: 'SSO_REQUIRED',
+              message: 'Use your organization sign-in to continue.',
+            });
           return { data: session };
         },
       },

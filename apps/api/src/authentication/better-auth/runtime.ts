@@ -1,3 +1,12 @@
+import {
+  createNodeSecureHttpClient,
+  type ApplicationSecretEnvelope,
+} from '@pertexo/integrations/server';
+import { OrganizationSignIn } from '../federation/journeys/organization.js';
+import {
+  createOidcProofGateway,
+  type OidcProofGateway,
+} from '../federation/protocol/oidc.js';
 import type { BetterAuthOptions } from 'better-auth';
 import { Pool } from 'pg';
 
@@ -34,6 +43,10 @@ export type BetterAuthRuntimeConfig = Readonly<{
   socialProviders?: BetterAuthOptions['socialProviders'];
   /** Local provider fixtures may use this seam; production uses pinned providers. */
   linkProviderGateway?: SocialProviderGateway;
+  federation?: Readonly<{
+    envelope: ApplicationSecretEnvelope;
+    oidcGateway?: OidcProofGateway;
+  }>;
 }>;
 
 export type BetterAuthRuntime = Readonly<{
@@ -106,6 +119,25 @@ export function createBetterAuthRuntime(
     deliver,
   });
 
+  const federation = new OrganizationSignIn({
+    pool,
+    baseUrl: config.baseUrl,
+    secret: config.secret,
+    secureCookies: config.secureCookies,
+    sessionTtlSeconds: config.sessionTtlSeconds,
+    ...(config.federation === undefined
+      ? {}
+      : {
+          gateway:
+            config.federation.oidcGateway ??
+            createOidcProofGateway({
+              http: createNodeSecureHttpClient(),
+              envelope: config.federation.envelope,
+            }),
+        }),
+    authenticate: (request) => authenticateBrowserRequest(auth, pool, request),
+    deliver,
+  });
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     auth: Object.freeze({
@@ -113,6 +145,7 @@ export function createBetterAuthRuntime(
         const owned =
           (await landProviderFormCallback(request)) ??
           (await social.handle(request)) ??
+          (await federation.handle(request)) ??
           (await linking.handle(request)) ??
           (await emailProofs.handle(request));
         if (owned !== undefined) return owned;

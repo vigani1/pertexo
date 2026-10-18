@@ -83,3 +83,17 @@ export type {
 } from './tokens/types.js';
 export { parseApiTokenCredential } from './tokens/credential.js';
 export type { ParsedApiTokenCredential } from './tokens/credential.js';
+
+export {
+  createFederationManagementStore,
+  type FederationManagementStore,
+} from '../identity/federation/management/store.js';
+export { FederationConflictError } from '../identity/federation/management/contract.js';
+
+export {
+  isAuthenticationSessionAllowed,
+  isIdentityEmailChangeAllowed,
+  authorizeCredentialSignIn,
+} from '../identity/federation/sessions/authority.js';
+
+export { OrganizationSignInCommands } from '../identity/federation/journeys/store.js';

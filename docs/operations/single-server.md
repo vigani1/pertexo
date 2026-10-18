@@ -46,12 +46,19 @@ API-down errors retain their status and diagnostic information without the
 credential. Preserve these rules when customizing the proxy or adding access
 logging. See [webhook authentication and browser callers](../guides/webhooks.md).
 
-## Optional social sign-in
+## Optional sign-in providers
 
 Google and GitHub are off until their client ID and secret pairs are configured
 in the private installation environment. Follow the [sign-in provider guide](../guides/single-sign-on.md)
 for registration and exact callbacks. The public address is
 `https://<app host>/v1/auth/federation/social/callback/<provider>`.
+Organization OIDC is configured by the control workspace owner in **Settings →
+Single sign-on**, after setting the private API `AUTH_FEDERATION_KEY` and its
+version. The fresh-install generator includes them. Its public callback is
+`https://<app host>/v1/auth/federation/oidc/callback`. Back up the encryption key
+separately; restoring only the database cannot restore encrypted provider secrets.
+SAML and directory provisioning follow in the remaining F28 slices.
+
 Keep `/v1/auth/*` routed directly from Caddy to the API: codes, state and email
 proofs must never enter nginx request/error logs. Preserve Caddy's full-URI,
 request-header and Location-header redaction when adding logging.

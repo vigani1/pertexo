@@ -2,14 +2,17 @@
 
 React 19 + TypeScript + Vite, in the existing pnpm workspace. Implemented:
 browser-safe contracts and transport, Better Auth sign-in (email and password,
-social providers) with account security, session recovery/logout, workspace
-entry, workflow list/create and discovery, workspace creation/display-name
-editing, a Home with exact run statistics and the Loom, bounded recent-activity
-Overview, the bounded workflow editor with conflict-safe draft persistence,
-validation, node preview, typed visual input mappings, exact-version publishing,
-run start, live run detail and contract-backed workflow settings/operations,
-including personal API token Settings, automatic trigger-pause rules,
-owner-managed workspace defaults and explicit Resume controls. Read-only Usage
+social providers and organization OIDC) with account security, session
+recovery/logout, workspace entry, workflow list/create and discovery, workspace
+creation/display-name editing, a Home with exact run statistics and the Loom,
+bounded recent-activity Overview, the bounded workflow editor with conflict-safe
+draft persistence, validation, node preview, typed visual input mappings,
+exact-version publishing, run start, live run detail and contract-backed
+workflow settings/operations, including personal API token Settings, automatic
+trigger-pause rules, owner-managed workspace defaults and explicit Resume
+controls. Organization sign-in settings cover DNS verification, provider tests,
+JIT default roles and required-SSO recovery; see
+[sign-in providers](../../docs/guides/single-sign-on.md). Read-only Usage
 separates current execution/artifact capacity from ADR 044 retained run
 activity, with independent snapshots and exact server-window drilldowns (ADR
 057). F12 adds 80% capacity warnings through F27 and a 30/90-day UTC Trends page

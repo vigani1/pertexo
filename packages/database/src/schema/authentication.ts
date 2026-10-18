@@ -4,6 +4,7 @@ import {
   check,
   foreignKey,
   index,
+  integer,
   jsonb,
   text,
   timestamp,
@@ -13,6 +14,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { authProviders } from './identity/federation/providers.js';
 
 import { appSchema, bytea } from './namespace.js';
 import { users } from './foundation.js';
@@ -75,8 +77,22 @@ export const authSessions = appSchema.table(
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
     userId: uuid('user_id').notNull(),
+    authenticationMethod: text('authentication_method')
+      .notNull()
+      .default('credential'),
+    federationProviderId: uuid('federation_provider_id'),
+    federationProviderRevision: integer('federation_provider_revision'),
   },
   (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      name: 'auth_session_federation_provider_fk',
+      columns: [table.federationProviderId],
+      foreignColumns: [authProviders.id],
+    }).onDelete('cascade'),
+    check(
+      'auth_session_authentication_proof_valid',
+      sql`(authentication_method in ('credential','social') AND federation_provider_id is null AND federation_provider_revision is null) OR (authentication_method='organization' AND federation_provider_id is not null AND federation_provider_revision is not null AND federation_provider_revision>0)`,
+    ),
     check(
       'auth_sessions_expiry_after_creation',
       sql`(expires_at > created_at)`,
@@ -87,6 +103,10 @@ export const authSessions = appSchema.table(
       columns: [table.userId],
       foreignColumns: [users.id],
     }).onDelete('cascade'),
+    index('auth_sessions_federation_provider_idx').on(
+      table.federationProviderId,
+      table.id,
+    ),
     index('auth_sessions_expiry_idx').on(table.expiresAt, table.id),
     index('auth_sessions_user_expiry_idx').on(
       table.userId,

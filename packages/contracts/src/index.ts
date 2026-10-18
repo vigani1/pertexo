@@ -212,3 +212,36 @@ export {
   socialSignInStartSchema,
   socialSignInStartedSchema,
 } from './schemas/identity/federation/social.js';
+export { authorizationStartedSchema } from './schemas/identity/federation/authorization.js';
+export {
+  FEDERATION_LIMITS,
+  federationDomainNameSchema,
+  oidcConfigurationSchema,
+  federationOrganizationCreateSchema,
+  federationWorkspaceLinkSchema,
+  federationRevisionCommandSchema,
+  federationDomainCreateSchema,
+  federationEnforcementSchema,
+  oidcProviderCreateSchema,
+  oidcProviderUpdateSchema,
+  federationTestStartSchema,
+  federationSettingsSchema,
+  type OidcConfiguration,
+  type OidcProviderCreate,
+  type OidcProviderUpdate,
+  type FederationSettings,
+  type FederationOrganizationCreate,
+  type FederationWorkspaceLink,
+  type FederationDomainCreate,
+  type FederationRevisionCommand,
+  type FederationEnforcement,
+} from './schemas/identity/federation/settings.js';
+export {
+  federationDiscoveryQuerySchema,
+  federationDiscoverySchema,
+  federationSignInStartSchema,
+  type FederationDiscovery,
+  type FederationSignInStart,
+} from './schemas/identity/federation/sign-in.js';
+
+export { delegatedWorkspaceRoleSchema } from './schemas/identity/membership.js';

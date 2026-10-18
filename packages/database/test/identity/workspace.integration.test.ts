@@ -1790,6 +1790,7 @@ describe('identity/workspace persistence', () => {
         intentId: oldIntentId,
         bindingDigest: oldBinding,
         userId: recipient.id,
+        sessionId: await createInvitationProofSession(recipient.id),
         verifiedEmail: recipient.email,
         verifiedAt: new Date(),
       }),
@@ -1800,6 +1801,7 @@ describe('identity/workspace persistence', () => {
         intentId: newIntentId,
         bindingDigest: newBinding,
         userId: recipient.id,
+        sessionId: await createInvitationProofSession(recipient.id),
         verifiedEmail: recipient.email,
         verifiedAt: new Date(),
       }),
@@ -2307,6 +2309,7 @@ describe('identity/workspace persistence', () => {
       intentId: completedIntentId,
       bindingDigest: completedBinding,
       userId: recipient.id,
+      sessionId: await createInvitationProofSession(recipient.id),
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
@@ -2462,6 +2465,7 @@ describe('identity/workspace persistence', () => {
       intentId: successorIntent.intentId,
       bindingDigest: successorIntent.bindingDigest,
       userId: recipient.id,
+      sessionId: await createInvitationProofSession(recipient.id),
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
@@ -2574,6 +2578,7 @@ describe('identity/workspace persistence', () => {
       intentId: targetIntentId,
       bindingDigest: targetBindingDigest,
       userId: recipient.id,
+      sessionId: await createInvitationProofSession(recipient.id),
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
@@ -3316,6 +3321,7 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       userId: recipient.id,
+      sessionId: await createInvitationProofSession(recipient.id),
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
@@ -3493,6 +3499,7 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       userId: recipient.id,
+      sessionId: await createInvitationProofSession(recipient.id),
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
@@ -3542,6 +3549,7 @@ describe('identity/workspace persistence', () => {
         intentId,
         bindingDigest,
         userId: recipient.id,
+        sessionId: await createInvitationProofSession(recipient.id),
         verifiedEmail: recipient.email,
         verifiedAt: new Date(),
       }),
@@ -3614,6 +3622,7 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       userId: recipient.id,
+      sessionId: await createInvitationProofSession(recipient.id),
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
@@ -3729,6 +3738,7 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       userId: recipient.id,
+      sessionId: await createInvitationProofSession(recipient.id),
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
@@ -3796,6 +3806,7 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       userId: recipient.id,
+      sessionId: await createInvitationProofSession(recipient.id),
       verifiedEmail: recipient.email,
       verifiedAt: new Date(),
     });
@@ -3871,4 +3882,25 @@ function invitationCreateCommand(
     sealedToken: testSealedToken(),
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
   };
+}
+
+async function createInvitationProofSession(userId: string): Promise<string> {
+  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  try {
+    const existing = (
+      await pool.query<{ id: string }>(
+        'select id from app.auth_sessions where user_id=$1 and expires_at>clock_timestamp() order by created_at desc,id limit 1',
+        [userId],
+      )
+    ).rows[0];
+    if (existing !== undefined) return existing.id;
+    const id = randomUUID();
+    await pool.query(
+      "insert into app.auth_sessions(id,user_id,token,expires_at) values($1,$2,$3,clock_timestamp()+interval '1 hour')",
+      [id, userId, randomUUID()],
+    );
+    return id;
+  } finally {
+    await pool.end();
+  }
 }

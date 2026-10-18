@@ -76,6 +76,7 @@ export const loginRoute = createRoute({
       ? { migrationFailed: true as const }
       : {}),
     ...(flag(search.socialError) ? { socialError: true as const } : {}),
+    ...(flag(search.ssoError) ? { ssoError: true as const } : {}),
     ...returnToSearch(allowlistedReturnPath(search.returnTo)),
   }),
   beforeLoad: async ({ context, search }) => {

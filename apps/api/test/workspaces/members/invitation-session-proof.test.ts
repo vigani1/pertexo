@@ -39,6 +39,7 @@ function intent(
     status,
     expiresAt: new Date('2026-09-24T12:15:00.000Z'),
     verifiedUserId: status === 'pending' ? null : userId,
+    verifiedSessionId: null,
     verifiedEmail: null,
     verifiedAt: null,
     workspaceName: 'Northwind Ops',
@@ -55,6 +56,7 @@ function evidence(overrides: Partial<SignInEvidence> = {}): SignInEvidence {
     email: 'Recipient@Example.test',
     emailVerified: true,
     signedInAt: new Date(now.getTime() - 60_000),
+    sessionId: userId,
     ...overrides,
   };
 }
@@ -97,6 +99,7 @@ describe('invitation acceptance under the active session authority', () => {
       intentId,
       bindingDigest: createHash('sha256').update(bindingSecret).digest('hex'),
       userId,
+      sessionId: userId,
       verifiedEmail: 'Recipient@Example.test',
       verifiedAt: new Date(now.getTime() - 60_000),
     });

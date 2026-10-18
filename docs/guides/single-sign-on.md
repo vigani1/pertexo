@@ -67,6 +67,71 @@ Linking, security audit, previous-session revocation and the new session commit
 in one short transaction after provider verification. Expired proof rows are
 eligible for the existing retention sweep a day after expiry.
 
-Organization OIDC/SAML, domain enforcement and directory provisioning are the
-remaining [F28 slices](../feature-plans/28-single-sign-on-and-provisioning.md).
-They are not enabled by social client credentials.
+## Organization sign-in with OIDC
+
+Owners configure **Settings → Single sign-on**. Admins can read safe settings;
+only the current owner of the control workspace can change the identity boundary.
+Organization providers are separate from install-wide social sign-in clients.
+Google Workspace, Microsoft Entra ID, Okta and other generic OIDC providers use
+one authorization-code flow with PKCE and signed ID tokens.
+
+Before configuring a provider, supply a private, random 32-byte base64
+`AUTH_FEDERATION_KEY` and `AUTH_FEDERATION_KEY_VERSION` to the API. The fresh-install
+secrets generator includes them. Save them separately from database backups.
+Never rerun that generator over an existing installation. During rotation, supply
+old `{ version, key }` entries in `AUTH_FEDERATION_PREVIOUS_KEYS`. The API refuses
+startup when a stored provider secret cannot be opened; restoring the database
+also requires the right key ring. These settings belong only in the API's private
+configuration, never browser variables or workflow credentials.
+
+1. Create an identity organization in its control workspace.
+2. Add each exact domain. Publish the displayed `_pertexo.<domain>` TXT record at
+   your DNS provider, then choose **Verify DNS**. Challenges expire after seven
+   days; **New challenge** replaces an expired or incorrect one. Verifying a parent
+   domain does not claim its subdomains. A domain can belong to only one
+   organization on this install.
+3. Register a confidential web client at your IdP with the exact redirect URI
+   `https://app.example.com/v1/auth/federation/oidc/callback` (use your app origin).
+   Add the exact issuer, client ID and secret, then enable sign-in. Issuers and
+   their discovery/token/key endpoints must use public HTTPS; private-network
+   providers are not supported in this slice.
+4. Check the claim names if needed: a scalar email defaults to `email`, and a
+   display name to `name`. The signed IdP is authoritative only for its verified
+   domains. Explicitly unverified email is refused. Entra's absent
+   `email_verified` claim is accepted for organization OIDC; social sign-in still
+   requires verified email.
+5. **Test sign-in** for each verified domain. Use an identity on that domain.
+   Testing preserves your current owner session and creates no account or
+   membership. Before **Require SSO**, keep a verified password on the control
+   workspace owner's account and successfully test a current enabled provider.
+
+Requiring SSO governs matching accounts across the install, including existing
+memberships outside the linked workspaces. It ends existing sessions for that
+domain. Passwords, social sign-in, password reset and earlier email-change links
+cannot bypass the policy. Affected non-owner accounts cannot change their primary
+email through ordinary account settings. The enforcing organization's control
+workspace owner retains a protected, audited password login for recovery during
+an IdP outage; owning an unrelated workspace grants no exception.
+
+Enable **Allow new accounts** only when JIT provisioning is wanted. A successful
+SSO identity receives each linked workspace's configured default role (viewer by
+default). Linking a workspace requires ownership of both workspaces. Existing
+manual roles remain unchanged; suspended or removed memberships are not restored.
+With new accounts off, only existing eligible identities/memberships can sign in.
+Organization methods show the provider name in account security. Accounts retain
+at most 16 sign-in methods; remove an unused method before attaching another.
+
+A provider's issuer is immutable. Changing its configuration ends its sessions
+and invalidates its readiness tests. A required domain must keep another current,
+tested provider, or you must first make SSO optional. Domain enforcement changes
+also end matching sessions, including the owner's if their account uses that
+domain. Sign in again with the appropriate method after the change.
+
+Protocol journeys expire after five minutes and succeed once, across API
+instances. The API stores no provider access/refresh/ID tokens. Short-lived proof
+cleanup and organization/workspace purge use the existing maintenance worker.
+The single-server authentication proxy route keeps these callback paths and
+endpoint secrets out of nginx access logs.
+
+SAML and directory provisioning are the next
+[F28 slices](../feature-plans/28-single-sign-on-and-provisioning.md).

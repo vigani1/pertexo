@@ -305,6 +305,14 @@ export const RETENTION_RULES = Object.freeze([
       where attempt.id = page.id`,
   },
   {
+    name: 'auth_federation_attempts',
+    statement: `with page as (
+      select id from app.auth_federation_attempts
+      where expires_at<=clock_timestamp()-interval '1 day'
+      order by expires_at,id limit $1
+    ) delete from app.auth_federation_attempts attempt using page where attempt.id=page.id`,
+  },
+  {
     name: 'auth_sign_in_attempts',
     statement: `with page as (
       select id from app.auth_sign_in_attempts
@@ -451,7 +459,7 @@ export const RETENTION_RULES = Object.freeze([
         limit $1 for update skip locked
       ), intents as (
         update app.workspace_invitation_acceptance_intents intent
-        set verified_user_id = null, verified_email = null, verified_at = null,
+        set verified_user_id = null, verified_session_id=null, verified_email = null, verified_at = null,
             updated_at = clock_timestamp()
         from page
         where intent.invitation_id = page.id and intent.verified_email is not null

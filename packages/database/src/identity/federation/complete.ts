@@ -1,4 +1,6 @@
+import { hasSignInMethodCapacity } from './accounts/limits.js';
 import { resolveVerifiedSignInUser } from './accounts/resolve.js';
+import { canCreateAuthenticationSession } from './sessions/authority.js';
 import { randomBytes } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -23,6 +25,12 @@ export async function completeSocialSignIn(
   const user = await resolveVerifiedSignInUser(client, input);
   if (user?.status !== 'active' || !user.email_verified)
     return { kind: 'failed' };
+  if (
+    !(await canCreateAuthenticationSession(client, user.id, {
+      method: 'social',
+    }))
+  )
+    return { kind: 'failed' };
   // Membership commands and method removal lock the user before changing sessions.
   const account = (
     await client.query<{ user_id: string }>(
@@ -33,6 +41,8 @@ export async function completeSocialSignIn(
   if (account !== undefined && account.user_id !== user.id)
     return { kind: 'failed' };
   if (account === undefined) {
+    if (!(await hasSignInMethodCapacity(client, user.id)))
+      return { kind: 'failed' };
     if (input.identity.email?.toLowerCase() !== user.email.toLowerCase())
       return { kind: 'failed' };
     await client.query(
@@ -49,8 +59,8 @@ export async function completeSocialSignIn(
   }
   const token = randomBytes(32).toString('base64url');
   await client.query(
-    `insert into app.auth_sessions(id,user_id,token,expires_at)
-     values($1,$2,$3,clock_timestamp()+($4::integer*interval '1 second'))`,
+    `insert into app.auth_sessions(id,user_id,token,expires_at,authentication_method)
+     values($1,$2,$3,clock_timestamp()+($4::integer*interval '1 second'),'social')`,
     [generatePersistedId(), user.id, token, sessionTtlSeconds],
   );
   await recordIdentitySecurityFact(client, user.id, 'session.signed_in');

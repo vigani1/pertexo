@@ -567,6 +567,49 @@ describe('parseApiConfig identity boundary', () => {
     expect(Object.isFrozen(config.identity?.betterAuth.durableMail)).toBe(true);
   });
 
+  it('keeps organization SSO off without a dedicated key and accepts a versioned key ring', () => {
+    expect(
+      parseApiConfig(standaloneBetterAuthEnvironment()).identity
+        ?.federationEncryption,
+    ).toBeUndefined();
+    const key = Buffer.alloc(32, 0x57).toString('base64');
+    const previous = {
+      version: 'organization-v0',
+      key: Buffer.alloc(32, 0x56).toString('base64'),
+    };
+    const config = parseApiConfig({
+      ...standaloneBetterAuthEnvironment(),
+      AUTH_FEDERATION_KEY: key,
+      AUTH_FEDERATION_KEY_VERSION: 'organization-v1',
+      AUTH_FEDERATION_PREVIOUS_KEYS: JSON.stringify([previous]),
+    });
+    expect(config.identity?.federationEncryption).toEqual({
+      current: { version: 'organization-v1', key },
+      previous: [previous],
+    });
+  });
+  it.each([
+    { AUTH_FEDERATION_KEY: 'private-invalid-key' },
+    { AUTH_FEDERATION_KEY_VERSION: 'organization-v1' },
+    { AUTH_FEDERATION_PREVIOUS_KEYS: 'private-invalid-json' },
+    {
+      AUTH_FEDERATION_KEY: 'private-invalid-key',
+      AUTH_FEDERATION_KEY_VERSION: 'organization-v1',
+    },
+  ])(
+    'refuses incomplete organization key configuration without exposing its value',
+    (keys) => {
+      expect(() =>
+        parseApiConfig({ ...standaloneBetterAuthEnvironment(), ...keys }),
+      ).toThrow('Identity configuration is invalid');
+      try {
+        parseApiConfig({ ...standaloneBetterAuthEnvironment(), ...keys });
+      } catch (error: unknown) {
+        expect(String(error)).not.toContain('private-invalid');
+      }
+    },
+  );
+
   it('requires a public web origin when deployed', () => {
     expect(() =>
       parseApiConfig(deployedEnvironmentWithout('PUBLIC_WEB_ORIGIN')),

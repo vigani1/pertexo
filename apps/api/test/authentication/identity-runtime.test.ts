@@ -1,5 +1,6 @@
+import * as identityStores from '@pertexo/database/tenant-access';
 import type { IdentityWorkspaceDatabase } from '@pertexo/database/testing';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
@@ -41,6 +42,19 @@ function identityDatabase(
 }
 
 describe('identity runtime composition', () => {
+  const federationClose = vi.fn<() => Promise<void>>();
+  beforeEach(() => {
+    federationClose.mockReset().mockResolvedValue(undefined);
+    vi.spyOn(identityStores, 'createFederationManagementStore').mockReturnValue(
+      {
+        checkStoredSecrets: vi.fn().mockResolvedValue(undefined),
+        close: federationClose,
+      } as unknown as ReturnType<
+        typeof identityStores.createFederationManagementStore
+      >,
+    );
+  });
+
   it('composes Better Auth as the one session authority', async () => {
     const runtime = await createApiIdentityRuntime(
       identityConfig,
@@ -89,6 +103,7 @@ describe('identity runtime composition', () => {
 
     await Promise.all([runtime.close(), runtime.close()]);
     expect(databaseClose).toHaveBeenCalledOnce();
+    expect(federationClose).toHaveBeenCalledOnce();
   });
 
   it('reports a synchronous closer throw as an aggregate shutdown failure', async () => {
@@ -105,6 +120,7 @@ describe('identity runtime composition', () => {
       'Identity resource shutdown failed',
     );
     expect(databaseClose).toHaveBeenCalledOnce();
+    expect(federationClose).toHaveBeenCalledOnce();
   });
 
   it('closes the acquired database when later composition fails', async () => {
@@ -124,5 +140,6 @@ describe('identity runtime composition', () => {
       }),
     ).rejects.toBe(compositionFailure);
     expect(databaseClose).toHaveBeenCalledOnce();
+    expect(federationClose).toHaveBeenCalledOnce();
   });
 });

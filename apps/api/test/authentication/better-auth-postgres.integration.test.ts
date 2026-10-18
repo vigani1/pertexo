@@ -1827,6 +1827,7 @@ describe('Better Auth on PostgreSQL', () => {
         intentId,
         bindingDigest,
         userId: recipientId,
+        sessionId: await createInvitationProofSession(recipientId),
         verifiedEmail: email,
         verifiedAt: new Date(),
       });
@@ -2062,4 +2063,25 @@ function followMailLink(url: string, sessionCookie: string): Promise<Response> {
       redirect: 'manual',
     }),
   );
+}
+
+async function createInvitationProofSession(userId: string): Promise<string> {
+  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  try {
+    const existing = (
+      await pool.query<{ id: string }>(
+        'select id from app.auth_sessions where user_id=$1 and expires_at>clock_timestamp() order by created_at desc,id limit 1',
+        [userId],
+      )
+    ).rows[0];
+    if (existing !== undefined) return existing.id;
+    const id = randomUUID();
+    await pool.query(
+      "insert into app.auth_sessions(id,user_id,token,expires_at) values($1,$2,$3,clock_timestamp()+interval '1 hour')",
+      [id, userId, randomUUID()],
+    );
+    return id;
+  } finally {
+    await pool.end();
+  }
 }

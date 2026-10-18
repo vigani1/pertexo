@@ -1,3 +1,5 @@
+import { identityEmailChangeAllowed } from './federation/sessions/policy.js';
+import { readAuthenticationPolicy } from './federation/sessions/authority.js';
 import { randomUUID } from 'node:crypto';
 
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
@@ -42,6 +44,10 @@ export class EmailProofCommands {
         current.emailVerified !== (purpose === 'change_old')
       )
         return false;
+      if (purpose === 'change_old') {
+        const policy = await readAuthenticationPolicy(client, user.id);
+        if (!identityEmailChangeAllowed(policy)) return false;
+      }
       await db.insert(authEmailProofs).values({
         id: randomUUID(),
         tokenDigest,
@@ -123,6 +129,11 @@ async function consumeProof(
   )
     return 'invalid';
   const proof = row.proof;
+  if (proof.purpose !== 'initial_verification') {
+    const policy = await readAuthenticationPolicy(client, userId);
+    if (!identityEmailChangeAllowed(policy)) return 'invalid';
+  }
+
   let outcome: ProofPurpose;
   if (proof.purpose === 'initial_verification') {
     if (user.emailVerified) return 'invalid';

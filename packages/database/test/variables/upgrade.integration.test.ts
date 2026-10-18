@@ -133,6 +133,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0030_audit_retention.sql',
         '0031_publication_review.sql',
         '0032_federated_sign_in.sql',
+        '0033_organization_oidc.sql',
       ]);
       expect(
         (

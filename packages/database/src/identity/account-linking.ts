@@ -1,3 +1,8 @@
+import { hasSignInMethodCapacity } from './federation/accounts/limits.js';
+import {
+  readEligibleAuthenticationSession,
+  type AuthenticationSession,
+} from './federation/sessions/authority.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { and, eq, gt, sql } from 'drizzle-orm';
@@ -93,7 +98,10 @@ export class AccountLinkingCommands {
         .from(users)
         .where(and(eq(users.id, attempt.userId), eq(users.status, 'active')))
         .for('update');
-      if (user === undefined || !(await sessionStillActive(client, attempt)))
+      if (
+        user === undefined ||
+        (await activeLinkSession(client, attempt)) === undefined
+      )
         return false;
       const locked = await lockAttempt(client, attempt, state, binding);
       if (locked?.phase !== 'source') return false;
@@ -134,10 +142,8 @@ export class AccountLinkingCommands {
           .from(users)
           .where(eq(users.id, attempt.userId))
           .for('update');
-        if (
-          user?.status !== 'active' ||
-          !(await sessionStillActive(client, attempt))
-        )
+        const sourceSession = await activeLinkSession(client, attempt);
+        if (user?.status !== 'active' || sourceSession === undefined)
           return { kind: 'failed' };
         const locked = await lockAttempt(client, attempt, state, binding);
         if (locked?.phase !== 'target') return { kind: 'failed' };
@@ -155,6 +161,8 @@ export class AccountLinkingCommands {
           await completeAttempt(client, attempt.id);
           return { kind: 'already' };
         }
+        if (!(await hasSignInMethodCapacity(client, attempt.userId)))
+          return { kind: 'failed' };
         await db.insert(authAccounts).values({
           id: randomUUID(),
           accountId: identity.accountId,
@@ -175,6 +183,15 @@ export class AccountLinkingCommands {
           expiresAt: sql`clock_timestamp()+(${this.input.sessionTtlSeconds}::integer*interval '1 second')`,
           token,
           userId: attempt.userId,
+          authenticationMethod: sourceSession.proof.method,
+          federationProviderId:
+            sourceSession.proof.method === 'organization'
+              ? sourceSession.proof.providerId
+              : null,
+          federationProviderRevision:
+            sourceSession.proof.method === 'organization'
+              ? sourceSession.proof.providerRevision
+              : null,
         });
         await completeAttempt(client, attempt.id);
         return { kind: 'linked', token };
@@ -197,10 +214,10 @@ export class AccountLinkingCommands {
   }
 }
 
-async function sessionStillActive(
+async function activeLinkSession(
   client: PoolClient,
   attempt: AccountLinkAttempt,
-): Promise<boolean> {
+): Promise<AuthenticationSession | undefined> {
   const rows = await drizzle(client)
     .select({ id: authSessions.id })
     .from(authSessions)
@@ -212,7 +229,9 @@ async function sessionStillActive(
       ),
     )
     .for('update');
-  return rows.length === 1;
+  return rows.length === 1
+    ? readEligibleAuthenticationSession(client, attempt.sessionId)
+    : undefined;
 }
 
 async function lockAttempt(

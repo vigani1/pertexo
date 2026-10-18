@@ -34,4 +34,5 @@ export type SignInEvidence = Readonly<{
   email: string;
   emailVerified: boolean;
   signedInAt: Date;
+  sessionId: string;
 }>;

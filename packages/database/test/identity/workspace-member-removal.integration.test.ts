@@ -317,11 +317,19 @@ async function acceptInvitation(
     csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
     expiresAt: new Date(Date.now() + 15 * 60_000),
   });
+  const proofToken = await database.sessions(recipient.id);
+  const [sourceSession] = await database.asAdmin<{ id: string }>(
+    'select id from app.auth_sessions where token=$1',
+    [proofToken],
+  );
+  if (sourceSession === undefined)
+    throw new Error('Missing invitation source session');
   await identity.recordInvitationAcceptanceProof({
     workspaceId,
     intentId,
     bindingDigest,
     userId: recipient.id,
+    sessionId: sourceSession.id,
     verifiedEmail: recipient.email,
     verifiedAt: new Date(),
   });

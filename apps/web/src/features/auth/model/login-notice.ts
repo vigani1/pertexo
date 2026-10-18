@@ -11,6 +11,7 @@ export type LoginLinkOutcome = Readonly<{
   migrationFailed?: true;
   verified?: true;
   socialError?: true;
+  ssoError?: true;
 }>;
 
 export type LoginNotice = Readonly<{
@@ -60,6 +61,11 @@ export function loginNoticeFrom(
     };
   if (outcome.verified === true)
     return { tone: 'success', text: 'Email verified. You can sign in now.' };
+  if (outcome.ssoError === true)
+    return {
+      tone: 'warning',
+      text: 'Organization sign-in did not finish. Try again, or contact your workspace owner. The recovery owner can still use their password.',
+    };
   if (outcome.socialError === true)
     return {
       tone: 'destructive',

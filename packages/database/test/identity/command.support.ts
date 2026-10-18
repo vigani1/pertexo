@@ -9,12 +9,17 @@ import {
   parseDatabaseConfig,
   workspaceMemberships,
 } from '../../src/testing.js';
+import { createFederationManagementStore } from '../../src/tenant-access/index.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 
 type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
 
 export type IdentityCommandFixture = Readonly<{
+  federation: (
+    replica?: 0 | 1,
+  ) => ReturnType<typeof createFederationManagementStore>;
+  authenticationPool: (replica?: 0 | 1) => Pool;
   identity: () => ReturnType<typeof createIdentityWorkspaceDatabase>;
   /** Runs superuser SQL across tenant policies, for arrangement and inspection only. */
   asAdmin: <Row extends Record<string, unknown>>(
@@ -56,9 +61,13 @@ export function useIdentityCommandDatabase(
       'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
   );
   let identity: ReturnType<typeof createIdentityWorkspaceDatabase> | undefined;
+  const federation: (
+    ReturnType<typeof createFederationManagementStore> | undefined
+  )[] = [];
   let tenant: ReturnType<typeof createWorkspaceDatabase> | undefined;
   let owner: Pool | undefined;
   let api: Pool | undefined;
+  let apiReplica: Pool | undefined;
 
   beforeAll(async () => {
     await fixture.create();
@@ -85,9 +94,11 @@ export function useIdentityCommandDatabase(
   afterAll(async () => {
     const closing = await Promise.allSettled([
       identity?.close(),
+      ...federation.map((store) => store?.close()),
       tenant?.close(),
       owner?.end(),
       api?.end(),
+      apiReplica?.end(),
     ]);
     await fixture.drop();
     const failure = closing.find((result) => result.status === 'rejected');
@@ -100,6 +111,14 @@ export function useIdentityCommandDatabase(
   };
 
   return Object.freeze({
+    federation: (replica = 0) =>
+      (federation[replica] ??= createFederationManagementStore(
+        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
+      )),
+    authenticationPool: (replica = 0) =>
+      replica === 0
+        ? required(api)
+        : (apiReplica ??= new Pool({ connectionString: apiUrl, max: 1 })),
     identity: () => required(identity),
     asAdmin: async <Row extends Record<string, unknown>>(
       text: string,

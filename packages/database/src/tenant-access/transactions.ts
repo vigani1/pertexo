@@ -365,6 +365,65 @@ export async function withPlatformTransaction<T>(
   });
 }
 
+/** Reuses the existing RLS scopes inside one platform transaction, restoring no-context hygiene between them. */
+async function withInstalledScope<T>(
+  client: PoolClient,
+  scope: TransactionScope,
+  operation: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  await assertNoTenantContext(client);
+  const clear = async () => {
+    await client.query(`select set_config('app.workspace_id','',true),
+      set_config('app.actor_id','',true),set_config('app.discovery_scope','',true)`);
+    await assertNoTenantContext(client);
+  };
+  await installTransactionScope(client, scope);
+  await verifyTenantContext(client, scope, undefined);
+  let result: T;
+  try {
+    result = await operation(client);
+  } catch (error: unknown) {
+    try {
+      await clear();
+    } catch (cleanupError: unknown) {
+      throw new AggregateError(
+        [error, cleanupError],
+        'Transaction scope cleanup failed',
+      );
+    }
+    throw error;
+  }
+  await clear();
+  return result;
+}
+
+export function withWorkspaceScope<T>(
+  client: PoolClient,
+  scope: TenantTransactionScope,
+  operation: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return withInstalledScope(
+    client,
+    { ...scope, workspaceId: parseWorkspaceId(scope.workspaceId) },
+    operation,
+  );
+}
+/** Reads only the current actor's active memberships through the existing discovery policy. */
+export function withActorDiscoveryScope<T>(
+  client: PoolClient,
+  actorId: string,
+  operation: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return withInstalledScope(
+    client,
+    {
+      actorId: actorIdSchema.parse(actorId),
+      discoveryScope: 'workspace_memberships',
+    },
+    operation,
+  );
+}
+
 export async function withWorkspaceTransaction<T>(
   pool: Pool,
   workspaceIdInput: string,

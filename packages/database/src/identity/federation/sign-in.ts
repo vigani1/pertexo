@@ -1,3 +1,4 @@
+import { SignInProofRejectedError } from './accounts/rejection.js';
 import type { Pool } from 'pg';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { identityQueryFailure } from '../query-errors.js';
@@ -57,9 +58,17 @@ export class SocialSignInCommands {
   }
 
   public complete(input: ProvenSocialSignIn): Promise<SocialSignInResult> {
-    return withPlatformTransaction(this.input.pool, (client) =>
-      completeSocialSignIn(client, input, this.input.sessionTtlSeconds),
-    ).catch((error: unknown) => {
+    return withPlatformTransaction(this.input.pool, async (client) => {
+      const result = await completeSocialSignIn(
+        client,
+        input,
+        this.input.sessionTtlSeconds,
+      );
+      if (result.kind === 'failed') throw new SignInProofRejectedError();
+      return result;
+    }).catch((error: unknown) => {
+      if (error instanceof SignInProofRejectedError)
+        return { kind: 'failed' } as const;
       const cause = identityQueryFailure(error);
       if (
         typeof cause === 'object' &&

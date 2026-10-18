@@ -118,6 +118,7 @@ export type {
 
 export {
   applicationKeyVersionSchema,
+  validateApplicationKeyRing,
   parseApplicationPreviousKeys,
 } from './security/key-ring.js';
 export type { ApplicationKeyRing } from './security/key-ring.js';

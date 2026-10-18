@@ -1,3 +1,7 @@
+import {
+  isAuthenticationSessionAllowed,
+  isIdentityEmailChangeAllowed,
+} from '@pertexo/database/tenant-access';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import {
   APIError,
@@ -7,7 +11,7 @@ import {
   sensitiveSessionMiddleware,
   sessionMiddleware,
 } from 'better-auth/api';
-import { setSessionCookie } from 'better-auth/cookies';
+import { setSessionCookie, deleteSessionCookie } from 'better-auth/cookies';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -33,9 +37,36 @@ export function createTrustedSessionPlugin(
     endpoints: {
       ...accountSecurityEndpoints(pool, availableLinkProviders),
       ...sessionManagementEndpoints(),
-      ...internalSessionEndpoints(),
+      ...internalSessionEndpoints(pool),
     },
-    hooks: { before: nativeRouteGuards() },
+    hooks: {
+      before: nativeRouteGuards(pool),
+      after: [
+        {
+          matcher: (context) =>
+            context.path === '/sign-in/email' ||
+            context.path === '/internal/session/issue',
+          handler: createAuthMiddleware(async (context) => {
+            const created = context.context.newSession;
+            // Enforcement may change between the SDK's before hook and its insert.
+            if (
+              created !== null &&
+              !(await isAuthenticationSessionAllowed(pool, created.session.id))
+            ) {
+              await context.context.internalAdapter.deleteSession(
+                created.session.token,
+              );
+              deleteSessionCookie(context);
+              throw new APIError('CONFLICT', {
+                code: 'AUTHENTICATION_CHANGED',
+                message:
+                  'Sign-in settings changed. Try again using your current organization policy.',
+              });
+            }
+          }),
+        },
+      ],
+    },
   } satisfies NonNullable<BetterAuthOptions['plugins']>[number];
 }
 
@@ -124,7 +155,7 @@ function sessionManagementEndpoints() {
 }
 
 /** Reachable only through `auth.api`; any browser request is a 404. */
-function internalSessionEndpoints() {
+function internalSessionEndpoints(pool: Pool) {
   return {
     issuePertexoSession: createAuthEndpoint(
       '/internal/session/issue',
@@ -159,7 +190,11 @@ function internalSessionEndpoints() {
         const found = await context.context.internalAdapter.findSession(
           context.body.token,
         );
-        if (found === null) throw new APIError('NOT_FOUND');
+        if (
+          found === null ||
+          !(await isAuthenticationSessionAllowed(pool, found.session.id))
+        )
+          throw new APIError('NOT_FOUND');
         await setSessionCookie(context, found);
         return context.json({
           sessionId: found.session.id,
@@ -174,8 +209,22 @@ function internalSessionEndpoints() {
  * Native linking stays closed until Pertexo's purpose-bound protocol owns it,
  * and a native email change needs a session created in the last five minutes.
  */
-function nativeRouteGuards(): BeforeHooks {
+function nativeRouteGuards(pool: Pool): BeforeHooks {
   return [
+    {
+      matcher: (context) =>
+        (context.path === '/account-security' ||
+          context.path?.startsWith('/account-security/') === true) &&
+        context.path !== '/account-security/password/reset',
+      handler: createAuthMiddleware(async (context) => {
+        const session = await getAuthoritativeSessionFromCtx(context);
+        if (
+          session === null ||
+          !(await isAuthenticationSessionAllowed(pool, session.session.id))
+        )
+          throw new APIError('UNAUTHORIZED');
+      }),
+    },
     {
       matcher: (context) =>
         context.path === '/sign-in/social' || context.path === '/callback/:id',
@@ -202,6 +251,11 @@ function nativeRouteGuards(): BeforeHooks {
           throw new APIError('UNAUTHORIZED', {
             code: 'UNAUTHORIZED',
             message: 'Authentication is required.',
+          });
+        if (!(await isIdentityEmailChangeAllowed(pool, session.user.id)))
+          throw new APIError('FORBIDDEN', {
+            code: 'ORGANIZATION_EMAIL_MANAGED',
+            message: 'Your organization manages this email address.',
           });
         if (Date.now() - session.session.createdAt.getTime() >= 5 * 60_000)
           throw new APIError('FORBIDDEN', {

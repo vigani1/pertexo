@@ -11,14 +11,15 @@ interface SignInUserRow {
 
 export async function resolveVerifiedSignInUser(
   client: PoolClient,
-  input: ProvenSocialSignIn,
+  input: Pick<ProvenSocialSignIn, 'provider' | 'identity'> &
+    Readonly<{ createUser?: boolean }>,
 ): Promise<SignInUserRow | undefined> {
   const email = input.identity.email;
   if (email === null || !input.identity.emailVerified) return undefined;
   const normalizedEmail = email.toLowerCase();
   // Serializes first sign-in through different providers for the same address.
   await client.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [
-    `social-sign-in:${normalizedEmail}`,
+    `verified-sign-in:${normalizedEmail}`,
   ]);
   const linked = (
     await client.query<{ user_id: string }>(
@@ -40,6 +41,7 @@ export async function resolveVerifiedSignInUser(
     )
   ).rows[0];
   if (existing !== undefined) return existing;
+  if (input.createUser === false) return undefined;
   return (
     await client.query<SignInUserRow>(
       `insert into app.users(id,email,email_verified,display_name,status)

@@ -1,6 +1,6 @@
 # F28 — Single sign-on and provisioning
 
-Status: implementation authorized; current-code plan reconciled. Updated: 2026-10-18.
+Status: social sign-in merged; organization OIDC implemented; SAML and SCIM next. Updated: 2026-10-18.
 Parent: [roadmap](../product-roadmap.md). Decision: [ADR 086](../adr/086-federated-sign-in-and-provisioning.md).
 
 ## Current code
@@ -11,16 +11,16 @@ and the sign-in buttons already follow that configuration. There is no instance
 administrator role or global settings page. Keep instance configuration in the
 existing environment settings rather than creating another administration system.
 
-ADR 039 currently refuses implicit same-email linking. The new request changes
-that rule for verified identities. Inspection of the pinned native social callback
+Social sign-in and verified-email-only linking are merged in [#344](https://github.com/vigani1/pertexo/pull/344), under ADR 086. Migration 0032 owns the single-use social journey. The organization slice builds on this path. Inspection of the pinned native social callback
 found that existing-account attachment is not transactional with post-creation
 hooks. Use the existing configured-provider proof gateway and a short Pertexo
 identity transaction, as purpose-bound linking already does. Explicit linking from
 account settings retains its two-sided, browser-bound proof. Native arbitrary
 linking endpoints remain closed.
 
-There is no identity organization, verified-domain registry, organization OIDC or
-SAML, or SCIM. The reset removed the legacy OIDC session bridge; do not restore it.
+The organization slice adds identity organizations, verified domains, encrypted
+OIDC providers, scoped JIT and required-SSO session proofs in migration 0033.
+SAML and SCIM remain the next slices. The reset removed the legacy OIDC session bridge; do not restore it.
 Existing identity commands already own workspace-first locks, membership revisions,
 removed-member cleanup, immediate session revocation and audit. F18 audit and
 publication review are merged (#342, #343). F27 already owns notices and mail.
@@ -182,6 +182,65 @@ composition. Contracts own application settings boundaries; SCIM's parser owns i
 protocol boundary. Web feature-local settings, queries and forms compose the public
 contracts. Keep folders below roughly ten files, grouped by sub-area then role.
 
+## Organization OIDC implementation decisions (2026-10-18)
+
+- `authentication/federation` owns settings, protocol gateways and browser journeys,
+  with management/protocol/journey sub-areas. Its Nest settings module composes the
+  existing workspace authorization and admission modules. Database
+  `identity/federation` owns organization/domain/provider transactions through the
+  existing `/tenant-access` entry. No extra pool, session authority or database role.
+- Instance `AUTH_FEDERATION_KEY`, `_KEY_VERSION` and `_PREVIOUS_KEYS` reuse the
+  application key ring/envelope. Absent keys leave organization configuration off
+  with an explicit setup reason. Configured stored secrets require the matching
+  keys at startup. Extend the existing secrets generator and private API env file.
+- Generic OIDC uses the pinned library's explicit `enableNonRepudiationChecks`,
+  expected state/nonce, S256 verifier and exact redirect URI. The SDK's code flow
+  otherwise relies on TLS for token authenticity; our acceptance requires JWS
+  signature validation too. Select supported basic/post client authentication
+  from discovery; use the existing bounded secure HTTP transport.
+- Organization IdPs are authoritative only for their exact verified DNS domains.
+  Require a scalar email claim (default `email`); reject explicit
+  `email_verified=false`. An absent `email_verified` claim is allowed for organization OIDC, where
+  the signed configured issuer and verified domain are the authority (Entra often
+  omits it). Social sign-in keeps its stricter verified-email rule.
+- Provider issuer is immutable; use a new provider for a new issuer. The stable
+  provider UUID is the account provider identity, and the protocol subject is the
+  account ID. Provider changes invalidate readiness checks and revoke its sessions.
+  A required domain must retain another current, tested enabled provider before
+  that change, or enforcement must first be turned off.
+- Keep the existing 16-method account response bound as the attachment bound too,
+  under the user's lock. Organization methods show their configured provider name.
+  Explicit social linking keeps its existing password/social source proof; a person
+  with only organization SSO can first add a password. Required SSO still governs
+  password/social sign-in, except for the protected recovery owner.
+- A provider test uses the real protocol but keeps the initiating owner's session:
+  it grants no identity or membership. Bind it to that owner/session, browser and
+  provider revision. Readiness belongs to a verified domain/provider revision;
+  enabling enforcement needs a successful current test and a verified owner password.
+  Enforced domains govern account sign-in across the install; linked workspaces
+  govern JIT membership, rather than limiting identity policy to those workspaces.
+- Persist session authentication method and organization provider/revision proof.
+  One TypeScript eligibility owner checks creation, delivery, lookup and owned
+  native account endpoints. Invitation acceptance, password/method maintenance and explicit method linking must
+  preserve the verified source session's proof when replacing sessions; never
+  silently turn an SSO session into a password session. Expired/revoked source
+  proof requires fresh sign-in before an invitation can grant access.
+- A recovery exception belongs only to the owner of the organization enforcing
+  the account's domain. Owning an unrelated workspace/organization cannot bypass
+  another domain's policy. Recovery authorization is audited before use. Keep
+  current credential-removal and ownership-transfer fences in their transactions.
+- Enforced non-owner accounts cannot change their primary email out of the
+  policy through the ordinary email-change journey; recheck at final consumption,
+  including journeys started before enforcement. Password reset and provider
+  attachment cannot bypass enforcement.
+- Directory provisioning initially stores pending directory records, not an
+  unverified global account with credentials. First verified SSO binds or creates
+  the Pertexo account; ordinary unverified existing accounts remain protected.
+- Qualification includes real local HTTPS protocol/browser fixtures, ephemeral
+  test certificates, forged signed claims and signatures, callback races, forced
+  policy changes, invitation/session rotations and the owner recovery path. No
+  new service, container download or provider account is needed.
+
 ## Qualification and rollout
 
 - All slices: formatting/build/lint/types/unit/contracts/schema/boundaries; normal
@@ -213,8 +272,8 @@ and account-wide administration. No paid identity service is required.
 
 - [x] Current code, scope and recommended decisions reconciled.
 - [x] ADR 086 records identity/session/organization/provisioning boundaries.
-- [ ] Social verified linking and install setup qualified and merged.
-- [ ] Organization OIDC, DNS, enforcement and recovery qualified and merged.
+- [x] Social verified linking and install setup qualified and merged: [#344](https://github.com/vigani1/pertexo/pull/344).
+- [x] Organization OIDC, DNS, enforcement and recovery implemented in this slice.
 - [ ] SAML gateway and settings qualified and merged.
 - [ ] SCIM users/groups, mappings and removal qualified and merged.
 - [ ] Guides, maximum-size evidence and natural postmerge checks complete.
@@ -255,6 +314,49 @@ cookies, API-down behavior and no callback proofs in edge/nginx logs. Five Compo
 checks confirm provider credentials reach only the API. Full local checks and
 exact-head CI remain the merge gate; organization modes are not enabled by this
 social slice.
+
+## Organization OIDC evidence (2026-10-18)
+
+Migration 0033 adds the global organization/domain/provider catalog, five-minute
+single-use journeys and session authentication proof. The dedicated provider key
+ring uses the existing envelope; nine deployment checks qualify fresh secrets
+and keep federation keys out of worker/web/migration/code-runner environments.
+Startup opens stored secrets in bounded pages: correct and previous keys work;
+missing or wrong keys fail clearly without exposing their values.
+
+Real PostgreSQL/API qualification covers DNS challenge replacement/expiry and
+claim races, owner fences, exact retries, rollback, verified-email attachment,
+JIT defaults without resurrecting removed members, stale provider proofs,
+callback races across API instances and the 16-method bound. The 107-case identity
+and populated-upgrade selection and 24-case organization/purge selection pass.
+Maintenance purge removes provider identities and sessions in one-row pages,
+retains ordinary password credentials and other workspaces, and cannot read
+password hashes. Actor-discovery hygiene is checked between workspace scopes.
+
+Eight new real-API cases qualify owner readiness tests without identity/grant
+creation, required-SSO refusal, protected recovery, preserved session proof during
+password rotation, enforced email-change refusal and old email-proof consumption,
+CSRF, provider outages and key recovery. A disposable PostgreSQL advisory-lock
+fixture pauses the native SDK session insert while enforcement changes: the
+post-insert policy check refuses and removes the raced credential session.
+The broader authentication API selection passes 42 cases unchanged in intent.
+
+Sixteen gateway tests use the actual pinned OIDC SDK and RSA signatures to reject
+forged signatures, wrong issuer/audience/nonce/state, expired claims, unverified
+email, unsafe endpoints and oversized discovery. Two owned HTTPS browser journeys
+at 1280/375 pixels cover ordinary registration, organization/DNS/provider setup,
+real discovery/code exchange/PKCE/JWT verification, owner testing, enforcement,
+public sign-in, JIT and named account methods. Six existing social browser journeys
+still pass. The owned IdP uses ephemeral certificates and an external-transport
+fixture; production TLS/address policy has no bypass. It runs as another scenario
+in the existing live-2 CI job, retaining the real admission limits.
+
+All 214 mocked browser journeys pass. Component regressions retain secret-free
+query caches and exact uncertain retries, preserve stale provider edits and keep
+an open SSO confirmation's reviewed action/revision stable across a refresh.
+Desktop/phone screenshots are inspected for labels, clipping and dialog exit;
+React Doctor reports 100/100 without suppressions. Build, lint, strict types,
+unit, generated contracts, schema and boundary checks remain commit/merge gates.
 
 ## Sources checked 2026-10-18
 

@@ -16,6 +16,8 @@ const hex = () => randomBytes(32).toString('hex');
 const values = {
   CONNECTION_ENCRYPTION_MODE: mode,
   BETTER_AUTH_SECRET: hex(),
+  AUTH_FEDERATION_KEY: randomBytes(32).toString('base64'),
+  AUTH_FEDERATION_KEY_VERSION: '1',
   AUTH_MAIL_KEY: randomBytes(32).toString('base64'),
   AUTH_MAIL_KEY_VERSION: '1',
   INVITATION_TOKEN_KEY: randomBytes(32).toString('base64'),

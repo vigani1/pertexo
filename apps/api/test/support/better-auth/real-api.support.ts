@@ -133,6 +133,8 @@ export function useBetterAuthRealApi(
     /** Compose the real workspace inbox runtime (ADR 055). */
     notifications?: boolean;
     notificationMail?: ApiIdentityConfig['betterAuth']['durableMail'];
+    federationEncryption?: ApiIdentityConfig['federationEncryption'];
+    secureCookies?: boolean;
     socialProviders?: ApiIdentityConfig['betterAuth']['providers'];
     webhookRuntime?: (config: ApiConfig) => Promise<ApiWebhookRuntime>;
     logger?: StructuredLogger;
@@ -168,6 +170,7 @@ export function useBetterAuthRealApi(
   let identityRuntime:
     Awaited<ReturnType<typeof createApiIdentityRuntime>> | undefined;
   let admin: Pool;
+  let identityConfiguration: ApiIdentityConfig | undefined;
   let address = 0;
 
   beforeAll(async () => {
@@ -216,6 +219,14 @@ export function useBetterAuthRealApi(
     const identity = {
       ...defaults.identity,
       publicWebOrigin: fixtureOrigin,
+      session: {
+        ...defaults.identity.session,
+        secureCookie:
+          options.secureCookies ?? defaults.identity.session.secureCookie,
+      },
+      ...(options.federationEncryption === undefined
+        ? {}
+        : { federationEncryption: options.federationEncryption }),
       automationTokensEnabled: options.automationTokens ?? false,
       betterAuth: {
         ...defaults.identity.betterAuth,
@@ -223,6 +234,7 @@ export function useBetterAuthRealApi(
           options.socialProviders ?? defaults.identity.betterAuth.providers,
       },
     };
+    identityConfiguration = identity;
     const config: ApiConfig = {
       ...defaults,
       identity,
@@ -384,7 +396,41 @@ export function useBetterAuthRealApi(
     return application.getUrl();
   }
 
-  return { send, signUp, signIn, mailedLink, database, listen };
+  async function createIdentityPeer(
+    encryption: ApiIdentityConfig['federationEncryption'],
+  ) {
+    if (identityConfiguration === undefined)
+      throw new Error('Identity fixture is not ready');
+    const { federationEncryption: _, ...base } = identityConfiguration;
+    const peer = await createApiIdentityRuntime(
+      {
+        ...base,
+        ...(encryption === undefined
+          ? {}
+          : { federationEncryption: encryption }),
+      },
+      databaseConfig,
+      { authenticationMail: mail },
+    );
+    return owner.acquire('peer identity runtime', peer, (runtime) =>
+      runtime.close(),
+    );
+  }
+  function identity() {
+    if (identityRuntime === undefined)
+      throw new Error('Identity fixture is not ready');
+    return identityRuntime;
+  }
+  return {
+    send,
+    signUp,
+    signIn,
+    mailedLink,
+    database,
+    listen,
+    createIdentityPeer,
+    identity,
+  };
 }
 
 function apiConfig(database: DatabaseConfig): ApiConfig {

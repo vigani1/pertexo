@@ -31,6 +31,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId/settings/usage'
     | '/w/$workspaceId/settings/variables'
     | '/w/$workspaceId/settings/audit'
+    | '/w/$workspaceId/settings/sso'
     | '/w/$workspaceId/settings/notifications'
     | '/w/$workspaceId/settings/api-tokens'
   >;
@@ -141,6 +142,12 @@ export function spineDestinations(
       to: '/w/$workspaceId/settings/audit',
       label: 'Audit log',
       icon: <SlidersHorizontalIcon />,
+    });
+  if (workspace.capabilities.includes('workspace:manage'))
+    administration.push({
+      to: '/w/$workspaceId/settings/sso',
+      label: 'Single sign-on',
+      icon: <KeyRoundIcon />,
     });
   return { primary, workspace: administration };
 }

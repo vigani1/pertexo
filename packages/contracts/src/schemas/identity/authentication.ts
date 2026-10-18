@@ -9,7 +9,7 @@ const AUTHENTICATION_RETURN_PATHS = Object.freeze([
   /^\/invitations\/accept$/u,
   /^\/account\/security$/u,
   /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:account|team)$/u,
-  /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/settings\/api-tokens$/u,
+  /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/settings\/(?:api-tokens|sso)$/u,
 ]);
 export const authenticationReturnPathSchema = z
   .string()
@@ -58,10 +58,12 @@ export const accountSecuritySessionRevokeResponseSchema = z
 export const accountSecurityRevokeOthersResponseSchema = z
   .object({ revokedCount: z.number().int().nonnegative() })
   .strict();
+export const ACCOUNT_SIGN_IN_METHOD_LIMIT = 16;
 const accountSecurityMethodSchema = z
   .object({
     id: z.uuid(),
-    kind: z.enum(['password', 'social']),
+    kind: z.enum(['password', 'social', 'organization']),
+    label: z.string().min(1).max(128).optional(),
     provider: z.string().min(1).max(64).nullable(),
   })
   .strict();
@@ -70,7 +72,9 @@ export const accountSecurityResponseSchema = z
     email: z.email().max(320),
     emailVerified: z.boolean(),
     availableProviders: z.array(authenticationProviderSchema).max(4),
-    methods: z.array(accountSecurityMethodSchema).max(16),
+    methods: z
+      .array(accountSecurityMethodSchema)
+      .max(ACCOUNT_SIGN_IN_METHOD_LIMIT),
   })
   .strict();
 export const accountSecurityMethodUnlinkRequestSchema = z

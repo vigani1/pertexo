@@ -1,0 +1,260 @@
+import { randomUUID } from 'node:crypto';
+import type { Pool } from 'pg';
+import {
+  OrganizationSignInCommands,
+  FederationConflictError,
+  WorkspaceAccessDeniedError,
+} from '@pertexo/database/tenant-access';
+import {
+  federationDiscoveryQuerySchema,
+  federationSignInStartSchema,
+  federationTestStartSchema,
+} from '@pertexo/contracts';
+import type { OidcProofGateway } from '../protocol/oidc.js';
+import { requireDoubleSubmitCsrf } from '../../better-auth/csrf.js';
+import {
+  newJourneyToken,
+  journeyDigest,
+  journeyBindingCookie,
+  readCookie,
+  isJourneyToken,
+  deriveJourneySecret,
+  landWithReplacementSession,
+} from '../../journeys/browser-proof.js';
+const callbackPath = '/v1/auth/federation/oidc/callback';
+type BrowserSession = Readonly<{ userId: string; sessionId: string }>;
+export class OrganizationSignIn {
+  private readonly commands: OrganizationSignInCommands;
+  private readonly cookieName: string;
+  constructor(
+    private readonly input: Readonly<{
+      pool: Pool;
+      baseUrl: string;
+      secret: string;
+      secureCookies: boolean;
+      sessionTtlSeconds: number;
+      gateway?: OidcProofGateway;
+      authenticate(request: Request): Promise<BrowserSession | undefined>;
+      deliver(token: string): Promise<readonly string[]>;
+    }>,
+  ) {
+    this.commands = new OrganizationSignInCommands(input);
+    this.cookieName = input.secureCookies
+      ? '__Host-pertexo_organization_signin'
+      : 'pertexo_organization_signin';
+  }
+  async handle(request: Request): Promise<Response | undefined> {
+    const url = new URL(request.url);
+    if (url.pathname === '/v1/auth/federation/discover') {
+      const parsed = federationDiscoveryQuerySchema.safeParse(
+        Object.fromEntries(url.searchParams),
+      );
+      if (
+        request.method !== 'GET' ||
+        !parsed.success ||
+        [...url.searchParams.keys()].length !== 1
+      )
+        return failure(400);
+      return Response.json(
+        this.input.gateway === undefined
+          ? { required: false, providers: [] }
+          : await this.commands.discover(parsed.data.domain),
+        { headers: { 'cache-control': 'no-store' } },
+      );
+    }
+    if (url.pathname === '/v1/auth/federation/oidc/start')
+      return request.method === 'POST'
+        ? this.start(request, false)
+        : failure(404);
+    if (url.pathname === '/v1/auth/federation/oidc/test')
+      return request.method === 'POST'
+        ? this.start(request, true)
+        : failure(404);
+    if (url.pathname === callbackPath)
+      return request.method === 'GET' ? this.callback(request) : failure(404);
+    return undefined;
+  }
+  private async start(request: Request, testing: boolean): Promise<Response> {
+    if (this.input.gateway === undefined) return failure(503);
+    const raw: unknown = await request.json().catch(() => null);
+    try {
+      let material: Awaited<ReturnType<OrganizationSignInCommands['provider']>>;
+      let owner: BrowserSession | undefined;
+      let returnPath = '/workspaces';
+      if (testing) {
+        try {
+          requireDoubleSubmitCsrf(request.headers);
+        } catch {
+          return failure(403);
+        }
+        const parsed = federationTestStartSchema.safeParse(raw);
+        if (!parsed.success) return failure(400);
+        owner = await this.input.authenticate(request);
+        if (owner === undefined) return failure(401);
+        try {
+          material = await this.commands.testProvider({
+            ...parsed.data,
+            actorId: owner.userId,
+          });
+        } catch (cause: unknown) {
+          if (
+            cause instanceof FederationConflictError ||
+            cause instanceof WorkspaceAccessDeniedError
+          )
+            return failure(403);
+          throw cause;
+        }
+        returnPath = `/w/${parsed.data.workspaceId}/settings/sso`;
+      } else {
+        const parsed = federationSignInStartSchema.safeParse(raw);
+        if (!parsed.success) return failure(400);
+        material = await this.commands.provider(
+          parsed.data.providerId,
+          parsed.data.domain,
+        );
+        returnPath = parsed.data.returnPath ?? returnPath;
+      }
+      if (material === undefined) return failure(404);
+      const id = randomUUID(),
+        state = newJourneyToken(),
+        browser = newJourneyToken();
+      const authorizationUrl = await this.input.gateway.authorize(
+        material.provider,
+        this.proof(id, material.provider.id, state, browser),
+      );
+      await this.commands.start({
+        id,
+        providerId: material.provider.id,
+        providerRevision: material.provider.revision,
+        domainId: material.domainId,
+        purpose: testing ? 'test' : 'sign_in',
+        ...(owner === undefined
+          ? {}
+          : { ownerUserId: owner.userId, ownerSessionId: owner.sessionId }),
+        stateDigest: journeyDigest(state),
+        browserDigest: journeyDigest(browser),
+        returnPath,
+      });
+      return Response.json(
+        { authorizationUrl },
+        {
+          headers: {
+            'cache-control': 'no-store',
+            'set-cookie': journeyBindingCookie({
+              name: this.cookieName,
+              value: browser,
+              path: '/',
+              secure: this.input.secureCookies,
+            }),
+          },
+        },
+      );
+    } catch {
+      return failure(503);
+    }
+  }
+  private async callback(request: Request): Promise<Response> {
+    const url = new URL(request.url),
+      state = url.searchParams.get('state'),
+      browser = readCookie(request.headers, this.cookieName),
+      code = url.searchParams.get('code');
+    if (
+      this.input.gateway === undefined ||
+      state === null ||
+      !isJourneyToken(state) ||
+      browser === undefined ||
+      !isJourneyToken(browser) ||
+      code === null ||
+      code.length === 0 ||
+      code.length > 4096 ||
+      url.searchParams.has('error') ||
+      ['state', 'code', 'iss'].some(
+        (name) => url.searchParams.getAll(name).length > 1,
+      )
+    )
+      return this.failed();
+    let destination: string | undefined;
+    let testing = false;
+    try {
+      const attempt = await this.commands.find(
+        journeyDigest(state),
+        journeyDigest(browser),
+      );
+      if (attempt === undefined) return this.failed();
+      testing = attempt.purpose === 'test';
+      destination = attempt.returnPath;
+      let ownerSessionId: string | undefined;
+      if (testing) {
+        const current = await this.input.authenticate(request);
+        if (
+          current?.userId !== attempt.ownerUserId ||
+          current.sessionId !== attempt.ownerSessionId
+        )
+          return this.failed(destination, true);
+        ownerSessionId = current.sessionId;
+      }
+      const identity = await this.input.gateway.verify(
+        attempt.provider,
+        this.proof(attempt.id, attempt.provider.id, state, browser),
+        url,
+      );
+      const result = await this.commands.complete({
+        attemptId: attempt.id,
+        stateDigest: journeyDigest(state),
+        browserDigest: journeyDigest(browser),
+        identity,
+        ...(ownerSessionId === undefined ? {} : { ownerSessionId }),
+      });
+      if (result.kind === 'failed') return this.failed(destination, testing);
+      if (result.kind === 'tested')
+        return this.land(result.returnPath, 'passed');
+      return await landWithReplacementSession(
+        this.input.deliver,
+        result.token,
+        () => this.land(result.returnPath),
+        () => this.failed(destination),
+      );
+    } catch {
+      return this.failed(destination, testing);
+    }
+  }
+  private proof(
+    id: string,
+    providerId: string,
+    state: string,
+    browser: string,
+  ) {
+    const purpose = `organization-sign-in:${id}:${providerId}:${browser}`;
+    return {
+      state,
+      nonce: deriveJourneySecret(this.input.secret, purpose + ':nonce'),
+      codeVerifier: deriveJourneySecret(this.input.secret, purpose + ':pkce'),
+      redirectUri: new URL(callbackPath, this.input.baseUrl).toString(),
+    };
+  }
+  private land(path: string, test?: 'passed' | 'failed'): Response {
+    const destination = new URL(path, this.input.baseUrl);
+    if (test !== undefined) destination.searchParams.set('ssoTest', test);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: destination.toString(),
+        'cache-control': 'no-store',
+      },
+    });
+  }
+  private failed(path?: string, testing = false): Response {
+    if (testing && path !== undefined) return this.land(path, 'failed');
+    const destination = new URL('/login', this.input.baseUrl);
+    destination.searchParams.set('ssoError', 'true');
+    if (path !== undefined && path !== '/workspaces')
+      destination.searchParams.set('returnTo', path);
+    return this.land(destination.pathname + destination.search);
+  }
+}
+function failure(status: number) {
+  return Response.json(
+    { code: 'ORGANIZATION_SIGN_IN_UNAVAILABLE' },
+    { status, headers: { 'cache-control': 'no-store' } },
+  );
+}

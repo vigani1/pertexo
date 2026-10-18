@@ -353,6 +353,7 @@ export const workspaceInvitationAcceptanceIntents = appSchema.table(
     csrfDigest: char('csrf_digest', { length: 64 }).notNull(),
     status: varchar('status', { length: 32 }).notNull().default('pending'),
     verifiedUserId: uuid('verified_user_id'),
+    verifiedSessionId: uuid('verified_session_id'),
     verifiedEmail: varchar('verified_email', { length: 320 }),
     verifiedAt: timestamp('verified_at', { withTimezone: true, mode: 'date' }),
     acceptedUserId: uuid('accepted_user_id'),

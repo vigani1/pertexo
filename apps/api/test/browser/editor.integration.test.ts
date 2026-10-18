@@ -1,3 +1,6 @@
+import { createBrowserOidcProvider } from './editor/federation/oidc-provider.js';
+import * as oidcProtocol from '../../src/authentication/federation/protocol/oidc.js';
+import { Resolver } from 'node:dns/promises';
 import { createBrowserIdentityProvider } from './editor/federation/provider.js';
 import { useSocialProviderGateway } from '../support/better-auth/social-provider.js';
 import { verifyCodeEvidence } from './editor/evidence/code/verify.js';
@@ -34,7 +37,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { Pool } from 'pg';
 import {
@@ -126,6 +129,7 @@ const scenario = z
     'variables',
     'governance',
     'federation',
+    'organization-oidc',
     'notifications',
     'transforms',
     'artifact-inputs',
@@ -434,12 +438,40 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
 
   const redis = new URL(process.env.REDIS_URL ?? 'redis://invalid:1/0');
   redis.pathname = '/11';
+  let oidcProvider:
+    Awaited<ReturnType<typeof createBrowserOidcProvider>> | undefined;
+  if (scenario === 'organization-oidc') {
+    beforeAll(async () => {
+      oidcProvider = owner.acquire(
+        'organization identity provider',
+        await createBrowserOidcProvider(),
+        (provider) => provider.close(),
+      );
+      const createGateway = oidcProtocol.createOidcProofGateway;
+      const spy = vi
+        .spyOn(oidcProtocol, 'createOidcProofGateway')
+        .mockImplementation((input) => {
+          if (oidcProvider === undefined) throw new Error('Owned IdP missing');
+          return createGateway({ ...input, http: oidcProvider.http });
+        });
+      owner.acquire('organization protocol fixture', spy, (value) => {
+        value.mockRestore();
+      });
+    });
+  }
   const identityProvider = createBrowserIdentityProvider();
   if (scenario === 'federation')
     useSocialProviderGateway(identityProvider.gateway);
   const api = useBetterAuthRealApi('editor_browser', {
-    ...(scenario === 'federation'
+    ...(scenario === 'federation' || scenario === 'organization-oidc'
       ? {
+          federationEncryption: {
+            current: {
+              version: 'browser-federation-v1',
+              key: Buffer.alloc(32, 0x57).toString('base64'),
+            },
+            previous: [],
+          },
           socialProviders: {
             google: {
               clientId: 'browser-fixture',
@@ -606,6 +638,26 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     beforeDrop: recheckOwnership,
   });
 
+  if (scenario === 'organization-oidc')
+    beforeAll(() => {
+      const spy = vi
+        .spyOn(Resolver.prototype, 'resolveTxt')
+        .mockImplementation(async (hostname) => {
+          const result = await api
+            .database()
+            .query<{ challenge: string }>(
+              'select challenge from app.auth_domains where domain=$1 and challenge is not null',
+              [hostname.replace(/^_pertexo\./u, '')],
+            );
+          return result.rows.map((row) => [
+            `pertexo-verification=${row.challenge}`,
+          ]);
+        });
+      owner.acquire('organization DNS fixture', spy, (value) => {
+        value.mockRestore();
+      });
+    });
+
   it(`executes the owned real-browser scenario: ${scenario}`, async () => {
     // Catch module omissions before launching the browser. These exercise
     // actual request guards and authorized stores, not seeded mock responses.
@@ -685,6 +737,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         return;
       if (httpControl?.handle(request, response) === true) return;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+      if (
+        scenario === 'organization-oidc' &&
+        request.method === 'GET' &&
+        url.pathname === '/organization-provider' &&
+        oidcProvider !== undefined
+      ) {
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify({ issuer: oidcProvider.origin }));
+        return;
+      }
       if (
         request.method === 'GET' &&
         url.pathname === '/curated-template-seed' &&
@@ -1085,60 +1147,64 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             '--config',
             'playwright.live.config.ts',
             scenario === 'federation'
-              ? 'editor/federation'
-              : scenario === 'governance'
-                ? 'editor/governance'
-                : scenario === 'code'
-                  ? 'editor/code.spec.ts'
-                  : scenario === 'webhook-responses'
-                    ? 'editor/webhook-responses.spec.ts'
-                    : scenario === 'pinned-samples'
-                      ? 'editor/pinned-samples.spec.ts'
-                      : scenario === 'notifications'
-                        ? 'editor/notifications/attention.spec.ts'
-                        : scenario === 'variables'
-                          ? 'editor/variables/snapshots.spec.ts'
-                          : scenario === 'forms'
-                            ? 'editor/forms/submission.spec.ts'
-                            : scenario === 'approvals'
-                              ? 'editor/approvals.spec.ts'
-                              : scenario === 'error-workflows'
-                                ? 'editor/error-workflows.spec.ts'
-                                : scenario === 'artifact-inputs'
-                                  ? 'editor/files/'
-                                  : scenario === 'api-tokens'
-                                    ? 'api-tokens.spec.ts'
-                                    : scenario === 'callable'
-                                      ? 'editor/callable.spec.ts'
-                                      : scenario === 'curated-templates'
-                                        ? 'curated-templates.spec.ts'
-                                        : scenario === 'portability'
-                                          ? 'workflow-portability.spec.ts'
-                                          : scenario === 'input-cases'
-                                            ? 'workflow-input-cases.spec.ts'
-                                            : scenario === 'duplication'
-                                              ? 'workflow-duplication.spec.ts'
-                                              : scenario === 'nested-conflict'
-                                                ? 'editor/execution.spec.ts'
-                                                : scenario === 'receipts'
-                                                  ? 'editor/receipts.spec.ts'
-                                                  : scenario === 'run-recovery'
-                                                    ? 'editor/run-recovery.spec.ts'
+              ? 'editor/federation/sign-in.spec.ts'
+              : scenario === 'organization-oidc'
+                ? 'editor/federation/organization.spec.ts'
+                : scenario === 'governance'
+                  ? 'editor/governance'
+                  : scenario === 'code'
+                    ? 'editor/code.spec.ts'
+                    : scenario === 'webhook-responses'
+                      ? 'editor/webhook-responses.spec.ts'
+                      : scenario === 'pinned-samples'
+                        ? 'editor/pinned-samples.spec.ts'
+                        : scenario === 'notifications'
+                          ? 'editor/notifications/attention.spec.ts'
+                          : scenario === 'variables'
+                            ? 'editor/variables/snapshots.spec.ts'
+                            : scenario === 'forms'
+                              ? 'editor/forms/submission.spec.ts'
+                              : scenario === 'approvals'
+                                ? 'editor/approvals.spec.ts'
+                                : scenario === 'error-workflows'
+                                  ? 'editor/error-workflows.spec.ts'
+                                  : scenario === 'artifact-inputs'
+                                    ? 'editor/files/'
+                                    : scenario === 'api-tokens'
+                                      ? 'api-tokens.spec.ts'
+                                      : scenario === 'callable'
+                                        ? 'editor/callable.spec.ts'
+                                        : scenario === 'curated-templates'
+                                          ? 'curated-templates.spec.ts'
+                                          : scenario === 'portability'
+                                            ? 'workflow-portability.spec.ts'
+                                            : scenario === 'input-cases'
+                                              ? 'workflow-input-cases.spec.ts'
+                                              : scenario === 'duplication'
+                                                ? 'workflow-duplication.spec.ts'
+                                                : scenario === 'nested-conflict'
+                                                  ? 'editor/execution.spec.ts'
+                                                  : scenario === 'receipts'
+                                                    ? 'editor/receipts.spec.ts'
                                                     : scenario ===
-                                                        'expression-admission'
-                                                      ? 'editor/expression-admission.spec.ts'
-                                                      : scenario === 'readonly'
-                                                        ? 'editor/readonly.spec.ts'
+                                                        'run-recovery'
+                                                      ? 'editor/run-recovery.spec.ts'
+                                                      : scenario ===
+                                                          'expression-admission'
+                                                        ? 'editor/expression-admission.spec.ts'
                                                         : scenario ===
-                                                            'schedule'
-                                                          ? 'editor/schedule.spec.ts'
+                                                            'readonly'
+                                                          ? 'editor/readonly.spec.ts'
                                                           : scenario ===
-                                                              'failure-routing'
-                                                            ? 'editor/failure-routing.spec.ts'
+                                                              'schedule'
+                                                            ? 'editor/schedule.spec.ts'
                                                             : scenario ===
-                                                                'transforms'
-                                                              ? 'editor/transforms.spec.ts'
-                                                              : 'editor/webhook-controlled-http.spec.ts',
+                                                                'failure-routing'
+                                                              ? 'editor/failure-routing.spec.ts'
+                                                              : scenario ===
+                                                                  'transforms'
+                                                                ? 'editor/transforms.spec.ts'
+                                                                : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1158,6 +1224,22 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'organization-oidc') {
+      expect(
+        (await api.database().query('select 1 from app.auth_provider_checks'))
+          .rowCount,
+      ).toBe(2);
+      expect(
+        (
+          await api
+            .database()
+            .query(
+              'select 1 from app.auth_accounts where access_token is not null or refresh_token is not null or id_token is not null',
+            )
+        ).rowCount,
+      ).toBe(0);
+      return;
+    }
     if (scenario === 'federation') {
       const providers = await api
         .database()

@@ -39,8 +39,12 @@ export function isCredentialMismatch(error: unknown): boolean {
 
 export function signInFailure(error: unknown): string {
   const failure = nativeError(error);
+  if (failure?.code === 'auth.sso_required')
+    return 'Your organization requires SSO. Use organization sign-in to continue.';
   if (isCredentialMismatch(error))
     return 'That email and password don’t match. Check them and try again.';
+  if (failure?.code === 'auth.conflict')
+    return 'Sign-in settings changed while you were signing in. Try again, or use organization sign-in.';
   if (failure?.status === 429) return TOO_MANY;
   if (failure?.status === 403)
     return 'Pertexo refused this sign-in. Reload the page and try again.';

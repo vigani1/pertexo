@@ -1,3 +1,6 @@
+import { FederationManagementModule } from '../../authentication/federation/management/module.js';
+import { FederationManagementService } from '../../authentication/federation/management/service.js';
+import { federationSecretContext } from '../../authentication/federation/protocol/oidc.js';
 import {
   ApiTokenModule,
   type ApiTokenDependencies,
@@ -7,6 +10,7 @@ import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
   createIdentityWorkspaceDatabase,
+  createFederationManagementStore,
   createApiTokenDatabase,
   type IdentityWorkspaceDatabase,
 } from '@pertexo/database/tenant-access';
@@ -39,6 +43,7 @@ export type ApiIdentityRuntime = Readonly<{
   dependencies: IdentityWorkspaceDependencies;
   betterAuth: BetterAuthRuntime;
   automation: ApiTokenDependencies;
+  federation: FederationManagementService;
   close(): Promise<void>;
 }>;
 
@@ -84,6 +89,34 @@ export async function createApiIdentityRuntime(
     const tokenDatabase = resources.own(
       createApiTokenDatabase(databaseConfig, runtime),
     );
+    const federationStore = resources.own(
+      createFederationManagementStore(databaseConfig, runtime),
+    );
+    const federationEnvelope =
+      config.federationEncryption === undefined
+        ? undefined
+        : createApplicationSecretEnvelope(config.federationEncryption);
+    await federationStore.checkStoredSecrets(
+      (sealed, workspaceId, providerId) => {
+        try {
+          if (federationEnvelope === undefined)
+            throw new Error('Missing organization key');
+          federationEnvelope.open(
+            sealed,
+            federationSecretContext(workspaceId, providerId),
+          );
+        } catch {
+          throw new Error(
+            'Organization sign-in secrets cannot be opened. Configure AUTH_FEDERATION_KEY, its version and required previous keys before starting the API.',
+          );
+        }
+      },
+    );
+    const federation = new FederationManagementService(
+      federationStore,
+      federationEnvelope,
+      config.betterAuth.secret,
+    );
     const persistence = new DatabaseIdentityWorkspaceAdapter(identityDatabase);
     const betterAuth = composeBetterAuthRuntime({
       config,
@@ -104,6 +137,7 @@ export async function createApiIdentityRuntime(
         betterAuth,
       }),
       betterAuth,
+      federation,
       automation: {
         database: tokenDatabase,
         enabled: config.automationTokensEnabled ?? false,
@@ -215,7 +249,15 @@ export class IdentityRuntimeModule {
     );
     return {
       module: IdentityRuntimeModule,
-      imports: [feature, tokens],
+      imports: [
+        feature,
+        tokens,
+        FederationManagementModule.register(
+          runtime.federation,
+          feature,
+          admission,
+        ),
+      ],
       exports: [IdentityWorkspaceModule, ApiTokenModule],
     };
   }

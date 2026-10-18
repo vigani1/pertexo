@@ -18,7 +18,9 @@ type Method = AccountSecurityResponse['methods'][number];
 function methodName(method: Method): string {
   return method.kind === 'password'
     ? 'Password'
-    : providerName(method.provider ?? 'Provider');
+    : method.kind === 'organization'
+      ? (method.label ?? 'Organization SSO')
+      : providerName(method.provider ?? 'Provider');
 }
 
 function MethodMark({ method }: Readonly<{ method: Method }>) {
@@ -56,6 +58,9 @@ export function AccountMethodsSection({
     (provider) => !connected.has(provider),
   );
   const onlyMethod = security.methods.length <= 1;
+  const canLink = security.methods.some(
+    (method) => method.kind === 'password' || isSocialProvider(method.provider),
+  );
 
   function closeRemoval() {
     if (unlink.isPending) return;
@@ -73,6 +78,7 @@ export function AccountMethodsSection({
             type="button"
             variant="outline"
             size="sm"
+            disabled={!canLink}
             onClick={() => {
               setAdding(true);
             }}
@@ -83,6 +89,12 @@ export function AccountMethodsSection({
         )
       }
     >
+      {linkable.length > 0 && !canLink ? (
+        <p className="text-sm text-muted-foreground">
+          Add a password before connecting another sign-in method. Required
+          organization SSO still applies.
+        </p>
+      ) : null}
       <ul
         aria-label="Sign-in methods"
         className="flex flex-col divide-y divide-border"
