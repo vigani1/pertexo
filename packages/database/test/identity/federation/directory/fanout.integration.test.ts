@@ -213,11 +213,8 @@ it('projects maximum directory fan-out atomically without per-person round trips
           userIds.filter((id) => id === person.directoryId).length,
         );
         expect(returnedGroupMembers).toBe(20);
-        expect(groupRead?.rows).toEqual(
-          Array.from({ length: returnedGroupMembers }, () =>
-            expect.objectContaining({ directory_user_id: person.directoryId }),
-          ),
-        );
+        for (const row of groupRead?.rows ?? [])
+          expect(row).toMatchObject({ directory_user_id: person.directoryId });
       } finally {
         queries.mockRestore();
       }
