@@ -140,7 +140,10 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
           },
         );
         producer = createQueueProducer({ redisUrl: requireRedisUrl() });
-        await runtime.consumer.waitUntilReady();
+        await Promise.all([
+          runtime.consumer.waitUntilReady(),
+          producer.waitUntilReady(5_000),
+        ]);
         const publication = await producer.publish({
           name: JOB_NAME.reconcileWorkflowTriggers,
           data: {

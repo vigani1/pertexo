@@ -273,6 +273,11 @@ inventory. Cascades already removed their rows, but purge now names both as
 bounded steps before deleting drafts and versions. The unchanged full workspace
 purge suite verifies coverage as well as deletion.
 
+A later CI run exposed an existing trigger-consumer setup race: it awaited the
+consumer but published before the independent producer finished connecting. The
+test now awaits both existing readiness contracts before publishing; reconciliation
+retry behavior and production code are unchanged.
+
 ## Later
 
 Git source control, promotion across installs, automatic onward promotion, copying
