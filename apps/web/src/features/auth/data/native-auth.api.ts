@@ -1,8 +1,8 @@
 import { isApiError, type ApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { verifiedSignInPath } from '../model/return-path';
-
-type AuthenticationProvider = 'google' | 'microsoft' | 'github' | 'apple';
+import type { SocialProvider } from '../model/social-provider';
+import { socialSignInStartedSchema } from '@pertexo/contracts';
 
 export class NativeAuthenticationError extends Error {
   public constructor(
@@ -132,7 +132,7 @@ export function resetPassword(
 /** Social sign-in returns to an allowlisted path, else the workspaces. */
 export async function startSocialAuthentication(
   apiClient: ApiClient,
-  provider: AuthenticationProvider,
+  provider: SocialProvider,
   signal?: AbortSignal,
   returnTo?: string,
 ): Promise<string> {
@@ -147,13 +147,16 @@ export async function startSocialAuthentication(
     },
     ...(signal === undefined ? {} : { signal }),
   });
-  if (typeof value !== 'object' || value === null)
+  const decoded = socialSignInStartedSchema.safeParse(value);
+  if (!decoded.success)
     throw new NativeAuthenticationError('The provider response was invalid.');
-  const url = 'url' in value ? value.url : undefined;
-  if (typeof url !== 'string')
-    throw new NativeAuthenticationError('The provider response was invalid.');
-  const parsed = new URL(url);
-  if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost')
+  const parsed = new URL(decoded.data.url);
+  if (
+    parsed.username !== '' ||
+    parsed.password !== '' ||
+    (parsed.protocol !== 'https:' &&
+      !(parsed.protocol === 'http:' && parsed.hostname === 'localhost'))
+  )
     throw new NativeAuthenticationError('The provider URL was rejected.');
   return parsed.toString();
 }

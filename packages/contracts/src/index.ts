@@ -208,3 +208,7 @@ export {
   type PublicationReviewDetail,
   type PublicationReviewDecision,
 } from './schemas/workflows/publication-review.js';
+export {
+  socialSignInStartSchema,
+  socialSignInStartedSchema,
+} from './schemas/identity/federation.js';

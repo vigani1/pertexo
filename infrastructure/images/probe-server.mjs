@@ -4,6 +4,16 @@ const pendingCsv = new Map();
 
 await startWebhookPeer((request, response, rawBody) => {
   const url = new URL(request.url ?? '/', 'http://api');
+  if (url.pathname === '/v1/auth/federation/social/callback/google') {
+    response
+      .writeHead(302, {
+        location: '/workspaces',
+        'set-cookie':
+          'pertexo_session=synthetic_session; Path=/; HttpOnly; SameSite=Lax',
+      })
+      .end();
+    return;
+  }
   if (url.pathname === '/v1/csv-probe/release') {
     const target = pendingCsv.get(url.searchParams.get('key'));
     if (target === undefined) {

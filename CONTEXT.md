@@ -5,6 +5,15 @@ versions while preserving operational history.
 
 ## Language
 
+**Identity organization**: Explicitly linked workspaces whose verified domains,
+sign-in providers and directory-managed memberships are controlled by one
+workspace owner. _Avoid_: Workflow organization, a new workspace role
+
+**Directory-managed membership**: Access in one workspace whose role and status
+follow an identity organization's provisioning policy. Other memberships remain
+independent. _Avoid_: Global account suspension, provider account ownership
+proof
+
 **Workspace notice**: A thread about a workflow failure or current operational
 attention: an auto-pause, connection health, workspace capacity, or waiting
 approval. Membership, the subject's audience and personal follow/mute choices

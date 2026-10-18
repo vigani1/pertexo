@@ -22,7 +22,12 @@ import {
   accountSecuritySessionRevokeResponseSchema,
   accountSecuritySessionsResponseSchema,
   authenticationCapabilitiesResponseSchema,
+  authenticationProviderSchema,
 } from '../../schemas/identity/authentication.js';
+import {
+  socialSignInStartSchema,
+  socialSignInStartedSchema,
+} from '../../schemas/identity/federation.js';
 
 /**
  * Sign-in, browser-session and account-security operations of the
@@ -30,6 +35,8 @@ import {
  * document that composes this fragment.
  */
 export const authenticationContractSchemas = Object.freeze({
+  SocialSignInStart: jsonSchema(socialSignInStartSchema, 'input'),
+  SocialSignInStarted: jsonSchema(socialSignInStartedSchema, 'output'),
   AuthenticationCapabilitiesResponse: jsonSchema(
     authenticationCapabilitiesResponseSchema,
     'output',
@@ -86,6 +93,76 @@ export const authenticationContractSchemas = Object.freeze({
 });
 
 export const authenticationContractPaths = Object.freeze({
+  '/v1/auth/sign-in/social': {
+    post: {
+      operationId: 'startSocialSignIn',
+      requestBody: jsonRequest('SocialSignInStart'),
+      responses: {
+        '200': jsonResponse(
+          'Browser-bound provider authorization URL',
+          'SocialSignInStarted',
+        ),
+        '400': responseReference('BadRequest'),
+        '403': responseReference('Forbidden'),
+        '404': responseReference('NotFound'),
+        '429': responseReference('RateLimited'),
+        '503': problemResponse('Authentication temporarily unavailable'),
+      },
+    },
+  },
+  '/v1/auth/federation/social/callback/{provider}': {
+    get: {
+      operationId: 'finishSocialSignIn',
+      parameters: [
+        {
+          name: 'provider',
+          in: 'path',
+          required: true,
+          schema: {
+            type: 'string',
+            enum: authenticationProviderSchema.options,
+          },
+        },
+      ],
+      responses: {
+        '302': {
+          description:
+            'Signed session delivered, or safe sign-in failure; no credential in the body.',
+        },
+        '404': responseReference('NotFound'),
+        '429': responseReference('RateLimited'),
+      },
+    },
+  },
+  '/v1/auth/federation/social/callback/apple': {
+    post: {
+      operationId: 'landAppleSignInForm',
+      description:
+        'Bounded URL-encoded form landing; redirects to the GET callback, which verifies the single-use browser-bound identity proof. Front-channel ID tokens and profile data are ignored.',
+      requestBody: {
+        required: true,
+        content: {
+          'application/x-www-form-urlencoded': {
+            schema: {
+              type: 'object',
+              properties: {
+                state: { type: 'string', maxLength: 43 },
+                code: { type: 'string', maxLength: 4096 },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        '303': {
+          description: 'Same-origin GET callback; no identity change yet.',
+        },
+        '400': responseReference('BadRequest'),
+        '413': problemResponse('Provider form exceeds 32 KiB'),
+        '429': responseReference('RateLimited'),
+      },
+    },
+  },
   '/v1/auth/capabilities': {
     get: {
       operationId: 'getAuthenticationCapabilities',

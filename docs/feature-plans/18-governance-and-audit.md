@@ -1,6 +1,6 @@
 # F18 — Audit log and publishing approval
 
-Status: audit slice merged; publication review implemented, final gates and merge pending. Updated: 2026-10-18.
+Status: complete; audit and publication review merged. Updated: 2026-10-18.
 Parent: [roadmap](../product-roadmap.md). Decision: [ADR 085](../adr/085-audit-and-publication-review.md).
 
 ## Current code
@@ -111,7 +111,7 @@ is F17. No unrelated authorization rewrite.
 - [x] Audit coverage, settings, API and page implemented.
 - [x] Audit integration/browser evidence and green PR merged: [#342](https://github.com/vigani1/pertexo/pull/342).
 - [x] Exact publication review, policy and inbox implemented.
-- [ ] Review integration/browser evidence and green PR merged.
+- [x] Review integration/browser evidence and green PR merged: [#343](https://github.com/vigani1/pertexo/pull/343).
 
 Audit evidence (2026-10-17): ten real PostgreSQL governance cases cover
 microsecond cursor ties, safe legacy metadata, 100,000-event export refusal,
@@ -136,4 +136,4 @@ Real browser qualification covers a builder requesting on a 375-pixel phone, an
 owner publishing revision 2 exactly at 1280 pixels, and a later edit hiding the
 stale candidate and decision controls. React Doctor reports 100/100 on the changed
 frontend files after separating publication controls, settings and view-state copy.
-Final full checks and the green review PR remain the merge gate.
+Full checks, all 214 mocked browser journeys, all real-browser CI groups, database/service/worker integration, security and CodeQL passed on the exact source head before #343 merged.

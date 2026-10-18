@@ -2701,6 +2701,134 @@
         "description": "At most 100,000 matching events. No snapshot guarantee. A failure after streaming starts aborts the download. Native form requests carry JSON payload and csrfToken fields; JSON requests use the CSRF header."
       }
     },
+    "/v1/auth/sign-in/social": {
+      "post": {
+        "operationId": "startSocialSignIn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SocialSignInStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Browser-bound provider authorization URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialSignInStarted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "description": "Authentication temporarily unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/federation/social/callback/{provider}": {
+      "get": {
+        "operationId": "finishSocialSignIn",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "google",
+                "microsoft",
+                "github",
+                "apple"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Signed session delivered, or safe sign-in failure; no credential in the body."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/v1/auth/federation/social/callback/apple": {
+      "post": {
+        "operationId": "landAppleSignInForm",
+        "description": "Bounded URL-encoded form landing; redirects to the GET callback, which verifies the single-use browser-bound identity proof. Front-channel ID tokens and profile data are ignored.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "maxLength": 43
+                  },
+                  "code": {
+                    "type": "string",
+                    "maxLength": 4096
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "303": {
+            "description": "Same-origin GET callback; no identity change yet."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "413": {
+            "description": "Provider form exceeds 32 KiB",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
     "/v1/auth/capabilities": {
       "get": {
         "operationId": "getAuthenticationCapabilities",
@@ -7366,6 +7494,51 @@
         ],
         "additionalProperties": false
       },
+      "SocialSignInStart": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "google",
+              "microsoft",
+              "github",
+              "apple"
+            ]
+          },
+          "callbackURL": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "errorCallbackURL": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "additionalProperties": false
+      },
+      "SocialSignInStarted": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "redirect": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "url",
+          "redirect"
+        ],
+        "additionalProperties": false
+      },
       "AuthenticationCapabilitiesResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -9365,6 +9538,16 @@
       },
       "Forbidden": {
         "description": "Forbidden",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
         "content": {
           "application/problem+json": {
             "schema": {

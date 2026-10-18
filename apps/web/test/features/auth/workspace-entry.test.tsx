@@ -249,7 +249,10 @@ describe('authentication and workspace entry', () => {
       );
     page.unmount();
     release?.(
-      Response.json({ url: 'https://identity.example.test/authorize' }),
+      Response.json({
+        url: 'https://identity.example.test/authorize',
+        redirect: true,
+      }),
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(navigate).not.toHaveBeenCalled();

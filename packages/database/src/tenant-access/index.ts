@@ -69,6 +69,7 @@ export {
 } from '../identity/account-security.js';
 
 export { AccountLinkingCommands } from '../identity/account-linking.js';
+export { SocialSignInCommands } from '../identity/federation/sign-in.js';
 
 export { EmailProofCommands } from '../identity/email-proofs.js';
 

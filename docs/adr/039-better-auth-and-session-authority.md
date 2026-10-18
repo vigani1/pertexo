@@ -4,7 +4,14 @@
 - **Date:** 2026-09-22
 - **Supersedes:** the managed-provider selection, authentication-method constraints, custom session ownership and digest-only session-storage rule in ADR 004
 - **Does not supersede:** Pertexo authorization, ActorContext, RLS, audit, CSRF, revocation or SSE authorization-lifetime guarantees
-- **Amended:** 2026-10-09 under ADR 069
+- **Amended:** 2026-10-09 under ADR 069; 2026-10-18 under [ADR 086](086-federated-sign-in-and-provisioning.md)
+
+> **Federation amendment (2026-10-18).** ADR 086 permits automatic social
+> linking only for equal, verified incoming and local emails. Configured provider
+> libraries verify the proof before Pertexo atomically commits attachment, audit,
+> session revocation and its existing Better Auth session row. Native social
+> callbacks remain closed; Better Auth retains session-cookie authority. ADR 086
+> also records the organization SSO and directory-provisioning boundary.
 
 > **Amendment note (2026-10-09).** Nothing has launched, so there is no legacy
 > account to carry across (ADR 069). The generic OIDC sign-in, its opaque

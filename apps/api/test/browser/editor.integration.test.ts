@@ -1,3 +1,5 @@
+import { createBrowserIdentityProvider } from './editor/federation/provider.js';
+import { useSocialProviderGateway } from '../support/better-auth/social-provider.js';
 import { verifyCodeEvidence } from './editor/evidence/code/verify.js';
 import { verifyWebhookResponseEvidence } from './editor/evidence/webhook-responses.js';
 import { verifySampleEvidence } from './editor/evidence/samples/verify.js';
@@ -123,6 +125,7 @@ const scenario = z
     'forms',
     'variables',
     'governance',
+    'federation',
     'notifications',
     'transforms',
     'artifact-inputs',
@@ -431,7 +434,24 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
 
   const redis = new URL(process.env.REDIS_URL ?? 'redis://invalid:1/0');
   redis.pathname = '/11';
+  const identityProvider = createBrowserIdentityProvider();
+  if (scenario === 'federation')
+    useSocialProviderGateway(identityProvider.gateway);
   const api = useBetterAuthRealApi('editor_browser', {
+    ...(scenario === 'federation'
+      ? {
+          socialProviders: {
+            google: {
+              clientId: 'browser-fixture',
+              clientSecret: 'browser-fixture',
+            },
+            github: {
+              clientId: 'browser-fixture',
+              clientSecret: 'browser-fixture',
+            },
+          },
+        }
+      : {}),
     publicWebOrigin: webOrigin,
     automationTokens: scenario === 'api-tokens',
     notifications: [
@@ -654,6 +674,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     // Separate loopback test-control listener for the local mail sink and
     // non-secret result IDs. This is never registered in the application API.
     const mailServer = createServer((request, response) => {
+      if (
+        scenario === 'federation' &&
+        identityProvider.handle(request, response)
+      )
+        return;
       if (httpControl?.handle(request, response) === true) return;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
       if (
@@ -981,6 +1006,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     const address = mailServer.address();
     if (address === null || typeof address === 'string')
       throw new Error('Control listener has no TCP address');
+    identityProvider.setOrigin(`http://localhost:${String(address.port)}`);
     const childEnvironment = {
       ...process.env,
       PERTEXO_API_PROXY_TARGET: apiOrigin,
@@ -1054,58 +1080,61 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'governance'
-              ? 'editor/governance'
-              : scenario === 'code'
-                ? 'editor/code.spec.ts'
-                : scenario === 'webhook-responses'
-                  ? 'editor/webhook-responses.spec.ts'
-                  : scenario === 'pinned-samples'
-                    ? 'editor/pinned-samples.spec.ts'
-                    : scenario === 'notifications'
-                      ? 'editor/notifications/attention.spec.ts'
-                      : scenario === 'variables'
-                        ? 'editor/variables/snapshots.spec.ts'
-                        : scenario === 'forms'
-                          ? 'editor/forms/submission.spec.ts'
-                          : scenario === 'approvals'
-                            ? 'editor/approvals.spec.ts'
-                            : scenario === 'error-workflows'
-                              ? 'editor/error-workflows.spec.ts'
-                              : scenario === 'artifact-inputs'
-                                ? 'editor/files/'
-                                : scenario === 'api-tokens'
-                                  ? 'api-tokens.spec.ts'
-                                  : scenario === 'callable'
-                                    ? 'editor/callable.spec.ts'
-                                    : scenario === 'curated-templates'
-                                      ? 'curated-templates.spec.ts'
-                                      : scenario === 'portability'
-                                        ? 'workflow-portability.spec.ts'
-                                        : scenario === 'input-cases'
-                                          ? 'workflow-input-cases.spec.ts'
-                                          : scenario === 'duplication'
-                                            ? 'workflow-duplication.spec.ts'
-                                            : scenario === 'nested-conflict'
-                                              ? 'editor/execution.spec.ts'
-                                              : scenario === 'receipts'
-                                                ? 'editor/receipts.spec.ts'
-                                                : scenario === 'run-recovery'
-                                                  ? 'editor/run-recovery.spec.ts'
-                                                  : scenario ===
-                                                      'expression-admission'
-                                                    ? 'editor/expression-admission.spec.ts'
-                                                    : scenario === 'readonly'
-                                                      ? 'editor/readonly.spec.ts'
-                                                      : scenario === 'schedule'
-                                                        ? 'editor/schedule.spec.ts'
+            scenario === 'federation'
+              ? 'editor/federation'
+              : scenario === 'governance'
+                ? 'editor/governance'
+                : scenario === 'code'
+                  ? 'editor/code.spec.ts'
+                  : scenario === 'webhook-responses'
+                    ? 'editor/webhook-responses.spec.ts'
+                    : scenario === 'pinned-samples'
+                      ? 'editor/pinned-samples.spec.ts'
+                      : scenario === 'notifications'
+                        ? 'editor/notifications/attention.spec.ts'
+                        : scenario === 'variables'
+                          ? 'editor/variables/snapshots.spec.ts'
+                          : scenario === 'forms'
+                            ? 'editor/forms/submission.spec.ts'
+                            : scenario === 'approvals'
+                              ? 'editor/approvals.spec.ts'
+                              : scenario === 'error-workflows'
+                                ? 'editor/error-workflows.spec.ts'
+                                : scenario === 'artifact-inputs'
+                                  ? 'editor/files/'
+                                  : scenario === 'api-tokens'
+                                    ? 'api-tokens.spec.ts'
+                                    : scenario === 'callable'
+                                      ? 'editor/callable.spec.ts'
+                                      : scenario === 'curated-templates'
+                                        ? 'curated-templates.spec.ts'
+                                        : scenario === 'portability'
+                                          ? 'workflow-portability.spec.ts'
+                                          : scenario === 'input-cases'
+                                            ? 'workflow-input-cases.spec.ts'
+                                            : scenario === 'duplication'
+                                              ? 'workflow-duplication.spec.ts'
+                                              : scenario === 'nested-conflict'
+                                                ? 'editor/execution.spec.ts'
+                                                : scenario === 'receipts'
+                                                  ? 'editor/receipts.spec.ts'
+                                                  : scenario === 'run-recovery'
+                                                    ? 'editor/run-recovery.spec.ts'
+                                                    : scenario ===
+                                                        'expression-admission'
+                                                      ? 'editor/expression-admission.spec.ts'
+                                                      : scenario === 'readonly'
+                                                        ? 'editor/readonly.spec.ts'
                                                         : scenario ===
-                                                            'failure-routing'
-                                                          ? 'editor/failure-routing.spec.ts'
+                                                            'schedule'
+                                                          ? 'editor/schedule.spec.ts'
                                                           : scenario ===
-                                                              'transforms'
-                                                            ? 'editor/transforms.spec.ts'
-                                                            : 'editor/webhook-controlled-http.spec.ts',
+                                                              'failure-routing'
+                                                            ? 'editor/failure-routing.spec.ts'
+                                                            : scenario ===
+                                                                'transforms'
+                                                              ? 'editor/transforms.spec.ts'
+                                                              : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1125,6 +1154,21 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'federation') {
+      const providers = await api
+        .database()
+        .query<{ count: number; token_count: number }>(
+          "select count(*)::int count,count(*) filter(where access_token is not null or refresh_token is not null or id_token is not null)::int token_count from app.auth_accounts where provider_id in ('google','github')",
+        );
+      expect(providers.rows).toEqual([{ count: 4, token_count: 0 }]);
+      const attempts = await api
+        .database()
+        .query<{ count: number }>(
+          'select count(*)::int count from app.auth_sign_in_attempts where consumed_at is not null',
+        );
+      expect(attempts.rows[0]?.count).toBe(4);
+      return;
+    }
     if (scenario === 'code') {
       await verifyCodeEvidence(api.database());
       return;

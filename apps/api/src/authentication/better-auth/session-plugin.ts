@@ -177,6 +177,13 @@ function internalSessionEndpoints() {
 function nativeRouteGuards(): BeforeHooks {
   return [
     {
+      matcher: (context) =>
+        context.path === '/sign-in/social' || context.path === '/callback/:id',
+      handler: createAuthMiddleware(() => {
+        throw new APIError('NOT_FOUND');
+      }),
+    },
+    {
       matcher: (context) => context.path === '/link-social',
       handler: createAuthMiddleware((context) => {
         requireDoubleSubmitCsrf(context.headers);

@@ -1,23 +1,25 @@
 import type { BetterAuthOptions } from 'better-auth';
+import { authenticationProviderSchema } from '@pertexo/contracts';
+import { z } from 'zod';
+import { verifyProviderIdToken } from 'better-auth/oauth2';
 
-import type { SocialProviderGateway } from '../providers/contract.js';
+import type {
+  SocialProviderGateway,
+  SocialProviderName,
+} from '../providers/contract.js';
 import type { PertexoBetterAuth } from './options.js';
 
-const LINKABLE_PROVIDERS = ['google', 'github', 'microsoft', 'apple'] as const;
-
-/** Providers that can take part in linking are exactly the configured ones. */
 export function configuredSocialProviders(
   socialProviders: BetterAuthOptions['socialProviders'],
-): SocialProviderGateway['available'] {
-  return LINKABLE_PROVIDERS.filter(
+): SocialProviderName[] {
+  return authenticationProviderSchema.options.filter(
     (name) => socialProviders?.[name] !== undefined,
   );
 }
 
 /**
- * Link and migration proofs run Better Auth's configured OAuth providers with
- * Pertexo-derived state, PKCE and nonce. Verification fails closed on an
- * issuer mismatch, a rejected code or an unusable account subject.
+ * Library providers verify the protocol proof; Pertexo finalizes identity
+ * and session changes in its short database transaction.
  */
 export function betterAuthSocialProviders(
   auth: PertexoBetterAuth,
@@ -38,15 +40,26 @@ export function betterAuthSocialProviders(
         idTokenNonce: input.nonce,
         redirectURI: input.redirectUri,
       });
+      // The profile mapper and authorization-URL factory are separate SDK APIs.
+      // Bind every OIDC token to this server-owned journey nonce on the wire.
+      if (provider.idToken !== undefined)
+        url.searchParams.set('nonce', input.nonce);
       return url.toString();
     },
     verify: async (input) => {
       const provider = await configuredProvider(input.provider);
       if (provider === undefined) return undefined;
+      const expectedIssuer =
+        provider.issuer ??
+        (provider.idToken !== undefined && 'issuer' in provider.idToken
+          ? provider.idToken.issuer
+          : undefined);
       if (
         input.issuer !== null &&
-        provider.issuer !== undefined &&
-        input.issuer !== provider.issuer
+        expectedIssuer !== undefined &&
+        !(typeof expectedIssuer === 'string'
+          ? input.issuer === expectedIssuer
+          : expectedIssuer.includes(input.issuer))
       )
         return undefined;
       const tokens = await provider.validateAuthorizationCode({
@@ -55,6 +68,13 @@ export function betterAuthSocialProviders(
         redirectURI: input.redirectUri,
       });
       if (tokens === null) return undefined;
+      if (
+        provider.idToken !== undefined &&
+        (tokens.idToken === undefined ||
+          tokens.idToken.length > 16_384 ||
+          !(await verifyProviderIdToken(provider, tokens.idToken, input.nonce)))
+      )
+        return undefined;
       const profile = await provider.getUserInfo({
         ...tokens,
         expectedIdTokenNonce: input.nonce,
@@ -64,10 +84,22 @@ export function betterAuthSocialProviders(
         await provider.accountSubject({ tokens, profile: profile.data }),
       );
       if (accountId === undefined) return undefined;
+      const email = z
+        .email()
+        .max(320)
+        .nullable()
+        .safeParse(profile.user.email ?? null);
+      if (!email.success) return undefined;
       return {
         accountId,
-        email: profile.user.email ?? null,
+        email: email.data,
         emailVerified: profile.user.emailVerified,
+        ...(profile.user.name === undefined
+          ? {}
+          : {
+              displayName:
+                profile.user.name.slice(0, 256).trim() || 'Pertexo member',
+            }),
       };
     },
   };
@@ -77,7 +109,8 @@ function accountSubject(subject: unknown): string | undefined {
   if (
     (typeof subject !== 'string' && typeof subject !== 'number') ||
     String(subject).trim().length === 0 ||
-    (typeof subject === 'number' && !Number.isFinite(subject))
+    String(subject).length > 512 ||
+    (typeof subject === 'number' && !Number.isSafeInteger(subject))
   )
     return undefined;
   return String(subject);

@@ -15,6 +15,8 @@ import {
   type BetterAuthTrustedSessions,
 } from './trusted-sessions.js';
 import { OwnedEmailProofs } from '../mail/email-proofs.js';
+import { SocialSignIn } from '../federation/social.js';
+import { landProviderFormCallback } from '../journeys/form-callback.js';
 
 export type BetterAuthRuntimeConfig = Readonly<{
   baseUrl: string;
@@ -94,12 +96,23 @@ export function createBetterAuthRuntime(
       verifyCredentialPassword(auth, pool, userId, password),
     deliver,
   });
+  const social = new SocialSignIn({
+    pool,
+    secret: config.secret,
+    baseUrl: config.baseUrl,
+    secureCookies: config.secureCookies,
+    sessionTtlSeconds: config.sessionTtlSeconds,
+    providers,
+    deliver,
+  });
 
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     auth: Object.freeze({
       handler: async (request: Request): Promise<Response> => {
         const owned =
+          (await landProviderFormCallback(request)) ??
+          (await social.handle(request)) ??
           (await linking.handle(request)) ??
           (await emailProofs.handle(request));
         if (owned !== undefined) return owned;

@@ -12,6 +12,7 @@ import {
   type ApiApplicationDependencies,
 } from './api-runtimes.js';
 import { AppModule } from './app.module.js';
+import { configuredSocialProviders } from './authentication/index.js';
 import type { ApiConfig } from './platform/config/api.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { ApiShutdownCoordinator } from './platform/health/drain-state.js';
@@ -111,9 +112,9 @@ export async function createApiApplication(
         minimumLength: 12,
         verificationRequired: true,
       },
-      socialProviders: Object.keys(
-        config.identity?.betterAuth.providers ?? {},
-      ) as ('google' | 'microsoft' | 'github' | 'apple')[],
+      socialProviders: configuredSocialProviders(
+        config.identity?.betterAuth.providers,
+      ),
     });
     if (identityRuntime !== undefined && config.identity !== undefined)
       registerBetterAuthHandler(fastifyInstance, {

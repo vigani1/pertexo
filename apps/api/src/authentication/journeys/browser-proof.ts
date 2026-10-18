@@ -1,10 +1,9 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 
 /*
- * Primitives of the browser-bound account-linking journey. A journey binds
+ * Primitives of a browser-bound identity journey. A journey binds
  * one browser with a short-lived HttpOnly cookie and single-use state
- * digests, and ends by attaching a freshly proven provider method while every
- * browser session of the user is replaced in the same commit.
+ * digests; the identity command consumes it with the account/session change.
  */
 
 /** 256 bits of URL-safe random proof material. */

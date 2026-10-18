@@ -1,4 +1,5 @@
 import { workflowPublicationRequests } from './schema/authoring/publication-requests.js';
+import { authSignInAttempts } from './schema/identity/sign-in.js';
 import {
   triggerEventWindows,
   triggerCoordinatedEvents,
@@ -245,6 +246,7 @@ export const databaseSchema = {
   authMethodLinkAttempts,
   authEmailProofs,
   systemMailDeliveries,
+  authSignInAttempts,
   identitySecurityAuditFacts,
   failureNotificationDestinations,
   failureNotificationDestinationVersions,

@@ -1,4 +1,6 @@
 import {
+  socialSignInStartSchema,
+  socialSignInStartedSchema,
   auditFilterSchema,
   auditQuerySchema,
   auditPageSchema,
@@ -78,6 +80,8 @@ describe('identity/workspace generated contracts', () => {
     );
     expect({ schemas: identitySchemas }).toEqual({
       schemas: {
+        SocialSignInStart: generated(socialSignInStartSchema, 'input'),
+        SocialSignInStarted: generated(socialSignInStartedSchema, 'output'),
         WorkspaceVariablesResponse: generated(
           workspaceVariablesResponseSchema,
           'output',
@@ -300,6 +304,9 @@ describe('identity/workspace generated contracts', () => {
       '/v1/workspaces/{workspaceId}/governance/audit',
       '/v1/workspaces/{workspaceId}/governance/settings',
       '/v1/workspaces/{workspaceId}/governance/audit/export',
+      '/v1/auth/sign-in/social',
+      '/v1/auth/federation/social/callback/{provider}',
+      '/v1/auth/federation/social/callback/apple',
       '/v1/auth/capabilities',
       '/v1/users/me',
       '/v1/auth/account-security/sessions',

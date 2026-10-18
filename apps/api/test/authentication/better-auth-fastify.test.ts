@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
+import { landProviderFormCallback } from '../../src/authentication/journeys/form-callback.js';
 import { registerNoticeUnsubscribeTransport } from '../../src/notifications/preferences/transport.js';
 
 import { betterAuth } from 'better-auth';
@@ -66,6 +67,8 @@ describe('Better Auth Fastify bridge', () => {
       },
     });
     expect(rejected.statusCode).toBe(403);
+    expect(rejected.headers['referrer-policy']).toBe('no-referrer');
+    expect(rejected.headers['cache-control']).toBe('no-store');
 
     const accepted = await application.inject({
       method: 'POST',
@@ -114,6 +117,47 @@ describe('Better Auth Fastify bridge', () => {
     });
     expect(response.statusCode, response.payload).toBe(204);
     expect(received).toEqual([payload]);
+  });
+
+  it('accepts only the exact provider form landings across origins', async () => {
+    const adapter = new FastifyAdapter();
+    const application = adapter.getInstance();
+    applications.push(application);
+    registerNoticeUnsubscribeTransport(adapter);
+    registerBetterAuthHandler(application, {
+      publicOrigin: 'https://pertexo.test',
+      rateLimitConsumer: allowingRateLimit,
+      sessionCookie: { secure: true, sameSite: 'lax', maxAgeSeconds: 3600 },
+      handler: async (request) =>
+        (await landProviderFormCallback(request)) ??
+        new Response(null, { status: 404 }),
+    });
+    for (const path of [
+      '/v1/auth/federation/social/callback/apple',
+      '/v1/auth/account-security/methods/link/callback/apple',
+    ]) {
+      const response = await application.inject({
+        method: 'POST',
+        url: path,
+        headers: {
+          origin: 'https://appleid.apple.com',
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        payload: 'state=bound&code=one-use&id_token=untrusted',
+      });
+      expect(response.statusCode, response.payload).toBe(303);
+      expect(response.headers.location).toBe(
+        `https://pertexo.test${path}?state=bound&code=one-use`,
+      );
+      expect(response.headers['referrer-policy']).toBe('no-referrer');
+    }
+    const rejected = await application.inject({
+      method: 'POST',
+      url: '/v1/auth/sign-in/social',
+      headers: { origin: 'https://appleid.apple.com' },
+      payload: { provider: 'apple' },
+    });
+    expect(rejected.statusCode).toBe(403);
   });
 
   it('forwards multiple Set-Cookie response fields independently', async () => {

@@ -10,6 +10,7 @@ import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
 
 import type { RateLimitConsumer } from '../../platform/rate-limit/interceptor.js';
 import type { BetterAuthRuntime } from './runtime.js';
+import { isProviderFormCallback } from '../journeys/form-callback.js';
 
 type AuthenticationHandler = BetterAuthRuntime['auth']['handler'];
 const rateLimitPolicy = new AbuseRateLimitPolicy();
@@ -45,16 +46,28 @@ export function registerBetterAuthHandler(
   }>,
 ): void {
   const origin = new URL(input.publicOrigin).origin;
-  fastify.all('/v1/auth/*', async (request, reply) => {
-    await dispatchBetterAuthRequest(
-      request,
-      reply,
-      input.handler,
-      origin,
-      input.sessionCookie,
-      input.rateLimitConsumer,
-    );
-  });
+  fastify.all(
+    '/v1/auth/*',
+    {
+      onSend: (_request, reply, payload, done) => {
+        // Redirected pages must not receive callback proofs through Referer.
+        reply
+          .header('referrer-policy', 'no-referrer')
+          .header('cache-control', 'no-store');
+        done(null, payload);
+      },
+    },
+    async (request, reply) => {
+      await dispatchBetterAuthRequest(
+        request,
+        reply,
+        input.handler,
+        origin,
+        input.sessionCookie,
+        input.rateLimitConsumer,
+      );
+    },
+  );
 }
 
 export function registerAuthenticationCapabilities(
@@ -95,7 +108,8 @@ async function dispatchBetterAuthRequest(
   }
   if (
     isUnsafeMethod(request.method) &&
-    request.headers.origin !== publicOrigin
+    request.headers.origin !== publicOrigin &&
+    !isProviderFormCallback(request.method, pathname)
   ) {
     sendProblem(
       reply,

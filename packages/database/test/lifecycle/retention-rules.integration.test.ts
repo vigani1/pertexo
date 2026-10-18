@@ -180,6 +180,38 @@ async function insertOccurrence(
 }
 
 describe('retention rules', () => {
+  it('removes sign-in proof rows a day after expiry, retaining recent and live journeys', async () => {
+    const ids = [randomUUID(), randomUUID(), randomUUID()];
+    for (const [index, id] of ids.entries()) {
+      const created =
+        index === 0 ? daysAgo(3) : index === 1 ? daysAgo(0.1) : new Date();
+      const expires =
+        index === 0
+          ? daysAgo(2)
+          : index === 1
+            ? daysAgo(0.05)
+            : new Date(Date.now() + 300_000);
+      await admin.query(
+        `insert into app.auth_sign_in_attempts
+        (id,provider,state_digest,browser_digest,return_path,created_at,expires_at)
+        values($1,'google',$2,$3,'/workspaces',$4,$5)`,
+        [
+          id,
+          Buffer.alloc(32, index + 1),
+          Buffer.alloc(32, 9),
+          created,
+          expires,
+        ],
+      );
+    }
+    const result = await retention.enforce();
+    expect(result.removed.auth_sign_in_attempts).toBe(1);
+    const rows = await admin.query<{ id: string }>(
+      'select id from app.auth_sign_in_attempts where id=any($1::uuid[])',
+      [ids],
+    );
+    expect(rows.rows.map((row) => row.id).sort()).toEqual(ids.slice(1).sort());
+  });
   it('clears expired terminal input while retaining an expired live run input', async () => {
     await admin.query(
       "update app.workflow_runs set status='succeeded',completed_at=clock_timestamp() where id=any($1::uuid[])",
