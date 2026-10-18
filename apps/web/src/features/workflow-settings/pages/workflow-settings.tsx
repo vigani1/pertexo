@@ -13,7 +13,7 @@ import { IdentitySection } from '../components/settings/identity-section';
 import { LifecycleSection } from '../components/settings/lifecycle-section';
 import { RunDurationSection } from '../components/settings/run-duration-section';
 import { AutoPauseSection } from '../components/settings/auto-pause-section';
-import { StepHealthSection } from '../components/settings/step-health-section';
+import { StepHealthSection } from '@/features/workflow-runs/step-history.public';
 import { ConcurrencySection } from '../components/settings/concurrency-section';
 import { visibleSettingsData } from '../model/settings-query';
 

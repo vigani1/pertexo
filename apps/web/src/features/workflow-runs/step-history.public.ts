@@ -2,3 +2,4 @@
 // Runs tab and the workflow settings' Steps section.
 export { StepHealthList } from './components/step-history/step-health-list';
 export { StepHistoryPanel } from './components/step-history/panel';
+export { StepHealthSection } from './components/step-history/workflow-steps';
