@@ -10,8 +10,8 @@ import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { describeWorkflowState } from '../model/state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
-import { WorkflowDuplicateAction } from './workflow-duplicate-dialog';
-import { WorkflowExportAction } from './portability/workflow-export-dialog';
+import { WorkflowDuplicateAction } from './workflow-duplicate-action';
+import { WorkflowExportAction } from './portability/export-action';
 import { WorkflowTemplateOrigin } from './templates/origin';
 import { InputCasesAction } from './input-cases/action';
 import {
