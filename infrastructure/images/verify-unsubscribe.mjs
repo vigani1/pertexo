@@ -127,6 +127,19 @@ export async function verifyUnsubscribeProxy({
     undefined,
   );
   const token = 'synthetic_' + randomUUID().replaceAll('-', '');
+  const authCode = 'synthetic_code_' + randomUUID().replaceAll('-', '');
+  const authState = 'synthetic_state_' + randomUUID().replaceAll('-', '');
+  const authUrl = `${origin}/v1/auth/federation/social/callback/google?code=${authCode}&state=${authState}`;
+  const signIn = await probe(authUrl, headers);
+  assert.equal(
+    signIn.status,
+    302,
+    'Sign-in callback must reach the API directly',
+  );
+  assert.equal(signIn.headers.location, '/workspaces');
+  assert.deepEqual(signIn.headers['set-cookie'], [
+    'pertexo_session=synthetic_session; Path=/; HttpOnly; SameSite=Lax',
+  ]);
   const url = `${origin}/v1/notifications/unsubscribe/one-click?token=${token}`;
   const confirmation = await probe(url, headers);
   assert.equal(confirmation.status, 303);
@@ -145,6 +158,7 @@ export async function verifyUnsubscribeProxy({
   assert.equal(accepted.headers.location, undefined);
   await verifyCsvProxy({ origin, headers, probe });
   await docker(['stop', backend]);
+  assert.equal((await probe(authUrl, headers)).status, 502);
   const failed = await probe(
     url,
     { ...posting, 'x-private-probe': token },
@@ -171,6 +185,14 @@ export async function verifyUnsubscribeProxy({
     'Edge error logs must not contain the capability or private header',
   );
   const webLogs = await docker(['logs', web]);
+  for (const proof of [authCode, authState]) {
+    assert.ok(
+      !edgeLogs.includes(proof),
+      'Edge errors must redact sign-in proof',
+    );
+    assert.ok(!webLogs.includes(proof), 'Sign-in proof must bypass nginx logs');
+  }
+  assert.ok(!webLogs.includes('/v1/auth/'), 'Authentication must bypass nginx');
   assert.ok(
     !webLogs.includes(token),
     'Canonical capability requests must bypass nginx logs',
@@ -187,6 +209,6 @@ export async function verifyUnsubscribeProxy({
     'nginx must never see the webhook path',
   );
   console.log(
-    'Single-server edge: signed/Secret URL webhooks, preflight, one-click and API-down log privacy passed.',
+    'Single-server edge: sign-in, signed/Secret URL webhooks, preflight, one-click and API-down log privacy passed.',
   );
 }

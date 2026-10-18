@@ -50,6 +50,10 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       PUBLIC_WEB_ORIGIN: 'https://app.example.test',
       ARTIFACT_STORE_ENDPOINT: 'https://files.example.test',
       AUTH_MAIL_FROM: 'security@example.test',
+      AUTH_GOOGLE_CLIENT_ID: 'fixture-google-client',
+      AUTH_GOOGLE_CLIENT_SECRET: 'fixture-google-secret',
+      AUTH_GITHUB_CLIENT_ID: 'fixture-github-client',
+      AUTH_GITHUB_CLIENT_SECRET: 'fixture-github-secret',
       SYSTEM_MAIL_TRANSPORT: transport,
       ...(transport === 'smtp'
         ? {
@@ -103,6 +107,25 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       ),
     );
     const api = parseApiConfig(config.services.api.environment);
+    assert.deepEqual(api.identity.betterAuth.providers.google, {
+      clientId: environment.AUTH_GOOGLE_CLIENT_ID,
+      clientSecret: environment.AUTH_GOOGLE_CLIENT_SECRET,
+    });
+    assert.deepEqual(api.identity.betterAuth.providers.github, {
+      clientId: environment.AUTH_GITHUB_CLIENT_ID,
+      clientSecret: environment.AUTH_GITHUB_CLIENT_SECRET,
+    });
+    for (const service of ['worker', 'migration', 'web', 'code-runner'])
+      for (const variable of [
+        'AUTH_GOOGLE_CLIENT_ID',
+        'AUTH_GOOGLE_CLIENT_SECRET',
+        'AUTH_GITHUB_CLIENT_ID',
+        'AUTH_GITHUB_CLIENT_SECRET',
+      ])
+        assert.equal(
+          config.services[service].environment?.[variable],
+          undefined,
+        );
     const worker = parseWorkerConfig({
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',

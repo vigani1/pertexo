@@ -2354,6 +2354,51 @@
       ],
       "additionalProperties": false
     },
+    "SocialSignInStart": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "google",
+            "microsoft",
+            "github",
+            "apple"
+          ]
+        },
+        "callbackURL": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "errorCallbackURL": {
+          "type": "string",
+          "maxLength": 2048
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "additionalProperties": false
+    },
+    "SocialSignInStarted": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "redirect": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "url",
+        "redirect"
+      ],
+      "additionalProperties": false
+    },
     "AuthenticationCapabilitiesResponse": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",

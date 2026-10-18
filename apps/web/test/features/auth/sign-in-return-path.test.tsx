@@ -120,7 +120,10 @@ describe('sign-in return paths', () => {
       capabilities(),
       http.post('*/v1/auth/sign-in/social', async ({ request }) => {
         requests.push(await request.json());
-        return HttpResponse.json({ url: 'https://accounts.example.test/o' });
+        return HttpResponse.json({
+          url: 'https://accounts.example.test/o',
+          redirect: true,
+        });
       }),
     );
     const navigated: string[] = [];

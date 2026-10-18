@@ -3,6 +3,7 @@ export {
   type BetterAuthRuntime,
 } from './better-auth/runtime.js';
 export { BetterAuthSessionService } from './better-auth/session-service.js';
+export { configuredSocialProviders } from './better-auth/social-providers.js';
 export {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,

@@ -36,14 +36,25 @@ run `down -v` on a serving installation.
 Send webhooks to `https://<app host>/hooks/<key>`, for example
 `https://app.example.com/hooks/<key>`, using the exact address shown in
 **Triggers**. Use the app host, not the files host, and do not add `/v1`.
-POST and browser OPTIONS go directly from Caddy to the API. Other application
-traffic goes through the web container.
+POST and browser OPTIONS go directly from Caddy to the API. Authentication
+(`/v1/auth/*`) and one-click unsubscribe also bypass the web container; other
+application traffic goes through it.
 
 Webhook paths can contain credentials. They never reach nginx. Caddy replaces
 the entire request URI in its default log encoder and removes request headers;
 API-down errors retain their status and diagnostic information without the
 credential. Preserve these rules when customizing the proxy or adding access
 logging. See [webhook authentication and browser callers](../guides/webhooks.md).
+
+## Optional social sign-in
+
+Google and GitHub are off until their client ID and secret pairs are configured
+in the private installation environment. Follow the [sign-in provider guide](../guides/single-sign-on.md)
+for registration and exact callbacks. The public address is
+`https://<app host>/v1/auth/federation/social/callback/<provider>`.
+Keep `/v1/auth/*` routed directly from Caddy to the API: codes, state and email
+proofs must never enter nginx request/error logs. Preserve Caddy's full-URI,
+request-header and Location-header redaction when adding logging.
 
 ## Code runner
 

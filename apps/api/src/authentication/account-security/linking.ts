@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import type { Pool } from 'pg';
 import { AccountLinkingCommands } from '@pertexo/database/tenant-access';
-import { accountSecurityLinkStartRequestSchema } from '@pertexo/contracts';
+import {
+  accountSecurityLinkStartRequestSchema,
+  authenticationProviderSchema,
+} from '@pertexo/contracts';
 import type {
   SocialProviderGateway,
   SocialProviderName,
@@ -51,12 +54,13 @@ export class AccountLinking {
     if (!url.pathname.startsWith(`${LINK_PATH}/`)) return undefined;
     if (url.pathname === `${LINK_PATH}/start` && request.method === 'POST')
       return this.start(request);
-    const callback = new RegExp(
-      `^${LINK_PATH}/callback/(google|github|microsoft|apple)$`,
-      'u',
-    ).exec(url.pathname);
-    if (callback !== null && request.method === 'GET')
-      return this.callback(request, callback[1] as SocialProviderName);
+    const callbackPath = `${LINK_PATH}/callback/`;
+    if (url.pathname.startsWith(callbackPath) && request.method === 'GET') {
+      const provider = authenticationProviderSchema.safeParse(
+        url.pathname.slice(callbackPath.length),
+      );
+      if (provider.success) return this.callback(request, provider.data);
+    }
     return new Response(null, { status: 404 });
   }
 
@@ -135,7 +139,17 @@ export class AccountLinking {
     const state = url.searchParams.get('state') ?? '';
     const code = url.searchParams.get('code') ?? '';
     const binding = readCookie(request.headers, LINK_COOKIE);
-    if (!isJourneyToken(state) || code.length === 0 || binding === undefined)
+    if (
+      !isJourneyToken(state) ||
+      code.length === 0 ||
+      code.length > 4096 ||
+      binding === undefined ||
+      url.searchParams.has('error') ||
+      ['state', 'code', 'iss'].some(
+        (name) => url.searchParams.getAll(name).length > 1,
+      ) ||
+      (url.searchParams.get('iss')?.length ?? 0) > 2048
+    )
       return this.landing('failed');
     const session = await this.input.authenticate(request);
     if (session === undefined) return this.landing('sign-in');

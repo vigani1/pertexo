@@ -89,6 +89,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0029_data_table_column_identity.sql',
       '0030_audit_retention.sql',
       '0031_publication_review.sql',
+      '0032_federated_sign_in.sql',
     ]);
     expect(
       (

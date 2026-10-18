@@ -305,6 +305,14 @@ export const RETENTION_RULES = Object.freeze([
       where attempt.id = page.id`,
   },
   {
+    name: 'auth_sign_in_attempts',
+    statement: `with page as (
+      select id from app.auth_sign_in_attempts
+      where expires_at<=clock_timestamp()-interval '1 day'
+      order by expires_at,id limit $1
+    ) delete from app.auth_sign_in_attempts attempt using page where attempt.id=page.id`,
+  },
+  {
     name: 'auth_email_proofs',
     statement: `
       with page as (

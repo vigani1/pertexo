@@ -1,4 +1,6 @@
-export type SocialProvider = 'google' | 'microsoft' | 'github' | 'apple';
+import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts';
+export type SocialProvider =
+  AuthenticationCapabilitiesResponse['socialProviders'][number];
 
 export function isSocialProvider(
   value: string | null,

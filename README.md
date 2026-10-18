@@ -232,3 +232,6 @@ Process lists with [For each](docs/guides/for-each.md) and
 
 Workspace owners and admins can inspect and export the
 [audit log](docs/guides/audit.md) and configure how long its metadata is kept.
+
+Configure optional [Google/GitHub sign-in](docs/guides/single-sign-on.md) per
+install.

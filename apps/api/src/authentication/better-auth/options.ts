@@ -144,9 +144,8 @@ function accountPolicy() {
       updatedAt: 'updated_at',
     },
     accountLinking: {
-      // The native callback is not bound to the initiating browser session.
-      // Keep direct and already-started linking journeys closed until the
-      // purpose-bound Pertexo linking protocol is delivered.
+      // Purpose-bound sign-in/linking own the atomic identity handoff.
+      // Native account attachment cannot share that transaction.
       enabled: false,
       disableImplicitLinking: true,
       allowDifferentEmails: true,
@@ -196,21 +195,11 @@ function credentialPolicy(pool: Pool, mail: AuthenticationMail) {
 }
 
 /**
- * Newly attached social accounts revoke existing browser sessions, and only
- * active users may be given a new session.
+ * Only active users may be given a native credential session.
+ * Provider sign-in and linking revoke sessions in their identity transaction.
  */
 function identityChangeHooks(pool: Pool) {
   return {
-    account: {
-      create: {
-        after: async (account, context) => {
-          if (account.providerId !== 'credential' && context !== null)
-            await context.context.internalAdapter.deleteUserSessions(
-              account.userId,
-            );
-        },
-      },
-    },
     session: {
       create: {
         before: async (session) => {

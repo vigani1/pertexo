@@ -6,6 +6,7 @@ export type VerifiedSocialIdentity = Readonly<{
   accountId: string;
   email: string | null;
   emailVerified: boolean;
+  displayName?: string;
 }>;
 
 export type SocialProviderGateway = Readonly<{

@@ -15,7 +15,8 @@ export type IdentitySecurityEvent =
   | 'password.changed'
   | 'password.configured'
   | 'password.reset'
-  | 'profile.display_name_changed';
+  | 'profile.display_name_changed'
+  | 'session.signed_in';
 
 /** Records a security fact about a user in the caller's transaction. */
 export async function recordIdentitySecurityFact(

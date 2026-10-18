@@ -286,7 +286,7 @@ export const identitySecurityAuditFacts = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'identity_security_audit_event_valid',
-      sql`((event_type)::text = ANY (ARRAY['email.initial_verified'::text, 'email.old_confirmed'::text, 'email.change_verified'::text, 'method.linked'::text, 'method.unlinked'::text, 'password.changed'::text, 'password.configured'::text, 'password.reset'::text, 'profile.display_name_changed'::text]))`,
+      sql`((event_type)::text = ANY (ARRAY['email.initial_verified'::text, 'email.old_confirmed'::text, 'email.change_verified'::text, 'method.linked'::text, 'method.unlinked'::text, 'password.changed'::text, 'password.configured'::text, 'password.reset'::text, 'profile.display_name_changed'::text, 'session.signed_in'::text]))`,
     ),
     index('identity_security_audit_retention_idx').on(
       table.occurredAt,

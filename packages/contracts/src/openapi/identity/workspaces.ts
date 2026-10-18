@@ -141,6 +141,7 @@ const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
   Unauthenticated: problemResponse('Authentication required'),
   Forbidden: problemResponse('Forbidden'),
+  NotFound: problemResponse('Resource not found'),
   Conflict: problemResponse('Request conflict'),
   ServiceUnavailable: problemResponse('Upstream service unavailable'),
   RateLimited: problemResponse('Rate limited'),

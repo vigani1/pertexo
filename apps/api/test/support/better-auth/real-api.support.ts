@@ -78,7 +78,7 @@ export type Reply = Awaited<ReturnType<Application['inject']>>;
 type SendInput = Readonly<{
   browser?: Browser;
   headers?: Record<string, string>;
-  payload?: object;
+  payload?: object | string;
 }>;
 
 type DatabaseCleanupFailure =
@@ -133,6 +133,7 @@ export function useBetterAuthRealApi(
     /** Compose the real workspace inbox runtime (ADR 055). */
     notifications?: boolean;
     notificationMail?: ApiIdentityConfig['betterAuth']['durableMail'];
+    socialProviders?: ApiIdentityConfig['betterAuth']['providers'];
     webhookRuntime?: (config: ApiConfig) => Promise<ApiWebhookRuntime>;
     logger?: StructuredLogger;
     connections?: Readonly<{
@@ -216,6 +217,11 @@ export function useBetterAuthRealApi(
       ...defaults.identity,
       publicWebOrigin: fixtureOrigin,
       automationTokensEnabled: options.automationTokens ?? false,
+      betterAuth: {
+        ...defaults.identity.betterAuth,
+        providers:
+          options.socialProviders ?? defaults.identity.betterAuth.providers,
+      },
     };
     const config: ApiConfig = {
       ...defaults,
