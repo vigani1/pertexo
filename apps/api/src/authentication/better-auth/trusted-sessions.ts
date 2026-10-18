@@ -1,3 +1,4 @@
+import { isAuthenticationSessionAllowed } from '@pertexo/database/tenant-access';
 import type { Pool } from 'pg';
 
 import type { PertexoBetterAuth } from './options.js';
@@ -20,6 +21,7 @@ type BetterAuthSignInEvidence = Readonly<{
   email: string;
   emailVerified: boolean;
   signedInAt: Date;
+  sessionId: string;
 }>;
 
 type BetterAuthAuthenticatedSession = Readonly<{
@@ -74,7 +76,10 @@ export function createTrustedSessions(
       });
       signal?.throwIfAborted();
       if (session === null) return undefined;
-      const active = await isActiveUser(pool, session.user.id);
+      const active = await isAuthenticationSessionAllowed(
+        pool,
+        session.session.id,
+      );
       signal?.throwIfAborted();
       if (!active) return undefined;
       return Object.freeze({
@@ -96,13 +101,17 @@ export function createTrustedSessions(
         headers: sessionHeaders(cookieValue),
         query: { disableCookieCache: true },
       });
-      if (session === null || !(await isActiveUser(pool, session.user.id)))
+      if (
+        session === null ||
+        !(await isAuthenticationSessionAllowed(pool, session.session.id))
+      )
         return undefined;
       return Object.freeze({
         userId: session.user.id,
         email: session.user.email,
         emailVerified: session.user.emailVerified,
         signedInAt: new Date(session.session.createdAt),
+        sessionId: session.session.id,
       });
     },
   });
@@ -119,24 +128,13 @@ export async function authenticateBrowserRequest(
     query: { disableCookieCache: true },
   });
   if (current === null) return undefined;
-  if (!(await isActiveUser(pool, current.user.id))) return undefined;
+  if (!(await isAuthenticationSessionAllowed(pool, current.session.id)))
+    return undefined;
   return {
     userId: current.user.id,
     sessionId: current.session.id,
     emailVerified: current.user.emailVerified,
   };
-}
-
-/** Only active Pertexo users may hold or create a browser session. */
-export async function isActiveUser(
-  pool: Pool,
-  userId: string,
-): Promise<boolean> {
-  const result = await pool.query<{ status: string }>(
-    'select status from app.users where id=$1::uuid',
-    [userId],
-  );
-  return result.rows[0]?.status === 'active';
 }
 
 function optionalClientMetadata(

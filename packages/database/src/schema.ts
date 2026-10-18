@@ -1,3 +1,13 @@
+import {
+  authOrganizations,
+  authOrganizationWorkspaces,
+} from './schema/identity/federation/organizations.js';
+import { authDomains } from './schema/identity/federation/domains.js';
+import {
+  authProviders,
+  authProviderChecks,
+} from './schema/identity/federation/providers.js';
+import { authFederationAttempts } from './schema/identity/federation/journeys.js';
 import { workflowPublicationRequests } from './schema/authoring/publication-requests.js';
 import { authSignInAttempts } from './schema/identity/sign-in.js';
 import {
@@ -209,6 +219,12 @@ export {
 } from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
+  authOrganizations,
+  authOrganizationWorkspaces,
+  authDomains,
+  authProviders,
+  authProviderChecks,
+  authFederationAttempts,
   workflowPublicationRequests,
   triggerEventWindows,
   triggerCoordinatedEvents,

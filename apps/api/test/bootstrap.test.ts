@@ -1,3 +1,4 @@
+import { stubFederationService } from './support/federation.js';
 import { nodeTestingSamples } from './node-testing/fixture.js';
 import { request as httpRequest } from 'node:http';
 
@@ -122,6 +123,7 @@ function identityRuntime(
   };
   return Object.freeze({
     dependencies: identityDependencies,
+    federation: stubFederationService(),
     automation: {
       enabled: false,
       clock: { now: () => new Date() },

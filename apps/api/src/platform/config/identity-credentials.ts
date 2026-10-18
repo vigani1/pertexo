@@ -1,4 +1,7 @@
-import { parseApplicationPreviousKeys } from '@pertexo/integrations/server';
+import {
+  parseApplicationPreviousKeys,
+  validateApplicationKeyRing,
+} from '@pertexo/integrations/server';
 
 import type { ApiIdentityConfig, IdentityEnvironment } from './identity.js';
 
@@ -92,4 +95,29 @@ function requiredIdentityValue(value: string | undefined): string {
     throw new Error('Identity configuration is incomplete');
   }
   return value;
+}
+
+export function parseFederationEncryption(
+  environment: IdentityEnvironment,
+): Pick<ApiIdentityConfig, 'federationEncryption'> {
+  const key = environment.AUTH_FEDERATION_KEY,
+    version = environment.AUTH_FEDERATION_KEY_VERSION;
+  if (
+    key === undefined &&
+    version === undefined &&
+    environment.AUTH_FEDERATION_PREVIOUS_KEYS === undefined
+  )
+    return {};
+  if (key === undefined || version === undefined)
+    throw new Error(
+      'Organization sign-in encryption configuration is incomplete',
+    );
+  return {
+    federationEncryption: validateApplicationKeyRing({
+      current: { key, version },
+      previous: parseApplicationPreviousKeys(
+        environment.AUTH_FEDERATION_PREVIOUS_KEYS,
+      ),
+    }),
+  };
 }

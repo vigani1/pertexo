@@ -32,6 +32,7 @@ export function SignInLens({
   onAuthenticated,
   onUnverified,
   onRequestVerificationLink,
+  onOrganizationSignIn,
   returnTo,
 }: Readonly<{
   apiClient: ApiClient;
@@ -41,6 +42,7 @@ export function SignInLens({
   onAuthenticated: () => void;
   onUnverified: (email: string) => void;
   onRequestVerificationLink: () => void;
+  onOrganizationSignIn?: () => void;
   returnTo: string | undefined;
 }>) {
   const signIn = useSignIn({
@@ -184,6 +186,20 @@ export function SignInLens({
         <Notice tone="destructive" className="mt-4">
           {signIn.failure}
         </Notice>
+      )}
+      {onOrganizationSignIn === undefined ? null : (
+        <AuthLensFooter>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="h-auto px-0"
+            disabled={busy}
+            onClick={onOrganizationSignIn}
+          >
+            Organization sign-in
+          </Button>
+        </AuthLensFooter>
       )}
     </AuthLens>
   );

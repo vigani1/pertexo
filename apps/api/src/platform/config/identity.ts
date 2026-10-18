@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   parseAuthenticationProviders,
   parseDurableAuthenticationMail,
+  parseFederationEncryption,
 } from './identity-credentials.js';
 
 /** Environment variables owned by browser identity and authentication. */
@@ -18,6 +19,9 @@ export const identityEnvironmentShape = {
   BETTER_AUTH_SECRET: z.string().min(32).max(512).optional(),
   AUTH_MAIL_MODE: z.enum(['local', 'durable']).default('local'),
   AUTH_MAIL_FROM: z.email().max(320).optional(),
+  AUTH_FEDERATION_KEY: z.string().optional(),
+  AUTH_FEDERATION_KEY_VERSION: z.string().optional(),
+  AUTH_FEDERATION_PREVIOUS_KEYS: z.string().optional(),
   AUTH_MAIL_KEY: z.string().optional(),
   AUTH_MAIL_KEY_VERSION: z.string().optional(),
   AUTH_MAIL_PREVIOUS_KEYS: z.string().optional(),
@@ -57,6 +61,7 @@ export type ApiIdentityConfig = Readonly<{
   automationTokensEnabled?: boolean;
   publicWebOrigin: string;
   invitationTokenEncryption?: EncryptionKeys;
+  federationEncryption?: EncryptionKeys;
   session: Readonly<{
     ttlMillis: number;
     secureCookie: boolean;
@@ -115,6 +120,7 @@ export function parseIdentityConfig(
       publicWebOrigin,
       automationTokensEnabled: environment.AUTOMATION_TOKENS_ENABLED,
       ...invitationTokenEncryption(environment),
+      ...parseFederationEncryption(environment),
       session,
       betterAuth: betterAuthConfig(environment, secret),
     } satisfies ApiIdentityConfig);

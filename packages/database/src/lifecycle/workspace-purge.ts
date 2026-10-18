@@ -82,6 +82,39 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'notice_preferences',
     'notice_workspace_settings',
   ].map(deleteRows),
+  {
+    name: 'identity_federation_attempts',
+    statement: `with page as (
+      select attempt.id from app.auth_federation_attempts attempt
+      join app.auth_organizations organization on organization.id=attempt.organization_id
+      where organization.control_workspace_id=$1 order by attempt.id limit $2
+    ) delete from app.auth_federation_attempts attempt using page where attempt.id=page.id`,
+  },
+  {
+    name: 'identity_provider_sessions',
+    statement: `with page as (
+      select session.id from app.auth_sessions session
+      join app.auth_providers provider on provider.id=session.federation_provider_id
+      join app.auth_organizations organization on organization.id=provider.organization_id
+      where organization.control_workspace_id=$1 order by session.id limit $2
+    ) delete from app.auth_sessions session using page where session.id=page.id`,
+  },
+  {
+    name: 'identity_provider_accounts',
+    statement: `with page as (
+      select account.id from app.auth_accounts account
+      join app.auth_providers provider on provider.id::text=account.provider_id
+      join app.auth_organizations organization on organization.id=provider.organization_id
+      where organization.control_workspace_id=$1 order by account.id limit $2
+    ) delete from app.auth_accounts account using page where account.id=page.id`,
+  },
+  {
+    name: 'identity_organization',
+    statement: `with page as (
+      select id from app.auth_organizations where control_workspace_id=$1 limit $2
+    ) delete from app.auth_organizations organization using page where organization.id=page.id`,
+  },
+  deleteRows('auth_organization_workspaces'),
   deleteRows('api_tokens'),
   deleteRows('workflow_forms'),
   deleteRows('pending_run_tasks'),

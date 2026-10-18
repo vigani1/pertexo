@@ -48,6 +48,15 @@ export function composeBetterAuthRuntime(
       trustedOrigins: [publicOrigin],
       mail,
       socialProviders: config.betterAuth.providers,
+      ...(config.federationEncryption === undefined
+        ? {}
+        : {
+            federation: {
+              envelope: createApplicationSecretEnvelope(
+                config.federationEncryption,
+              ),
+            },
+          }),
     }),
   );
 }

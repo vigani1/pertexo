@@ -21,7 +21,11 @@ import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { SocialProviderGrid } from '../social/provider-grid';
-import { providerName, type SocialProvider } from '../../model/social-provider';
+import {
+  isSocialProvider,
+  providerName,
+  type SocialProvider,
+} from '../../model/social-provider';
 import { Notice } from '@/components/ui/notice';
 
 type Method = AccountSecurityResponse['methods'][number];
@@ -109,7 +113,9 @@ export function LinkProviderDialog({
     providers.length === 1 ? providers[0] : undefined,
   );
   const sources = methods.filter(
-    (method) => method.kind === 'password' || method.provider !== target,
+    (method) =>
+      method.kind === 'password' ||
+      (isSocialProvider(method.provider) && method.provider !== target),
   );
   const [sourceId, setSourceId] = useState(sources[0]?.id);
   const source = sources.find((method) => method.id === sourceId) ?? sources[0];

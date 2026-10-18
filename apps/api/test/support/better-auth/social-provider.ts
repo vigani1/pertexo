@@ -1,3 +1,4 @@
+import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import { beforeAll, afterAll, vi } from 'vitest';
 import * as composition from '../../../src/platform/identity/better-auth-composition.js';
 import { createBetterAuthRuntime } from '../../../src/authentication/better-auth/runtime.js';
@@ -24,6 +25,15 @@ export function useSocialProviderGateway(gateway: SocialProviderGateway) {
           mail: input.authenticationMail,
           socialProviders: config.betterAuth.providers,
           linkProviderGateway: gateway,
+          ...(config.federationEncryption === undefined
+            ? {}
+            : {
+                federation: {
+                  envelope: createApplicationSecretEnvelope(
+                    config.federationEncryption,
+                  ),
+                },
+              }),
         };
         return input.acquire(createBetterAuthRuntime(configuration));
       });

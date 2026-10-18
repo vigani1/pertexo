@@ -242,7 +242,7 @@ jobs:
           - suite: live-3
             journeys: >-
               duplication portability curated-templates run-recovery forms
-              transforms pinned-samples governance federation
+              transforms pinned-samples governance federation organization-oidc
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser

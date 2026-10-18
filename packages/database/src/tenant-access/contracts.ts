@@ -205,6 +205,7 @@ export type InvitationAcceptanceIntentRecord = Readonly<{
     | 'superseded';
   expiresAt: Date;
   verifiedUserId: string | null;
+  verifiedSessionId: string | null;
   verifiedEmail: string | null;
   verifiedAt: Date | null;
   workspaceName: string | null;
@@ -375,6 +376,7 @@ export type IdentityWorkspaceDatabase = Readonly<{
       intentId: string;
       bindingDigest: string;
       userId: string;
+      sessionId: string;
       verifiedEmail: string;
       verifiedAt: Date;
     }>,

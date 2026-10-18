@@ -1,4 +1,18 @@
 import {
+  federationSettingsSchema,
+  federationOrganizationCreateSchema,
+  federationWorkspaceLinkSchema,
+  federationDomainCreateSchema,
+  federationRevisionCommandSchema,
+  federationEnforcementSchema,
+  oidcProviderCreateSchema,
+  oidcProviderUpdateSchema,
+  federationTestStartSchema,
+  federationDiscoverySchema,
+  federationSignInStartSchema,
+  authorizationStartedSchema,
+} from '@pertexo/contracts';
+import {
   socialSignInStartSchema,
   socialSignInStartedSchema,
   auditFilterSchema,
@@ -80,6 +94,31 @@ describe('identity/workspace generated contracts', () => {
     );
     expect({ schemas: identitySchemas }).toEqual({
       schemas: {
+        FederationSettings: generated(federationSettingsSchema, 'output'),
+        FederationOrganizationCreate: generated(
+          federationOrganizationCreateSchema,
+          'input',
+        ),
+        FederationWorkspaceLink: generated(
+          federationWorkspaceLinkSchema,
+          'input',
+        ),
+        FederationDomainCreate: generated(
+          federationDomainCreateSchema,
+          'input',
+        ),
+        FederationRevisionCommand: generated(
+          federationRevisionCommandSchema,
+          'input',
+        ),
+        FederationEnforcement: generated(federationEnforcementSchema, 'input'),
+        OidcProviderCreate: generated(oidcProviderCreateSchema, 'input'),
+        OidcProviderUpdate: generated(oidcProviderUpdateSchema, 'input'),
+        FederationTestStart: generated(federationTestStartSchema, 'input'),
+        FederationDiscovery: generated(federationDiscoverySchema, 'output'),
+        FederationSignInStart: generated(federationSignInStartSchema, 'input'),
+        AuthorizationStarted: generated(authorizationStartedSchema, 'output'),
+
         SocialSignInStart: generated(socialSignInStartSchema, 'input'),
         SocialSignInStarted: generated(socialSignInStartedSchema, 'output'),
         WorkspaceVariablesResponse: generated(
@@ -318,6 +357,21 @@ describe('identity/workspace generated contracts', () => {
       '/v1/auth/account-security/sessions/revoke',
       '/v1/auth/account-security/sessions/revoke-others',
       '/v1/auth/logout',
+      '/v1/workspaces/{workspaceId}/sso',
+      '/v1/workspaces/{workspaceId}/sso/organization',
+      '/v1/workspaces/{workspaceId}/sso/workspaces',
+      '/v1/workspaces/{workspaceId}/sso/domains',
+      '/v1/workspaces/{workspaceId}/sso/domains/{domainId}/verify',
+      '/v1/workspaces/{workspaceId}/sso/domains/{domainId}/renew',
+      '/v1/workspaces/{workspaceId}/sso/domains/{domainId}/remove',
+      '/v1/workspaces/{workspaceId}/sso/domains/{domainId}/enforcement',
+      '/v1/workspaces/{workspaceId}/sso/providers',
+      '/v1/workspaces/{workspaceId}/sso/providers/{providerId}',
+      '/v1/workspaces/{workspaceId}/sso/providers/{providerId}/remove',
+      '/v1/auth/federation/discover',
+      '/v1/auth/federation/oidc/start',
+      '/v1/auth/federation/oidc/test',
+      '/v1/auth/federation/oidc/callback',
       '/v1/workspaces',
       '/v1/workspaces/{workspaceId}/deletion',
       '/v1/workspaces/{workspaceId}/members',

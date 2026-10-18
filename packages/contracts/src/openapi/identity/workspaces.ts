@@ -1,4 +1,8 @@
 import {
+  federationContractSchemas,
+  federationContractPaths,
+} from './federation.js';
+import {
   governanceContractSchemas,
   governanceContractPaths,
 } from './governance.js';
@@ -127,11 +131,13 @@ const clientSchemas = {
   ...schemas,
   ...dataTableContractSchemas('client'),
   ...governanceContractSchemas('client'),
+  ...federationContractSchemas('client'),
 };
 const openApiSchemas = {
   ...schemas,
   ...dataTableContractSchemas('openapi'),
   ...governanceContractSchemas('openapi'),
+  ...federationContractSchemas('openapi'),
 };
 export const identityWorkspaceClientContract = Object.freeze({
   schemas: clientSchemas,
@@ -160,6 +166,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
     ...dataTableContractPaths,
     ...governanceContractPaths,
     ...authenticationContractPaths,
+    ...federationContractPaths,
     '/v1/workspaces': {
       get: {
         operationId: 'listAccessibleWorkspaces',

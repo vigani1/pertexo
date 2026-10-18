@@ -117,6 +117,9 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
     });
     for (const service of ['worker', 'migration', 'web', 'code-runner'])
       for (const variable of [
+        'AUTH_FEDERATION_KEY',
+        'AUTH_FEDERATION_KEY_VERSION',
+        'AUTH_FEDERATION_PREVIOUS_KEYS',
         'AUTH_GOOGLE_CLIENT_ID',
         'AUTH_GOOGLE_CLIENT_SECRET',
         'AUTH_GITHUB_CLIENT_ID',

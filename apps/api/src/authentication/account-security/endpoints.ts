@@ -1,3 +1,5 @@
+import { randomUUID, randomBytes } from 'node:crypto';
+import { isAuthenticationSessionAllowed } from '@pertexo/database/tenant-access';
 import {
   APIError,
   createAuthEndpoint,
@@ -19,7 +21,6 @@ import {
 import { requireDoubleSubmitCsrf } from '../better-auth/csrf.js';
 
 type EndpointContext = Parameters<typeof setSessionCookie>[0];
-type SessionUser = Parameters<typeof setSessionCookie>[1]['user'];
 
 /**
  * Authentication-method management for the signed-in browser. Each credential
@@ -42,13 +43,28 @@ export function accountSecurityEndpoints(
         const accounts = await context.context.internalAdapter.findAccounts(
           context.context.session.user.id,
         );
+        const providers = await pool.query<{ id: string; name: string }>(
+          'select id,name from app.auth_providers where id::text=any($1::text[])',
+          [accounts.map((account) => account.providerId)],
+        );
+        const names = new Map(
+          providers.rows.map((provider) => [provider.id, provider.name]),
+        );
         return context.json({
           email: context.context.session.user.email,
           emailVerified: context.context.session.user.emailVerified,
           availableProviders: availableLinkProviders,
           methods: accounts.map((account) => ({
             id: account.id,
-            kind: account.providerId === 'credential' ? 'password' : 'social',
+            kind:
+              account.providerId === 'credential'
+                ? 'password'
+                : names.has(account.providerId)
+                  ? 'organization'
+                  : 'social',
+            ...(names.has(account.providerId)
+              ? { label: names.get(account.providerId) }
+              : {}),
             provider:
               account.providerId === 'credential' ? null : account.providerId,
           })),
@@ -71,12 +87,14 @@ export function accountSecurityEndpoints(
       async (context) => {
         requireDoubleSubmitCsrf(context.headers);
         const current = context.context.session;
+        const replacement = prepareReplacement(context, current.session.id);
         const password = await context.context.password.hash(
           context.body.newPassword,
         );
         const result = await changePasswordAndRevokeSessions(pool, {
           userId: current.user.id,
           currentPassword: context.body.currentPassword,
+          replacement,
           newPasswordHash: password,
           verify: (hash, suppliedPassword) =>
             context.context.password.verify({
@@ -90,7 +108,7 @@ export function accountSecurityEndpoints(
             code: 'INVALID_PASSWORD',
             message: 'The current password is incorrect.',
           });
-        await replaceSessionCookie(context, current.user);
+        await replaceSessionCookie(context, pool, replacement.token);
         return context.json({ changed: true });
       },
     ),
@@ -105,12 +123,14 @@ export function accountSecurityEndpoints(
       async (context) => {
         requireDoubleSubmitCsrf(context.headers);
         const current = context.context.session;
+        const replacement = prepareReplacement(context, current.session.id);
         const password = await context.context.password.hash(
           context.body.newPassword,
         );
         const result = await setupPasswordAndRevokeSessions(pool, {
           userId: current.user.id,
           passwordHash: password,
+          replacement,
         });
         if (result === 'inactive') throw new APIError('UNAUTHORIZED');
         if (result === 'unverified')
@@ -118,12 +138,17 @@ export function accountSecurityEndpoints(
             code: 'EMAIL_VERIFICATION_REQUIRED',
             message: 'Verify your email before adding a password.',
           });
+        if (result === 'limit')
+          throw new APIError('BAD_REQUEST', {
+            code: 'AUTHENTICATION_METHOD_LIMIT',
+            message: 'Remove an unused sign-in method before adding another.',
+          });
         if (result === 'already')
           throw new APIError('CONFLICT', {
             code: 'PASSWORD_ALREADY_CONFIGURED',
             message: 'A password is already configured.',
           });
-        await replaceSessionCookie(context, current.user);
+        await replaceSessionCookie(context, pool, replacement.token);
         return context.json({ configured: true });
       },
     ),
@@ -165,10 +190,19 @@ export function accountSecurityEndpoints(
       async (context) => {
         requireDoubleSubmitCsrf(context.headers);
         const current = context.context.session;
+        const replacement = prepareReplacement(context, current.session.id);
         const result = await unlinkMethodAndRevokeSessions(pool, {
           userId: current.user.id,
           methodId: context.body.methodId,
+          replacement,
         });
+        if (result === 'inactive') throw new APIError('UNAUTHORIZED');
+        if (result === 'protected_recovery')
+          throw new APIError('FORBIDDEN', {
+            code: 'RECOVERY_PASSWORD_REQUIRED',
+            message:
+              'Keep the recovery owner password while organization SSO is required.',
+          });
         if (result === 'last_method')
           throw new APIError('BAD_REQUEST', {
             code: 'LAST_AUTHENTICATION_METHOD',
@@ -179,20 +213,36 @@ export function accountSecurityEndpoints(
             code: 'AUTHENTICATION_METHOD_NOT_FOUND',
             message: 'The authentication method is not available.',
           });
-        await replaceSessionCookie(context, current.user);
+        await replaceSessionCookie(context, pool, replacement.token);
         return context.json({ unlinked: true });
       },
     ),
   };
 }
 
-/** The committed change revoked every session; issue the caller's successor. */
+/** Credential commands store the successor with its original authentication proof. */
+function prepareReplacement(context: EndpointContext, sourceSessionId: string) {
+  return {
+    id: randomUUID(),
+    token: randomBytes(32).toString('base64url'),
+    expiresAt: new Date(
+      Date.now() + context.context.sessionConfig.expiresIn * 1000,
+    ),
+    sourceSessionId,
+    userAgent: context.context.session?.session.userAgent ?? null,
+    ipAddress: context.context.session?.session.ipAddress ?? null,
+  };
+}
 async function replaceSessionCookie(
   context: EndpointContext,
-  user: SessionUser,
+  pool: Pool,
+  token: string,
 ): Promise<void> {
-  const replacement = await context.context.internalAdapter.createSession(
-    user.id,
-  );
-  await setSessionCookie(context, { session: replacement, user });
+  const found = await context.context.internalAdapter.findSession(token);
+  if (
+    found === null ||
+    !(await isAuthenticationSessionAllowed(pool, found.session.id))
+  )
+    throw new APIError('UNAUTHORIZED');
+  await setSessionCookie(context, found);
 }

@@ -1,3 +1,9 @@
+import { OrganizationSignInForm } from '@/features/federation/sign-in.public';
+import {
+  AuthLens,
+  AuthLensTitle,
+  AuthLensDescription,
+} from '../components/stage/auth-lens';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +22,7 @@ import { useCountdown } from '@/lib/hooks/use-countdown';
 type LoginView =
   | Readonly<{ kind: 'sign-in' }>
   | Readonly<{ kind: 'request-verification' }>
+  | Readonly<{ kind: 'organization' }>
   | Readonly<{ kind: 'verify'; email: string }>;
 
 type LoginPageProps = Readonly<{
@@ -59,25 +66,31 @@ export function LoginPage({
     </AuthLensFooter>
   );
 
-  return (
-    <>
-      {capabilities.isPending ? (
-        <LensLoading
-          title="Sign in to continue"
-          label="Checking how you can sign in…"
-        />
-      ) : capabilities.isError ||
-        (!capabilities.data.password.enabled &&
-          capabilities.data.socialProviders.length === 0) ? (
-        <LensUnavailable
-          id="login-unavailable"
-          title="Sign in to continue"
-          retrying={capabilities.isFetching}
-          onRetry={() => void capabilities.refetch()}
-        >
-          Sign-in isn’t available right now. Try again in a moment.
-        </LensUnavailable>
-      ) : view.kind === 'verify' ? (
+  if (capabilities.isPending)
+    return (
+      <LensLoading
+        title="Sign in to continue"
+        label="Checking how you can sign in…"
+      />
+    );
+  if (
+    capabilities.isError ||
+    (!capabilities.data.password.enabled &&
+      capabilities.data.socialProviders.length === 0)
+  )
+    return (
+      <LensUnavailable
+        id="login-unavailable"
+        title="Sign in to continue"
+        retrying={capabilities.isFetching}
+        onRetry={() => void capabilities.refetch()}
+      >
+        Sign-in isn’t available right now. Try again in a moment.
+      </LensUnavailable>
+    );
+  switch (view.kind) {
+    case 'verify':
+      return (
         <InboxLens
           title="Verify your email"
           cooldown={verificationCooldown}
@@ -96,7 +109,9 @@ export function LoginPage({
           </strong>
           , then sign in here.
         </InboxLens>
-      ) : view.kind === 'request-verification' ? (
+      );
+    case 'request-verification':
+      return (
         <EmailRequestLens
           id="verification-request"
           title="Get a new link"
@@ -113,7 +128,26 @@ export function LoginPage({
           }}
           footer={backToSignIn('Back to sign in')}
         />
-      ) : (
+      );
+    case 'organization':
+      return (
+        <AuthLens aria-labelledby="organization-sign-in-title">
+          <AuthLensTitle id="organization-sign-in-title">
+            Organization sign-in
+          </AuthLensTitle>
+          <AuthLensDescription>
+            Continue with your organization’s identity provider.
+          </AuthLensDescription>
+          <OrganizationSignInForm
+            apiClient={apiClient}
+            returnTo={returnTo}
+            navigateToProvider={navigateToProvider}
+          />
+          {backToSignIn('Back to sign in')}
+        </AuthLens>
+      );
+    case 'sign-in':
+      return (
         <SignInLens
           apiClient={apiClient}
           capabilities={capabilities.data}
@@ -123,12 +157,14 @@ export function LoginPage({
           onUnverified={(email) => {
             setView({ kind: 'verify', email });
           }}
+          onOrganizationSignIn={() => {
+            setView({ kind: 'organization' });
+          }}
           onRequestVerificationLink={() => {
             setView({ kind: 'request-verification' });
           }}
           returnTo={returnTo}
         />
-      )}
-    </>
-  );
+      );
+  }
 }

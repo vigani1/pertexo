@@ -1,0 +1,110 @@
+import type { Pool, PoolClient } from 'pg';
+import {
+  federationSettingsSchema,
+  type FederationSettings,
+} from '@pertexo/contracts';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
+import {
+  withPlatformTransaction,
+  withWorkspaceScope,
+} from '../../../tenant-access/transactions.js';
+import {
+  FederationConflictError,
+  type FederationScope,
+  type OrganizationRow,
+} from './contract.js';
+import {
+  lockFederationWorkspace,
+  organizationForWorkspace,
+} from './authority.js';
+import { projectOrganization } from './settings.js';
+
+export type FederationCommand = FederationScope &
+  Readonly<{ idempotencyKey: string; expectedRevision: number }>;
+export async function requireControlOrganization(
+  client: PoolClient,
+  scope: FederationScope,
+): Promise<OrganizationRow> {
+  const organization = await organizationForWorkspace(
+    client,
+    scope.workspaceId,
+    true,
+  );
+  if (organization?.control_workspace_id !== scope.workspaceId)
+    throw new FederationConflictError(
+      'owner_required',
+      'Manage sign-in from the organization control workspace.',
+    );
+  return organization;
+}
+export function assertOrganizationRevision(
+  organization: OrganizationRow,
+  expectedRevision: number,
+): void {
+  if (organization.revision !== expectedRevision)
+    throw new FederationConflictError(
+      'stale',
+      'Sign-in settings changed. Reload before saving.',
+    );
+}
+export async function runFederationCommand(
+  pool: Pool,
+  input: FederationScope & Readonly<{ idempotencyKey: string }>,
+  operation: string,
+  request: unknown,
+  change: (client: PoolClient) => Promise<OrganizationRow>,
+  additionalWorkspaceIds: readonly string[] = [],
+): Promise<FederationSettings> {
+  return withPlatformTransaction(
+    pool,
+    async (client) => {
+      for (const workspaceId of [
+        ...new Set([input.workspaceId, ...additionalWorkspaceIds]),
+      ].sort())
+        await lockFederationWorkspace(client, { ...input, workspaceId }, true);
+      const identity = {
+        workspaceId: input.workspaceId,
+        scope: input.actorId,
+        operation,
+        idempotencyKey: input.idempotencyKey,
+      };
+      const replay = await withWorkspaceScope(client, input, (scoped) =>
+        claimCommand(scoped, {
+          ...identity,
+          resourceId: generatePersistedId(),
+          request,
+        }),
+      );
+      if (replay !== null) return federationSettingsSchema.parse(replay);
+      const organization = await change(client);
+      const result: FederationSettings = {
+        configured: true,
+        reason: null,
+        canManage: true,
+        organization: await projectOrganization(client, organization),
+      };
+      await withWorkspaceScope(client, input, (scoped) =>
+        completeCommand(scoped, identity, result),
+      );
+      return result;
+    },
+    input.signal === undefined ? {} : { signal: input.signal },
+  );
+}
+export async function advanceOrganization(
+  client: PoolClient,
+  organization: OrganizationRow,
+): Promise<OrganizationRow> {
+  const row = (
+    await client.query<OrganizationRow>(
+      'update app.auth_organizations set revision=revision+1 where id=$1 returning *',
+      [organization.id],
+    )
+  ).rows[0];
+  if (row === undefined) throw new Error('Organization disappeared under lock');
+  return row;
+}

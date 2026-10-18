@@ -40,6 +40,12 @@ callback. Front-channel tokens and profiles are ignored; the ordinary Lax browse
 binding and session cookies authorize the subsequent verified callback. Only the
 two exact Apple callback paths bypass the same-origin POST fence.
 
+Organization OIDC treats a signed configured issuer as authoritative only within
+its exact DNS-verified domains. A missing `email_verified` claim is allowed there
+for providers such as Entra; explicit false is refused. Social verification stays
+strict. The generic OIDC gateway explicitly enables the library’s JWS signature
+checks in addition to TLS, issuer/audience, state/nonce and PKCE.
+
 An identity organization is controlled by one existing workspace and may link up
 to ten workspaces with explicit ownership consent. Its current control-workspace
 owner administers authentication and provisioning using `workspace:manage`; this
@@ -49,12 +55,21 @@ is deliberately limited to domain/provider/directory identity and proof state;
 management rechecks the control-workspace owner under lock.
 
 Domain ownership requires single-use DNS TXT proof for the exact normalized domain.
-Only verified claims are globally exclusive. Domain enforcement is optional and
+Only verified claims are globally exclusive. Enforced domains govern account
+sign-in across this install; linked workspaces determine JIT membership grants.
+Domain enforcement is optional and
 requires a tested provider and a working recovery owner password. The existing
 control-workspace owner is the break-glass account, protected from provisioning
 and loss of its last password while enforcement is enabled. Ownership transfer
 must preserve that recovery path. Recovery uses existing rate-limited password and
-session security and is audited; there is no shared emergency credential.
+session security and is audited; its exception cannot bypass another organization’s
+domain policy. Session replacement preserves the source authentication proof, and
+ordinary email changes cannot escape active enforcement. There is no shared emergency credential.
+
+Organization client secrets reuse the existing application-secret envelope with a
+dedicated private API key ring. Stored secrets must open at startup; retained
+previous keys support rotation and restored databases need their keys supplied
+separately. Account attachments share the existing 16-method response bound.
 
 OIDC uses code/PKCE/state/nonce and immutable issuer/subject identity. SAML uses
 SP-initiated, correlated, browser-bound, signed responses/assertions and immutable
@@ -66,8 +81,9 @@ the existing secure HTTP transport. Provider credentials reuse the versioned
 application-secret envelope with purpose/provider associated data.
 
 SCIM's protocol parser and persistence remain separate. A provisioning bearer
-credential authorizes only its organization. Directory IDs are stable; unverified
-email alone cannot bind an existing account. Verified SSO proof binds that identity
+credential authorizes only its organization. Directory IDs are stable. Pending directory records create no unverified global
+account; first verified SSO binds or creates it. Unverified email alone cannot bind
+an existing account. Verified SSO proof binds that identity
 before directory-managed grants apply. JIT cannot recreate access from an inactive
 directory record. Groups map to one existing workspace role by explicit priority,
 with a default role when none matches; there is no capability union or automatic

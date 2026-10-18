@@ -1,3 +1,4 @@
+import { parseFederationSearch } from '@/features/federation/search.public';
 import { parseAuditSearch } from '@/features/governance/search.public';
 import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
 import { parseTaskSearch } from '@/features/pending-tasks/queries.public';
@@ -425,6 +426,22 @@ export const usageRoute = createRoute({
     meta: [{ title: pageTitle('Usage', match.context.workspace.name) }],
   }),
   component: lazyRouteComponent(() => import('./usage'), 'UsageRoute'),
+});
+
+export const federationSettingsRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings/sso',
+  staticData: { crumb: 'Single sign-on' },
+  validateSearch: parseFederationSearch,
+  head: ({ match }) => ({
+    meta: [
+      { title: pageTitle('Single sign-on', match.context.workspace.name) },
+    ],
+  }),
+  component: lazyRouteComponent(
+    () => import('./settings/sso'),
+    'FederationSettingsRoute',
+  ),
 });
 
 export const auditRoute = createRoute({

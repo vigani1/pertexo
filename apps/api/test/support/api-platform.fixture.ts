@@ -1,3 +1,4 @@
+import { stubFederationService } from './federation.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type {
@@ -187,6 +188,7 @@ export function createStubIdentityRuntime(
       authorization,
       sessions,
     },
+    federation: stubFederationService(),
     automation: {
       enabled: false,
       clock: { now: () => new Date() },

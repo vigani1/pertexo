@@ -1,3 +1,4 @@
+import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -277,6 +278,17 @@ function transferWorkspaceOwnership(
         throw conflict(
           'revision_conflict',
           'A membership changed since it was loaded',
+        );
+      if (
+        !(await canTransferRecoveryOwnership(
+          client,
+          scope.workspaceId,
+          target.user_id,
+        ))
+      )
+        throw conflict(
+          'command_forbidden',
+          'The new recovery owner needs a verified account with a password while SSO is required.',
         );
       const ownerRevision = actor.role_revision + 1;
       const targetRevision = target.role_revision + 1;

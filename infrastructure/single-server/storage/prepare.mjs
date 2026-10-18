@@ -187,8 +187,14 @@ const providers = ['GOOGLE', 'GITHUB', 'MICROSOFT', 'APPLE'].flatMap(
 );
 await output(
   'api.env',
-  optionalValues([...previous, ...providers, 'AUTH_MICROSOFT_TENANT_ID']) +
-    encryptionLines,
+  optionalValues([
+    ...previous,
+    ...providers,
+    'AUTH_MICROSOFT_TENANT_ID',
+    'AUTH_FEDERATION_KEY',
+    'AUTH_FEDERATION_KEY_VERSION',
+    'AUTH_FEDERATION_PREVIOUS_KEYS',
+  ]) + encryptionLines,
 );
 const mailMode = workerConfig.systemMailDelivery.delivery?.mode ?? 'resend';
 if (environment.SYSTEM_MAIL_TRANSPORT === 'smtp' && mailMode !== 'smtp')

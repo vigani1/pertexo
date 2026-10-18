@@ -170,6 +170,7 @@ export class InvitationAcceptanceUseCase {
       intentId: selected.intentId,
       bindingDigest: digestSha256Hex(selected.bindingSecret, this.crypto),
       userId: evidence.userId,
+      sessionId: evidence.sessionId,
       verifiedEmail: evidence.email,
       verifiedAt: evidence.signedInAt,
     });

@@ -1,3 +1,10 @@
+import { hasSignInMethodCapacity } from './federation/accounts/limits.js';
+import {
+  prepareSessionChange,
+  applySessionChange,
+  type AuthenticationReplacement,
+} from '../tenant-access/users/sessions.js';
+import { isProtectedRecoveryOwner } from './federation/sessions/recovery.js';
 import { randomUUID } from 'node:crypto';
 
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -41,6 +48,7 @@ export async function changePasswordAndRevokeSessions(
     currentPassword: string;
     newPasswordHash: string;
     verify: (hash: string, password: string) => Promise<boolean>;
+    replacement?: AuthenticationReplacement;
   }>,
 ): Promise<'changed' | 'invalid' | 'inactive'> {
   return withPlatformTransaction(pool, async (client) => {
@@ -51,6 +59,12 @@ export async function changePasswordAndRevokeSessions(
       .where(eq(users.id, input.userId))
       .for('update');
     if (user?.status !== 'active') return 'inactive';
+    const sessionChange = await prepareSessionChange(
+      client,
+      input.userId,
+      input.replacement,
+    );
+    if (sessionChange === undefined) return 'inactive';
     const [credential] = await db
       .select()
       .from(authAccounts)
@@ -74,7 +88,7 @@ export async function changePasswordAndRevokeSessions(
         updatedAt: sql`clock_timestamp()`,
       })
       .where(eq(authAccounts.id, credential.id));
-    await db.delete(authSessions).where(eq(authSessions.userId, input.userId));
+    await applySessionChange(client, input.userId, sessionChange);
     await recordIdentitySecurityFact(client, input.userId, 'password.changed');
     return 'changed';
   }).catch(rethrowIdentityQueryFailure);
@@ -82,8 +96,12 @@ export async function changePasswordAndRevokeSessions(
 
 export async function setupPasswordAndRevokeSessions(
   pool: Pool,
-  input: Readonly<{ userId: string; passwordHash: string }>,
-): Promise<'configured' | 'already' | 'unverified' | 'inactive'> {
+  input: Readonly<{
+    userId: string;
+    passwordHash: string;
+    replacement?: AuthenticationReplacement;
+  }>,
+): Promise<'configured' | 'already' | 'unverified' | 'inactive' | 'limit'> {
   return withPlatformTransaction(pool, async (client) => {
     const db = drizzle(client, { schema: databaseSchema });
     const [user] = await db
@@ -104,6 +122,14 @@ export async function setupPasswordAndRevokeSessions(
       )
       .for('update');
     if (existing.length !== 0) return 'already';
+    if (!(await hasSignInMethodCapacity(client, input.userId))) return 'limit';
+    const sessionChange = await prepareSessionChange(
+      client,
+      input.userId,
+      input.replacement,
+    );
+    if (sessionChange === undefined) return 'inactive';
+
     await db.insert(authAccounts).values({
       id: randomUUID(),
       accountId: input.userId,
@@ -111,7 +137,7 @@ export async function setupPasswordAndRevokeSessions(
       userId: input.userId,
       password: input.passwordHash,
     });
-    await db.delete(authSessions).where(eq(authSessions.userId, input.userId));
+    await applySessionChange(client, input.userId, sessionChange);
     await recordIdentitySecurityFact(
       client,
       input.userId,
@@ -170,8 +196,14 @@ export async function resetPasswordAndRevokeSessions(
 /** The last sign-in method cannot be removed; removal revokes every session. */
 export async function unlinkMethodAndRevokeSessions(
   pool: Pool,
-  input: Readonly<{ userId: string; methodId: string }>,
-): Promise<'unlinked' | 'last_method' | 'not_found'> {
+  input: Readonly<{
+    userId: string;
+    methodId: string;
+    replacement?: AuthenticationReplacement;
+  }>,
+): Promise<
+  'unlinked' | 'last_method' | 'not_found' | 'protected_recovery' | 'inactive'
+> {
   return withPlatformTransaction(pool, async (client) => {
     const db = drizzle(client, { schema: databaseSchema });
     await db
@@ -186,6 +218,20 @@ export async function unlinkMethodAndRevokeSessions(
       .orderBy(asc(authAccounts.id))
       .for('update');
     if (accounts.length <= 1) return 'last_method';
+    const sessionChange = await prepareSessionChange(
+      client,
+      input.userId,
+      input.replacement,
+    );
+    if (sessionChange === undefined) return 'inactive';
+    if (
+      accounts.some(
+        (account) =>
+          account.id === input.methodId && account.providerId === 'credential',
+      ) &&
+      (await isProtectedRecoveryOwner(client, input.userId))
+    )
+      return 'protected_recovery';
     const removed = await db
       .delete(authAccounts)
       .where(
@@ -196,7 +242,7 @@ export async function unlinkMethodAndRevokeSessions(
       )
       .returning({ id: authAccounts.id });
     if (removed.length !== 1) return 'not_found';
-    await db.delete(authSessions).where(eq(authSessions.userId, input.userId));
+    await applySessionChange(client, input.userId, sessionChange);
     await recordIdentitySecurityFact(client, input.userId, 'method.unlinked');
     return 'unlinked';
   }).catch(rethrowIdentityQueryFailure);

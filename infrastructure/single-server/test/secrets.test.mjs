@@ -55,7 +55,7 @@ test('generated keys and URLs work at the actual deployed application boundaries
     parseOperatorDatabaseConfig(environment).connectionString,
     secrets.DATABASE_MAINTENANCE_URL,
   );
-  for (const prefix of ['AUTH_MAIL', 'INVITATION_TOKEN']) {
+  for (const prefix of ['AUTH_MAIL', 'INVITATION_TOKEN', 'AUTH_FEDERATION']) {
     const envelope = createApplicationSecretEnvelope({
       current: {
         key: secrets[`${prefix}_KEY`],
