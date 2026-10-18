@@ -45,7 +45,7 @@ export async function isAuthenticationSessionAllowed(
         join app.workspaces workspace on workspace.id=member.workspace_id
         where member.workspace_id=nullif(session.workspace_scope,'')::uuid
           and member.user_id=session.user_id and member.role='owner' and member.status='active') control_owner,
-      exists(select 1 from app.auth_accounts account where account.user_id=session.user_id
+      (select count(*)=1 from app.auth_accounts account where account.user_id=session.user_id
         and account.provider_id='credential' and account.password is not null and length(account.password)>0) password_present,
       provider.organization_id provider_organization_id,provider.enabled provider_enabled,provider.revision provider_revision,
       coalesce(directory.active and directory.deleted_at is null,true) directory_allowed
