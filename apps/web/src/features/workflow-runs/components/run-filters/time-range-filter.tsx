@@ -1,20 +1,13 @@
 import { CalendarRangeIcon, ChevronDownIcon } from 'lucide-react';
-import { useState, type SyntheticEvent } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  dateOf,
-  localDateOf,
-  type LocalDate,
-} from '@/components/ui/date-time-parts';
-import { FieldError } from '@/components/ui/field';
+import { DayRangeForm } from '@/components/ui/day-range-form';
 import {
   Popover,
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { formatDate, localTimeZone } from '@/lib/format/time';
 import {
   presetRangeLabel,
   timeRangeLabel,
@@ -82,11 +75,16 @@ export function TimeRangeFilter({
             </Button>
           ))}
         </div>
-        <CustomRangeForm
-          search={search}
-          onApply={(next) => {
-            onSearchChange(next);
+        <DayRangeForm
+          {...(search.range === 'custom'
+            ? { initial: customRangeInputs(search) }
+            : {})}
+          onApply={(from, to) => {
+            const result = customRangeSearch(search, from, to);
+            if (!result.ok) return result.message;
+            onSearchChange(result.search);
             setOpen(false);
+            return undefined;
           }}
         />
         {label === undefined ? null : (
@@ -105,88 +103,5 @@ export function TimeRangeFilter({
         )}
       </PopoverContent>
     </Popover>
-  );
-}
-
-/** A picked day in words, e.g. "Sep 14, 2026". */
-function dayWords(day: LocalDate): string {
-  const date = dateOf(day);
-  return date === undefined ? day : formatDate(date.toISOString());
-}
-
-function CustomRangeForm({
-  search,
-  onApply,
-}: Readonly<{ search: RunSearch; onApply: (search: RunSearch) => void }>) {
-  const initial =
-    search.range === 'custom' ? customRangeInputs(search) : undefined;
-  const [from, setFrom] = useState(initial?.from ?? '');
-  const [to, setTo] = useState(initial?.to ?? '');
-  const [error, setError] = useState<string>();
-  const today = localDateOf(new Date());
-
-  // The first tap starts a range and the next ends it; a tap before the
-  // start moves the start, and a tap once both are set starts over.
-  function pick(day: LocalDate) {
-    setError(undefined);
-    if (from === '' || to !== '') {
-      setFrom(day);
-      setTo('');
-    } else if (day < from) setFrom(day);
-    else setTo(day);
-  }
-
-  function apply(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const result = customRangeSearch(search, from, to);
-    if (!result.ok) {
-      setError(result.message);
-      return;
-    }
-    setError(undefined);
-    onApply(result.search);
-  }
-
-  return (
-    <form className="mt-4 border-t border-border pt-4" onSubmit={apply}>
-      <p className="text-xs font-medium text-muted-foreground">Custom days</p>
-      <p aria-live="polite" className="mt-1 text-sm">
-        {from === ''
-          ? 'Pick the first day.'
-          : to === ''
-            ? `From ${dayWords(from)}. Now pick the last day.`
-            : from === to
-              ? dayWords(from)
-              : `${dayWords(from)} to ${dayWords(to)}`}
-      </p>
-      <div className="mt-2">
-        <Calendar
-          value={undefined}
-          max={today}
-          range={{
-            ...(from === '' ? {} : { from }),
-            ...(to === '' ? {} : { to }),
-          }}
-          onSelect={pick}
-        />
-      </div>
-      <p className="mt-2 text-xs text-subtle-foreground">
-        Whole days in your time zone, {localTimeZone()}. Pick a day twice for
-        just that day.
-      </p>
-      {error === undefined ? null : (
-        <FieldError className="mt-2">{error}</FieldError>
-      )}
-      {/* Nothing to apply until the range has both ends. */}
-      <Button
-        type="submit"
-        variant="primary"
-        size="sm"
-        className="mt-3 w-full"
-        disabled={from === '' || to === ''}
-      >
-        Apply range
-      </Button>
-    </form>
   );
 }
