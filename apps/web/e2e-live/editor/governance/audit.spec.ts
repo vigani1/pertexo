@@ -33,21 +33,22 @@ for (const width of [1280, 375]) {
     await expect(
       page.getByText('Retention saved.', { exact: true }),
     ).toBeVisible();
-    await page
-      .getByLabel('Action', { exact: true })
-      .fill('workspace.governance_changed');
-    await page
-      .getByRole('button', { name: 'Apply filters', exact: true })
+    // The ledger narrows to one kind of event from the event itself.
+    const events = page.getByRole('region', { name: 'Events' });
+    const changed = events
+      .getByRole('listitem')
+      .filter({ hasText: 'changed publishing approval or audit retention' })
+      .first();
+    await changed.getByText('Details', { exact: true }).click();
+    await changed
+      .getByRole('button', { name: 'Only this kind of event', exact: true })
       .click();
-    const events = page.getByRole('region', { name: 'Audit events' });
-    await expect(
-      events.getByText('workspace.governance_changed', { exact: true }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/action=workspace\.governance_changed/u);
     await expect(events.getByRole('listitem')).toHaveCount(1);
-    await events.getByText('Event details', { exact: true }).click();
+    await events.getByText('Details', { exact: true }).click();
     await expect(events.getByText('30', { exact: true })).toBeVisible();
     const download = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export matching events' }).click();
+    await page.getByRole('button', { name: 'Export these events' }).click();
     const result = await download;
     expect(result.suggestedFilename()).toBe('audit-log.csv');
     expect(await result.failure()).toBeNull();
