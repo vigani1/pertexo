@@ -1,3 +1,4 @@
+import { updateMembership } from './storage.js';
 import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -17,7 +18,6 @@ import {
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,
-  updateMembership,
   type AdmittedMemberCommand,
   type LockedMember,
 } from './command.js';

@@ -1,3 +1,4 @@
+import { updateMembership } from './storage.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -12,7 +13,6 @@ import {
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,
-  updateMembership,
 } from './command.js';
 import { revokeUserSessions } from '../users/sessions.js';
 import { canChangeWorkspaceMemberRole } from '../policy.js';
