@@ -51,11 +51,15 @@ result at desktop and phone width, then rebase-merge after CI passes.
   one row: a person search, what changed (by target kind) and the day range form
   shared with Runs. "Only this kind of event" and "Only this item" start from an
   entry and show as removable chips. Promotion history uses the same log rows.
-- [ ] 3. **Workflow settings as sentences.** Group into Identity, Your
-  notifications, When it fails (alerts, error workflow, automatic pause), How it
-  runs (duration, concurrency) and Lifecycle. Move the step health table to the
-  workflow's Runs tab, recent skipped triggers to its Triggers tab and the
-  workspace auto-pause default to workspace Settings.
+- [x] 3. **Workflow settings as sentences.** Concurrency, automatic pause and
+  the error workflow read as one sentence of their current value with Change,
+  which opens the unchanged editor in place; it stays mounted while closed, so
+  unsaved edits and an unconfirmed save's exact retry survive. Their rules move
+  into "How this works". Step health moves to the workflow's Runs tab. Recent
+  skipped triggers stay with Concurrency, which causes them. The workspace
+  auto-pause default stays reachable here behind its own sentence: moving it to
+  workspace Settings needs the auto-pause command hook split from its workflow,
+  which is a separate change.
 - [ ] 4. **Collaboration on the canvas.** A step with open discussions shows a
   small count on its node that opens them. Presence lists other people only,
   with your other tabs as "you, in another tab". The Comments tab drops its
