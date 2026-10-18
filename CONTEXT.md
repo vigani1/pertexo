@@ -14,16 +14,23 @@ follow an identity organization's provisioning policy. Other memberships remain
 independent. _Avoid_: Global account suspension, provider account ownership
 proof
 
-**Workspace notice**: A thread about a workflow failure or current operational
-attention: an auto-pause, connection health, workspace capacity, or waiting
-approval. Membership, the subject's audience and personal follow/mute choices
-shape each person's Inbox. _Avoid_: Run event, shared failure alert, pending
-task
+**Workspace notice**: A thread about a workflow failure, operational attention
+or an explicit comment mention. Membership, the subject's audience and personal
+follow/mute choices shape each person's Inbox. _Avoid_: Run event, shared
+failure alert, pending task
 
 **Personal notification preference**: One member's email schedule and subject
 follow/mute choices. Following grants no extra access; muting changes neither
 shared workflow alerts nor the underlying human task. _Avoid_: Workspace alert
 destination, approval decision, credential
+
+**Workflow comment thread**: A discussion about a workflow or one stable step,
+shared with the people who may read that workflow. Resolving a discussion does
+not change the workflow. _Avoid_: Inbox notice, run event, approval request
+
+**Editing presence**: An advisory indication of who is viewing or editing a
+workflow and who has unsaved changes. It grants no access and does not merge
+edits or replace draft concurrency checks. _Avoid_: Edit lock, multiplayer
 
 **Workflow link**: A directed relationship from one step’s output to another
 step’s input, within a workflow or a loop body. Links determine when steps run;

@@ -125,3 +125,19 @@ then start matching readers before new payload writers.
 The configured provider must DKIM-sign both unsubscribe headers as required by
 [RFC 8058](https://www.rfc-editor.org/rfc/rfc8058.html). Local SMTP qualification
 proves headers and capability behavior, not the external provider's signature.
+
+### Amendment: explicit comment mentions (2026-10-18, F19)
+
+A workflow comment mention is an explicit attention subject for one selected
+member. A comment can mention at most twenty people; its canonical mention rows
+identify those recipients. This does not add failure-event fan-out or a second
+notification queue. The same TypeScript audience owner checks current workflow
+read access and recipient identity, and existing workflow mutes and email
+schedules still apply. Retaining a mention through an edit, resolving a thread
+or retrying a command does not create another notice.
+
+Notice bodies, emails, hints, audit facts and command receipts never copy comment
+text. They identify the workflow and link to the authenticated discussion.
+Removing a mention or its comment removes the notice. Mention notifications
+expire after thirty days and are not recreated from old comments; the discussion
+itself remains until explicitly deleted or its workflow/workspace is removed.
