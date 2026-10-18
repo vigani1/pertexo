@@ -17,10 +17,12 @@ import {
   type WorkflowRunSearch,
 } from '../model/list/run-search';
 import { useRunHistory } from '../hooks/use-run-history';
+import { WorkflowStepHealth } from '../components/step-history/workflow-steps';
 
 /**
  * A workflow's Runs tab: the same list as the Runs page, fixed to this
- * workflow, so it has no workflow column or filter.
+ * workflow, so it has no workflow column or filter, then how each of its
+ * steps has been doing.
  */
 export function WorkflowRunsPage({
   apiClient,
@@ -77,6 +79,12 @@ export function WorkflowRunsPage({
             workflowId={workflowId}
           />
         }
+      />
+      <WorkflowStepHealth
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        workflowId={workflowId}
       />
     </div>
   );

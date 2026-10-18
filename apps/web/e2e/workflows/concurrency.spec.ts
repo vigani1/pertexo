@@ -111,7 +111,7 @@ test('workflow concurrency preserves conflict edits, exact retries and Queue/Ski
   await page.getByRole('option', { name: 'Skip', exact: true }).click();
   await input.fill('');
   await section.getByRole('button', { name: 'Save concurrency limit' }).click();
-  await expect(section.getByText('No limit of its own.')).toBeVisible();
+  await expect(section.getByText(/^No limit of its own\./u)).toBeVisible();
   expect(writes[3]?.body).toEqual({
     limit: null,
     expectedRevision: 3,
@@ -151,7 +151,7 @@ test('workflow concurrency is readable but not editable by a viewer', async ({
   await settingsReads(page);
   await page.goto(`${editorUrl}/settings`);
   const section = page.getByRole('region', { name: 'Concurrency' });
-  await expect(section.getByText('No limit of its own.')).toBeVisible();
+  await expect(section.getByText(/^No limit of its own\./u)).toBeVisible();
   await expect(section.getByRole('textbox')).toHaveCount(0);
   await expect(
     section.getByText(/Your role or the workspace’s state doesn’t allow/u),

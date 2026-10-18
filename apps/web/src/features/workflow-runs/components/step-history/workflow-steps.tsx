@@ -3,8 +3,7 @@ import type {
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { useId, useMemo } from 'react';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
 import { StepHealthList } from './step-health-list';
@@ -35,7 +34,7 @@ function stepNames(graph: GraphLevel | undefined): ReadonlyMap<string, string> {
  * How each step has done across the workflow's last 100 runs, the ones that
  * fail most first, named as the draft names them.
  */
-export function StepHealthSection({
+export function WorkflowStepHealth({
   apiClient,
   userId,
   workspace,
@@ -50,11 +49,17 @@ export function StepHealthSection({
     workflowDraftQueryOptions(apiClient, userId, workspace.id, workflowId),
   );
   const names = useMemo(() => stepNames(draft.data?.draft.graph), [draft.data]);
+  const headingId = useId();
   return (
-    <SettingsSection
-      title="Steps"
-      description="How each step has done in this workflow’s last 100 runs, the ones that fail most first."
-    >
+    <section aria-labelledby={headingId} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <h2 id={headingId} className="text-lg font-semibold">
+          Steps
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          How each step did in the last 100 runs, the ones that fail most first.
+        </p>
+      </div>
       <StepHealthList
         apiClient={apiClient}
         userId={userId}
@@ -62,6 +67,6 @@ export function StepHealthSection({
         workflowId={workflowId}
         labelOf={(nodeId) => names.get(nodeId)}
       />
-    </SettingsSection>
+    </section>
   );
 }
