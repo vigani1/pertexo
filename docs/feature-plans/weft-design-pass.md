@@ -73,12 +73,14 @@ result at desktop and phone width, then rebase-merge after CI passes.
   waits for its values. Unavailable primary buttons look unavailable. Merging
   the client-side starters with the curated examples into one list stays open:
   it needs a decision on whether the starters become curated examples.
-- [ ] 6. **Plain words on the newer screens.** Requests, Inbox, Data tables,
-  Variables, Notifications, Usage, Promotion and Single sign-on get one-sentence
-  introductions; limits move into a disclosure; select values show labels, never
-  enum values; Save plus "Reload current values" becomes Save plus Discard that
-  appears only with unsaved changes. The editor's test bar appears once a saved
-  test case exists, and Run all tests also lives in the Test workflow menu.
+- [x] 6. **Plain words on the newer screens.** Data tables, notifications,
+  usage, single sign-on and promotion open with a sentence or two about what the
+  page is for; variables keep their limits in a disclosure. Requests and Inbox
+  already speak plainly since slice 1. Save no longer sits beside an
+  always-present reload: Discard changes appears only with unsaved edits, and
+  Load the latest only when stored values moved on. Still open: the editor's
+  test bar should wait for test activity, which needs Run all tests in a split
+  Test workflow menu first.
 - [ ] 7. **A run's ending.** When a run ends at a Stop run step that names its
   outcome, run detail says it ("Succeeded as rejected in 0.57s").
 
