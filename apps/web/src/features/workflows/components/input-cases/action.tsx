@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useRef, useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,10 +9,17 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import type { ApiClient } from '@/lib/api/client';
 import { useInputCases } from '../../hooks/use-input-cases';
-import { InputCasesPanel, type LoadedInputCase } from './panel';
+import type { LoadedInputCase } from './panel';
+
+// The case editor loads with the dialog's first open, not with the workflow
+// bar that holds its trigger.
+const InputCasesPanel = lazy(() =>
+  import('./panel').then((module) => ({ default: module.InputCasesPanel })),
+);
 
 type InputCasesActionProps = Readonly<{
   apiClient: ApiClient;
@@ -111,14 +118,16 @@ function InputCasesDialog({
         {/* Let the popup unmount its focused content after the exit transition;
             removing it on close queues focus repair into the next open menu. */}
         <div className="mt-5 flex flex-col gap-5">
-          <InputCasesPanel
-            key={`${userId}:${workspace.id}:${workflow.id}`}
-            cases={cases}
-            workspace={workspace}
-            workflow={workflow}
-            onAccessLost={clearLoaded}
-            onLoad={setLoaded}
-          />
+          <Suspense fallback={<SkeletonLines label="Loading input cases" />}>
+            <InputCasesPanel
+              key={`${userId}:${workspace.id}:${workflow.id}`}
+              cases={cases}
+              workspace={workspace}
+              workflow={workflow}
+              onAccessLost={clearLoaded}
+              onLoad={setLoaded}
+            />
+          </Suspense>
           {loaded === undefined ? null : (
             <FieldGroup>
               <LabelledField

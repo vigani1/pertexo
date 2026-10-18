@@ -1,11 +1,17 @@
-import type { ComponentProps } from 'react';
+import { lazy, Suspense, type ComponentProps } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import type { DialogContent } from '@/components/ui/dialog';
 import type { ApiClient } from '@/lib/api/client';
 import { canDuplicateWorkflow } from '../model/duplicate/allowed';
-import { WorkflowDuplicateDialog } from './workflow-duplicate-dialog';
+
+// Loaded on first open, like the export dialog beside it in the workflow bar.
+const WorkflowDuplicateDialog = lazy(() =>
+  import('./workflow-duplicate-dialog').then((module) => ({
+    default: module.WorkflowDuplicateDialog,
+  })),
+);
 
 /** Shared detail action; Build supplies its own dirty/save guard. */
 export function WorkflowDuplicateAction({
@@ -51,26 +57,28 @@ export function WorkflowDuplicateAction({
         Duplicate…
       </Button>
       {open ? (
-        <WorkflowDuplicateDialog
-          key={`${userId}:${workspace.id}:${workflow.id}`}
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          workflow={workflow}
-          source={{ kind: 'draft' }}
-          finalFocus={finalFocus}
-          allowed={!blocked}
-          onClose={() => {
-            onOpenChange(false);
-          }}
-          onCreated={(workflowId) => {
-            onOpenChange(false);
-            void navigate({
-              to: '/w/$workspaceId/workflows/$workflowId',
-              params: { workspaceId: workspace.id, workflowId },
-            });
-          }}
-        />
+        <Suspense fallback={null}>
+          <WorkflowDuplicateDialog
+            key={`${userId}:${workspace.id}:${workflow.id}`}
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            workflow={workflow}
+            source={{ kind: 'draft' }}
+            finalFocus={finalFocus}
+            allowed={!blocked}
+            onClose={() => {
+              onOpenChange(false);
+            }}
+            onCreated={(workflowId) => {
+              onOpenChange(false);
+              void navigate({
+                to: '/w/$workspaceId/workflows/$workflowId',
+                params: { workspaceId: workspace.id, workflowId },
+              });
+            }}
+          />
+        </Suspense>
       ) : null}
     </>
   );
