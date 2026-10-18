@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { NoticeConflictError } from '../../src/inbox/preferences/contract.js';
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
-import { updateMembership } from '../../src/tenant-access/members/command.js';
+import { updateMembership } from '../../src/tenant-access/members/storage.js';
 import { apiUrl } from '../support/workflow-authoring.js';
 import {
   preferences,
