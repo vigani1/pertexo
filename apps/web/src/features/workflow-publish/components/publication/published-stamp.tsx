@@ -48,11 +48,11 @@ export function PublishedStamp({
   }, [reducedMotion, reused]);
   const visible = shown || reducedMotion || reused;
   return (
-    // Beside the inspector lens, not over it; the editor sets the inset.
+    // The editor owns the feedback layer below its header and notices.
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed top-24 right-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col items-end gap-2 lg:right-[var(--editor-right-inset,1rem)]"
+      className="pointer-events-none absolute top-0 right-0 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col items-end gap-2 lg:right-[calc(var(--editor-right-inset,1rem)-0.75rem)]"
     >
       {visible ? (
         <div

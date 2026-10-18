@@ -14,7 +14,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { flushSync } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import type {
   NodeTestHandle,
   WorkflowIssuesView,
@@ -53,6 +53,7 @@ import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';
 
 export type EditorChrome = Readonly<{
   workflowTestAction: ReactNode;
+  renderFeedback: (feedback: ReactNode) => ReactNode;
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;
   /** The bottom issues lens, opened from the command bar's chip. */
@@ -181,7 +182,12 @@ export function EditorWorkspace({
     enabled: !paused && workspace.capabilities.includes('run:read'),
   });
   const overlays = useCanvasOverlays(issues, effects, testStatuses);
+  const [feedbackTarget, setFeedbackTarget] = useState<HTMLDivElement | null>(
+    null,
+  );
   const chrome: EditorChrome = {
+    renderFeedback: (feedback) =>
+      feedbackTarget === null ? null : createPortal(feedback, feedbackTarget),
     workflowTestAction: (
       <WorkflowTestButton tests={tests} className="hidden sm:inline-flex" />
     ),
@@ -315,6 +321,10 @@ export function EditorWorkspace({
       }
       overlay={
         <>
+          <div
+            ref={setFeedbackTarget}
+            className="pointer-events-none absolute inset-0 z-40"
+          />
           {paused || !tests.open ? null : (
             <WorkflowTestDialog
               tests={tests}

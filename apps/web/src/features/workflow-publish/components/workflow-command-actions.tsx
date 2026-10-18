@@ -92,6 +92,7 @@ function EditedSinceNote({
  * whether it's open comes from the editor.
  */
 export function WorkflowCommandActions({
+  renderFeedback,
   apiClient,
   userId,
   workspace,
@@ -111,6 +112,7 @@ export function WorkflowCommandActions({
 }: Readonly<{
   testAction?: ReactNode;
   savedDraftCurrent?: boolean;
+  renderFeedback: (feedback: ReactNode) => ReactNode;
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
@@ -255,25 +257,27 @@ export function WorkflowCommandActions({
           ? {}
           : { caseScope: { apiClient, userId, workspace, workflow } })}
       />
-      {stamp === undefined ? null : (
-        <PublishedStamp
-          key={stamp.receipt.versionId}
-          workspaceId={workspace.id}
-          workflowId={workflowId}
-          versionNumber={stamp.receipt.versionNumber}
-          reused={stamp.receipt.reused}
-          liveAgain={stamp.liveAgain}
-          hasTriggers={stamp.hasTriggers}
-          canRun={canRun}
-          onRunNow={() => {
-            setStamp(undefined);
-            void runNow(stamp.receipt.versionId);
-          }}
-          onDismiss={() => {
-            setStamp(undefined);
-          }}
-        />
-      )}
+      {stamp === undefined
+        ? null
+        : renderFeedback(
+            <PublishedStamp
+              key={stamp.receipt.versionId}
+              workspaceId={workspace.id}
+              workflowId={workflowId}
+              versionNumber={stamp.receipt.versionNumber}
+              reused={stamp.receipt.reused}
+              liveAgain={stamp.liveAgain}
+              hasTriggers={stamp.hasTriggers}
+              canRun={canRun}
+              onRunNow={() => {
+                setStamp(undefined);
+                void runNow(stamp.receipt.versionId);
+              }}
+              onDismiss={() => {
+                setStamp(undefined);
+              }}
+            />,
+          )}
     </>
   );
 }
