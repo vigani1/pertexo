@@ -34,14 +34,16 @@ result at desktop and phone width, then rebase-merge after CI passes.
 
 ## Slices
 
-- [ ] 1. **Navigation and the Settings hub.** Trim the spine to the work above.
+- [x] 1. **Navigation and the Settings hub.** Trim the spine to the work above.
   Settings pages and Alerts share a section rail, a thread with one bead per
   section where the current one is a knot (Workspace: General, Usage,
-  Variables, Alerts, Promotion, Audit log, Single sign-on, API tokens; You:
-  Notifications); phones get it as a scrolling row. Inbox and Requests share
-  one header with Notices and Requests views; the spine badge counts both.
-  Remove the General page's link-only sections that the rail replaces. Keep
-  every existing URL working.
+  Variables, Alerts, Promotion, Audit log, Single sign-on; You:
+  Notifications, API tokens); phones get it as a scrolling row. Inbox and
+  Requests share one header with Notices and Requests views, each with its own
+  count; waiting approvals already raise Inbox notices, so the spine badge stays
+  the unread count. Remove the General page's link-only sections that the rail
+  replaces. Keep every existing URL working: Alerts moves to settings/alerts and
+  its old address redirects.
 - [ ] 2. **Audit log as a ledger.** Sentences from a phrase table keyed by
   action, using safe metadata names, with a readable fallback for unknown
   actions. Filters become one row: person, a "What" choice by family
@@ -74,3 +76,5 @@ result at desktop and phone width, then rebase-merge after CI passes.
 Not in this pass: new backend endpoints (a reviewer's list of waiting
 publication reviews still arrives through Inbox notices), moving existing
 feature folders (a separate mechanical pass), F21 integrations and F22 AI.
+
+Checked items have passed local verification; each PR records its CI and merge.
