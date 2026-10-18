@@ -158,7 +158,6 @@ export const authenticationContractPaths = Object.freeze({
           description: 'Same-origin GET callback; no identity change yet.',
         },
         '400': responseReference('BadRequest'),
-        '413': problemResponse('Provider form exceeds 32 KiB'),
         '429': responseReference('RateLimited'),
       },
     },

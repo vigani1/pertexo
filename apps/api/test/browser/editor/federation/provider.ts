@@ -11,7 +11,7 @@ export function createBrowserIdentityProvider() {
   >();
   const codes = new Map<string, { state: string; email: string }>();
   const gateway: SocialProviderGateway = {
-    available: ['google', 'github'],
+    available: ['google', 'github', 'apple'],
     authorize: (input) => {
       journeys.set(input.state, input);
       return Promise.resolve(
@@ -75,6 +75,17 @@ export function createBrowserIdentityProvider() {
         const callback = new URL(journey.redirectUri);
         callback.searchParams.set('state', state);
         callback.searchParams.set('code', code);
+        if (journey.provider === 'apple') {
+          response
+            .writeHead(200, {
+              'content-type': 'text/html; charset=utf-8',
+              'cache-control': 'no-store',
+            })
+            .end(
+              `<main><h1>Verified local identity</h1><form method="post" action="${journey.redirectUri}"><input type="hidden" name="state" value="${state}"><input type="hidden" name="code" value="${code}"><input type="hidden" name="id_token" value="untrusted-front-channel-token"><button>Continue to Pertexo</button></form></main>`,
+            );
+          return true;
+        }
         response
           .writeHead(302, {
             location: callback.toString(),

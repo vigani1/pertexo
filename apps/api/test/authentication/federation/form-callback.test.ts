@@ -36,7 +36,7 @@ describe('cross-site provider form landing', () => {
     },
   );
   it('limits bytes and rejects ambiguous proofs or the wrong encoding', async () => {
-    expect((await callback(`unused=${'a'.repeat(32768)}`))?.status).toBe(413);
+    expect((await callback(`unused=${'a'.repeat(32768)}`))?.status).toBe(400);
     expect((await callback('state=one&state=two'))?.status).toBe(400);
     expect(
       (

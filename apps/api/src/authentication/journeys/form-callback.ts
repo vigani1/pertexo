@@ -28,7 +28,7 @@ export async function landProviderFormCallback(
     return new Response(null, { status: 400 });
   const body = await request.text();
   if (Buffer.byteLength(body) > 32_768)
-    return new Response(null, { status: 413 });
+    return new Response(null, { status: 400 });
   const fields = new URLSearchParams(body);
   for (const [name, maximum] of [
     ['state', 43],

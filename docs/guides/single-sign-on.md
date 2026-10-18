@@ -38,6 +38,10 @@ Existing configured Microsoft/Apple sign-in uses the same verified proof path.
 Their callback suffixes are `microsoft` and `apple`. This change closes the old
 `/v1/auth/callback/<provider>` path; update provider registrations before enabling
 social buttons after an upgrade. Already-started sign-ins may need to be restarted.
+Microsoft must return a verified email (configure its optional verified-email claim
+when needed). Apple form callbacks are bounded to 32 KiB and redirect to the same
+GET callback before the browser-bound proof is accepted; session cookie settings
+do not change.
 
 ## Account behavior
 

@@ -96,6 +96,7 @@ async function dispatchBetterAuthRequest(
     new URL(request.url, publicOrigin).pathname,
   );
   const requestId = randomUUID();
+  const providerFormCallback = isProviderFormCallback(request.method, pathname);
   if (BLOCKED_BROWSER_AUTH_PATHS.has(pathname)) {
     sendProblem(
       reply,
@@ -109,7 +110,7 @@ async function dispatchBetterAuthRequest(
   if (
     isUnsafeMethod(request.method) &&
     request.headers.origin !== publicOrigin &&
-    !isProviderFormCallback(request.method, pathname)
+    !providerFormCallback
   ) {
     sendProblem(
       reply,
@@ -121,9 +122,10 @@ async function dispatchBetterAuthRequest(
     return;
   }
   if (rateLimitConsumer !== undefined) {
-    const endpointClass = isUnsafeMethod(request.method)
-      ? 'identity_start'
-      : 'identity_callback';
+    const endpointClass =
+      isUnsafeMethod(request.method) && !providerFormCallback
+        ? 'identity_start'
+        : 'identity_callback';
     const decision = rateLimitPolicy.evaluate(endpointClass, {
       clientAddress: request.ip,
       origin: request.headers.origin ?? publicOrigin,
