@@ -6,13 +6,19 @@ import {
   type AuthenticationCapabilitiesResponse,
 } from '@pertexo/contracts';
 import type { ApiProblemCode } from '@pertexo/contracts';
-import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
+import {
+  AbuseRateLimitPolicy,
+  type RateLimitEndpointClass,
+} from '@pertexo/rate-limit';
 
 import type { RateLimitConsumer } from '../../platform/rate-limit/interceptor.js';
 import type { BetterAuthRuntime } from './runtime.js';
 import { isProviderFormCallback } from '../journeys/form-callback.js';
 
 type AuthenticationHandler = BetterAuthRuntime['auth']['handler'];
+type AuthenticationRateLimits = Readonly<
+  Record<'start' | 'callback', RateLimitEndpointClass>
+>;
 const rateLimitPolicy = new AbuseRateLimitPolicy();
 
 const BLOCKED_BROWSER_AUTH_PATHS = new Set([
@@ -46,9 +52,13 @@ export function registerBetterAuthHandler(
   }>,
 ): void {
   const origin = new URL(input.publicOrigin).origin;
+  const config = {
+    rateLimit: { start: 'identity_start', callback: 'identity_callback' },
+  } as const;
   fastify.all(
     '/v1/auth/*',
     {
+      config,
       onSend: (_request, reply, payload, done) => {
         // Redirected pages must not receive callback proofs through Referer.
         reply
@@ -64,7 +74,7 @@ export function registerBetterAuthHandler(
         input.handler,
         origin,
         input.sessionCookie,
-        input.rateLimitConsumer,
+        { consumer: input.rateLimitConsumer, policies: config.rateLimit },
       );
     },
   );
@@ -85,12 +95,15 @@ async function dispatchBetterAuthRequest(
   reply: FastifyReply,
   handler: AuthenticationHandler,
   publicOrigin: string,
-  sessionCookie?: Readonly<{
+  sessionCookie: Readonly<{
     secure: boolean;
     sameSite: 'lax' | 'strict' | 'none';
     maxAgeSeconds: number;
   }>,
-  rateLimitConsumer?: RateLimitConsumer,
+  admission: Readonly<{
+    consumer: RateLimitConsumer;
+    policies: AuthenticationRateLimits;
+  }>,
 ): Promise<void> {
   const pathname = canonicalAuthPath(
     new URL(request.url, publicOrigin).pathname,
@@ -121,43 +134,38 @@ async function dispatchBetterAuthRequest(
     );
     return;
   }
-  if (rateLimitConsumer !== undefined) {
-    const endpointClass =
-      isUnsafeMethod(request.method) && !providerFormCallback
-        ? 'identity_start'
-        : 'identity_callback';
-    const decision = rateLimitPolicy.evaluate(endpointClass, {
-      clientAddress: request.ip,
-      origin: request.headers.origin ?? publicOrigin,
-    });
-    let allowed: Awaited<ReturnType<RateLimitConsumer['consume']>>;
-    try {
-      allowed = await rateLimitConsumer.consume(decision);
-    } catch {
-      reply.header('retry-after', '1');
-      sendProblem(
-        reply,
-        requestId,
-        503,
-        'request.rate_limit_unavailable',
-        'Authentication temporarily unavailable',
-      );
-      return;
-    }
-    if (!allowed.allowed) {
-      reply.header(
-        'retry-after',
-        String(Math.max(1, allowed.retryAfterSeconds)),
-      );
-      sendProblem(
-        reply,
-        requestId,
-        429,
-        'request.rate_limited',
-        'Too many authentication requests',
-      );
-      return;
-    }
+  const endpointClass =
+    isUnsafeMethod(request.method) && !providerFormCallback
+      ? admission.policies.start
+      : admission.policies.callback;
+  const decision = rateLimitPolicy.evaluate(endpointClass, {
+    clientAddress: request.ip,
+    origin: request.headers.origin ?? publicOrigin,
+  });
+  let allowed: Awaited<ReturnType<RateLimitConsumer['consume']>>;
+  try {
+    allowed = await admission.consumer.consume(decision);
+  } catch {
+    reply.header('retry-after', '1');
+    sendProblem(
+      reply,
+      requestId,
+      503,
+      'request.rate_limit_unavailable',
+      'Authentication temporarily unavailable',
+    );
+    return;
+  }
+  if (!allowed.allowed) {
+    reply.header('retry-after', String(Math.max(1, allowed.retryAfterSeconds)));
+    sendProblem(
+      reply,
+      requestId,
+      429,
+      'request.rate_limited',
+      'Too many authentication requests',
+    );
+    return;
   }
   const headers = new Headers();
   for (const [name, rawValue] of Object.entries(request.headers)) {
@@ -188,7 +196,6 @@ async function dispatchBetterAuthRequest(
   reply.code(nativeError?.status ?? response.status);
   const setCookies = response.headers.getSetCookie();
   if (
-    sessionCookie !== undefined &&
     setCookies.some(establishesPertexoSession) &&
     !setCookies.some((cookie) => cookie.startsWith('pertexo_csrf='))
   ) {

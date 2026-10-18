@@ -235,6 +235,10 @@ state/PKCE/nonce/callback fields. Apple form landing tests verify bounded encodi
 ambiguous-proof refusal, exact cross-origin callback exceptions and unchanged
 identity until GET verifies the browser binding. Oversized forms use the existing
 400 invalid-proof contract; provider form POSTs consume the callback rate limit.
+Native auth declares the existing start/callback policy classes in Fastify route
+configuration and the dispatcher consumes that same configuration through the
+shared Redis limiter. Denial and backend outages prevent provider dispatch; there
+is no optional-limiter path. This also lets CodeQL recognize the guarded route.
 The OpenAPI validator reports expected redirect-only callback advisories (302/303),
 without validation errors.
 
