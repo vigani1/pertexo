@@ -24,7 +24,7 @@ export function FederationSettingsPage({
   testResult?: 'passed' | 'failed' | undefined;
   navigateToProvider?: (url: string) => void;
 }>) {
-  const allowed = workspace.capabilities.includes('workspace:manage');
+  const allowed = workspace.capabilities.includes('member:read');
   const settings = useQuery({
     ...federationSettingsQueryOptions(scope),
     enabled: allowed,
@@ -76,7 +76,7 @@ export function FederationSettingsPage({
         <Notice tone={testResult === 'passed' ? 'success' : 'warning'}>
           {testResult === 'passed'
             ? 'Provider test completed. Current domain checks determine whether SSO can be required.'
-            : 'Provider test did not finish. Check the issuer, client credentials, callback URI and domain, then try again.'}
+            : 'Provider test did not finish. Check the provider configuration, callback address and verified domain, then try again.'}
         </Notice>
       )}
       {snapshot === undefined ? null : (

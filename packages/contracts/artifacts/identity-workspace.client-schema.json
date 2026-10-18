@@ -4570,82 +4570,168 @@
                   "maxItems": 10,
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      "kind": {
-                        "type": "string",
-                        "const": "oidc"
-                      },
-                      "name": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 128
-                      },
-                      "issuer": {
-                        "type": "string",
-                        "maxLength": 2048
-                      },
-                      "configuration": {
+                    "oneOf": [
+                      {
                         "type": "object",
                         "properties": {
-                          "clientId": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "const": "oidc"
+                          },
+                          "name": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 512
+                            "maxLength": 128
                           },
-                          "emailClaim": {
-                            "default": "email",
+                          "issuer": {
                             "type": "string",
-                            "minLength": 1,
-                            "maxLength": 256
+                            "maxLength": 2048
                           },
-                          "nameClaim": {
-                            "default": "name",
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 256
+                          "configuration": {
+                            "type": "object",
+                            "properties": {
+                              "clientId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 512
+                              },
+                              "emailClaim": {
+                                "default": "email",
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              },
+                              "nameClaim": {
+                                "default": "name",
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              },
+                              "jitEnabled": {
+                                "default": false,
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "clientId",
+                              "emailClaim",
+                              "nameClaim",
+                              "jitEnabled"
+                            ],
+                            "additionalProperties": false
                           },
-                          "jitEnabled": {
-                            "default": false,
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647
+                          },
+                          "secretConfigured": {
                             "type": "boolean"
                           }
                         },
                         "required": [
-                          "clientId",
-                          "emailClaim",
-                          "nameClaim",
-                          "jitEnabled"
+                          "id",
+                          "kind",
+                          "name",
+                          "issuer",
+                          "configuration",
+                          "enabled",
+                          "revision",
+                          "secretConfigured"
                         ],
                         "additionalProperties": false
                       },
-                      "enabled": {
-                        "type": "boolean"
-                      },
-                      "revision": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 2147483647
-                      },
-                      "secretConfigured": {
-                        "type": "boolean"
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "const": "saml"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "issuer": {
+                            "type": "string"
+                          },
+                          "configuration": {
+                            "type": "object",
+                            "properties": {
+                              "signInUrl": {
+                                "type": "string"
+                              },
+                              "certificates": {
+                                "minItems": 1,
+                                "maxItems": 2,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 16384
+                                }
+                              },
+                              "emailAttribute": {
+                                "default": "email",
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              },
+                              "nameAttribute": {
+                                "default": "name",
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              },
+                              "jitEnabled": {
+                                "default": false,
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "signInUrl",
+                              "certificates",
+                              "emailAttribute",
+                              "nameAttribute",
+                              "jitEnabled"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "name",
+                          "issuer",
+                          "configuration",
+                          "enabled",
+                          "revision"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "id",
-                      "kind",
-                      "name",
-                      "issuer",
-                      "configuration",
-                      "enabled",
-                      "revision",
-                      "secretConfigured"
-                    ],
-                    "additionalProperties": false
+                    ]
                   }
                 }
               },
@@ -4671,6 +4757,33 @@
         "reason",
         "canManage",
         "organization"
+      ],
+      "additionalProperties": false
+    },
+    "SamlMetadata": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "type": "string",
+          "maxLength": 2048,
+          "format": "uri"
+        },
+        "redirectUri": {
+          "type": "string",
+          "maxLength": 2048,
+          "format": "uri"
+        },
+        "xml": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536
+        }
+      },
+      "required": [
+        "entityId",
+        "redirectUri",
+        "xml"
       ],
       "additionalProperties": false
     },
@@ -4775,139 +4888,295 @@
       ],
       "additionalProperties": false
     },
-    "OidcProviderCreate": {
+    "FederationProviderCreate": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "const": "oidc"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
-        },
-        "issuer": {
-          "type": "string",
-          "maxLength": 2048,
-          "format": "uri"
-        },
-        "configuration": {
+      "oneOf": [
+        {
           "type": "object",
           "properties": {
-            "clientId": {
+            "kind": {
+              "type": "string",
+              "const": "oidc"
+            },
+            "name": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 512
+              "maxLength": 128
             },
-            "emailClaim": {
-              "default": "email",
+            "issuer": {
+              "type": "string",
+              "maxLength": 2048,
+              "format": "uri"
+            },
+            "configuration": {
+              "type": "object",
+              "properties": {
+                "clientId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "emailClaim": {
+                  "default": "email",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "nameClaim": {
+                  "default": "name",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "jitEnabled": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "clientId"
+              ],
+              "additionalProperties": false
+            },
+            "clientSecret": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 256
+              "maxLength": 8192
             },
-            "nameClaim": {
-              "default": "name",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            },
-            "jitEnabled": {
+            "enabled": {
               "default": false,
               "type": "boolean"
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647
             }
           },
           "required": [
-            "clientId"
+            "kind",
+            "name",
+            "issuer",
+            "configuration",
+            "clientSecret",
+            "expectedRevision"
           ],
           "additionalProperties": false
         },
-        "clientSecret": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 8192
-        },
-        "enabled": {
-          "default": false,
-          "type": "boolean"
-        },
-        "expectedRevision": {
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 2147483647
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "saml"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "issuer": {
+              "type": "string",
+              "maxLength": 2048,
+              "format": "uri"
+            },
+            "configuration": {
+              "type": "object",
+              "properties": {
+                "signInUrl": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "format": "uri"
+                },
+                "certificates": {
+                  "minItems": 1,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16384
+                  }
+                },
+                "emailAttribute": {
+                  "default": "email",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "nameAttribute": {
+                  "default": "name",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "jitEnabled": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "signInUrl",
+                "certificates"
+              ],
+              "additionalProperties": false
+            },
+            "enabled": {
+              "default": false,
+              "type": "boolean"
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "issuer",
+            "configuration",
+            "expectedRevision"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "kind",
-        "name",
-        "issuer",
-        "configuration",
-        "clientSecret",
-        "expectedRevision"
-      ],
-      "additionalProperties": false
+      ]
     },
-    "OidcProviderUpdate": {
+    "FederationProviderUpdate": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
-        },
-        "configuration": {
+      "anyOf": [
+        {
           "type": "object",
           "properties": {
-            "clientId": {
+            "name": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 512
+              "maxLength": 128
             },
-            "emailClaim": {
-              "default": "email",
+            "configuration": {
+              "type": "object",
+              "properties": {
+                "clientId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "emailClaim": {
+                  "default": "email",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "nameClaim": {
+                  "default": "name",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "jitEnabled": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "clientId"
+              ],
+              "additionalProperties": false
+            },
+            "clientSecret": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 256
+              "maxLength": 8192
             },
-            "nameClaim": {
-              "default": "name",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            },
-            "jitEnabled": {
-              "default": false,
+            "enabled": {
               "type": "boolean"
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647
             }
           },
           "required": [
-            "clientId"
+            "name",
+            "configuration",
+            "enabled",
+            "expectedRevision"
           ],
           "additionalProperties": false
         },
-        "clientSecret": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 8192
-        },
-        "enabled": {
-          "type": "boolean"
-        },
-        "expectedRevision": {
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 2147483647
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "saml"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "configuration": {
+              "type": "object",
+              "properties": {
+                "signInUrl": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "format": "uri"
+                },
+                "certificates": {
+                  "minItems": 1,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16384
+                  }
+                },
+                "emailAttribute": {
+                  "default": "email",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "nameAttribute": {
+                  "default": "name",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "jitEnabled": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "signInUrl",
+                "certificates"
+              ],
+              "additionalProperties": false
+            },
+            "enabled": {
+              "default": false,
+              "type": "boolean"
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "configuration",
+            "expectedRevision"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "name",
-        "configuration",
-        "enabled",
-        "expectedRevision"
-      ],
-      "additionalProperties": false
+      ]
     },
     "FederationTestStart": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4961,7 +5230,10 @@
               },
               "kind": {
                 "type": "string",
-                "const": "oidc"
+                "enum": [
+                  "oidc",
+                  "saml"
+                ]
               }
             },
             "required": [

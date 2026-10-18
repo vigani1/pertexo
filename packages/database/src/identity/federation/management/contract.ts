@@ -1,4 +1,8 @@
-import type { FederationSettings, OidcConfiguration } from '@pertexo/contracts';
+import type {
+  FederationSettings,
+  OidcConfiguration,
+  SamlConfiguration,
+} from '@pertexo/contracts';
 export type FederationScope = Readonly<{
   workspaceId: string;
   actorId: string;
@@ -16,14 +20,16 @@ export type OrganizationRow = Readonly<{
 export type ProviderRow = Readonly<{
   id: string;
   organization_id: string;
-  kind: 'oidc' | 'saml';
   name: string;
   issuer: string;
-  configuration: OidcConfiguration;
   sealed_secret: unknown;
   enabled: boolean;
   revision: number;
-}>;
+}> &
+  (
+    | Readonly<{ kind: 'oidc'; configuration: OidcConfiguration }>
+    | Readonly<{ kind: 'saml'; configuration: SamlConfiguration }>
+  );
 export type DomainRow = Readonly<{
   id: string;
   organization_id: string;

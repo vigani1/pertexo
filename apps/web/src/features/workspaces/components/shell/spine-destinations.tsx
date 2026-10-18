@@ -143,7 +143,7 @@ export function spineDestinations(
       label: 'Audit log',
       icon: <SlidersHorizontalIcon />,
     });
-  if (workspace.capabilities.includes('workspace:manage'))
+  if (workspace.capabilities.includes('member:read'))
     administration.push({
       to: '/w/$workspaceId/settings/sso',
       label: 'Single sign-on',

@@ -2,6 +2,25 @@ import { z } from 'zod';
 import { utf8ByteLength } from '../../shared/text.js';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 
+export const federationProtocolSchema = z.enum(['oidc', 'saml']);
+export type FederationProtocol = z.output<typeof federationProtocolSchema>;
+
+const samlXmlBytes = 256 * 1024;
+export const SAML_LIMITS = Object.freeze({
+  metadataBytes: 64 * 1024,
+  formBytes: 512 * 1024,
+  xmlBytes: samlXmlBytes,
+  encodedCharacters: 4 * Math.ceil(samlXmlBytes / 3),
+  nodes: 8192,
+  elements: 2048,
+  depth: 32,
+  attributes: 64,
+  certificateCharacters: 16384,
+  certificates: 2,
+  assertionAgeMillis: 5 * 60000,
+  clockSkewMillis: 2 * 60000,
+});
+
 export const FEDERATION_LIMITS = Object.freeze({
   workspaces: 10,
   domains: 20,
@@ -105,7 +124,7 @@ export const oidcProviderCreateSchema = z
     expectedRevision: revision,
   })
   .strict();
-export const oidcProviderUpdateSchema = z
+const oidcProviderUpdateSchema = z
   .object({
     name,
     configuration: oidcConfigurationSchema,
@@ -114,11 +133,81 @@ export const oidcProviderUpdateSchema = z
     expectedRevision: revision,
   })
   .strict();
+export const samlConfigurationSchema = z
+  .object({
+    signInUrl: z
+      .url({ protocol: /^https$/u })
+      .trim()
+      .max(2048)
+      .pipe(
+        z.string().refine((value) => {
+          const url = new URL(value);
+          return (
+            url.username === '' &&
+            url.password === '' &&
+            url.hash === '' &&
+            !url.searchParams.has('SAMLRequest') &&
+            !url.searchParams.has('RelayState')
+          );
+        }, 'Use an HTTPS sign-in URL without credentials, fragment or reserved SAML parameters.'),
+      ),
+    certificates: z
+      .array(z.string().trim().min(1).max(SAML_LIMITS.certificateCharacters))
+      .min(1)
+      .max(SAML_LIMITS.certificates),
+    emailAttribute: claimName.default('email'),
+    nameAttribute: claimName.default('name'),
+    jitEnabled: z.boolean().default(false),
+  })
+  .strict();
+export type SamlConfiguration = z.output<typeof samlConfigurationSchema>;
+const samlIssuer = z
+  .url()
+  .trim()
+  .max(2048)
+  .pipe(
+    z
+      .string()
+      .refine(
+        (value) =>
+          ['http:', 'https:', 'urn:'].includes(new URL(value).protocol),
+        'Enter the exact HTTP, HTTPS or URN IdP entity ID.',
+      ),
+  );
+export const samlProviderCreateSchema = z
+  .object({
+    kind: z.literal('saml'),
+    name,
+    issuer: samlIssuer,
+    configuration: samlConfigurationSchema,
+    enabled: z.boolean().default(false),
+    expectedRevision: revision,
+  })
+  .strict();
+const samlProviderUpdateSchema = samlProviderCreateSchema.omit({
+  issuer: true,
+});
+export const federationProviderCreateSchema = z.discriminatedUnion('kind', [
+  oidcProviderCreateSchema,
+  samlProviderCreateSchema,
+]);
+// Existing OIDC updates omit kind; their strict shape remains compatible.
+export const federationProviderUpdateSchema = z.union([
+  oidcProviderUpdateSchema,
+  samlProviderUpdateSchema,
+]);
+export type FederationProviderCreate = z.output<
+  typeof federationProviderCreateSchema
+>;
+export type FederationProviderUpdate = z.output<
+  typeof federationProviderUpdateSchema
+>;
+
 export const federationTestStartSchema = z
   .object({ workspaceId: z.uuid(), domainId: z.uuid(), providerId: z.uuid() })
   .strict();
 
-const provider = z
+const oidcProvider = z
   .object({
     id: z.uuid(),
     kind: z.literal('oidc'),
@@ -130,6 +219,14 @@ const provider = z
     secretConfigured: z.boolean(),
   })
   .strict();
+const provider = z.discriminatedUnion('kind', [
+  oidcProvider,
+  oidcProvider.omit({ secretConfigured: true }).extend({
+    kind: z.literal('saml'),
+    issuer: samlIssuer,
+    configuration: samlConfigurationSchema,
+  }),
+]);
 const domain = z
   .object({
     id: z.uuid(),
@@ -188,8 +285,6 @@ export const federationSettingsSchema = z
   })
   .strict();
 export type FederationSettings = z.output<typeof federationSettingsSchema>;
-export type OidcProviderCreate = z.output<typeof oidcProviderCreateSchema>;
-export type OidcProviderUpdate = z.output<typeof oidcProviderUpdateSchema>;
 
 export type FederationOrganizationCreate = z.output<
   typeof federationOrganizationCreateSchema
@@ -206,3 +301,31 @@ export type FederationRevisionCommand = z.output<
 export type FederationEnforcement = z.output<
   typeof federationEnforcementSchema
 >;
+
+/** Public SP identity is available before an IdP is configured; providers keep separate trust. */
+export function samlServiceProviderUrls(
+  publicOrigin: string,
+  organizationId: string,
+) {
+  const origin = new URL(publicOrigin);
+  if (origin.protocol !== 'https:')
+    throw new Error('SAML requires an HTTPS public app address');
+  return {
+    entityId: new URL(
+      `/v1/auth/federation/saml/organizations/${encodeURIComponent(organizationId)}`,
+      origin,
+    ).toString(),
+    redirectUri: new URL(
+      '/v1/auth/federation/saml/callback',
+      origin,
+    ).toString(),
+  };
+}
+
+export const samlMetadataSchema = z
+  .object({
+    entityId: z.url({ protocol: /^https$/u }).max(2048),
+    redirectUri: z.url({ protocol: /^https$/u }).max(2048),
+    xml: z.string().min(1).max(SAML_LIMITS.metadataBytes),
+  })
+  .strict();

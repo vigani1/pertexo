@@ -38,7 +38,7 @@ async function setup(jitEnabled = false) {
     expectedRevision: 2,
     idempotencyKey: key(),
   });
-  const configured = await db.federation().createOidcProvider({
+  const configured = await db.federation().createProvider({
     ...scope,
     name: 'Example OIDC',
     issuer: 'https://idp.example.test/tenant',

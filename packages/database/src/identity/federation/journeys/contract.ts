@@ -1,14 +1,17 @@
-import type { OidcConfiguration } from '@pertexo/contracts';
+import type { OidcConfiguration, SamlConfiguration } from '@pertexo/contracts';
 export type OrganizationProvider = Readonly<{
   id: string;
   organizationId: string;
   controlWorkspaceId: string;
   issuer: string;
-  configuration: OidcConfiguration;
   sealedSecret: unknown;
   revision: number;
   enabled: boolean;
-}>;
+}> &
+  (
+    | Readonly<{ kind: 'oidc'; configuration: OidcConfiguration }>
+    | Readonly<{ kind: 'saml'; configuration: SamlConfiguration }>
+  );
 export type FederationAttempt = Readonly<{
   id: string;
   purpose: 'sign_in' | 'test';
@@ -18,6 +21,7 @@ export type FederationAttempt = Readonly<{
   ownerUserId: string | null;
   ownerSessionId: string | null;
   returnPath: string;
+  createdAt: Date;
 }>;
 export type FederationIdentity = Readonly<{
   subject: string;

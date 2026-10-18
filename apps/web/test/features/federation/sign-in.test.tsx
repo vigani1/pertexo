@@ -46,42 +46,48 @@ describe('organization sign-in form', () => {
     ).toBeVisible();
     expect(navigateToProvider).not.toHaveBeenCalled();
   });
-  it('uses the discovered provider and normalized domain with the original safe return path', async () => {
-    const { fetch, navigateToProvider } = fixture();
-    fetch
-      .mockResolvedValueOnce(
-        json({
-          required: true,
-          providers: [{ id: providerId, name: 'Work SSO', kind: 'oidc' }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        json({
-          authorizationUrl: 'https://idp.example.test/authorize?state=opaque',
-        }),
+  it.each(['oidc', 'saml'] as const)(
+    'uses the discovered %s provider and normalized domain with the original safe return path',
+    async (protocol) => {
+      const { fetch, navigateToProvider } = fixture();
+      fetch
+        .mockResolvedValueOnce(
+          json({
+            required: true,
+            providers: [{ id: providerId, name: 'Work SSO', kind: protocol }],
+          }),
+        )
+        .mockResolvedValueOnce(
+          json({
+            authorizationUrl: 'https://idp.example.test/authorize?state=opaque',
+          }),
+        );
+      const user = userEvent.setup();
+      await user.type(
+        screen.getByLabelText('Organization domain'),
+        'EXAMPLE.TEST',
       );
-    const user = userEvent.setup();
-    await user.type(
-      screen.getByLabelText('Organization domain'),
-      'EXAMPLE.TEST',
-    );
-    await user.click(screen.getByRole('button', { name: 'Find sign-in' }));
-    await user.click(
-      await screen.findByRole('button', { name: 'Continue with Work SSO' }),
-    );
-    await waitFor(() => {
-      expect(navigateToProvider).toHaveBeenCalledWith(
-        'https://idp.example.test/authorize?state=opaque',
+      await user.click(screen.getByRole('button', { name: 'Find sign-in' }));
+      await user.click(
+        await screen.findByRole('button', { name: 'Continue with Work SSO' }),
       );
-    });
-    const body = fetch.mock.calls[1]?.[1]?.body;
-    if (typeof body !== 'string') throw new Error('Missing sign-in body');
-    expect(JSON.parse(body) as unknown).toEqual({
-      providerId,
-      domain: 'example.test',
-      returnPath: '/account/security',
-    });
-  });
+      await waitFor(() => {
+        expect(navigateToProvider).toHaveBeenCalledWith(
+          'https://idp.example.test/authorize?state=opaque',
+        );
+      });
+      expect(fetch.mock.calls[1]?.[0]).toEqual(
+        expect.stringContaining(`/v1/auth/federation/${protocol}/start`),
+      );
+      const body = fetch.mock.calls[1]?.[1]?.body;
+      if (typeof body !== 'string') throw new Error('Missing sign-in body');
+      expect(JSON.parse(body) as unknown).toEqual({
+        providerId,
+        domain: 'example.test',
+        returnPath: '/account/security',
+      });
+    },
+  );
   it('rejects an unsafe authorization URL instead of navigating', async () => {
     const { fetch, navigateToProvider } = fixture();
     fetch

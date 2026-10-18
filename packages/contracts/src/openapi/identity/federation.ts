@@ -16,6 +16,7 @@ export function federationContractSchemas(target: 'client' | 'openapi') {
     (
       [
         ['FederationSettings', settings.federationSettingsSchema, 'output'],
+        ['SamlMetadata', settings.samlMetadataSchema, 'output'],
         [
           'FederationOrganizationCreate',
           settings.federationOrganizationCreateSchema,
@@ -41,8 +42,16 @@ export function federationContractSchemas(target: 'client' | 'openapi') {
           settings.federationEnforcementSchema,
           'input',
         ],
-        ['OidcProviderCreate', settings.oidcProviderCreateSchema, 'input'],
-        ['OidcProviderUpdate', settings.oidcProviderUpdateSchema, 'input'],
+        [
+          'FederationProviderCreate',
+          settings.federationProviderCreateSchema,
+          'input',
+        ],
+        [
+          'FederationProviderUpdate',
+          settings.federationProviderUpdateSchema,
+          'input',
+        ],
         ['FederationTestStart', settings.federationTestStartSchema, 'input'],
         ['FederationDiscovery', signIn.federationDiscoverySchema, 'output'],
         ['FederationSignInStart', signIn.federationSignInStartSchema, 'input'],
@@ -137,14 +146,32 @@ export const federationContractPaths = {
     ),
   },
   '/v1/workspaces/{workspaceId}/sso/providers': {
-    post: operation('createOidcProvider', 'OidcProviderCreate'),
+    post: operation('createIdentityProvider', 'FederationProviderCreate'),
   },
   '/v1/workspaces/{workspaceId}/sso/providers/{providerId}': {
-    put: operation('updateOidcProvider', 'OidcProviderUpdate', 'providerId'),
+    put: operation(
+      'updateIdentityProvider',
+      'FederationProviderUpdate',
+      'providerId',
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/sso/saml/metadata': {
+    get: {
+      operationId: 'downloadSamlServiceProviderMetadata',
+      security: [{ cookieSession: [] }],
+      parameters: [uuidPathParameter('workspaceId')],
+      responses: {
+        '200': jsonResponse(
+          'Bounded SP metadata for XML download',
+          'SamlMetadata',
+        ),
+        ...errors,
+      },
+    },
   },
   '/v1/workspaces/{workspaceId}/sso/providers/{providerId}/remove': {
     post: operation(
-      'removeOidcProvider',
+      'removeIdentityProvider',
       'FederationRevisionCommand',
       'providerId',
     ),
@@ -213,6 +240,64 @@ export const federationContractPaths = {
         '302': {
           description:
             'Safe same-origin landing after single-use proof consumption',
+        },
+      },
+    },
+  },
+  '/v1/auth/federation/saml/start': {
+    post: {
+      operationId: 'startOrganizationSamlSignIn',
+      requestBody: jsonRequest('FederationSignInStart'),
+      responses: {
+        '200': jsonResponse(
+          'Browser-bound Redirect URL',
+          'AuthorizationStarted',
+        ),
+        ...errors,
+      },
+    },
+  },
+  '/v1/auth/federation/saml/test': {
+    post: {
+      operationId: 'startOrganizationSamlTest',
+      security: [{ cookieSession: [] }],
+      parameters: [csrfHeaderParameter()],
+      requestBody: jsonRequest('FederationTestStart'),
+      responses: {
+        '200': jsonResponse(
+          'Owner-bound provider test Redirect URL',
+          'AuthorizationStarted',
+        ),
+        ...errors,
+      },
+    },
+  },
+  '/v1/auth/federation/saml/callback': {
+    post: {
+      operationId: 'finishOrganizationSamlSignIn',
+      requestBody: {
+        required: true,
+        content: {
+          'application/x-www-form-urlencoded': {
+            schema: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['SAMLResponse', 'RelayState'],
+              properties: {
+                SAMLResponse: {
+                  type: 'string',
+                  maxLength: settings.SAML_LIMITS.encodedCharacters,
+                },
+                RelayState: { type: 'string', maxLength: 43 },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        '302': {
+          description:
+            'Safe same-origin landing after signed, browser-bound, single-use proof verification',
         },
       },
     },

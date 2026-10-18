@@ -13,9 +13,15 @@ import {
   throwApplicationError,
 } from '../../../platform/http/index.js';
 import { federationSecretContext } from '../protocol/oidc.js';
+import {
+  validateSamlCertificates,
+  samlTransportAvailable,
+} from '../protocol/saml/configuration.js';
+import { samlServiceProviderMetadata } from '../protocol/saml/gateway.js';
 import type {
-  OidcProviderCreate,
-  OidcProviderUpdate,
+  FederationProviderCreate,
+  FederationProviderUpdate,
+  SamlConfiguration,
 } from '@pertexo/contracts';
 type Scope = Readonly<{
   workspaceId: string;
@@ -29,6 +35,8 @@ export class FederationManagementService {
     readonly store: FederationManagementStore,
     private readonly envelope: ApplicationSecretEnvelope | undefined,
     private readonly secret: string,
+    private readonly publicOrigin: string,
+    private readonly secureCookies: boolean,
   ) {}
   async settings(scope: Scope) {
     const result = await this.store.settings(scope);
@@ -52,10 +60,14 @@ export class FederationManagementService {
       );
     return this.envelope;
   }
-  createProvider(command: Command & OidcProviderCreate) {
+  createProvider(command: Command & FederationProviderCreate) {
     const envelope = this.requireConfigured();
+    if (command.kind === 'saml') {
+      this.validateSaml(command.configuration);
+      return this.store.createProvider(command);
+    }
     const { clientSecret, ...input } = command;
-    return this.store.createOidcProvider({
+    return this.store.createProvider({
       ...input,
       sealSecret: (providerId) =>
         envelope.seal(
@@ -66,11 +78,17 @@ export class FederationManagementService {
     });
   }
   updateProvider(
-    command: Command & OidcProviderUpdate & Readonly<{ providerId: string }>,
+    command: Command &
+      FederationProviderUpdate &
+      Readonly<{ providerId: string }>,
   ) {
     const envelope = this.requireConfigured();
+    if ('kind' in command) {
+      this.validateSaml(command.configuration);
+      return this.store.updateProvider(command);
+    }
     const { clientSecret, ...input } = command;
-    return this.store.updateOidcProvider({
+    return this.store.updateProvider({
       ...input,
       ...(clientSecret === undefined
         ? {}
@@ -85,6 +103,38 @@ export class FederationManagementService {
             ),
           }),
     });
+  }
+  private requireSamlTransport() {
+    if (!samlTransportAvailable(this.publicOrigin, this.secureCookies))
+      throwApplicationError(
+        applicationError('request.invalid', {
+          safeDetail:
+            'SAML sign-in requires an HTTPS public app address and secure session cookies.',
+        }),
+      );
+  }
+  private validateSaml(configuration: SamlConfiguration) {
+    this.requireSamlTransport();
+    try {
+      validateSamlCertificates(configuration);
+    } catch {
+      throwApplicationError(
+        applicationError('request.invalid', {
+          safeDetail:
+            'Use one or two RSA certificates of at least 2,048 bits, including a currently valid certificate.',
+        }),
+      );
+    }
+  }
+  async metadata(scope: Scope) {
+    this.requireSamlTransport();
+    const settings = await this.store.settings(scope);
+    if (settings.organization === null)
+      return throwApplicationError(applicationError('resource.not_found'));
+    return samlServiceProviderMetadata(
+      settings.organization.id,
+      this.publicOrigin,
+    );
   }
   async verifyDomain(input: Command & Readonly<{ domainId: string }>) {
     this.requireConfigured();

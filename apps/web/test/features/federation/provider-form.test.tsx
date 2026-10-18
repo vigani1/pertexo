@@ -145,3 +145,143 @@ describe('private organization provider editing', () => {
     expect(screen.getByText(/was removed in another tab/u)).toBeVisible();
   });
 });
+
+type SamlProvider = Extract<
+  (typeof organization.providers)[number],
+  { kind: 'saml' }
+>;
+const samlProvider: SamlProvider = {
+  id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+  kind: 'saml',
+  name: 'SAML sign-in',
+  issuer: 'http://www.okta.com/owned-idp',
+  configuration: {
+    signInUrl: 'https://idp.example.test/sso',
+    certificates: ['test-only-public-certificate'],
+    emailAttribute: 'email',
+    nameAttribute: 'name',
+    jitEnabled: false,
+  },
+  enabled: true,
+  revision: 1,
+};
+describe('SAML provider editing', () => {
+  it('sends public certificate configuration without OAuth credentials, with new accounts off by default', async () => {
+    const { fetch, scope, cache } = fixture(),
+      onClose = vi.fn();
+    fetch.mockResolvedValueOnce(
+      json({
+        ...settings,
+        organization: {
+          ...organization,
+          revision: 2,
+          providers: [...organization.providers, samlProvider],
+        },
+      }),
+    );
+    render(
+      <QueryClientProvider client={cache}>
+        <ProviderForm
+          kind="saml"
+          scope={scope}
+          organization={organization}
+          onClose={onClose}
+        />
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Provider name'), 'SAML sign-in');
+    await user.type(
+      screen.getByLabelText('IdP entity ID'),
+      'http://www.okta.com/owned-idp',
+    );
+    await user.type(
+      screen.getByLabelText('SSO sign-in URL'),
+      'https://idp.example.test/sso',
+    );
+    await user.type(
+      screen.getByLabelText('Signing certificate'),
+      'test-only-public-certificate',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save provider' }));
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+    const body = fetch.mock.calls[0]?.[1]?.body;
+    if (typeof body !== 'string') throw new Error('Provider request missing');
+    expect(JSON.parse(body) as unknown).toEqual({
+      kind: 'saml',
+      name: 'SAML sign-in',
+      issuer: 'http://www.okta.com/owned-idp',
+      configuration: {
+        signInUrl: 'https://idp.example.test/sso',
+        certificates: ['test-only-public-certificate'],
+        emailAttribute: 'email',
+        nameAttribute: 'name',
+        jitEnabled: false,
+      },
+      enabled: false,
+      expectedRevision: 1,
+    });
+    expect(cache.getMutationCache().getAll()).toHaveLength(0);
+  });
+  it('preserves unsaved SAML edits across a refetch and requires explicit reload of the reviewed revision', async () => {
+    const { fetch, scope, cache } = fixture();
+    const original = { ...organization, providers: [samlProvider] };
+    const draw = (current: typeof original) => {
+      const provider = current.providers[0];
+      if (provider === undefined) throw new Error('SAML provider missing');
+      return (
+        <QueryClientProvider client={cache}>
+          <ProviderForm
+            scope={scope}
+            organization={current}
+            provider={provider}
+            onClose={vi.fn()}
+          />
+        </QueryClientProvider>
+      );
+    };
+    const view = render(draw(original)),
+      user = userEvent.setup();
+    await user.clear(screen.getByLabelText('SSO sign-in URL'));
+    await user.type(
+      screen.getByLabelText('SSO sign-in URL'),
+      'https://unsaved.example.test/sso',
+    );
+    const changed = {
+      ...original,
+      revision: 2,
+      providers: [
+        {
+          ...samlProvider,
+          revision: 2,
+          configuration: {
+            ...samlProvider.configuration,
+            certificates: ['rotated-public-certificate'],
+          },
+        },
+      ],
+    };
+    view.rerender(draw(changed));
+    expect(screen.getByLabelText('SSO sign-in URL')).toHaveValue(
+      'https://unsaved.example.test/sso',
+    );
+    expect(screen.getByLabelText('Signing certificate')).toHaveValue(
+      'test-only-public-certificate',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Save provider' }),
+    ).toBeDisabled();
+    expect(fetch).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Reload provider' }));
+    expect(screen.getByLabelText('SSO sign-in URL')).toHaveValue(
+      'https://idp.example.test/sso',
+    );
+    expect(screen.getByLabelText('Signing certificate')).toHaveValue(
+      'rotated-public-certificate',
+    );
+    expect(screen.getByRole('button', { name: 'Save provider' })).toBeEnabled();
+    expect(screen.getByLabelText('IdP entity ID')).toBeDisabled();
+  });
+});

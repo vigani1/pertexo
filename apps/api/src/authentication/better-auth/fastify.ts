@@ -1,7 +1,13 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  RouteShorthandOptions,
+} from 'fastify';
 import {
+  SAML_LIMITS,
   authenticationCapabilitiesResponseSchema,
   type AuthenticationCapabilitiesResponse,
 } from '@pertexo/contracts';
@@ -55,29 +61,31 @@ export function registerBetterAuthHandler(
   const config = {
     rateLimit: { start: 'identity_start', callback: 'identity_callback' },
   } as const;
-  fastify.all(
-    '/v1/auth/*',
-    {
-      config,
-      onSend: (_request, reply, payload, done) => {
-        // Redirected pages must not receive callback proofs through Referer.
-        reply
-          .header('referrer-policy', 'no-referrer')
-          .header('cache-control', 'no-store');
-        done(null, payload);
-      },
+  const options: RouteShorthandOptions = {
+    config,
+    onSend: (_request, reply, payload, done) => {
+      // Redirected pages must not receive callback proofs through Referer.
+      reply
+        .header('referrer-policy', 'no-referrer')
+        .header('cache-control', 'no-store');
+      done(null, payload);
     },
-    async (request, reply) => {
-      await dispatchBetterAuthRequest(
-        request,
-        reply,
-        input.handler,
-        origin,
-        input.sessionCookie,
-        { consumer: input.rateLimitConsumer, policies: config.rateLimit },
-      );
-    },
+  };
+  const handler = (request: FastifyRequest, reply: FastifyReply) =>
+    dispatchBetterAuthRequest(
+      request,
+      reply,
+      input.handler,
+      origin,
+      input.sessionCookie,
+      { consumer: input.rateLimitConsumer, policies: config.rateLimit },
+    );
+  fastify.post(
+    '/v1/auth/federation/saml/callback',
+    { ...options, bodyLimit: SAML_LIMITS.formBytes },
+    handler,
   );
+  fastify.all('/v1/auth/*', options, handler);
 }
 
 export function registerAuthenticationCapabilities(
@@ -418,10 +426,11 @@ function isUnsafeMethod(method: string): boolean {
 
 function requestBody(
   request: FastifyRequest,
-): string | Uint8Array | URLSearchParams | undefined {
+): string | Uint8Array<ArrayBuffer> | URLSearchParams | undefined {
   const body: unknown = request.body;
   if (body === undefined || body === null) return undefined;
-  if (typeof body === 'string' || body instanceof Uint8Array) return body;
+  if (typeof body === 'string') return body;
+  if (body instanceof Uint8Array) return new Uint8Array(body);
   const contentType = request.headers['content-type'] ?? '';
   if (contentType.includes('application/x-www-form-urlencoded')) {
     if (typeof body !== 'object') return undefined;

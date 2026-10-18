@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { authenticationReturnPathSchema } from '../authentication.js';
-import { federationDomainNameSchema, FEDERATION_LIMITS } from './settings.js';
+import {
+  federationDomainNameSchema,
+  FEDERATION_LIMITS,
+  federationProtocolSchema,
+} from './settings.js';
 export const federationDiscoveryQuerySchema = z
   .object({ domain: federationDomainNameSchema })
   .strict();
@@ -13,7 +17,7 @@ export const federationDiscoverySchema = z
           .object({
             id: z.uuid(),
             name: z.string().min(1).max(128),
-            kind: z.literal('oidc'),
+            kind: federationProtocolSchema,
           })
           .strict(),
       )

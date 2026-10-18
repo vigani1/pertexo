@@ -41,9 +41,13 @@ export function journeyBindingCookie(
     value: string;
     path: string;
     secure: boolean;
+    sameSite?: 'lax' | 'none';
   }>,
 ): string {
-  return `${input.name}=${input.value}; Path=${input.path}; HttpOnly; SameSite=Lax; Max-Age=300${input.secure ? '; Secure' : ''}`;
+  if (input.sameSite === 'none' && !input.secure)
+    throw new Error('Cross-site journey cookies require HTTPS');
+  const sameSite = input.sameSite === 'none' ? 'None' : 'Lax';
+  return `${input.name}=${input.value}; Path=${input.path}; HttpOnly; SameSite=${sameSite}; Max-Age=300${input.secure ? '; Secure' : ''}`;
 }
 
 /**

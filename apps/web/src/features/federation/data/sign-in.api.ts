@@ -2,6 +2,7 @@ import {
   federationDiscoverySchema,
   authorizationStartedSchema,
   type FederationSignInStart,
+  type FederationProtocol,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 export function discoverOrganizationSignIn(
@@ -29,9 +30,10 @@ export function startOrganizationSignIn(
   apiClient: ApiClient,
   input: FederationSignInStart,
   signal: AbortSignal,
+  protocol: FederationProtocol,
 ): Promise<string> {
   return apiClient.request({
-    path: '/v1/auth/federation/oidc/start',
+    path: `/v1/auth/federation/${protocol}/start`,
     method: 'POST',
     body: input,
     csrf: 'external',
@@ -47,9 +49,10 @@ export function startOrganizationProviderTest(
     domainId: string;
   }>,
   signal: AbortSignal,
+  protocol: FederationProtocol,
 ): Promise<string> {
   return apiClient.request({
-    path: '/v1/auth/federation/oidc/test',
+    path: `/v1/auth/federation/${protocol}/test`,
     method: 'POST',
     body: input,
     signal,

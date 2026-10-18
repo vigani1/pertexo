@@ -18,12 +18,14 @@ export function stubFederationService(): FederationManagementService {
       renewDomainChallenge: unused,
       verifyDomain: unused,
       removeDomain: unused,
-      createOidcProvider: unused,
-      updateOidcProvider: unused,
-      removeOidcProvider: unused,
+      createProvider: unused,
+      updateProvider: unused,
+      removeProvider: unused,
       configureEnforcement: unused,
     },
     undefined,
     'test-only-sign-in-secret-with-at-least-thirty-two-characters',
+    'https://pertexo.test',
+    true,
   );
 }

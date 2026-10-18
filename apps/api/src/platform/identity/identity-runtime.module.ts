@@ -116,6 +116,8 @@ export async function createApiIdentityRuntime(
       federationStore,
       federationEnvelope,
       config.betterAuth.secret,
+      config.publicWebOrigin,
+      config.session.secureCookie,
     );
     const persistence = new DatabaseIdentityWorkspaceAdapter(identityDatabase);
     const betterAuth = composeBetterAuthRuntime({

@@ -1,6 +1,7 @@
-const formCallbacks = new Set([
-  '/v1/auth/federation/social/callback/apple',
-  '/v1/auth/account-security/methods/link/callback/apple',
+const formCallbacks = new Map<string, 'landing' | 'proof'>([
+  ['/v1/auth/federation/social/callback/apple', 'landing'],
+  ['/v1/auth/account-security/methods/link/callback/apple', 'landing'],
+  ['/v1/auth/federation/saml/callback', 'proof'],
 ]);
 
 export function isProviderFormCallback(
@@ -19,7 +20,11 @@ export async function landProviderFormCallback(
   request: Request,
 ): Promise<Response | undefined> {
   const url = new URL(request.url);
-  if (!isProviderFormCallback(request.method, url.pathname)) return undefined;
+  if (
+    request.method !== 'POST' ||
+    formCallbacks.get(url.pathname) !== 'landing'
+  )
+    return undefined;
   if (
     request.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() !==
       'application/x-www-form-urlencoded' ||

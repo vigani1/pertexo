@@ -782,7 +782,7 @@ async function signedPut(
 ): Promise<Readonly<{ ok: boolean; status: number }>> {
   const response = await fetch(capability.url, {
     method: capability.method,
-    body,
+    body: new Uint8Array(body),
     headers: { ...capability.headers, ...headerChanges },
     signal: AbortSignal.timeout(5_000),
   });

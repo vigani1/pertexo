@@ -6,11 +6,17 @@ import {
   WorkspaceAccessDeniedError,
 } from '@pertexo/database/tenant-access';
 import {
+  federationProtocolSchema,
+  samlServiceProviderUrls,
+  type FederationProtocol,
   federationDiscoveryQuerySchema,
   federationSignInStartSchema,
   federationTestStartSchema,
 } from '@pertexo/contracts';
 import type { OidcProofGateway } from '../protocol/oidc.js';
+import type { SamlProofGateway } from '../protocol/saml/gateway.js';
+import { samlTransportAvailable } from '../protocol/saml/configuration.js';
+import { readOrganizationCallback } from './callback.js';
 import { requireDoubleSubmitCsrf } from '../../better-auth/csrf.js';
 import {
   newJourneyToken,
@@ -34,6 +40,7 @@ export class OrganizationSignIn {
       secureCookies: boolean;
       sessionTtlSeconds: number;
       gateway?: OidcProofGateway;
+      samlGateway?: SamlProofGateway;
       authenticate(request: Request): Promise<BrowserSession | undefined>;
       deliver(token: string): Promise<readonly string[]>;
     }>,
@@ -55,27 +62,60 @@ export class OrganizationSignIn {
         [...url.searchParams.keys()].length !== 1
       )
         return failure(400);
+      if (
+        !federationProtocolSchema.options.some((protocol) =>
+          this.available(protocol),
+        )
+      )
+        return Response.json(
+          { required: false, providers: [] },
+          { headers: { 'cache-control': 'no-store' } },
+        );
+      const discovery = await this.commands.discover(parsed.data.domain);
       return Response.json(
-        this.input.gateway === undefined
-          ? { required: false, providers: [] }
-          : await this.commands.discover(parsed.data.domain),
+        {
+          ...discovery,
+          providers: discovery.providers.filter((provider) =>
+            this.available(provider.kind),
+          ),
+        },
         { headers: { 'cache-control': 'no-store' } },
       );
     }
-    if (url.pathname === '/v1/auth/federation/oidc/start')
-      return request.method === 'POST'
-        ? this.start(request, false)
-        : failure(404);
-    if (url.pathname === '/v1/auth/federation/oidc/test')
-      return request.method === 'POST'
-        ? this.start(request, true)
-        : failure(404);
-    if (url.pathname === callbackPath)
-      return request.method === 'GET' ? this.callback(request) : failure(404);
+    for (const protocol of federationProtocolSchema.options) {
+      const prefix = `/v1/auth/federation/${protocol}`;
+      if (url.pathname === `${prefix}/start`)
+        return request.method === 'POST'
+          ? this.start(request, false, protocol)
+          : failure(404);
+      if (url.pathname === `${prefix}/test`)
+        return request.method === 'POST'
+          ? this.start(request, true, protocol)
+          : failure(404);
+      if (url.pathname === `${prefix}/callback`)
+        return request.method === (protocol === 'oidc' ? 'GET' : 'POST')
+          ? this.callback(request, protocol)
+          : failure(404);
+    }
     return undefined;
   }
-  private async start(request: Request, testing: boolean): Promise<Response> {
-    if (this.input.gateway === undefined) return failure(503);
+  private available(protocol: FederationProtocol) {
+    return protocol === 'oidc'
+      ? this.input.gateway !== undefined
+      : this.input.samlGateway !== undefined &&
+          samlTransportAvailable(this.input.baseUrl, this.input.secureCookies);
+  }
+  private bindingCookie(protocol: FederationProtocol) {
+    return protocol === 'oidc'
+      ? this.cookieName
+      : '__Host-pertexo_organization_saml';
+  }
+  private async start(
+    request: Request,
+    testing: boolean,
+    protocol: FederationProtocol,
+  ): Promise<Response> {
+    if (!this.available(protocol)) return failure(503);
     const raw: unknown = await request.json().catch(() => null);
     try {
       let material: Awaited<ReturnType<OrganizationSignInCommands['provider']>>;
@@ -114,14 +154,21 @@ export class OrganizationSignIn {
         );
         returnPath = parsed.data.returnPath ?? returnPath;
       }
-      if (material === undefined) return failure(404);
+      if (material?.provider.kind !== protocol) return failure(404);
       const id = randomUUID(),
         state = newJourneyToken(),
         browser = newJourneyToken();
-      const authorizationUrl = await this.input.gateway.authorize(
-        material.provider,
-        this.proof(id, material.provider.id, state, browser),
-      );
+      const authorizationUrl =
+        material.provider.kind === 'oidc'
+          ? await this.input.gateway?.authorize(
+              material.provider,
+              this.proof(id, material.provider.id, state, browser),
+            )
+          : await this.input.samlGateway?.authorize(
+              material.provider,
+              this.samlProof(id, material.provider, state, browser, new Date()),
+            );
+      if (authorizationUrl === undefined) return failure(503);
       await this.commands.start({
         id,
         providerId: material.provider.id,
@@ -141,10 +188,11 @@ export class OrganizationSignIn {
           headers: {
             'cache-control': 'no-store',
             'set-cookie': journeyBindingCookie({
-              name: this.cookieName,
+              name: this.bindingCookie(protocol),
               value: browser,
               path: '/',
               secure: this.input.secureCookies,
+              sameSite: protocol === 'saml' ? 'none' : 'lax',
             }),
           },
         },
@@ -153,26 +201,21 @@ export class OrganizationSignIn {
       return failure(503);
     }
   }
-  private async callback(request: Request): Promise<Response> {
+  private async callback(
+    request: Request,
+    protocol: FederationProtocol,
+  ): Promise<Response> {
     const url = new URL(request.url),
-      state = url.searchParams.get('state'),
-      browser = readCookie(request.headers, this.cookieName),
-      code = url.searchParams.get('code');
+      callback = await readOrganizationCallback(request, protocol),
+      browser = readCookie(request.headers, this.bindingCookie(protocol));
     if (
-      this.input.gateway === undefined ||
-      state === null ||
-      !isJourneyToken(state) ||
+      !this.available(protocol) ||
+      callback === undefined ||
       browser === undefined ||
-      !isJourneyToken(browser) ||
-      code === null ||
-      code.length === 0 ||
-      code.length > 4096 ||
-      url.searchParams.has('error') ||
-      ['state', 'code', 'iss'].some(
-        (name) => url.searchParams.getAll(name).length > 1,
-      )
+      !isJourneyToken(browser)
     )
       return this.failed();
+    const state = callback.state;
     let destination: string | undefined;
     let testing = false;
     try {
@@ -180,11 +223,11 @@ export class OrganizationSignIn {
         journeyDigest(state),
         journeyDigest(browser),
       );
-      if (attempt === undefined) return this.failed();
+      if (attempt?.provider.kind !== protocol) return this.failed();
       testing = attempt.purpose === 'test';
       destination = attempt.returnPath;
       let ownerSessionId: string | undefined;
-      if (testing) {
+      if (testing && protocol === 'oidc') {
         const current = await this.input.authenticate(request);
         if (
           current?.userId !== attempt.ownerUserId ||
@@ -193,11 +236,29 @@ export class OrganizationSignIn {
           return this.failed(destination, true);
         ownerSessionId = current.sessionId;
       }
-      const identity = await this.input.gateway.verify(
-        attempt.provider,
-        this.proof(attempt.id, attempt.provider.id, state, browser),
-        url,
-      );
+      if (testing && protocol === 'saml')
+        ownerSessionId = attempt.ownerSessionId ?? undefined;
+      const identity =
+        attempt.provider.kind === 'oidc'
+          ? await this.input.gateway?.verify(
+              attempt.provider,
+              this.proof(attempt.id, attempt.provider.id, state, browser),
+              url,
+            )
+          : callback.samlResponse === undefined
+            ? undefined
+            : await this.input.samlGateway?.verify(
+                attempt.provider,
+                this.samlProof(
+                  attempt.id,
+                  attempt.provider,
+                  state,
+                  browser,
+                  attempt.createdAt,
+                ),
+                callback.samlResponse,
+              );
+      if (identity === undefined) return this.failed(destination, testing);
       const result = await this.commands.complete({
         attemptId: attempt.id,
         stateDigest: journeyDigest(state),
@@ -230,6 +291,25 @@ export class OrganizationSignIn {
       nonce: deriveJourneySecret(this.input.secret, purpose + ':nonce'),
       codeVerifier: deriveJourneySecret(this.input.secret, purpose + ':pkce'),
       redirectUri: new URL(callbackPath, this.input.baseUrl).toString(),
+    };
+  }
+  private samlProof(
+    id: string,
+    provider: Readonly<{ id: string; organizationId: string }>,
+    state: string,
+    browser: string,
+    createdAt: Date,
+  ) {
+    return {
+      ...samlServiceProviderUrls(this.input.baseUrl, provider.organizationId),
+      state,
+      createdAt,
+      requestId:
+        '_' +
+        deriveJourneySecret(
+          this.input.secret,
+          `organization-saml:${id}:${provider.id}:${state}:${browser}`,
+        ),
     };
   }
   private land(path: string, test?: 'passed' | 'failed'): Response {

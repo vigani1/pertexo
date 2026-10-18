@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { startWebhookPeer } from '../../apps/api/test/support/webhooks/edge-peer.mjs';
 
 const pendingCsv = new Map();
@@ -10,6 +11,27 @@ await startWebhookPeer((request, response, rawBody) => {
         location: '/workspaces',
         'set-cookie':
           'pertexo_session=synthetic_session; Path=/; HttpOnly; SameSite=Lax',
+      })
+      .end();
+    return;
+  }
+  if (
+    url.pathname === '/v1/auth/federation/saml/callback' &&
+    request.method === 'POST'
+  ) {
+    response
+      .writeHead(302, {
+        location: '/account/security',
+        'set-cookie':
+          'pertexo_session=synthetic_saml_session; Path=/; HttpOnly; SameSite=Lax',
+        'x-owned-body-digest': createHash('sha256')
+          .update(rawBody)
+          .digest('hex'),
+        'x-owned-proof-cookie': String(
+          (request.headers.cookie ?? '').includes(
+            '__Host-pertexo_organization_saml=',
+          ),
+        ),
       })
       .end();
     return;
