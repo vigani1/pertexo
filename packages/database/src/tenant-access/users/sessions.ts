@@ -9,13 +9,22 @@ import type { ReplacementSessionInput } from '../contracts.js';
  * so changed workspace authority cannot be exercised by a session issued
  * before the change.
  */
-export async function revokeUserSessions(
+export function revokeUserSessions(
   client: PoolClient,
   userId: string,
 ): Promise<void> {
-  await client.query(`delete from app.auth_sessions where user_id=$1`, [
-    userId,
-  ]);
+  return revokeSessionsForUsers(client, [userId]);
+}
+
+export async function revokeSessionsForUsers(
+  client: PoolClient,
+  userIds: readonly string[],
+): Promise<void> {
+  if (userIds.length === 0) return;
+  await client.query(
+    'delete from app.auth_sessions where user_id=any($1::uuid[])',
+    [userIds],
+  );
 }
 
 /**
