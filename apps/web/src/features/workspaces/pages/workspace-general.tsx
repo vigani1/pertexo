@@ -149,6 +149,21 @@ export function WorkspaceGeneralPage({
           </Link>
         </SettingsSection>
 
+        {workspace.capabilities.includes('workflow:update') ? (
+          <SettingsSection
+            title="Promotion"
+            description="Review published workflows and move their definitions into a linked target workspace."
+          >
+            <Link
+              className="inline-link"
+              to="/w/$workspaceId/settings/promotion"
+              params={{ workspaceId: workspace.id }}
+            >
+              Manage promotion
+            </Link>
+          </SettingsSection>
+        ) : null}
+
         {workspace.capabilities.includes('audit:read') ? (
           <SettingsSection
             title="Audit log"

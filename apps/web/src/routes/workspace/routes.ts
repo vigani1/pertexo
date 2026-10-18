@@ -1,3 +1,4 @@
+import { parsePromotionSearch } from '@/features/workflow-promotions/search.public';
 import { parseFederationSearch } from '@/features/federation/search.public';
 import { parseAuditSearch } from '@/features/governance/search.public';
 import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
@@ -591,5 +592,19 @@ export const publicationReviewRoute = createRoute({
   component: lazyRouteComponent(
     () => import('./review'),
     'PublicationReviewRoute',
+  ),
+});
+
+export const workflowPromotionRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings/promotion',
+  staticData: { crumb: 'Promotion' },
+  validateSearch: parsePromotionSearch,
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Promotion', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./settings/promotion'),
+    'WorkflowPromotionRoute',
   ),
 });

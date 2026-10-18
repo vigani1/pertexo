@@ -1,6 +1,9 @@
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { cn } from '@/lib/utils';
-import { diffWorkflowGraphs, isEmptyDiff } from '@/features/workflows/comparison.public';
+import {
+  diffWorkflowGraphs,
+  isEmptyDiff,
+} from '@/features/workflows/comparison.public';
 
 function ChangeList({
   title,
@@ -8,7 +11,7 @@ function ChangeList({
   tone,
 }: Readonly<{
   title: string;
-  items: readonly string[];
+  items: readonly Readonly<{ id: string; label: string }>[];
   tone: 'added' | 'removed' | 'changed';
 }>) {
   if (items.length === 0) return null;
@@ -25,8 +28,8 @@ function ChangeList({
         {title}
       </h4>
       <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
-        {items.map((item, index) => (
-          <li key={`${item}-${String(index)}`}>{item}</li>
+        {items.map((item) => (
+          <li key={item.id}>{item.label}</li>
         ))}
       </ul>
     </div>
@@ -58,7 +61,17 @@ export function VersionDiffSummary({
       <ChangeList title="Added" items={diff.added} tone="added" />
       <ChangeList title="Removed" items={diff.removed} tone="removed" />
       <ChangeList title="Changed" items={diff.changed} tone="changed" />
-      {diff.connectionsChanged ? (
+      {diff.contractChanged ? (
+        <p className="text-sm text-muted-foreground">
+          Input or callable contract changed since {since}.
+        </p>
+      ) : null}
+      {diff.settingsChanged ? (
+        <p className="text-sm text-muted-foreground">
+          Workflow execution settings changed since {since}.
+        </p>
+      ) : null}
+      {diff.linksChanged ? (
         <p className="text-sm text-muted-foreground">
           How the steps connect changed since {since}.
         </p>

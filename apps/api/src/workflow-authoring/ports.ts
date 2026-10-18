@@ -1,6 +1,7 @@
 import type {
   WorkflowAuthoringDatabase,
   PublicationReviewStore,
+  WorkflowPromotionStore,
   WorkflowAutoPauseDatabase,
   WorkflowConcurrencyDatabase,
   WorkflowErrorDatabase,
@@ -57,6 +58,7 @@ export type WorkflowAuthoringDependencies = Readonly<{
   concurrencyPersistence?: WorkflowConcurrencyDatabase;
   errorWorkflowPersistence?: WorkflowErrorDatabase;
   inputCasePersistence?: WorkflowInputCaseDatabase;
+  promotionPersistence?: WorkflowPromotionStore;
   publicationReviewPersistence?: PublicationReviewStore;
   organization: Readonly<{
     tags: WorkflowTagDatabase;

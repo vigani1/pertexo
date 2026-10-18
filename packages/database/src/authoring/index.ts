@@ -130,3 +130,6 @@ export {
   PublicationReviewError,
   type PublicationReviewStore,
 } from './reviews/contract.js';
+
+export { WorkflowPromotionError } from './promotion/contract.js';
+export type { WorkflowPromotionStore } from './promotion/contract.js';

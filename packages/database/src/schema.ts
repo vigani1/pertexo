@@ -1,3 +1,6 @@
+import { workspacePromotionTargets } from './schema/authoring/promotions/targets.js';
+import { workflowPromotionOrigins } from './schema/authoring/promotions/origins.js';
+import { workflowVersionPromotions } from './schema/authoring/promotions/versions.js';
 import { authDirectoryUsers } from './schema/identity/federation/directory/users.js';
 import { authDirectoryGroups } from './schema/identity/federation/directory/groups.js';
 import { authDirectoryGroupMembers } from './schema/identity/federation/directory/members.js';
@@ -225,6 +228,9 @@ export {
 } from './schema/triggers/schedules.js';
 
 export const databaseSchema = {
+  workspacePromotionTargets,
+  workflowPromotionOrigins,
+  workflowVersionPromotions,
   authDirectoryUsers,
   authDirectoryGroups,
   authDirectoryGroupMembers,

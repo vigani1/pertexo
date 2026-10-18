@@ -31,6 +31,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId/settings/usage'
     | '/w/$workspaceId/settings/variables'
     | '/w/$workspaceId/settings/audit'
+    | '/w/$workspaceId/settings/promotion'
     | '/w/$workspaceId/settings/sso'
     | '/w/$workspaceId/settings/notifications'
     | '/w/$workspaceId/settings/api-tokens'
@@ -137,6 +138,12 @@ export function spineDestinations(
     label: 'API tokens',
     icon: <KeyRoundIcon />,
   });
+  if (workspace.capabilities.includes('workflow:update'))
+    administration.push({
+      to: '/w/$workspaceId/settings/promotion',
+      label: 'Promotion',
+      icon: <WavesIcon />,
+    });
   if (workspace.capabilities.includes('audit:read'))
     administration.push({
       to: '/w/$workspaceId/settings/audit',

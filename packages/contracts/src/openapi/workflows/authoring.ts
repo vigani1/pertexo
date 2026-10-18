@@ -1,4 +1,8 @@
 import {
+  workflowPromotionContractPaths,
+  workflowPromotionContractSchemas,
+} from './promotions.js';
+import {
   publicationReviewContractPaths,
   publicationReviewContractSchemas,
 } from './publication-review.js';
@@ -91,6 +95,7 @@ function contractSchemas(target: 'client' | 'openapi') {
     ...workflowConcurrencyContractSchemas(project),
     ...workflowErrorContractSchemas(project),
     ...publicationReviewContractSchemas(project),
+    ...workflowPromotionContractSchemas(project),
     ...workflowInputCaseContractSchemas(project),
     ...workflowOrganizationContractSchemas(project),
     WorkflowRevisionConflictProblem: project(
@@ -512,6 +517,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     ...workflowConcurrencyContractPaths,
     ...workflowErrorContractPaths,
     ...publicationReviewContractPaths,
+    ...workflowPromotionContractPaths,
     ...workflowInputCaseContractPaths,
     ...workflowOrganizationContractPaths,
   },

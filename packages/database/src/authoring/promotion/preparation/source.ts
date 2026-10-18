@@ -1,0 +1,113 @@
+import type { PoolClient } from 'pg';
+import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';
+import {
+  parseWorkflowGraphDraft,
+  type WorkflowGraph,
+} from '@pertexo/workflow-model';
+import { isDataTableDefinition } from '@pertexo/node-sdk';
+import {
+  TABLE_COLUMNS,
+  projectTable,
+  type StoredTable,
+} from '../../../data-tables/read.js';
+import type { DataTableDefinition } from '../../../data-tables/contract.js';
+import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { promotionNodes, type PromotionGraphBudget } from './graph.js';
+import { WorkflowPromotionError } from '../contract.js';
+
+type ConnectionMetadata = Readonly<{
+  id: string;
+  name: string;
+  normalized_name: string;
+  provider_key: string;
+  auth_type: string;
+}>;
+export type PromotionSource = Readonly<{
+  workflowId: string;
+  versionId: string;
+  name: string;
+  versionNumber: number;
+  checksum: string;
+  graph: WorkflowGraph;
+}>;
+export type PromotionSourceSet = Readonly<{
+  workflows: readonly PromotionSource[];
+  connections: readonly ConnectionMetadata[];
+  tables: readonly DataTableDefinition[];
+}>;
+export async function readPromotionSources(
+  client: PoolClient,
+  workspaceId: string,
+  selections: WorkflowPromotionPreviewRequest['selections'],
+  budget: PromotionGraphBudget,
+): Promise<PromotionSourceSet> {
+  const workflows: PromotionSource[] = [];
+  for (const selection of [...selections].sort((a, b) =>
+    a.workflowId < b.workflowId ? -1 : 1,
+  )) {
+    const workflow = (
+      await client.query<{ name: string }>(
+        "select name from app.workflows where workspace_id=$1 and id=$2 and lifecycle_status='active' for share",
+        [workspaceId, selection.workflowId],
+      )
+    ).rows[0];
+    const version = (
+      await client.query<{
+        version_number: number;
+        checksum: string;
+        graph_json: unknown;
+      }>(
+        'select version_number,checksum,graph_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3',
+        [workspaceId, selection.workflowId, selection.versionId],
+      )
+    ).rows[0];
+    if (workflow === undefined || version === undefined)
+      throw new WorkflowNotFoundError(
+        'A selected published workflow version is unavailable.',
+      );
+    const graph = parseWorkflowGraphDraft(version.graph_json);
+    budget.add(graph);
+    workflows.push({
+      ...selection,
+      name: workflow.name,
+      versionNumber: version.version_number,
+      checksum: version.checksum,
+      graph,
+    });
+  }
+  const nodes = workflows.flatMap(({ graph }) => [...promotionNodes(graph)]);
+  const connectionIds = [
+    ...new Set(nodes.flatMap((node) => Object.values(node.connectionRefs))),
+  ].sort();
+  if (connectionIds.length > 1000)
+    throw new WorkflowPromotionError(
+      'limit',
+      'Select fewer workflows to review their connections.',
+    );
+  const connections =
+    connectionIds.length === 0
+      ? []
+      : (
+          await client.query<ConnectionMetadata>(
+            'select id,name,lower(name) normalized_name,provider_key,auth_type from app.connections where workspace_id=$1 and id=any($2::uuid[]) order by id for share',
+            [workspaceId, connectionIds],
+          )
+        ).rows;
+  const tableNames = [
+    ...new Set(
+      nodes
+        .filter((node) => isDataTableDefinition(node.definition))
+        .map((node) => node.config.table),
+    ),
+  ];
+  const tables =
+    tableNames.length === 0
+      ? []
+      : (
+          await client.query<StoredTable>(
+            `select ${TABLE_COLUMNS} from app.workspace_data_tables where workspace_id=$1 and name=any($2::text[]) order by id for share`,
+            [workspaceId, tableNames],
+          )
+        ).rows.map(projectTable);
+  return { workflows, connections, tables };
+}

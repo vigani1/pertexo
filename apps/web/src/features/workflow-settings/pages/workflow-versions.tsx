@@ -106,6 +106,7 @@ function VersionList({
   liveVersionId,
   archived,
   canRestore,
+  promotionWorkspaceId,
   onCompare,
   onPreview,
   onRestore,
@@ -116,6 +117,7 @@ function VersionList({
   liveVersionId: string | null;
   archived: boolean;
   canRestore: boolean;
+  promotionWorkspaceId: string | undefined;
   onCompare: () => void;
   onPreview: (version: Version) => void;
   onRestore: (version: Version) => void;
@@ -141,6 +143,9 @@ function VersionList({
         liveVersionId={liveVersionId}
         liveLabel={archived ? 'Current' : 'Live'}
         canRestore={canRestore}
+        {...(promotionWorkspaceId === undefined
+          ? {}
+          : { promotionWorkspaceId })}
         onPreview={onPreview}
         onRestore={onRestore}
         onDuplicate={onDuplicate}
@@ -201,6 +206,7 @@ export function WorkflowVersionsPage({
             liveVersionId={liveVersionId}
             archived={archived}
             canRestore={canRestore}
+            promotionWorkspaceId={canRestore ? workspace.id : undefined}
             onCompare={() => {
               setOverlay({ kind: 'compare' });
             }}

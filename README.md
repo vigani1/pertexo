@@ -233,5 +233,9 @@ Process lists with [For each](docs/guides/for-each.md) and
 Workspace owners and admins can inspect and export the
 [audit log](docs/guides/audit.md) and configure how long its metadata is kept.
 
+Review and [promote workflow definitions](docs/guides/environments.md) between
+linked workspaces, while keeping each environment's values, credentials and data
+separate. Target publishing approval still applies.
+
 Configure optional [Google/GitHub sign-in](docs/guides/single-sign-on.md) per
 install.

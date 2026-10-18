@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router';
+import { promotionSearch } from '@/features/workflow-promotions/search.public';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { CopyIcon, DownloadIcon, EyeIcon, RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +17,7 @@ export function VersionTimeline({
   liveVersionId,
   liveLabel,
   canRestore,
+  promotionWorkspaceId,
   onPreview,
   onRestore,
   onDuplicate,
@@ -24,6 +27,7 @@ export function VersionTimeline({
   liveVersionId: string | null;
   liveLabel: string;
   canRestore: boolean;
+  promotionWorkspaceId?: string;
   onPreview: (version: WorkflowVersionResponse) => void;
   onRestore: (version: WorkflowVersionResponse) => void;
   onDuplicate?: ((version: WorkflowVersionResponse) => void) | undefined;
@@ -76,6 +80,27 @@ export function VersionTimeline({
                 </p>
               </div>
               <div className="flex flex-wrap gap-1.5">
+                {promotionWorkspaceId === undefined ? null : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    render={
+                      <Link
+                        to="/w/$workspaceId/settings/promotion"
+                        params={{ workspaceId: promotionWorkspaceId }}
+                        search={promotionSearch([
+                          {
+                            workflowId: version.workflowId,
+                            versionId: version.id,
+                          },
+                        ])}
+                      />
+                    }
+                  >
+                    Promote…
+                  </Button>
+                )}
+
                 <Button
                   type="button"
                   variant="outline"

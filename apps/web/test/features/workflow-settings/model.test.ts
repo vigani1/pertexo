@@ -77,10 +77,12 @@ describe('version changes', () => {
       [edge('hook', 'call')],
     );
     expect(diffWorkflowGraphs(before, after)).toEqual({
-      added: ['Send email'],
-      removed: ['Tidy'],
-      changed: ['Call API'],
-      connectionsChanged: true,
+      added: [{ id: 'mail', label: 'Send email' }],
+      removed: [{ id: 'old', label: 'Tidy' }],
+      changed: [{ id: 'call', label: 'Call API' }],
+      linksChanged: true,
+      contractChanged: false,
+      settingsChanged: false,
     });
     expect(isEmptyDiff(diffWorkflowGraphs(after, after))).toBe(true);
   });

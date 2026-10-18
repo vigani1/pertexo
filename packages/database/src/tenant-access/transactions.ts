@@ -365,7 +365,35 @@ export async function withPlatformTransaction<T>(
   });
 }
 
-/** Reuses the existing RLS scopes inside one platform transaction, restoring no-context hygiene between them. */
+export type WorkspaceScopeRunner = <Result>(
+  scope: TenantTransactionScope,
+  operation: (client: PoolClient) => Promise<Result>,
+) => Promise<Result>;
+
+/** A cross-workspace command gets a client only while its explicit workspace fence is installed. */
+export function withMultiWorkspaceTransaction<T>(
+  pool: Pool,
+  operation: (inWorkspace: WorkspaceScopeRunner) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
+): Promise<T> {
+  return runTransaction(
+    pool,
+    undefined,
+    (client) =>
+      operation((scope, scopedOperation) =>
+        withWorkspaceScope(client, scope, scopedOperation),
+      ),
+    options,
+    'read_write',
+    {
+      abort: 'Multi-workspace transaction aborted',
+      cleanup: 'Multi-workspace context cleanup failed',
+      rollback: 'Multi-workspace transaction rollback failed',
+    },
+  );
+}
+
+/** Installs one fence inside an outer transaction, restoring no-context hygiene between scopes. */
 async function withInstalledScope<T>(
   client: PoolClient,
   scope: TransactionScope,
