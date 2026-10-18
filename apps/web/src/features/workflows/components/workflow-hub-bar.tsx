@@ -192,13 +192,16 @@ export function WorkflowHubBar({
               stateWord
             )}
             {detail}
+            {/* Appended to a line that already exists, so it moves nothing
+                when it arrives; a phone reads it in Settings instead. */}
+            <WorkflowTemplateOrigin
+              apiClient={apiClient}
+              userId={userId}
+              workspace={workspace}
+              workflowId={workflowId}
+              className="min-w-0 truncate max-sm:hidden"
+            />
           </div>
-          <WorkflowTemplateOrigin
-            apiClient={apiClient}
-            userId={userId}
-            workspace={workspace}
-            workflowId={workflowId}
-          />
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {presence}

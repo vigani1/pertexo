@@ -11,6 +11,7 @@ export function WorkflowTemplateOrigin(
     userId: string;
     workspace: AccessibleWorkspace;
     workflowId: string;
+    className?: string;
   }>,
 ) {
   return (
@@ -26,11 +27,13 @@ function OriginSnapshot({
   userId,
   workspace,
   workflowId,
+  className,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
+  className?: string;
 }>) {
   const canRead = workspace.capabilities.includes('workflow:read');
   const denied = useTemplateOriginLifetime(
@@ -55,14 +58,14 @@ function OriginSnapshot({
     (template) => template.templateId === origin.templateId,
   )?.title;
   return (
-    <p
-      className="text-xs text-muted-foreground"
+    <span
+      className={className}
       title={`Example version ${String(origin.templateVersion)}. Later edits are this workflow’s own; the example never changes it.`}
     >
       {origin.derivation === 'inherited'
         ? 'Copied from a workflow that started from '
         : 'Started from '}
       {title === undefined ? 'an example' : `the “${title}” example`}
-    </p>
+    </span>
   );
 }

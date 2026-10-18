@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { DownloadIcon } from 'lucide-react';
 import type { AccessibleWorkspace, AuditFilter } from '@pertexo/contracts';
 import {
@@ -15,10 +15,7 @@ import { describeCommandError } from '@/lib/api/error-copy';
 import { GovernanceSettings } from '../components/settings';
 import { AuditFilters } from '../components/filters';
 import { AuditEntry } from '../components/entry';
-import {
-  auditQueryOptions,
-  governanceQueryOptions,
-} from '../data/audit.queries';
+import { auditQueryOptions } from '../data/audit.queries';
 import { exportAudit, type GovernanceScope } from '../data/audit.api';
 import { auditActionWords } from '../model/ledger';
 
@@ -39,10 +36,6 @@ export function AuditPage({
     ...auditQueryOptions(scope, filters),
     enabled: allowed,
   });
-  const settings = useQuery({
-    ...governanceQueryOptions(scope),
-    enabled: allowed,
-  });
   const [downloadError, setDownloadError] = useState<string>();
   if (!allowed)
     return (
@@ -59,11 +52,6 @@ export function AuditPage({
           <PageHeaderTitle>Audit log</PageHeaderTitle>
           <PageHeaderMeta>
             <span>Who changed what in this workspace</span>
-            {settings.data === undefined ? null : (
-              <span>
-                kept {settings.data.auditRetentionDays.toLocaleString()} days
-              </span>
-            )}
           </PageHeaderMeta>
         </div>
         <PageHeaderActions>
@@ -124,9 +112,13 @@ export function AuditPage({
           />
         )}
       />
-      <div className="flex flex-col">
-        <GovernanceSettings scope={scope} workspace={workspace} />
-      </div>
+      {/* Below the log and only once it has loaded, so the settings never
+          appear first and then get pushed down by arriving events. */}
+      {events.isPending ? null : (
+        <div className="flex flex-col">
+          <GovernanceSettings scope={scope} workspace={workspace} />
+        </div>
+      )}
     </div>
   );
 }
