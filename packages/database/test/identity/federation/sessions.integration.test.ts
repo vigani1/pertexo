@@ -94,6 +94,14 @@ describe('read-only session policy lookup', () => {
     const allowed = () =>
       isAuthenticationSessionAllowed(db.authenticationPool(), f.sessionId);
     expect(await allowed()).toBe(true);
+    const duplicate = randomUUID();
+    await db.asAdmin(
+      "insert into app.auth_accounts(id,user_id,provider_id,account_id,password) values($1::uuid,$2,'credential',$1::text,'hash')",
+      [duplicate, f.owner.id],
+    );
+    expect(await allowed()).toBe(false);
+    await db.asAdmin('delete from app.auth_accounts where id=$1', [duplicate]);
+    expect(await allowed()).toBe(true);
     await db.asAdmin('update app.users set email_verified=false where id=$1', [
       f.owner.id,
     ]);
