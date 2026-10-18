@@ -1,7 +1,6 @@
 import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { appendAuditFact } from '../../../governance/audit/append.js';
-import { SignInProofRejectedError } from '../accounts/rejection.js';
 
 export type LinkedWorkspace = Readonly<{
   workspace_id: string;
@@ -32,10 +31,7 @@ export async function grantJustInTimeMemberships(
             [workspace.workspace_id, userId],
           )
         ).rows[0];
-        if (member !== undefined) {
-          if (member.status !== 'active') throw new SignInProofRejectedError();
-          return;
-        }
+        if (member !== undefined) return;
         await scoped.query(
           "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,$3,'active')",
           [workspace.workspace_id, userId, workspace.default_role],
