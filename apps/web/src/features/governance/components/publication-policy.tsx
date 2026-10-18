@@ -10,6 +10,7 @@ import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { saveSettings, type GovernanceScope } from '../data/audit.api';
 import { governanceKeys, governanceQueryOptions } from '../data/audit.queries';
 import { useState } from 'react';
+import { isApiError } from '@/lib/api/error';
 export function PublicationPolicy({
   scope,
   snapshot,
@@ -35,6 +36,12 @@ export function PublicationPolicy({
     },
     { action: 'changing publication approval' },
   );
+  const failureMessage =
+    !command.uncertain &&
+    isApiError(command.cause) &&
+    command.cause.problem?.code === 'request.invalid'
+      ? (command.cause.problem.detail ?? command.error)
+      : command.error;
   const stale = snapshot.revision > base.revision;
   const locked = !editable || command.pending || command.uncertain;
   return (
@@ -97,7 +104,7 @@ export function PublicationPolicy({
             Save publishing policy
           </ProgressButton>
         </div>
-        {command.error === undefined ? null : (
+        {failureMessage === undefined ? null : (
           <Notice
             tone="warning"
             action={
@@ -113,7 +120,7 @@ export function PublicationPolicy({
               ) : undefined
             }
           >
-            {command.error}
+            {failureMessage}
           </Notice>
         )}
         {command.data === undefined ? null : (

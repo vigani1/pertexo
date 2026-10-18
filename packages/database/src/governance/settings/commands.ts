@@ -6,6 +6,7 @@ import {
 } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../audit/append.js';
+import { rolesForCapability } from '../../tenant-access/policy.js';
 import { GovernanceError, type GovernanceStore } from '../contract.js';
 export async function readGovernanceSettings(
   client: PoolClient,
@@ -53,6 +54,28 @@ export async function configureGovernance(
   });
   if (replay !== null) return governanceSettingsSchema.parse(replay);
   const previous = await readGovernanceSettings(client, input.workspaceId);
+  if (
+    previous.revision === input.expectedRevision &&
+    !previous.requirePublishApproval &&
+    input.requirePublishApproval === true
+  ) {
+    const reviewer = await client.query(
+      `select member.user_id from app.workspace_memberships member
+       join app.users account on account.id=member.user_id
+       where member.workspace_id=$1 and member.user_id<>$2 and member.status='active'
+         and account.status='active' and member.role=any($3::text[]) limit 1`,
+      [
+        input.workspaceId,
+        input.actorId,
+        rolesForCapability('governance:manage'),
+      ],
+    );
+    if (reviewer.rowCount === 0)
+      throw new GovernanceError(
+        'invalid',
+        'Add another active owner or admin before requiring approval to publish.',
+      );
+  }
   const saved = await client.query<{ governance_revision: number }>(
     'update app.workspaces set audit_retention_days=coalesce($3,audit_retention_days),require_publish_approval=coalesce($4,require_publish_approval),governance_revision=governance_revision+1,updated_at=clock_timestamp() where id=$1 and governance_revision=$2 returning governance_revision',
     [

@@ -460,17 +460,17 @@ it('bounds a workspace to 100 pending reviews and frees room after a decision', 
   });
   const scope = { workspaceId: workspace.id, actorId };
   const policy = await settings.settings(scope);
+  await queryAsOwner(
+    "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'admin','active')",
+    [workspace.id, admin],
+    workspace.id,
+  );
   await settings.configure({
     ...scope,
     expectedRevision: policy.revision,
     requirePublishApproval: true,
     idempotencyKey: randomUUID(),
   });
-  await queryAsOwner(
-    "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'admin','active')",
-    [workspace.id, admin],
-    workspace.id,
-  );
   let first: string | undefined;
   for (let index = 0; index <= 100; index++) {
     const created = await authoring.createWorkflow({

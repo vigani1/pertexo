@@ -71,6 +71,27 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     });
     expect(setup.status()).toBe(200);
     const { viewerId } = (await setup.json()) as { viewerId: string };
+    await page.goto(`/w/${workspaceId}/settings/audit`);
+    await page
+      .getByRole('checkbox', { name: 'Require approval to publish' })
+      .check();
+    await page
+      .getByRole('button', { name: 'Save publishing policy', exact: true })
+      .click();
+    await expect(
+      page.getByText(
+        'Add another active owner or admin before requiring approval to publish.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    const refused = await page.request.get(
+      `/v1/workspaces/${workspaceId}/governance/settings`,
+    );
+    expect(refused.status()).toBe(200);
+    expect(await refused.json()).toMatchObject({
+      revision: 1,
+      requirePublishApproval: false,
+    });
     const role = await page.request.post(
       `/v1/workspaces/${workspaceId}/members/${viewerId}/role`,
       {
@@ -78,12 +99,10 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
           'x-csrf-token': await csrf(page),
           'Idempotency-Key': randomUUID(),
         },
-        data: { role: 'builder', expectedRoleRevision: 1 },
+        data: { role: 'admin', expectedRoleRevision: 1 },
       },
     );
     expect(role.status(), await role.text()).toBe(200);
-    // Role changes revoke existing sessions; use the ordinary login again.
-    await signInEditorUser(builder, viewerEmail, `/w/${workspaceId}`);
     const draft = await page.request.get(`${workflowPath}/draft`);
     const graph = {
       settings: {},
@@ -120,6 +139,19 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     await expect(
       page.getByText('Publishing policy saved.', { exact: true }),
     ).toBeVisible();
+    // Enabling needs another reviewer; later role loss leaves the explicit policy intact.
+    const builderRole = await page.request.post(
+      `/v1/workspaces/${workspaceId}/members/${viewerId}/role`,
+      {
+        headers: {
+          'x-csrf-token': await csrf(page),
+          'Idempotency-Key': randomUUID(),
+        },
+        data: { role: 'builder', expectedRoleRevision: 2 },
+      },
+    );
+    expect(builderRole.status(), await builderRole.text()).toBe(200);
+    await signInEditorUser(builder, viewerEmail, `/w/${workspaceId}`);
     await builder.setViewportSize({ width: 375, height: 800 });
     await builder.goto(editorUrl);
     const policy = await builder.request.get(

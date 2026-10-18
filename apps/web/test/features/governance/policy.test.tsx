@@ -56,3 +56,72 @@ it('labels the approval policy and sends a revision-fenced policy change', async
     requirePublishApproval: true,
   });
 });
+
+it('explains a definite refusal, retains the selected policy and can save after a reviewer is added', async () => {
+  const reason =
+    'Add another active owner or admin before requiring approval to publish.';
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          type: 'urn:pertexo:problem:request.invalid',
+          title: 'Invalid request',
+          status: 400,
+          code: 'request.invalid',
+          requestId: 'policy-refused',
+          detail: reason,
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/problem+json' },
+        },
+      ),
+    )
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          revision: 2,
+          auditRetentionDays: 365,
+          requirePublishApproval: true,
+        }),
+        { headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+  const apiClient = createApiClient({
+    fetch,
+    readCsrfToken: () => 'csrf-token-for-component-tests-12345678901234567890',
+  });
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <PublicationPolicy
+        scope={{
+          apiClient,
+          userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        }}
+        snapshot={{
+          revision: 1,
+          auditRetentionDays: 365,
+          requirePublishApproval: false,
+        }}
+        editable
+      />
+    </QueryClientProvider>,
+  );
+  const user = userEvent.setup();
+  const checkbox = screen.getByRole('checkbox', {
+    name: 'Require approval to publish',
+  });
+  const save = screen.getByRole('button', { name: 'Save publishing policy' });
+  await user.click(checkbox);
+  await user.click(save);
+  expect(await screen.findByText(reason)).toBeVisible();
+  expect(checkbox).toBeChecked();
+  expect(save).toBeEnabled();
+  await user.click(save);
+  expect(await screen.findByRole('status')).toHaveTextContent(
+    'Publishing policy saved.',
+  );
+  expect(screen.queryByText(reason)).not.toBeInTheDocument();
+});

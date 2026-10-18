@@ -58,7 +58,12 @@ export const auditPageSchema = z
     nextCursor: z.string().max(512).nullable(),
   })
   .strict();
-export const auditRetentionSchema = z.number().int().min(30).max(2555);
+export const AUDIT_RETENTION_MIN_DAYS = 30;
+export const auditRetentionSchema = z
+  .number()
+  .int()
+  .min(AUDIT_RETENTION_MIN_DAYS)
+  .max(2555);
 export const governanceSettingsSchema = z
   .object({
     revision: z.number().int().positive(),
