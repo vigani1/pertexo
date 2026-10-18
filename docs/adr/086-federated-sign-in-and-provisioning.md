@@ -64,7 +64,9 @@ and loss of its last password while enforcement is enabled. Ownership transfer
 must preserve that recovery path. Recovery uses existing rate-limited password and
 session security and is audited; its exception cannot bypass another organization’s
 domain policy. Session replacement preserves the source authentication proof, and
-ordinary email changes cannot escape active enforcement. There is no shared emergency credential.
+ordinary email changes cannot escape active enforcement. Organization-only
+accounts need another sign-in method before a primary-email change, including at
+proof consumption, to retain access if the new address leaves the verified domain. There is no shared emergency credential.
 
 Organization client secrets reuse the existing application-secret envelope with a
 dedicated private API key ring. Stored secrets must open at startup; retained

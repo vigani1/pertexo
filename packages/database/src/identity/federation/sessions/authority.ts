@@ -1,3 +1,4 @@
+import { authenticationProviderSchema } from '@pertexo/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { appendAuditFact } from '../../../governance/audit/append.js';
 import {
@@ -13,7 +14,7 @@ import {
   FEDERATION_WORKSPACE_STATUSES,
 } from './policy.js';
 
-export async function readAuthenticationPolicy(
+async function readAuthenticationPolicy(
   client: PoolClient,
   userId: string,
 ): Promise<AuthenticationPolicy> {
@@ -186,11 +187,44 @@ export function authorizeCredentialSignIn(
   });
 }
 
-export function isIdentityEmailChangeAllowed(
+export type IdentityEmailChangeEligibility =
+  'allowed' | 'managed' | 'alternative_required';
+/** Organization-only accounts need a usable method if their primary address leaves the verified domain. */
+export async function readIdentityEmailChangeEligibility(
+  client: PoolClient,
+  userId: string,
+): Promise<IdentityEmailChangeEligibility> {
+  if (
+    !identityEmailChangeAllowed(await readAuthenticationPolicy(client, userId))
+  )
+    return 'managed';
+  const methods = (
+    await client.query<{ provider_id: string; password_configured: boolean }>(
+      'select provider_id,(password is not null and length(password)>0) password_configured from app.auth_accounts where user_id=$1',
+      [userId],
+    )
+  ).rows;
+  const isSocial = (providerId: string) =>
+    authenticationProviderSchema.options.some(
+      (provider) => provider === providerId,
+    );
+  const organizationOnly =
+    methods.some(
+      (method) =>
+        method.provider_id !== 'credential' && !isSocial(method.provider_id),
+    ) &&
+    !methods.some((method) =>
+      method.provider_id === 'credential'
+        ? method.password_configured
+        : isSocial(method.provider_id),
+    );
+  return organizationOnly ? 'alternative_required' : 'allowed';
+}
+export function identityEmailChangeEligibility(
   pool: Pool,
   userId: string,
-): Promise<boolean> {
-  return withPlatformTransaction(pool, async (client) =>
-    identityEmailChangeAllowed(await readAuthenticationPolicy(client, userId)),
+): Promise<IdentityEmailChangeEligibility> {
+  return withPlatformTransaction(pool, (client) =>
+    readIdentityEmailChangeEligibility(client, userId),
   );
 }

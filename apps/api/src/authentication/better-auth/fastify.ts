@@ -258,85 +258,92 @@ function normalizedNativeError(
     nativeCode = undefined;
   }
   const mapped =
-    status === 403 && nativeCode === 'ORGANIZATION_EMAIL_MANAGED'
+    status === 403 && nativeCode === 'ALTERNATIVE_SIGN_IN_REQUIRED'
       ? {
           status: 403,
-          code: 'auth.organization_email_managed',
-          title: 'Organization email address is managed',
+          code: 'auth.alternative_required',
+          title: 'Another sign-in method required',
         }
-      : status === 400 && nativeCode === 'AUTHENTICATION_METHOD_LIMIT'
+      : status === 403 && nativeCode === 'ORGANIZATION_EMAIL_MANAGED'
         ? {
-            status: 400,
-            code: 'auth.method_limit',
-            title: 'Sign-in method limit reached',
+            status: 403,
+            code: 'auth.organization_email_managed',
+            title: 'Organization email address is managed',
           }
-        : status === 403 && nativeCode === 'RECOVERY_PASSWORD_REQUIRED'
+        : status === 400 && nativeCode === 'AUTHENTICATION_METHOD_LIMIT'
           ? {
-              status: 403,
-              code: 'auth.recovery_required',
-              title: 'Recovery password required',
+              status: 400,
+              code: 'auth.method_limit',
+              title: 'Sign-in method limit reached',
             }
-          : status === 403 && nativeCode === 'SSO_REQUIRED'
+          : status === 403 && nativeCode === 'RECOVERY_PASSWORD_REQUIRED'
             ? {
                 status: 403,
-                code: 'auth.sso_required',
-                title: 'Organization sign-in required',
+                code: 'auth.recovery_required',
+                title: 'Recovery password required',
               }
-            : status === 403 && nativeCode === 'EMAIL_NOT_VERIFIED'
+            : status === 403 && nativeCode === 'SSO_REQUIRED'
               ? {
                   status: 403,
-                  code: 'auth.email_not_verified',
-                  title: 'Email verification required',
+                  code: 'auth.sso_required',
+                  title: 'Organization sign-in required',
                 }
-              : status === 400 && nativeCode === 'INVALID_TOKEN'
+              : status === 403 && nativeCode === 'EMAIL_NOT_VERIFIED'
                 ? {
-                    status: 400,
-                    code: 'auth.reset_link_invalid',
-                    title: 'Reset link invalid or expired',
+                    status: 403,
+                    code: 'auth.email_not_verified',
+                    title: 'Email verification required',
                   }
-                : status === 401
+                : status === 400 && nativeCode === 'INVALID_TOKEN'
                   ? {
-                      status,
-                      code: 'auth.unauthenticated',
-                      title: 'Authentication required',
+                      status: 400,
+                      code: 'auth.reset_link_invalid',
+                      title: 'Reset link invalid or expired',
                     }
-                  : status === 403
-                    ? { status, code: 'auth.forbidden', title: 'Forbidden' }
-                    : status === 404
-                      ? {
-                          status,
-                          code: 'resource.not_found',
-                          title: 'Resource not found',
-                        }
-                      : status === 409
+                  : status === 401
+                    ? {
+                        status,
+                        code: 'auth.unauthenticated',
+                        title: 'Authentication required',
+                      }
+                    : status === 403
+                      ? { status, code: 'auth.forbidden', title: 'Forbidden' }
+                      : status === 404
                         ? {
                             status,
-                            code: 'auth.conflict',
-                            title: 'Authentication change conflict',
+                            code: 'resource.not_found',
+                            title: 'Resource not found',
                           }
-                        : status === 429
+                        : status === 409
                           ? {
                               status,
-                              code: 'request.rate_limited',
-                              title: 'Too many requests',
+                              code: 'auth.conflict',
+                              title: 'Authentication change conflict',
                             }
-                          : status === 503
+                          : status === 429
                             ? {
                                 status,
-                                code: 'provider.unavailable',
-                                title: 'Authentication temporarily unavailable',
+                                code: 'request.rate_limited',
+                                title: 'Too many requests',
                               }
-                            : status === 400 || status === 422
+                            : status === 503
                               ? {
-                                  status: 400,
-                                  code: 'request.invalid',
-                                  title: 'Invalid request',
+                                  status,
+                                  code: 'provider.unavailable',
+                                  title:
+                                    'Authentication temporarily unavailable',
                                 }
-                              : {
-                                  status: 500,
-                                  code: 'internal.unexpected',
-                                  title: 'Authentication unavailable',
-                                };
+                              : status === 400 || status === 422
+                                ? {
+                                    status: 400,
+                                    code: 'request.invalid',
+                                    title: 'Invalid request',
+                                  }
+                                : {
+                                    status: 500,
+                                    code: 'internal.unexpected',
+                                    title: 'Authentication unavailable',
+                                  };
   return {
     status: mapped.status,
     body: JSON.stringify({

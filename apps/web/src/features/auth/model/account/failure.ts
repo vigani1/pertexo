@@ -1,7 +1,7 @@
 import { isApiError } from '@/lib/api/error';
 import { isUncertainOutcome } from '@/lib/api/error-copy';
 
-// Reauthenticating cannot override a protected recovery credential.
+// These refusals need an account or policy change; signing in again cannot resolve them.
 
 /** The change needs a sign-in from the last few minutes. */
 export function needsFreshSignIn(error: unknown): boolean {
@@ -9,7 +9,8 @@ export function needsFreshSignIn(error: unknown): boolean {
     isApiError(error) &&
     error.status === 403 &&
     error.problem?.code !== 'auth.recovery_required' &&
-    error.problem?.code !== 'auth.organization_email_managed'
+    error.problem?.code !== 'auth.organization_email_managed' &&
+    error.problem?.code !== 'auth.alternative_required'
   );
 }
 
@@ -26,6 +27,8 @@ export function accountReadFailure(error: unknown, what: string): string {
 /** `action` reads as a verb phrase: "changing your password". */
 export function accountCommandFailure(error: unknown, action: string): string {
   if (isApiError(error)) {
+    if (error.problem?.code === 'auth.alternative_required')
+      return 'Add another sign-in method in Account → Security before changing your email. Organization sign-in depends on your verified domain.';
     if (error.problem?.code === 'auth.organization_email_managed')
       return 'Your organization manages this email address. Contact the control workspace owner to change its sign-in policy.';
     if (error.problem?.code === 'auth.method_limit')
