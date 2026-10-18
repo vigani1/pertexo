@@ -6,7 +6,7 @@ import { useWorkspaceScope } from './shell/use-workspace-scope';
 export function UsageRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();
   const search = parseUsageSearch(
-    useSearch({ from: '/w/$workspaceId/shell/settings/usage' }),
+    useSearch({ from: '/w/$workspaceId/shell/settings-hub/settings/usage' }),
   );
   const navigate = useNavigate();
   return (

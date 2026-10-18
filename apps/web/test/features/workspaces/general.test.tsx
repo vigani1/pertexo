@@ -613,7 +613,7 @@ describe('workspace settings', () => {
     });
     expect(tile(/alert destinations/u)).toHaveAttribute(
       'href',
-      `/w/${workspaceId}/alerts`,
+      `/w/${workspaceId}/settings/alerts`,
     );
   });
 

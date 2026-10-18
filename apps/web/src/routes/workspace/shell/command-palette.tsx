@@ -131,7 +131,7 @@ export function WorkspaceCommandPalette({
             icon: <BellIcon />,
             onSelect: () =>
               void navigate({
-                to: '/w/$workspaceId/alerts',
+                to: '/w/$workspaceId/settings/alerts',
                 params: { workspaceId },
               }),
           },

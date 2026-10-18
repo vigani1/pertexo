@@ -3,7 +3,9 @@ import { AuditPage } from '@/features/governance/public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 export function AuditRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();
-  const filters = useSearch({ from: '/w/$workspaceId/shell/settings/audit' });
+  const filters = useSearch({
+    from: '/w/$workspaceId/shell/settings-hub/settings/audit',
+  });
   const navigate = useNavigate();
   return (
     <AuditPage

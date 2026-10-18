@@ -221,10 +221,17 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
     path: '/tmp/pertexo-usage-mocked-mobile.png',
     fullPage: true,
   });
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Settings' })
+      .getByRole('link', { name: 'Usage', exact: true }),
+  ).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await expect(
-    page.getByRole('link', { name: 'Usage', exact: true }).last(),
-  ).toBeVisible();
+    page.getByRole('dialog', { name: 'More' }).getByRole('link', {
+      name: 'Settings',
+    }),
+  ).toHaveAttribute('aria-current', 'page');
 });
 
 test('Usage removes denied cached capacity without hiding retained activity', async ({

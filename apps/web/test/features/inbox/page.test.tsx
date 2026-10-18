@@ -262,7 +262,7 @@ describe('workspace inbox', () => {
     });
   });
 
-  it('lets a viewer load its scoped notices and input requests', async () => {
+  it('lets a viewer move between its notices and input requests', async () => {
     inboxApi({ threads: [], revision: '1' });
     let failureReads = 0;
     mockServer.use(
@@ -285,14 +285,32 @@ describe('workspace inbox', () => {
       }),
     );
     renderApp(`/w/${workspaceId}/inbox`);
+    const views = await screen.findByRole('navigation', {
+      name: 'Inbox views',
+    });
     expect(
-      await screen.findByRole('region', { name: 'Requests' }),
+      within(views).getByRole('link', { name: 'Notices' }),
+    ).toHaveAttribute('aria-current', 'page');
+    await waitFor(() => {
+      expect(failureReads).toBeGreaterThan(0);
+    });
+
+    await userEvent
+      .setup()
+      .click(within(views).getByRole('link', { name: 'Requests' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Nothing is waiting' }),
     ).toBeVisible();
     expect(
-      await screen.findByText('No requests waiting for you.'),
-    ).toBeVisible();
-    expect(failureReads).toBeGreaterThan(0);
-    expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();
+      within(screen.getByRole('navigation', { name: 'Inbox views' })).getByRole(
+        'link',
+        { name: 'Requests' },
+      ),
+    ).toHaveAttribute('aria-current', 'page');
+    expect(spineInbox().getByRole('link', { name: 'Inbox' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
   it('keeps the inbox available to builders', async () => {

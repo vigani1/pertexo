@@ -10,7 +10,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { spineDestinations, type SpineDestination } from './spine-destinations';
+import {
+  spineDestinations,
+  useIncludedPage,
+  type SpineDestination,
+} from './spine-destinations';
 import { shortcut } from '@/lib/shortcut-keys';
 
 function formatBadge(count: number): string {
@@ -33,6 +37,7 @@ function SpineLink({
     destination.badge === undefined
       ? destination.label
       : `${destination.label}, ${String(destination.badge)} ${destination.badgeNoun ?? ''}`.trimEnd();
+  const included = useIncludedPage(workspaceId, destination);
   return (
     <Tooltip>
       <TooltipTrigger
@@ -42,6 +47,7 @@ function SpineLink({
             to={destination.to}
             params={{ workspaceId }}
             activeOptions={{ exact: destination.exact ?? false }}
+            inactiveProps={included ? { 'aria-current': 'page' } : {}}
             aria-label={label}
             className={spineLinkClass}
           />

@@ -278,7 +278,7 @@ export function FailureAlertsSection({
           )}
           {workspace.capabilities.includes('connection:manage') ? (
             <Link
-              to="/w/$workspaceId/alerts"
+              to="/w/$workspaceId/settings/alerts"
               params={{ workspaceId: workspace.id }}
               className="w-fit text-sm font-medium text-accent-foreground underline decoration-accent-foreground/35 underline-offset-4 hover:decoration-accent-foreground"
             >

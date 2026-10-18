@@ -3,7 +3,9 @@ import { FederationSettingsPage } from '@/features/federation/public';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function FederationSettingsRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();
-  const search = useSearch({ from: '/w/$workspaceId/shell/settings/sso' });
+  const search = useSearch({
+    from: '/w/$workspaceId/shell/settings-hub/settings/sso',
+  });
   return (
     <FederationSettingsPage
       key={`${user.id}:${workspace.id}`}

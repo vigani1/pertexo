@@ -264,7 +264,7 @@ describe('workflow settings tab', () => {
     ).toBeDisabled();
     expect(
       within(alerts).getByRole('link', { name: 'Manage alert destinations' }),
-    ).toHaveAttribute('href', `/w/${workspaceId}/alerts`);
+    ).toHaveAttribute('href', `/w/${workspaceId}/settings/alerts`);
     await event.click(
       await within(alerts).findByRole('combobox', {
         name: 'Send failure alerts to',

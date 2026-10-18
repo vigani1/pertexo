@@ -1,6 +1,5 @@
-import { PendingTasks } from '@/features/pending-tasks/public';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { InboxPage } from '@/features/inbox/inbox-page.public';
+import { InboxPage, InboxViews } from '@/features/inbox/inbox-page.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function InboxRoute() {
@@ -13,6 +12,14 @@ export function InboxRoute() {
       apiClient={apiClient}
       user={user}
       workspace={workspace}
+      views={
+        <InboxViews
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          current="notices"
+        />
+      }
       filter={search.filter ?? 'all'}
       {...(search.noticeKind === undefined
         ? {}
@@ -35,13 +42,6 @@ export function InboxRoute() {
           },
         })
       }
-    >
-      {workspace.capabilities.includes('run:read') ? (
-        <PendingTasks
-          kind="input_request"
-          scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
-        />
-      ) : null}
-    </InboxPage>
+    />
   );
 }

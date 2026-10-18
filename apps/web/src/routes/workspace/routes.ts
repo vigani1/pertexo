@@ -7,6 +7,7 @@ import {
   createRoute,
   lazyRouteComponent,
   notFound,
+  redirect,
 } from '@tanstack/react-router';
 import {
   type AccessibleWorkspace,
@@ -359,9 +360,33 @@ export const teamRoute = createRoute({
   component: lazyRouteComponent(() => import('./team'), 'TeamRoute'),
 });
 
-export const alertsRoute = createRoute({
+/** Pathless layout: every Settings page beside the Settings rail. */
+export const settingsHubRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  id: 'settings-hub',
+  component: lazyRouteComponent(
+    () => import('./settings/hub'),
+    'SettingsHubRoute',
+  ),
+});
+
+/** Alerts moved into Settings; older links still arrive there. */
+export const alertsRedirectRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'alerts',
+  beforeLoad: ({ params }) => {
+    redirect({
+      to: '/w/$workspaceId/settings/alerts',
+      params,
+      replace: true,
+      throw: true,
+    });
+  },
+});
+
+export const alertsRoute = createRoute({
+  getParentRoute: () => settingsHubRoute,
+  path: 'settings/alerts',
   staticData: { crumb: 'Alerts' },
   loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace } = context;
@@ -392,7 +417,7 @@ export const alertsRoute = createRoute({
 });
 
 export const workspaceSettingsRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings',
   staticData: { crumb: 'Settings' },
   head: ({ match }) => ({
@@ -405,7 +430,7 @@ export const workspaceSettingsRoute = createRoute({
 });
 
 export const usageTrendsRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings/usage/trends',
   staticData: { crumb: 'Trends' },
   validateSearch: parseUsageTrendsSearch,
@@ -419,7 +444,7 @@ export const usageTrendsRoute = createRoute({
 });
 
 export const usageRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings/usage',
   staticData: { crumb: 'Usage' },
   validateSearch: parseUsageSearch,
@@ -430,7 +455,7 @@ export const usageRoute = createRoute({
 });
 
 export const federationSettingsRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings/sso',
   staticData: { crumb: 'Single sign-on' },
   validateSearch: parseFederationSearch,
@@ -446,7 +471,7 @@ export const federationSettingsRoute = createRoute({
 });
 
 export const auditRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings/audit',
   staticData: { crumb: 'Audit log' },
   validateSearch: parseAuditSearch,
@@ -457,7 +482,7 @@ export const auditRoute = createRoute({
 });
 
 export const workspaceVariablesRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings/variables',
   staticData: { crumb: 'Variables' },
   head: ({ match }) => ({
@@ -470,7 +495,7 @@ export const workspaceVariablesRoute = createRoute({
 });
 
 export const apiTokensRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings/api-tokens',
   staticData: { crumb: 'API tokens' },
   head: ({ match }) => ({
@@ -551,7 +576,7 @@ export const requestDetailRoute = createRoute({
 });
 
 export const notificationPreferencesRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings/notifications',
   staticData: { crumb: 'Notifications' },
   head: ({ match }) => ({
@@ -596,7 +621,7 @@ export const publicationReviewRoute = createRoute({
 });
 
 export const workflowPromotionRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
+  getParentRoute: () => settingsHubRoute,
   path: 'settings/promotion',
   staticData: { crumb: 'Promotion' },
   validateSearch: parsePromotionSearch,

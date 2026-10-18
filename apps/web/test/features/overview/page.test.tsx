@@ -571,7 +571,7 @@ describe('workspace home', () => {
       'Publish it': `${base}/workflows/${workflowId}`,
       'Run it': `${base}/workflows/${workflowId}`,
       'Add a connection': `${base}/connections?add=any`,
-      'Set a failure alert': `${base}/alerts`,
+      'Set a failure alert': `${base}/settings/alerts`,
       'Invite a teammate': `${base}/team?invite=true`,
     });
   });
