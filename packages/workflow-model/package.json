@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": [
+    "./dist/authoring-validation/validation-thread.js",
+    "./dist/expressions/evaluation-thread.js"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
