@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router';
 import type { CodeSettings } from '@pertexo/node-sdk';
 import {
   stepSampleIdentity,
@@ -101,6 +102,7 @@ export function EditorInspector({
   onRemoveEdge: (edgeId: string) => void;
 }>) {
   const store = useEditorStoreApi();
+  const navigate = useNavigate();
   const copy = useCopyToClipboard();
   const graph = useEditorStore((state) => state.graph);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
@@ -163,6 +165,14 @@ export function EditorInspector({
         },
         onDuplicate: onDuplicateSelection,
         onCopyId: copyStepId,
+        onDiscuss: () => {
+          if (selectedNodeId !== null)
+            void navigate({
+              to: '/w/$workspaceId/workflows/$workflowId/comments',
+              params: { workspaceId, workflowId },
+              search: { step: selectedNodeId },
+            });
+        },
         onDelete: () => {
           if (selectedNodeId !== null)
             actions.request({

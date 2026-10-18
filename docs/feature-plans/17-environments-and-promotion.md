@@ -291,4 +291,4 @@ automatic child publication bypassing review, and folder-level ACLs (F18 later).
 - [x] Move/refactor commits preserve current behavior (`2addf95fd`, `375360f31`).
 - [x] Contracts/schema/binding/apply/history and publication integration qualified.
 - [x] UI, real worker/browser acceptance, maximum bounds and guide qualified.
-- [x] Exact-head CI green; rebase-merged as `329c5f0c8`. Natural main CI started from that commit.
+- [x] Exact-head CI green; rebase-merged as `329c5f0c8`. Natural main CI 39117830698 and CodeQL 39117830693 passed from that commit.

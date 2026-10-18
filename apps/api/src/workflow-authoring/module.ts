@@ -1,3 +1,6 @@
+import { WorkflowCollaborationUseCase } from './collaboration/use-case.js';
+import { WorkflowCommentsController } from './collaboration/comments-controller.js';
+import { WorkflowPresenceController } from './collaboration/presence-controller.js';
 import { workflowPromotionProviders } from './promotion/providers.js';
 import { WorkflowPromotionController } from './promotion/controller.js';
 import { PublicationReviewUseCase } from './reviews/use-case.js';
@@ -71,6 +74,17 @@ export class WorkflowAuthoringModule {
     const providers: Provider[] = [
       ...workflowOrganizationProviders(dependencies),
       ...workflowPromotionProviders(dependencies),
+      ...(dependencies.collaborationPersistence === undefined
+        ? []
+        : [
+            {
+              provide: WorkflowCollaborationUseCase,
+              useValue: new WorkflowCollaborationUseCase(
+                dependencies.collaborationPersistence,
+                dependencies.authorization,
+              ),
+            },
+          ]),
       ...(dependencies.publicationReviewPersistence === undefined
         ? []
         : [
@@ -253,6 +267,9 @@ export class WorkflowAuthoringModule {
       imports: [identityModule],
       controllers: [
         WorkflowAuthoringController,
+        ...(dependencies.collaborationPersistence === undefined
+          ? []
+          : [WorkflowCommentsController, WorkflowPresenceController]),
         ...(dependencies.promotionPersistence === undefined
           ? []
           : [WorkflowPromotionController]),

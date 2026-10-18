@@ -5,6 +5,14 @@ import { defaultConcurrencySettings } from './fixtures/concurrency';
 
 export const mockServer = setupServer(
   http.get(
+    'http://pertexo.test/v1/workspaces/:workspaceId/workflows/:workflowId/presence',
+    () => HttpResponse.json({ people: [] }),
+  ),
+  http.put(
+    'http://pertexo.test/v1/workspaces/:workspaceId/workflows/:workflowId/presence/:tabId',
+    () => HttpResponse.json({ accepted: true }),
+  ),
+  http.get(
     'http://pertexo.test/v1/workspaces/:workspaceId/workflows/:workflowId/publication-review',
     () => HttpResponse.json({ required: false, request: null }),
   ),

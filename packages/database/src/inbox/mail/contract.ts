@@ -1,14 +1,22 @@
 import type { SealedSystemMailPayload } from '../../platform/mail/store.js';
 import type { WorkspaceNoticeKind } from '@pertexo/contracts';
-export type NoticeMailItem = Readonly<{
+type NoticeMailBase = Readonly<{
   id: string;
   revision: string;
-  noticeKind: WorkspaceNoticeKind;
   name: string;
   count: number;
   subjectId: string;
   workflowId: string | null;
 }>;
+export type NoticeMailItem = NoticeMailBase &
+  (
+    | Readonly<{ noticeKind: Exclude<WorkspaceNoticeKind, 'workflow_mention'> }>
+    | Readonly<{
+        noticeKind: 'workflow_mention';
+        workflowId: string;
+        discussion: Readonly<{ threadId: string; commentId: string }>;
+      }>
+  );
 export type NoticeMailToSeal = Readonly<{
   id: string;
   expiresAt: Date;

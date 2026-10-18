@@ -33,6 +33,7 @@ export function EditorCommandBar({
   onUndo,
   onRedo,
   commands,
+  presence,
   paused,
 }: Readonly<{
   apiClient: ApiClient;
@@ -47,6 +48,7 @@ export function EditorCommandBar({
   onUndo: () => void;
   onRedo: () => void;
   commands: ReactNode;
+  presence?: ReactNode;
   paused: boolean;
 }>) {
   const graph = useEditorStore((state) => state.graph);
@@ -79,6 +81,7 @@ export function EditorCommandBar({
         workflowId={workflowId}
         workflow={workflow}
         activeTab="build"
+        presence={presence}
         duplicateBlocked={duplicateBlocked}
         overflowRef={moreRef}
         mobileActions={

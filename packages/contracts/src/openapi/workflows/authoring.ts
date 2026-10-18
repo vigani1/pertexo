@@ -1,4 +1,8 @@
 import {
+  collaborationContractSchemas,
+  collaborationContractPaths,
+} from './collaboration/contract.js';
+import {
   workflowPromotionContractPaths,
   workflowPromotionContractSchemas,
 } from './promotions.js';
@@ -95,6 +99,7 @@ function contractSchemas(target: 'client' | 'openapi') {
     ...workflowConcurrencyContractSchemas(project),
     ...workflowErrorContractSchemas(project),
     ...publicationReviewContractSchemas(project),
+    ...collaborationContractSchemas(project),
     ...workflowPromotionContractSchemas(project),
     ...workflowInputCaseContractSchemas(project),
     ...workflowOrganizationContractSchemas(project),
@@ -517,6 +522,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     ...workflowConcurrencyContractPaths,
     ...workflowErrorContractPaths,
     ...publicationReviewContractPaths,
+    ...collaborationContractPaths,
     ...workflowPromotionContractPaths,
     ...workflowInputCaseContractPaths,
     ...workflowOrganizationContractPaths,

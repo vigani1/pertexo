@@ -20,6 +20,7 @@ const noticeKinds = [
   { value: 'limit_approaching', label: 'Approaching limits' },
   { value: 'approval_waiting', label: 'Approvals waiting' },
   { value: 'publication_review_waiting', label: 'Publication reviews' },
+  { value: 'workflow_mention', label: 'Comment mentions' },
 ];
 export function NoticeKindFilter({
   kind,

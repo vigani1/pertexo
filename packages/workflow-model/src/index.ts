@@ -262,3 +262,5 @@ export {
   decideEventCoordination,
   type EventCoordinationWindow,
 } from './event-coordination/decision.js';
+
+export { workflowNodes } from './graph/nodes.js';

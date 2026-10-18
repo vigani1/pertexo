@@ -15,6 +15,7 @@ const labels = {
   limit_approaching: 'Workspace nearing a limit',
   approval_waiting: 'Approval waiting',
   publication_review_waiting: 'Publication review waiting',
+  workflow_mention: 'Mentioned in a comment',
 } as const;
 function AttentionLink({
   workspaceId,
@@ -26,6 +27,17 @@ function AttentionLink({
   onOpen: () => void;
 }) {
   const params = { workspaceId };
+  if (thread.noticeKind === 'workflow_mention')
+    return (
+      <Link
+        onClick={onOpen}
+        to="/w/$workspaceId/workflows/$workflowId/comments"
+        params={{ ...params, workflowId: thread.workflowId }}
+        search={{ thread: thread.threadId, comment: thread.commentId }}
+      >
+        Open discussion
+      </Link>
+    );
   if (thread.noticeKind === 'publication_review_waiting')
     return (
       <Link

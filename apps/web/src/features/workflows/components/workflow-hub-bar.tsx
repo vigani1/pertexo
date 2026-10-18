@@ -25,7 +25,7 @@ import {
 import { canDuplicateWorkflow } from '../model/duplicate/allowed';
 
 export type WorkflowHubTab =
-  'build' | 'runs' | 'triggers' | 'versions' | 'settings';
+  'build' | 'runs' | 'triggers' | 'versions' | 'comments' | 'settings';
 
 type TabLink = Readonly<{
   tab: WorkflowHubTab;
@@ -37,6 +37,7 @@ type TabLink = Readonly<{
     | '/w/$workspaceId/workflows/$workflowId/triggers'
     | '/w/$workspaceId/workflows/$workflowId/versions'
     | '/w/$workspaceId/workflows/$workflowId/settings'
+    | '/w/$workspaceId/workflows/$workflowId/comments'
   >;
 }>;
 
@@ -55,6 +56,11 @@ function hubTabs(workspace: AccessibleWorkspace): readonly TabLink[] {
       to: '/w/$workspaceId/workflows/$workflowId/runs',
     });
   tabs.push(
+    {
+      tab: 'comments',
+      label: 'Comments',
+      to: '/w/$workspaceId/workflows/$workflowId/comments',
+    },
     {
       tab: 'triggers',
       label: 'Triggers',
@@ -94,6 +100,7 @@ export function WorkflowHubBar({
   workflow,
   activeTab,
   glyph,
+  presence,
   detail,
   actions,
   duplicateBlocked = false,
@@ -107,6 +114,7 @@ export function WorkflowHubBar({
   workflow: WorkflowSummary | undefined;
   activeTab: WorkflowHubTab;
   glyph?: ReactNode;
+  presence?: ReactNode;
   detail?: ReactNode;
   actions?: ReactNode;
   duplicateBlocked?: boolean;
@@ -120,6 +128,19 @@ export function WorkflowHubBar({
       <Status tone={state.tone} className="font-sans text-[0.75rem]">
         {state.label}
       </Status>
+    );
+  const secondaryActions =
+    workflow === undefined ? null : (
+      <HubSecondaryActions
+        key={`${userId}:${workspace.id}:${workflowId}`}
+        apiClient={apiClient}
+        userId={userId}
+        workspace={workspace}
+        workflow={workflow}
+        blocked={duplicateBlocked}
+        mobileActions={mobileActions}
+        overflowRef={overflowRef}
+      />
     );
   return (
     // Keep room for the identity before fitting tabs and actions beside it.
@@ -179,6 +200,10 @@ export function WorkflowHubBar({
             workflowId={workflowId}
           />
         </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {presence}
+          {actions === undefined ? secondaryActions : null}
+        </div>
       </div>
       <nav
         aria-label="Workflow sections"
@@ -192,8 +217,8 @@ export function WorkflowHubBar({
             activeOptions={{ exact: true }}
             aria-current={link.tab === activeTab ? 'page' : undefined}
             className={cn(
-              // Equal segments on a phone, so every tab fits without scrolling.
-              'flex-1 rounded-sm px-2 py-2 text-center text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring sm:flex-none sm:px-3 sm:py-1.5',
+              // Horizontal overflow keeps one fixed-height row, including Comments.
+              'shrink-0 rounded-sm px-2 py-2 text-center text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring sm:flex-none sm:px-3 sm:py-1.5',
               link.tab === activeTab &&
                 'bg-action/10 text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)]',
             )}
@@ -202,19 +227,13 @@ export function WorkflowHubBar({
           </Link>
         ))}
       </nav>
-      <div className="flex max-w-full flex-wrap items-center gap-1.5 max-sm:w-full max-sm:flex-nowrap min-[1728px]:justify-self-end">
-        {workflow === undefined ? null : (
-          <HubSecondaryActions
-            key={`${userId}:${workspace.id}:${workflowId}`}
-            apiClient={apiClient}
-            userId={userId}
-            workspace={workspace}
-            workflow={workflow}
-            blocked={duplicateBlocked}
-            mobileActions={mobileActions}
-            overflowRef={overflowRef}
-          />
+      <div
+        className={cn(
+          'flex max-w-full flex-wrap items-center gap-1.5 max-sm:w-full max-sm:flex-nowrap min-[1728px]:justify-self-end',
+          actions === undefined && 'hidden',
         )}
+      >
+        {actions === undefined ? null : secondaryActions}
         {actions}
       </div>
     </header>

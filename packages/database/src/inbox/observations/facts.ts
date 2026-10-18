@@ -1,3 +1,4 @@
+import { readCommentMentionSource } from './mentions.js';
 import {
   REVIEW_SOURCE_SQL,
   REVIEW_STATE_SQL,
@@ -31,6 +32,8 @@ export type AttentionFact = Readonly<{
   connectionId: string | null;
   taskId: string | null;
   publicationRequestId: string | null;
+  commentMentionId: string | null;
+  occurredAt: Date | null;
 }>;
 /** Current source facts, read under the observation's workspace/source fence. */
 export async function readAttentionFact(
@@ -44,9 +47,22 @@ export async function readAttentionFact(
     connectionId: null,
     taskId: null,
     publicationRequestId: null,
+    commentMentionId: null,
+    occurredAt: null,
   };
   const values = [subject.workspaceId, subject.subjectId];
   switch (subject.noticeKind) {
+    case 'workflow_mention': {
+      const source = await readCommentMentionSource(client, subject);
+      return {
+        ...base,
+        workflowId: source?.workflowId ?? null,
+        commentMentionId: subject.subjectId,
+        active: source?.active ?? false,
+        sourceRevision: subject.subjectId,
+        occurredAt: source?.occurredAt ?? null,
+      };
+    }
     case 'workflow_auto_paused': {
       const found = await client.query<{
         trigger_pause_state: string;

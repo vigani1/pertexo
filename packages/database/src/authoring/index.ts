@@ -133,3 +133,6 @@ export {
 
 export { WorkflowPromotionError } from './promotion/contract.js';
 export type { WorkflowPromotionStore } from './promotion/contract.js';
+
+export { WorkflowCollaborationError } from './collaboration/contract.js';
+export type { WorkflowCollaborationStore } from './collaboration/contract.js';

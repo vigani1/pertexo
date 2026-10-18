@@ -1,6 +1,6 @@
 # F19 — Comments and editing presence
 
-Status: current code reconciled; implementation in progress. Updated: 2026-10-18.
+Status: implemented; comments, mentions and advisory presence qualified. Updated: 2026-10-18.
 Parent: [roadmap](../product-roadmap.md). Authority: the owner's comments/presence
 scope; recommended choices below are selected without another approval gate.
 
@@ -60,7 +60,9 @@ collaborative editing protocol or require a new ADR.
 ### Mentions and notifications
 
 - A composer has an explicit **@ Mention** member picker and visible selected
-  people. This uses the current paged member discovery, not an invented username
+  people. Reuse the existing task audience’s names-only discovery through a shared
+  member directory query and a discussion read fence. Keep the admin Team roster’s
+  email visibility and task-audience edit fence unchanged. This is not a username
   grammar. Mention chips remain visible alongside the plain text. At most twenty
   distinct current eligible members; self-mentions do not create a notice.
 - A mention identifies its comment and recipient. Validate current membership and
@@ -76,6 +78,7 @@ collaborative editing protocol or require a new ADR.
 - Inbox and email identify the workflow and link to the discussion/comment, without
   copying the body. Keep F27's thirty-day notification window; an old stored
   comment must not cause its notification to be recreated after retention.
+  Retention expires mentions even if observation was offline at the cutoff.
   Discussion itself remains available until deletion.
 
 ### Presence and draft safety
@@ -94,6 +97,9 @@ collaborative editing protocol or require a new ADR.
   unsaved indicators from any tab; warn about one's own other editing tab too.
   Bound leases to one hundred per workflow and ten per member/workflow, under a
   short workflow lock. Refusing presence never blocks editing or execution.
+- Closing a hub stops renewals and aborts its outstanding requests; lease expiry
+  handles disconnects. Do not issue an unordered unload DELETE that could erase
+  a newer heartbeat during a tab/remount race. Leaving Build reports viewing.
 - Expiry is checked on every read. The existing retention loop removes expired
   rows in bounded pages, repeating the condition when deleting; workspace/workflow
   deletion also removes them. Membership removal hides presence immediately.
@@ -156,6 +162,28 @@ One feature PR with coherent, buildable commits; moves precede logic separately.
   requires. Rollback stops new writers/observers; retain comment rows, never reset
   or erase user discussions. No Docker download, paid service or external account.
 
+## Local evidence (2026-10-18)
+
+Actual app-role PostgreSQL proves author-only edits, concurrent revision winners,
+exact command retries, paged history, explicit bounded purge and current-access
+mention visibility. Mention observer/mail tests cover self/mute/removal, unchanged
+edits and old-source retention without recreating notices. The real HTTP boundary
+qualifies session/CSRF composition, strict requests, replay and stale edits.
+
+At the maximum, one hundred actual tab leases aggregate to one hundred people,
+a response of 86,002 bytes and concurrent workflow reads of 9.29–17.40 ms with a
+pool of two connections; no idle transaction remains. Out-of-order heartbeats,
+ten-tab/member limits, expiry and immediate role/member loss are qualified.
+Names are bounded metadata; step labels snapshot at most 256 UTF-16 code units.
+Personal email retains its existing 12 KB envelope by displaying fewer digest
+items when necessary, with the remainder linked from Inbox.
+
+The editor exposes a metadata-only subscription at its public composition seam.
+The hub's presence bridge subscribes directly; there is no React effect copying
+live draft state into a parent or second graph store. Background refreshes keep
+composers and pickers mounted. Resolving a thread disables, but preserves, an
+unfinished reply.
+
 ## Later
 
 Live multiplayer/co-editing, CRDT/OT/shared undo, inline canvas annotations/cursors,
@@ -165,7 +193,9 @@ multiplayer protocol requires its own plan and ADR; presence is not that protoco
 ## Tracker
 
 - [x] Reconciled against main after F17; recommended product/ownership decisions reviewed.
-- [ ] Storage/contracts/authoring and notice behavior qualified.
-- [ ] Presence, lifecycle and concurrency bounds qualified.
-- [ ] Web, real two-session acceptance, guide and required checks qualified.
-- [ ] PR green and rebase-merged; natural-main result inspected.
+- [x] Storage/contracts/authoring and notice behavior qualified.
+- [x] Presence, lifecycle and concurrency bounds qualified.
+- [x] Web, real two-session acceptance, guide and required checks qualified.
+
+Release evidence belongs to the feature PR: normal hooks, exact-head green CI,
+rebase merge and the natural-main run. No multiplayer protocol is included.

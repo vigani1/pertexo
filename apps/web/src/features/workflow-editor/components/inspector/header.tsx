@@ -38,6 +38,7 @@ export type StepMenuActions = Readonly<{
   onAddAfter: (returnFocus: HTMLElement | null) => void;
   onDuplicate: () => void;
   onCopyId: () => void;
+  onDiscuss?: () => void;
   onDelete: () => void;
   onClose: () => void;
 }>;
@@ -154,6 +155,11 @@ export function InspectorHeader({
                 {disabled ? 'Enable' : 'Disable'}
               </DropdownMenuItem>
             ) : null}
+            {actions.onDiscuss === undefined ? null : (
+              <DropdownMenuItem onClick={actions.onDiscuss}>
+                Discuss this step
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={actions.onCopyId}>
               <CopyIcon aria-hidden="true" />
               Copy step ID

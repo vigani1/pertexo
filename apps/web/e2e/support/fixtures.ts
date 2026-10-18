@@ -10,6 +10,13 @@ export {
 /** Shell requests stay mocked even when a scenario does not exercise the Inbox. */
 export const test = base.extend({
   page: async ({ page }, runWithPage) => {
+    await page.route('**/v1/workspaces/*/workflows/*/presence**', (route) => {
+      if (route.request().method() === 'GET')
+        return route.fulfill({ json: { people: [] } });
+      if (route.request().method() === 'PUT')
+        return route.fulfill({ json: { accepted: true } });
+      return route.fallback();
+    });
     await page.route(
       '**/v1/workspaces/*/workflows/*/publication-review',
       (route) =>

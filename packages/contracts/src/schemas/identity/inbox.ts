@@ -42,6 +42,7 @@ export const workspaceNoticeKindSchema = z.enum([
   'limit_approaching',
   'approval_waiting',
   'publication_review_waiting',
+  'workflow_mention',
 ]);
 export const workspaceInboxFilterSchema = z.enum(['all', 'unread']);
 export const workspaceInboxLimitSchema = z.coerce
@@ -86,7 +87,7 @@ export const workspaceInboxFailureThreadSchema = z
     unread: z.boolean(),
   })
   .strict();
-export const workspaceInboxAttentionThreadSchema = z
+const operationalAttentionSchema = z
   .object({
     id: z.uuid(),
     noticeKind: z.enum([
@@ -109,6 +110,20 @@ export const workspaceInboxAttentionThreadSchema = z
     limits: z.array(workspaceCapacityLimitSchema).max(4),
   })
   .strict();
+const mentionAttentionSchema = operationalAttentionSchema
+  .extend({
+    noticeKind: z.literal('workflow_mention'),
+    workflowId: z.uuid(),
+    threadId: z.uuid(),
+    commentId: z.uuid(),
+    details: z.object({}).strict().default({}),
+    limits: z.tuple([]),
+  })
+  .strict();
+export const workspaceInboxAttentionThreadSchema = z.union([
+  operationalAttentionSchema,
+  mentionAttentionSchema,
+]);
 export const workspaceInboxThreadSchema = z.union([
   workspaceInboxFailureThreadSchema,
   workspaceInboxAttentionThreadSchema,

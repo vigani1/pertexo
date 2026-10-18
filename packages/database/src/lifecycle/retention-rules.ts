@@ -1,3 +1,4 @@
+import { expiredNoticeSql } from '../inbox/lifetime.js';
 import {
   expiredRunSql,
   retainedTestRunSql,
@@ -24,6 +25,11 @@ import {
  */
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
+  {
+    name: 'workflow_presence_leases',
+    statement: `with page as(select workspace_id,workflow_id,user_id,tab_id from app.workflow_presence_leases where expires_at<=clock_timestamp() order by expires_at limit $1) delete from app.workflow_presence_leases lease using page where lease.workspace_id=page.workspace_id and lease.workflow_id=page.workflow_id and lease.user_id=page.user_id and lease.tab_id=page.tab_id and lease.expires_at<=clock_timestamp()`,
+  },
+
   {
     name: 'provisioning_credentials',
     statement: `with page as(select id from app.auth_provisioning_credentials where revoked_at<=clock_timestamp()-interval '30 days' order by id limit $1) delete from app.auth_provisioning_credentials credential using page where credential.id=page.id and credential.revoked_at<=clock_timestamp()-interval '30 days'`,
@@ -340,15 +346,14 @@ export const RETENTION_RULES = Object.freeze([
     name: 'workspace_inbox_threads',
     statement: `
       with page as (
-        select workspace_id, id from app.workspace_inbox_threads
-        where latest_occurred_at <= statement_timestamp() - interval '720 hours' AND (notice_kind='workflow_failure' OR NOT active)
+        select workspace_id, id from app.workspace_inbox_threads thread
+        where ${expiredNoticeSql('thread')}
         order by latest_occurred_at, workspace_id, id limit $1
       )
       delete from app.workspace_inbox_threads thread using page
       where (thread.workspace_id, thread.id)
         = (page.workspace_id, page.id)
-        and thread.latest_occurred_at <= statement_timestamp() - interval '720 hours'
-        and (thread.notice_kind='workflow_failure' or not thread.active)`,
+        and ${expiredNoticeSql('thread')}`,
   },
   {
     name: 'identity_security_audit_facts',

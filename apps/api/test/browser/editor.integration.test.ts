@@ -129,6 +129,7 @@ const scenario = z
     'variables',
     'governance',
     'promotion',
+    'collaboration',
     'federation',
     'organization-oidc',
     'notifications',
@@ -496,6 +497,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       'approvals',
       'variables',
       'notifications',
+      'collaboration',
     ].includes(scenario),
     ...(noticeMailKey === undefined
       ? {}
@@ -828,7 +830,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       }
       if (request.method === 'POST' && url.pathname === '/readonly-setup') {
         if (
-          !['readonly', 'approvals', 'governance'].includes(scenario) ||
+          !['readonly', 'approvals', 'governance', 'collaboration'].includes(
+            scenario,
+          ) ||
           readonlyFixture !== undefined ||
           readonlySetupPending
         ) {
@@ -1151,64 +1155,66 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
               ? 'editor/federation/sign-in.spec.ts'
               : scenario === 'organization-oidc'
                 ? 'editor/federation/organization.spec.ts'
-                : scenario === 'promotion'
-                  ? 'editor/promotions'
-                  : scenario === 'governance'
-                    ? 'editor/governance'
-                    : scenario === 'code'
-                      ? 'editor/code.spec.ts'
-                      : scenario === 'webhook-responses'
-                        ? 'editor/webhook-responses.spec.ts'
-                        : scenario === 'pinned-samples'
-                          ? 'editor/pinned-samples.spec.ts'
-                          : scenario === 'notifications'
-                            ? 'editor/notifications/attention.spec.ts'
-                            : scenario === 'variables'
-                              ? 'editor/variables/snapshots.spec.ts'
-                              : scenario === 'forms'
-                                ? 'editor/forms/submission.spec.ts'
-                                : scenario === 'approvals'
-                                  ? 'editor/approvals.spec.ts'
-                                  : scenario === 'error-workflows'
-                                    ? 'editor/error-workflows.spec.ts'
-                                    : scenario === 'artifact-inputs'
-                                      ? 'editor/files/'
-                                      : scenario === 'api-tokens'
-                                        ? 'api-tokens.spec.ts'
-                                        : scenario === 'callable'
-                                          ? 'editor/callable.spec.ts'
-                                          : scenario === 'curated-templates'
-                                            ? 'curated-templates.spec.ts'
-                                            : scenario === 'portability'
-                                              ? 'workflow-portability.spec.ts'
-                                              : scenario === 'input-cases'
-                                                ? 'workflow-input-cases.spec.ts'
-                                                : scenario === 'duplication'
-                                                  ? 'workflow-duplication.spec.ts'
-                                                  : scenario ===
-                                                      'nested-conflict'
-                                                    ? 'editor/execution.spec.ts'
-                                                    : scenario === 'receipts'
-                                                      ? 'editor/receipts.spec.ts'
-                                                      : scenario ===
-                                                          'run-recovery'
-                                                        ? 'editor/run-recovery.spec.ts'
+                : scenario === 'collaboration'
+                  ? 'editor/collaboration'
+                  : scenario === 'promotion'
+                    ? 'editor/promotions'
+                    : scenario === 'governance'
+                      ? 'editor/governance'
+                      : scenario === 'code'
+                        ? 'editor/code.spec.ts'
+                        : scenario === 'webhook-responses'
+                          ? 'editor/webhook-responses.spec.ts'
+                          : scenario === 'pinned-samples'
+                            ? 'editor/pinned-samples.spec.ts'
+                            : scenario === 'notifications'
+                              ? 'editor/notifications/attention.spec.ts'
+                              : scenario === 'variables'
+                                ? 'editor/variables/snapshots.spec.ts'
+                                : scenario === 'forms'
+                                  ? 'editor/forms/submission.spec.ts'
+                                  : scenario === 'approvals'
+                                    ? 'editor/approvals.spec.ts'
+                                    : scenario === 'error-workflows'
+                                      ? 'editor/error-workflows.spec.ts'
+                                      : scenario === 'artifact-inputs'
+                                        ? 'editor/files/'
+                                        : scenario === 'api-tokens'
+                                          ? 'api-tokens.spec.ts'
+                                          : scenario === 'callable'
+                                            ? 'editor/callable.spec.ts'
+                                            : scenario === 'curated-templates'
+                                              ? 'curated-templates.spec.ts'
+                                              : scenario === 'portability'
+                                                ? 'workflow-portability.spec.ts'
+                                                : scenario === 'input-cases'
+                                                  ? 'workflow-input-cases.spec.ts'
+                                                  : scenario === 'duplication'
+                                                    ? 'workflow-duplication.spec.ts'
+                                                    : scenario ===
+                                                        'nested-conflict'
+                                                      ? 'editor/execution.spec.ts'
+                                                      : scenario === 'receipts'
+                                                        ? 'editor/receipts.spec.ts'
                                                         : scenario ===
-                                                            'expression-admission'
-                                                          ? 'editor/expression-admission.spec.ts'
+                                                            'run-recovery'
+                                                          ? 'editor/run-recovery.spec.ts'
                                                           : scenario ===
-                                                              'readonly'
-                                                            ? 'editor/readonly.spec.ts'
+                                                              'expression-admission'
+                                                            ? 'editor/expression-admission.spec.ts'
                                                             : scenario ===
-                                                                'schedule'
-                                                              ? 'editor/schedule.spec.ts'
+                                                                'readonly'
+                                                              ? 'editor/readonly.spec.ts'
                                                               : scenario ===
-                                                                  'failure-routing'
-                                                                ? 'editor/failure-routing.spec.ts'
+                                                                  'schedule'
+                                                                ? 'editor/schedule.spec.ts'
                                                                 : scenario ===
-                                                                    'transforms'
-                                                                  ? 'editor/transforms.spec.ts'
-                                                                  : 'editor/webhook-controlled-http.spec.ts',
+                                                                    'failure-routing'
+                                                                  ? 'editor/failure-routing.spec.ts'
+                                                                  : scenario ===
+                                                                      'transforms'
+                                                                    ? 'editor/transforms.spec.ts'
+                                                                    : 'editor/webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1273,6 +1279,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     }
     if (scenario === 'notifications') {
       await verifyNotificationEvidence(api.database(), noticeMessages);
+      return;
+    }
+    if (scenario === 'collaboration') {
+      const rows = await api
+        .database()
+        .query<{ comments: number; mentions: number }>(
+          'select (select count(*)::int from app.workflow_comments) comments,(select count(*)::int from app.workflow_comment_mentions) mentions',
+        );
+      expect(rows.rows[0]?.comments).toBeGreaterThanOrEqual(2);
+      expect(rows.rows[0]?.mentions).toBeGreaterThanOrEqual(1);
       return;
     }
     if (scenario === 'promotion') {

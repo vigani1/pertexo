@@ -1,3 +1,7 @@
+import {
+  editorPresenceSource,
+  type EditorPresenceSource,
+} from '../model/state/presence';
 import type { CodeSettings } from '@pertexo/node-sdk';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import type {
@@ -61,6 +65,8 @@ export function WorkflowEditorPage({
   onRunAccepted,
   onPublished,
   triggerNotice,
+  headerPresence,
+  renderEditingPresence,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
@@ -70,6 +76,8 @@ export function WorkflowEditorPage({
   /** After a publish lands, for reads of the workflow outside the editor. */
   onPublished?: () => void;
   triggerNotice?: ReactNode;
+  headerPresence?: ReactNode;
+  renderEditingPresence?: (source: EditorPresenceSource) => ReactNode;
 }>) {
   const draft = useSuspenseQuery(
     workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
@@ -102,6 +110,10 @@ export function WorkflowEditorPage({
           connectionsAvailable={connections.data !== null}
           onRunAccepted={onRunAccepted}
           triggerNotice={triggerNotice}
+          headerPresence={headerPresence}
+          {...(renderEditingPresence === undefined
+            ? {}
+            : { renderEditingPresence })}
           {...(onPublished === undefined ? {} : { onPublished })}
         />
       </ReactFlowProvider>
@@ -126,6 +138,8 @@ function WorkflowEditorSession({
   onRunAccepted,
   onPublished,
   triggerNotice,
+  headerPresence,
+  renderEditingPresence,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -138,6 +152,8 @@ function WorkflowEditorSession({
   onRunAccepted: (runId: string) => void;
   onPublished?: () => void;
   triggerNotice?: ReactNode;
+  headerPresence?: ReactNode;
+  renderEditingPresence?: (source: EditorPresenceSource) => ReactNode;
 }>) {
   const store = useEditorStoreApi();
   const queryClient = useQueryClient();
@@ -158,6 +174,10 @@ function WorkflowEditorSession({
   });
   const pauseReason = verification.pauseReason;
   const paused = pauseReason !== undefined;
+  const presenceSource = useMemo(
+    () => editorPresenceSource(store, canUpdate && !paused),
+    [store, canUpdate, paused],
+  );
   const { flushSave, ensureSaved } = useEditorSavePipeline({
     apiClient,
     store,
@@ -235,6 +255,7 @@ function WorkflowEditorSession({
 
   return (
     <>
+      {renderEditingPresence?.(presenceSource)}
       {pauseReason === undefined ? null : (
         <EditorPaused
           reason={pauseReason}
@@ -265,6 +286,7 @@ function WorkflowEditorSession({
           verifyIdentity={verification.verifyOwner}
           bar={(chrome) => (
             <EditorCommandBar
+              presence={headerPresence}
               paused={paused}
               apiClient={apiClient}
               userId={userId}

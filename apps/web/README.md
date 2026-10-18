@@ -299,3 +299,8 @@ Webhook endpoint settings support Signed (default), Secret URL and Header secret
 authentication, with optional exact browser origins for URL/header modes. Mode
 or credential-header changes rotate both credentials; origins-only changes keep
 them. See [Receive webhooks](../../docs/guides/webhooks.md).
+
+Workflow Comments support workflow/step threads, explicit private mentions,
+resolve/reopen and author-only edits/deletion. The shared workflow bar shows
+advisory tab presence; unsaved-change warnings retain the draft's existing
+revision checks. See [Collaboration](../../docs/guides/collaboration.md).

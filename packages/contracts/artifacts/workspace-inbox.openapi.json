@@ -395,6 +395,7 @@
               "workflow.publication_review_conflict",
               "workflow.promotion_conflict",
               "workflow.promotion_unavailable",
+              "workflow.collaboration_conflict",
               "workflow.error_policy_conflict",
               "workflow.error_target_unavailable",
               "pending_task.already_resolved",
@@ -677,129 +678,222 @@
                   "additionalProperties": false
                 },
                 {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "noticeKind": {
-                      "type": "string",
-                      "enum": [
-                        "workflow_auto_paused",
-                        "connection_attention",
-                        "limit_reached",
-                        "limit_approaching",
-                        "approval_waiting",
-                        "publication_review_waiting"
-                      ]
-                    },
-                    "subjectId": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "workflowId": {
-                      "anyOf": [
-                        {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                         },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "name": {
-                      "type": "string",
-                      "maxLength": 200
-                    },
-                    "details": {
-                      "default": {},
-                      "type": "object",
-                      "propertyNames": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 160
-                      },
-                      "additionalProperties": {
-                        "anyOf": [
-                          {
-                            "type": [
-                              "string",
-                              "number",
-                              "boolean",
-                              "null"
-                            ]
-                          },
-                          {
-                            "maxItems": 20,
-                            "type": "array",
-                            "items": {
-                              "type": [
-                                "string",
-                                "number",
-                                "boolean",
-                                "null"
-                              ]
+                        "noticeKind": {
+                          "type": "string",
+                          "enum": [
+                            "workflow_auto_paused",
+                            "connection_attention",
+                            "limit_reached",
+                            "limit_approaching",
+                            "approval_waiting",
+                            "publication_review_waiting"
+                          ]
+                        },
+                        "subjectId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "workflowId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
                             }
+                          ]
+                        },
+                        "name": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "details": {
+                          "default": {},
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": [
+                                  "string",
+                                  "number",
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              {
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": [
+                                    "string",
+                                    "number",
+                                    "boolean",
+                                    "null"
+                                  ]
+                                }
+                              }
+                            ]
                           }
-                        ]
-                      }
+                        },
+                        "occurrenceCount": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "firstOccurredAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{6}(?:Z))$"
+                        },
+                        "latestOccurredAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{6}(?:Z))$"
+                        },
+                        "revision": {
+                          "type": "string",
+                          "pattern": "^(?:0|[1-9][0-9]{0,18})$"
+                        },
+                        "unread": {
+                          "type": "boolean"
+                        },
+                        "limits": {
+                          "maxItems": 4,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "queue",
+                              "artifact_bytes",
+                              "artifact_count"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "noticeKind",
+                        "subjectId",
+                        "workflowId",
+                        "name",
+                        "details",
+                        "occurrenceCount",
+                        "firstOccurredAt",
+                        "latestOccurredAt",
+                        "revision",
+                        "unread",
+                        "limits"
+                      ],
+                      "additionalProperties": false
                     },
-                    "occurrenceCount": {
-                      "type": "integer",
-                      "exclusiveMinimum": 0,
-                      "maximum": 9007199254740991
-                    },
-                    "firstOccurredAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{6}(?:Z))$"
-                    },
-                    "latestOccurredAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{6}(?:Z))$"
-                    },
-                    "revision": {
-                      "type": "string",
-                      "pattern": "^(?:0|[1-9][0-9]{0,18})$"
-                    },
-                    "unread": {
-                      "type": "boolean"
-                    },
-                    "limits": {
-                      "maxItems": 4,
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "enum": [
-                          "active",
-                          "queue",
-                          "artifact_bytes",
-                          "artifact_count"
-                        ]
-                      }
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "noticeKind": {
+                          "type": "string",
+                          "const": "workflow_mention"
+                        },
+                        "subjectId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "workflowId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "details": {
+                          "default": {},
+                          "type": "object",
+                          "properties": {},
+                          "additionalProperties": false
+                        },
+                        "occurrenceCount": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "firstOccurredAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{6}(?:Z))$"
+                        },
+                        "latestOccurredAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{6}(?:Z))$"
+                        },
+                        "revision": {
+                          "type": "string",
+                          "pattern": "^(?:0|[1-9][0-9]{0,18})$"
+                        },
+                        "unread": {
+                          "type": "boolean"
+                        },
+                        "limits": {
+                          "type": "array",
+                          "prefixItems": [],
+                          "items": false,
+                          "maxItems": 0
+                        },
+                        "threadId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "commentId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "noticeKind",
+                        "subjectId",
+                        "workflowId",
+                        "name",
+                        "details",
+                        "occurrenceCount",
+                        "firstOccurredAt",
+                        "latestOccurredAt",
+                        "revision",
+                        "unread",
+                        "limits",
+                        "threadId",
+                        "commentId"
+                      ],
+                      "additionalProperties": false
                     }
-                  },
-                  "required": [
-                    "id",
-                    "noticeKind",
-                    "subjectId",
-                    "workflowId",
-                    "name",
-                    "details",
-                    "occurrenceCount",
-                    "firstOccurredAt",
-                    "latestOccurredAt",
-                    "revision",
-                    "unread",
-                    "limits"
-                  ],
-                  "additionalProperties": false
+                  ]
                 }
               ]
             }
@@ -1999,7 +2093,8 @@
                 "limit_reached",
                 "limit_approaching",
                 "approval_waiting",
-                "publication_review_waiting"
+                "publication_review_waiting",
+                "workflow_mention"
               ]
             }
           },
