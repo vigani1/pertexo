@@ -3,6 +3,35 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import rootConfig from '../../eslint.config.mjs';
 
+const canonicalJsonOnly = {
+  name: '@pertexo/workflow-model',
+  allowImportNames: ['canonicalJson'],
+  message: 'Shared transport may use canonical JSON, not workflow model APIs.',
+};
+const sharedLayerPatterns = [
+  {
+    group: [
+      'node:*',
+      '@nestjs/*',
+      '**/packages/**',
+      '**/apps/**',
+      '@/features/**',
+      '@/app/**',
+      '@/routes/**',
+      '**/features/**',
+      '**/app/**',
+      '**/routes/**',
+    ],
+    message:
+      'Shared UI and utilities cannot depend on application orchestration, features, or backend runtimes.',
+  },
+  {
+    regex: '^@pertexo/(?!(?:contracts|workflow-model)$).+',
+    message:
+      'Shared UI and utilities may import browser-safe contracts and the explicitly allowed canonical JSON helper.',
+  },
+];
+
 export default tseslint.config(
   ...rootConfig,
   { ignores: ['playwright-report/**', 'test-results/**'] },
@@ -76,37 +105,8 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
-          paths: [
-            {
-              name: '@pertexo/workflow-model',
-              allowImportNames: ['canonicalJson'],
-              message:
-                'Shared transport may use canonical JSON, not workflow model APIs.',
-            },
-          ],
-          patterns: [
-            {
-              group: [
-                'node:*',
-                '@nestjs/*',
-                '**/packages/**',
-                '**/apps/**',
-                '@/features/**',
-                '@/app/**',
-                '@/routes/**',
-                '**/features/**',
-                '**/app/**',
-                '**/routes/**',
-              ],
-              message:
-                'Shared UI and utilities cannot depend on application orchestration, features, or backend runtimes.',
-            },
-            {
-              regex: '^@pertexo/(?!(?:contracts|workflow-model)$).+',
-              message:
-                'Shared UI and utilities may import browser-safe contracts and the explicitly allowed canonical JSON helper.',
-            },
-          ],
+          paths: [canonicalJsonOnly],
+          patterns: sharedLayerPatterns,
         },
       ],
     },
