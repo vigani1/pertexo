@@ -207,8 +207,8 @@ export function SamlProviderForm({
         </LabelledField>
         <LabelledField
           id={`${id}-jit`}
-          label="Allow new accounts"
-          description="New verified identities receive each linked workspace’s default role. Removed access is never recreated."
+          label="Allow unprovisioned new accounts"
+          description="Allow verified SSO to create accounts that are not in the directory. Active directory-provisioned people may sign in with this off. Existing manual roles stay unchanged; removed and suspended manual memberships are not restored."
         >
           {(control) => (
             <Checkbox

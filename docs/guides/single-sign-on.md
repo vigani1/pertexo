@@ -113,11 +113,11 @@ email through ordinary account settings. The enforcing organization's control
 workspace owner retains a protected, audited password login for recovery during
 an IdP outage; owning an unrelated workspace grants no exception.
 
-Enable **Allow new accounts** only when JIT provisioning is wanted. A successful
+Enable **Allow unprovisioned new accounts** only when JIT provisioning is wanted. A successful
 SSO identity receives each linked workspace's configured default role (viewer by
 default). Linking a workspace requires ownership of both workspaces. Existing
 manual roles remain unchanged; suspended or removed memberships are not restored.
-With new accounts off, only existing eligible identities/memberships can sign in.
+With that option off, existing eligible identities and active directory-provisioned people can still sign in.
 Organization methods show the provider name in account security. If organization
 SSO is your only method, add another method before changing your primary email:
 an address outside the verified domain cannot use that organization's sign-in. Accounts retain
@@ -181,5 +181,67 @@ purpose cookie prevents sign-in safely. IdP-initiated SAML, encrypted assertions
 signed SP requests and SAML logout are not supported. Use OIDC when the provider
 requires one of those unsupported SAML options.
 
-Directory provisioning is the next
-[F28 slice](../feature-plans/28-single-sign-on-and-provisioning.md).
+## Provision users and groups with SCIM
+
+An organization’s control workspace owner manages provisioning under **Settings →
+Single sign-on → Directory**. Owners and admins can inspect safe directory
+metadata. Provisioning uses the existing API; no identity service subscription is
+required by Pertexo.
+
+1. Create a **provisioning credential**, copy the bearer once and save it in your
+   password manager. It is shown only in that dialog and must be acknowledged
+   before closing. Pertexo stores its digest, not its plaintext. Copy the **SCIM
+   base URL**, for example
+   `https://app.example.com/v1/auth/federation/scim/<organization-id>/v2`.
+2. In an Entra, Okta or other SCIM 2.0 client, configure that base URL and bearer.
+   Provision core **Users** and **Groups**, mapping a stable userName, primary
+   email, active flag and group membership. Password provisioning, nested groups,
+   arbitrary schema extensions and bulk operations are unsupported. The standard
+   discovery endpoints describe supported attributes and operations.
+3. Map provisioned groups to linked workspace roles. Mappings are ordered: the
+   first matching group wins. Otherwise the linked workspace’s default role
+   applies. Builder and operator are separate roles, not a privilege ranking.
+   Mappings cannot assign owner. Save explicitly; a changed configuration keeps
+   your edits and asks you to load current mappings before replacing them.
+4. A provisioned person starts as **Awaiting first SSO**. Their verified
+   organization OIDC or SAML sign-in binds the directory record to an account and
+   applies managed access atomically. This works with **Allow unprovisioned new
+   accounts** off. A directory request alone cannot claim an existing account by
+   email. Directory profile edits do not rename that account.
+5. Existing manual memberships keep their roles and status. After the person has
+   completed SSO, use **Review membership** to adopt one deliberately. The review
+   shows the exact resulting role and refuses a stale decision. Removed or
+   suspended manual memberships are not silently restored. Team rows identify
+   directory-managed access and explain why ordinary role, removal, ownership
+   transfer and personal-leave controls cannot override it.
+
+Deactivating or deleting a directory user removes managed access and revokes
+sessions in the same transaction. Group and role changes revoke affected
+sessions too. Inactive and deleted records block JIT from restoring access.
+Deleting retains a tombstone; deliberately provisioning an active replacement
+requires verified SSO again before previously managed access can return.
+Manual memberships and the protected control owner remain outside directory
+management.
+
+For credential rotation, create and configure a replacement, verify your IdP can
+use it, then revoke the old one. At most five credentials can be active. A lost
+creation response cannot reveal the bearer on retry: inspect and revoke the
+uncertain credential before creating another. Credentials belong to the
+organization, so changing their creator’s role does not revoke them. The current
+control workspace owner can revoke them immediately. Revoked credential metadata
+is removed after 30 days.
+
+The control workspace owner or the linked workspace’s owner can unlink a
+workspace after reviewing the warning. This removes directory-managed access
+and mappings there, preserving manual memberships and accounts. The control
+workspace itself cannot be unlinked. Organization/workspace deletion removes
+its directory resources and source associations through ordinary purge paths.
+
+Bounds are 5,000 retained user records (including deletion tombstones), 200 groups,
+500 people per group, ten linked workspaces and 200 role mappings per workspace.
+SCIM requests are at most 1 MiB, responses at most 4 MiB, and list pages at most
+100 resources. PATCH accepts at most 100 operations. Provisioning is rate-limited;
+clients should respect retry feedback. Only modeled core filters and paths are
+accepted; unsupported expressions fail clearly rather than being guessed.
+All access changes and credential/configuration commands are audited with
+metadata only, never bearer credentials, provider assertions or passwords.

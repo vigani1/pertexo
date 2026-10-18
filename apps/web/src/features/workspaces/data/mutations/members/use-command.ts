@@ -6,6 +6,7 @@ import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workspaceKeys, workspaceMemberKeys } from '../../workspaces.queries';
+import { directoryMembershipFeedback } from '../../../model/directory-membership';
 
 /** Every member command names its target at the revision people saw. */
 export type MemberCommandAttempt = Readonly<{
@@ -146,6 +147,20 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
           freshSignIn: true,
         },
       });
+      return;
+    }
+    const directoryFeedback = directoryMembershipFeedback(cause);
+    if (directoryFeedback !== undefined) {
+      await queryClient.invalidateQueries({ queryKey: membersKey });
+      if (owner.current !== scope) return;
+      transition({
+        kind: 'idle',
+        feedback: {
+          targetUserId: attempt.targetUserId,
+          message: directoryFeedback,
+        },
+      });
+      input.onConflict();
       return;
     }
     if (isApiError(cause) && cause.status === 403) {

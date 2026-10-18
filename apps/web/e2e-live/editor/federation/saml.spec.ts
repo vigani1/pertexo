@@ -1,3 +1,8 @@
+import {
+  provisionDirectory,
+  reviewProvisionedMembership,
+  deactivateAndRevokeDirectory,
+} from './provision-directory';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
 import { expect } from '@playwright/test';
@@ -6,6 +11,7 @@ import { test } from '../../support/browser-fixture';
 import {
   registerEditorUser,
   createEditorWorkspace,
+  signInEditorUser,
 } from '../../support/ordinary-editor-session';
 
 // Only these owned app/IdP listeners use ephemeral self-signed certificates.
@@ -38,7 +44,12 @@ for (const width of [1280, 375]) {
       throw new Error('Owned SAML configuration missing');
     const domain = `${randomUUID()}.integration.test`;
     await page.setViewportSize({ width, height: 800 });
-    await registerEditorUser(page, request, control, 'SAML owner');
+    const ownerEmail = await registerEditorUser(
+      page,
+      request,
+      control,
+      'SAML owner',
+    );
     const workspaceId = await createEditorWorkspace(
       page,
       `SAML ${String(width)}`,
@@ -103,9 +114,6 @@ for (const width of [1280, 375]) {
       .getByRole('checkbox', { name: 'Allow sign-in', exact: true })
       .check();
     await dialog
-      .getByRole('checkbox', { name: 'Allow new accounts', exact: true })
-      .check();
-    await dialog
       .getByRole('button', { name: 'Save provider', exact: true })
       .click();
     await expect(dialog).toHaveCount(0);
@@ -145,6 +153,13 @@ for (const width of [1280, 375]) {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
+    const directory = await provisionDirectory(
+      page,
+      request,
+      workspaceId,
+      `member@${domain}`,
+      width,
+    );
     await page.goto('/workspaces');
     await page
       .getByRole('button', { name: 'Account menu for SAML owner' })
@@ -183,6 +198,18 @@ for (const width of [1280, 375]) {
       path: `/tmp/pertexo-saml-screenshots/account-${String(width)}.png`,
       fullPage: true,
     });
+    await page.goto('/workspaces');
+    await page.getByRole('button', { name: /^Account menu for /u }).click();
+    await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
+    await expect(page).toHaveURL('/login');
+    await signInEditorUser(page, ownerEmail, `/w/${workspaceId}`);
+    await reviewProvisionedMembership(
+      page,
+      workspaceId,
+      `member@${domain}`,
+      width,
+    );
+    await deactivateAndRevokeDirectory(page, request, directory);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

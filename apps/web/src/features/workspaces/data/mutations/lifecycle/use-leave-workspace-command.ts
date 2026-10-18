@@ -5,11 +5,14 @@ import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { leaveWorkspace } from '../../workspaces.api';
+import { directoryMembershipFeedback } from '../../../model/directory-membership';
 
 /** Why leaving failed, in words; the owner is told what to do first. */
 function leaveFailure(cause: unknown): string {
   if (isUncertainOutcome(cause))
     return 'We couldn’t confirm whether you left. Try again — it’s the same request, so it can’t happen twice.';
+  const directoryFeedback = directoryMembershipFeedback(cause);
+  if (directoryFeedback !== undefined) return directoryFeedback;
   if (isApiError(cause) && cause.status === 403)
     return 'The owner can’t leave. Make another member the owner from Team first.';
   return describeCommandError(cause, 'leaving the workspace');

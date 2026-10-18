@@ -9423,6 +9423,7 @@
               "workspace.member_role_revision_conflict",
               "workspace.member_role_transition_conflict",
               "workspace.member_removal_conflict",
+              "workspace.member_directory_managed",
               "workspace.member_status_conflict",
               "workspace.invitation_conflict",
               "workspace.invitation_proof_expired",

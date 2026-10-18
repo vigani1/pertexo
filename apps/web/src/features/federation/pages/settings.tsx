@@ -1,3 +1,4 @@
+import type { FederationSection } from '../search.public';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type {
@@ -15,6 +16,7 @@ export function FederationSettingsPage({
   scope,
   workspace,
   testResult,
+  section = 'sign-in',
   navigateToProvider = (url) => {
     window.location.assign(url);
   },
@@ -22,6 +24,7 @@ export function FederationSettingsPage({
   scope: FederationScope;
   workspace: AccessibleWorkspace;
   testResult?: 'passed' | 'failed' | undefined;
+  section?: FederationSection | undefined;
   navigateToProvider?: (url: string) => void;
 }>) {
   const allowed = workspace.capabilities.includes('member:read');
@@ -93,6 +96,8 @@ export function FederationSettingsPage({
               organization={snapshot.organization}
               editable={editable}
               navigateToProvider={navigateToProvider}
+              workspace={workspace}
+              section={section}
             />
           )}
         </>

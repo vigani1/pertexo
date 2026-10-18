@@ -184,6 +184,13 @@ export function deleteDirectoryGroup(
         id,
       );
       assertDirectoryRevision(group.revision, expectedRevision);
+      const mapped =
+        (
+          await client.query(
+            'select 1 from app.auth_directory_group_mappings where organization_id=$1 and group_id=$2 limit 1',
+            [principal.organizationId, id],
+          )
+        ).rowCount !== 0;
       const affected = await replaceMembers(
         client,
         principal.organizationId,
@@ -194,6 +201,11 @@ export function deleteDirectoryGroup(
         'delete from app.auth_directory_groups where organization_id=$1 and id=$2',
         [principal.organizationId, id],
       );
+      if (mapped)
+        await client.query(
+          'update app.auth_organizations set revision=revision+1 where id=$1',
+          [principal.organizationId],
+        );
       await projectDirectoryMemberships(
         client,
         organization,

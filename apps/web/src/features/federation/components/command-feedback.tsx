@@ -3,7 +3,13 @@ import { Button } from '@/components/ui/button';
 import type { FederationCommandState } from '../data/use-command';
 export function CommandFeedback({
   command,
-}: Readonly<{ command: FederationCommandState }>) {
+}: Readonly<{
+  command: Pick<
+    FederationCommandState,
+    'error' | 'pending' | 'uncertain' | 'expired'
+  > &
+    Readonly<{ retry: (() => void) | (() => Promise<boolean>) }>;
+}>) {
   return command.error === undefined ? null : (
     <Notice
       tone="warning"

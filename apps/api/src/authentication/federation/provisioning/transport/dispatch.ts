@@ -22,10 +22,7 @@ import {
 } from '../protocol/query.js';
 import type { DirectoryResourceType } from '../protocol/core.js';
 
-export function sendDirectoryDocument(
-  reply: FastifyReply,
-  document: unknown,
-): void {
+function sendDirectoryDocument(reply: FastifyReply, document: unknown): void {
   const body = JSON.stringify(document);
   if (Buffer.byteLength(body) > DIRECTORY_LIMITS.responseBytes)
     throw new DirectoryError('limit');
