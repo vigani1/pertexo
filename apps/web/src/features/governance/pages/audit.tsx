@@ -1,18 +1,28 @@
-import { GovernanceSettings } from '../components/settings';
 import { useState } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { DownloadIcon } from 'lucide-react';
 import type { AccessibleWorkspace, AuditFilter } from '@pertexo/contracts';
-import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings-section';
-import { LoadMore } from '@/components/patterns/load-more';
+import {
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderMeta,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
+import { RecentLog } from '@/components/patterns/recent-log';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { StatusGlyph } from '@/components/ui/status';
-import { formatDateTime } from '@/lib/format/time';
 import { describeCommandError } from '@/lib/api/error-copy';
+import { GovernanceSettings } from '../components/settings';
 import { AuditFilters } from '../components/filters';
-import { auditQueryOptions } from '../data/audit.queries';
+import { AuditEntry } from '../components/entry';
+import {
+  auditQueryOptions,
+  governanceQueryOptions,
+} from '../data/audit.queries';
 import { exportAudit, type GovernanceScope } from '../data/audit.api';
+import { auditActionWords } from '../model/ledger';
+
+/** Who changed what, read as sentences, newest first and grouped by day. */
 export function AuditPage({
   scope,
   workspace,
@@ -29,34 +39,39 @@ export function AuditPage({
     ...auditQueryOptions(scope, filters),
     enabled: allowed,
   });
+  const settings = useQuery({
+    ...governanceQueryOptions(scope),
+    enabled: allowed,
+  });
   const [downloadError, setDownloadError] = useState<string>();
   if (!allowed)
     return (
       <Notice>Only workspace owners and admins can read the audit log.</Notice>
     );
-  const entries = events.data?.pages.flatMap((page) => page.items) ?? [];
+  const entries = events.data?.pages.flatMap((page) => page.items);
+  const actionWords =
+    filters.action === undefined ? undefined : auditActionWords(filters.action);
+  const narrowed = Object.keys(filters).length > 0;
   return (
-    <div className="flex min-w-0 max-w-5xl flex-col gap-6">
+    <div className="flex min-w-0 max-w-4xl flex-col gap-8">
       <PageHeader>
-        <PageHeaderTitle>Audit log</PageHeaderTitle>
-      </PageHeader>
-      <p className="flex items-center gap-2 border-y border-border py-4 text-sm text-muted-foreground">
-        <StatusGlyph tone="neutral" />A record of who changed what. Metadata
-        only.
-      </p>
-      <SettingsSection
-        title="Find events"
-        description="Filter by person, action, target or UTC date range. The newest events appear first."
-      >
-        <AuditFilters
-          key={JSON.stringify(filters)}
-          filters={filters}
-          onApply={onFilter}
-        />
-        <div className="mt-3">
+        <div>
+          <PageHeaderTitle>Audit log</PageHeaderTitle>
+          <PageHeaderMeta>
+            <span>Who changed what in this workspace</span>
+            {settings.data === undefined ? null : (
+              <span>
+                kept {settings.data.auditRetentionDays.toLocaleString()} days
+              </span>
+            )}
+          </PageHeaderMeta>
+        </div>
+        <PageHeaderActions>
           <Button
             type="button"
             variant="outline"
+            size="sm"
+            title="Up to 100,000 matching events as a file"
             onClick={() => {
               setDownloadError(undefined);
               try {
@@ -68,101 +83,50 @@ export function AuditPage({
               }
             }}
           >
-            Export matching events
+            <DownloadIcon aria-hidden="true" data-icon="inline-start" />
+            {narrowed ? 'Export these events' : 'Export'}
           </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Up to 100,000 events per download. Choose a narrower date range for
-          larger logs. Your browser reports interrupted downloads. Changes
-          during an export may be absent.
-        </p>
-        {downloadError === undefined ? null : (
-          <Notice tone="warning">{downloadError}</Notice>
+        </PageHeaderActions>
+      </PageHeader>
+      {downloadError === undefined ? null : (
+        <Notice tone="warning">{downloadError}</Notice>
+      )}
+      <AuditFilters
+        key={JSON.stringify(filters)}
+        filters={filters}
+        {...(actionWords === undefined ? {} : { actionWords })}
+        onApply={onFilter}
+      />
+      <RecentLog
+        title="Events"
+        headingLevel="h2"
+        subject="audit events"
+        loadMoreLabel="Load older events"
+        empty={
+          narrowed
+            ? 'Nothing matches. Widen the dates or clear a filter.'
+            : 'Nothing has changed yet. Publishing, sign-ins and changes to people, connections and settings appear here.'
+        }
+        query={events}
+        items={entries}
+        itemKey={(event) => event.id}
+        dayOf={(event) => event.occurredAt}
+        renderItem={(event) => (
+          <AuditEntry
+            workspaceId={workspace.id}
+            event={event}
+            onOnlyAction={(action) => {
+              onFilter({ ...filters, action });
+            }}
+            onOnlyTarget={(targetType, targetId) => {
+              onFilter({ ...filters, targetType, targetId });
+            }}
+          />
         )}
-      </SettingsSection>
-      <section aria-label="Audit events">
-        {events.isPending ? <p role="status">Loading audit events…</p> : null}
-        {events.isError && entries.length === 0 ? (
-          <Notice
-            tone="warning"
-            action={
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void events.refetch()}
-              >
-                Retry
-              </Button>
-            }
-          >
-            Audit events could not be loaded.
-          </Notice>
-        ) : null}
-        {!events.isPending && !events.isError && entries.length === 0 ? (
-          <p className="py-6 text-sm text-muted-foreground">
-            No events match these filters.
-          </p>
-        ) : null}
-        <ol className="divide-y divide-border">
-          {entries.map((event) => (
-            <li key={event.id} className="flex min-w-0 gap-3 py-4">
-              <StatusGlyph tone="neutral" className="mt-1 shrink-0" />
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-sm font-medium [overflow-wrap:anywhere]">
-                  {event.actorName ??
-                    (event.actorId === null ? 'System' : 'Former member')}{' '}
-                  <span className="font-normal text-muted-foreground">
-                    {event.action}
-                  </span>
-                </p>
-                <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
-                  {event.targetType}
-                  {event.targetId === null ? '' : `: ${event.targetId}`}
-                </p>
-                <time
-                  className="block text-xs text-muted-foreground"
-                  dateTime={event.occurredAt}
-                >
-                  {formatDateTime(event.occurredAt)}
-                </time>
-                <details className="text-xs text-muted-foreground">
-                  <summary className="cursor-pointer py-1">
-                    Event details
-                  </summary>
-                  <dl className="space-y-1 py-2 [overflow-wrap:anywhere]">
-                    <div>
-                      <dt className="inline">Event ID: </dt>
-                      <dd className="inline">{event.id}</dd>
-                    </div>
-                    {event.actorId === null ? null : (
-                      <div>
-                        <dt className="inline">Person ID: </dt>
-                        <dd className="inline">{event.actorId}</dd>
-                      </div>
-                    )}
-                    {Object.entries(event.metadata).map(([name, value]) => (
-                      <div key={name}>
-                        <dt className="inline">{name}: </dt>
-                        <dd className="inline">{String(value)}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </details>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <LoadMore
-          subject="audit events"
-          hasNextPage={events.hasNextPage}
-          loading={events.isFetchingNextPage}
-          failed={events.isFetchNextPageError}
-          onLoadMore={() => {
-            if (!events.isFetching) void events.fetchNextPage();
-          }}
-        />
-      </section>
-      <GovernanceSettings scope={scope} workspace={workspace} />
+      />
+      <div className="flex flex-col">
+        <GovernanceSettings scope={scope} workspace={workspace} />
+      </div>
     </div>
   );
 }
