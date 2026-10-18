@@ -1,4 +1,7 @@
-import type { WorkflowRunSummary } from '@pertexo/contracts';
+import type {
+  WorkflowGraphContract,
+  WorkflowRunSummary,
+} from '@pertexo/contracts';
 import { formatDurationMs, formatShortTime } from '@/lib/format/time';
 import { runDurationMs } from '../list/runs';
 import { isActiveRunStatus } from './run-status';
@@ -66,6 +69,28 @@ function failedSentence(
     : `Failed at ${failed.label}`;
 }
 
+const STOP_RUN = 'core.terminate';
+
+/**
+ * The word the workflow ended on, when a Stop run step that finished the run
+ * names a fixed outcome, such as "rejected". Computed outcomes stay unnamed.
+ */
+export function runEnding(
+  rows: readonly Pick<RunTimelineRow, 'nodeId' | 'definitionKey' | 'status'>[],
+  graph: Pick<WorkflowGraphContract, 'nodes'> | undefined,
+): string | undefined {
+  const stop = rows.find(
+    (row) => row.definitionKey === STOP_RUN && row.status === 'succeeded',
+  );
+  const mapping = graph?.nodes.find((node) => node.id === stop?.nodeId)
+    ?.inputMappings.outcome;
+  return mapping?.kind === 'literal' &&
+    typeof mapping.value === 'string' &&
+    mapping.value.trim() !== ''
+    ? mapping.value.trim()
+    : undefined;
+}
+
 /**
  * The run page's headline: one sentence that says where the run is, instead
  * of a status badge. "Retrying Send receipt", "Succeeded in 4.2 s".
@@ -82,6 +107,8 @@ export function describeRunSentence(
   >,
   rows: readonly StepFacts[],
   nowMs: number,
+  /** The workflow's own word for how it ended, from `runEnding`. */
+  ending?: string,
 ): string {
   const active = isActiveRunStatus(run.status);
   if (active && run.cancelRequestedAt !== null) return 'Stopping…';
@@ -91,9 +118,13 @@ export function describeRunSentence(
     case 'succeeded':
       if ((run.handledFailureCount ?? 0) > 0)
         return `Finished — ${String(run.handledFailureCount)} ${run.handledFailureCount === 1 ? 'failure' : 'failures'} handled`;
-      return durationMs === undefined
-        ? 'Succeeded'
-        : `Succeeded in ${formatDurationMs(durationMs)}`;
+      {
+        const succeeded =
+          ending === undefined ? 'Succeeded' : `Succeeded as “${ending}”`;
+        return durationMs === undefined
+          ? succeeded
+          : `${succeeded} in ${formatDurationMs(durationMs)}`;
+      }
     case 'failed':
       return failedSentence(rows, durationMs);
     case 'timed_out': {

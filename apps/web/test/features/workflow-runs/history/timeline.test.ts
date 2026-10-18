@@ -6,7 +6,10 @@ import type {
 } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { describeRunEvent } from '@/features/workflow-runs/model/timeline/event-copy';
-import { describeRunSentence } from '@/features/workflow-runs/model/presentation/run-sentence';
+import {
+  describeRunSentence,
+  runEnding,
+} from '@/features/workflow-runs/model/presentation/run-sentence';
 import { describeStepError } from '@/features/workflow-runs/model/step-inspection/step-error-copy';
 import {
   stepTag,
@@ -394,6 +397,9 @@ describe('run copy', () => {
   it('describes finished runs in one sentence', () => {
     const done = runSummary('succeeded', { completedAt: at(4.2) });
     expect(describeRunSentence(done, [], start)).toBe('Succeeded in 4.2s');
+    expect(describeRunSentence(done, [], start, 'rejected')).toBe(
+      'Succeeded as “rejected” in 4.2s',
+    );
     expect(
       describeRunSentence(
         runSummary('running', { cancelRequestedAt: at(3) }),
@@ -678,5 +684,59 @@ describe('handled failure history', () => {
     expect(describeRunSentence(done, [], start + 40_000_000)).toBe(
       'Finished — 1 failure handled',
     );
+  });
+});
+
+describe('a run’s ending', () => {
+  const stop = (id: string, value: unknown) => ({
+    id,
+    inputMappings: { outcome: { kind: 'literal', value } },
+  });
+  it('names the fixed outcome of the Stop run step that finished the run', () => {
+    const graph = {
+      nodes: [stop('accepted', 'accepted'), stop('rejected', 'rejected')],
+    } as unknown as Parameters<typeof runEnding>[1];
+    expect(
+      runEnding(
+        [
+          {
+            nodeId: 'accepted',
+            definitionKey: 'core.terminate',
+            status: 'skipped',
+          },
+          {
+            nodeId: 'rejected',
+            definitionKey: 'core.terminate',
+            status: 'succeeded',
+          },
+        ],
+        graph,
+      ),
+    ).toBe('rejected');
+  });
+  it('stays unnamed for computed outcomes or runs without a Stop run step', () => {
+    const graph = {
+      nodes: [
+        {
+          id: 'computed',
+          inputMappings: {
+            outcome: { kind: 'node_output', nodeId: 'a', path: '$' },
+          },
+        },
+      ],
+    } as unknown as Parameters<typeof runEnding>[1];
+    expect(
+      runEnding(
+        [
+          {
+            nodeId: 'computed',
+            definitionKey: 'core.terminate',
+            status: 'succeeded',
+          },
+        ],
+        graph,
+      ),
+    ).toBeUndefined();
+    expect(runEnding([], graph)).toBeUndefined();
   });
 });

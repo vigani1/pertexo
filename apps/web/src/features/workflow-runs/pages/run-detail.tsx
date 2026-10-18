@@ -24,7 +24,10 @@ import {
   StepError,
   RunStepDetails,
 } from '../components/run-detail/step-details';
-import { describeRunSentence } from '../model/presentation/run-sentence';
+import {
+  describeRunSentence,
+  runEnding,
+} from '../model/presentation/run-sentence';
 import { isActiveRunStatus } from '../model/presentation/run-status';
 import { upstreamSteps } from '../model/step-inspection/step-inputs';
 import { buildRunTimeline, type RunTimelineRow } from '../model/timeline/runs';
@@ -190,7 +193,12 @@ export function RunDetailPage({
           userId={user.id}
           workspace={workspace}
           run={run}
-          sentence={describeRunSentence(run, view.rows, nowMs)}
+          sentence={describeRunSentence(
+            run,
+            view.rows,
+            nowMs,
+            runEnding(view.rows, version.data?.graph),
+          )}
           nowMs={nowMs}
           versionNumber={version.data?.versionNumber}
           liveStatus={events.connectionStatus}
