@@ -104,16 +104,30 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
               },
             },
           });
-          const reply = await transport.inject({
-            method: 'GET',
-            url: `${f.base}/ServiceProviderConfig`,
-            headers: f.headers,
-          });
-          expect(reply.statusCode).toBe(mode === 'backend' ? 503 : 429);
-          expect(reply.headers['content-type']).toContain(
-            'application/scim+json',
-          );
-          expect(authenticated).toHaveBeenCalledTimes(mode === 'post' ? 1 : 0);
+          for (const method of [
+            'GET',
+            'POST',
+            'PUT',
+            'PATCH',
+            'DELETE',
+          ] as const) {
+            authenticated.mockClear();
+            const reply = await transport.inject({
+              method,
+              url: `${f.base}/${method === 'GET' ? 'ServiceProviderConfig' : 'Users'}`,
+              headers: f.headers,
+              ...(method === 'GET' || method === 'DELETE'
+                ? {}
+                : { payload: {} }),
+            });
+            expect(reply.statusCode).toBe(mode === 'backend' ? 503 : 429);
+            expect(reply.headers['content-type']).toContain(
+              'application/scim+json',
+            );
+            expect(authenticated).toHaveBeenCalledTimes(
+              mode === 'post' ? 1 : 0,
+            );
+          }
         } finally {
           authenticated.mockRestore();
           await transport.close();

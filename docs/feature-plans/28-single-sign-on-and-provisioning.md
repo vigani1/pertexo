@@ -187,6 +187,11 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
   creation, pending person/group, builder mapping, verified SSO with JIT disabled,
   managed team membership, inactive person and credential revocation. Screenshots
   inspected at both widths. No external provider account or image download.
+- Native SCIM registration uses the same per-method Fastify shorthand as the
+  existing authentication boundary. Runtime IP/organization admission still runs
+  before parsing/authentication/dispatch; real API tests exercise refusal and
+  backend-unavailable responses on every supported method. CodeQL's per-route
+  limiter model excludes the alternative `route({...})` registration form.
 - Web unit suite: 1,284 cases passing. React Doctor changed scope: 100/100, no
   suppressions. Final lint/types/build, contracts/schema/boundaries, mocked browser
   suite and normal hooks/required CI remain merge gates.

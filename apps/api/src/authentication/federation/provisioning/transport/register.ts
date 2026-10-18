@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type {
+  FastifyInstance,
+  FastifyRequest,
+  FastifyReply,
+  RouteShorthandOptions,
+} from 'fastify';
 import {
   DirectoryError,
   DIRECTORY_LIMITS,
@@ -79,9 +84,7 @@ export function registerDirectoryTransport(
       }
       return false;
     }
-    scoped.route({
-      method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-      url: '/v1/auth/federation/scim/:organizationId/v2/*',
+    const options: RouteShorthandOptions = {
       bodyLimit: DIRECTORY_LIMITS.requestBytes,
       config: { rateLimit: 'directory_provisioning' },
       onRequest: async (request, reply) => {
@@ -135,16 +138,22 @@ export function registerDirectoryTransport(
         }
         principals.set(request, { principal, path: parsed.data['*'] });
       },
-      handler: async (request, reply) => {
-        const context = principals.get(request);
-        if (context === undefined) throw new DirectoryError('unauthorized');
-        await dispatchDirectoryRequest(request, reply, {
-          ...context,
-          store: input.store,
-          publicOrigin: new URL(input.publicOrigin).origin,
-        });
-      },
-    });
+    };
+    const handler = async (request: FastifyRequest, reply: FastifyReply) => {
+      const context = principals.get(request);
+      if (context === undefined) throw new DirectoryError('unauthorized');
+      await dispatchDirectoryRequest(request, reply, {
+        ...context,
+        store: input.store,
+        publicOrigin: new URL(input.publicOrigin).origin,
+      });
+    };
+    const path = '/v1/auth/federation/scim/:organizationId/v2/*';
+    scoped.get(path, options, handler);
+    scoped.post(path, options, handler);
+    scoped.put(path, options, handler);
+    scoped.patch(path, options, handler);
+    scoped.delete(path, options, handler);
     done();
   });
 }
