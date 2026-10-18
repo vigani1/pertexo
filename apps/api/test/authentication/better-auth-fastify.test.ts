@@ -442,6 +442,20 @@ describe('Better Auth Fastify bridge', () => {
       endpointClass: 'identity_callback',
       failureMode: 'closed',
     });
+    const form = await application.inject({
+      method: 'POST',
+      url: '/v1/auth/federation/social/callback/apple',
+      headers: {
+        origin: 'https://appleid.apple.com',
+        'content-type': 'application/json',
+      },
+      payload: { code: 'example' },
+    });
+    expect(form.statusCode).toBe(429);
+    expect(consume.mock.calls[2]?.[0]).toMatchObject({
+      endpointClass: 'identity_callback',
+      failureMode: 'closed',
+    });
     expect(handler).not.toHaveBeenCalled();
   });
 
