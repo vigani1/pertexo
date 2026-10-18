@@ -60,7 +60,7 @@ export function VariableEditorFeedback({
         >
           {isApiError(command.cause) &&
           command.cause.problem?.code === 'variables.changed'
-            ? 'Someone changed the shared values. Your edits are kept. Reload current values before saving again.'
+            ? 'Someone changed the shared values. Your edits are kept; discard them to load the latest values, then save again.'
             : command.error}
         </Notice>
       )}

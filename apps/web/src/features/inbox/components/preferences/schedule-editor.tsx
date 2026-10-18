@@ -127,6 +127,12 @@ export function NotificationScheduleEditor({
   const locked = command.pending || command.uncertain || reloading;
   const serverRevision =
     target === 'personal' ? snapshot.revision : snapshot.defaults.revision;
+  const loaded = initial(snapshot, target);
+  const changed =
+    draft.mode !== loaded.mode ||
+    draft.hour !== loaded.hour ||
+    draft.timeZone !== loaded.timeZone;
+  const stale = serverRevision !== draft.baseRevision;
   function change(patch: Partial<typeof draft>) {
     setDraft((current) => ({ ...current, ...patch }));
     setSaved(false);
@@ -186,10 +192,10 @@ export function NotificationScheduleEditor({
         void command.send(parsed.data);
       }}
     >
-      {serverRevision !== draft.baseRevision ? (
+      {stale ? (
         <Notice tone="warning">
-          These choices changed. Your draft is kept; reload current choices
-          before saving again.
+          These choices changed elsewhere. Your edits are kept; discard them to
+          load the latest choices, then save again.
         </Notice>
       ) : null}
       <fieldset disabled={locked} className="contents">
@@ -282,14 +288,20 @@ export function NotificationScheduleEditor({
         >
           {command.pending ? 'Saving…' : 'Save choices'}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={locked}
-          onClick={() => void reload()}
-        >
-          {reloading ? 'Loading…' : 'Reload current choices'}
-        </Button>
+        {changed || stale ? (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={locked}
+            onClick={() => void reload()}
+          >
+            {reloading
+              ? 'Loading…'
+              : changed
+                ? 'Discard changes'
+                : 'Load the latest choices'}
+          </Button>
+        ) : null}
       </div>
     </form>
   );

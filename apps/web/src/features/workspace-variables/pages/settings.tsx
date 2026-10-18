@@ -37,13 +37,23 @@ export function WorkspaceVariablesPage({
       </div>
       <SettingsSection
         title="Shared configuration"
-        description="Text, numbers and true/false. Every workspace member can read these values. Use Connections for credentials, never variables."
+        description="Text, numbers and true/false that every member can read. Secrets belong in Connections."
       >
-        <p className="text-sm text-muted-foreground">
-          Use <code translate="no">$vars.NAME</code> in mappings. Up to 100
-          names, 4,096 characters per text value and 32 KB in total. Replay,
-          recovery and child workflows retain their original values.
-        </p>
+        <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+          <p>
+            Use <code translate="no">$vars.NAME</code> in a step’s mappings.
+          </p>
+          <details className="text-xs">
+            <summary className="w-fit cursor-pointer rounded-sm py-0.5 outline-none focus-ring hover:text-foreground">
+              Limits
+            </summary>
+            <p className="mt-1.5 max-w-lg leading-relaxed">
+              Up to 100 names, 4,096 characters per text value and 32 KB in all.
+              A replay, a recovery or a child workflow keeps the values its run
+              started with.
+            </p>
+          </details>
+        </div>
         {query.isError ? (
           <Notice
             tone="warning"

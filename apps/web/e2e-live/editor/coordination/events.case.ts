@@ -305,7 +305,7 @@ test('coordinates all three real signed webhook policies with visible history', 
     await expect(
       page.getByText(
         new RegExp(
-          `${mode === 'deduplicate' ? '2' : mode === 'debounce' ? '4' : '6'} events evaluated by trigger coordination`,
+          `${mode === 'deduplicate' ? '2' : mode === 'debounce' ? '4' : '6'} events matched up by trigger coordination`,
           'u',
         ),
       ),
