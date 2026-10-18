@@ -12,6 +12,7 @@ import { cardClassName, cardIdentity, handleClass, nodeLabel } from './style';
  * Only the selected card animates (its scan edge).
  */
 export function WorkflowNodeCard({
+  id,
   data,
   selected,
 }: NodeProps<WorkflowFlowNode>) {
@@ -54,7 +55,7 @@ export function WorkflowNodeCard({
           links={data.links.outputs}
         />
       ) : null}
-      <NodeMarks data={data} />
+      <NodeMarks id={id} data={data} />
       {branchingOut || data.outputPorts[0] === undefined ? null : (
         <Handle
           id={data.outputPorts[0]}

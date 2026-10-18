@@ -3,11 +3,12 @@ import { describeNodeStatus } from '@/features/workflow-runs/run-labels.public';
 import { Handle, Position } from '@xyflow/react';
 import {
   ArrowRightToLineIcon,
+  MessageSquareIcon,
   PinIcon,
   PlugIcon,
   PowerOffIcon,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { use, type ReactNode } from 'react';
 import {
   StepTile,
   type StepPresentation,
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { portName } from '@/features/catalog/presentation.public';
 import { portLinkLabel } from '../../../model/step-card';
+import { StepDiscussionsContext } from '../../../model/state/discussions';
 import { handleClass } from './style';
 
 /**
@@ -64,8 +66,10 @@ export function IssueBadge({ count }: Readonly<{ count: number }>) {
  * disabled or deprecated.
  */
 export function NodeMarks({
+  id,
   data,
-}: Readonly<{ data: WorkflowFlowNode['data'] }>) {
+}: Readonly<{ id: string; data: WorkflowFlowNode['data'] }>) {
+  const discussions = use(StepDiscussionsContext).get(id) ?? 0;
   const facts: ReactNode[] = [];
   if (data.testStatus !== undefined) {
     const look = describeNodeStatus(data.testStatus);
@@ -82,6 +86,13 @@ export function NodeMarks({
       </Mark>,
     );
   const marks = stepMarks(data);
+  if (discussions > 0)
+    marks.push(
+      <Mark key="discussions">
+        <MessageSquareIcon aria-hidden="true" />
+        {discussions} open {discussions === 1 ? 'discussion' : 'discussions'}
+      </Mark>,
+    );
   if (facts.length === 0 && marks.length === 0) return null;
   return (
     <div className="mt-2.5 flex flex-col gap-1.5">

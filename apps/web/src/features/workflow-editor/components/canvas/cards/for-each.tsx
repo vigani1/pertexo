@@ -114,7 +114,7 @@ export function ForEachNodeCard({
         </div>
       </section>
       <div className="flex flex-col gap-1.5 px-3 pt-0.5 pb-2.5">
-        <NodeMarks data={data} />
+        <NodeMarks id={id} data={data} />
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {data.loop === null ? null : (
             <>
