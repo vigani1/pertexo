@@ -100,6 +100,17 @@ before directory-managed grants apply. JIT cannot recreate access from an inacti
 directory record. Groups map to one existing workspace role by explicit priority,
 with a default role when none matches; there is no capability union or automatic
 owner. Ordinary role edits direct managed members back to their directory policy.
+An owner may explicitly adopt an active manual membership after verified SSO
+binds its directory identity; the reviewed role and revisions are rechecked.
+
+Directory membership provenance is a source association, not another role/status
+store; existing memberships remain authoritative. Removing the organization or
+unlinking a workspace removes its managed grants before deleting provenance,
+without converting them into manual grants. Either workspace owner may revoke a
+non-control link; creating that delegation still requires both owners. Provisioning credentials are shown
+once; command receipts contain public metadata only, never recoverable bearer
+material. Protocol parsing and case normalization stay at the boundary, with
+bounded typed filters and detached, atomic PATCH application.
 
 Every provisioning mutation, effective membership update, removed-member cleanup,
 role revision, session revocation and audit fact commits together in the existing
