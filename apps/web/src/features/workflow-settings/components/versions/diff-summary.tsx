@@ -1,6 +1,6 @@
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { cn } from '@/lib/utils';
-import { diffWorkflowGraphs, isEmptyDiff } from '../../model/versions/diff';
+import { diffWorkflowGraphs, isEmptyDiff } from '@/features/workflows/comparison.public';
 
 function ChangeList({
   title,

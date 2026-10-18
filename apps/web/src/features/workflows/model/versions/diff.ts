@@ -1,5 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { stepLabel } from '@/features/workflows/shape.public';
+import { stepLabel } from '../shape';
 import { canonicalizeJson } from '@/lib/canonical-json';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
