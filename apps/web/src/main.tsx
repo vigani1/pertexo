@@ -17,6 +17,11 @@ if (!container) throw new Error('Missing application root');
 const queryClient = createQueryClient();
 const apiClient = createBrowserApiClient();
 const router = createAppRouter(queryClient, apiClient);
+// The router fetches a page's code only after its session check answers. On
+// a cold start, fetch it alongside: a failure here resurfaces when the router
+// loads the page itself.
+for (const route of router.getMatchedRoutes(window.location.pathname)[0])
+  void router.loadRouteChunk(route)?.catch(() => undefined);
 
 subscribeSessionChanges(() => {
   const editorIsOpen = router.state.matches.some(
