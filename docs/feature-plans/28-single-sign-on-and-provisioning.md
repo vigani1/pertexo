@@ -326,6 +326,9 @@ Sources: [Node-SAML](https://github.com/node-saml/node-saml),
   All four cross-site POSTs carry the purpose cookie and neither ordinary session
   nor CSRF cookie. Readiness creates no account; exactly two sign-in accounts
   remain. Public settings/account screenshots were inspected with reduced motion.
+  Owned transport probes reject noncanonical AuthnRequest encodings and absolute/
+  network request targets; both upstream proxy authorities stay fixed. The exact
+  SAML callback is covered by the existing distributed, fail-closed admission.
 - Cached Caddy/nginx probes preserve exact SAML POST bytes and cookie forwarding,
   including replacement session cookies. Successful callbacks and API-down errors
   disclose no proof, binding, state or authentication path to nginx logs. The
