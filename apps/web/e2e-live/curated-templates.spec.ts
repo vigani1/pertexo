@@ -153,10 +153,9 @@ test('owned complete examples retain historical origin through independent edits
     const id = await importReviewedDraft(page, dialog);
     importedWorkflowIds.push(id);
     await expect(
-      page.getByText(
-        `Based on template ${descriptor.templateId} v${String(descriptor.templateVersion)}`,
-        { exact: false },
-      ),
+      page.getByText(`Started from the “${descriptor.title}” example`, {
+        exact: false,
+      }),
     ).toBeVisible();
     expect(await readOrigin(page, seed.workspaceId, id)).toMatchObject({
       templateId: descriptor.templateId,
@@ -271,9 +270,7 @@ test('owned complete examples retain historical origin through independent edits
     .fill('Ordinary portable reimport');
   const reimportedWorkflowId = await importReviewedDraft(page, reimport);
   // A workflow without a recorded origin shows no origin line.
-  await expect(
-    page.getByText('Based on template', { exact: false }),
-  ).toHaveCount(0);
+  await expect(page.getByText(/started from/iu)).toHaveCount(0);
   expect(
     await readOrigin(page, seed.workspaceId, reimportedWorkflowId),
   ).toBeNull();

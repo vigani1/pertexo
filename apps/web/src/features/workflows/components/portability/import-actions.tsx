@@ -97,7 +97,7 @@ export function WorkflowImportFeedback({
       )}
       {state.kind === 'confirmed' && !denied ? (
         <Notice tone="success" className="mt-4">
-          The independent workflow draft was created.
+          Draft created. Nothing runs until you publish it.
         </Notice>
       ) : null}
     </>

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowTemplateOriginQueryOptions } from '../../data/origin/queries';
@@ -50,13 +51,18 @@ function OriginSnapshot({
   // The origin is a quiet note: nothing shows until one is known.
   const origin = canRead && !denied ? query.data?.templateOrigin : undefined;
   if (origin === undefined || origin === null) return null;
+  const title = CURATED_WORKFLOW_TEMPLATES.find(
+    (template) => template.templateId === origin.templateId,
+  )?.title;
   return (
     <p
       className="text-xs text-muted-foreground"
-      title="Historical basis only; later edits are independent and not checked against the template."
+      title={`Example version ${String(origin.templateVersion)}. Later edits are this workflow’s own; the example never changes it.`}
     >
-      Based on template {origin.templateId} v{origin.templateVersion}
-      {origin.derivation === 'inherited' ? ' (inherited)' : ''}
+      {origin.derivation === 'inherited'
+        ? 'Copied from a workflow that started from '
+        : 'Started from '}
+      {title === undefined ? 'an example' : `the “${title}” example`}
     </p>
   );
 }

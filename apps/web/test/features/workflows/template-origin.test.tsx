@@ -68,7 +68,7 @@ describe('Scoped historical template origin projection', () => {
         ),
       );
       const { queryClient } = mount();
-      await screen.findByText(/Based on template/u);
+      await screen.findByText(/started from/iu);
       const queryKey =
         scope === 'inbox'
           ? ['identity', userId, 'workspace', workspaceId, 'inbox']
@@ -89,7 +89,7 @@ describe('Scoped historical template origin projection', () => {
           })
           .catch(() => undefined);
       });
-      expect(screen.getByText(/Based on template/u)).toBeInTheDocument();
+      expect(screen.getByText(/started from/iu)).toBeInTheDocument();
       expect(screen.queryByText(/access changed/u)).not.toBeInTheDocument();
       expect(
         queryClient.getQueryData(
@@ -120,7 +120,7 @@ describe('Scoped historical template origin projection', () => {
         ),
       );
       const { queryClient } = mount();
-      await screen.findByText(/Based on template/u);
+      await screen.findByText(/started from/iu);
       act(() => {
         if (scope === 'session') {
           window.dispatchEvent(
@@ -169,7 +169,7 @@ describe('Scoped historical template origin projection', () => {
           }),
         ).toBe(0);
       });
-      expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
+      expect(screen.queryByText(/started from/iu)).not.toBeInTheDocument();
       expect(
         queryClient.getQueryData(
           workflowTemplateOriginKey(userId, workspaceId, workflowId),
@@ -210,15 +210,13 @@ describe('Scoped historical template origin projection', () => {
         ),
       );
       await waitFor(() => {
-        expect(
-          screen.queryByText(/Based on template/u),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/started from/iu)).not.toBeInTheDocument();
       });
       await act(async () => {
         release();
         await held;
       });
-      expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
+      expect(screen.queryByText(/started from/iu)).not.toBeInTheDocument();
       expect(
         queryClient.getQueryData(
           workflowTemplateOriginKey(userId, workspaceId, workflowId),
@@ -250,8 +248,9 @@ describe('Scoped historical template origin projection', () => {
       }),
     );
     const { queryClient } = mount();
+    // An example this build no longer knows is still named as an example.
     await screen.findByText(
-      /Based on template retired-reviewed-example v7 \(inherited\)/u,
+      'Copied from a workflow that started from an example',
     );
     name = 'Renamed and edited graph';
     await act(async () => {
@@ -259,7 +258,9 @@ describe('Scoped historical template origin projection', () => {
         queryKey: workflowKeys.scope(userId, workspaceId),
       });
     });
-    await screen.findByText(/Based on template retired-reviewed-example v7/u);
+    await screen.findByText(
+      'Copied from a workflow that started from an example',
+    );
     expect(
       queryClient.getQueryData(
         workflowTemplateOriginKey(userId, workspaceId, workflowId),
@@ -285,7 +286,7 @@ describe('Scoped historical template origin projection', () => {
         ),
       ).toMatchObject({ templateOrigin: null });
     });
-    expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/started from/iu)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -317,7 +318,7 @@ describe('Scoped historical template origin projection', () => {
         )?.status,
       ).toBe('error');
     });
-    expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/started from/iu)).not.toBeInTheDocument();
   });
 
   it.each(['workflow', 'session'] as const)(
@@ -386,7 +387,7 @@ describe('Scoped historical template origin projection', () => {
         release();
         await held;
       });
-      expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
+      expect(screen.queryByText(/started from/iu)).not.toBeInTheDocument();
       expect(
         queryClient.getQueryData(
           workflowTemplateOriginKey(userId, workspaceId, workflowId),
