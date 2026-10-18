@@ -57,8 +57,8 @@ export async function projectDirectoryMemberships(
   ).rows;
   const groupMembers = (
     await client.query<{ group_id: string; directory_user_id: string }>(
-      'select group_id,directory_user_id from app.auth_directory_group_members where organization_id=$1',
-      [organization.id],
+      'select group_id,directory_user_id from app.auth_directory_group_members where organization_id=$1 and directory_user_id=any($2::uuid[])',
+      [organization.id, users.map((user) => user.id)],
     )
   ).rows;
   const groupsByUser = new Map<string, Set<string>>();
