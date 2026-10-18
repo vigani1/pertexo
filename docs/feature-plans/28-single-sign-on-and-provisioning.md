@@ -226,6 +226,8 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
   Merged [#350](https://github.com/vigani1/pertexo/pull/350) after green CI.
 - [x] Shared creation/storage/audit owner and all four production paths qualified:
   114 actual PostgreSQL cases, 571 database unit tests, strict types and lint pass.
+  Eight real API cases and all 2,192 API unit tests also pass; creation/replay
+  assertions check both correlated facts without assuming an unordered row order.
 
 ## Later
 
