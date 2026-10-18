@@ -333,30 +333,12 @@ describe('durable organization sign-in', () => {
       db.asAdmin('select email from app.users where id=$1', [user.id]),
     ).resolves.toEqual([{ email: user.email }]);
   });
-  it('never takes over an unverified existing email or changes a suspended or removed membership', async () => {
+  it('never takes over an unverified existing email', async () => {
     const fixture = await setup(true),
       user = await verifiedUser(fixture.domain);
     await db.asAdmin('update app.users set email_verified=false where id=$1', [
       user.id,
     ]);
-    await expect(
-      fixture.commands.complete({
-        ...(await begin(fixture)),
-        identity: {
-          subject: 'blocked-subject',
-          email: user.email,
-          displayName: 'Member',
-        },
-      }),
-    ).resolves.toEqual({ kind: 'failed' });
-    await db.asAdmin('update app.users set email_verified=true where id=$1', [
-      user.id,
-    ]);
-    await db.member(fixture.scope.workspaceId, user.id, 'viewer');
-    await db.asAdmin(
-      "update app.workspace_memberships set status='removed' where workspace_id=$1 and user_id=$2",
-      [fixture.scope.workspaceId, user.id],
-    );
     await expect(
       fixture.commands.complete({
         ...(await begin(fixture)),
@@ -373,13 +355,77 @@ describe('durable organization sign-in', () => {
         [user.id, fixture.providerId],
       ),
     ).resolves.toHaveLength(0);
-    await expect(
-      db.asAdmin(
-        "select id from app.audit_events where workspace_id=$1 and action='identity.membership_created'",
-        [fixture.scope.workspaceId],
-      ),
-    ).resolves.toHaveLength(0);
   });
+  it.each(['suspended', 'removed'] as const)(
+    'skips a %s membership without refusing sign-in or grants in another linked workspace',
+    async (status) => {
+      const fixture = await setup(true),
+        user = await verifiedUser(fixture.domain),
+        targetWorkspaceId = await db.workspace(fixture.owner.id);
+      const settings = await db.federation().settings(fixture.scope);
+      if (settings.organization === null)
+        throw new Error('Missing organization');
+      await db.federation().linkWorkspace({
+        ...fixture.scope,
+        targetWorkspaceId,
+        defaultRole: 'builder',
+        expectedRevision: settings.organization.revision,
+        idempotencyKey: key(),
+      });
+      await db.member(fixture.scope.workspaceId, user.id, 'operator');
+      await db.asAdmin(
+        'update app.workspace_memberships set status=$3 where workspace_id=$1 and user_id=$2',
+        [fixture.scope.workspaceId, user.id, status],
+      );
+      const previousMembership = await db.asAdmin(
+        'select * from app.workspace_memberships where workspace_id=$1 and user_id=$2',
+        [fixture.scope.workspaceId, user.id],
+      );
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const result = await fixture.commands.complete({
+          ...(await begin(fixture)),
+          identity: {
+            subject: 'stable-subject',
+            email: user.email,
+            displayName: 'Member',
+          },
+        });
+        if (result.kind !== 'signed_in') throw new Error('Sign-in failed');
+        await expect(
+          isAuthenticationSessionAllowed(
+            db.authenticationPool(),
+            await sessionId(result.token),
+          ),
+        ).resolves.toBe(true);
+      }
+      await expect(
+        db.asAdmin(
+          'select * from app.workspace_memberships where workspace_id=$1 and user_id=$2',
+          [fixture.scope.workspaceId, user.id],
+        ),
+      ).resolves.toEqual(previousMembership);
+      await expect(
+        db.asAdmin(
+          'select role,status,role_revision from app.workspace_memberships where workspace_id=$1 and user_id=$2',
+          [targetWorkspaceId, user.id],
+        ),
+      ).resolves.toEqual([
+        { role: 'builder', status: 'active', role_revision: 1 },
+      ]);
+      await expect(
+        db.asAdmin(
+          'select user_id from app.auth_accounts where user_id=$1 and provider_id=$2',
+          [user.id, fixture.providerId],
+        ),
+      ).resolves.toEqual([{ user_id: user.id }]);
+      await expect(
+        db.asAdmin(
+          "select workspace_id from app.audit_events where workspace_id=any($1::uuid[]) and action='identity.membership_created'",
+          [[fixture.scope.workspaceId, targetWorkspaceId]],
+        ),
+      ).resolves.toEqual([{ workspace_id: targetWorkspaceId }]);
+    },
+  );
   it('consumes one callback across two instances and refuses replay, wrong browser, wrong domain and stale provider revisions', async () => {
     const fixture = await setup(true),
       attempt = await begin(fixture);

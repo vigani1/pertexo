@@ -196,6 +196,21 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
   suppressions. Final lint/types/build, contracts/schema/boundaries, mocked browser
   suite and normal hooks/required CI remain merge gates.
 
+## Membership and session follow-ups (2026-10-18)
+
+1. **JIT and existing memberships:** keep every existing manual membership exactly
+   as stored, including suspended/removed rows; skip it and continue with the other
+   linked workspaces. A workspace refusal is not a rejection of a verified identity.
+   Missing memberships in active linked workspaces still receive the configured
+   default role. Unverified identities, inactive accounts and inactive directory
+   identities still fail sign-in. Keep the current workspace/user locks, scoped
+   transaction and session authority. No migration or new audit event for a skip.
+   Qualify removed/suspended memberships alongside a second eligible workspace,
+   unchanged existing roles/revisions, repeat sign-in and the unverified-email fence.
+
+- [x] JIT skip behavior and corrected real-PostgreSQL sign-in regression: 15
+  sign-in/SCIM cases and all 570 database unit tests pass; strict types/lint pass.
+
 ## Later
 
 Private-network OIDC, IdP-initiated SAML, encrypted assertions, signed SP requests,
