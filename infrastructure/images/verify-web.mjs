@@ -149,7 +149,8 @@ try {
   await missingApi.body?.cancel();
   const page = await fetch(`${origin}/w/example/workflows`);
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /<html/u);
+  const html = await page.text();
+  assert.match(html, /<html/u);
   assert.match(
     page.headers.get('content-security-policy'),
     /frame-ancestors 'none'/u,
@@ -159,6 +160,7 @@ try {
     ['/favicon.ico', /^image\/(?:x-icon|vnd\.microsoft\.icon)/u],
     ['/apple-touch-icon.png', /^image\/png/u],
     ['/manifest.json', /^application\/json/u],
+    ['/robots.txt', /^text\/plain/u],
   ]) {
     const response = await fetch(`${origin}${path}`);
     assert.equal(response.status, 200, path);
@@ -166,13 +168,28 @@ try {
     await response.body?.cancel();
   }
 
+  // Scripts go out compressed, also when a proxy marks the request with Via.
+  const entry = /src="(\/assets\/[^"]+\.js)"/u.exec(html)?.[1];
+  assert.ok(entry, 'The page names its entry script');
+  for (const via of [{}, { via: '1.1 Caddy' }]) {
+    const script = await readProbe(`${origin}${entry}`, {
+      'accept-encoding': 'gzip',
+      ...via,
+    });
+    assert.equal(script.status, 200);
+    assert.equal(script.headers['content-encoding'], 'gzip');
+    assert.match(script.headers.vary ?? '', /Accept-Encoding/u);
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 1_500);
   try {
     const response = await fetch(`${origin}/v1/stream`, {
+      headers: { 'accept-encoding': 'gzip' },
       signal: controller.signal,
     });
     assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-encoding'), null);
     assert.match(response.headers.get('content-type'), /text\/event-stream/u);
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -204,7 +221,7 @@ try {
       owned,
     });
   console.log(
-    'Web image: non-root, read-only, proxy schemes, SPA boundary, icons and unbuffered SSE passed.',
+    'Web image: non-root, read-only, proxy schemes, SPA boundary, icons, compression and unbuffered SSE passed.',
   );
 } catch (error) {
   failure = error;
