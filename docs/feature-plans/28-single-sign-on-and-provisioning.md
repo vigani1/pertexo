@@ -239,6 +239,16 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
    [local settings](https://www.postgresql.org/docs/18/functions-admin.html#FUNCTIONS-ADMIN-SET),
    [read-only mode](https://www.postgresql.org/docs/18/sql-set-transaction.html).
 
+4. **Bound directory projection reads:** after selecting the bound directory people
+   being projected, read group membership only for those directory IDs in the same
+   organization. Use the existing `(organization_id,directory_user_id,group_id)`
+   index. A whole-organization policy change still selects every bound person;
+   targeted user/group changes preserve their existing affected-person selection,
+   lock order, atomic batch writes and manual-membership fences. No migration or
+   new projection mechanism. Qualify a one-person change among 5,000 people,
+   100,000 group memberships and ten workspaces: measure the actual group rows
+   returned and prove unrelated membership revisions and sessions stay unchanged.
+
 - [x] JIT skip behavior and corrected real-PostgreSQL sign-in regression: 15
   sign-in/SCIM cases and all 570 database unit tests pass; strict types/lint pass.
   Merged [#350](https://github.com/vigani1/pertexo/pull/350) after green CI.
@@ -250,6 +260,12 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
 - [x] Single-query session lookup qualified on a real read-only, single-connection
   runtime pool: one wire statement and no scope on reuse. All 41 identity/SCIM
   PostgreSQL cases, 571 database unit tests, strict types and lint pass.
+  Merged [#352](https://github.com/vigani1/pertexo/pull/352) after green CI.
+
+- [x] Scoped group reads qualified at maximum fan-out: one projected person reads
+  20 group memberships out of 100,000; ten managed removals and session revocation
+  leave an unselected person unchanged. All eleven real SCIM PostgreSQL cases and
+  571 database unit tests pass; strict types and lint pass.
 
 ## Later
 

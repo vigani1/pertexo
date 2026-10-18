@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+import type { QueryResult } from 'pg';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.js';
 import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.js';
@@ -176,4 +177,78 @@ it('projects maximum directory fan-out atomically without per-person round trips
     idempotencyKey: randomUUID(),
   });
   expect(await db.liveSessions(person.id)).toBe(1);
+  const unrelated = people[1];
+  if (unrelated === undefined) throw new Error('Missing unrelated person');
+  await db.sessions(unrelated.id);
+  await db.asAdmin(
+    'update app.auth_directory_users set active=false where id=any($1::uuid[])',
+    [[person.directoryId, unrelated.directoryId]],
+  );
+  let returnedGroupMembers = 0;
+  await withDirectoryTransaction(
+    db.authenticationPool(),
+    principal,
+    async (client, current) => {
+      const reader: {
+        query(text: string, values?: unknown[]): Promise<QueryResult>;
+      } = client;
+      const queries = vi.spyOn(reader, 'query');
+      try {
+        await projectDirectoryMemberships(client, current, {}, [
+          person.directoryId,
+        ]);
+        const replies: QueryResult[] = await Promise.all(
+          queries.mock.results
+            .filter((entry) => entry.type === 'return')
+            .map((entry) => entry.value),
+        );
+        const groupRead = replies.find(
+          (reply) =>
+            reply.fields.length === 2 &&
+            reply.fields.some((field) => field.name === 'group_id') &&
+            reply.fields.some((field) => field.name === 'directory_user_id'),
+        );
+        returnedGroupMembers = groupRead?.rowCount ?? 0;
+        expect(returnedGroupMembers).toBe(
+          userIds.filter((id) => id === person.directoryId).length,
+        );
+        expect(returnedGroupMembers).toBe(20);
+        expect(groupRead?.rows).toEqual(
+          Array.from({ length: returnedGroupMembers }, () =>
+            expect.objectContaining({ directory_user_id: person.directoryId }),
+          ),
+        );
+      } finally {
+        queries.mockRestore();
+      }
+    },
+  );
+  expect(
+    await db.asAdmin(
+      'select status,role_revision,count(*)::int count from app.workspace_memberships where workspace_id=any($1::uuid[]) and user_id=$2 group by status,role_revision',
+      [workspaces, person.id],
+    ),
+  ).toEqual([{ status: 'removed', role_revision: 3, count: 10 }]);
+  expect(
+    await db.asAdmin(
+      'select status,role_revision,count(*)::int count from app.workspace_memberships where workspace_id=any($1::uuid[]) and user_id=$2 group by status,role_revision',
+      [workspaces, unrelated.id],
+    ),
+  ).toEqual([{ status: 'active', role_revision: 2, count: 10 }]);
+  expect(await db.liveSessions(person.id)).toBe(0);
+  expect(await db.liveSessions(unrelated.id)).toBe(1);
+  await writeFile(
+    '/tmp/pertexo-scim-directory-subset.json',
+    JSON.stringify(
+      {
+        people: people.length,
+        totalGroupMembers: groupIds.length,
+        projectedPeople: 1,
+        returnedGroupMembers,
+        affectedWorkspaces: workspaces.length,
+      },
+      null,
+      2,
+    ),
+  );
 }, 60_000);
