@@ -1,6 +1,6 @@
 # F28 — Single sign-on and provisioning
 
-Status: social and organization OIDC merged; SAML qualified; SCIM next. Updated: 2026-10-18.
+Status: social, organization OIDC and SAML merged; provisioning in progress. Updated: 2026-10-18.
 Parent: [roadmap](../product-roadmap.md). Decision: [ADR 086](../adr/086-federated-sign-in-and-provisioning.md).
 
 ## Current code
@@ -20,7 +20,7 @@ linking endpoints remain closed.
 
 The organization slice adds identity organizations, verified domains, encrypted
 OIDC providers, scoped JIT and required-SSO session proofs in migration 0033.
-SAML and SCIM remain the next slices. The reset removed the legacy OIDC session bridge; do not restore it.
+SAML is merged in [#346](https://github.com/vigani1/pertexo/pull/346); provisioning is the remaining slice. The reset removed the legacy OIDC session bridge; do not restore it.
 Existing identity commands already own workspace-first locks, membership revisions,
 removed-member cleanup, immediate session revocation and audit. F18 audit and
 publication review are merged (#342, #343). F27 already owns notices and mail.
@@ -120,8 +120,8 @@ publication review are merged (#342, #343). F27 already owns notices and mail.
   remains manual unless explicitly brought under directory management.
 - SCIM 2.0 supports Users and Groups: discovery, bounded pagination/filtering,
   create/read/replace/patch/delete, active=false, and group membership changes.
-  Use a standards parser (`scimmy`, no router framework) for schemas, filters and
-  PATCH semantics. Pertexo owns persistence and applies each write in one existing
+  Use maintained public schema, filter-parser and PATCH libraries, with no new
+  router framework, as qualified in the provisioning decisions below. Pertexo owns persistence and applies each write in one existing
   PostgreSQL transaction, including membership changes and session revocation.
   The Better Auth SCIM plugin's adapter transaction cannot use the existing
   PostgreSQL membership/RLS owner directly; do not add a second membership path.
@@ -309,6 +309,136 @@ Sources: [Node-SAML](https://github.com/node-saml/node-saml),
 [xmldom security policy](https://github.com/xmldom/xmldom/security/policy),
 [xmldom 0.8.15 security patch](https://github.com/xmldom/xmldom/releases/tag/0.8.15).
 
+## Provisioning implementation decisions (2026-10-18)
+
+### Protocol and ownership
+
+- Extend `authentication/federation` with a native-auth SCIM transport and a
+  focused protocol adapter; owner/admin management stays in guarded Nest routes.
+  Use `/v1/auth/federation/scim/:organizationId/v2` for Users, Groups and discovery.
+  The existing authentication proxy bypass/redaction covers this namespace.
+  Protocol media, malformed-JSON/body-limit errors and authorization errors must
+  have safe SCIM shapes, including failures before controller dispatch.
+- Keep existing PostgreSQL identity/membership/session authority. No hosted
+  identity service, extra router framework, database role, background reconciler
+  or CI job. Authenticate and rate-limit every protocol endpoint, including
+  discovery, through the existing distributed limiter and a bounded SCIM policy.
+- Use public `scimmy` 1.3.5 schema coercion/metadata, `scim2-parse-filter` 0.3.0 for
+  the typed filter AST, and `scim-patch` 0.9.3 with that same parser for PATCH.
+  The prototype found that SCIMMY's generic matching ignores schema caseExact and
+  its AST loses some negated value-filter semantics; do not use those APIs or
+  global resource handlers. The replacement parser preserves NOT/value paths and
+  rejects trailing garbage. It does not expand queries into exponential DNF.
+- Compile the typed AST to parameterized queries through fixed supported-field,
+  type and caseExact descriptors. No caller-controlled SQL identifiers. Bound
+  filter text to 1,024 characters, nesting to 16 and AST nodes to 256 before
+  recursive interpretation; measure the maximum. Support modeled core paths,
+  logical operators, comparisons and bounded value filters; unknown paths receive
+  `invalidFilter`. Schema/library errors are mapped to constant safe messages.
+- Support bounded GET lists and resource reads, POST creation, PUT replacement,
+  PATCH and DELETE. Pagination is one-based, capped at 100, with count=0 returning
+  totals. Support attributes/excludedAttributes and sorting over modeled fields.
+  Optional If-Match uses opaque resource revisions and refuses stale writes with
+  412 in the same transaction. Bulk and arbitrary extensions stay later.
+- SCIM attribute names/operation names are case-insensitive. Normalize at the
+  protocol boundary, detect ambiguous duplicate names, and preserve quoted values.
+  The patcher operates on a detached canonical copy; failed later operations never
+  persist earlier changes. Compare read-only id/meta/schemas/User.groups before
+  schema coercion (input coercion intentionally drops read-only fields). Reject
+  password provisioning and unsupported fields; group roles come from mappings.
+
+### Data, access and transactions
+
+- Store bounded, organization-scoped directory users, groups, member references,
+  mappings and digest-only credentials. Advertise only supported core attributes.
+  Persist a canonical non-secret profile, never raw caller JSON or passwords.
+  Login-email/normalized-username indexes are derived by that same boundary owner.
+  Profiles govern directory access; they do not silently rename an existing global
+  account or change its password. Stable IDs survive profile changes.
+- Pending users create no global account. First verified SSO may bind/create an
+  active explicitly provisioned user even when unprovisioned JIT is off; email from
+  SCIM alone never binds an account. Clarify the existing JIT checkbox and guide so
+  it distinguishes directory-provisioned people from unprovisioned new accounts.
+  Inactive/deleted records fence JIT, issuance and every organization-session read.
+- Keep inactive/deleted user tombstones for that fence; deleted resources return
+  404 and disappear from lists. Live-name uniqueness permits an intentional new
+  record with a previously deleted name. A deliberate active replacement may
+  restore managed access after verified SSO, without historical tombstones
+  overriding it. The 5,000-user bound includes retained tombstones. Group deletion
+  removes its references/mappings and recomputes applicable default roles.
+- Use a directory-membership **source association** referencing the existing
+  membership, directory user and linked workspace. Existing role/status remains
+  authoritative in `workspace_memberships`; this avoids a foundational-schema
+  import cycle or a second membership store. Manual/JIT grants stay manual,
+  including suspended/removed grants. New managed grants use the first matching
+  ordered group mapping, otherwise the linked workspace default. Only a changed
+  effective role/status advances its revision and revokes sessions.
+- Ordinary member controls explain directory ownership; directory-managed access
+  changes go through its policy. Never manage/remove the current recovery owner,
+  map a group to owner, or transfer ownership to a directory-managed membership.
+  An owner can explicitly adopt an active manual membership only after its active
+  directory identity has been bound by verified SSO. Review the resulting role;
+  recheck membership, directory-user and organization revisions atomically.
+  Suspended/removed manual access must be deliberately reactivated first. This
+  makes existing teams migratable without silently taking over their grants.
+  Other organizations and manual memberships remain independent. Removal reuses
+  the existing notice/favorite cleanup, membership revision and session owners.
+- Resource revisions are separate from organization configuration revisions, so
+  routine provisioning does not continuously stale provider configuration forms.
+  Membership-list changes also advance affected resource ETags. Emit minimal
+  stable member/group references rather than duplicating mutable profile labels.
+- User/group/mapping/default-role changes synchronously project affected bound
+  managed members. Lock linked workspaces in identifier order, then organization,
+  then users/memberships in order; recheck a changed linked set before proceeding.
+  Credential validity, resources, projection, cleanup, revocation and audits share
+  the transaction. Reads release checkouts before writing to the caller.
+- Deepen the existing membership/session storage owner with bounded batch writes
+  if maximum fan-out needs it; keep single-member callers delegating to that owner.
+  Reuse existing federation authority and platform command-receipt primitives;
+  token creation follows the existing automation-token show-once pattern, without
+  a new generic command framework. Refactors get separate commits.
+- Either workspace owner can revoke a non-control workspace link; creating a link
+  still requires ownership of both sides. An unlink removes its managed grants
+  and mappings, retains manual grants/accounts, and audits both workspaces. The control workspace cannot unlink itself. Control-organization
+  purge must remove managed grants in other linked workspaces **before** removing
+  source associations; cascading source deletion must never make them manual.
+  Maintenance receives only required metadata permissions, never password access.
+- Keep initial caps: 5 active credentials, 5,000 retained users, 200 groups,
+  500 members/group, 200 mappings/workspace, 10 linked workspaces, 100 PATCH
+  operations, 1 MiB requests, 4 MiB protocol responses, 16 KiB user profiles and
+  JSON depth/member bounds of 16/4,096 before SDK expansion. Measure maximum
+  mapping projection and group changes; lower a bound if qualification requires. No per-record database round trips at full
+  fan-out. Provisioning system audits name the credential ID rather than
+  impersonating its creator; metadata only, in each affected workspace.
+
+Storage qualification: a real app-role transaction changed 5,000 memberships,
+revoked their sessions and appended 5,000 individual audit facts in 186 ms locally.
+Mixed removals preserve other workspaces, clear every removed member's private
+state, and roll back all side effects on an RLS failure. Full directory mapping
+fan-out still needs qualification after its schema and projector are implemented.
+
+### Credentials, UI and qualification
+
+- Credential plaintext is shown once and kept out of query/mutation caches and
+  command receipts. A lost-response retry may return the safe public credential
+  receipt with replayed=true and no secret, matching automation tokens; explain
+  revoking/recreating instead of revealing it again. Exact command hashes exclude generated candidates. Rotation/revocation
+  rechecks the current owner and terminates authority immediately across instances.
+- SSO settings own credential creation/revocation, bounded user/group views and
+  ordered group-to-workspace role mappings. Team rows show their directory source
+  and explain unavailable manual changes. Reuse existing Weft controls/feedback.
+- Qualify actual SDK fixtures shaped like Entra/Okta, caseExact comparisons, NOT
+  and value filters, atomic PATCH/ETag conflicts, stable IDs, cross-organization
+  isolation, replay/lost-response credentials, revocation across API instances,
+  first verified SSO, tombstones/reactivation, owner protection, manual independence,
+  removal cleanup, unlink/purge, maximum fan-out and desktop/phone UI. Reuse owned
+  PostgreSQL/Redis/HTTPS browser fixtures; no external account or image download.
+
+Sources: [RFC 7644](https://www.rfc-editor.org/rfc/inline-errata/rfc7644.html),
+[SCIMMY public schemas](https://scimmyjs.github.io/SCIMMY.Types.SchemaDefinition.html),
+[typed filter parser](https://github.com/thomaspoignant/scim2-parse-filter), and
+[SCIM PATCH](https://github.com/thomaspoignant/scim-patch).
+
 ## SAML qualification evidence (2026-10-18)
 
 - The real SDK passes 39 signed SAML cases alongside all 16 OIDC gateway cases:
@@ -369,7 +499,7 @@ and account-wide administration. No paid identity service is required.
 - [x] ADR 086 records identity/session/organization/provisioning boundaries.
 - [x] Social verified linking and install setup qualified and merged: [#344](https://github.com/vigani1/pertexo/pull/344).
 - [x] Organization OIDC, DNS, enforcement and recovery qualified and merged: [#345](https://github.com/vigani1/pertexo/pull/345).
-- [x] SAML gateway and settings qualified; merge requires green CI.
+- [x] SAML gateway and settings qualified and merged: [#346](https://github.com/vigani1/pertexo/pull/346).
 - [ ] SCIM users/groups, mappings and removal qualified and merged.
 - [ ] Guides, maximum-size evidence and natural postmerge checks complete.
 
