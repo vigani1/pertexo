@@ -1,3 +1,7 @@
+import {
+  workspaceRoleSchema,
+  delegatedWorkspaceRoleSchema,
+} from './membership.js';
 import { z } from 'zod';
 
 export { idempotencyKeySchema } from '../shared/transport-headers.js';
@@ -94,14 +98,7 @@ export const userProfileUpdateResponseSchema = z
     replayed: z.boolean(),
   })
   .strict();
-const workspaceRoleSchema = z.enum([
-  'owner',
-  'admin',
-  'builder',
-  'operator',
-  'viewer',
-]);
-const delegatedWorkspaceRoleSchema = workspaceRoleSchema.exclude(['owner']);
+
 export const workspaceMemberSchema = z
   .object({
     userId: z.uuid(),

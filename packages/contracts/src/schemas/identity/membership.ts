@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+export const workspaceRoleSchema = z.enum([
+  'owner',
+  'admin',
+  'builder',
+  'operator',
+  'viewer',
+]);
+export const delegatedWorkspaceRoleSchema = workspaceRoleSchema.exclude([
+  'owner',
+]);
+
 /*
  * ADR 047 membership lifecycle: leaving a workspace, suspending and
  * reactivating a member, and transferring ownership. Each command is fenced

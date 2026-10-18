@@ -1,3 +1,4 @@
+import { authorizationStartedSchema } from './federation/authorization.js';
 import { z } from 'zod';
 
 /**
@@ -97,9 +98,8 @@ export const accountSecurityLinkStartRequestSchema = z
     ]),
   })
   .strict();
-export const accountSecurityLinkStartResponseSchema = z
-  .object({ authorizationUrl: z.url() })
-  .strict();
+export const accountSecurityLinkStartResponseSchema =
+  authorizationStartedSchema;
 export const accountSecurityPasswordChangeRequestSchema = z
   .object({
     currentPassword: z.string().min(1).max(128),
