@@ -147,17 +147,6 @@ export async function readEligibleAuthenticationSession(
     return undefined;
   return { id: session.id, userId: session.user_id, proof };
 }
-export function isAuthenticationSessionAllowed(
-  pool: Pool,
-  sessionId: string,
-): Promise<boolean> {
-  return withPlatformTransaction(
-    pool,
-    async (client) =>
-      (await readEligibleAuthenticationSession(client, sessionId)) !==
-      undefined,
-  );
-}
 export function authorizeCredentialSignIn(
   pool: Pool,
   userId: string,

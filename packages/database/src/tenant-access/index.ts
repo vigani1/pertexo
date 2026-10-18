@@ -91,7 +91,6 @@ export {
 export { FederationConflictError } from '../identity/federation/management/contract.js';
 
 export {
-  isAuthenticationSessionAllowed,
   identityEmailChangeEligibility,
   authorizeCredentialSignIn,
 } from '../identity/federation/sessions/authority.js';
@@ -117,3 +116,5 @@ export {
 export type { DirectoryQuery } from '../identity/federation/provisioning/resources/queries.js';
 
 export { DirectoryManagedMembershipError } from './errors.js';
+
+export { isAuthenticationSessionAllowed } from '../identity/federation/sessions/lookup.js';
