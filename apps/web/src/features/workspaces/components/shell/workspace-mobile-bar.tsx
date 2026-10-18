@@ -91,7 +91,7 @@ export function WorkspaceMobileBar({
         >
           {/* The same 20px box as the icons beside it, so labels line up. */}
           <span className="grid size-5 place-items-center">
-            <CoreOrb state="live" className="size-6" />
+            <CoreOrb state="live" still className="size-6" />
           </span>
           Home
         </Link>

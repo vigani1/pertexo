@@ -225,6 +225,7 @@ export function RunHeader({
         <CoreOrb
           state={runCoreState(run.status)}
           energy={run.status === 'running' ? 1.1 : 0.6}
+          still={!active}
           className="size-full"
         />
       </div>

@@ -90,6 +90,7 @@ function HomeCore({
         <CoreOrb
           state={liveRunCount === 0 ? 'idle' : 'live'}
           energy={0.7 + Math.min(liveRunCount ?? 0, 6) * 0.08}
+          still={!liveRunCount}
           className="size-11"
         />
       </TooltipTrigger>
