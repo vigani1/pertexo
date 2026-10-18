@@ -44,6 +44,7 @@ import {
 } from './support.js';
 import { withTenantScopedClient } from './transactions.js';
 import { createIdentityWorkspaceMemberStore } from './members/store.js';
+import { createMemberships } from './members/storage.js';
 import { createIdentityWorkspaceRoleCommandStore } from './members/roles.js';
 import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.js';
 import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.js';
@@ -315,11 +316,21 @@ export function createIdentityWorkspaceDatabase(
                        created_at, updated_at`,
               [id, name, slug, ownerUserId],
             );
-            await client.query(
-              `insert into app.workspace_memberships
-               (workspace_id, user_id, role, status)
-             values ($1, $2, 'owner', 'active')`,
-              [id, ownerUserId],
+            await createMemberships(
+              client,
+              id,
+              [
+                {
+                  userId: ownerUserId,
+                  role: 'owner',
+                  source: 'workspace_creation',
+                },
+              ],
+              {
+                actorId: ownerUserId,
+                requestId: input.requestId ?? null,
+                traceId: input.traceId ?? null,
+              },
             );
             await client.query(
               `insert into app.audit_events

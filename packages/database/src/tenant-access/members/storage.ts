@@ -1,15 +1,33 @@
 import type { PoolClient } from 'pg';
 import type { MembershipRole } from '../contracts.js';
+import { appendAuditFacts } from '../../governance/audit/append.js';
 
-export type MembershipAddition = Readonly<{
-  userId: string;
-  role: MembershipRole;
+export type MembershipAddition = Readonly<
+  { userId: string; role: MembershipRole } & (
+    | { source: 'workspace_creation' }
+    | { source: 'invitation'; invitationId: string }
+    | { source: 'jit'; organizationId: string }
+    | {
+        source: 'directory';
+        organizationId: string;
+        directoryUserId: string;
+        credentialId?: string;
+      }
+  )
+>;
+
+type MembershipCreationAudit = Readonly<{
+  actorId: string | null;
+  requestId?: string | null;
+  traceId?: string | null;
 }>;
 
+/** The caller owns admission and locks; insertion and its fact share that transaction. */
 export async function createMemberships(
   client: PoolClient,
   workspaceId: string,
   additions: readonly MembershipAddition[],
+  audit: MembershipCreationAudit,
 ): Promise<void> {
   await client.query(
     `insert into app.workspace_memberships(workspace_id,user_id,role,status)
@@ -19,6 +37,23 @@ export async function createMemberships(
       additions.map((member) => member.userId),
       additions.map((member) => member.role),
     ],
+  );
+  await appendAuditFacts(
+    client,
+    additions.map(({ userId, ...details }) => ({
+      workspaceId,
+      actorId: audit.actorId,
+      requestId: audit.requestId ?? null,
+      traceId: audit.traceId ?? null,
+      action: 'workspace.member_added',
+      targetType: 'workspace_member',
+      targetId: userId,
+      metadata: {
+        ...details,
+        status: 'active',
+        roleRevision: 1,
+      },
+    })),
   );
 }
 

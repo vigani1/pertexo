@@ -1,10 +1,11 @@
 import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
-import { appendAuditFact } from '../../../governance/audit/append.js';
+import { createMemberships } from '../../../tenant-access/members/storage.js';
+import type { MembershipRole } from '../../../tenant-access/contracts.js';
 
 export type LinkedWorkspace = Readonly<{
   workspace_id: string;
-  default_role: string;
+  default_role: MembershipRole;
 }>;
 /** Existing manual grants stay manual; suspension and removal cannot be resurrected by JIT. */
 export async function grantJustInTimeMemberships(
@@ -32,18 +33,19 @@ export async function grantJustInTimeMemberships(
           )
         ).rows[0];
         if (member !== undefined) return;
-        await scoped.query(
-          "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,$3,'active')",
-          [workspace.workspace_id, userId, workspace.default_role],
+        await createMemberships(
+          scoped,
+          workspace.workspace_id,
+          [
+            {
+              userId,
+              role: workspace.default_role,
+              source: 'jit',
+              organizationId,
+            },
+          ],
+          { actorId: userId },
         );
-        await appendAuditFact(scoped, {
-          workspaceId: workspace.workspace_id,
-          actorId: userId,
-          action: 'identity.membership_created',
-          targetType: 'identity_organization',
-          targetId: organizationId,
-          metadata: { role: workspace.default_role, source: 'jit' },
-        });
       },
     );
 }

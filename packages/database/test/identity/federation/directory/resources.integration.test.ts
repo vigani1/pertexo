@@ -108,6 +108,26 @@ describe('SCIM resources with existing membership authority', () => {
     expect(await member(f.workspaceId, person.id)).toEqual([
       { role: 'viewer', status: 'active', role_revision: 1 },
     ]);
+    expect(
+      await db.asAdmin(
+        "select actor_user_id,target_type,target_id,metadata from app.audit_events where workspace_id=$1 and target_id=$2 and action='workspace.member_added'",
+        [f.workspaceId, person.id],
+      ),
+    ).toEqual([
+      {
+        actor_user_id: person.id,
+        target_type: 'workspace_member',
+        target_id: person.id,
+        metadata: {
+          source: 'directory',
+          organizationId: f.organizationId,
+          directoryUserId: created.id,
+          role: 'viewer',
+          status: 'active',
+          roleRevision: 1,
+        },
+      },
+    ]);
     await db.sessions(person.id);
     await changeDirectoryUser(
       f.pool,

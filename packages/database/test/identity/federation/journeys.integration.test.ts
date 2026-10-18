@@ -420,10 +420,24 @@ describe('durable organization sign-in', () => {
       ).resolves.toEqual([{ user_id: user.id }]);
       await expect(
         db.asAdmin(
-          "select workspace_id from app.audit_events where workspace_id=any($1::uuid[]) and action='identity.membership_created'",
-          [[fixture.scope.workspaceId, targetWorkspaceId]],
+          "select workspace_id,actor_user_id,target_type,target_id,metadata from app.audit_events where workspace_id=any($1::uuid[]) and action='workspace.member_added' and target_id=$2",
+          [[fixture.scope.workspaceId, targetWorkspaceId], user.id],
         ),
-      ).resolves.toEqual([{ workspace_id: targetWorkspaceId }]);
+      ).resolves.toEqual([
+        {
+          workspace_id: targetWorkspaceId,
+          actor_user_id: user.id,
+          target_type: 'workspace_member',
+          target_id: user.id,
+          metadata: {
+            source: 'jit',
+            organizationId: fixture.organizationId,
+            role: 'builder',
+            status: 'active',
+            roleRevision: 1,
+          },
+        },
+      ]);
     },
   );
   it('consumes one callback across two instances and refuses replay, wrong browser, wrong domain and stale provider revisions', async () => {

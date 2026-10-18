@@ -7,12 +7,13 @@ import {
   createMemberships,
   updateMemberships,
   type MembershipChange,
+  type MembershipAddition,
 } from '../../../tenant-access/members/storage.js';
 import type { MembershipRole } from '../../../tenant-access/contracts.js';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.js';
 import type { DirectoryOrganization } from './authority.js';
-import type { DirectoryRole, DirectoryMapping } from './contract.js';
+import type { DirectoryMapping } from './contract.js';
 import { directoryRole } from './roles.js';
 
 type BoundUser = Readonly<{
@@ -95,11 +96,8 @@ export async function projectDirectoryMemberships(
           (mapping) => mapping.workspaceId === workspace.workspace_id,
         );
         const changes: MembershipChange[] = [],
-          additions: {
-            userId: string;
-            directoryId: string;
-            role: DirectoryRole;
-          }[] = [],
+          additions: Extract<MembershipAddition, { source: 'directory' }>[] =
+            [],
           facts: AuditFact[] = [];
         for (const user of users) {
           const member = members.get(user.user_id);
@@ -122,26 +120,28 @@ export async function projectDirectoryMemberships(
             if (status !== 'active') continue;
             additions.push({
               userId: user.user_id,
-              directoryId: user.id,
+              directoryUserId: user.id,
+              source: 'directory',
+              organizationId: organization.id,
+              ...(actor.credentialId === undefined
+                ? {}
+                : { credentialId: actor.credentialId }),
               role,
             });
-          } else {
-            if (member.role === role && member.status === status) continue;
-            changes.push({
-              userId: user.user_id,
-              role,
-              status,
-              roleRevision: member.role_revision + 1,
-            });
-            revoked.add(user.user_id);
+            continue;
           }
+          if (member.role === role && member.status === status) continue;
+          changes.push({
+            userId: user.user_id,
+            role,
+            status,
+            roleRevision: member.role_revision + 1,
+          });
+          revoked.add(user.user_id);
           facts.push({
             workspaceId: workspace.workspace_id,
             actorId: actor.actorId ?? null,
-            action:
-              member === undefined
-                ? 'identity.membership_created'
-                : 'identity.membership_projected',
+            action: 'identity.membership_projected',
             targetType: 'workspace_member',
             targetId: user.user_id,
             metadata: {
@@ -157,7 +157,9 @@ export async function projectDirectoryMemberships(
           });
         }
         if (additions.length > 0) {
-          await createMemberships(scoped, workspace.workspace_id, additions);
+          await createMemberships(scoped, workspace.workspace_id, additions, {
+            actorId: actor.actorId ?? null,
+          });
           await scoped.query(
             `insert into app.auth_directory_memberships(organization_id,workspace_id,user_id,directory_user_id)
         select $1,$2,member.user_id,member.directory_id from unnest($3::uuid[],$4::uuid[]) as member(user_id,directory_id)`,
@@ -165,7 +167,7 @@ export async function projectDirectoryMemberships(
               organization.id,
               workspace.workspace_id,
               additions.map((member) => member.userId),
-              additions.map((member) => member.directoryId),
+              additions.map((member) => member.directoryUserId),
             ],
           );
         }
