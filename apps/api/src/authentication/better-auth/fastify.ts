@@ -82,7 +82,7 @@ export function registerBetterAuthHandler(
     );
   fastify.post(
     '/v1/auth/federation/saml/callback',
-    { ...options, bodyLimit: SAML_LIMITS.formBytes },
+    { ...options, config, bodyLimit: SAML_LIMITS.formBytes },
     handler,
   );
   fastify.all('/v1/auth/*', options, handler);

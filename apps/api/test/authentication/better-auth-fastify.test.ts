@@ -456,6 +456,18 @@ describe('Better Auth Fastify bridge', () => {
       endpointClass: 'identity_callback',
       failureMode: 'closed',
     });
+    const saml = await application.inject({
+      method: 'POST',
+      url: '/v1/auth/federation/saml/callback',
+      headers: { origin: 'https://idp.example.test' },
+      payload: { SAMLResponse: 'example', RelayState: 'example' },
+    });
+    expect(saml.statusCode).toBe(429);
+    expect(saml.headers['retry-after']).toBe('5');
+    expect(consume.mock.calls[3]?.[0]).toMatchObject({
+      endpointClass: 'identity_callback',
+      failureMode: 'closed',
+    });
     expect(handler).not.toHaveBeenCalled();
   });
 

@@ -32,6 +32,8 @@ export function signingMaterial(bits = 2048, days = 1) {
         String(days),
         '-subj',
         '/CN=owned-saml.test',
+        '-addext',
+        'subjectAltName=DNS:localhost,IP:127.0.0.1',
       ],
       { stdio: 'ignore' },
     );
