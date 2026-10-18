@@ -1194,8 +1194,12 @@ destination.
 libraries, security headers, and immutable hashed-asset caching with revalidated
 HTML. Exercise a fresh deployment with an old tab: a lazy-chunk load failure
 offers a controlled reload and protects dirty state; do not auto-reload an
-unsaved editor. Same-origin proxy must support SSE without buffering and
-sensible timeouts.
+unsaved editor. Every lazy piece and route component loads through
+`components/patterns/app-update/lazy.ts`, which an import rule enforces: a
+missing chunk shows "Pertexo was updated. Reload to continue." where the piece
+would be, and nothing reloads by itself
+([plan](../../docs/feature-plans/lazy-chunk-recovery.md)). Same-origin proxy
+must support SSE without buffering and sensible timeouts.
 
 **Responsive support:** navigation, lists, forms and run detail must work on
 narrow screens. Editor starts desktop-first with an explicit small-screen
