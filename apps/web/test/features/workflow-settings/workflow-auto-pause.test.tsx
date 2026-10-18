@@ -24,6 +24,30 @@ const paused: WorkflowAutoPauseSettings = {
   pausedLastRunId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 };
 
+/** Opens the setting whose editor holds `label`, when it reads as a sentence. */
+async function openEditorFor(
+  event: ReturnType<typeof userEvent.setup>,
+  label: string,
+) {
+  const toggles = await screen.findAllByRole('button', {
+    name: /^(Change|Close)$/u,
+  });
+  const toggle = toggles.find((candidate) => {
+    const editor = document.getElementById(
+      candidate.getAttribute('aria-controls') ?? '',
+    );
+    return editor !== null && within(editor).queryAllByText(label).length > 0;
+  });
+  if (toggle?.textContent === 'Change') await event.click(toggle);
+}
+
+/** The setting's sentence, whose values sit in their own elements. */
+function sentence(start: string) {
+  return (_: string, element: Element | null) =>
+    element?.tagName === 'P' &&
+    element.textContent.replace(/\s+/gu, ' ').startsWith(start);
+}
+
 describe('workflow automatic pause controls', () => {
   it('does not rebase retained edits after an idempotency conflict, even if refreshed settings change', async () => {
     installQueries();
@@ -59,6 +83,7 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
+    await openEditorFor(event, 'Pause after failures in a row');
     const input = await within(section).findByRole('textbox', {
       name: 'Pause after failures in a row',
     });
@@ -70,7 +95,7 @@ describe('workflow automatic pause controls', () => {
       'This request was already used with different details. Try again.',
     );
     await within(section).findByText(
-      'Current configured rule: 12 failures in a row.',
+      sentence('Schedules and webhooks pause after 12 failures in a row'),
     );
     expect(input).toHaveValue('6');
     expect(
@@ -122,6 +147,7 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
+    await openEditorFor(event, 'Pause after failures in a row');
     await event.type(
       await within(section).findByRole('textbox', {
         name: 'Pause after failures in a row',
@@ -209,6 +235,7 @@ describe('workflow automatic pause controls', () => {
       name: 'Automatic pause',
     });
     expect(within(section).queryByText(/enforcement/u)).toBeNull();
+    await openEditorFor(event, 'Auto-pause for this workflow');
     await event.click(
       await within(section).findByRole('switch', {
         name: 'Auto-pause for this workflow',
@@ -285,6 +312,7 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
+    await openEditorFor(event, 'Pause after failures in a row');
     const threshold = await within(section).findByRole('textbox', {
       name: 'Pause after failures in a row',
     });
@@ -350,6 +378,7 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
+    await openEditorFor(event, 'Pause after failures in a row');
     const threshold = await within(section).findByRole('textbox', {
       name: 'Pause after failures in a row',
     });
@@ -361,7 +390,7 @@ describe('workflow automatic pause controls', () => {
     expect(threshold).toHaveValue('6');
     expect(bodies).toHaveLength(1);
     await within(section).findByText(
-      'Current configured rule: 12 failures in a row.',
+      sentence('Schedules and webhooks pause after 12 failures in a row'),
     );
     await event.click(
       within(section).getByRole('button', { name: 'Save auto-pause rule' }),
@@ -414,6 +443,7 @@ describe('workflow automatic pause controls', () => {
     );
     renderApp(path);
     const event = userEvent.setup();
+    await openEditorFor(event, 'Workspace default');
     const input = await screen.findByRole('textbox', {
       name: 'Workspace default',
     });

@@ -4,6 +4,7 @@ import type {
   AccessibleWorkspace,
   WorkflowErrorSettings,
 } from '@pertexo/contracts';
+import { SettingSentence } from '@/components/patterns/setting-sentence';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { LabelledField, FieldGroup } from '@/components/ui/field';
 import {
@@ -36,7 +37,12 @@ type Scope = Readonly<{
 function ErrorWorkflowEditor({
   scope,
   settings,
-}: Readonly<{ scope: Scope; settings: WorkflowErrorSettings }>) {
+  onSaved,
+}: Readonly<{
+  scope: Scope;
+  settings: WorkflowErrorSettings;
+  onSaved: () => void;
+}>) {
   const [draft, setDraft] =
     useState<Readonly<{ target: string | null; revision: number }>>();
   const current = draft ?? {
@@ -75,6 +81,7 @@ function ErrorWorkflowEditor({
   const saved = () => {
     setDraft(undefined);
     notifications.success({ title: 'Error workflow saved' });
+    onSaved();
   };
   async function submit() {
     if (
@@ -99,7 +106,7 @@ function ErrorWorkflowEditor({
         <LabelledField
           id="error-workflow-target"
           label="When this workflow fails, run …"
-          description="Choose a published workflow with the When a workflow fails trigger. It receives a safe summary and a run link. Run data is never sent."
+          description="Published workflows that start with When a workflow fails."
         >
           {(control) => (
             <Select
@@ -186,6 +193,7 @@ function ErrorWorkflowEditor({
   );
 }
 export function ErrorWorkflowSection(scope: Scope) {
+  const [editing, setEditing] = useState(false);
   const canRead = scope.workspace.capabilities.includes('workflow:read');
   const query = useQuery({
     ...errorWorkflowQuery(
@@ -203,23 +211,61 @@ export function ErrorWorkflowSection(scope: Scope) {
   return (
     <SettingsSection
       title="Error workflow"
-      description="Run a separate workflow after an unhandled failure. Handled failures and canceled runs do not start it."
+      description="Another workflow to run when this one fails."
     >
       <SettingsQueryState query={query} resource="Error workflow settings" />
-      {settings === undefined ? null : editable ? (
-        <ErrorWorkflowEditor scope={scope} settings={settings} />
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          {settings.targetWorkflowId === null
-            ? 'No error workflow selected.'
-            : 'An error workflow is selected.'}{' '}
-          Editing both workflows is required to change this setting.
-        </p>
+      {settings === undefined ? null : (
+        <SettingSentence
+          summary={
+            <>
+              {settings.targetWorkflowId === null ? (
+                <>
+                  <b>Nothing else runs</b> when this workflow fails.
+                </>
+              ) : (
+                <>
+                  When this workflow fails, Pertexo runs{' '}
+                  <b>
+                    {settings.targetWorkflowName ?? 'a workflow you can’t open'}
+                  </b>
+                  .
+                </>
+              )}
+              {editable
+                ? null
+                : ' Changing it takes edit access to both workflows.'}
+            </>
+          }
+          editing={editing}
+          onEditingChange={setEditing}
+          {...(editable
+            ? {
+                editor: (
+                  <ErrorWorkflowEditor
+                    scope={scope}
+                    settings={settings}
+                    onSaved={() => {
+                      setEditing(false);
+                    }}
+                  />
+                ),
+              }
+            : {})}
+          rules={
+            <>
+              <p>
+                Only failures nothing handled start it; handled failures and
+                canceled runs don’t.
+              </p>
+              <p>
+                It receives a short summary and a link to the run, never the
+                run’s data. It uses normal run limits, and its own failures
+                never start another error workflow.
+              </p>
+            </>
+          }
+        />
       )}
-      <p className="text-sm text-muted-foreground">
-        Error workflows use normal run limits. Their failures never start
-        another error workflow.
-      </p>
     </SettingsSection>
   );
 }

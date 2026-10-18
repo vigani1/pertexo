@@ -24,7 +24,7 @@ export function OverflowPicker({
     <LabelledField
       id="workflow-concurrency-overflow"
       label="When the limit is reached"
-      description="Queue waits in acceptance order. Skip ignores new trigger events; manual starts are refused. Calls and draft tests still queue. Without a limit this choice has no effect."
+      description="Queue: extra events wait their turn. Skip: extra trigger events start nothing, and manual starts are refused."
     >
       {(control) => (
         <Select
