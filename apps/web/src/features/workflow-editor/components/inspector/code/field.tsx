@@ -1,4 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { isChunkLoadError } from '@/components/patterns/app-update/lazy';
+import { AppUpdatedNotice } from '@/components/patterns/app-update/notice';
 import {
   createCodeEditor,
   type CodeFieldProps,
@@ -9,9 +11,9 @@ import {
 export function CodeField(props: CodeFieldProps) {
   const latest = useRef(props);
   const editor = useRef<CodeEditor | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>(
-    'loading',
-  );
+  const [status, setStatus] = useState<
+    'loading' | 'ready' | 'updated' | 'failed'
+  >('loading');
   const attach = useCallback((parent: HTMLDivElement | null) => {
     if (parent === null) return;
     const lifetime = new AbortController();
@@ -25,8 +27,9 @@ export function CodeField(props: CodeFieldProps) {
         editor.current = created;
         setStatus('ready');
       })
-      .catch(() => {
-        if (!lifetime.signal.aborted) setStatus('failed');
+      .catch((error: unknown) => {
+        if (!lifetime.signal.aborted)
+          setStatus(isChunkLoadError(error) ? 'updated' : 'failed');
       });
     return () => {
       lifetime.abort();
@@ -44,6 +47,11 @@ export function CodeField(props: CodeFieldProps) {
         <p role="status" className="p-3 text-xs text-muted-foreground">
           Loading JavaScript editor…
         </p>
+      ) : null}
+      {status === 'updated' ? (
+        <div className="p-2">
+          <AppUpdatedNotice />
+        </div>
       ) : null}
       {status === 'failed' ? (
         <p role="alert" className="p-3 text-xs text-destructive">

@@ -1,4 +1,5 @@
-import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
+import { createRoute } from '@tanstack/react-router';
+import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import { rootRoute } from '../root/route';
 export const noticeUnsubscribeRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -15,8 +16,5 @@ export const noticeUnsubscribeRoute = createRoute({
       unsubscribeToken: /^[A-Za-z0-9_-]{1,4096}$/u.test(token) ? token : null,
     };
   },
-  component: lazyRouteComponent(
-    () => import('./unsubscribe'),
-    'NoticeUnsubscribeRoute',
-  ),
+  component: lazyRoute(() => import('./unsubscribe'), 'NoticeUnsubscribeRoute'),
 });
