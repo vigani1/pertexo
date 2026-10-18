@@ -60,10 +60,12 @@ result at desktop and phone width, then rebase-merge after CI passes.
   auto-pause default stays reachable here behind its own sentence: moving it to
   workspace Settings needs the auto-pause command hook split from its workflow,
   which is a separate change.
-- [ ] 4. **Collaboration on the canvas.** A step with open discussions shows a
-  small count on its node that opens them. Presence lists other people only,
-  with your other tabs as "you, in another tab". The Comments tab drops its
-  eyebrow label and shows who is here.
+- [x] 4. **Collaboration on the canvas.** A step with open discussions shows
+  "2 open discussions" on its card; the Build route counts the first hundred
+  open threads by step and hands the counts to the editor through a context, so
+  the editor never owns comments. Presence shows other people as initial beads
+  and notes your own other tabs separately; the unsaved-changes warning says
+  when the other tab is yours. The Comments tab drops its eyebrow label.
 - [ ] 5. **One way to start.** New workflow lists Blank, patterns and examples
   together; an example is created directly with the chosen name, without a
   separate preview step. The editor shows the example's title, not its key.
