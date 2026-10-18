@@ -66,10 +66,13 @@ result at desktop and phone width, then rebase-merge after CI passes.
   the editor never owns comments. Presence shows other people as initial beads
   and notes your own other tabs separately; the unsaved-changes warning says
   when the other tab is yours. The Comments tab drops its eyebrow label.
-- [ ] 5. **One way to start.** New workflow lists Blank, patterns and examples
-  together; an example is created directly with the chosen name, without a
-  separate preview step. The editor shows the example's title, not its key.
-  Example descriptions say what the workflow does in plain words.
+- [x] 5. **Plainer examples.** Example descriptions and summaries say what
+  the workflow does; manifests and digests are unchanged. The editor names a
+  workflow's origin by the example's title. Choosing an example that needs no
+  setup checks it at once, so Import is the next click; one with setup still
+  waits for its values. Unavailable primary buttons look unavailable. Merging
+  the client-side starters with the curated examples into one list stays open:
+  it needs a decision on whether the starters become curated examples.
 - [ ] 6. **Plain words on the newer screens.** Requests, Inbox, Data tables,
   Variables, Notifications, Usage, Promotion and Single sign-on get one-sentence
   introductions; limits move into a disclosure; select values show labels, never
