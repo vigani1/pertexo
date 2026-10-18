@@ -1,0 +1,4 @@
+# Pertexo is a private workspace. Its sign-in page, shared forms and
+# unsubscribe links are not meant for search results.
+User-agent: *
+Disallow: /
