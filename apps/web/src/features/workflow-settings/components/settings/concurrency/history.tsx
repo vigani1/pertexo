@@ -17,7 +17,7 @@ export function SkipHistory({
       <h3 className="text-sm font-medium">Recent skipped triggers</h3>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No skipped triggers in the last 90 days.
+          Nothing skipped in the last 90 days.
         </p>
       ) : (
         <ul className="divide-y divide-border">

@@ -6,6 +6,7 @@ import type {
   AccessibleWorkspace,
   WorkflowConcurrencySettings,
 } from '@pertexo/contracts';
+import { SettingSentence } from '@/components/patterns/setting-sentence';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -84,7 +85,12 @@ function ConcurrencyProblem({
 function ConcurrencyEditor({
   settings,
   scope,
-}: Readonly<{ settings: WorkflowConcurrencySettings; scope: Scope }>) {
+  onSaved,
+}: Readonly<{
+  settings: WorkflowConcurrencySettings;
+  scope: Scope;
+  onSaved: () => void;
+}>) {
   const [draft, setDraft] =
     useState<
       Readonly<{ value: string; revision: number; overflow: 'queue' | 'skip' }>
@@ -108,6 +114,7 @@ function ConcurrencyEditor({
   const saved = () => {
     setDraft(undefined);
     notifications.success({ title: 'Concurrency settings saved' });
+    onSaved();
   };
   async function submit() {
     if (
@@ -137,7 +144,7 @@ function ConcurrencyEditor({
       <LabelledField
         id="workflow-concurrency-limit"
         label="Runs at once"
-        description="Leave blank to remove the workflow limit. Running and waiting runs, plus reserved starts, occupy slots across all published versions."
+        description="Leave blank for no limit of its own."
         error={validation.error('limit')}
       >
         {(control) => (
@@ -185,49 +192,103 @@ function ConcurrencyEditor({
   );
 }
 
+/** The limit in words: how many at once and what happens to the rest. */
+function limitSummary(settings: WorkflowConcurrencySettings) {
+  const workspaceLimit =
+    settings.workspacePolicyState === 'active'
+      ? settings.workspaceActiveRunLimit
+      : null;
+  if (settings.limit === null)
+    return (
+      <>
+        <b>No limit</b> of its own.{' '}
+        {workspaceLimit === null
+          ? 'Workspace limits still apply.'
+          : `The workspace runs up to ${String(workspaceLimit)} at once.`}
+      </>
+    );
+  return (
+    <>
+      Up to{' '}
+      <b>
+        {settings.limit} {settings.limit === 1 ? 'run' : 'runs'}
+      </b>{' '}
+      at once.{' '}
+      {settings.overflow === 'queue' ? (
+        <>
+          Extra events <b>wait their turn</b>.
+        </>
+      ) : (
+        <>
+          Extra trigger events are <b>skipped</b>; manual starts are refused.
+        </>
+      )}
+    </>
+  );
+}
+
 function ConcurrencyPolicy({
   settings,
   scope,
 }: Readonly<{ settings: WorkflowConcurrencySettings; scope: Scope }>) {
+  const [editing, setEditing] = useState(false);
   const canUpdate =
     scope.workspace.status === 'active' &&
     scope.workspace.capabilities.includes('workflow:update');
   return (
-    <div className="flex max-w-lg flex-col gap-5">
-      <p className="text-sm text-muted-foreground">
-        Current limit:{' '}
-        {settings.limit === null
-          ? 'no additional workflow limit'
-          : `${String(settings.limit)} active ${settings.limit === 1 ? 'run' : 'runs'}`}
-        . Workspace limits still apply.
-      </p>
-      {canUpdate ? (
-        <ConcurrencyEditor settings={settings} scope={scope} />
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Your role or workspace state doesn’t allow changing this limit.
-        </p>
-      )}
-      <p className="text-sm text-muted-foreground">
-        {settings.overflow === 'queue'
-          ? 'Extra runs wait their turn in acceptance order.'
-          : 'New trigger events are skipped when all workflow places are occupied, including accepted queued runs. Manual starts are refused.'}{' '}
-        Starts are ordered, not completion or external effects. Lowering the
-        limit does not stop active runs or revoke reserved starts. Pausing
-        triggers does not pause already accepted runs.
-      </p>
+    <div className="flex flex-col gap-5">
+      <SettingSentence
+        summary={
+          <>
+            {limitSummary(settings)}
+            {canUpdate
+              ? null
+              : ' Your role or the workspace’s state doesn’t allow changing it.'}
+          </>
+        }
+        editing={editing}
+        onEditingChange={setEditing}
+        {...(canUpdate
+          ? {
+              editor: (
+                <ConcurrencyEditor
+                  settings={settings}
+                  scope={scope}
+                  onSaved={() => {
+                    setEditing(false);
+                  }}
+                />
+              ),
+            }
+          : {})}
+        rules={
+          <>
+            <p>
+              Running and waiting runs, plus starts already reserved, take a
+              place across every published version. Calls and draft tests always
+              queue.
+            </p>
+            <p>
+              Runs start in the order they arrived; when they finish, and what
+              they change elsewhere, can differ. Lowering the limit doesn’t stop
+              runs already going, and pausing triggers doesn’t pause runs
+              already accepted.
+            </p>
+            <p>
+              As of{' '}
+              <time dateTime={settings.asOf} title={settings.asOf}>
+                {formatDateTime(settings.asOf)}
+              </time>
+              .{' '}
+              {settings.workspacePolicyState === 'active' &&
+              settings.workspaceActiveRunLimit !== null
+                ? `The workspace allows ${String(settings.workspaceActiveRunLimit)} active runs.`
+                : 'The workspace has no active run allowance, so only removing the limit is possible.'}
+            </p>
+          </>
+        }
+      />
       <SkipHistory items={settings.recentSkips ?? []} />
-      <p className="text-xs text-muted-foreground">
-        Observed{' '}
-        <time dateTime={settings.asOf} title={settings.asOf}>
-          {formatDateTime(settings.asOf)}
-        </time>
-        .
-        {settings.workspacePolicyState === 'active' &&
-        settings.workspaceActiveRunLimit !== null
-          ? ` Current workspace active-run allowance: ${String(settings.workspaceActiveRunLimit)}.`
-          : ' The workspace has no active execution allowance for setting a limit.'}
-      </p>
     </div>
   );
 }
@@ -261,7 +322,7 @@ export function ConcurrencySection(scope: Scope) {
   return (
     <SettingsSection
       title="Concurrency"
-      description="Control how many production runs of this workflow can be active at once."
+      description="How many runs of this workflow can go at once."
     >
       {canRead ? (
         <SettingsQueryState query={query} resource="The concurrency settings" />

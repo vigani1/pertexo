@@ -5,6 +5,7 @@ import type {
   WorkspaceAutoPauseSettings,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
+import { SettingSentence } from '@/components/patterns/setting-sentence';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -73,7 +74,12 @@ function CommandProblem({
 function WorkflowRule({
   settings,
   scope,
-}: Readonly<{ settings: WorkflowAutoPauseSettings; scope: Scope }>) {
+  onSaved,
+}: Readonly<{
+  settings: WorkflowAutoPauseSettings;
+  scope: Scope;
+  onSaved: () => void;
+}>) {
   const [draft, setDraft] =
     useState<
       Readonly<{ enabled: boolean; threshold: string; revision: number }>
@@ -94,7 +100,6 @@ function WorkflowRule({
     scope.workflowId,
   );
   const notifications = useNotifications();
-  const canUpdate = scope.workspace.capabilities.includes('workflow:update');
   async function save() {
     if (
       !validation.submit({ threshold: thresholdError(current.threshold, true) })
@@ -114,17 +119,9 @@ function WorkflowRule({
     if (saved) {
       setDraft(undefined);
       notifications.success({ title: 'Auto-pause settings saved' });
+      onSaved();
     }
   }
-  if (!canUpdate)
-    return (
-      <p className="text-sm text-muted-foreground">
-        {settings.enabled
-          ? `Configured rule: pause schedules and webhooks after ${String(settings.effectiveThreshold)} failed runs in a row.`
-          : 'Auto-pause is off for this workflow.'}{' '}
-        Your role can’t change this rule.
-      </p>
-    );
   return (
     <form
       className="flex max-w-lg flex-col gap-5"
@@ -138,8 +135,8 @@ function WorkflowRule({
         label="Auto-pause for this workflow"
         description={
           current.enabled
-            ? 'Schedules and webhooks pause after repeated failures. Runs in progress finish; manual runs and replays still work.'
-            : 'This workflow keeps starting runs however often it fails. Turning this off does not resume an existing pause.'
+            ? 'Schedules and webhooks pause after repeated failures.'
+            : 'This workflow keeps starting runs however often it fails.'
         }
       >
         {(control) => (
@@ -157,7 +154,7 @@ function WorkflowRule({
       <LabelledField
         id="workflow-auto-pause-threshold"
         label="Pause after failures in a row"
-        description={`Leave blank to use the workspace default (${String(settings.workspaceThreshold)}). Applies from the next failure, without publishing. Changing it doesn’t resume a paused workflow.`}
+        description={`Leave blank for the workspace default, ${String(settings.workspaceThreshold)}.`}
         error={validation.error('threshold')}
       >
         {(control) => (
@@ -180,13 +177,6 @@ function WorkflowRule({
           />
         )}
       </LabelledField>
-      <p className="text-xs text-muted-foreground">
-        Current configured rule:{' '}
-        {settings.enabled
-          ? `${String(settings.effectiveThreshold)} failures in a row`
-          : 'off'}
-        .
-      </p>
       <div>
         <ProgressButton
           type="submit"
@@ -202,6 +192,7 @@ function WorkflowRule({
         onRetrySuccess={() => {
           setDraft(undefined);
           notifications.success({ title: 'Auto-pause settings saved' });
+          onSaved();
         }}
       />
     </form>
@@ -211,7 +202,12 @@ function WorkflowRule({
 function WorkspaceDefaultForm({
   settings,
   scope,
-}: Readonly<{ settings: WorkspaceAutoPauseSettings; scope: Scope }>) {
+  onSaved,
+}: Readonly<{
+  settings: WorkspaceAutoPauseSettings;
+  scope: Scope;
+  onSaved: () => void;
+}>) {
   const [draft, setDraft] =
     useState<Readonly<{ threshold: string; revision: number }>>();
   const current = draft ?? {
@@ -242,11 +238,12 @@ function WorkspaceDefaultForm({
     ) {
       setDraft(undefined);
       notifications.success({ title: 'Workspace auto-pause default saved' });
+      onSaved();
     }
   }
   return (
     <form
-      className="mt-7 flex max-w-lg flex-col gap-4 border-t border-border pt-5"
+      className="flex max-w-lg flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
         void save();
@@ -255,7 +252,7 @@ function WorkspaceDefaultForm({
       <LabelledField
         id="workspace-auto-pause-threshold"
         label="Workspace default"
-        description="Applies to all workflows in this workspace that have no override. Only workspace owners can change it. Enter 3–100."
+        description="For every workflow without its own number. Enter 3 to 100."
         error={validation.error('threshold')}
       >
         {(control) => (
@@ -277,9 +274,6 @@ function WorkspaceDefaultForm({
           />
         )}
       </LabelledField>
-      <p className="text-xs text-muted-foreground">
-        Current saved default: {String(settings.threshold)} failures in a row.
-      </p>
       <div>
         <ProgressButton
           type="submit"
@@ -297,6 +291,7 @@ function WorkspaceDefaultForm({
           notifications.success({
             title: 'Workspace auto-pause default saved',
           });
+          onSaved();
         }}
       />
     </form>
@@ -304,6 +299,7 @@ function WorkspaceDefaultForm({
 }
 
 function WorkspaceDefault({ scope }: Readonly<{ scope: Scope }>) {
+  const [editing, setEditing] = useState(false);
   const query = useQuery(
     workspaceAutoPauseQueryOptions(
       scope.apiClient,
@@ -319,13 +315,49 @@ function WorkspaceDefault({ scope }: Readonly<{ scope: Scope }>) {
         resource="The workspace auto-pause default"
       />
       {settings === undefined ? null : (
-        <WorkspaceDefaultForm settings={settings} scope={scope} />
+        <SettingSentence
+          summary={
+            <>
+              Across the workspace, a workflow without its own number pauses
+              after <b>{settings.threshold} failures in a row</b>.
+            </>
+          }
+          editing={editing}
+          onEditingChange={setEditing}
+          editor={
+            <WorkspaceDefaultForm
+              settings={settings}
+              scope={scope}
+              onSaved={() => {
+                setEditing(false);
+              }}
+            />
+          }
+        />
       )}
     </>
   );
 }
 
+/** The workflow's rule in words. */
+function ruleSummary(settings: WorkflowAutoPauseSettings) {
+  if (!settings.enabled)
+    return (
+      <>
+        <b>Off.</b> This workflow keeps starting runs however often it fails.
+      </>
+    );
+  return (
+    <>
+      Schedules and webhooks <b>pause after {settings.effectiveThreshold}</b>{' '}
+      failures in a row
+      {settings.thresholdOverride === null ? ', the workspace default.' : '.'}
+    </>
+  );
+}
+
 export function AutoPauseSection(scope: Scope) {
+  const [editing, setEditing] = useState(false);
   const query = useQuery(
     workflowAutoPauseQueryOptions(
       scope.apiClient,
@@ -335,6 +367,7 @@ export function AutoPauseSection(scope: Scope) {
     ),
   );
   const settings = visibleSettingsData(query);
+  const canUpdate = scope.workspace.capabilities.includes('workflow:update');
   return (
     <SettingsSection
       title="Automatic pause"
@@ -342,12 +375,46 @@ export function AutoPauseSection(scope: Scope) {
     >
       <SettingsQueryState query={query} resource="The auto-pause rule" />
       {settings === undefined ? null : (
-        <WorkflowRule settings={settings} scope={scope} />
+        <SettingSentence
+          summary={
+            <>
+              {ruleSummary(settings)}
+              {canUpdate ? null : ' Your role can’t change this rule.'}
+            </>
+          }
+          editing={editing}
+          onEditingChange={setEditing}
+          {...(canUpdate
+            ? {
+                editor: (
+                  <WorkflowRule
+                    settings={settings}
+                    scope={scope}
+                    onSaved={() => {
+                      setEditing(false);
+                    }}
+                  />
+                ),
+              }
+            : {})}
+          rules={
+            <>
+              <p>
+                Runs already going finish, and manual runs and replays still
+                work while triggers are paused.
+              </p>
+              <p>
+                A change applies from the next failure, without publishing. It
+                never resumes a workflow that has already paused.
+              </p>
+            </>
+          }
+        />
       )}
       {scope.workspace.capabilities.includes('workspace:manage') ? (
         <WorkspaceDefault scope={scope} />
       ) : settings === undefined ? null : (
-        <p className="mt-5 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Workspace default: {String(settings.workspaceThreshold)} failures in a
           row. Only workspace owners can change it.
         </p>

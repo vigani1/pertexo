@@ -19,6 +19,9 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
   await page.context().addCookies(seed.cookies);
   const settingsPath = `/w/${seed.workspaceId}/workflows/${seed.workflowId}/settings`;
   await page.goto(settingsPath);
+  // The setting reads as a sentence; Change opens its editor.
+  const concurrency = page.getByRole('region', { name: 'Concurrency' });
+  await concurrency.getByRole('button', { name: 'Change' }).click();
   const input = page.getByRole('textbox', {
     name: 'Runs at once',
     exact: true,
@@ -49,6 +52,7 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
     page.getByText(/Waiting for workflow concurrency capacity/u).first(),
   ).toBeVisible();
   await page.goto(settingsPath);
+  await concurrency.getByRole('button', { name: 'Change' }).click();
   await expect(input).toHaveValue('1');
   await page
     .getByRole('combobox', { name: 'When the limit is reached' })
@@ -67,6 +71,7 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
     ).settings.overflow,
   ).toBe('skip');
   expect((await request.post(`${origin}/refuse-start`)).ok()).toBe(true);
+  await concurrency.getByRole('button', { name: 'Change' }).click();
   for (const width of [1280, 375]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(
@@ -96,11 +101,7 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
       .settings.limit,
   ).toBeNull();
   expect((await request.post(`${origin}/released-evidence`)).ok()).toBe(true);
-  await expect(
-    page.getByText(
-      'Current limit: no additional workflow limit. Workspace limits still apply.',
-    ),
-  ).toBeVisible();
+  await expect(concurrency.getByText('No limit of its own.')).toBeVisible();
   await page.screenshot({
     path: '/tmp/pertexo-workflow-concurrency-live.png',
     fullPage: true,

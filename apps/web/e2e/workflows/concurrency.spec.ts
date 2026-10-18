@@ -88,16 +88,13 @@ test('workflow concurrency preserves conflict edits, exact retries and Queue/Ski
   );
   await page.goto(`${editorUrl}/settings`);
   const section = page.getByRole('region', { name: 'Concurrency' });
+  await section.getByRole('button', { name: 'Change' }).click();
   const input = section.getByRole('textbox', { name: 'Runs at once' });
   await input.fill('1');
   await section.getByRole('button', { name: 'Save concurrency limit' }).click();
   await expect(section.getByText(/Your edits are kept/u)).toBeVisible();
   await expect(input).toHaveValue('1');
-  await expect(
-    section.getByText(
-      'Current limit: 3 active runs. Workspace limits still apply.',
-    ),
-  ).toBeVisible();
+  await expect(section.getByText('Up to 3 runs at once.')).toBeVisible();
   await section.getByRole('button', { name: 'Save concurrency limit' }).click();
   await section.getByRole('button', { name: 'Retry same change' }).click();
   await expect(page.getByText('Concurrency settings saved')).toBeVisible();
@@ -107,22 +104,20 @@ test('workflow concurrency preserves conflict edits, exact retries and Queue/Ski
     expectedRevision: 2,
     overflow: 'queue',
   });
+  await section.getByRole('button', { name: 'Change' }).click();
   await section
     .getByRole('combobox', { name: 'When the limit is reached' })
     .click();
   await page.getByRole('option', { name: 'Skip', exact: true }).click();
   await input.fill('');
   await section.getByRole('button', { name: 'Save concurrency limit' }).click();
-  await expect(
-    section.getByText(
-      'Current limit: no additional workflow limit. Workspace limits still apply.',
-    ),
-  ).toBeVisible();
+  await expect(section.getByText('No limit of its own.')).toBeVisible();
   expect(writes[3]?.body).toEqual({
     limit: null,
     expectedRevision: 3,
     overflow: 'skip',
   });
+  await section.getByRole('button', { name: 'Change' }).click();
   await input.focus();
   await page.keyboard.press('Tab');
   await expect(
@@ -156,13 +151,9 @@ test('workflow concurrency is readable but not editable by a viewer', async ({
   await settingsReads(page);
   await page.goto(`${editorUrl}/settings`);
   const section = page.getByRole('region', { name: 'Concurrency' });
-  await expect(
-    section.getByText(
-      'Current limit: no additional workflow limit. Workspace limits still apply.',
-    ),
-  ).toBeVisible();
+  await expect(section.getByText('No limit of its own.')).toBeVisible();
   await expect(section.getByRole('textbox')).toHaveCount(0);
   await expect(
-    section.getByText(/Extra runs wait their turn in acceptance order/u),
+    section.getByText(/Your role or the workspace’s state doesn’t allow/u),
   ).toBeVisible();
 });

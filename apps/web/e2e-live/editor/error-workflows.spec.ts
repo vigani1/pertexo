@@ -136,6 +136,7 @@ test('selects a published error workflow, starts it with safe data, and follows 
     name: 'Error workflow',
     exact: true,
   });
+  await section.getByRole('button', { name: 'Change' }).click();
   const picker = section.getByRole('combobox', {
     name: 'When this workflow fails, run …',
   });
@@ -150,6 +151,12 @@ test('selects a published error workflow, starts it with safe data, and follows 
     page.getByText('Error workflow saved', { exact: true }),
   ).toBeVisible();
   await page.reload();
+  await expect(
+    section.getByText(
+      'When this workflow fails, Pertexo runs Handle a workflow failure.',
+    ),
+  ).toBeVisible();
+  await section.getByRole('button', { name: 'Change' }).click();
   await expect(picker).toContainText('Handle a workflow failure');
   await mkdir('/tmp/pertexo-error-workflow-screenshots', { recursive: true });
   await section.screenshot({

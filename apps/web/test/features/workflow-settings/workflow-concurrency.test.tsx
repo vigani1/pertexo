@@ -35,6 +35,23 @@ import {
 } from './fixtures';
 import { workspaceWith } from '../workflows/list/fixtures';
 
+/** The limit field; Change opens it when the setting reads as a sentence. */
+async function limitField(event: ReturnType<typeof userEvent.setup>) {
+  const section = await screen.findByRole('region', { name: 'Concurrency' });
+  const toggle = await within(section).findByRole('button', {
+    name: /^(Change|Close)$/u,
+  });
+  if (toggle.textContent === 'Change') await event.click(toggle);
+  return within(section).findByRole('textbox', { name: 'Runs at once' });
+}
+
+/** The setting's sentence, whose values sit in their own elements. */
+function sentence(start: string) {
+  return (_: string, element: Element | null) =>
+    element?.tagName === 'P' &&
+    element.textContent.replace(/\s+/gu, ' ').startsWith(start);
+}
+
 const path = `/w/${workspaceId}/workflows/${workflowId}/settings`;
 const endpoint = `${workflowApi}/concurrency`;
 function problem(status: number, code: string, extras = {}) {
@@ -192,10 +209,7 @@ describe('workflow concurrency settings', () => {
       );
       renderApp(path);
       const event = userEvent.setup();
-      await event.type(
-        await screen.findByRole('textbox', { name: 'Runs at once' }),
-        value,
-      );
+      await event.type(await limitField(event), value);
       await event.click(
         screen.getByRole('button', { name: 'Save concurrency limit' }),
       );
@@ -243,17 +257,17 @@ describe('workflow concurrency settings', () => {
     await waitFor(() => {
       expect(cache.getQueryData(query.queryKey)).toBeUndefined();
     });
-    expect(screen.queryByText(/Current limit/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(sentence('Up to'))).not.toBeInTheDocument();
     view.rerender(content(true));
     await screen.findByText(
       'The concurrency settings couldn’t be loaded. Try again.',
     );
-    expect(screen.queryByText(/7 active runs/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/7 runs/u)).not.toBeInTheDocument();
     response = () =>
       HttpResponse.json({ ...defaultConcurrencySettings, limit: 2 });
     await cache.invalidateQueries({ queryKey: query.queryKey });
     await screen.findByText(
-      'Current limit: 2 active runs. Workspace limits still apply.',
+      sentence('Up to 2 runs at once. Extra events wait their turn.'),
     );
     cache.clear();
   });
@@ -272,15 +286,12 @@ describe('workflow concurrency settings', () => {
     );
     renderApp(path);
     const event = userEvent.setup();
-    await event.type(
-      await screen.findByRole('textbox', { name: 'Runs at once' }),
-      '1',
-    );
+    await event.type(await limitField(event), '1');
     await event.click(
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
     await screen.findByText(
-      'Current limit: 3 active runs. Workspace limits still apply.',
+      sentence('Up to 3 runs at once. Extra events wait their turn.'),
     );
     expect(screen.queryByText(/Your edits are kept/u)).not.toBeInTheDocument();
     await event.click(
@@ -322,22 +333,20 @@ describe('workflow concurrency settings', () => {
     renderApp(path);
     const event = userEvent.setup();
     const section = await screen.findByRole('region', { name: 'Concurrency' });
-    const input = await within(section).findByRole('textbox', {
-      name: 'Runs at once',
-    });
+    const input = await limitField(event);
     await event.type(input, '1');
     await event.click(
       within(section).getByRole('button', { name: 'Save concurrency limit' }),
     );
     await within(section).findByText(
-      'Current limit: 1 active run. Workspace limits still apply.',
+      sentence('Up to 1 run at once. Extra events wait their turn.'),
     );
-    await event.clear(input);
+    await event.clear(await limitField(event));
     await event.click(
       within(section).getByRole('button', { name: 'Save concurrency limit' }),
     );
     await within(section).findByText(
-      'Current limit: no additional workflow limit. Workspace limits still apply.',
+      sentence('No limit of its own. The workspace runs up to 10 at once.'),
     );
     expect(bodies).toEqual([
       { limit: 1, expectedRevision: 1, overflow: 'queue' },
@@ -364,7 +373,7 @@ describe('workflow concurrency settings', () => {
     );
     renderApp(path);
     const event = userEvent.setup();
-    const input = await screen.findByRole('textbox', { name: 'Runs at once' });
+    const input = await limitField(event);
     await event.click(
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
@@ -402,14 +411,14 @@ describe('workflow concurrency settings', () => {
     );
     renderApp(path);
     const event = userEvent.setup();
-    const input = await screen.findByRole('textbox', { name: 'Runs at once' });
+    const input = await limitField(event);
     await event.type(input, '1');
     await event.click(
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
     await screen.findByText(/Your edits are kept/u);
     await screen.findByText(
-      'Current limit: 3 active runs. Workspace limits still apply.',
+      sentence('Up to 3 runs at once. Extra events wait their turn.'),
     );
     expect(input).toHaveValue('1');
     expect(bodies).toHaveLength(1);
@@ -443,10 +452,7 @@ describe('workflow concurrency settings', () => {
     );
     renderApp(path);
     const event = userEvent.setup();
-    await event.type(
-      await screen.findByRole('textbox', { name: 'Runs at once' }),
-      '1',
-    );
+    await event.type(await limitField(event), '1');
     await event.click(
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
@@ -468,7 +474,7 @@ describe('workflow concurrency settings', () => {
     renderApp(path);
     const section = await screen.findByRole('region', { name: 'Concurrency' });
     await within(section).findByText(
-      'Current limit: no additional workflow limit. Workspace limits still apply.',
+      sentence('No limit of its own. The workspace runs up to 10 at once.'),
     );
     expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
     expect(within(section).queryByRole('combobox')).not.toBeInTheDocument();
@@ -519,7 +525,7 @@ describe('workflow concurrency settings', () => {
     mockServer.use(http.get(endpoint, () => response()));
     const app = renderApp(path);
     await screen.findByText(
-      'Current limit: 7 active runs. Workspace limits still apply.',
+      sentence('Up to 7 runs at once. Extra events wait their turn.'),
     );
     response = () => problem(503, 'service.unavailable');
     await app.queryClient.invalidateQueries({
@@ -533,7 +539,7 @@ describe('workflow concurrency settings', () => {
     await waitFor(() =>
       expect(
         screen.getByText(
-          'Current limit: 7 active runs. Workspace limits still apply.',
+          sentence('Up to 7 runs at once. Extra events wait their turn.'),
         ),
       ).toBeVisible(),
     );
@@ -570,6 +576,7 @@ it('saves Skip with the workflow limit and shows metadata-only skip history', as
   );
   renderApp(path);
   const user = userEvent.setup();
+  await limitField(user);
   await user.click(
     await screen.findByRole('combobox', { name: 'When the limit is reached' }),
   );
@@ -583,8 +590,9 @@ it('saves Skip with the workflow limit and shows metadata-only skip history', as
   ).toBeVisible();
   expect(
     screen.getByText(
-      'New trigger events are skipped when all workflow places are occupied',
-      { exact: false },
+      sentence(
+        'Up to 1 run at once. Extra trigger events are skipped; manual starts are refused.',
+      ),
     ),
   ).toBeVisible();
 });

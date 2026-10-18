@@ -80,6 +80,7 @@ for (const width of [1280, 375])
       name: 'Error workflow',
       exact: true,
     });
+    await section.getByRole('button', { name: 'Change' }).click();
     const picker = section.getByRole('combobox', {
       name: 'When this workflow fails, run …',
     });
@@ -108,7 +109,11 @@ for (const width of [1280, 375])
       expectedRevision: 1,
     });
     await page.reload();
-    await expect(picker).toContainText('Handle failed invoices');
+    await expect(
+      section.getByText(
+        'When this workflow fails, Pertexo runs Handle failed invoices.',
+      ),
+    ).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -143,7 +148,7 @@ test('a viewer reads the selected policy without receiving edit target discovery
     exact: true,
   });
   await expect(
-    section.getByText(/An error workflow is selected/u),
+    section.getByText(/Changing it takes edit access to both workflows/u),
   ).toBeVisible();
   await expect(section.getByRole('combobox')).toHaveCount(0);
   expect(discovery).toBe(0);
