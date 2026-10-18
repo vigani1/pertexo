@@ -41,7 +41,8 @@ export function AddStepItem({
           ? `${step.description}. Needs a connection.`
           : step.description
       }
-      className={`${stepRowClass} [content-visibility:auto]`}
+      // Skipped rows keep a row's height, so the list doesn't jump as they draw.
+      className={`${stepRowClass} [contain-intrinsic-size:auto_2.25rem] [content-visibility:auto]`}
       onDragStart={(event) => {
         event.dataTransfer.setData(STEP_DRAG_TYPE, choice.identity);
         event.dataTransfer.effectAllowed = 'copy';

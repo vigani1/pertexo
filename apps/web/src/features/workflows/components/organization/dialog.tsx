@@ -514,7 +514,7 @@ function OrganizationFields({
               visibleTags.map((tag) => (
                 <label
                   key={tag.id}
-                  className="flex min-w-0 items-center gap-2 text-sm break-words [content-visibility:auto]"
+                  className="flex min-w-0 items-center gap-2 text-sm break-words [contain-intrinsic-size:auto_1.25rem] [content-visibility:auto]"
                 >
                   <Checkbox
                     checked={selectedTagIds.has(tag.id)}
