@@ -233,12 +233,16 @@ Nine provider-unit cases use signed RSA tokens and the pinned SDK verifier to
 check signature, nonce, issuer, audience and expiry, plus actual authorization URL
 state/PKCE/nonce/callback fields. Apple form landing tests verify bounded encoding,
 ambiguous-proof refusal, exact cross-origin callback exceptions and unchanged
-identity until GET verifies the browser binding.
+identity until GET verifies the browser binding. Oversized forms use the existing
+400 invalid-proof contract; provider form POSTs consume the callback rate limit.
+The OpenAPI validator reports expected redirect-only callback advisories (302/303),
+without validation errors.
 
-Four real-browser journeys cover verified Google linking and new GitHub accounts
+Six real-browser journeys cover verified Google linking, new GitHub accounts and
+Apple cross-site form POSTs with the ordinary Lax browser cookie
 at 1280 and 375 pixels. The fixture replaces only the external provider; ordinary
 registration, email verification, sessions, account pages and PostgreSQL persist
-normally. Final database assertions prove four consumed journeys, four provider
+normally. Final database assertions prove six consumed journeys, six provider
 identities and no persisted provider access/refresh/ID tokens. All 214 mocked
 browser journeys pass; changed frontend React Doctor score is 100/100.
 

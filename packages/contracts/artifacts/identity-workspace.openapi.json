@@ -2813,16 +2813,6 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
-          "413": {
-            "description": "Provider form exceeds 32 KiB",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiProblem"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }

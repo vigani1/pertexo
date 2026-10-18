@@ -16,6 +16,10 @@ async function providerSignIn(page: Page, provider: string, email: string) {
   ).toBeVisible();
   await page.getByLabel('Provider email').fill(email);
   await page.getByRole('button', { name: 'Verify identity' }).click();
+  if (provider === 'Apple')
+    await page
+      .getByRole('button', { name: 'Continue to Pertexo', exact: true })
+      .click();
   await expect(page).toHaveURL('/workspaces');
 }
 
@@ -86,6 +90,27 @@ for (const width of [1280, 375]) {
     const methods = page.getByRole('list', { name: 'Sign-in methods' });
     await expect(methods.getByText('GitHub', { exact: true })).toBeVisible();
     await expect(methods.getByText('Password', { exact: true })).toHaveCount(0);
+    await expect(
+      methods.getByText('Your only way to sign in', { exact: true }),
+    ).toBeVisible();
+  });
+  test(`Apple form POST retains the Lax browser binding at ${String(width)}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/login');
+    await providerSignIn(
+      page,
+      'Apple',
+      `apple-${randomUUID()}@integration.test`,
+    );
+    await createEditorWorkspace(page, `Apple ${String(width)}`);
+    await page.goto('/account/security');
+    await page
+      .getByRole('tab', { name: 'Sign-in & security', exact: true })
+      .click();
+    const methods = page.getByRole('list', { name: 'Sign-in methods' });
+    await expect(methods.getByText('Apple', { exact: true })).toBeVisible();
     await expect(
       methods.getByText('Your only way to sign in', { exact: true }),
     ).toBeVisible();

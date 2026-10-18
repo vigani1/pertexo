@@ -449,6 +449,10 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
               clientId: 'browser-fixture',
               clientSecret: 'browser-fixture',
             },
+            apple: {
+              clientId: 'browser-fixture',
+              clientSecret: 'browser-fixture',
+            },
           },
         }
       : {}),
@@ -1158,15 +1162,15 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       const providers = await api
         .database()
         .query<{ count: number; token_count: number }>(
-          "select count(*)::int count,count(*) filter(where access_token is not null or refresh_token is not null or id_token is not null)::int token_count from app.auth_accounts where provider_id in ('google','github')",
+          "select count(*)::int count,count(*) filter(where access_token is not null or refresh_token is not null or id_token is not null)::int token_count from app.auth_accounts where provider_id in ('google','github','apple')",
         );
-      expect(providers.rows).toEqual([{ count: 4, token_count: 0 }]);
+      expect(providers.rows).toEqual([{ count: 6, token_count: 0 }]);
       const attempts = await api
         .database()
         .query<{ count: number }>(
           'select count(*)::int count from app.auth_sign_in_attempts where consumed_at is not null',
         );
-      expect(attempts.rows[0]?.count).toBe(4);
+      expect(attempts.rows[0]?.count).toBe(6);
       return;
     }
     if (scenario === 'code') {

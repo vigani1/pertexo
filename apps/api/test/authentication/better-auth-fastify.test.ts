@@ -151,6 +151,20 @@ describe('Better Auth Fastify bridge', () => {
       );
       expect(response.headers['referrer-policy']).toBe('no-referrer');
     }
+    const oversized = await application.inject({
+      method: 'POST',
+      url: '/v1/auth/federation/social/callback/apple',
+      headers: {
+        origin: 'https://appleid.apple.com',
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: `unused=${'a'.repeat(32768)}`,
+    });
+    expect(oversized.statusCode, oversized.payload).toBe(400);
+    expect(oversized.json()).toMatchObject({
+      code: 'request.invalid',
+      status: 400,
+    });
     const rejected = await application.inject({
       method: 'POST',
       url: '/v1/auth/sign-in/social',
