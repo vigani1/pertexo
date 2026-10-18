@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
-import { StepHealthList } from '@/features/workflow-runs/step-history.public';
+import { StepHealthList } from './step-health-list';
 import type { ApiClient } from '@/lib/api/client';
 
 type GraphLevel = Readonly<Pick<WorkflowGraphContract, 'nodes' | 'edges'>>;
