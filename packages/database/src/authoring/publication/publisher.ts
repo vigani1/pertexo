@@ -1,3 +1,4 @@
+import { recordPromotedPublication } from '../promotion/provenance.js';
 import { PublicationReviewError } from '../reviews/contract.js';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.js';
 import { lockWorkspaceVariableNames } from '../../variables/read.js';
@@ -410,11 +411,12 @@ export async function publishWorkflowCandidate(
     publication,
     version,
   );
+  await recordPromotedPublication(client, version);
   await finalizePublication(client, input, workflowId, version, reused);
   return Object.freeze({ replayed: false, reused, version });
 }
 
-async function publishWorkflowDirectly(
+export async function publishWorkflowDirectly(
   dependencies: WorkflowPublicationDependencies,
   client: PoolClient,
   input: PublicationCandidateInput,

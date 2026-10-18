@@ -1,5 +1,8 @@
+import { Link } from '@tanstack/react-router';
+import { promotionSearch } from '@/features/workflow-promotions/search.public';
 import { XIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { PROMOTION_LIMITS } from '@pertexo/contracts';
 import type {
   AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,
@@ -131,6 +134,36 @@ export function WorkflowOrganizedResults({
           >
             Organize…
           </Button>
+          {workspace.capabilities.includes('workflow:update') &&
+          currentSelected.length <= PROMOTION_LIMITS.workflows &&
+          currentSelected.every(
+            (item) => item.workflow.publishedVersionId !== null,
+          ) ? (
+            <Button
+              variant="outline"
+              size="sm"
+              render={
+                <Link
+                  to="/w/$workspaceId/settings/promotion"
+                  params={{ workspaceId: workspace.id }}
+                  search={promotionSearch(
+                    currentSelected.flatMap((item) =>
+                      item.workflow.publishedVersionId === null
+                        ? []
+                        : [
+                            {
+                              workflowId: item.workflow.id,
+                              versionId: item.workflow.publishedVersionId,
+                            },
+                          ],
+                    ),
+                  )}
+                />
+              }
+            >
+              Promote…
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="icon-sm"

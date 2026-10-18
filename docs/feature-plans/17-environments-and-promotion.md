@@ -24,7 +24,8 @@ Relevant current code:
 - `workflow-model/expressions/variable-usage`: bounded static/dynamic references.
 - `database/data-tables/columns/references` and `node-sdk/data-tables/bindings`.
 - `database/artifacts/references`: workspace/fingerprint admission for files.
-- `web/features/workflow-settings/model/versions/diff`: existing comparison UI logic.
+- `web/features/workflows/model/versions/diff` and `comparison.public.ts`: shared
+  comparison owner, moved without behavior changes in `2addf95fd`.
 
 Export/import alone creates a new workflow and retains source Call/column IDs.
 It is not promotion provenance or a safe cross-workspace publication operation.
@@ -38,7 +39,9 @@ Do not add a second importer, publisher, execution engine or credential copier.
   ordinary independent links, with no inferred access or automatic onward promotion.
 - The source workspace owner changes/clears its target using existing
   `workspace:manage`. Selecting a new target also requires current authoring access
-  there. A link is configuration, not an access grant or an SSO delegation.
+  there. A link is configuration, not an access grant or an SSO delegation. Keep
+  a cleared setting’s revision row and compare its prior target ID, so a set/clear
+  cycle or target purge cannot revive an old settings request.
 - Every preview/apply requires active current authoring access in source and target.
   Publication/request modes also require target `workflow:publish`. A later role,
   status or workspace change cannot be authorized by an old preview or receipt.
@@ -133,7 +136,9 @@ Do not add a second importer, publisher, execution engine or credential copier.
   The authoring module owns binding/validation; SQL stores/fences, not business rules.
 - Lock workspace identifiers first in sorted order, then the actor/memberships and
   workflow/draft rows in deterministic order. Use one existing pool checkout and
-  one transaction for the bounded apply. Do not hold it while rendering/waiting
+  one transaction for the bounded apply. Start with no tenant installed and use
+  scoped callbacks per workspace; do not nest scopes inside an already-scoped
+  authoring transaction. The authoring lifecycle tracks the shared checkout. Do not hold it while rendering/waiting
   for a user. Check current permissions, link, target policy and requirements again.
 - Apply is all-or-nothing for the selected batch. Claims/receipts use existing
   idempotency ownership; lost responses retry exactly the same request. A stale
@@ -197,6 +202,24 @@ preserves an edited review/acknowledgements until explicit re-review; a new targ
 revision or policy invalidates confirmation. Permission loss clears protected data.
 A lost apply response keeps its exact retained command and prevents a new action.
 
+The 20-workflow measurement found that storing the entire result exceeds the
+existing 4 KB idempotency receipt bound. The receipt stores only promotion and
+target IDs; exact retries reconstruct the result from the same source audit facts
+written atomically with apply. Audit retention is at least 30 days, longer than
+the 24-hour retry window. No second ledger or enlarged shared receipt cap.
+
+The existing live-browser job runs promotion as its own owned scenario. Combining
+it with the governance scenario exhausted the unchanged public authentication
+rate limits across unrelated users. Scenario isolation gives it a fresh disposable
+API/database/Redis namespace; no new CI job or rate-limit bypass is added.
+
+The real promoted parent/child qualification exposed a pre-existing F14 privilege
+gap: Call preflight runs under maintenance authority and its table-reference
+`FOR SHARE` failed with SELECT-only metadata access. The additive migration grants
+maintenance `UPDATE(id)` on table definitions, the narrow PostgreSQL privilege
+needed for that row lock. It grants no column-schema or row-data updates, and
+keeps the existing three roles and admission lock order.
+
 ## Acceptance and rollout
 
 - Real PostgreSQL/app-role tests: source/target permissions and revocation, forced
@@ -221,6 +244,30 @@ A lost apply response keeps its exact retained command and prevents a new action
   version restoration/publication/review, never a database reset. The next promotion
   shows manual rollback as a conflict rather than overwriting it silently.
 
+Retained version pickers use the same paged candidate metadata owner, filtered by
+workflow and version number. They never reuse the existing full-graph history
+query, fetch every retained graph on opening, or add that history to the review
+cache. The selected version remains exact even if it is on an older page.
+
+## Local evidence (2026-10-18)
+
+- 33 real PostgreSQL cases cover promotion, binding, approval, schema shape and
+  legacy upgrades. The API HTTP journey verifies session/CSRF authority, strict
+  input, review, apply and replay through the actual runtime.
+- The real worker runs a promoted parent and exact child using target-only
+  credentials, variable `RATE=7` and table amount `900`; source `RATE=42`, its
+  original credential reference and immutable version remain unchanged.
+- The owned promotion browser scenario creates workspaces and a workflow through
+  the UI, promotes a draft, publishes/runs it and inspects history at 1280/375px.
+  Screenshots are inspected locally; no horizontal overflow. React Doctor: 100,
+  no issues or suppressions after the composition and stable-key pass.
+- Maximum batch: 20 definitions with 50 KB configuration each, about 2 MB across
+  source/target graphs; response 2,019,147 bytes. Review ~1.00 s, apply ~1.12 s.
+  In this cumulative test process RSS rose 305.9→310.4 MB; lifetime high-water
+  was 366,688 KiB. These are local observations, not a deployment memory bound.
+  A larger combined review is refused before writes; the shared 4 KB receipt
+  bound stays intact.
+
 ## Later
 
 Git source control, promotion across installs, automatic onward promotion, copying
@@ -231,7 +278,7 @@ automatic child publication bypassing review, and folder-level ACLs (F18 later).
 
 - [x] Baseline, decisions and ownership reconciled against current main.
 - [x] ADR 087 and glossary capture linked workspaces and reviewed provenance.
-- [ ] Move/refactor commits preserve current behavior.
-- [ ] Contracts/schema/binding/apply/history and publication integration qualified.
-- [ ] UI, real worker/browser acceptance, maximum bounds and guide qualified.
+- [x] Move/refactor commits preserve current behavior (`2addf95fd`, `375360f31`).
+- [x] Contracts/schema/binding/apply/history and publication integration qualified.
+- [x] UI, real worker/browser acceptance, maximum bounds and guide qualified.
 - [ ] Required checks green, rebase merge and natural-main result inspected.

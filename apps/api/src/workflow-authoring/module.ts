@@ -1,3 +1,5 @@
+import { workflowPromotionProviders } from './promotion/providers.js';
+import { WorkflowPromotionController } from './promotion/controller.js';
 import { PublicationReviewUseCase } from './reviews/use-case.js';
 import {
   WorkflowPublicationReviewController,
@@ -68,6 +70,7 @@ export class WorkflowAuthoringModule {
     const portabilityPersistence = dependencies.portabilityPersistence;
     const providers: Provider[] = [
       ...workflowOrganizationProviders(dependencies),
+      ...workflowPromotionProviders(dependencies),
       ...(dependencies.publicationReviewPersistence === undefined
         ? []
         : [
@@ -250,6 +253,9 @@ export class WorkflowAuthoringModule {
       imports: [identityModule],
       controllers: [
         WorkflowAuthoringController,
+        ...(dependencies.promotionPersistence === undefined
+          ? []
+          : [WorkflowPromotionController]),
         ...(dependencies.publicationReviewPersistence === undefined
           ? []
           : [WorkflowPublicationReviewController, PublicationReviewController]),

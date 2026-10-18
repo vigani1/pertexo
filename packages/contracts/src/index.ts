@@ -289,3 +289,37 @@ export type {
   DirectoryAdoptionQuery,
   DirectoryAdoptionPreview,
 } from './schemas/identity/federation/directory.js';
+
+export {
+  PROMOTION_LIMITS,
+  workflowPromotionSettingsSchema,
+  workflowPromotionTargetSchema,
+  workflowPromotionTargetResultSchema,
+  type WorkflowPromotionSettings,
+  type WorkflowPromotionTarget,
+  type WorkflowPromotionTargetResult,
+} from './schemas/workflows/promotions/settings.js';
+export {
+  workflowPromotionPreviewRequestSchema,
+  workflowPromotionPreviewSchema,
+  type WorkflowPromotionMode,
+  type WorkflowPromotionPreviewRequest,
+  type WorkflowPromotionRequirement,
+  type WorkflowPromotionPreview,
+} from './schemas/workflows/promotions/review.js';
+export {
+  workflowPromotionApplySchema,
+  workflowPromotionResultSchema,
+  type WorkflowPromotionApply,
+  type WorkflowPromotionResult,
+} from './schemas/workflows/promotions/commands.js';
+export {
+  workflowPromotionPageQuerySchema,
+  workflowPromotionCandidatesSchema,
+  workflowPromotionCandidatesQuerySchema,
+  workflowPromotionHistorySchema,
+  type WorkflowPromotionPageQuery,
+  type WorkflowPromotionCandidates,
+  type WorkflowPromotionCandidatesQuery,
+  type WorkflowPromotionHistory,
+} from './schemas/workflows/promotions/history.js';

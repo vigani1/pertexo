@@ -87,6 +87,8 @@
             "workflow.concurrency_limit_unavailable",
             "workflow.publish_approval_required",
             "workflow.publication_review_conflict",
+            "workflow.promotion_conflict",
+            "workflow.promotion_unavailable",
             "workflow.error_policy_conflict",
             "workflow.error_target_unavailable",
             "pending_task.already_resolved",

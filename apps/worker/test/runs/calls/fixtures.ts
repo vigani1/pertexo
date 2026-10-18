@@ -1,3 +1,4 @@
+import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/capabilities.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createDeadlineWakeupScanner } from '@pertexo/database/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
@@ -150,7 +151,10 @@ export async function accept(
     }),
   );
 }
-export async function runtime(registry = createPlatformNodeRegistry()) {
+export async function runtime(
+  registry = createPlatformNodeRegistry(),
+  capabilities: NodeExecutionCapabilityFactories = {},
+) {
   const database = parseDatabaseConfig({
     connectionString: fixture.databaseUrl(fixture.workerUrl),
     max: 6,
@@ -188,7 +192,7 @@ export async function runtime(registry = createPlatformNodeRegistry()) {
         redisUrl: fixture.redisUrl,
         workerId: `call-${randomUUID()}`,
       },
-      { registry, runtimeCapabilities: {} },
+      { registry, runtimeCapabilities: capabilities },
     );
     await Promise.all([
       coordinator.consumer.waitUntilReady(5_000),

@@ -125,6 +125,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
   deleteRows('workflow_forms'),
   deleteRows('pending_run_tasks'),
   deleteRows('workflow_publication_requests'),
+  deleteRows('workspace_promotion_targets'),
   deleteRows('run_error_workflow_intents'),
   deleteRows('workflow_error_policies'),
   // Workflow organization.

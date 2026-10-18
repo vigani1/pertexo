@@ -97,6 +97,7 @@ it('renames populated mail without changing row, grant, index or referenced rela
       '0032_federated_sign_in.sql',
       '0033_organization_oidc.sql',
       '0034_organization_directory.sql',
+      '0035_workflow_promotions.sql',
     ]);
     expect(await catalog('app.system_mail_deliveries')).toEqual(before);
     expect(

@@ -1,3 +1,4 @@
+import { createWorkflowPromotionStore } from '../promotion/store.js';
 import { createPublicationReviewStore } from '../reviews/store.js';
 import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
 import { createWorkflowTestStore } from '../../previews/workflows/store.js';
@@ -41,6 +42,8 @@ import {
 } from '../../previews/repository.js';
 import {
   withTenantScopedClient,
+  withMultiWorkspaceTransaction,
+  type WorkspaceScopeRunner,
   withWorkspaceTransaction,
 } from '../../tenant-access/transactions.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
@@ -198,26 +201,37 @@ export function createWorkflowAuthoringDatabase(
   const authoringOperations = new Set<Promise<unknown>>();
   let closed = false;
   let closePromise: Promise<void> | undefined;
-  async function transact<T>(
-    workspaceId: string,
-    actorId: string,
-    operation: (client: PoolClient) => Promise<T>,
-    signal?: AbortSignal,
-  ): Promise<T> {
+  async function tracked<T>(start: () => Promise<T>): Promise<T> {
     if (closed) throw new Error('Workflow authoring database is closed');
-    const pending = withAuthorTransaction(
-      pool,
-      workspaceId,
-      actorId,
-      operation,
-      signal,
-    );
+    const pending = start();
     authoringOperations.add(pending);
     try {
       return await pending;
     } finally {
       authoringOperations.delete(pending);
     }
+  }
+  function transact<T>(
+    workspaceId: string,
+    actorId: string,
+    operation: (client: PoolClient) => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    return tracked(() =>
+      withAuthorTransaction(pool, workspaceId, actorId, operation, signal),
+    );
+  }
+  function transactScopes<T>(
+    operation: (inWorkspace: WorkspaceScopeRunner) => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    return tracked(() =>
+      withMultiWorkspaceTransaction(
+        pool,
+        operation,
+        signal === undefined ? {} : { signal },
+      ),
+    );
   }
   const authoringContext: WorkflowAuthoringWriteContext = {
     requireAuthor: requireWorkspaceAuthor,
@@ -231,6 +245,10 @@ export function createWorkflowAuthoringDatabase(
     transact,
   });
   return Object.freeze({
+    promotions: createWorkflowPromotionStore({
+      ...authoringContext,
+      transactScopes,
+    }),
     publicationReviews: createPublicationReviewStore(authoringContext),
     stepSamples: createWorkflowStepSampleStore(pool),
     workflowTests: createWorkflowTestStore(pool, catalogs),

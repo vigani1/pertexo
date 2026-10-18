@@ -1,4 +1,7 @@
-import { PublicationReviewError } from '@pertexo/database/authoring';
+import {
+  PublicationReviewError,
+  WorkflowPromotionError,
+} from '@pertexo/database/authoring';
 import {
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
@@ -67,6 +70,13 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof WorkflowPromotionError)
+    return applicationError(
+      error.reason === 'unavailable'
+        ? 'workflow.promotion_unavailable'
+        : 'workflow.promotion_conflict',
+      { safeDetail: error.message },
+    );
   if (error instanceof PublicationReviewError)
     return applicationError(
       error.reason === 'required'
