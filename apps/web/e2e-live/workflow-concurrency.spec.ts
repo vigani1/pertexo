@@ -101,7 +101,7 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
       .settings.limit,
   ).toBeNull();
   expect((await request.post(`${origin}/released-evidence`)).ok()).toBe(true);
-  await expect(concurrency.getByText('No limit of its own.')).toBeVisible();
+  await expect(concurrency.getByText(/^No limit of its own\./u)).toBeVisible();
   await page.screenshot({
     path: '/tmp/pertexo-workflow-concurrency-live.png',
     fullPage: true,
