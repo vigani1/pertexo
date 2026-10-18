@@ -1,3 +1,4 @@
+import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/contracts';
 import { expiredNoticeSql } from '../inbox/lifetime.js';
 import {
   expiredRunSql,
@@ -238,8 +239,9 @@ export const RETENTION_RULES = Object.freeze([
       with page as (
         select audit.id from app.audit_events audit
         join app.workspaces workspace on workspace.id=audit.workspace_id
-        where audit.occurred_at <= clock_timestamp() - workspace.audit_retention_days * interval '1 day'
-        order by audit.occurred_at, audit.id limit $1
+        where audit.occurred_at <= statement_timestamp() - ${String(AUDIT_RETENTION_MIN_DAYS)} * interval '1 day'
+          and audit.occurred_at <= statement_timestamp() - workspace.audit_retention_days * interval '1 day'
+        order by audit.occurred_at, audit.id limit $1 for update of audit skip locked
       )
       delete from app.audit_events audit using page where audit.id = page.id`,
   },

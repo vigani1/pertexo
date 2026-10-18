@@ -187,6 +187,7 @@ export {
   auditQuerySchema,
   auditPageSchema,
   auditRetentionSchema,
+  AUDIT_RETENTION_MIN_DAYS,
   governanceSettingsSchema,
   governanceUpdateSchema,
   type AuditFilter,

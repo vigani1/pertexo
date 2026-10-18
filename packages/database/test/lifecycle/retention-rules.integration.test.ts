@@ -346,6 +346,133 @@ describe('retention rules', () => {
     expect(audit.rows.map(({ id }) => id)).toEqual([recentAudit]);
   });
 
+  it('skips locked expired audit rows without locking workspace settings', async () => {
+    await enforceUntilIdle();
+    const held = randomUUID(),
+      next = randomUUID(),
+      fresh = randomUUID();
+    for (const [id, days] of [
+      [held, 500],
+      [next, 499],
+      [fresh, 100],
+    ] as const)
+      await admin.query(
+        "insert into app.audit_events(id,workspace_id,action,target_type,occurred_at) values($1,$2,'retention.lock','workspace',$3)",
+        [id, workspaceId, daysAgo(days)],
+      );
+    const rule = RETENTION_RULES.find(
+      (candidate) => candidate.name === 'audit_events',
+    );
+    if (rule === undefined || !('statement' in rule))
+      throw new Error('Missing audit rule');
+    const blocker = new Client({ connectionString: withDatabase(adminUrl) });
+    const cleaner = new Client({ connectionString: maintenanceUrl });
+    await blocker.connect();
+    await cleaner.connect();
+    try {
+      await blocker.query('begin');
+      await blocker.query(
+        'select id from app.audit_events where id=$1 for update',
+        [held],
+      );
+      await cleaner.query('begin');
+      await cleaner.query("set local statement_timeout='1s'");
+      expect((await cleaner.query(rule.statement, [1])).rowCount).toBe(1);
+      expect((await cleaner.query(rule.statement, [1])).rowCount).toBe(0);
+      expect(
+        (
+          await admin.query(
+            'select id from app.audit_events where id=any($1::uuid[]) order by id',
+            [[held, fresh]],
+          )
+        ).rows.map((row: { id: string }) => row.id),
+      ).toEqual([held, fresh].sort());
+      // The cleaner still owns its page locks; settings must remain independently writable.
+      await admin.query("set statement_timeout='1s'");
+      await admin.query(
+        'update app.workspaces set audit_retention_days=audit_retention_days where id=$1',
+        [workspaceId],
+      );
+      await cleaner.query('commit');
+      await blocker.query('commit');
+      expect((await cleaner.query(rule.statement, [1])).rowCount).toBe(1);
+      expect(
+        (
+          await admin.query(
+            'select id from app.audit_events where id=any($1::uuid[])',
+            [[held, next, fresh]],
+          )
+        ).rows,
+      ).toEqual([{ id: fresh }]);
+    } finally {
+      await admin.query('reset statement_timeout');
+      await cleaner.query('rollback');
+      await blocker.query('rollback');
+      await cleaner.end();
+      await blocker.end();
+    }
+  });
+
+  it('uses the audit time index on a populated ledger and honors each workspace retention', async () => {
+    await enforceUntilIdle();
+    const otherWorkspace = randomUUID(),
+      retained = randomUUID(),
+      due = randomUUID();
+    await admin.query(
+      "insert into app.workspaces(id,name,slug,created_by,audit_retention_days) values($1::uuid,'Long retention',$1::text,$2,2555)",
+      [otherWorkspace, userId],
+    );
+    await admin.query(
+      "insert into app.audit_events(id,workspace_id,action,target_type,occurred_at) select gen_random_uuid(),$1,'retention.index','workspace',clock_timestamp()-interval '1 day' from generate_series(1,20000)",
+      [workspaceId],
+    );
+    for (const [id, days] of [
+      [retained, 400],
+      [due, 2600],
+    ] as const)
+      await admin.query(
+        "insert into app.audit_events(id,workspace_id,action,target_type,occurred_at) values($1,$2,'retention.index','workspace',$3)",
+        [id, otherWorkspace, daysAgo(days)],
+      );
+    await admin.query('analyze app.audit_events');
+    await admin.query('analyze app.workspaces');
+    const rule = RETENTION_RULES.find(
+      (candidate) => candidate.name === 'audit_events',
+    );
+    if (rule === undefined || !('statement' in rule))
+      throw new Error('Missing audit rule');
+    const cleaner = new Client({ connectionString: maintenanceUrl });
+    await cleaner.connect();
+    try {
+      const plan = await cleaner.query(
+        `explain (format json) ${rule.statement}`,
+        [100],
+      );
+      expect(JSON.stringify(plan.rows)).toContain(
+        'audit_events_workspace_time_idx',
+      );
+      expect((await cleaner.query(rule.statement, [100])).rowCount).toBe(1);
+      expect(
+        (
+          await admin.query(
+            'select id from app.audit_events where id=any($1::uuid[])',
+            [[retained, due]],
+          )
+        ).rows,
+      ).toEqual([{ id: retained }]);
+      expect(
+        (
+          await admin.query(
+            "select count(*)::int count from app.audit_events where workspace_id=$1 and action='retention.index'",
+            [workspaceId],
+          )
+        ).rows,
+      ).toEqual([{ count: 20000 }]);
+    } finally {
+      await cleaner.end();
+    }
+  });
+
   it('expires skip summaries in bounded pages while keeping recent skips and other usage', async () => {
     const old = [randomUUID(), randomUUID(), randomUUID()];
     const recent = randomUUID();

@@ -99,6 +99,47 @@ phone/desktop widths. Merge only after required checks are green.
   reviews the exact revision; stale request cannot publish. Accessible controls,
   keyboard navigation, reduced motion and the existing Weft language.
 
+## Enablement and retention follow-up (2026-10-18)
+
+- Before changing approval from off to on, the existing governance command must
+  find another active person with an active membership and `governance:manage` in
+  this workspace. Exclude the actor; derive roles from the shared TypeScript
+  capability owner. Check after receipt replay/current revision, under the existing
+  workspace lock. Refuse with “Add another active owner or admin before requiring
+  approval to publish.” A refusal rolls back the receipt, revision and audit fact.
+  The policy form shows this safe validation reason through its existing Notice,
+  retaining the choice and normal uncertain-command recovery. Another workspace's
+  owner, a builder, a suspended/removed membership or an inactive account does not qualify. No new setting, role, route or service.
+- This is an enablement check, not a permanent membership constraint. Later loss
+  of reviewers does not silently change policy. Existing policies, retention-only
+  changes, exact receipt retries and audited disabling keep their current behavior.
+- Keep audit cleanup in the existing retention rule. Use one statement timestamp
+  and a constant cutoff from the contract's existing 30-day minimum so PostgreSQL
+  can estimate the eligible range, then each workspace's exact cutoff. The existing
+  `(workspace_id,occurred_at,id)` index serves both predicates. A stable timestamp
+  alone still allowed a full scan in qualification; the shared minimum cutoff
+  supplies the missing estimate. No additional index or migration is needed.
+  Claim only the bounded audit page with `FOR UPDATE OF audit SKIP LOCKED`;
+  do not lock workspaces. Existing maintenance
+  column-update privileges already permit row locking; add no grant or RLS policy.
+- Qualify role/member/account states, refusal rollback and retry, racing enables,
+  replay/retention changes/disable after reviewer loss; exercise the ordinary
+  publishing browser journey with another eligible reviewer at enablement. Prove
+  cleanup skips an independently locked expired row, remains page-bounded, keeps
+  fresh/custom-retention rows and uses the workspace/time index on a populated ledger.
+
+- [x] Enablement guard and transactional/browser regressions qualified.
+- [x] Indexed, skip-locked retention and populated-database upgrades qualified.
+
+Qualification: 41 governance/retention PostgreSQL cases plus four upgrade and
+retention-cancellation cases pass. The 20,000-event ledger uses the existing
+workspace/time index without planner overrides; a locked expired row is skipped,
+a later pass removes it, and workspace settings remain writable. Three actual
+browser journeys cover audit/CSV at 1280/375 pixels and the refusal, enablement,
+builder request and owner review. All 215 mocked browser journeys, 571 database,
+313 contracts and 1,292 web unit tests, strict types, lint and web build pass.
+React Doctor reports 100/100 for the changed React code.
+
 ## Later
 
 Folder-level workflow access lists, custom roles, workspace run-retention controls,

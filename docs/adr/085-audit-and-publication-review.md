@@ -39,6 +39,13 @@ off/on toggle cannot revive earlier review authority. One TypeScript request-sta
 owner supplies authoring and inbox eligibility; the existing attention observer
 and F27 delivery discover requests without another notice producer.
 
+Enablement clarification, 2026-10-18: switching approval on requires another
+current active owner/admin in the same workspace, excluding the person changing
+the setting. The settings command checks under its workspace lock and refuses
+without changing state or recording a successful settings fact. This does not
+prohibit later member removal or silently disable an existing policy; explicit
+audited disabling and exact command retries remain available.
+
 ## Consequences
 
 Review requires another eligible person while enabled. A request cannot authorize
