@@ -74,7 +74,8 @@ function particleSprite(rgb: Rgb): HTMLCanvasElement {
 
 // A large Core needs more, finer particles, or its grain turns into blurry
 // dots: the count grows with its size and each particle's size is capped.
-const MAX_PARTICLES = 4200;
+// Past 2,400 the shell barely gets denser, but every frame draws them all.
+const MAX_PARTICLES = 2400;
 const MAX_PARTICLE_SIZE = 3.2;
 
 function particleCountFor(cssSize: number): number {
