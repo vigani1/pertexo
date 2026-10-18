@@ -1,99 +1,237 @@
-# F17 — Development/production environments and safe promotion
+# F17 — Environments and promotion
 
-Status: proposed plan; not implementation-authorized by this document.
-Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
-Scope: New enterprise-oriented lifecycle. Relative size: **XL**, not a calendar estimate.
+Status: current code reconciled; implementation in progress. Updated: 2026-10-18.
+Parent: [roadmap](../product-roadmap.md). Decision: [ADR 087](../adr/087-workspace-promotion-and-version-provenance.md).
 
-## Outcome
+## Outcome and baseline
 
-Teams validate changes away from production and promote an exact reviewed artifact with explicit connections and variables.
+An environment is an ordinary workspace. A workspace names another workspace on
+this install as its promotion target. Builders review selected immutable published
+versions, bind configuration to the target, then create target drafts, publish
+when allowed, or request the existing F18 publication review. No environment flag
+changes row security, permissions or execution behavior.
 
-## Current implementation and evidence
+Main `cffe07669` includes F18 (#342–#343) and completed F28 (#344–#347). Existing
+owners already provide immutable versions/checksums, draft CAS, portable manifests,
+connection slots, variable-reference analysis, stable table-column bindings, exact
+Call pins, idempotency receipts, audit retention and publication approval.
 
-Immutable versions and restore/diff exist. They are not separate environments, connection bindings or source-controlled promotion.
+Relevant current code:
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
+- `database/authoring/portability`: graph projection and destination connection checks.
+- `database/authoring/publication`: one compile/persist/trigger/outbox pipeline.
+- `database/authoring/reviews`: exact draft review; no publisher bypass.
+- `workflow-model/expressions/variable-usage`: bounded static/dynamic references.
+- `database/data-tables/columns/references` and `node-sdk/data-tables/bindings`.
+- `database/artifacts/references`: workspace/fingerprint admission for files.
+- `web/features/workflow-settings/model/versions/diff`: existing comparison UI logic.
 
-- [apps/web/src/features/workflow-settings/pages/workflow-versions.tsx](../../apps/web/src/features/workflow-settings/pages/workflow-versions.tsx)
-- [docs/adr/002-postgresql-jsonb-drafts-immutable-versions-checksum-identity.md](../../docs/adr/002-postgresql-jsonb-drafts-immutable-versions-checksum-identity.md)
+Export/import alone creates a new workflow and retains source Call/column IDs.
+It is not promotion provenance or a safe cross-workspace publication operation.
+Do not add a second importer, publisher, execution engine or credential copier.
 
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+## Decisions and rules
 
-## Dependencies and planning gate
+### Workspaces and authority
 
-05, 13 and 16; 08 dependency graph when subworkflows included.
+- One optional target per source workspace; no self-target. Chained workspaces are
+  ordinary independent links, with no inferred access or automatic onward promotion.
+- The source workspace owner changes/clears its target using existing
+  `workspace:manage`. Selecting a new target also requires current authoring access
+  there. A link is configuration, not an access grant or an SSO delegation.
+- Every preview/apply requires active current authoring access in source and target.
+  Publication/request modes also require target `workflow:publish`. A later role,
+  status or workspace change cannot be authorized by an old preview or receipt.
+  Existing role/capability rules own these decisions; no new role/token scope.
+- Resolve another workspace's name/configuration only after proving access there.
+  An inaccessible target has a plain unavailable message, without exposing its
+  contents or claiming the actor lost their source workspace role.
+- All tables retain the ordinary forced `workspace_id` fence. The target setting
+  belongs to the source workspace; provenance belongs to the target. Cross-scope
+  reads/writes use existing scoped transactions, never an unfenced database role.
 
-Tenancy/isolation, credentials, review policy, whether replay remains in source environment; never merely point dev at production secrets.
+### Selected versions and binding
 
-Recommendations are not accepted ADRs. Resolve consequential choices before code;
-use the next free ADR number when required. Do not create ADRs for routine fixes.
+- Select at most twenty workflows, one retained published version per workflow;
+  default to each current live version. Historical versions are selectable for
+  exact Call dependencies and rollback. Source workflows must be readable/active.
+  A later source publication never silently substitutes another reviewed version.
+- Reuse portable projection/admission, registered definition/config versions and
+  placement policy. Preserve step IDs, links, mappings, callable/input contracts
+  and configuration. Reject known credential-like content as export/import does.
+- Read source connection metadata only: ID, name, provider and authentication type.
+  Resolve an active target connection using the existing name normalization and
+  the same provider/type. Never select secret/envelope/token fields. Missing,
+  incompatible or ambiguous bindings block apply with a specific requirement.
+  Do not silently use a source connection ID or invent a target credential.
+- Use existing variable-source/expression analysis. Require each referenced name
+  in the target; show dynamic references and incomplete analysis explicitly.
+  Incomplete analysis blocks apply; dynamic references remain visible for review.
+  Existing authoring validation remains authoritative. Copy no variable values,
+  descriptions, set revisions or snapshots. Target runs capture their normal set.
+- Tables must already exist by name in the target. Resolve each source column ID
+  to its current source name, then match the target column by name and type. Keep
+  workflow output aliases unchanged, replacing only the stable column IDs. Check
+  relevant unique-key/schema compatibility (including additional required target
+  columns for inserts/upserts) and preserve existing removed-column
+  fences. Missing/incompatible tables/columns block apply. Copy no schema or rows.
+- Static artifact references in a selected graph block promotion: show the affected
+  steps and explain using target-owned files or runtime inputs. Do not copy file
+  bytes or store cross-workspace references. Runtime file mappings remain normal
+  workflow configuration; pins, previews, input cases and run data never transfer.
+- Trigger endpoint keys, webhook authentication secrets, public-form grants,
+  connection health, alerts, concurrency policies and other operational settings
+  remain target-owned. Promoting a graph is not copying workspace/workflow runtime
+  settings. New publications use normal trigger reconciliation and fresh endpoint
+  credentials. New public forms keep the existing members-only default. Explain
+  that publishing can activate target schedules; drafts do not activate anything.
 
-## Ownership and structure
+### Call dependencies and immutable provenance
 
-Authoring/promotion application; database environment/binding lifecycle; contract manifests; web versions/environments; deployment remains external.
+- Rebind a Call only to a retained target version proven to come from the exact
+  source child workflow/version/checksum. Never match a child by name alone or
+  repin to its latest version. Reuse ordinary Call closure/contract/expansion rules.
+  Include the actual target counterparts’ transitive connection/variable requirements
+  in the bounded review, without transferring dependency data.
+- Promote a child first, publish it (through F18 review when required), then promote
+  its parent. Missing counterparts are explicit review requirements with links to
+  promote that exact child version. This also handles two historical versions of
+  one child through sequential promotions. Applying a parent with unresolved pins
+  is blocked; no dangling source pin or unapproved immutable version is staged.
+- Target workflows remember their source workspace/workflow and the last applied
+  source version, mapped graph digest and target name. One source workflow maps to
+  one target copy per workspace; later promotions find that copy by identity.
+  Never implicitly adopt an unrelated target workflow with a colliding name.
+- Publication records version correspondence only when the published candidate
+  still matches that promoted draft. This includes later ordinary/F18 publication
+  and checksum reuse. A manually edited draft cannot acquire false provenance.
+  Keep immutable correspondence facts for retained target versions; checksum reuse
+  and rebinding may produce many-to-many correspondence, without erasing history; resolve the
+  most recently published valid counterpart when more than one is available.
+- Provenance does not retain source data through a source purge: source identifiers
+  and checksums are opaque metadata, without a foreign key pinning source versions.
+  Target copies/versions remain independent; target workflow/workspace deletion
+  removes their provenance. Existing replay/recovery/Call pins remain unchanged.
 
-Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
-These are responsibility owners, not a mandate to create empty folders/packages.
-Reuse the post-cleanup canonical owners; do not restore old duplicated paths.
+### Review, conflicts and apply
 
-## Frontend work
+- The server returns proposed target graphs, current target drafts/live context,
+  binding requirements, exact source versions and direct-edit conflicts. Show step,
+  mapping/link and workflow contract changes, with inspectable configuration.
+  Reuse the version comparison owner rather than maintaining another diff rule.
+- A direct edit is a target name/graph change since its last promotion, or an
+  independently changed publication. Preserve those changes by default. Explicit
+  per-workflow acknowledgement may replace them after review. An unrelated name
+  collision remains blocking; do not silently adopt, rename or merge workflows.
+- Review carries an opaque SHA-256 fingerprint over selected versions, proposed
+  graphs/names, current target revisions/publication/provenance, bindings/schema,
+  target variable names/head revision, link revision, catalog and publication
+  policy. Store no review graph/token in PostgreSQL. Apply recomputes that same
+  review under locks and refuses stale fingerprints before changing anything.
+- API request selectors are IDs, acknowledgements, mode and an optional bounded
+  note, not caller-supplied executable/target graphs. Parse once at the boundary.
+  The authoring module owns binding/validation; SQL stores/fences, not business rules.
+- Lock workspace identifiers first in sorted order, then the actor/memberships and
+  workflow/draft rows in deterministic order. Use one existing pool checkout and
+  one transaction for the bounded apply. Do not hold it while rendering/waiting
+  for a user. Check current permissions, link, target policy and requirements again.
+- Apply is all-or-nothing for the selected batch. Claims/receipts use existing
+  idempotency ownership; lost responses retry exactly the same request. A stale
+  review or failed publication leaves all drafts, histories, provenance and outbox
+  rows unchanged. Missing requirements never cause a partial import.
+- Modes: **Create drafts** (default), **Publish**, or **Request approval**. Publish
+  must pass the existing publisher's approval policy in the same transaction.
+  Request mode uses existing F18 request admission, exact draft tag/note, limits,
+  inbox audience and notices. A different current owner/admin approves there.
+  No special promotion approval or administrative bypass.
+- Promotion audit facts record actor, source/target IDs, versions, revisions, mode
+  and promotion ID in each affected workspace; never graphs, values or credentials.
+  The feature's history is a safe projection of those existing facts, paged by ID,
+  following workspace audit retention (365 days by default). Do not create another
+  event ledger. Persistent origin/version correspondence lasts with target data.
 
-Environment selector, dependency/configuration diff, binding checklist, promotion preview and audit trail. Git connection is later, not required for first controlled promotion.
+## Bounds, structure and delivery
 
-## Backend work
+Initial bounds: twenty selected workflows, one version each, combined source and
+current target graphs (including inspected dependencies) within 2 MiB, response
+within 4 MiB, existing per-graph and
+expression/dependency budgets unchanged, history pages up to fifty. Refuse a large
+batch with “select fewer workflows”; do not buffer unbounded history or graph sets.
+Measure the maximum before final qualification and reduce a bound if necessary.
 
-ADR for isolation unit, environment binding/promotion identity, compatible dependency bundle and atomic activation/rollback. No copying secret bytes; each environment authorizes its bindings.
+One feature PR, with coherent commits and moves separate from logic:
 
-## Delivery slices
+1. Reconcile this plan, accept ADR 087 and record glossary terms before code.
+2. Move shared UI graph comparison to its workflow owner, updating imports only.
+   Extract the existing direct-publication policy into a shared internal operation
+   without changing behavior, so promotion and normal publishing have one guard.
+3. Add three typed authoring schema tables under `schema/authoring/promotions/`:
+   source target links, target workflow origins and target version correspondence.
+   Generate migration 0035; preserve forced RLS/grants/purge and update the four
+   legacy-upgrade migration expectations. Keep origin identifiers separate from
+   any secret/run-data store. Verify migration and retained historical versions.
+4. Implement `database/authoring/promotion/` grouped into settings, preparation and
+   apply/publication responsibilities, with a small store interface: settings,
+   candidates, preview, apply and history. Reuse the current authoring context,
+   scoped transaction helpers, portability catalog, variable/table/artifact owners,
+   publisher/reviews, audit and command receipts. Add `.promotions` to the authoring
+   database composition; no new package entry point or independent pool.
+5. Contracts own zod/OpenAPI settings, selectors, review/requirements and results.
+   API `workflow-authoring/promotion/` owns guarded browser commands and safe error
+   mapping, wired through the existing runtime/module. Endpoint group under
+   `/v1/workspaces/:workspaceId/promotions`: settings, candidates, preview, apply,
+   history. Target IDs never confer authority. No machine-token scope expansion.
+6. Web `features/workflow-promotions/` owns page, API/queries, retained commands and
+   review UI. Routes compose it at workspace Settings → Promotion; workflow list
+   selection and version actions link there with bounded selected version IDs.
+   Owners configure targets; authors select, compare, acknowledge direct edits and
+   apply; everyone gets clear missing-binding/policy feedback before an action.
+   Target draft/version/review links and a history lane make results inspectable.
+   Keep Weft, plain forms, keyboard use, phone layout and reduced motion.
+7. Qualify, document `docs/guides/environments.md`, update tracker/roadmap, normal
+   hooks and exact-head green CI, then rebase-merge. Finish F17 before F19.
 
-1. Choose separate workspaces versus environment entity using tenancy/security tradeoffs.
-2. Implement exact-version promotion and dry-run dependency/binding validation.
-3. Deliver UI and rollback; optionally Git-backed manifests after portable representation stabilizes.
+Frontend snapshots belong to Query with zero retention for detailed reviews and
+no persistence. URL owns selected workflow/version IDs. A background refresh
+preserves an edited review/acknowledgements until explicit re-review; a new target,
+revision or policy invalidates confirmation. Permission loss clears protected data.
+A lost apply response keeps its exact retained command and prevents a new action.
 
-Each slice ends in a usable, tested behavior; do not ship enabled placeholder
-controls backed by invented responses.
+## Acceptance and rollout
 
-## Acceptance evidence
+- Real PostgreSQL/app-role tests: source/target permissions and revocation, forced
+  RLS across unrelated workspaces, link CAS/clear, name collisions, every binding,
+  alias preservation, missing/dynamic variables, file refusal, drift between review
+  and apply, concurrent applies, same-command replay, atomic rollback and purge.
+- Publish/approval tests prove no F18 bypass, exact reviewed revision, stale later
+  edits and no provenance for manual edits. Child → approved target child → parent
+  binds exact target versions, including historical children/checksum reuse.
+- Run a promoted parent on the real worker: it must use target connections,
+  variable values and table data, call target children and preserve source history.
+  No real external providers; use owned local test services and current fixtures.
+- Real browser journey on desktop/375px: configure two workspaces, review missing
+  setup, fix it, preserve target edits until acknowledged, create/promote drafts,
+  review/approve where required, inspect history and run the target. Add mocked
+  regression cases, app build/lint/types/units and React Doctor without suppressions.
+- Measure maximum review/apply bytes, process memory and transaction time. History
+  and configuration reads release checkouts before responding. No Docker download,
+  hosted service, paid account or infrastructure change is needed.
+- Additive migration/reader rollout. Old authoring paths remain unchanged; UI
+  handles unavailable promotion support plainly. Rollback uses the target's existing
+  version restoration/publication/review, never a database reset. The next promotion
+  shows manual rollback as a conflict rather than overwriting it silently.
 
-Promoting a child dependency, missing binding, drift during approval, partial failure, concurrent promotion, rollback preserves historical pins, no secret export.
+## Later
 
-Apply the shared completion checklist: contract/authorization tests, real
-persistence and restart/race tests when relevant, real browser/backend flow for
-visible behavior, and exact reviewed source/CI evidence. Mocks alone cannot close
-the live gate. Record unsupported environments explicitly.
+Git source control, promotion across installs, automatic onward promotion, copying
+files or table schemas/data, environment-specific secret/variable replication,
+automatic child publication bypassing review, and folder-level ACLs (F18 later).
 
-## Non-goals
+## Tracker
 
-Git as live runtime authority, environment flags that bypass RLS, automatic production deployment.
-
-## Rollout and rollback
-
-Previous immutable activated version and binding set restore through audited command, not database reset.
-
-No production rollout, paid provisioning or real external calls are authorized by
-this plan. New persistent behavior requires additive reader/writer rollout and
-retention/membership-deletion handling before enablement.
-
-## Competitor context
-
-n8n documents Git-backed source control/environments, with plan-specific availability. This is later than basic authoring and reuse. Sources: [n8n source control and environments](https://docs.n8n.io/administer/use-source-control-and-environments); [Zapier drafts and versions](https://help.zapier.com/hc/en-us/articles/9693520498445-Create-Zap-drafts-and-versions).
-
-Research checked 2026-09-28; product editions and availability can change.
-This context informs the outcome, not Pertexo's implementation or billing policy.
-
-## Delivery tracker
-
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
-- [ ] Contracts and failure/security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
-
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+- [x] Baseline, decisions and ownership reconciled against current main.
+- [x] ADR 087 and glossary capture linked workspaces and reviewed provenance.
+- [ ] Move/refactor commits preserve current behavior.
+- [ ] Contracts/schema/binding/apply/history and publication integration qualified.
+- [ ] UI, real worker/browser acceptance, maximum bounds and guide qualified.
+- [ ] Required checks green, rebase merge and natural-main result inspected.

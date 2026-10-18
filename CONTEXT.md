@@ -73,6 +73,19 @@ one exact saved draft revision when workspace approval is required. Editing the
 draft makes the request stale. Approval and publication commit together.
 _Avoid_: Run approval, permission to publish future edits
 
+**Promotion target**: Another workspace on this install selected as the
+destination for reviewed workflow changes. It grants no access or shared
+configuration. _Avoid_: Deployment server, shared secret store
+
+**Workflow promotion**: Applying a reviewed published version as a separate
+workspace's draft, with its own connections and configuration. Publishing there
+still follows that workspace's approval rules. _Avoid_: Moving a workflow,
+replaying a run, copying an environment
+
+**Promoted version counterpart**: An immutable target version published from a
+reviewed source version after its references were bound to the target. Calls use
+that exact correspondence. _Avoid_: Latest child version, matching workflow name
+
 **Run replay**: A new execution with an explicitly selected retained version and
 input, linked to a source run whose history remains unchanged. _Avoid_: Queue
 redelivery, retry

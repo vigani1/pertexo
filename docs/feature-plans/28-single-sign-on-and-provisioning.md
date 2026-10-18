@@ -1,6 +1,6 @@
 # F28 — Single sign-on and provisioning
 
-Status: social, organization OIDC and SAML merged; SCIM implemented and locally qualified, pending PR checks/merge. Updated: 2026-10-18.
+Status: complete; social, organization OIDC, SAML and SCIM merged (#344–#347). Updated: 2026-10-18.
 Parent: [roadmap](../product-roadmap.md). Decision: [ADR 086](../adr/086-federated-sign-in-and-provisioning.md).
 
 ## Current code and ownership
@@ -164,7 +164,7 @@ queue, CI job or global instance-administration application.
    PostgreSQL and real-browser setup/sign-in/recovery qualified; proxy privacy passed.
 3. SAML: merged #346. Real cross-site signed assertions and desktop/phone settings,
    metadata, test-sign-in, enforcement and account-method browser journeys passed.
-4. SCIM: implemented; final PR checks/merge pending. Move-only membership extraction
+4. SCIM: merged in [#347](https://github.com/vigani1/pertexo/pull/347). Move-only membership extraction
    precedes batch-storage and protocol logic commits. Owners manage credentials,
    people, ordered mappings, explicit adoption and unlink in existing Weft settings.
    Secrets stay out of Query caches; edited mappings/reviews survive refreshes and
@@ -209,7 +209,8 @@ requires unsupported SAML options. No paid identity service is required.
 - [x] Social, organization OIDC and SAML qualified and merged (#344–#346).
 - [x] SCIM backend/UI, immediate removal, purge, bounds and real browser qualification.
 - [x] Update [sign-in/provisioning guide](../guides/single-sign-on.md).
-- [ ] Final SCIM PR checks, rebase merge and natural-main result.
+- [x] Final SCIM PR checks and rebase merge (#347), main `cffe07669`.
+- [x] Natural-main CI 39107159734 and CodeQL 39107159751 pass on `cffe07669`.
 
 Protocol references: [SCIM protocol](https://www.rfc-editor.org/info/rfc7644/),
 [SCIMMY schemas](https://scimmyjs.github.io/SCIMMY.Types.SchemaDefinition.html),
