@@ -1,39 +1,53 @@
 import type { PoolClient } from 'pg';
 import type { MembershipRole } from '../contracts.js';
 
-/** Writes one membership's role, status and advanced role revision. */
-export async function updateMembership(
+export type MembershipChange = Readonly<{
+  userId: string;
+  role: MembershipRole;
+  status: 'active' | 'suspended' | 'removed';
+  roleRevision: number;
+}>;
+
+/** The caller owns unique member IDs and revisions; removal keeps private cleanup atomic. */
+export async function updateMemberships(
   client: PoolClient,
   workspaceId: string,
-  change: Readonly<{
-    userId: string;
-    role: MembershipRole;
-    status: 'active' | 'suspended' | 'removed';
-    roleRevision: number;
-  }>,
+  changes: readonly MembershipChange[],
 ): Promise<void> {
+  if (changes.length === 0) return;
   await client.query(
-    `update app.workspace_memberships
-     set role=$3,status=$4,role_revision=$5,updated_at=clock_timestamp()
-     where workspace_id=$1 and user_id=$2`,
+    `update app.workspace_memberships member
+     set role=change.role,status=change.status,role_revision=change.revision,
+         updated_at=clock_timestamp()
+     from unnest($2::uuid[],$3::text[],$4::text[],$5::integer[])
+       as change(user_id,role,status,revision)
+     where member.workspace_id=$1 and member.user_id=change.user_id`,
     [
       workspaceId,
-      change.userId,
-      change.role,
-      change.status,
-      change.roleRevision,
+      changes.map((change) => change.userId),
+      changes.map((change) => change.role),
+      changes.map((change) => change.status),
+      changes.map((change) => change.roleRevision),
     ],
   );
-  // Favorites are private to a membership; a member who comes back starts
-  // without them.
-  if (change.status === 'removed') {
-    await client.query('select app.clear_removed_member_notices($1,$2)', [
-      workspaceId,
-      change.userId,
-    ]);
-    await client.query(
-      'delete from app.workflow_favorites where workspace_id=$1 and actor_id=$2',
-      [workspaceId, change.userId],
-    );
-  }
+  const removed = changes
+    .filter((change) => change.status === 'removed')
+    .map((change) => change.userId);
+  if (removed.length === 0) return;
+  await client.query(
+    `select app.clear_removed_member_notices($1,removed.user_id)
+     from unnest($2::uuid[]) as removed(user_id)`,
+    [workspaceId, removed],
+  );
+  await client.query(
+    'delete from app.workflow_favorites where workspace_id=$1 and actor_id=any($2::uuid[])',
+    [workspaceId, removed],
+  );
+}
+export function updateMembership(
+  client: PoolClient,
+  workspaceId: string,
+  change: MembershipChange,
+): Promise<void> {
+  return updateMemberships(client, workspaceId, [change]);
 }
