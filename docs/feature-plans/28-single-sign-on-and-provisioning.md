@@ -222,6 +222,23 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
    its current revision/session semantics. No new transaction, entry point or role.
    Qualify all four entry paths, exact retries, batch rollback and workspace RLS.
 
+3. **One read-only session-policy lookup:** `sessions/lookup.ts` owns the
+   per-request `isAuthenticationSessionAllowed` read, separately from transactional
+   sign-in, invitation and account-change commands. Gather current session, account,
+   verified domain, control-owner/password, provider and directory facts in one
+   parameterized SELECT; shared TypeScript policy/proof projection remains the
+   decision owner. No cache, row writes, row locks or explicit read-write transaction.
+   A materialized single-session scope installs only transaction-local workspace
+   context for the existing control-workspace ownership fence. Dependent membership
+   reads consume that scope; the implicit statement transaction clears it before
+   the connection returns to the pool. No new RLS policy, definer function or grant.
+   Keep issuance commands' existing transactions/context restoration. Qualify
+   required SSO, recovery, provider changes, inactive directory/account states,
+   expiry, one wire statement and context cleanup on a one-connection read-only pool.
+   PostgreSQL references: [materialization](https://www.postgresql.org/docs/18/queries-with.html#QUERIES-WITH-CTE-MATERIALIZATION),
+   [local settings](https://www.postgresql.org/docs/18/functions-admin.html#FUNCTIONS-ADMIN-SET),
+   [read-only mode](https://www.postgresql.org/docs/18/sql-set-transaction.html).
+
 - [x] JIT skip behavior and corrected real-PostgreSQL sign-in regression: 15
   sign-in/SCIM cases and all 570 database unit tests pass; strict types/lint pass.
   Merged [#350](https://github.com/vigani1/pertexo/pull/350) after green CI.
@@ -229,6 +246,10 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
   115 actual PostgreSQL cases, 571 database unit tests, strict types and lint pass.
   Eight real API cases and all 2,192 API unit tests also pass; creation/replay
   assertions check both correlated facts without assuming an unordered row order.
+  Merged [#351](https://github.com/vigani1/pertexo/pull/351) after green CI.
+- [x] Single-query session lookup qualified on a real read-only, single-connection
+  runtime pool: one wire statement and no scope on reuse. All 41 identity/SCIM
+  PostgreSQL cases, 571 database unit tests, strict types and lint pass.
 
 ## Later
 

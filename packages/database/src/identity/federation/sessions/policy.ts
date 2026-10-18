@@ -20,6 +20,7 @@ export type CurrentProvider = Readonly<{
   organizationId: string;
   enabled: boolean;
   revision: number;
+  directoryAllowed: boolean;
 }>;
 /** Every entry and lookup uses this rule; social identity never satisfies required organization SSO. */
 export function authenticationAllowed(
@@ -32,6 +33,7 @@ export function authenticationAllowed(
     return (
       provider !== undefined &&
       provider.enabled &&
+      provider.directoryAllowed &&
       provider.revision === proof.providerRevision &&
       provider.organizationId === policy.verifiedOrganizationId &&
       (policy.enforcedOrganizationId === null ||
@@ -50,4 +52,48 @@ export function identityEmailChangeAllowed(
     policy.active &&
     (policy.enforcedOrganizationId === null || policy.recoveryOwner)
   );
+}
+
+export type StoredSessionProof = Readonly<{
+  authentication_method: 'credential' | 'social' | 'organization';
+  federation_provider_id: string | null;
+  federation_provider_revision: number | null;
+}>;
+export function sessionProof(
+  session: StoredSessionProof,
+): SessionAuthenticationProof {
+  return session.authentication_method === 'organization' &&
+    session.federation_provider_id !== null &&
+    session.federation_provider_revision !== null
+    ? {
+        method: 'organization',
+        providerId: session.federation_provider_id,
+        providerRevision: session.federation_provider_revision,
+      }
+    : {
+        method:
+          session.authentication_method === 'social' ? 'social' : 'credential',
+      };
+}
+export function accountPolicy(
+  account: Readonly<{
+    status: string;
+    email_verified: boolean;
+    organization_id: string | null;
+    require_sso: boolean | null;
+    control_owner: boolean;
+    password_present: boolean;
+  }>,
+): AuthenticationPolicy {
+  return {
+    active: account.status === 'active',
+    enforcedOrganizationId:
+      account.require_sso === true ? account.organization_id : null,
+    verifiedOrganizationId: account.organization_id,
+    recoveryOwner:
+      account.require_sso === true &&
+      account.email_verified &&
+      account.control_owner &&
+      account.password_present,
+  };
 }

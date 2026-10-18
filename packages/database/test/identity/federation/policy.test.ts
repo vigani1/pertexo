@@ -18,6 +18,7 @@ const provider = {
   organizationId: 'organization-a',
   enabled: true,
   revision: 3,
+  directoryAllowed: true,
 };
 describe('one organization session rule', () => {
   it('allows ordinary sign-in only when the domain does not require SSO', () => {
@@ -39,6 +40,12 @@ describe('one organization session rule', () => {
   it('allows only a current enabled provider from the exact verified organization', () => {
     expect(authenticationAllowed(policy, proof, provider)).toBe(true);
     expect(authenticationAllowed(policy, proof)).toBe(false);
+    expect(
+      authenticationAllowed(policy, proof, {
+        ...provider,
+        directoryAllowed: false,
+      }),
+    ).toBe(false);
     expect(
       authenticationAllowed(policy, proof, { ...provider, revision: 4 }),
     ).toBe(false);
