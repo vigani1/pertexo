@@ -1,3 +1,4 @@
+import type { OrganizationIdentity } from '../../../../src/authentication/federation/protocol/identity.js';
 import { randomUUID } from 'node:crypto';
 import { Resolver } from 'node:dns/promises';
 import { beforeAll, afterAll, expect, vi } from 'vitest';
@@ -18,7 +19,7 @@ export const encryption = {
 };
 export function useOrganizationApi(suite: string) {
   const authorizations = new Map<string, protocol.OidcProof>();
-  const identities = new Map<string, protocol.OrganizationIdentity>();
+  const identities = new Map<string, OrganizationIdentity>();
   const gateway: protocol.OidcProofGateway = {
     authorize: (_provider, proof) => {
       authorizations.set(proof.state, proof);
@@ -146,7 +147,7 @@ export function useOrganizationApi(suite: string) {
   }
   async function start(
     input: { providerId: string; domain: string },
-    identity: protocol.OrganizationIdentity,
+    identity: OrganizationIdentity,
     testing?: { workspaceId: string; domainId: string; owner: Browser },
   ) {
     const reply = await api.send(
@@ -197,7 +198,7 @@ export function useOrganizationApi(suite: string) {
     journey: Awaited<ReturnType<typeof start>>,
     cookie = journey.cookie,
   ) => api.send('GET', journey.callback, { headers: { cookie } });
-  const person = (email: string): protocol.OrganizationIdentity => ({
+  const person = (email: string): OrganizationIdentity => ({
     email,
     subject: randomUUID(),
     displayName: 'Organization Person',

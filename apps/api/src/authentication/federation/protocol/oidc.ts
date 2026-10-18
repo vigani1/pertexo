@@ -1,9 +1,6 @@
 import * as oidc from 'openid-client';
-import { z } from 'zod';
-import {
-  userDisplayNameSchema,
-  type OidcConfiguration,
-} from '@pertexo/contracts';
+import type { OidcConfiguration } from '@pertexo/contracts';
+import { organizationIdentity, type OrganizationIdentity } from './identity.js';
 import type {
   ApplicationSecretEnvelope,
   SecureHttpClient,
@@ -15,11 +12,6 @@ export type OidcProviderMaterial = Readonly<{
   issuer: string;
   configuration: OidcConfiguration;
   sealedSecret: unknown;
-}>;
-export type OrganizationIdentity = Readonly<{
-  subject: string;
-  email: string;
-  displayName: string;
 }>;
 export type OidcProof = Readonly<{
   state: string;
@@ -41,8 +33,6 @@ export function federationSecretContext(
 ): string {
   return `organization-oidc:${workspaceId}:${providerId}`;
 }
-const email = z.email().max(320);
-const subject = z.string().min(1).max(255);
 /** Only verified ID-token claims become identity; OAuth tokens never leave this gateway. */
 export function createOidcProofGateway(
   input: Readonly<{
@@ -181,16 +171,11 @@ export function createOidcProofGateway(
           typeof claims.email_verified !== 'boolean')
       )
         throw new Error('OIDC identity is unverified');
-      const name = userDisplayNameSchema.safeParse(
+      return organizationIdentity(
+        claims.sub,
+        claims[provider.configuration.emailClaim],
         claims[provider.configuration.nameClaim],
       );
-      return {
-        subject: subject.parse(claims.sub),
-        email: email
-          .parse(claims[provider.configuration.emailClaim])
-          .toLowerCase(),
-        displayName: name.success ? name.data : 'Pertexo member',
-      };
     },
   };
 }
