@@ -49,9 +49,9 @@ export function FederationSettingsPage({
         <PageHeaderTitle>Single sign-on</PageHeaderTitle>
       </PageHeader>
       <p className="text-sm text-muted-foreground">
-        Verified domains set account sign-in policy across this install. Linked
-        workspaces control which memberships new SSO accounts receive. Keep the
-        recovery owner password available during an identity provider outage.
+        Let people sign in with your company’s identity provider. A verified
+        domain decides how its addresses sign in; keep the owner’s recovery
+        password safe for the day the provider is down.
       </p>
       {settings.isPending ? (
         <p role="status">Loading sign-in settings…</p>

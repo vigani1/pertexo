@@ -198,16 +198,20 @@ export function VariablesEditor({
           <Button type="submit" variant="primary" disabled={locked || !changed}>
             {command.pending ? 'Saving…' : 'Save variables'}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={locked || (!changed && !serverChanged)}
-            onClick={() => {
-              void reload();
-            }}
-          >
-            Reload current values{changed ? ' (discard edits)' : ''}
-          </Button>
+          {/* Only offered when there is something to discard or newer
+              values to load. */}
+          {changed || serverChanged ? (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={locked}
+              onClick={() => {
+                void reload();
+              }}
+            >
+              {changed ? 'Discard changes' : 'Load the latest values'}
+            </Button>
+          ) : null}
           <VariableSaveFeedback revision={saved} />
         </div>
       </form>

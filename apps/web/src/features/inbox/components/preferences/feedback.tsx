@@ -39,7 +39,7 @@ export function NotificationSaveFeedback({
           }
         >
           {isApiError(cause) && cause.problem?.code === 'notifications.changed'
-            ? 'Someone changed these notification choices. Your edits are kept. Reload current choices before saving again.'
+            ? 'Someone changed these notification choices. Your edits are kept; discard them to load the latest choices, then save again.'
             : isApiError(cause) &&
                 cause.problem?.code === 'notifications.unavailable'
               ? 'This notification choice is unavailable now. Your edits are kept; reload current choices. Email can always be turned Off.'

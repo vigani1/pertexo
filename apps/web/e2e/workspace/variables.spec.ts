@@ -118,7 +118,7 @@ for (const width of [1280, 375])
     expect(writes[2]?.key).not.toBe(writes[0]?.key);
     await page
       .getByRole('button', {
-        name: 'Reload current values (discard edits)',
+        name: 'Discard changes',
         exact: true,
       })
       .click();

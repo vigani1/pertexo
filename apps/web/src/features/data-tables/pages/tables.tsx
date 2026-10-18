@@ -55,9 +55,9 @@ export function DataTablesPage({
       </PageHeader>
       <TableCapacity quotas={quotas} />
       <p className="text-sm text-muted-foreground">
-        Small lookup and state datasets. Members can read; editors manage rows.
-        Use Connections for credentials. Workflow exports include table names,
-        never rows.
+        Small lookups and saved state your workflows read and write. Keep
+        secrets in Connections; an exported workflow names its tables but never
+        carries their rows.
       </p>
       {query.isPending ? <p role="status">Loading data tables…</p> : null}
       {query.isError ? (

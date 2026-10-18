@@ -55,8 +55,8 @@ export function RetainedActivity({
           <span className="font-mono">
             {snapshot.window.skippedTriggerEvents}
           </span>{' '}
-          trigger events skipped at the concurrency limit {windowPhrase}. Skips
-          do not start runs.
+          trigger events skipped {windowPhrase} because their workflow was at
+          its limit. A skipped event starts no run.
         </p>
       )}
       {snapshot.window.coordinatedTriggerEvents === undefined ? null : (
@@ -64,8 +64,8 @@ export function RetainedActivity({
           <span className="font-mono">
             {snapshot.window.coordinatedTriggerEvents}
           </span>{' '}
-          events evaluated by trigger coordination {windowPhrase}. Includes
-          pending, started and skipped events; counted separately from runs.
+          events matched up by trigger coordination {windowPhrase}, whether they
+          waited, started a run or were skipped. Runs are counted separately.
         </p>
       )}
       <ul

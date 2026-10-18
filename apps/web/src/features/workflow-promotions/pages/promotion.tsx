@@ -101,7 +101,7 @@ export function WorkflowPromotionPage({
       </PageHeader>
       <SettingsSection
         title="Linked workspaces"
-        description="Move reviewed published workflow definitions from this workspace into another environment. Values and secrets stay separate."
+        description="Send reviewed workflows from here to another workspace, such as production. Values and secrets stay where they are."
       >
         <PromotionTarget
           scope={scope}

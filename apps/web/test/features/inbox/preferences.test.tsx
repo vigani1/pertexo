@@ -130,15 +130,13 @@ it('keeps a conflicted schedule draft until an explicit fresh reload', async () 
   await screen.findByText(/Someone changed these notification choices/u);
   await waitFor(() =>
     expect(
-      section.getByRole('button', { name: 'Reload current choices' }),
+      section.getByRole('button', { name: 'Discard changes' }),
     ).not.toBeDisabled(),
   );
   expect(section.getByRole('textbox', { name: 'Time zone' })).toHaveValue(
     'Europe/Paris',
   );
-  await user.click(
-    section.getByRole('button', { name: 'Reload current choices' }),
-  );
+  await user.click(section.getByRole('button', { name: 'Discard changes' }));
   await waitFor(() =>
     expect(
       section.queryByRole('textbox', { name: 'Time zone' }),

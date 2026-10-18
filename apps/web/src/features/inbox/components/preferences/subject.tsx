@@ -131,7 +131,7 @@ function SubscriptionEditor({
       </p>
       {snapshot.revision !== draft.revision ? (
         <Notice tone="warning">
-          These choices changed. Reload before saving.
+          These choices changed elsewhere. Load the latest before saving.
         </Notice>
       ) : null}
       {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
@@ -151,14 +151,19 @@ function SubscriptionEditor({
         >
           Save personal choices
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={locked}
-          onClick={() => void reload()}
-        >
-          Reload current choices
-        </Button>
+        {snapshot.revision !== draft.revision ||
+        JSON.stringify(draft) !== JSON.stringify(snapshot) ? (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={locked}
+            onClick={() => void reload()}
+          >
+            {snapshot.revision === draft.revision
+              ? 'Discard changes'
+              : 'Load the latest choices'}
+          </Button>
+        ) : null}
       </div>
     </form>
   );

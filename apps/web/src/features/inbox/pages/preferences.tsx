@@ -19,8 +19,8 @@ export function NotificationPreferencesPage({
         <PageHeaderTitle>Notifications</PageHeaderTitle>
       </PageHeader>
       <p className="max-w-2xl text-sm text-muted-foreground">
-        Your Inbox stays available. Email choices, following and muting are
-        personal; shared workflow alerts keep their own destinations.
+        Choose how often email reaches you. Your Inbox always has everything;
+        alerts sent to Slack or a shared address are set up in Alerts.
       </p>
       {query.isError ? (
         <Notice
