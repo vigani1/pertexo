@@ -118,7 +118,9 @@ SSO identity receives each linked workspace's configured default role (viewer by
 default). Linking a workspace requires ownership of both workspaces. Existing
 manual roles remain unchanged; suspended or removed memberships are not restored.
 With new accounts off, only existing eligible identities/memberships can sign in.
-Organization methods show the provider name in account security. Accounts retain
+Organization methods show the provider name in account security. If organization
+SSO is your only method, add another method before changing your primary email:
+an address outside the verified domain cannot use that organization's sign-in. Accounts retain
 at most 16 sign-in methods; remove an unused method before attaching another.
 
 A provider's issuer is immutable. Changing its configuration ends its sessions

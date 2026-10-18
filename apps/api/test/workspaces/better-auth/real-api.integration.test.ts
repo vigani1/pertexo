@@ -126,7 +126,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       expectProblem(stale, 409, 'workspace.invitation_proof_expired');
 
       const fresh = await signIn(recipientEmail);
-      const freshBound: Browser = {
+      let freshBound: Browser = {
         ...fresh,
         cookie: `${fresh.cookie}; ${bound.cookie.split('; ').at(-1) ?? ''}`,
       };
@@ -138,6 +138,22 @@ describe.runIf(betterAuthIntegrationEnabled)(
         invitationRevision: number;
       }>();
       expect(readyJourney.state).toBe('ready');
+      await send('POST', '/v1/auth/logout', {
+        browser: freshBound,
+        payload: {},
+      });
+      const replacement = await signIn(recipientEmail);
+      freshBound = {
+        ...replacement,
+        cookie: `${replacement.cookie}; ${bound.cookie.split('; ').at(-1) ?? ''}`,
+      };
+      const afterSignIn = await send('GET', '/v1/invitation-acceptance', {
+        browser: freshBound,
+      });
+      expect(afterSignIn.json()).toMatchObject({ state: 'sign_in_required' });
+      const rebound = await verifySession(freshBound, journey.csrfToken);
+      expect(rebound.statusCode, rebound.payload).toBe(200);
+      expect(rebound.json()).toMatchObject({ state: 'ready' });
       const completed = await send(
         'POST',
         '/v1/invitation-acceptance/complete',

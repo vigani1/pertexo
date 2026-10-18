@@ -245,3 +245,5 @@ export {
 } from './schemas/identity/federation/sign-in.js';
 
 export { delegatedWorkspaceRoleSchema } from './schemas/identity/membership.js';
+
+export { authenticationProviderSchema } from './schemas/identity/authentication.js';

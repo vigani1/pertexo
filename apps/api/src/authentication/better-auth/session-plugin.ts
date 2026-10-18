@@ -1,6 +1,6 @@
 import {
   isAuthenticationSessionAllowed,
-  isIdentityEmailChangeAllowed,
+  identityEmailChangeEligibility,
 } from '@pertexo/database/tenant-access';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import {
@@ -252,10 +252,20 @@ function nativeRouteGuards(pool: Pool): BeforeHooks {
             code: 'UNAUTHORIZED',
             message: 'Authentication is required.',
           });
-        if (!(await isIdentityEmailChangeAllowed(pool, session.user.id)))
+        const eligibility = await identityEmailChangeEligibility(
+          pool,
+          session.user.id,
+        );
+        if (eligibility !== 'allowed')
           throw new APIError('FORBIDDEN', {
-            code: 'ORGANIZATION_EMAIL_MANAGED',
-            message: 'Your organization manages this email address.',
+            code:
+              eligibility === 'managed'
+                ? 'ORGANIZATION_EMAIL_MANAGED'
+                : 'ALTERNATIVE_SIGN_IN_REQUIRED',
+            message:
+              eligibility === 'managed'
+                ? 'Your organization manages this email address.'
+                : 'Add another sign-in method before changing your email address.',
           });
         if (Date.now() - session.session.createdAt.getTime() >= 5 * 60_000)
           throw new APIError('FORBIDDEN', {

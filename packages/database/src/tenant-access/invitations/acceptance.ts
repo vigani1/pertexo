@@ -444,13 +444,31 @@ export function createIdentityWorkspaceInvitationAcceptanceStore(
     readInvitationAcceptance: async (workspaceIdInput, bindingDigestInput) => {
       const workspaceId = parseIdentityUuid(workspaceIdInput);
       const bindingDigest = digest.parse(bindingDigestInput);
-      return withTenantScopedClient(pool, { workspaceId }, (client) =>
-        selectIntent(
+      return withPlatformTransaction(pool, async (client) => {
+        const intent = await withWorkspaceScope(
           client,
-          'intent.workspace_id=$1 and intent.binding_digest=$2',
-          [workspaceId, bindingDigest],
-        ),
-      );
+          { workspaceId },
+          (scoped) =>
+            selectIntent(
+              scoped,
+              'intent.workspace_id=$1 and intent.binding_digest=$2',
+              [workspaceId, bindingDigest],
+            ),
+        );
+        if (intent?.status !== 'verified') return intent;
+        const source =
+          intent.verifiedSessionId === null
+            ? undefined
+            : await readEligibleAuthenticationSession(
+                client,
+                intent.verifiedSessionId,
+              );
+        // A revoked proof must return to verification after a fresh sign-in.
+        // Completion still checks the stored proof under lock.
+        return source?.userId === intent.verifiedUserId
+          ? intent
+          : { ...intent, status: 'pending' as const };
+      });
     },
 
     recordInvitationAcceptanceProof: async (raw) => {

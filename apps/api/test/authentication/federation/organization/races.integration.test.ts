@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import {
   betterAuthIntegrationEnabled,
+  browserFrom,
   expectProblem,
 } from '../../../support/better-auth/real-api.support.js';
 import { useOrganizationApi } from './fixture.js';
@@ -132,6 +133,68 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             .query('select email from app.users where email=$1', [email])
         ).rows,
       ).toEqual([{ email }]);
+    });
+
+    it('requires an alternative sign-in method before an organization-only account changes its primary email', async () => {
+      const fixture = await api.setup();
+      const browser = browserFrom(
+        await api.finish(
+          await api.start(fixture, api.person(`only@${fixture.domain}`)),
+        ),
+      );
+      const change = {
+        newEmail: `outside-${randomUUID()}@example.test`,
+        callbackURL: '/account/security',
+      };
+      expectProblem(
+        await api.send('POST', '/v1/auth/change-email', {
+          browser,
+          payload: change,
+        }),
+        403,
+        'auth.alternative_required',
+      );
+      const configured = await api.send(
+        'POST',
+        '/v1/auth/account-security/password/setup',
+        {
+          browser,
+          payload: { newPassword: 'another long integration password' },
+        },
+      );
+      expect(configured.statusCode, configured.payload).toBe(200);
+      const allowed = await api.send('POST', '/v1/auth/change-email', {
+        browser: browserFrom(configured),
+        payload: change,
+      });
+      expect(allowed.statusCode, allowed.payload).toBe(200);
+      const oldProof = api.mailedLink(
+        `only@${fixture.domain}`,
+        'email_change_confirmation',
+      );
+      expect(
+        (await api.send('GET', oldProof.pathname + oldProof.search)).headers
+          .location,
+      ).toContain('emailChangePending=true');
+      const finalProof = api.mailedLink(change.newEmail, 'verification');
+      const current = browserFrom(configured);
+      const methods = (
+        await api.send('GET', '/v1/auth/account-security', { browser: current })
+      ).json<{ methods: { id: string; kind: string }[] }>().methods;
+      const password = methods.find((method) => method.kind === 'password');
+      if (password === undefined)
+        throw new Error('Alternative password missing');
+      const removed = await api.send(
+        'POST',
+        '/v1/auth/account-security/methods/unlink',
+        { browser: current, payload: { methodId: password.id } },
+      );
+      expect(removed.statusCode, removed.payload).toBe(200);
+
+      expect(
+        (await api.send('GET', finalProof.pathname + finalProof.search)).headers
+          .location,
+      ).toContain('error=verification_invalid');
     });
   },
 );

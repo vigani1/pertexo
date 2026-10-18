@@ -30,6 +30,7 @@ export const API_PROBLEM_CODES = [
   'auth.method_limit',
   'auth.recovery_required',
   'auth.organization_email_managed',
+  'auth.alternative_required',
   'auth.reset_link_invalid',
   'auth.conflict',
   'auth.session_not_fresh',
@@ -213,6 +214,12 @@ const apiProblemDetails = {
   'auth.organization_email_managed': {
     status: 403,
     title: 'Organization email address is managed',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.alternative_required': {
+    status: 403,
+    title: 'Another sign-in method required',
     severity: 'info',
     exposeDetail: false,
   },

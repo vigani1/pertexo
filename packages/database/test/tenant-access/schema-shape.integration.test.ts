@@ -158,9 +158,17 @@ describe('migrated schema shape contract', () => {
     for (const table of catalog.rows) {
       expect(table.owner_name, table.relname).toBe('pertexo_owner');
       expect(table.has_primary_key, table.relname).toBe(true);
-      if (table.has_workspace_id) {
+      // This global authentication-catalog link is not tenant-owned data
+      // (ADR 086); its management authority is checked by the identity owner.
+      const globalIdentityLink =
+        table.relname === 'auth_organization_workspaces';
+      if (table.has_workspace_id && !globalIdentityLink) {
         expect(table.relrowsecurity, table.relname).toBe(true);
         expect(table.relforcerowsecurity, table.relname).toBe(true);
+      }
+      if (globalIdentityLink) {
+        expect(table.relrowsecurity, table.relname).toBe(false);
+        expect(table.relforcerowsecurity, table.relname).toBe(false);
       }
       for (const grant of grantsByTable.get(table.relname) ?? []) {
         if (grant.grantee === 'pertexo_owner') continue;

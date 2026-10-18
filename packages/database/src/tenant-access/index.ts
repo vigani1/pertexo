@@ -92,7 +92,7 @@ export { FederationConflictError } from '../identity/federation/management/contr
 
 export {
   isAuthenticationSessionAllowed,
-  isIdentityEmailChangeAllowed,
+  identityEmailChangeEligibility,
   authorizeCredentialSignIn,
 } from '../identity/federation/sessions/authority.js';
 

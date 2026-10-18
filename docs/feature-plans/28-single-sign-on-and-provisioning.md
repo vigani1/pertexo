@@ -224,7 +224,9 @@ contracts. Keep folders below roughly ten files, grouped by sub-area then role.
   native account endpoints. Invitation acceptance, password/method maintenance and explicit method linking must
   preserve the verified source session's proof when replacing sessions; never
   silently turn an SSO session into a password session. Expired/revoked source
-  proof requires fresh sign-in before an invitation can grant access.
+  proof requires fresh sign-in before an invitation can grant access. Reading a
+  bound invitation with a revoked proof returns it to verification, so a fresh
+  sign-in binds its replacement session before acceptance.
 - A recovery exception belongs only to the owner of the organization enforcing
   the account's domain. Owning an unrelated workspace/organization cannot bypass
   another domain's policy. Recovery authorization is audited before use. Keep
@@ -232,7 +234,11 @@ contracts. Keep folders below roughly ten files, grouped by sub-area then role.
 - Enforced non-owner accounts cannot change their primary email out of the
   policy through the ordinary email-change journey; recheck at final consumption,
   including journeys started before enforcement. Password reset and provider
-  attachment cannot bypass enforcement.
+  attachment cannot bypass enforcement. An organization-only account must add
+  another credential/social method before changing its primary email, even while
+  SSO is optional: a primary address outside the verified domain cannot use that
+  organization's SSO. Check this before issuing and again when consuming email
+  proofs, so removing the alternate method cannot strand an account.
 - Directory provisioning initially stores pending directory records, not an
   unverified global account with credentials. First verified SSO binds or creates
   the Pertexo account; ordinary unverified existing accounts remain protected.
@@ -333,13 +339,19 @@ Maintenance purge removes provider identities and sessions in one-row pages,
 retains ordinary password credentials and other workspaces, and cannot read
 password hashes. Actor-discovery hygiene is checked between workspace scopes.
 
-Eight new real-API cases qualify owner readiness tests without identity/grant
+Nine new real-API cases qualify owner readiness tests without identity/grant
 creation, required-SSO refusal, protected recovery, preserved session proof during
 password rotation, enforced email-change refusal and old email-proof consumption,
 CSRF, provider outages and key recovery. A disposable PostgreSQL advisory-lock
 fixture pauses the native SDK session insert while enforcement changes: the
 post-insert policy check refuses and removes the raced credential session.
-The broader authentication API selection passes 42 cases unchanged in intent.
+The broader authentication API selection passes 43 cases unchanged in intent.
+Optional organization-only accounts are also refused a primary-email change
+until another method exists; removing it invalidates an already-issued proof.
+The ordinary invitation regression also signs out after verification, signs in
+again and rebinds the new session before accepting. The global organization/
+workspace catalog link is explicitly covered by the schema contract as global
+authentication state (ADR 086); tenant-owned tables retain forced RLS.
 
 Sixteen gateway tests use the actual pinned OIDC SDK and RSA signatures to reject
 forged signatures, wrong issuer/audience/nonce/state, expired claims, unverified
@@ -349,7 +361,7 @@ real discovery/code exchange/PKCE/JWT verification, owner testing, enforcement,
 public sign-in, JIT and named account methods. Six existing social browser journeys
 still pass. The owned IdP uses ephemeral certificates and an external-transport
 fixture; production TLS/address policy has no bypass. It runs as another scenario
-in the existing live-2 CI job, retaining the real admission limits.
+in the existing live-3 CI job, retaining the real admission limits.
 
 All 214 mocked browser journeys pass. Component regressions retain secret-free
 query caches and exact uncertain retries, preserve stale provider edits and keep
