@@ -160,4 +160,27 @@ describe('settings: leaving a workspace', () => {
     expect(await dialog.findByText(/The owner can’t leave/u)).toBeVisible();
     expect(sent).toHaveLength(1);
   });
+  it('explains directory-managed access without calling the member an owner or ending their session', async () => {
+    const sent: Leave[] = [];
+    mockServer.use(
+      ...identityUntilLeft(builderWorkspace, () => false),
+      leaveHandler(sent, () =>
+        problem(409, 'workspace.member_directory_managed'),
+      ),
+    );
+    const actor = userEvent.setup();
+    const { router } = renderApp(`/w/${workspaceId}/settings`);
+    const dialog = await openLeave(actor);
+    await actor.click(dialog.getByRole('button', { name: 'Leave workspace' }));
+    expect(
+      await dialog.findByText(
+        /The organization directory controls this membership/u,
+      ),
+    ).toBeVisible();
+    expect(
+      dialog.queryByText(/The owner can’t leave/u),
+    ).not.toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/w/${workspaceId}/settings`);
+    expect(sent).toHaveLength(1);
+  });
 });

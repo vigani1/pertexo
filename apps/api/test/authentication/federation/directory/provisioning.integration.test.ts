@@ -309,7 +309,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           payload: { role: 'admin', expectedRoleRevision: member.roleRevision },
         },
       );
-      expect(manualRoleChange.statusCode, manualRoleChange.payload).toBe(403);
+      expect(manualRoleChange.statusCode, manualRoleChange.payload).toBe(409);
       expect(manualRoleChange.payload).toContain('organization directory');
       const deactivated = await api.send('PATCH', `${f.base}/Users/${userId}`, {
         headers: f.headers,

@@ -1,622 +1,214 @@
 # F28 — Single sign-on and provisioning
 
-Status: social, organization OIDC and SAML merged; provisioning in progress. Updated: 2026-10-18.
+Status: social, organization OIDC and SAML merged; SCIM implemented and locally qualified, pending PR checks/merge. Updated: 2026-10-18.
 Parent: [roadmap](../product-roadmap.md). Decision: [ADR 086](../adr/086-federated-sign-in-and-provisioning.md).
 
-## Current code
+## Current code and ownership
 
-Better Auth 1.7.7 owns every browser session. Google/GitHub credentials already
-configure social sign-in per install, absent/off by default; capability discovery
-and the sign-in buttons already follow that configuration. There is no instance
-administrator role or global settings page. Keep instance configuration in the
-existing environment settings rather than creating another administration system.
+Better Auth 1.7.7 remains the only browser-session authority. Social sign-in is
+merged in [#344](https://github.com/vigani1/pertexo/pull/344), organization OIDC in
+[#345](https://github.com/vigani1/pertexo/pull/345), and SAML in
+[#346](https://github.com/vigani1/pertexo/pull/346). Migration 0032 owns social
+journeys, 0033 organization identity, and 0034 directory provisioning.
 
-Social sign-in and verified-email-only linking are merged in [#344](https://github.com/vigani1/pertexo/pull/344), under ADR 086. Migration 0032 owns the single-use social journey. The organization slice builds on this path. Inspection of the pinned native social callback
-found that existing-account attachment is not transactional with post-creation
-hooks. Use the existing configured-provider proof gateway and a short Pertexo
-identity transaction, as purpose-bound linking already does. Explicit linking from
-account settings retains its two-sided, browser-bound proof. Native arbitrary
-linking endpoints remain closed.
+API `authentication/federation` owns proof/protocol orchestration; database
+`identity/federation` owns identity commands and transactions. Existing membership,
+session, audit, removal and retention owners remain authoritative. Contracts own
+management boundaries; SCIM's protocol adapter owns its input boundary. Web
+`features/federation` owns settings and sign-in UI. No new service, database role,
+queue, CI job or global instance-administration application.
 
-The organization slice adds identity organizations, verified domains, encrypted
-OIDC providers, scoped JIT and required-SSO session proofs in migration 0033.
-SAML is merged in [#346](https://github.com/vigani1/pertexo/pull/346); provisioning is the remaining slice. The reset removed the legacy OIDC session bridge; do not restore it.
-Existing identity commands already own workspace-first locks, membership revisions,
-removed-member cleanup, immediate session revocation and audit. F18 audit and
-publication review are merged (#342, #343). F27 already owns notices and mail.
+## Authority and configuration
 
-## Decisions and rules
+- An identity organization links at most ten workspaces under a control workspace.
+  Its current owner manages authentication/provisioning using `workspace:manage`;
+  owners/admins can read safe configuration and audit. Changing who proves an
+  identity is owner-only. No additional organization role.
+- Linking requires ownership of both workspaces, shows the delegation explicitly,
+  and permits one organization per workspace. Either owner can unlink a non-control
+  workspace; the control workspace cannot unlink itself.
+- Organization bounds: twenty domains, ten providers. Google/GitHub application
+  credentials remain existing operator environment configuration, absent/off by
+  default. Existing Microsoft/Apple configuration continues through the same proof
+  gateway. Application settings changes are audited.
+- Small global identity catalogs are the existing authentication exception to
+  workspace RLS. Directory membership provenance is a workspace-fenced source
+  association; it is not another role/status store. Ordinary clients receive no
+  cross-workspace database role.
 
-### Authority and configuration
+## Sign-in, domain verification and recovery
 
-- Better Auth remains the only browser-session authority. Federation verifies an
-  identity, then uses the existing transactional Better Auth row/session-delivery
-  pattern. No second session cookie, authentication broker or identity service.
-- An **identity organization** groups explicitly linked workspaces under a control
-  workspace. Its current owner manages federation. This uses `workspace:manage`,
-  not a new organization role. Admins may read safe configuration/status and audit;
-  changing an authentication boundary requires the owner.
-- Creating the organization requires control-workspace ownership. Linking another
-  workspace requires current ownership of both; a workspace belongs to at most one
-  identity organization. Linking delegates its directory-managed membership policy
-  to the control workspace. Show that delegation before confirmation.
-- Initial bounds: 10 workspaces, 20 domains and 10 providers per organization.
-  No billing, instance user administration or extra global role. Google/GitHub
-  application credentials remain operator environment settings, off when absent.
-  These are deployment settings; application configuration changes have audit facts.
-- Store organization/domain/provider/directory commands in the identity area.
-  Workspace data keeps forced RLS; the small global identity registry is an
-  authentication catalog, like existing accounts/sessions. Every management
-  command proves current control-workspace ownership under lock. Never grant
-  ordinary clients a new cross-workspace database role.
+- Social linking requires equal normalized, verified provider and local emails.
+  Never change local email during linking. Explicit account linking keeps both
+  browser-bound proofs. Native implicit linking/callback endpoints remain closed.
+  Provider verification occurs before checkout; attachment, audit, prior-session
+  revocation, new Better Auth session and journey consumption commit together.
+- Apple form POST callbacks use a bounded 32 KiB URL-encoded transport and
+  same-origin 303 GET before cookie-bound verification. Ignore front-channel
+  tokens/profile data; ordinary session cookies remain Lax.
+- A random DNS TXT challenge proves each exact ASCII/lowercase domain. No inherited
+  subdomain claims; one verified organization per domain/install. Challenges expire
+  in seven days and replacement invalidates the old one. DNS I/O happens outside
+  transactions; consumption rechecks challenge/revision/expiry. No periodic DNS job.
+- OIDC uses authorization code, S256 PKCE, state/nonce and issuer/audience/signature/
+  expiry/subject validation. Identity is issuer + subject. Google Workspace, Entra,
+  Okta and generic public-HTTPS issuers share one implementation. Existing secure
+  HTTP transport bounds discovery/token/key fetches, checks addresses and refuses
+  redirects. Signed verified-domain claims are authoritative; explicitly unverified
+  email is refused. Social verification remains stricter.
+- SAML is SP-initiated Redirect/POST, with both response and assertion signed by a
+  pinned RSA certificate, correlation, issuer/audience/recipient/destination and
+  bounded timestamps. Maximum assertion age five minutes, two-minute clock skew.
+  Persistent immutable NameID owns identity. At most two current certificates
+  support rotation. Unsupported SAML options remain explicit below.
+- Use pinned `openid-client` and `@node-saml/node-saml`, never handwritten JWT/XML
+  signature validation. Provider secrets use the existing versioned application
+  envelope with provider/purpose associated data. Restores supply keys separately.
+- Journeys bind the browser and exact provider revision, expire in five minutes,
+  and succeed once across API instances. Existing retention removes expired proofs
+  after a day. SAML alone uses a Secure, HttpOnly, SameSite=None purpose cookie on
+  HTTPS; a missing binding fails safely. Ordinary session cookies are unchanged.
+- Caddy routes `/v1/auth/*` straight to the API with existing URI/header redaction;
+  nginx never receives codes, state, proof tokens or SCIM credentials. Reuse the
+  cached-image proxy qualification, including API-down privacy and cookie forwarding.
+- Required SSO is off by default. Enabling needs DNS proof, an enabled current
+  provider tested on that domain, and a working verified-password control owner.
+  Check policy on issuance and every session read. Passwords, social sign-in,
+  password reset, email changes and old linking journeys cannot bypass it.
+  Provider/enforcement changes revoke affected sessions and invalidate readiness.
+- The current control owner retains protected, audited password recovery. Refuse
+  removing that password or transferring ownership to someone without one while
+  enforcement applies. Ownership elsewhere grants no exception. Provisioning never
+  controls or removes this owner. No shared recovery password/new recovery service.
 
-### Sign-in and domain ownership
+## Membership and directory decisions
 
-- Social sign-in links only when both the incoming provider email and existing
-  local email are verified and equal after the existing email normalization.
-  Do not force-trust a provider that reports an unverified address; never change
-  the local account's email during a link. Provider verification happens before
-  acquiring a database connection. Account attachment, audit, prior-session
-  revocation, one new Better Auth session and single-use journey consumption then
-  commit together. Native implicit linking/callbacks remain closed; the social
-  callback uses the same provider verifier as explicit linking. Preserve configured
-  Microsoft/Apple support through that same path, without adding new providers.
-  Apple form POST callbacks land through a bounded 32 KiB URL-encoded transport
-  and a same-origin 303 GET before ordinary cookie-bound proof verification.
-  Front-channel tokens/profile data are ignored; session cookies stay Lax.
-- Prove exact-domain ownership with a random DNS TXT challenge before claiming it.
-  Normalize to ASCII/lowercase; do not inherit parent/subdomain claims. Only one
-  organization can hold a verified domain on an install. Pending challenges expire
-  after seven days; issuing another invalidates the previous one. DNS I/O happens
-  outside the transaction; consumption rechecks challenge, expiry and revision.
-  Do not add periodic DNS polling or a new background job.
-- OIDC first: authorization code + S256 PKCE, state and nonce; issuer, audience,
-  signature, expiry and subject validation. Identity is issuer + subject, never
-  a profile field. Google Workspace, Entra ID, Okta and generic public HTTPS OIDC
-  issuers use the same implementation; vendor names are setup guidance.
-- SAML next: SP-initiated HTTP Redirect request / HTTP POST response. Require
-  request correlation, single-use state, signed response and assertion, the pinned
-  IdP certificate, issuer, audience, recipient/destination and bounded timestamps.
-  Refuse unsolicited IdP-initiated login and obsolete signature/digest algorithms.
-  Maximum assertion age is five minutes with at most two minutes of clock skew.
-  No SAML logout protocol, encrypted assertions or signed SP requests in this slice;
-  document the corresponding IdP setup. These do not weaken incoming verification.
-- Single-server Caddy routes `/v1/auth/*` directly to the API under its existing
-  URI/header redaction, so authorization codes, state and email-proof tokens never
-  reach nginx request/error logs. Extend the existing cached-image proxy probe;
-  keep its API-down privacy and signed-cookie forwarding checks.
-- Both protocols bind the initiating browser and the exact provider revision.
-  Journeys expire after five minutes; proof rows become eligible for the existing
-  retention sweep a day after expiry. They are consumed once in PostgreSQL, across
-  API instances. SAML's cross-site POST needs an explicitly Secure, SameSite=None
-  purpose cookie on HTTPS; keep the ordinary session cookie unchanged. A missing
-  or mismatched binding fails. Local SAML qualification uses HTTPS and a different IdP site.
-- Use maintained protocol libraries behind a small proof gateway: pinned
-  `openid-client` and `@node-saml/node-saml`. Route OIDC server fetches through the
-  existing secure HTTP client (DNS/address checks, bounded bodies/time, no redirects).
-  Initial generic issuers are public HTTPS; private-network IdP access is later.
-  Do not implement JWT/XML signature validation or fork Better Auth's lifecycle.
-- `Require SSO for this domain` is optional and off by default. Enabling requires
-  verified ownership, a configured provider and a successful test sign-in, plus a
-  working recovery owner credential. Enforce it on both session issuance and every
-  session lookup; a social/password session cannot count as organization SSO.
-  Configuration/enforcement changes revoke affected sessions. Password reset or
-  provider linking cannot bypass the same rule.
-- The control workspace's current owner is the protected break-glass account.
-  It keeps a verified password sign-in, with the existing rate limits, credential
-  policy and immediate session checks. Audit recovery sign-ins. While enforced,
-  refuse removing that password or transferring ownership to someone without a
-  verified password credential. Directory provisioning cannot manage/remove the
-  owner. No hidden shared recovery password or new recovery-token subsystem.
-- Provider secrets use the existing versioned application-secret envelope, with
-  provider/purpose associated data and a dedicated configured key ring. Reuse key
-  validation and secret generation/recovery documentation. Never persist plaintext
-  client secrets, OAuth tokens or SAML responses in configuration, logs or audits.
+- Unprovisioned JIT is opt-in per provider. Linked workspaces choose an existing
+  default role, viewer initially. Never assign owner automatically. Existing manual
+  roles, suspended memberships and removals remain independent.
+- Pending SCIM records create no global account. First verified organization SSO
+  binds/creates an active provisioned identity even with unprovisioned JIT off.
+  SCIM email alone cannot claim an account. Conflicts fail visibly. Directory
+  profiles do not silently rename accounts or change passwords.
+- Inactive/deleted records fence JIT, session issuance and organization-session
+  reads. User deletion retains a tombstone, returns 404 and removes it from lists.
+  A deliberately provisioned active replacement requires verified SSO again before
+  previously managed access can return. The retained-user quota includes tombstones.
+- Stable group IDs map to one workspace role by priority: first matching group
+  wins, otherwise its default role. Builder/operator are incomparable; no role union.
+  Routine provisioning advances resource ETags, not organization configuration.
+  Deleting a mapped group advances organization revision because policy changed.
+- Managed role/status remains in existing workspace memberships. Ordinary role,
+  suspension, removal, ownership-transfer and leave commands refuse directory-owned
+  grants with HTTP 409 `workspace.member_directory_managed`, not an actor-permission
+  403. Team rows explain the source and where to change access.
+- An owner can explicitly adopt an active manual membership after verified SSO has
+  bound the directory person. Review the resulting role and atomically recheck
+  organization, directory and membership revisions. Never silently adopt, reactivate
+  a manual removal/suspension or manage the recovery owner.
+- Resource/mapping/default-role changes project bound managed grants in the same
+  transaction as credential authorization, cleanup, session revocation and audits.
+  Batch through existing membership storage; no per-person round trips. Only changed
+  roles/status advance membership revisions/revoke sessions. Ordinary group changes
+  project the symmetric difference; policy changes may project all bound people.
+- Lock sorted workspaces, then organization, then sorted affected global users
+  before proving the owner. Recheck changed linked sets. Purge uses the same sorted
+  workspace plan with bounded SKIP LOCKED claims. Unlink/control-organization purge
+  removes grants in linked workspaces before removing provenance; never convert
+  managed access into manual access. Preserve unrelated memberships/accounts.
+  Maintenance gets only required metadata/cleanup permissions, never passwords.
 
-### Membership and provisioning
+## SCIM boundary and bounds
 
-- JIT is opt-in per provider, with a per-linked-workspace default role (viewer by
-  default). Grant existing roles only; never grant owner. Existing manual access
-  remains manual unless explicitly brought under directory management.
-- SCIM 2.0 supports Users and Groups: discovery, bounded pagination/filtering,
-  create/read/replace/patch/delete, active=false, and group membership changes.
-  Use maintained public schema, filter-parser and PATCH libraries, with no new
-  router framework, as qualified in the provisioning decisions below. Pertexo owns persistence and applies each write in one existing
-  PostgreSQL transaction, including membership changes and session revocation.
-  The Better Auth SCIM plugin's adapter transaction cannot use the existing
-  PostgreSQL membership/RLS owner directly; do not add a second membership path.
-- Provisioning credentials are random, organization-scoped bearer tokens, shown
-  once and stored as digests. Owners may rotate/revoke them; cap active credentials
-  at five. Authenticate and rate-limit every protocol endpoint, including discovery.
-  Use `application/scim+json` with bounded JSON, never browser cookies/CSRF as a
-  provisioning credential. Keep protocol errors safe and standards-shaped.
-- A directory assertion alone never transfers an existing account by email.
-  Directory records have stable IDs; existing users bind after a verified SSO
-  proof. New provisioned accounts start without credentials or verified email.
-  SSO binds the immutable provider subject and directory record atomically.
-  Conflicting identities fail visibly. Inactive directory records prevent JIT
-  from recreating removed access.
-- Group mappings reference stable group IDs and existing workspace roles. They
-  have explicit priority: first matching mapping wins, otherwise the configured
-  default applies. Builder and operator are incomparable; do not fabricate a
-  highest role or union their capabilities. Owners never come from a mapping.
-- Directory-managed memberships follow the directory. Show their source; refuse
-  ordinary manual role changes with a clear direction to the mapping/provider.
-  Other manual memberships and other organizations remain independent. Removal
-  uses the existing removed-member cleanup, role revisions, session revocation
-  and safe audit facts in the same transaction. Do not globally suspend a person
-  merely because one organization removed them.
-- Bound resources and fan-out: at most 5,000 directory users, 200 groups, 500 members
-  per group, 100 PATCH operations and a 1 MiB request. Page size is at most 100.
-  Reject oversized changes atomically. Measure the maximum changed-role projection
-  before declaring these bounds qualified; lower a bound if evidence requires it.
-- Metadata audits cover configuration, verification/enforcement, sign-ins/linking,
-  JIT, tokens, directory resources, mappings and deprovisioning. No secrets, bearer
-  material, claims/assertions, passwords or arbitrary provider messages. Pending
-  proof content expires; identity configuration and directory records are removed
-  with their organization. Unlinking/purging a workspace removes its managed grants
-  and mappings without deleting unrelated accounts or memberships.
+- Native API endpoints: `/v1/auth/federation/scim/:organizationId/v2`. Support core
+  Users/Groups discovery, lists, reads, POST/PUT/PATCH/DELETE, active=false and group
+  membership. No new router framework or Better Auth plugin membership authority.
+- Bearers are random 256-bit, organization-scoped, digest-only and shown once.
+  Creation receipts/retries contain metadata only. Rotation creates a replacement
+  before revoking the old credential; current owner revocation is immediate across
+  instances. Creator role changes do not change an organization's credential.
+  Lost creation responses direct owners to inspect/revoke, not recover plaintext.
+  At most five active credentials; retain revoked metadata thirty days.
+- Authenticate and rate-limit all endpoints, including discovery, using existing
+  fail-closed distributed limits: pre-auth IP 600/minute and organization 300/minute.
+  Use bounded JSON/SCIM+JSON with safe SCIM errors even before controller dispatch.
+  Empty DELETE is valid. Never use browser cookies as provisioning credentials.
+- Public `scimmy` 1.3.5 supplies schema coercion/metadata only. Its matching ignores
+  caseExact and its AST loses negated value semantics; use `scim2-parse-filter`
+  0.3.0's preserved AST and `scim-patch` 0.9.3 on a detached canonical copy.
+  Compile fixed supported descriptors to parameterized SQL; no caller identifiers,
+  exponential DNF, global SDK resource registry or custom signature machinery.
+- Canonicalize case-insensitive attribute/operation names, preserve quoted values,
+  reject ambiguous duplicates/unsupported fields/passwords. Check read-only
+  id/meta/schemas/User.groups before coercion after each PATCH operation. Selecting
+  a primary email clears earlier primary flags before the next operation. Groups
+  reference Users only; discovery must not advertise nested groups.
+- Lists support one-based pagination, count=0, modeled sorting and attributes/
+  excludedAttributes. Optional weak opaque resource If-Match checks fail with 412
+  atomically. Unknown filters/paths fail clearly rather than silently guessing.
+- Bounds: 5,000 retained users, 200 groups, 500 members/group, 200 mappings/workspace,
+  ten linked workspaces, 100 operations/PATCH, 1 MiB request, 4 MiB response,
+  16 KiB profile, five emails/person, page size 100. Pre-SDK JSON depth/member bounds
+  are 16/4,096. Filters: 1,024 characters, nesting sixteen, 256 AST nodes, budgeted
+  before recursive work. Reject oversized changes atomically.
+- Audits contain metadata only for configuration, DNS/enforcement, sign-in/linking,
+  JIT, credentials, resources, mappings, adoption, unlink and deprovisioning. System
+  provisioning facts name the credential ID, not its creator as an impersonated actor.
+  Never audit secrets, claims, assertions, passwords, raw profiles or provider errors.
 
-## Ownership and delivery
+## Delivery and evidence
 
-1. **Social sign-in:** extract shared browser-proof primitives in a move-only
-   commit; add the bounded single-use sign-in journey and verified identity
-   transaction, reuse configured Better Auth provider verification/session delivery,
-   verify install configuration/discovery/buttons, document callbacks and setup.
-2. **Organization OIDC:** identity persistence, DNS ownership, encrypted provider
-   configuration, browser-bound OIDC proof, JIT/enforcement/recovery, guarded API
-   contracts and the workspace Security page. Reuse account/session authority.
-3. **SAML:** extend the same provider/journey owner with the verified SAML gateway,
-   metadata/configuration UI and cross-site callback handling. No general origin
-   exception for authentication POSTs.
-4. **Provisioning:** SCIM protocol adapter and token/mapping commands, atomic
-   existing-membership projection, management UI and operator/user guides.
+1. Social proof/linking: merged #344. Real provider-gateway identity/link/session
+   cases, retention/migration tests and desktop/phone browser setup passed.
+2. Organization OIDC/DNS/JIT/enforcement/recovery: merged #345. Owned HTTPS IdP,
+   PostgreSQL and real-browser setup/sign-in/recovery qualified; proxy privacy passed.
+3. SAML: merged #346. Real cross-site signed assertions and desktop/phone settings,
+   metadata, test-sign-in, enforcement and account-method browser journeys passed.
+4. SCIM: implemented; final PR checks/merge pending. Move-only membership extraction
+   precedes batch-storage and protocol logic commits. Owners manage credentials,
+   people, ordered mappings, explicit adoption and unlink in existing Weft settings.
+   Secrets stay out of Query caches; edited mappings/reviews survive refreshes and
+   use exact revisions. Untouched mappings follow refreshed server snapshots.
 
-Each slice gets a PR. Moves/extractions are separate commits. Plans are not a gate
-for owner approval under the current request; record recommended decisions here and
-continue. Finish F28 before F17. No new service, database role, queue or CI job.
+Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment SLAs):
 
-API `authentication/federation` owns protocol orchestration; database
-`identity/federation` owns durable commands and identity/workspace transaction
-composition. Contracts own application settings boundaries; SCIM's parser owns its
-protocol boundary. Web feature-local settings, queries and forms compose the public
-contracts. Keep folders below roughly ten files, grouped by sub-area then role.
-
-## Organization OIDC implementation decisions (2026-10-18)
-
-- `authentication/federation` owns settings, protocol gateways and browser journeys,
-  with management/protocol/journey sub-areas. Its Nest settings module composes the
-  existing workspace authorization and admission modules. Database
-  `identity/federation` owns organization/domain/provider transactions through the
-  existing `/tenant-access` entry. No extra pool, session authority or database role.
-- Instance `AUTH_FEDERATION_KEY`, `_KEY_VERSION` and `_PREVIOUS_KEYS` reuse the
-  application key ring/envelope. Absent keys leave organization configuration off
-  with an explicit setup reason. Configured stored secrets require the matching
-  keys at startup. Extend the existing secrets generator and private API env file.
-- Generic OIDC uses the pinned library's explicit `enableNonRepudiationChecks`,
-  expected state/nonce, S256 verifier and exact redirect URI. The SDK's code flow
-  otherwise relies on TLS for token authenticity; our acceptance requires JWS
-  signature validation too. Select supported basic/post client authentication
-  from discovery; use the existing bounded secure HTTP transport.
-- Organization IdPs are authoritative only for their exact verified DNS domains.
-  Require a scalar email claim (default `email`); reject explicit
-  `email_verified=false`. An absent `email_verified` claim is allowed for organization OIDC, where
-  the signed configured issuer and verified domain are the authority (Entra often
-  omits it). Social sign-in keeps its stricter verified-email rule.
-- Provider issuer is immutable; use a new provider for a new issuer. The stable
-  provider UUID is the account provider identity, and the protocol subject is the
-  account ID. Provider changes invalidate readiness checks and revoke its sessions.
-  A required domain must retain another current, tested enabled provider before
-  that change, or enforcement must first be turned off.
-- Keep the existing 16-method account response bound as the attachment bound too,
-  under the user's lock. Organization methods show their configured provider name.
-  Explicit social linking keeps its existing password/social source proof; a person
-  with only organization SSO can first add a password. Required SSO still governs
-  password/social sign-in, except for the protected recovery owner.
-- A provider test uses the real protocol but keeps the initiating owner's session:
-  it grants no identity or membership. Bind it to that owner/session, browser and
-  provider revision. Readiness belongs to a verified domain/provider revision;
-  enabling enforcement needs a successful current test and a verified owner password.
-  Enforced domains govern account sign-in across the install; linked workspaces
-  govern JIT membership, rather than limiting identity policy to those workspaces.
-- Persist session authentication method and organization provider/revision proof.
-  One TypeScript eligibility owner checks creation, delivery, lookup and owned
-  native account endpoints. Invitation acceptance, password/method maintenance and explicit method linking must
-  preserve the verified source session's proof when replacing sessions; never
-  silently turn an SSO session into a password session. Expired/revoked source
-  proof requires fresh sign-in before an invitation can grant access. Reading a
-  bound invitation with a revoked proof returns it to verification, so a fresh
-  sign-in binds its replacement session before acceptance.
-- A recovery exception belongs only to the owner of the organization enforcing
-  the account's domain. Owning an unrelated workspace/organization cannot bypass
-  another domain's policy. Recovery authorization is audited before use. Keep
-  current credential-removal and ownership-transfer fences in their transactions.
-- Enforced non-owner accounts cannot change their primary email out of the
-  policy through the ordinary email-change journey; recheck at final consumption,
-  including journeys started before enforcement. Password reset and provider
-  attachment cannot bypass enforcement. An organization-only account must add
-  another credential/social method before changing its primary email, even while
-  SSO is optional: a primary address outside the verified domain cannot use that
-  organization's SSO. Check this before issuing and again when consuming email
-  proofs, so removing the alternate method cannot strand an account.
-- Directory provisioning initially stores pending directory records, not an
-  unverified global account with credentials. First verified SSO binds or creates
-  the Pertexo account; ordinary unverified existing accounts remain protected.
-- Qualification includes real local HTTPS protocol/browser fixtures, ephemeral
-  test certificates, forged signed claims and signatures, callback races, forced
-  policy changes, invitation/session rotations and the owner recovery path. No
-  new service, container download or provider account is needed.
-
-## SAML implementation decisions (2026-10-18)
-
-- Extend the existing provider union, management commands, readiness checks and
-  organization journey. The stored provider kind already allows SAML; reuse the
-  five-minute attempt and its PostgreSQL single-use consumption. Do not add a
-  cache service, session authority or assertion/replay table.
-- Pin `@node-saml/node-saml` 5.1.0 for Redirect requests, signed POST verification
-  and SP metadata. Pin its supported security-patched DOM dependency
-  `@xmldom/xmldom` 0.8.15 explicitly for strict semantic checks; use public APIs.
-  Both signed response and signed assertion are mandatory. The SDK verifies
-  signatures; Pertexo additionally checks exact issuer, destination, audience,
-  recipient, correlation, successful status and required timestamps. Outbound
-  algorithm options do not constrain incoming algorithms: reject incoming SHA-1,
-  obsolete transforms, ambiguous structures/IDs, DTDs and parser recovery.
-- Provider configuration holds exact IdP entity ID, HTTPS sign-in URL, up to two
-  pinned RSA certificates for overlap during rotation, email/name attributes and
-  JIT opt-in. Require RSA keys of at least 2,048 bits and SHA-256/SHA-512 signatures
-  and digests. Certificates are public configuration; do not fetch IdP metadata or
-  store assertions/tokens. Keep immutable provider identity and revision fences.
-- SP entity ID is stable per identity organization and public app origin. Show it
-  and the exact ACS URL before creating a provider, with a guarded metadata download
-  generated by the public SDK without IdP configuration. This avoids circular IdP
-  setup and keeps metadata available during certificate expiry. Providers retain
-  separate pinned issuers/certificates, immutable subjects and correlated journeys. Requests are unsigned Redirect binding, responses POST binding. Document
-  those requirements and persistent, immutable NameID setup at the IdP.
-- Require the expected request ID in both Response and bearer confirmation. Derive
-  the ID from existing browser-bound journey material; the SDK correlation seam
-  exposes only that ID and the durable attempt creation time. PostgreSQL remains
-  the one replay owner. Assertion freshness is five minutes with two minutes of
-  skew. Require confirmation/conditions expiry; an older IdP login session may
-  produce a fresh assertion (do not confuse AuthnInstant with assertion age).
-- The SAML purpose cookie is HttpOnly/Secure/SameSite=None; the ordinary Better Auth
-  cookie stays unchanged. SAML requires an HTTPS public app origin. Bound the
-  exact callback form body to 512 KiB and decoded XML to 256 KiB (8,192 nodes, 2,048 elements,
-  32 levels and 64 attributes per element), with strict
-  UTF-8/base64 and one SAMLResponse/RelayState. No general cross-origin exception.
-- A readiness callback does not rely on a Lax owner cookie on cross-site POST.
-  The initiating owner/session, browser proof and provider revision are stored;
-  final consumption checks that session and current ownership transactionally.
-  Tests work while a provider is off. They create no identity, grant or replacement
-  session. Sign-out/revocation,
-  lost ownership or a changed provider invalidates it.
-- Safe settings and metadata reads use the existing owner/admin `member:read`
-  audience; mutation routes retain owner-only `workspace:manage` plus the database
-  owner fence. The initial OIDC route/page incorrectly used the mutation guard for
-  reads too; qualify admin reads and refused writes through the real API.
-- Ownership: contracts federation settings own the discriminated provider inputs;
-  database identity/federation owns settings and durable attempts; API federation/
-  protocol owns SDK verification plus focused XML semantics, and journeys owns
-  the callback transport. Existing feature-local SSO forms/queries own the UI.
-  Keep protocol helpers in a saml sub-area; moves stay separate from logic.
-- Qualification: actual SDK with owned signed fixtures, forged/wrapped/unsigned/
-  SHA-1/wrong-claim/expired/replayed responses, two-instance consumption, unchanged
-  OIDC/social sessions, and HTTPS desktop/phone browser journeys from a different
-  IdP site. Prove the purpose cookie crosses sites, the ordinary cookie stays Lax,
-  revoked owner tests fail and no response material enters proxy logs. Reuse
-  existing CI jobs and owned containers; no provider account or image download.
-
-Sources: [Node-SAML](https://github.com/node-saml/node-saml),
-[xmldom security policy](https://github.com/xmldom/xmldom/security/policy),
-[xmldom 0.8.15 security patch](https://github.com/xmldom/xmldom/releases/tag/0.8.15).
-
-## Provisioning implementation decisions (2026-10-18)
-
-### Protocol and ownership
-
-- Extend `authentication/federation` with a native-auth SCIM transport and a
-  focused protocol adapter; owner/admin management stays in guarded Nest routes.
-  Use `/v1/auth/federation/scim/:organizationId/v2` for Users, Groups and discovery.
-  The existing authentication proxy bypass/redaction covers this namespace.
-  Protocol media, malformed-JSON/body-limit errors and authorization errors must
-  have safe SCIM shapes, including failures before controller dispatch.
-- Keep existing PostgreSQL identity/membership/session authority. No hosted
-  identity service, extra router framework, database role, background reconciler
-  or CI job. Authenticate and rate-limit every protocol endpoint, including
-  discovery, through the existing distributed limiter and a bounded SCIM policy.
-- Use public `scimmy` 1.3.5 schema coercion/metadata, `scim2-parse-filter` 0.3.0 for
-  the typed filter AST, and `scim-patch` 0.9.3 with that same parser for PATCH.
-  The prototype found that SCIMMY's generic matching ignores schema caseExact and
-  its AST loses some negated value-filter semantics; do not use those APIs or
-  global resource handlers. The replacement parser preserves NOT/value paths and
-  rejects trailing garbage. It does not expand queries into exponential DNF.
-- Compile the typed AST to parameterized queries through fixed supported-field,
-  type and caseExact descriptors. No caller-controlled SQL identifiers. Bound
-  filter text to 1,024 characters, nesting to 16 and AST nodes to 256 before
-  recursive interpretation; measure the maximum. Support modeled core paths,
-  logical operators, comparisons and bounded value filters; unknown paths receive
-  `invalidFilter`. Schema/library errors are mapped to constant safe messages.
-- Support bounded GET lists and resource reads, POST creation, PUT replacement,
-  PATCH and DELETE. Pagination is one-based, capped at 100, with count=0 returning
-  totals. Support attributes/excludedAttributes and sorting over modeled fields.
-  Optional If-Match uses opaque resource revisions and refuses stale writes with
-  412 in the same transaction. Bulk and arbitrary extensions stay later.
-- SCIM attribute names/operation names are case-insensitive. Normalize at the
-  protocol boundary, detect ambiguous duplicate names, and preserve quoted values.
-  The patcher operates on a detached canonical copy; failed later operations never
-  persist earlier changes. Compare read-only id/meta/schemas/User.groups before
-  schema coercion (input coercion intentionally drops read-only fields). Reject
-  password provisioning and unsupported fields; group roles come from mappings.
-  PATCH selecting a primary email clears prior primary flags before the next
-  operation, as RFC 7644 requires. Groups contain Users only; discovery does not
-  advertise nested Group references.
-
-### Data, access and transactions
-
-- Store bounded, organization-scoped directory users, groups, member references,
-  mappings and digest-only credentials. Advertise only supported core attributes.
-  Persist a canonical non-secret profile, never raw caller JSON or passwords.
-  Login-email/normalized-username indexes are derived by that same boundary owner.
-  Profiles govern directory access; they do not silently rename an existing global
-  account or change its password. Stable IDs survive profile changes.
-- Pending users create no global account. First verified SSO may bind/create an
-  active explicitly provisioned user even when unprovisioned JIT is off; email from
-  SCIM alone never binds an account. Clarify the existing JIT checkbox and guide so
-  it distinguishes directory-provisioned people from unprovisioned new accounts.
-  Inactive/deleted records fence JIT, issuance and every organization-session read.
-- Keep inactive/deleted user tombstones for that fence; deleted resources return
-  404 and disappear from lists. Live-name uniqueness permits an intentional new
-  record with a previously deleted name. A deliberate active replacement may
-  restore managed access after verified SSO, without historical tombstones
-  overriding it. The 5,000-user bound includes retained tombstones. Group deletion
-  removes its references/mappings and recomputes applicable default roles.
-- Use a directory-membership **source association** referencing the existing
-  membership, directory user and linked workspace. Existing role/status remains
-  authoritative in `workspace_memberships`; this avoids a foundational-schema
-  import cycle or a second membership store. Manual/JIT grants stay manual,
-  including suspended/removed grants. New managed grants use the first matching
-  ordered group mapping, otherwise the linked workspace default. Only a changed
-  effective role/status advances its revision and revokes sessions.
-- Ordinary member controls explain directory ownership; directory-managed access
-  changes go through its policy. Never manage/remove the current recovery owner,
-  map a group to owner, or transfer ownership to a directory-managed membership.
-  An owner can explicitly adopt an active manual membership only after its active
-  directory identity has been bound by verified SSO. Review the resulting role;
-  recheck membership, directory-user and organization revisions atomically.
-  Suspended/removed manual access must be deliberately reactivated first. This
-  makes existing teams migratable without silently taking over their grants.
-  Other organizations and manual memberships remain independent. Removal reuses
-  the existing notice/favorite cleanup, membership revision and session owners.
-- Resource revisions are separate from organization configuration revisions, so
-  routine provisioning does not continuously stale provider configuration forms.
-  Membership-list changes also advance affected resource ETags. Emit minimal
-  stable member/group references rather than duplicating mutable profile labels.
-- User/group/mapping/default-role changes synchronously project affected bound
-  managed members. Lock linked workspaces in identifier order, then organization,
-  then users/memberships in order; recheck a changed linked set before proceeding.
-  Credential validity, resources, projection, cleanup, revocation and audits share
-  the transaction. Reads release checkouts before writing to the caller.
-- Deepen the existing membership/session storage owner with bounded batch writes
-  if maximum fan-out needs it; keep single-member callers delegating to that owner.
-  Reuse existing federation authority and platform command-receipt primitives;
-  token creation follows the existing automation-token show-once pattern, without
-  a new generic command framework. Refactors get separate commits.
-- Either workspace owner can revoke a non-control workspace link; creating a link
-  still requires ownership of both sides. An unlink removes its managed grants
-  and mappings, retains manual grants/accounts, and audits both workspaces. The control workspace cannot unlink itself. Control-organization
-  purge must remove managed grants in other linked workspaces **before** removing
-  source associations; cascading source deletion must never make them manual.
-  Maintenance receives only required metadata permissions, never password access.
-- Keep initial caps: 5 active credentials, 5,000 retained users, 200 groups,
-  500 members/group, 200 mappings/workspace, 10 linked workspaces, 100 PATCH
-  operations, 1 MiB requests, 4 MiB protocol responses, 16 KiB user profiles and
-  JSON depth/member bounds of 16/4,096 before SDK expansion. Measure maximum
-  mapping projection and group changes; lower a bound if qualification requires. No per-record database round trips at full
-  fan-out. Provisioning system audits name the credential ID rather than
-  impersonating its creator; metadata only, in each affected workspace.
-
-Storage qualification (local Node 24 / PostgreSQL 18, 2026-10-18):
-- The existing batch primitive changed 5,000 memberships, revoked sessions and
-  appended 5,000 individual audit facts in 186 ms. Mixed removals clear private
-  state and roll back every side effect on an RLS failure.
-- Full directory fan-out: 5,000 bound people, 10 linked workspaces, 200 groups,
-  100,000 group memberships and 2,000 ordered mappings. One configuration command
-  changed 50,000 grants, revoked 5,000 sessions and recorded 50,000 individual
-  metadata audit facts in 2.1–2.3 seconds. PostgreSQL WAL grew about 77 MB; process
-  resident growth was 31–44 MB. These are local measurements, not deployment SLAs.
-  Reapplying identical roles preserves membership revisions and live sessions.
-  Keep the chosen bounds; ordinary group edits project only changed members.
-- Directory commands lock the linked workspaces first, then the organization,
-  then all affected global users in sorted order **before** proving the owner.
-  An early owner-user lock followed by arbitrary fan-out could otherwise form a
-  cycle with another organization's command. Purge claims use the same sorted
-  workspace plan, with SKIP LOCKED and bounded candidate/page work. Source grants
-  in other workspaces are removed before their control organization is deleted.
-  Maintenance needs membership metadata updates and the existing removal-cleanup
-  function, without access to account passwords or global-user update authority.
-- Standard core resource discovery uses immutable copies of public SDK metadata.
-  Only supported fields are advertised. Case/duplicate-key normalization, parser
-  budgets and safe constant errors happen before storage. Empty DELETE bodies
-  are accepted with either JSON media type; malformed JSON, unsupported media and
-  oversized requests retain SCIM errors even before Nest dispatch.
-
-### Credentials, UI and qualification
-
-- Credential plaintext is shown once and kept out of query/mutation caches and
-  command receipts. A lost-response retry may return the safe public credential
-  receipt with replayed=true and no secret, matching automation tokens; explain
-  revoking/recreating instead of revealing it again. Exact command hashes exclude generated candidates. Rotation/revocation
-  rechecks the current owner and terminates authority immediately across instances.
-- SSO settings own credential creation/revocation, bounded user/group views and
-  ordered group-to-workspace role mappings. Team rows show their directory source
-  and explain unavailable manual changes. Reuse existing Weft controls/feedback.
-- Qualify actual SDK fixtures shaped like Entra/Okta, caseExact comparisons, NOT
-  and value filters, atomic PATCH/ETag conflicts, stable IDs, cross-organization
-  isolation, replay/lost-response credentials, revocation across API instances,
-  first verified SSO, tombstones/reactivation, owner protection, manual independence,
-  removal cleanup, unlink/purge, maximum fan-out and desktop/phone UI. Reuse owned
-  PostgreSQL/Redis/HTTPS browser fixtures; no external account or image download.
-
-Sources: [RFC 7644](https://www.rfc-editor.org/rfc/inline-errata/rfc7644.html),
-[SCIMMY public schemas](https://scimmyjs.github.io/SCIMMY.Types.SchemaDefinition.html),
-[typed filter parser](https://github.com/thomaspoignant/scim2-parse-filter), and
-[SCIM PATCH](https://github.com/thomaspoignant/scim-patch).
-
-## SAML qualification evidence (2026-10-18)
-
-- The real SDK passes 39 signed SAML cases alongside all 16 OIDC gateway cases:
-  altered/unsigned proofs, SHA-1, wrong issuer/destination/audience/recipient,
-  correlation, time bounds, duplicate IDs, XML budgets and certificate overlap.
-  An exact 262,144-byte signed XML response verified in 29 ms on the local Node 24
-  fixture and returned only subject, email and display name. This is a local
-  measurement, not a production latency promise.
-- Real PostgreSQL/API cases cover two-instance single consumption, revoked owner
-  tests, changed provider revisions, JIT, required-SSO/password recovery, owner/admin
-  read permissions, refused admin writes and bounded callback bodies. Unavailable
-  HTTPS/secure-cookie configuration returns a clear 400 for setup and metadata.
-- The real HTTPS browser configures the IdP from downloaded metadata before adding
-  its provider, tests sign-in and creates a JIT member at 1,280 and 375 pixels.
-  All four cross-site POSTs carry the purpose cookie and neither ordinary session
-  nor CSRF cookie. Readiness creates no account; exactly two sign-in accounts
-  remain. Public settings/account screenshots were inspected with reduced motion.
-  Owned transport probes reject noncanonical AuthnRequest encodings and absolute/
-  network request targets; both upstream proxy authorities stay fixed. The exact
-  SAML callback is covered by the existing distributed, fail-closed admission.
-- Cached Caddy/nginx probes preserve exact SAML POST bytes and cookie forwarding,
-  including replacement session cookies. Successful callbacks and API-down errors
-  disclose no proof, binding, state or authentication path to nginx logs. The
-  existing CSV, webhook and one-click checks remain green. Purge tests cover both
-  provider kinds in bounded pages while retaining ordinary credentials and other
-  workspaces. No Docker image download or additional CI job is needed.
-
-## Qualification and rollout
-
-- All slices: formatting/build/lint/types/unit/contracts/schema/boundaries; normal
-  pre-push hook; exact-head required CI and CodeQL before rebase merge.
-- Real PostgreSQL: domain claim races, fresh owner fences, immutable identities,
-  exact retries, same-transaction rollback, role loss/removal, two API instances,
-  single-use callbacks, retention and workspace/organization purge.
-- Real local OIDC/SAML fixtures: success, forged/unverified/mismatched identity,
-  state/browser/PKCE/nonce/issuer/audience failures, expired/replayed callbacks,
-  provider changes during login, enforcement of old sessions and recovery login.
-  No external IdP account or container download is needed for qualification.
-- SCIM: Entra/Okta-shaped requests, filters and PATCHes; stable IDs; atomic group
-  changes, conflicting roles, owner protection, token revocation, immediate access
-  removal, no JIT resurrection and maximum-size projection measurements.
-- Real browser at phone/desktop widths: disabled/available social buttons, domain
-  proof/configuration, SSO login, enforcement/recovery, directory tokens/mappings.
-  Keep forms plain and the Weft language; React Doctor after changes.
-- Off by default. Operators configure their own provider accounts/credentials.
-  Disable enforcement before removing the last usable provider. Recovery owner
-  remains usable during an IdP outage. Guides state supported protocol/setup bounds.
+- Full fan-out: 5,000 bound people × ten workspaces, 200 groups, 100,000 member
+  references and 2,000 mappings. One command changed 50,000 grants/audits and revoked
+  5,000 sessions in 2.1–2.3 seconds, about 77 MB WAL and 31–44 MB process RSS growth.
+  Reapplying identical roles preserves revisions/sessions. Keep these bounds.
+- A maximum 100-group page with 500 members each and maximum profile labels encoded
+  to 2,573,733 bytes in about 12 ms, below 4 MiB. Maximum-length/depth filter parsing
+  averaged 1.24 ms across 100 iterations. Bounded codec/parser behavior is tested.
+- Real API federation/member lifecycle suite: 56 passing cases, including SCIM
+  authentication/media/filters/PATCH/ETags, revocation and current membership policy.
+  Real database tests cover projection, filters, ownership, adoption, tombstones,
+  cross-organization isolation, unlink, maintenance purge and full fan-out.
+- Owned real HTTPS SAML + SCIM browser journeys pass at 1280px and 375px: credential
+  creation, pending person/group, builder mapping, verified SSO with JIT disabled,
+  managed team membership, inactive person and credential revocation. Screenshots
+  inspected at both widths. No external provider account or image download.
+- Web unit suite: 1,284 cases passing. React Doctor changed scope: 100/100, no
+  suppressions. Final lint/types/build, contracts/schema/boundaries, mocked browser
+  suite and normal hooks/required CI remain merge gates.
 
 ## Later
 
-Private-network OIDC endpoint access, IdP-initiated SAML, SAML logout/encrypted assertions/signed SP
-requests, nested directory groups, arbitrary custom claims/roles, acting as an IdP,
-and account-wide administration. No paid identity service is required.
+Private-network OIDC, IdP-initiated SAML, encrypted assertions, signed SP requests,
+SAML logout, nested groups, arbitrary schema/role/claim extensions, SCIM bulk,
+acting as an IdP and account-wide administration. Use compatible OIDC when an IdP
+requires unsupported SAML options. No paid identity service is required.
 
 ## Tracker
 
-- [x] Current code, scope and recommended decisions reconciled.
-- [x] ADR 086 records identity/session/organization/provisioning boundaries.
-- [x] Social verified linking and install setup qualified and merged: [#344](https://github.com/vigani1/pertexo/pull/344).
-- [x] Organization OIDC, DNS, enforcement and recovery qualified and merged: [#345](https://github.com/vigani1/pertexo/pull/345).
-- [x] SAML gateway and settings qualified and merged: [#346](https://github.com/vigani1/pertexo/pull/346).
-- [ ] SCIM users/groups, mappings and removal qualified and merged.
-- [ ] Guides, maximum-size evidence and natural postmerge checks complete.
+- [x] Reconcile current code and accepted ADR 086 decisions before each slice.
+- [x] Social, organization OIDC and SAML qualified and merged (#344–#346).
+- [x] SCIM backend/UI, immediate removal, purge, bounds and real browser qualification.
+- [x] Update [sign-in/provisioning guide](../guides/single-sign-on.md).
+- [ ] Final SCIM PR checks, rebase merge and natural-main result.
 
-## Social slice evidence (2026-10-18)
-
-The slice adds migration 0032 and the five-minute browser-bound social proof
-journey. Fifteen real PostgreSQL/API cases cover verified linking, changed provider
-emails, suspension/deletion, hostile return paths, browser binding, expiry/replay,
-races across API instances, concurrent first sign-in through different providers,
-transaction rollback and a blocked provider call with a one-connection auth pool.
-The nineteen existing account-security PostgreSQL cases also pass. Five populated
-upgrade/retention suites pass (fifteen cases), including expired journey cleanup.
-
-Nine provider-unit cases use signed RSA tokens and the pinned SDK verifier to
-check signature, nonce, issuer, audience and expiry, plus actual authorization URL
-state/PKCE/nonce/callback fields. Apple form landing tests verify bounded encoding,
-ambiguous-proof refusal, exact cross-origin callback exceptions and unchanged
-identity until GET verifies the browser binding. Oversized forms use the existing
-400 invalid-proof contract; provider form POSTs consume the callback rate limit.
-Native auth declares the existing start/callback policy classes in Fastify route
-configuration and the dispatcher consumes that same configuration through the
-shared Redis limiter. Denial and backend outages prevent provider dispatch; there
-is no optional-limiter path. This also lets CodeQL recognize the guarded route.
-The OpenAPI validator reports expected redirect-only callback advisories (302/303),
-without validation errors.
-
-Six real-browser journeys cover verified Google linking, new GitHub accounts and
-Apple cross-site form POSTs with the ordinary Lax browser cookie
-at 1280 and 375 pixels. The fixture replaces only the external provider; ordinary
-registration, email verification, sessions, account pages and PostgreSQL persist
-normally. Final database assertions prove six consumed journeys, six provider
-identities and no persisted provider access/refresh/ID tokens. All 214 mocked
-browser journeys pass; changed frontend React Doctor score is 100/100.
-
-Cached-image deployment qualification confirms direct API auth routing, signed
-cookies, API-down behavior and no callback proofs in edge/nginx logs. Five Compose
-checks confirm provider credentials reach only the API. Full local checks and
-exact-head CI remain the merge gate; organization modes are not enabled by this
-social slice.
-
-## Organization OIDC evidence (2026-10-18)
-
-Migration 0033 adds the global organization/domain/provider catalog, five-minute
-single-use journeys and session authentication proof. The dedicated provider key
-ring uses the existing envelope; nine deployment checks qualify fresh secrets
-and keep federation keys out of worker/web/migration/code-runner environments.
-Startup opens stored secrets in bounded pages: correct and previous keys work;
-missing or wrong keys fail clearly without exposing their values.
-
-Real PostgreSQL/API qualification covers DNS challenge replacement/expiry and
-claim races, owner fences, exact retries, rollback, verified-email attachment,
-JIT defaults without resurrecting removed members, stale provider proofs,
-callback races across API instances and the 16-method bound. The 107-case identity
-and populated-upgrade selection and 24-case organization/purge selection pass.
-Maintenance purge removes provider identities and sessions in one-row pages,
-retains ordinary password credentials and other workspaces, and cannot read
-password hashes. Actor-discovery hygiene is checked between workspace scopes.
-
-Nine new real-API cases qualify owner readiness tests without identity/grant
-creation, required-SSO refusal, protected recovery, preserved session proof during
-password rotation, enforced email-change refusal and old email-proof consumption,
-CSRF, provider outages and key recovery. A disposable PostgreSQL advisory-lock
-fixture pauses the native SDK session insert while enforcement changes: the
-post-insert policy check refuses and removes the raced credential session.
-The broader authentication API selection passes 43 cases unchanged in intent.
-Optional organization-only accounts are also refused a primary-email change
-until another method exists; removing it invalidates an already-issued proof.
-The ordinary invitation regression also signs out after verification, signs in
-again and rebinds the new session before accepting. The global organization/
-workspace catalog link is explicitly covered by the schema contract as global
-authentication state (ADR 086); tenant-owned tables retain forced RLS.
-
-Sixteen gateway tests use the actual pinned OIDC SDK and RSA signatures to reject
-forged signatures, wrong issuer/audience/nonce/state, expired claims, unverified
-email, unsafe endpoints and oversized discovery. Two owned HTTPS browser journeys
-at 1280/375 pixels cover ordinary registration, organization/DNS/provider setup,
-real discovery/code exchange/PKCE/JWT verification, owner testing, enforcement,
-public sign-in, JIT and named account methods. Six existing social browser journeys
-still pass. The owned IdP uses ephemeral certificates and an external-transport
-fixture; production TLS/address policy has no bypass. It runs as another scenario
-in the existing live-3 CI job, retaining the real admission limits.
-
-All 214 mocked browser journeys pass. Component regressions retain secret-free
-query caches and exact uncertain retries, preserve stale provider edits and keep
-an open SSO confirmation's reviewed action/revision stable across a refresh.
-Desktop/phone screenshots are inspected for labels, clipping and dialog exit;
-React Doctor reports 100/100 without suppressions. Build, lint, strict types,
-unit, generated contracts, schema and boundary checks remain commit/merge gates.
-
-## Sources checked 2026-10-18
-
-[Better Auth account linking](https://better-auth.com/docs/concepts/users-accounts),
-[pinned session-authority decision](../adr/039-better-auth-and-session-authority.md),
-[OpenID code flow](https://github.com/panva/openid-client/blob/main/examples/oidc.ts),
-[Node-SAML configuration](https://github.com/node-saml/node-saml),
-[SCIM protocol](https://www.rfc-editor.org/info/rfc7644/), and
-[SCIMMY resource boundaries](https://scimmyjs.github.io/SCIMMY.Types.Resource.html).
-Library APIs must be checked against the pinned package, not assumed from main.
+Protocol references: [SCIM protocol](https://www.rfc-editor.org/info/rfc7644/),
+[SCIMMY schemas](https://scimmyjs.github.io/SCIMMY.Types.SchemaDefinition.html),
+[filter parser](https://github.com/15five/scim2-parse-filter),
+[PATCH library](https://github.com/thomaspoignant/scim-patch),
+[OIDC client](https://github.com/panva/openid-client),
+[Node-SAML](https://github.com/node-saml/node-saml).

@@ -10,6 +10,7 @@ export function FederationSettingsRoute() {
       scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
       workspace={workspace}
       testResult={search.ssoTest}
+      section={search.ssoSection}
     />
   );
 }

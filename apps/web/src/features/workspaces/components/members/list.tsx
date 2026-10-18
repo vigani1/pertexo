@@ -153,6 +153,12 @@ function MemberRow({
         >
           {member.email}
         </p>
+        {member.directorySource === undefined ? null : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Directory-managed. Ask the organization’s control workspace owner to
+            change access.
+          </p>
+        )}
       </div>
       <div>
         {control.canChange(member) ? (

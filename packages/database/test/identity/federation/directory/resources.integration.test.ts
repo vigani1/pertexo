@@ -218,6 +218,12 @@ describe('SCIM resources with existing membership authority', () => {
       ),
     ).toEqual([{ revision: 3 }]);
     await deleteDirectoryGroup(f.pool, f.principal, group.id, 2);
+    expect(
+      await db.asAdmin(
+        'select revision from app.auth_organizations where id=$1',
+        [f.organizationId],
+      ),
+    ).toEqual([{ revision: 2 }]);
     expect(await member(f.workspaceId, person.id)).toEqual([
       { role: 'viewer', status: 'active', role_revision: 3 },
     ]);

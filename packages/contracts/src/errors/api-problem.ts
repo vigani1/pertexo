@@ -48,6 +48,7 @@ export const API_PROBLEM_CODES = [
   'workspace.member_role_revision_conflict',
   'workspace.member_role_transition_conflict',
   'workspace.member_removal_conflict',
+  'workspace.member_directory_managed',
   'workspace.member_status_conflict',
   'workspace.invitation_conflict',
   'workspace.invitation_proof_expired',
@@ -323,6 +324,12 @@ const apiProblemDetails = {
     status: 409,
     title: 'Workspace member removal conflict',
     severity: 'warn',
+    exposeDetail: true,
+  },
+  'workspace.member_directory_managed': {
+    status: 409,
+    title: 'Membership managed by organization directory',
+    severity: 'info',
     exposeDetail: true,
   },
   'workspace.member_status_conflict': {

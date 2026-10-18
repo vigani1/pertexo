@@ -229,8 +229,8 @@ function OidcProviderForm({
         </LabelledField>
         <LabelledField
           id={`${id}-jit`}
-          label="Allow new accounts"
-          description="After verified SSO, create new accounts and grant linked workspaces their default roles. Existing manual roles stay unchanged; removed and suspended memberships are not restored."
+          label="Allow unprovisioned new accounts"
+          description="Allow verified SSO to create accounts that are not in the directory. Active directory-provisioned people may sign in with this off. Existing manual roles stay unchanged; removed and suspended manual memberships are not restored."
         >
           {(control) => (
             <Checkbox

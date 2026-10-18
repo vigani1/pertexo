@@ -82,7 +82,7 @@ describe.skipIf(!enabled)(
         spy.mockRestore();
       });
     });
-    it('downloads metadata before configuration, proves off-cookie readiness and signs in a new member on desktop and phone', async () => {
+    it('proves cross-site SAML and provisions, maps and revokes a directory member on desktop and phone', async () => {
       const apiOrigin = await api.listen();
       const idp = owner.acquire(
         'owned SAML IdP',

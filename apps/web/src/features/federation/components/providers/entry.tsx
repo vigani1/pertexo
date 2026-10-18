@@ -42,7 +42,8 @@ export function ProviderEntry({
         {provider.issuer}
       </p>
       <p className="text-xs text-muted-foreground">
-        New accounts {provider.configuration.jitEnabled ? 'allowed' : 'off'} ·{' '}
+        Unprovisioned accounts{' '}
+        {provider.configuration.jitEnabled ? 'allowed' : 'off'} ·{' '}
         {trustDescription(provider)}
       </p>
       <div className="flex flex-wrap gap-2">

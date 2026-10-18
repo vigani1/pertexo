@@ -113,7 +113,7 @@ export function parseDirectoryGroup(input: unknown): DirectoryGroupValues {
     throw new DirectoryError('invalid_value');
   }
 }
-export const directoryEtag = (id: string, revision: number) =>
+const directoryEtag = (id: string, revision: number) =>
   `W/"${id}:${String(revision)}"`;
 export function directoryUserDocument(user: DirectoryUser, base: string) {
   return {

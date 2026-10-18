@@ -259,7 +259,6 @@ export { authenticationProviderSchema } from './schemas/identity/authentication.
 
 export {
   DIRECTORY_LIMITS,
-  directoryCredentialSchema,
   directoryCredentialCreateSchema,
   directoryCredentialResultSchema,
   directoryRevisionSchema,
@@ -278,7 +277,6 @@ export type {
   DirectoryPeopleQuery,
 } from './schemas/identity/federation/directory.js';
 
-export { directoryMembershipSourceSchema } from './schemas/identity/federation/directory.js';
 export type { DirectoryMembershipSource } from './schemas/identity/federation/directory.js';
 
 export { directoryChangedSchema } from './schemas/identity/federation/directory.js';

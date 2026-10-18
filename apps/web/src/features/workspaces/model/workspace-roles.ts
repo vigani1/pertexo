@@ -173,7 +173,12 @@ export function canRemoveMember(
   actor: Readonly<{ role: WorkspaceRole; userId: string }>,
   member: WorkspaceMember,
 ): boolean {
-  if (member.userId === actor.userId || member.role === 'owner') return false;
+  if (
+    member.directorySource !== undefined ||
+    member.userId === actor.userId ||
+    member.role === 'owner'
+  )
+    return false;
   if (actor.role === 'owner') return true;
   return (
     actor.role === 'admin' &&
@@ -203,6 +208,7 @@ export function canTransferOwnershipTo(
   member: WorkspaceMember,
 ): boolean {
   return (
+    member.directorySource === undefined &&
     actor.role === 'owner' &&
     member.role !== 'owner' &&
     member.userId !== actor.userId &&

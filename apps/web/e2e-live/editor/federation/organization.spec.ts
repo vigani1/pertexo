@@ -68,7 +68,10 @@ for (const width of [1280, 375]) {
       .getByRole('checkbox', { name: 'Allow sign-in', exact: true })
       .check();
     await dialog
-      .getByRole('checkbox', { name: 'Allow new accounts', exact: true })
+      .getByRole('checkbox', {
+        name: 'Allow unprovisioned new accounts',
+        exact: true,
+      })
       .check();
     await dialog
       .getByRole('button', { name: 'Save provider', exact: true })
