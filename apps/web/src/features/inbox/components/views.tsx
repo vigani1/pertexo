@@ -41,7 +41,8 @@ export function InboxViews({
   const waiting = useInfiniteQuery({
     ...tasksQueryOptions(
       { apiClient, userId, workspaceId: workspace.id },
-      { view: 'mine', status: 'pending' },
+      // The Requests view's own default filters, so both share one read.
+      { kind: 'all', view: 'mine', status: 'pending' },
     ),
     enabled: canReadRequests,
   });
@@ -70,7 +71,7 @@ export function InboxViews({
       <Link
         to="/w/$workspaceId/requests"
         params={{ workspaceId: workspace.id }}
-        search={{ view: 'mine', status: 'pending' }}
+        search={{ kind: 'all', view: 'mine', status: 'pending' }}
         aria-current={current === 'requests' ? 'page' : undefined}
         aria-label={
           pending === undefined || pending === 0
