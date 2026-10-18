@@ -1,8 +1,24 @@
 import { Link } from '@tanstack/react-router';
 import { promotionSearch } from '@/features/workflow-promotions/search.public';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
-import { CopyIcon, DownloadIcon, EyeIcon, RotateCcwIcon } from 'lucide-react';
+import {
+  CopyIcon,
+  DownloadIcon,
+  EllipsisIcon,
+  EyeIcon,
+  RotateCcwIcon,
+  SendIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Status } from '@/components/ui/status';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
@@ -79,28 +95,7 @@ export function VersionTimeline({
                   · {stepCountLabel(version.graph.nodes.length)}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {promotionWorkspaceId === undefined ? null : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    render={
-                      <Link
-                        to="/w/$workspaceId/settings/promotion"
-                        params={{ workspaceId: promotionWorkspaceId }}
-                        search={promotionSearch([
-                          {
-                            workflowId: version.workflowId,
-                            versionId: version.id,
-                          },
-                        ])}
-                      />
-                    }
-                  >
-                    Promote…
-                  </Button>
-                )}
-
+              <div className="flex flex-wrap items-center gap-1.5">
                 <Button
                   type="button"
                   variant="outline"
@@ -129,33 +124,64 @@ export function VersionTimeline({
                     Restore to draft
                   </Button>
                 ) : null}
-                {onExport === undefined ? null : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Export ${label}`}
-                    onClick={() => {
-                      onExport(version);
-                    }}
-                  >
-                    <DownloadIcon aria-hidden="true" data-icon="inline-start" />
-                    Export
-                  </Button>
-                )}
-                {onDuplicate === undefined ? null : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Duplicate ${label}`}
-                    onClick={() => {
-                      onDuplicate(version);
-                    }}
-                  >
-                    <CopyIcon aria-hidden="true" data-icon="inline-start" />
-                    Duplicate
-                  </Button>
+                {/* Rarer moves wait in one menu, so a row reads at a glance. */}
+                {promotionWorkspaceId === undefined &&
+                onExport === undefined &&
+                onDuplicate === undefined ? null : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      aria-label={`More for ${label}`}
+                      className={buttonVariants({
+                        variant: 'ghost',
+                        size: 'icon-sm',
+                      })}
+                    >
+                      <EllipsisIcon />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuGroup>
+                        {promotionWorkspaceId === undefined ? null : (
+                          <DropdownMenuLinkItem
+                            render={
+                              <Link
+                                to="/w/$workspaceId/settings/promotion"
+                                params={{ workspaceId: promotionWorkspaceId }}
+                                search={promotionSearch([
+                                  {
+                                    workflowId: version.workflowId,
+                                    versionId: version.id,
+                                  },
+                                ])}
+                              />
+                            }
+                          >
+                            <SendIcon aria-hidden="true" />
+                            Promote {label}…
+                          </DropdownMenuLinkItem>
+                        )}
+                        {onExport === undefined ? null : (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              onExport(version);
+                            }}
+                          >
+                            <DownloadIcon aria-hidden="true" />
+                            Export {label}
+                          </DropdownMenuItem>
+                        )}
+                        {onDuplicate === undefined ? null : (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              onDuplicate(version);
+                            }}
+                          >
+                            <CopyIcon aria-hidden="true" />
+                            Duplicate {label}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             </div>

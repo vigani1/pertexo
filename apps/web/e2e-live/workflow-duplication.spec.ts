@@ -233,7 +233,10 @@ test('real same-workspace draft and selected-version copies preserve graph IDs a
   expect(draftCopy.draft.graph).toEqual(authored.graph);
 
   await page.goto(`/w/${workspaceId}/workflows/${sourceWorkflowId}/versions`);
-  await page.getByRole('button', { name: 'Duplicate v1', exact: true }).click();
+  await page.getByRole('button', { name: 'More for v1', exact: true }).click();
+  await page
+    .getByRole('menuitem', { name: 'Duplicate v1', exact: true })
+    .click();
   const versionDialog = page.getByRole('dialog', {
     name: 'Duplicate workflow',
     exact: true,
