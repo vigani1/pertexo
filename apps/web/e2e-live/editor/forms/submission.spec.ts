@@ -354,11 +354,13 @@ test('published member and public forms start real runs; captured member input c
         })
         .toBe(1);
       await page.setViewportSize({ width, height: 768 });
+      // Requests are the Inbox's second view.
       await page.goto(`/w/${workspaceId}/inbox`);
-      const requests = page.getByRole('region', {
-        name: 'Requests',
-        exact: true,
-      });
+      await page
+        .getByRole('navigation', { name: 'Inbox views' })
+        .getByRole('link', { name: /^Requests/u })
+        .click();
+      const requests = page.getByRole('main');
       await expect(
         requests.getByRole('link', {
           name: 'Complete the request',
