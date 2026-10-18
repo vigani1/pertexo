@@ -251,7 +251,7 @@ cache. The selected version remains exact even if it is on an older page.
 
 ## Local evidence (2026-10-18)
 
-- 33 real PostgreSQL cases cover promotion, binding, approval, schema shape and
+- 41 real PostgreSQL cases cover promotion, binding, approval, full workspace purge, schema shape and
   legacy upgrades. The API HTTP journey verifies session/CSRF authority, strict
   input, review, apply and replay through the actual runtime.
 - The real worker runs a promoted parent and exact child using target-only
@@ -267,6 +267,11 @@ cache. The selected version remains exact even if it is on an older page.
   was 366,688 KiB. These are local observations, not a deployment memory bound.
   A larger combined review is refused before writes; the shared 4 KB receipt
   bound stays intact.
+
+CI also caught the two provenance tables missing from the explicit purge policy
+inventory. Cascades already removed their rows, but purge now names both as
+bounded steps before deleting drafts and versions. The unchanged full workspace
+purge suite verifies coverage as well as deletion.
 
 ## Later
 
