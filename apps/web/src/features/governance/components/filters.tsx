@@ -238,14 +238,14 @@ export function AuditFilters({
         <TimeRange filters={filters} onApply={onApply} />
       </div>
       {filters.action === undefined && filters.targetId === undefined ? null : (
-        <ul aria-label="Narrowed to" className="flex flex-wrap gap-2">
+        <ul aria-label="Narrowed to" className="flex min-w-0 flex-wrap gap-2">
           {filters.action === undefined ? null : (
-            <li>
+            <li className="min-w-0">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-full"
+                className="h-auto min-h-7 max-w-full rounded-full py-1 text-left whitespace-normal"
                 aria-label={`Show every kind of event, not only “${actionWords ?? filters.action}”`}
                 onClick={() => {
                   onApply(without(filters, 'action'));
@@ -257,12 +257,12 @@ export function AuditFilters({
             </li>
           )}
           {filters.targetId === undefined ? null : (
-            <li>
+            <li className="min-w-0">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-full"
+                className="h-auto min-h-7 max-w-full rounded-full py-1 text-left whitespace-normal"
                 aria-label="Show events for everything, not only one item"
                 onClick={() => {
                   onApply(without(filters, 'targetId'));
