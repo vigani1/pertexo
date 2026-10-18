@@ -69,7 +69,7 @@ async function counts(workspaceId: string) {
   }>(
     `select (select count(*)::int from app.notice_preferences where workspace_id=$1) preferences,
       (select count(*)::int from app.workflow_favorites where workspace_id=$1) favorites,
-      (select count(*)::int from app.audit_events where workspace_id=$1 and target_type='workspace_member') audits`,
+      (select count(*)::int from app.audit_events where workspace_id=$1 and action in ('workspace.member_removed','workspace.member_role_changed')) audits`,
     [workspaceId],
   );
 }

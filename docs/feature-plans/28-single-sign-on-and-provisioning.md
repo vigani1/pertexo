@@ -208,8 +208,24 @@ Local Node 24/PostgreSQL 18 evidence, 2026-10-18 (measurements, not deployment S
    Qualify removed/suspended memberships alongside a second eligible workspace,
    unchanged existing roles/revisions, repeat sign-in and the unverified-email fence.
 
+2. **One membership creation owner:** `tenant-access/members/storage.ts` owns
+   insertion and its same-transaction `workspace.member_added` fact. Workspace
+   creation, invitation acceptance, JIT and directory projection call it under
+   their existing authority, row locks and idempotency owners; role assignment
+   remains with those callers. Keep the batched SCIM path and use one bounded,
+   typed metadata shape: role, active status, initial role revision, source and
+   applicable invitation/organization/directory/credential IDs. The target is
+   always the member user ID. Preserve workspace-created/invitation-accepted and
+   projected-member facts; do not rewrite historical audit rows. Invitation
+   rejoin remains an existing-row update, routed through the update owner, with
+   its current revision/session semantics. No new transaction, entry point or role.
+   Qualify all four entry paths, exact retries, batch rollback and workspace RLS.
+
 - [x] JIT skip behavior and corrected real-PostgreSQL sign-in regression: 15
   sign-in/SCIM cases and all 570 database unit tests pass; strict types/lint pass.
+  Merged [#350](https://github.com/vigani1/pertexo/pull/350) after green CI.
+- [x] Shared creation/storage/audit owner and all four production paths qualified:
+  114 actual PostgreSQL cases, 571 database unit tests, strict types and lint pass.
 
 ## Later
 

@@ -42,3 +42,33 @@ it('bounds legacy full variable-name unions while exposing their total count', (
   });
   expect(projectAuditMetadata({ changedNames: ['PRIVATE=VALUE'] })).toEqual({});
 });
+
+it('exposes only typed membership origin metadata, never arbitrary source text', () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  for (const source of [
+    'workspace_creation',
+    'invitation',
+    'jit',
+    'directory',
+  ]) {
+    const metadata = {
+      source,
+      role: 'builder',
+      status: 'active',
+      roleRevision: 1,
+      invitationId: id,
+      organizationId: id,
+      directoryUserId: id,
+      credentialId: id,
+    };
+    expect(projectAuditMetadata(metadata)).toEqual(metadata);
+  }
+  expect(
+    projectAuditMetadata({
+      source: 'PRIVATE',
+      status: 'PRIVATE',
+      organizationId: 'PRIVATE',
+      credentialId: 'PRIVATE',
+    }),
+  ).toEqual({});
+});

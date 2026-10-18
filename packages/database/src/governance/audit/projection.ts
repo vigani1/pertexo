@@ -18,6 +18,10 @@ const identityKeys = new Set([
   'userId',
   'requestId',
   'publicationRequestId',
+  'invitationId',
+  'organizationId',
+  'directoryUserId',
+  'credentialId',
 ]);
 const numberKeys = new Set([
   'revision',
@@ -97,6 +101,17 @@ export function projectAuditMetadata(
     else if (
       key === 'actorKind' &&
       (value === 'worker' || value === 'workflow')
+    )
+      result[key] = value;
+    else if (
+      key === 'source' &&
+      typeof value === 'string' &&
+      ['workspace_creation', 'invitation', 'jit', 'directory'].includes(value)
+    )
+      result[key] = value;
+    else if (
+      key === 'status' &&
+      (value === 'active' || value === 'suspended' || value === 'removed')
     )
       result[key] = value;
     else if (

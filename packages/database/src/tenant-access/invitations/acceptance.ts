@@ -23,6 +23,7 @@ import {
 } from './acceptance-receipts.js';
 import { expireWorkspaceInvitations } from './expiration.js';
 import { replaceUserSessions } from '../users/sessions.js';
+import { createMemberships, updateMembership } from '../members/storage.js';
 import { parseIdentityUuid } from '../support.js';
 import {
   withTenantScopedClient,
@@ -566,15 +567,6 @@ export function createIdentityWorkspaceInvitationAcceptanceStore(
   });
 }
 
-const CREATE_MEMBERSHIP = `insert into app.workspace_memberships
-    (workspace_id,user_id,role,status) values($1,$2,$3,'active')`;
-// ADR 042: a removed membership restarts at the invited role, and its
-// revision advances so no command fenced before the removal can apply.
-const REJOIN_MEMBERSHIP = `update app.workspace_memberships
-    set role=$3,status='active',role_revision=role_revision+1,
-        updated_at=clock_timestamp()
-  where workspace_id=$1 and user_id=$2`;
-
 async function completeAcceptance(
   pool: Pool,
   raw: CompleteInvitationAcceptanceInput,
@@ -626,8 +618,9 @@ async function completeAcceptance(
         const membership = await client.query<{
           role: MembershipRole;
           status: string;
+          role_revision: number;
         }>(
-          `select role,status from app.workspace_memberships
+          `select role,status,role_revision from app.workspace_memberships
           where workspace_id=$1 and user_id=$2 for update`,
           [workspaceId, actorUserId],
         );
@@ -740,10 +733,31 @@ async function completeAcceptance(
           ? delegatedRole.parse(current.role)
           : existing.role;
         if (membershipCreated) {
-          await client.query(
-            rejoining ? REJOIN_MEMBERSHIP : CREATE_MEMBERSHIP,
-            [workspaceId, actorUserId, assignedRole],
-          );
+          if (existing === undefined)
+            await createMemberships(
+              client,
+              workspaceId,
+              [
+                {
+                  userId: actorUserId,
+                  role: assignedRole,
+                  source: 'invitation',
+                  invitationId: intent.invitationId,
+                },
+              ],
+              {
+                actorId: actorUserId,
+                requestId: raw.requestId ?? null,
+                traceId: raw.traceId ?? null,
+              },
+            );
+          else
+            await updateMembership(client, workspaceId, {
+              userId: actorUserId,
+              role: assignedRole,
+              status: 'active',
+              roleRevision: existing.role_revision + 1,
+            });
           await replaceUserSessions(
             client,
             actorUserId,

@@ -472,8 +472,10 @@ describe('identity/workspace persistence', () => {
     );
     expect(rows.memberships).toHaveLength(1);
     expect(rows.memberships[0]?.role).toBe('owner');
-    expect(rows.events).toHaveLength(1);
-    expect(rows.events[0]?.action).toBe('workspace.created');
+    expect(rows.events.map((event) => event.action).sort()).toEqual([
+      'workspace.created',
+      'workspace.member_added',
+    ]);
   });
 
   it('returns only the exact actor/workspace authorization row', async () => {
@@ -1327,7 +1329,10 @@ describe('identity/workspace persistence', () => {
         }),
       );
       expect(aggregate.members).toHaveLength(1);
-      expect(aggregate.events).toHaveLength(1);
+      expect(aggregate.events.map((event) => event.action).sort()).toEqual([
+        'workspace.created',
+        'workspace.member_added',
+      ]);
     } finally {
       await pool.end();
     }
@@ -1363,7 +1368,10 @@ describe('identity/workspace persistence', () => {
       }),
     );
     expect(aggregate.memberships).toHaveLength(1);
-    expect(aggregate.events).toHaveLength(1);
+    expect(aggregate.events.map((event) => event.action).sort()).toEqual([
+      'workspace.created',
+      'workspace.member_added',
+    ]);
     const inspection = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
     try {
       const receipt = await inspection.query<{ request_hash: string }>(
@@ -3579,6 +3587,29 @@ describe('identity/workspace persistence', () => {
         invitationWorkspace.id,
       ),
     ).resolves.toMatchObject({ role: 'viewer', membershipStatus: 'active' });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        const added = await db.execute(sql`
+        select actor_user_id,target_type,target_id,metadata from app.audit_events
+        where action='workspace.member_added' and target_id=${recipient.id}::uuid
+      `);
+        expect(added.rows).toEqual([
+          {
+            actor_user_id: recipient.id,
+            target_type: 'workspace_member',
+            target_id: recipient.id,
+            metadata: {
+              source: 'invitation',
+              invitationId: created.invitation.id,
+              role: 'viewer',
+              status: 'active',
+              roleRevision: 1,
+            },
+          },
+        ]);
+      },
+    );
   });
 
   it('rechecks active user status under the acceptance transaction lock', async () => {
