@@ -4,6 +4,7 @@ import {
   type AuditFact,
 } from '../../../governance/audit/append.js';
 import {
+  createMemberships,
   updateMemberships,
   type MembershipChange,
 } from '../../../tenant-access/members/storage.js';
@@ -156,15 +157,7 @@ export async function projectDirectoryMemberships(
           });
         }
         if (additions.length > 0) {
-          await scoped.query(
-            `insert into app.workspace_memberships(workspace_id,user_id,role,status)
-        select $1,member.user_id,member.role,'active' from unnest($2::uuid[],$3::text[]) as member(user_id,role)`,
-            [
-              workspace.workspace_id,
-              additions.map((member) => member.userId),
-              additions.map((member) => member.role),
-            ],
-          );
+          await createMemberships(scoped, workspace.workspace_id, additions);
           await scoped.query(
             `insert into app.auth_directory_memberships(organization_id,workspace_id,user_id,directory_user_id)
         select $1,$2,member.user_id,member.directory_id from unnest($3::uuid[],$4::uuid[]) as member(user_id,directory_id)`,
