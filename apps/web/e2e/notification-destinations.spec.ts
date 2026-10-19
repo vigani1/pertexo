@@ -149,6 +149,19 @@ test('creates, versions and disables a notification destination', async ({
       .getByRole('navigation', { name: 'Settings' })
       .getByRole('link', { name: 'Alerts' }),
   ).toHaveAttribute('aria-current', 'page');
+  // The trail leads back up to Settings and follows the workspace switcher
+  // closely, whatever the workspace's name.
+  const trail = page.getByRole('navigation', { name: 'Breadcrumb' });
+  await expect(
+    trail.getByRole('link', { name: 'Settings', exact: true }),
+  ).toHaveAttribute('href', `/w/${workspaceId}/settings`);
+  expect(
+    await trail.evaluate((nav) => {
+      const switcher = nav.querySelector('li > *')?.getBoundingClientRect();
+      const settings = nav.querySelector('a')?.getBoundingClientRect();
+      return (settings?.left ?? 0) - (switcher?.right ?? 0);
+    }),
+  ).toBeLessThan(32);
   await expect(
     page
       .getByRole('navigation', { name: 'Workspace' })
