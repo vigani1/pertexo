@@ -10,8 +10,13 @@ nearest enclosing item; the workflow's run input stays the original run input.
 particularly for Call workflow: children share the parent's active-run slot and
 run serially. Raising this setting does not grant more workspace or worker
 capacity. A loop waits until its body finishes for every item, then continues.
-Its output contains the original `items` and `iterationCount`; it does not
-aggregate the body results. Inspect each body's output in run history.
+
+Steps after the loop see the original `items`, `iterationCount` and `results`:
+what the body's last step returned for each item, in item order. A pass that
+skipped that step, for example on a Condition's other branch, gives `null`.
+Map `$.results` to use them, for instance in a Table rows step or a summary.
+All results together must fit within the 1 MiB value limit; if they don't, the
+next step fails and asks you to return less from the loop's last step.
 
 ## Bounds and publication
 
