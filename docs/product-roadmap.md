@@ -240,8 +240,8 @@ only after its gate is resolved.
 | [F28](feature-plans/28-single-sign-on-and-provisioning.md) | Single sign-on (SAML/OIDC) and SCIM user provisioning | Extends the session authority for organizations | L–XL | Complete: social/OIDC/SAML/SCIM merged (#344–#347), with managed roles and immediate removal |
 | [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Queue and Skip implemented and locally qualified; ADR 058; implementation PR carries CI and merge evidence |
 | [F30](feature-plans/30-connection-health.md) | Connection health from real failures, used-by and reconnection | Extends existing connections | M–L | First Slack slice independently reviewed, merged through PR139/140 and qualified on natural main; production mode off |
-| F31 | Two-factor sign-in: authenticator app and recovery codes for password accounts; passkeys later | Extends account security; SSO sign-in unaffected | M | Proposed |
-| F32 | HTTP Request pagination: follow next-page links or page counters, within bounds | Extends the HTTP Request step | M | Proposed |
+| [F31](feature-plans/31-two-factor-sign-in.md) | Two-factor sign-in: authenticator app and recovery codes for password accounts; passkeys later | Extends account security; SSO sign-in unaffected | M | Approved (2026-10-19): plan ready, three slices |
+| [F32](feature-plans/32-http-pagination.md) | HTTP Request pagination: follow next-page links or page counters, within bounds | Extends the HTTP Request step | M | Approved (2026-10-19): plan ready, two slices |
 | F33 | Retry settings per step: how many tries and the wait between them | Extends step execution within existing safety rules: no automatic retry after `outcome_unknown` | M–L | Proposed |
 | F34 | Create a file: CSV, JSON or text from step data, kept as a run file | Extends F04 files | M | Proposed |
 | F35 | Webhook test events: listen in the editor and keep a real request as sample data | Extends webhook triggers and F02 samples | M | Proposed |
