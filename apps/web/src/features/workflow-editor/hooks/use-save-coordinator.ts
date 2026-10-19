@@ -25,7 +25,13 @@ export function useSaveCoordinator(
       )
         coordinator.schedule();
     });
+    // A save that went unconfirmed while offline goes again on reconnect.
+    const resume = () => {
+      if (store.getState().saveStatus === 'uncertain') void coordinator.flush();
+    };
+    window.addEventListener('online', resume);
     return () => {
+      window.removeEventListener('online', resume);
       unsubscribe();
       coordinator.destroy();
       if (coordinatorRef.current === coordinator) coordinatorRef.current = null;
