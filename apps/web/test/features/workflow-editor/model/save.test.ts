@@ -235,6 +235,33 @@ describe('workflow editor conflicts and uncertain saves', () => {
     coordinator.destroy();
   });
 
+  it('accepts a retried save whose first attempt landed after all', async () => {
+    const local = addDefinitionNode(
+      emptyGraph(),
+      definition,
+      { x: 0, y: 0 },
+      'local',
+    );
+    const store = createEditorStore({
+      graph: emptyGraph(),
+      etag: etagA,
+      revision: 1,
+    });
+    store.getState().transact(local);
+    const coordinator = createSaveCoordinator(store, {
+      save: vi.fn().mockRejectedValue(new Error('stale etag')),
+      reload: vi.fn().mockResolvedValue(snapshot(local, etagB, 2)),
+      isConflict: () => true,
+      isUncertain: () => false,
+      message: () => 'failed',
+    });
+    await coordinator.flush();
+    expect(store.getState().saveStatus).toBe('clean');
+    expect(store.getState().etag).toBe(etagB);
+    expect(store.getState().conflict).toBeNull();
+    coordinator.destroy();
+  });
+
   it('reconciles an uncertain committed save and bounds history to 100 transactions', async () => {
     const store = createEditorStore({
       graph: emptyGraph(),

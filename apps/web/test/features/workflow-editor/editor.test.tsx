@@ -7,6 +7,7 @@ import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import {
   addStepButton,
+  api,
   choose,
   draftBody,
   editorHandlers,
@@ -216,6 +217,38 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
       expect(savedNodes).toBe(1);
     });
     expect(await screen.findByText(/^Saved/u)).toBeVisible();
+  });
+
+  it('keeps editing through a dropped connection and saves on reconnect', async () => {
+    let connected = true;
+    let savedNodes = 0;
+    mockServer.use(
+      ...editorHandlers((_request, body) => {
+        savedNodes = body.graph.nodes.length;
+      }),
+    );
+    mockServer.use(
+      http.all(`${api}/*`, () =>
+        connected ? undefined : HttpResponse.error(),
+      ),
+    );
+    renderApp(editorPath, { strict: true });
+    const event = userEvent.setup();
+    await findCanvas();
+
+    connected = false;
+    await event.click(addStepButton(/Set fields/u));
+    pressSave();
+    expect(await screen.findByText(/^Save unconfirmed/u)).toBeVisible();
+    expect(
+      screen.queryByRole('heading', { name: 'Editor paused' }),
+    ).not.toBeInTheDocument();
+    expect(savedNodes).toBe(0);
+
+    connected = true;
+    window.dispatchEvent(new Event('online'));
+    expect(await screen.findByText(/^Saved/u)).toBeVisible();
+    expect(savedNodes).toBe(1);
   });
 });
 

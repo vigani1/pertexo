@@ -117,6 +117,18 @@ export function createSaveCoordinator(
         try {
           const remote = await transport.reload(request.signal);
           if (isDestroyed()) return;
+          // A retried save whose first attempt landed after all.
+          if (graphsEqual(remote.draft.graph, snapshot.graph)) {
+            store
+              .getState()
+              .acceptSave(
+                remote.etag,
+                remote.draft.revision,
+                snapshot.generation,
+                remote.draft.updatedAt,
+              );
+            return;
+          }
           store.getState().reportConflict({
             local: store.getState().graph,
             remote: remote.draft.graph,
