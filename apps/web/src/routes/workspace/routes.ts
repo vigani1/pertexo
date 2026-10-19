@@ -74,8 +74,8 @@ export const workspaceScopeRoute = createRoute({
   path: '/w/$workspaceId',
   // A cold start: the Core gathers while the session and workspace resolve.
   pendingComponent: WorkspaceBootPage,
-  beforeLoad: async ({ context, params }) => {
-    const user = await loadCurrentUser(context);
+  beforeLoad: async ({ context, params, location }) => {
+    const user = await loadCurrentUser(context, location.pathname);
     const workspace = await findWorkspace(context, user.id, params.workspaceId);
     assertWorkspaceOpenable(workspace);
     return { user, workspace };

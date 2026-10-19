@@ -16,6 +16,7 @@ import {
   fieldControlId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
+import { Notice } from '@/components/ui/notice';
 import { SchemaField } from '../fields/schema-field';
 
 /** Syntax checks never execute code; previews use the ordinary worker path. */
@@ -37,6 +38,12 @@ export function CodeSetup({
       : Math.min(CODE_LIMITS.defaultTimeoutSeconds, settings.maximumSeconds);
   return (
     <>
+      {settings?.enabled === false ? (
+        <Notice tone="warning">
+          Code steps are off on this instance, so this step can't run or be
+          published. An administrator can turn them on.
+        </Notice>
+      ) : null}
       <Field data-invalid={issue !== undefined}>
         <p
           id={`${id}-label`}
@@ -92,13 +99,13 @@ export function CodeSetup({
               : `Defaults to ${String(defaultSeconds)} seconds. Maximum ${String(settings?.maximumSeconds)} seconds.`,
         }}
       />
-      <p className="text-xs text-muted-foreground">
-        {settings === undefined
-          ? 'Instance limits are unavailable. Reload to try again.'
-          : !settings.enabled
-            ? 'Code steps are disabled on this instance.'
+      {settings?.enabled === false ? null : (
+        <p className="text-xs text-muted-foreground">
+          {settings === undefined
+            ? 'Instance limits are unavailable. Reload to try again.'
             : `${String(settings.memoryMiB)} MB heap · ${String(settings.concurrency)} Code tasks at once. No network or credentials.`}
-      </p>
+        </p>
+      )}
     </>
   );
 }
