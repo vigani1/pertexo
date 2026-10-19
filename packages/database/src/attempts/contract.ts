@@ -301,6 +301,19 @@ export type NodeAttemptStoredOutput = Readonly<{
   output: unknown;
 }>;
 
+/** One settled run of a step, with the size of what it stored. */
+export type NodeRunOutcome = Readonly<{
+  invocationKey: string;
+  status: 'succeeded' | 'skipped';
+  outputBytes: number;
+}>;
+
+/** A succeeded step run's stored output, such as a For Each pass's result. */
+export type NodeRunStoredOutput = Readonly<{
+  invocationKey: string;
+  output: unknown;
+}>;
+
 export type NodeAttemptCompletion =
   | Readonly<{ status: 'succeeded'; output: unknown }>
   | Readonly<{ status: 'suspended'; output: unknown; durationSeconds: number }>
@@ -350,6 +363,21 @@ export interface NodeAttemptRunStore {
       signal: AbortSignal;
     }>,
   ): Promise<readonly NodeAttemptStoredOutput[]>;
+  /** Every settled run of one step in the leased run, without outputs. */
+  listNodeOutcomes(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      nodeId: string;
+      signal: AbortSignal;
+    }>,
+  ): Promise<readonly NodeRunOutcome[]>;
+  readNodeOutputs(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      invocationKeys: readonly string[];
+      signal: AbortSignal;
+    }>,
+  ): Promise<readonly NodeRunStoredOutput[]>;
   markDispatched(
     input: Readonly<{
       lease: NodeAttemptLease;

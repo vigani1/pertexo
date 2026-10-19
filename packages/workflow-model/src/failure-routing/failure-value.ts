@@ -15,6 +15,7 @@ const routableCodes = {
     'execution.attempt_invalid',
     'execution.variable_missing',
     'execution.file_input',
+    'execution.loop_results_too_large',
     'execution.table_not_found',
     'execution.table_invalid_values',
     'execution.table_quota_exceeded',

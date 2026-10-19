@@ -183,6 +183,12 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     advice:
       'Check its inputs in Build (an expression that fails, or a path that isn’t in the data), publish, then replay the run.',
   },
+  'execution.loop_results_too_large': {
+    sentence:
+      'The For each results feeding this step were too large to pass on.',
+    advice:
+      'Return less from the loop’s last step, such as only the fields later steps use, then replay the run.',
+  },
   'artifact.unavailable': {
     sentence: 'A file this step needed wasn’t available.',
     advice: 'Replay the run once the file is available again.',
@@ -221,6 +227,7 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'execution.variable_missing': 'a workspace variable is missing',
   'preview.variable_missing': 'a workspace variable is missing',
   'execution.attempt_invalid': 'an input couldn’t be worked out',
+  'execution.loop_results_too_large': 'loop results too large',
 };
 
 /**

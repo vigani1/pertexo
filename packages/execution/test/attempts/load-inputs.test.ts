@@ -57,6 +57,8 @@ function storeWith(
     }),
     readAttemptOutputs: vi.fn().mockResolvedValue([]),
     readLoopDeclaration: vi.fn().mockResolvedValue(declaration),
+    listNodeOutcomes: vi.fn().mockResolvedValue([]),
+    readNodeOutputs: vi.fn().mockResolvedValue([]),
   };
 }
 
@@ -100,6 +102,167 @@ function loopCheckpoint() {
     ],
   });
 }
+
+describe('loop results', () => {
+  const after = lease({ nodeId: 'after' });
+  const sinkKey = (
+    ordinal: number,
+    branchPath: string[] = [],
+    enclosing: { loopNodeId: string; ordinal: number }[] = [],
+  ) =>
+    invocationKey({
+      workflowVersionId: VERSION_ID,
+      nodeId: 'shape',
+      branchPath,
+      iterationPath: [...enclosing, { loopNodeId: 'loop', ordinal }],
+    });
+  const loopOutput = {
+    nodeId: 'loop',
+    invocationKey: loopKey,
+    value: { items, iterationCount: 3 },
+  };
+  const loops = {
+    loops: [{ nodeId: 'loop', invocationKey: loopKey, sinkNodeId: 'shape' }],
+    maxBytes: 1_000,
+  };
+
+  it('passes on each pass’s result in item order, null for a skipped pass', async () => {
+    const store = storeWith({ completedNodeOutputs: [loopOutput] });
+    store.listNodeOutcomes.mockResolvedValue([
+      { invocationKey: sinkKey(2), status: 'succeeded', outputBytes: 20 },
+      {
+        invocationKey: sinkKey(1, ['check:true']),
+        status: 'skipped',
+        outputBytes: 0,
+      },
+      { invocationKey: sinkKey(0), status: 'succeeded', outputBytes: 20 },
+      // The same step in another loop instance is not this loop's pass.
+      {
+        invocationKey: sinkKey(0, [], [{ loopNodeId: 'outer', ordinal: 1 }]),
+        status: 'succeeded',
+        outputBytes: 900,
+      },
+    ]);
+    store.readNodeOutputs.mockResolvedValue([
+      { invocationKey: sinkKey(0), output: { name: 'A' } },
+      { invocationKey: sinkKey(2), output: { name: 'C' } },
+    ]);
+    const loaded = await loadAttemptInputs(store, request(after), loops);
+    expect(loaded.completedNodeOutputs).toEqual([
+      {
+        ...loopOutput,
+        value: {
+          items,
+          iterationCount: 3,
+          results: [{ name: 'A' }, null, { name: 'C' }],
+        },
+      },
+    ]);
+    expect(loaded.loopResultsTooLarge).toBeUndefined();
+    expect(store.listNodeOutcomes).toHaveBeenCalledWith(
+      expect.objectContaining({ nodeId: 'shape' }),
+    );
+  });
+
+  it('reads the passes of a loop nested in another loop’s pass', async () => {
+    const enclosing = [{ loopNodeId: 'outer', ordinal: 1 }];
+    const outerKey = invocationKey({
+      workflowVersionId: VERSION_ID,
+      nodeId: 'outer',
+    });
+    const outerItems = ['first', 'second'];
+    const store = storeWith(
+      {
+        completedNodeOutputs: [
+          { ...loopOutput, value: { items: ['x'], iterationCount: 1 } },
+        ],
+        checkpoint: checkpoint({
+          remainingIterationBudget: 8,
+          invocations: [
+            {
+              invocationKey: outerKey,
+              nodeId: 'outer',
+              status: 'waiting',
+              attemptNumber: 1,
+            },
+          ],
+          loops: [
+            {
+              controlInvocationKey: outerKey,
+              loopId: 'outer',
+              branchPath: [],
+              iterationPath: [],
+              bodyRootNodeIds: ['loop'],
+              bodySinkNodeId: 'after',
+              collection: { kind: 'inline', attemptId: DECLARING_ATTEMPT },
+              collectionChecksum: createHash('sha256')
+                .update(canonicalJson(outerItems))
+                .digest('hex'),
+              collectionSize: outerItems.length,
+              maxConcurrency: 1,
+              maxIterations: 10,
+              nextOrdinal: 2,
+              activeOrdinals: [1],
+              completedPrefix: 1,
+              terminalOrdinals: [],
+            },
+          ],
+        }),
+      },
+      {
+        nodeId: 'outer',
+        attemptId: DECLARING_ATTEMPT,
+        output: { items: outerItems, iterationCount: 2 },
+      },
+    );
+    store.listNodeOutcomes.mockResolvedValue([
+      {
+        invocationKey: sinkKey(0, [], [{ loopNodeId: 'outer', ordinal: 0 }]),
+        status: 'succeeded',
+        outputBytes: 10,
+      },
+      {
+        invocationKey: sinkKey(0, [], enclosing),
+        status: 'succeeded',
+        outputBytes: 10,
+      },
+    ]);
+    store.readNodeOutputs.mockResolvedValue([
+      { invocationKey: sinkKey(0, [], enclosing), output: 'inner-1' },
+    ]);
+    const loaded = await loadAttemptInputs(
+      store,
+      request(lease({ nodeId: 'after', iterationPath: enclosing })),
+      loops,
+    );
+    expect(loaded.completedNodeOutputs[0]?.value).toMatchObject({
+      results: ['inner-1'],
+    });
+  });
+
+  it('flags results too large to pass on without reading them', async () => {
+    const store = storeWith({ completedNodeOutputs: [loopOutput] });
+    store.listNodeOutcomes.mockResolvedValue(
+      [0, 1, 2].map((ordinal) => ({
+        invocationKey: sinkKey(ordinal),
+        status: 'succeeded',
+        outputBytes: 400,
+      })),
+    );
+    const loaded = await loadAttemptInputs(store, request(after), loops);
+    expect(loaded.loopResultsTooLarge).toBe(true);
+    expect(store.readNodeOutputs).not.toHaveBeenCalled();
+  });
+
+  it('leaves other upstream outputs alone', async () => {
+    const other = { nodeId: 'set', invocationKey: 'set-key', value: { a: 1 } };
+    const store = storeWith({ completedNodeOutputs: [other] });
+    await expect(
+      loadAttemptInputs(store, request(after), loops),
+    ).resolves.toMatchObject({ completedNodeOutputs: [other] });
+    expect(store.listNodeOutcomes).not.toHaveBeenCalled();
+  });
+});
 
 describe('loadAttemptInputs', () => {
   it('passes stored values through without a checkpoint projection', async () => {

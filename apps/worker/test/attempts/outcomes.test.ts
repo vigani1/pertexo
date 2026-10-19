@@ -521,6 +521,8 @@ describe('NodeAttemptHandler', () => {
     async (error, code) => {
       const runStore = executionStore({
         readAttemptOutputs: vi.fn().mockResolvedValue([]),
+        listNodeOutcomes: vi.fn().mockResolvedValue([]),
+        readNodeOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn().mockRejectedValue(error),
       });
@@ -629,6 +631,8 @@ describe('NodeAttemptHandler', () => {
           runInput: null,
         }),
         readAttemptOutputs: vi.fn().mockResolvedValue([]),
+        listNodeOutcomes: vi.fn().mockResolvedValue([]),
+        readNodeOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;
@@ -750,6 +754,8 @@ describe('NodeAttemptHandler', () => {
           runInput: null,
         }),
         readAttemptOutputs: vi.fn().mockResolvedValue([]),
+        listNodeOutcomes: vi.fn().mockResolvedValue([]),
+        readNodeOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;
@@ -818,6 +824,8 @@ describe('NodeAttemptHandler', () => {
         runInput: null,
       }),
       readAttemptOutputs: vi.fn().mockResolvedValue([]),
+      listNodeOutcomes: vi.fn().mockResolvedValue([]),
+      readNodeOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     } satisfies NodeAttemptRunStore;
@@ -883,6 +891,8 @@ describe('NodeAttemptHandler', () => {
         runInput: null,
       }),
       readAttemptOutputs: vi.fn().mockResolvedValue([]),
+      listNodeOutcomes: vi.fn().mockResolvedValue([]),
+      readNodeOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     } satisfies NodeAttemptRunStore;
@@ -1086,6 +1096,8 @@ describe('NodeAttemptHandler', () => {
           runInput: null,
         }),
         readAttemptOutputs: vi.fn().mockResolvedValue([]),
+        listNodeOutcomes: vi.fn().mockResolvedValue([]),
+        readNodeOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;

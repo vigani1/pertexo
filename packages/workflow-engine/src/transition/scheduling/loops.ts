@@ -256,3 +256,32 @@ export function invocationKey(input: {
     .join('/');
   return `${encodeURIComponent(input.workflowVersionId)}|${encodeURIComponent(input.nodeId)}|b:${encodeURIComponent(branches)}|i:${encodeURIComponent(iterations)}`;
 }
+
+/**
+ * The For Each pass a body step's invocation ran in, when it ran directly in
+ * the loop `loopNodeId` inside `iterationPath`; undefined for any other key.
+ */
+export function loopIterationOrdinal(
+  key: string,
+  loopNodeId: string,
+  iterationPath: readonly {
+    readonly loopNodeId: string;
+    readonly ordinal: number;
+  }[] = [],
+): number | undefined {
+  const marker = key.lastIndexOf('|i:');
+  if (marker === -1) return undefined;
+  const iterations = key.slice(marker + 3);
+  const prefix = encodeURIComponent(
+    [
+      ...iterationPath.map(
+        ({ loopNodeId: enclosing, ordinal }) =>
+          `${enclosing}:${String(ordinal)}`,
+      ),
+      `${loopNodeId}:`,
+    ].join('/'),
+  );
+  if (!iterations.startsWith(prefix)) return undefined;
+  const ordinal = iterations.slice(prefix.length);
+  return /^(?:0|[1-9]\d{0,8})$/u.test(ordinal) ? Number(ordinal) : undefined;
+}
