@@ -147,6 +147,10 @@ describe('route loading', () => {
     const { router } = renderApp(`/w/${workspaceId}/runs`);
     await expectSignInPage();
     expect(router.state.location.pathname).toBe('/login');
+    // Signing in again returns to the page that was being opened.
+    expect(router.state.location.search).toEqual({
+      returnTo: `/w/${workspaceId}/runs`,
+    });
   });
 
   it('signs out when a warmed read finds the session gone', async () => {
@@ -167,6 +171,9 @@ describe('route loading', () => {
     const { router } = renderApp(`/w/${workspaceId}/runs`);
     await expectSignInPage();
     expect(router.state.location.pathname).toBe('/login');
+    expect(router.state.location.search).toEqual({
+      returnTo: `/w/${workspaceId}/runs`,
+    });
   });
 
   it('keeps a missing run inside the shell', async () => {

@@ -106,3 +106,14 @@ themselves without a new session authority or a native Better Auth route.
 Freshness is measured from session issue time, which Better Auth also uses
 for its own fresh-session checks. Display-name receipts are retained for the
 life of the user; they are small and bounded by the actor rate limit.
+
+## Accepted amendment — 2026-10-19
+
+Signing in after a session ends now returns people to the page they were on,
+as n8n and other tools do (owner-delegated QA fix). Any path inside a workspace,
+`/w/{workspaceId}` followed by up to six plain segments of letters, digits,
+`_` and `-`, joins the allowlisted `returnTo` paths. The rules that keep it from
+becoming an open redirect are unchanged: no scheme, host, `//`, `.` segment,
+query or fragment, and the sign-in, sign-up and verification landings still
+validate it. The web router passes the page being opened when its session check
+finds no session.
