@@ -884,6 +884,7 @@
             "webhook.rate_limited",
             "webhook.workflow_paused",
             "webhook.unavailable",
+            "request.aborted",
             "internal.unexpected"
           ]
         },
