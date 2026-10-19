@@ -38,7 +38,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         );
       },
     });
-    const api = useBetterAuthRealApi('factor_social', {
+    const api = useBetterAuthRealApi('2fa_social', {
       databasePoolMax: 1,
       socialProviders: {
         google: { clientId: 'fixture-client', clientSecret: 'fixture-secret' },

@@ -45,7 +45,7 @@ function useFactorApi(suite: string) {
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'two-factor codes on the real API',
   () => {
-    const { api, person, challenge, verify } = useFactorApi('factor_codes');
+    const { api, person, challenge, verify } = useFactorApi('2fa_codes');
     it('requires a code, refuses a wrong code, creates a fresh token-free session and consumes the challenge once', async () => {
       const user = await person();
       const cookie = await challenge(user.email);
@@ -88,17 +88,12 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expect(read.payload).not.toContain(
         new URL(user.totpURI).searchParams.get('secret'),
       );
-      const stored = await api
-        .database()
-        .query<{
-          secret: string;
-          backup_codes: string;
-          failed_verification_count: number;
-          locked_until: Date | null;
-        }>(
-          'select factor.secret,factor.backup_codes,factor.failed_verification_count,factor.locked_until from app.auth_two_factors factor join app.users users on users.id=factor.user_id where users.email=$1',
-          [user.email],
-        );
+      const stored = await api.database().query<{
+        secret: string;
+        backup_codes: string;
+        failed_verification_count: number;
+        locked_until: Date | null;
+      }>('select factor.secret,factor.backup_codes,factor.failed_verification_count,factor.locked_until from app.auth_two_factors factor join app.users users on users.id=factor.user_id where users.email=$1', [user.email]);
       expect(stored.rows[0]).toMatchObject({
         failed_verification_count: 0,
         locked_until: null,
@@ -114,7 +109,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'two-factor recovery on the real API',
   () => {
-    const { api, person, challenge, verify } = useFactorApi('factor_recovery');
+    const { api, person, challenge, verify } = useFactorApi('2fa_recovery');
     it('consumes a recovery code once, including concurrent API requests, and reports only the unused count', async () => {
       const user = await person();
       const code = user.backupCodes[0];
@@ -151,8 +146,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'two-factor management on the real API',
   () => {
-    const { api, person, challenge, verify } =
-      useFactorApi('factor_management');
+    const { api, person, challenge, verify } = useFactorApi('2fa_manage');
     it('requires password, fresh session and CSRF to replace codes or disable, and keeps other sessions signed in', async () => {
       const user = await person();
       const other = browserFrom(
@@ -243,7 +237,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'two-factor reset on the real API',
   () => {
-    const { api, person, challenge, verify } = useFactorApi('factor_reset');
+    const { api, person, challenge, verify } = useFactorApi('2fa_reset');
     it('preserves the second factor after a password reset and blocks emailed codes and remembered devices', async () => {
       const user = await person();
       for (const path of ['send-otp', 'verify-otp'])
@@ -298,7 +292,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'two-factor lockout on the real API',
   () => {
-    const { api, person, challenge, verify } = useFactorApi('factor_lockout');
+    const { api, person, challenge, verify } = useFactorApi('2fa_lockout');
     it('enforces the plugin account lockout and resets expired failure counters after a successful code', async () => {
       const user = await person();
       for (let attempt = 0; attempt < 10; attempt++)
@@ -345,7 +339,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'two-factor organization on the real API',
   () => {
-    const { api, challenge, verify } = useFactorApi('factor_organization');
+    const { api, challenge, verify } = useFactorApi('2fa_org');
     it('refuses a pending code challenge after organization enforcement changes and still permits organization sign-in', async () => {
       const setup = await api.setup();
       await api.ready(setup);
@@ -385,7 +379,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'distributed second-factor admission on the real API',
   () => {
-    const api = useOrganizationApi('factor_admit');
+    const api = useOrganizationApi('2fa_admit');
     it('charges password and both code routes to the same distributed origin budget', async () => {
       expectProblem(
         await api.send('POST', '/v1/auth/sign-in/email', {

@@ -16,7 +16,7 @@ import { useOrganizationApi } from '../federation/organization/fixture.js';
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'organization enforcement during second-factor session insertion',
   () => {
-    const api = useOrganizationApi('factor_races');
+    const api = useOrganizationApi('2fa_races');
     it.each(['verify-totp', 'verify-backup-code'])(
       'rechecks the committed policy after %s inserts a session',
       async (path) => {
