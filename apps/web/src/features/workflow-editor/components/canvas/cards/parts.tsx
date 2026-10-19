@@ -197,6 +197,7 @@ export function PortRows({
             id={port}
             type={output ? 'source' : 'target'}
             position={output ? Position.Right : Position.Left}
+            role="img"
             aria-label={`${title}: ${output ? 'output' : 'input'} ${portName(port)}`}
             className={cn(
               handleClass,
