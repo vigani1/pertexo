@@ -2,9 +2,11 @@ import {
   HTTP_REQUEST_LIMITS,
   httpMultipartConfigSchema,
   httpMultipartValueSchema,
+  httpPlaceholders,
   type HttpMultipartConfig,
   type HttpMultipartPart,
 } from '@pertexo/integrations';
+import type { WorkflowIssue } from '@/features/workflow-publish/public';
 import type { GraphLevel, WorkflowNode } from '../graph/scopes';
 import {
   inputMappingRowsFor,
@@ -226,4 +228,44 @@ export function applyBodyValue(value: HttpBodyValue, node: WorkflowNode) {
           },
     inputMappings: value.inputMappings,
   };
+}
+
+/** The {names} an HTTP request reads from run data in its address or headers. */
+export function httpRequestPlaceholders(node: WorkflowNode): readonly string[] {
+  if (node.definition.key !== 'http.request') return [];
+  const url = node.config.url;
+  const headers = node.config.headers;
+  return httpPlaceholders({
+    url: typeof url === 'string' ? url : '',
+    headers:
+      typeof headers === 'object' && headers !== null && !Array.isArray(headers)
+        ? Object.fromEntries(
+            Object.entries(headers).filter(
+              (entry): entry is [string, string] =>
+                typeof entry[1] === 'string',
+            ),
+          )
+        : {},
+  });
+}
+
+/** Each {name} an enabled HTTP request reads but no input maps. */
+export function workflowPlaceholderIssues(
+  level: GraphLevel,
+): readonly WorkflowIssue[] {
+  return level.nodes.flatMap((node): WorkflowIssue[] => {
+    const body = node.structured?.body;
+    const nested = body === undefined ? [] : workflowPlaceholderIssues(body);
+    if (node.disabled === true) return [...nested];
+    return [
+      ...httpRequestPlaceholders(node)
+        .filter((name) => node.inputMappings[name] === undefined)
+        .map((name) => ({
+          id: `${node.id}:placeholder:${name}`,
+          message: `Map a value for {${name}}, used in the request address or headers.`,
+          target: { nodeId: node.id, mappingKey: name },
+        })),
+      ...nested,
+    ];
+  });
 }

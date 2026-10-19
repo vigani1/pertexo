@@ -7,6 +7,7 @@ import {
   canonicalizeBoundedJson,
   FileInputFailure,
   NodeExecutorFailure,
+  NodeInputValidationError,
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
@@ -27,13 +28,21 @@ import {
   HTTP_REQUEST_EXECUTOR,
 } from './definition.js';
 import {
+  HTTP_REQUEST_LIMITS,
   httpRequestConfigSchema,
   httpRequestInputSchema,
   httpRequestOutputSchema,
+  safeRequestUrl,
   type HttpRequestConfig,
   type HttpRequestInput,
   type HttpRequestOutput,
 } from './validation.js';
+import {
+  fillHttpTemplate,
+  HTTP_PLACEHOLDER_NAME,
+  HttpPlaceholderError,
+  type HttpPlaceholderValue,
+} from './placeholders.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 import { decodeCredential, mergeHeaders } from './request-material.js';
 import { encodeMultipart } from './multipart/encode.js';
@@ -146,20 +155,64 @@ function requestHeaders(
   return { ...headers, 'content-type': multipartContentType };
 }
 
+/**
+ * Split the {placeholder} values from the body inputs and fill the address
+ * and header values. The filled address keeps the configured origin.
+ */
+function fillPlaceholders(
+  configured: HttpRequestConfig,
+  mapped: HttpRequestInput,
+): Readonly<{ config: HttpRequestConfig; input: HttpRequestInput }> {
+  const values: Record<string, HttpPlaceholderValue> = {};
+  const input: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(mapped))
+    if (
+      key !== 'body' &&
+      HTTP_PLACEHOLDER_NAME.test(key) &&
+      (typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean')
+    )
+      values[key] = value;
+    else input[key] = value;
+  let filled;
+  try {
+    filled = fillHttpTemplate(configured, values);
+  } catch (error) {
+    if (error instanceof HttpPlaceholderError)
+      throw new NodeInputValidationError(error.message);
+    throw error;
+  }
+  if (
+    !safeRequestUrl(filled.url) ||
+    new TextEncoder().encode(filled.url).byteLength >
+      HTTP_REQUEST_LIMITS.maxUrlBytes ||
+    new URL(filled.url).origin !== new URL(configured.url).origin
+  )
+    throw new NodeInputValidationError(
+      'The filled-in address is too long or no longer a safe https address; check the values mapped into it.',
+    );
+  return {
+    config: { ...configured, url: filled.url, headers: filled.headers },
+    input: input as HttpRequestInput,
+  };
+}
+
 async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
 ): Promise<HttpRequestOutput> {
-  let config: HttpRequestConfig;
-  let input: HttpRequestInput;
+  let configured: HttpRequestConfig;
+  let mapped: HttpRequestInput;
   try {
     // Executors are also callable as isolated adapter boundaries, so they
     // retain fail-closed parsing even though createNodeRegistry parses first.
-    config = httpRequestConfigSchema.parse(invocation.config);
-    input = httpRequestInputSchema.parse(invocation.input);
+    configured = httpRequestConfigSchema.parse(invocation.config);
+    mapped = httpRequestInputSchema.parse(invocation.input);
   } catch {
     throw failedConfiguration();
   }
+  const { config, input } = fillPlaceholders(configured, mapped);
   const runtime = invocation.runtime;
   if (runtime === undefined) throw failedConfiguration();
   const connections = runtime.connections;

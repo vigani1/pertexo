@@ -11,6 +11,7 @@ import {
   httpMultipartValueSchema,
 } from './multipart/validation.js';
 import { isSerializableHttpHeaderValue } from '../http/header-value.js';
+import { HTTP_PLACEHOLDER_NAME, httpTemplateProblem } from './placeholders.js';
 
 const MAX_URL_BYTES = 2_048;
 const MAX_REQUEST_BODY_BYTES = ARTIFACT_INPUT_MAX_BYTES;
@@ -73,7 +74,7 @@ function safeConfiguredHeader(name: string): boolean {
   );
 }
 
-function safeRequestUrl(value: string): boolean {
+export function safeRequestUrl(value: string): boolean {
   try {
     const url = new URL(value);
     return (
@@ -176,7 +177,12 @@ export const httpRequestConfigSchema = z
       .url()
       .max(MAX_URL_BYTES)
       .refine((value) => utf8Bytes(value) <= MAX_URL_BYTES)
-      .refine(safeRequestUrl),
+      .refine(safeRequestUrl)
+      .meta({
+        title: 'URL',
+        description:
+          'An https address. Put {name} in the path or query, or in a header value, and map a value for it on Inputs.',
+      }),
     headers: httpRequestHeadersSchema,
     timeoutMillis: z.number().int().min(1).max(120_000),
     maxRedirects: z.number().int().min(0).max(5),
@@ -213,6 +219,9 @@ export const httpRequestConfigSchema = z
         path: ['inlineResponseBytes'],
         message: 'inline response limit cannot exceed the response limit',
       });
+    const template = httpTemplateProblem(config);
+    if (template !== undefined)
+      context.addIssue({ code: 'custom', path: ['url'], message: template });
   })
   .readonly();
 
@@ -236,14 +245,29 @@ export const httpRequestInputSchema = z
       ])
       .optional(),
   })
-  .catchall(z.union([httpMultipartValueSchema, inlineRequestBodySchema]))
+  .catchall(
+    z.union([
+      httpMultipartValueSchema,
+      inlineRequestBodySchema,
+      z.number(),
+      z.boolean(),
+    ]),
+  )
   .superRefine((input, context) => {
     for (const [key, value] of Object.entries(input)) {
       if (key === 'body') continue;
+      // A value for a {placeholder} in the address or a header.
+      if (
+        HTTP_PLACEHOLDER_NAME.test(key) &&
+        (typeof value === 'string' ||
+          typeof value === 'boolean' ||
+          (typeof value === 'number' && Number.isFinite(value)))
+      )
+        continue;
       if (
         !httpMultipartInputKeySchema.safeParse(key).success ||
         (typeof value !== 'string' &&
-          (value === undefined || !('kind' in value)))
+          (typeof value !== 'object' || !('kind' in value)))
       )
         context.addIssue({
           code: 'custom',
