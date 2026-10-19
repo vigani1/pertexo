@@ -579,7 +579,10 @@ export async function executeNodeAttempt(
     if (input.signal.aborted || isAbortError(error))
       operationError('attempt_aborted', 'node attempt was aborted');
     if (isNodeExecutorFailure(error)) throw error;
-    operationError('attempt_invalid', 'node execution failed');
+    // The cause carries the step's own reason, when it gave one.
+    throw new WorkflowEngineError('attempt_invalid', 'node execution failed', {
+      cause: error,
+    });
   }
   return {
     runId: input.runId,

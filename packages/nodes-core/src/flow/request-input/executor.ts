@@ -30,9 +30,16 @@ export const coreRequestInputExecutor: NodeExecutorRegistration = Object.freeze(
         return Promise.resolve({ pending: true, context });
       } catch (error) {
         if (error instanceof FormValuesInvalidError)
-          throw new NodeInputValidationError(error);
+          throw new NodeInputValidationError(prefillProblem(error));
         throw error;
       }
     },
   },
 );
+
+function prefillProblem(error: FormValuesInvalidError): string {
+  const [first] = error.fields;
+  return first === undefined || first.name === ''
+    ? error.message
+    : `Prefilled ${first.name}: ${first.message}`;
+}
