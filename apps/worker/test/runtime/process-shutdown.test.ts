@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkerProcessShutdown } from '../../src/runtime/shutdown/process.js';
 
@@ -13,7 +13,13 @@ const logger = {
 
 const originalExitCode = process.exitCode;
 
+// Closing schedules the process exit; fake timers keep it from ending the run.
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   process.exitCode = originalExitCode;
   logger.error.mockReset();
@@ -83,6 +89,23 @@ describe('worker process shutdown', () => {
     await firstClose;
     expect(application.close).toHaveBeenCalledOnce();
     expect(application.close).toHaveBeenCalledWith(undefined);
+  });
+
+  it('exits shortly after closing, even if something still holds the process open', async () => {
+    const exit = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((() => undefined) as typeof process.exit);
+    const application = {
+      close: vi.fn().mockRejectedValue(new Error('redis unavailable')),
+    };
+    const shutdown = new WorkerProcessShutdown(application, logger);
+
+    await shutdown.close('SIGTERM');
+    await vi.advanceTimersByTimeAsync(1_999);
+    expect(exit).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(exit).toHaveBeenCalledOnce();
+    expect(process.exitCode).toBe(1);
   });
 
   it('logs a close failure and uninstalls its listeners', async () => {
