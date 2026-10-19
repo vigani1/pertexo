@@ -220,7 +220,9 @@ export function RunHeader({
     versionNumber === undefined ? undefined : `v${String(versionNumber)}`;
 
   return (
-    <header className="flex flex-row items-start gap-4 md:items-center md:gap-5">
+    // The actions wrap under the story when the column is narrow (beside
+    // the step lens) instead of squeezing the title into a ribbon.
+    <header className="flex flex-row flex-wrap items-start gap-x-4 gap-y-4 md:items-center md:gap-x-5">
       <div className="size-16 shrink-0 md:size-28">
         <CoreOrb
           state={runCoreState(run.status)}
@@ -230,7 +232,7 @@ export function RunHeader({
           className="size-full"
         />
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[min(100%,18rem)] flex-1">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           {can('workflow:read') ? (
             <Link
