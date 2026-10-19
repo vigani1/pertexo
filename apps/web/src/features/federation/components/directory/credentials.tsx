@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
+import { formatDate } from '@/lib/format/time';
 import { useDirectoryCommand } from '../../data/directory.mutations';
 import type { FederationScope } from '../../data/settings.api';
 import { CommandFeedback } from '../command-feedback';
@@ -57,7 +58,7 @@ export function DirectoryCredentials({
               <p className="break-words font-medium">{credential.name}</p>
               <p className="text-xs text-muted-foreground">
                 {credential.revokedAt === null ? 'Active' : 'Revoked'} · Created{' '}
-                {new Date(credential.createdAt).toLocaleDateString()}
+                {formatDate(credential.createdAt)}
               </p>
             </div>
             {editable && credential.revokedAt === null ? (
