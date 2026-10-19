@@ -79,7 +79,7 @@ describe('version changes', () => {
     expect(diffWorkflowGraphs(before, after)).toEqual({
       added: [{ id: 'mail', label: 'Send email' }],
       removed: [{ id: 'old', label: 'Tidy' }],
-      changed: [{ id: 'call', label: 'Call API' }],
+      changed: [{ id: 'call', label: 'Call API', detail: 'setup' }],
       linksChanged: true,
       contractChanged: false,
       settingsChanged: false,
