@@ -17,7 +17,7 @@ import {
   visibleSettingsData,
   type SettingsQuery,
 } from '../../model/settings-query';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { SettingsQueryState } from '../settings-query-state';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 

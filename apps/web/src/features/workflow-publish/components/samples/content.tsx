@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Notice } from '@/components/ui/notice';
-import { JsonTree } from '@/components/patterns/json-tree';
+import { JsonTree } from '@/components/patterns/code/json-tree';
 import { formatByteLength } from '@/lib/format/bytes';
 import type { SampleDialogSource } from '../../model/testing/samples';
 export function SampleContent({

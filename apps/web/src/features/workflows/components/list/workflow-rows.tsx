@@ -1,6 +1,6 @@
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';

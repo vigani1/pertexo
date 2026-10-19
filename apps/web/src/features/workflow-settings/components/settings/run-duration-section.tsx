@@ -23,7 +23,7 @@ import {
 import { visibleSettingsData } from '../../model/settings-query';
 import { useRunDurationChange } from '../../data/mutations/use-run-duration-change';
 import { workflowVersionsQueryOptions } from '../../data/workflow-settings.queries';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { SettingsQueryState } from '../settings-query-state';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 

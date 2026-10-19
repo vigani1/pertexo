@@ -1,6 +1,9 @@
 import type { ScheduleOccurrenceResponse } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { RecentLog, RecentLogEntry } from '@/components/patterns/recent-log';
+import {
+  RecentLog,
+  RecentLogEntry,
+} from '@/components/patterns/lists/recent-log';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format/time';
 import { describeOccurrence } from '../../../model/triggers/occurrence-outcome';

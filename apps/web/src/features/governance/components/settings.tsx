@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import type { GovernanceScope } from '../data/audit.api';

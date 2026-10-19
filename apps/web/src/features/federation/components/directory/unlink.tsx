@@ -4,7 +4,7 @@ import type {
   FederationSettings,
   AccessibleWorkspace,
 } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import {
   Dialog,
   DialogContent,

@@ -1,6 +1,6 @@
 import { useState, type ReactNode, type ComponentProps } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import {
   Dialog,
   DialogContent,

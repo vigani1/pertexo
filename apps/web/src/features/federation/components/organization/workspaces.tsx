@@ -5,7 +5,7 @@ import {
   type FederationSettings,
 } from '@pertexo/contracts';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { LabelledField } from '@/components/ui/field';
 import {
   Select,

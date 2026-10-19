@@ -3,7 +3,7 @@ import { VariableUsageDialog } from '../components/usage';
 import { useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { StatusGlyph } from '@/components/ui/status';

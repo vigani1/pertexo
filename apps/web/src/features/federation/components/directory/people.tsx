@@ -4,7 +4,7 @@ import type {
   FederationSettings,
   DirectoryAdoptionQuery,
 } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

@@ -15,7 +15,7 @@ import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { visibleSettingsData } from '../model/settings-query';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { SettingsQueryState } from '../components/settings-query-state';
 import { SchedulesSection } from '../components/triggers/schedules/section';
 import { WebhooksSection } from '../components/triggers/webhooks/section';

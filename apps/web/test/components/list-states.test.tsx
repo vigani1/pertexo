@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { LoadMore } from '../../src/components/patterns/load-more';
+import { LoadMore } from '../../src/components/patterns/lists/load-more';
 import { SkeletonRows } from '../../src/components/ui/skeleton';
 
 describe('list states', () => {

@@ -7,7 +7,7 @@ import {
   PageHeaderActions,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';

@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';

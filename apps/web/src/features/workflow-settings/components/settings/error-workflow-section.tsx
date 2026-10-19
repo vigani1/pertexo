@@ -4,8 +4,8 @@ import type {
   AccessibleWorkspace,
   WorkflowErrorSettings,
 } from '@pertexo/contracts';
-import { SettingSentence } from '@/components/patterns/setting-sentence';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingSentence } from '@/components/patterns/settings/sentence';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { LabelledField, FieldGroup } from '@/components/ui/field';
 import {
   Select,

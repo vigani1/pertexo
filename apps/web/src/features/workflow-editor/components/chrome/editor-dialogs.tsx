@@ -1,4 +1,4 @@
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import type { LeaveReason } from '../../hooks/use-leave-guard';
 

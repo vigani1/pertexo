@@ -1,6 +1,6 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
 import {
   accountCommandFailure,

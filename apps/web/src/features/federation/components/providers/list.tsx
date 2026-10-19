@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings-section';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { SettingsSection } from '@/components/patterns/settings/section';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import type { FederationScope } from '../../data/settings.api';

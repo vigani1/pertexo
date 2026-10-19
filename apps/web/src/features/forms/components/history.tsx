@@ -1,6 +1,9 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { RecentLog, RecentLogEntry } from '@/components/patterns/recent-log';
+import {
+  RecentLog,
+  RecentLogEntry,
+} from '@/components/patterns/lists/recent-log';
 import { describeCoordinatedEvent } from '@/features/trigger-events/presentation.public';
 import { formatDateTime } from '@/lib/format/time';
 import { Button } from '@/components/ui/button';

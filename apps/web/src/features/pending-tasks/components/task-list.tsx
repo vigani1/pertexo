@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { PendingTaskListQuery } from '@pertexo/contracts';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
 import {

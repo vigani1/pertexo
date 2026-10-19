@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { FileUploadScope } from '@/features/artifacts/public';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';

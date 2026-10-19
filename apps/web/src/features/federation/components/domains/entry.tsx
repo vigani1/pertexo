@@ -1,7 +1,7 @@
 import { domainConfirmationCopy, domainStatus } from './copy';
 import { useState } from 'react';
 import type { FederationSettings } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Status } from '@/components/ui/status';

@@ -1,6 +1,6 @@
 import type { AuditEvent } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { RecentLogEntry } from '@/components/patterns/recent-log';
+import { RecentLogEntry } from '@/components/patterns/lists/recent-log';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime } from '@/lib/format/time';

@@ -1,5 +1,5 @@
 import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { ErrorWorkflowSection } from '../components/settings/error-workflow-section';
 import type {
   AccessibleWorkspace,

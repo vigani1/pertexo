@@ -2,7 +2,7 @@ import type { AccessibleWorkspace, WorkflowRunData } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ChevronDownIcon, Maximize2Icon, RefreshCwIcon } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
-import { JsonTree } from '@/components/patterns/json-tree';
+import { JsonTree } from '@/components/patterns/code/json-tree';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import {
