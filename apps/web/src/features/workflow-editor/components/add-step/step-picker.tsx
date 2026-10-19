@@ -46,7 +46,7 @@ export function StepSearch({
         autoComplete="off"
         placeholder="Add a step"
         value={query}
-        className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-subtle-foreground"
+        className="min-w-0 flex-1 bg-transparent text-base outline-none md:text-sm placeholder:text-subtle-foreground"
         onChange={(event) => {
           onQueryChange(event.target.value);
         }}

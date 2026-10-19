@@ -41,7 +41,7 @@ export function TokenSecretReceipt({
           value={secret}
           spellCheck={false}
           autoComplete="off"
-          className="min-h-28 font-mono text-xs break-all"
+          className="min-h-28 font-mono text-base break-all md:text-xs"
         />
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">

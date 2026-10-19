@@ -54,7 +54,7 @@ export function FormFieldControl({
         ) : field.type === 'select' ? (
           <select
             {...control}
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
             value={text}
             onChange={(event) => {
               onChange(event.target.value);
