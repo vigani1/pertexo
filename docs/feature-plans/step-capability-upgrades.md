@@ -91,7 +91,7 @@ the way those products do.
 
 ## Steps
 
-- [ ] 1. Small upgrades: plain dates, "must be ticked", search that ignores
+- [x] 1. Small upgrades: plain dates, "must be ticked", search that ignores
   capital letters (with the ADR 064 amendment).
 - [ ] 2. HTTP request: JSON responses, optional connection, safe GET/HEAD,
   URL placeholders with query and headers, private-network allowlist.
