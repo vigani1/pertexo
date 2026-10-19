@@ -21,3 +21,10 @@ export function isRequestBodyError(error: unknown): error is z.ZodError {
     typeof error === 'object' && error !== null && requestBodyErrors.has(error)
   );
 }
+
+/** A body's own issues go back to its caller; other parse failures stay private. */
+export function requestBodyCause(
+  error: unknown,
+): Readonly<{ cause?: unknown }> {
+  return isRequestBodyError(error) ? { cause: error } : {};
+}
