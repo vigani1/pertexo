@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { expect, test } from '../support/fixtures';
 import {
   addCsrfCookie,
@@ -192,6 +193,53 @@ test('keeps keyboard placement usable and the narrow editor horizontally bounded
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test('shows keyboard focus on step cards, links and step panel tabs', async ({
+  context,
+  page,
+}) => {
+  const remote = remoteDraft(mappingGraph());
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remote, {
+    definitions: [manualDefinition, definition],
+  });
+  await page.goto(editorUrl);
+  await expect(
+    page.getByRole('heading', { name: 'Customer onboarding' }),
+  ).toBeVisible();
+  // Arrive by keyboard so :focus-visible applies.
+  const arrive = async (target: Locator) => {
+    await target.focus();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(target).toBeFocused();
+  };
+  const outline = (target: Locator) =>
+    target.evaluate((element) => getComputedStyle(element).outlineStyle);
+
+  const step = page.getByTestId('rf__node-target');
+  await arrive(step);
+  expect(await outline(step.locator('article'))).not.toBe('none');
+  // Escape lets go of the step but keeps focus on the canvas.
+  await page.keyboard.press('Escape');
+  await expect(
+    page.getByRole('region', { name: 'Workflow canvas' }),
+  ).toBeFocused();
+
+  const link = page.getByTestId('rf__edge-manual-target');
+  const thread = link.locator('.react-flow__edge-path');
+  const stroke = () =>
+    thread.evaluate((element) => getComputedStyle(element).stroke);
+  const resting = await stroke();
+  await arrive(link);
+  // The thread eases into its new colour.
+  await expect.poll(stroke).not.toBe(resting);
+
+  await step.click();
+  const inputsTab = page.getByRole('tab', { name: 'Inputs' });
+  await arrive(inputsTab);
+  expect(await outline(inputsTab)).not.toBe('none');
 });
 
 test('keeps workflow identity bounded at 320 and 390 pixels once metadata loads', async ({

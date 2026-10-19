@@ -151,7 +151,17 @@ export function WorkflowCanvas({
       tabIndex={0}
       aria-label="Workflow canvas"
       role="region"
-      className="weave absolute inset-0 overflow-hidden outline-none"
+      className="weave absolute inset-0 overflow-hidden -outline-offset-2"
+      onKeyDown={(event) => {
+        // React Flow blurs a step on Escape, which would leave focus on the
+        // page; keep it on the canvas, as a click on empty canvas does.
+        if (
+          event.key === 'Escape' &&
+          event.target instanceof Element &&
+          event.target.classList.contains('react-flow__node')
+        )
+          event.currentTarget.focus();
+      }}
       onDragOver={(event) => {
         if (!editable || !event.dataTransfer.types.includes(STEP_DRAG_TYPE))
           return;
