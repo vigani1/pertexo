@@ -12,6 +12,7 @@ const problemCodes = new Set<string>(API_PROBLEM_CODES);
 const excludedClientProblems = new Set<string>([
   'auth.forbidden',
   'auth.unauthenticated',
+  'request.aborted',
   'request.invalid',
   'request.precondition_required',
   'webhook.authentication_failed',
