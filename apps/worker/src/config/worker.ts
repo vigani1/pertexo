@@ -12,6 +12,8 @@ import {
 import {
   parseConnectionEncryptionConfig,
   type ConnectionEnvelopeEncryptionConfig,
+  parseAllowedPrivateNetworks,
+  type SecureHttpAddressPolicy,
 } from '@pertexo/integrations/server';
 import { parseObservabilityConfig } from '@pertexo/observability/startup';
 
@@ -359,6 +361,7 @@ export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     artifactStore: ArtifactStoreConfig;
     codeRunner: WorkerCodeRunnerConfig;
+    httpRequest: SecureHttpAddressPolicy;
     retention: RetentionConfig;
     connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
@@ -414,6 +417,11 @@ export function parseWorkerConfig(
       throw new Error('A deployed worker requires connection encryption');
     return Object.freeze({
       ...result.data,
+      httpRequest: Object.freeze({
+        allowedPrivateNetworks: parseAllowedPrivateNetworks(
+          raw.HTTP_ALLOWED_PRIVATE_NETWORKS,
+        ),
+      }),
       codeRunner: {
         settings: parseCodeSettings(raw),
         socketPath: codeRunnerSocketPath(

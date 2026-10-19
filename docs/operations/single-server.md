@@ -85,6 +85,15 @@ Change settings through the normal deployment procedure so the API, worker and
 runner agree. `CODE_STEPS_ENABLED=false` blocks publication and execution of
 Code steps. Runner unavailability follows the ordinary safe retry path.
 
+HTTP Request steps reach only public addresses unless
+`HTTP_ALLOWED_PRIVATE_NETWORKS` lists CIDRs on your own network, such as
+`10.0.0.0/8,192.168.1.20/32`. The worker reads it at startup and refuses a
+malformed entry. Inside those networks plain `http` is allowed; elsewhere a
+request must use `https`. Cloud metadata addresses (`169.254.0.0/16`,
+`fd00:ec2::/32`) stay blocked whatever the list says. Loopback passes only when
+listed, and anything listed is reachable by every workflow author, so list
+only services you mean to expose to workflows.
+
 `pnpm dev` starts the development-only separate-process runner, which is weaker
 than the deployed container and must not be used for untrusted production code.
 The runtime and isolation decision is [ADR 082](../adr/082-isolated-code-tasks.md).

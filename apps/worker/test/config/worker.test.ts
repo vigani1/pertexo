@@ -81,12 +81,28 @@ describe('parseWorkerConfig', () => {
     ).toThrow('Invalid worker configuration');
   });
 
+  it('reads the HTTP request private-network allowlist and refuses a malformed one', () => {
+    expect(
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        HTTP_ALLOWED_PRIVATE_NETWORKS: '10.0.0.0/8',
+      }).httpRequest.allowedPrivateNetworks,
+    ).toHaveLength(1);
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        HTTP_ALLOWED_PRIVATE_NETWORKS: '10.0.0.0',
+      }),
+    ).toThrow('Invalid worker configuration');
+  });
+
   it('applies safe defaults when optional environment values are absent', () => {
     expect(
       parseWorkerConfig({
         ...requiredEnvironment,
       }),
     ).toEqual({
+      httpRequest: { allowedPrivateNetworks: [] },
       codeRunner: {
         settings: DEFAULT_CODE_SETTINGS,
         socketPath: codeRunnerSocketPath(

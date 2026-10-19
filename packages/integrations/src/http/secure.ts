@@ -17,9 +17,20 @@ export {
 } from './secure-error.js';
 import {
   assertPublicAddress,
+  isAllowedPrivateAddress,
   normalizeUrlHostname,
+  type AllowedPrivateNetwork,
   type ResolvedAddress,
 } from './transport/address-policy.js';
+
+/**
+ * The HTTP request step's policy: the private networks its operator allows
+ * (HTTP_ALLOWED_PRIVATE_NETWORKS), and plain http only inside them. Clients
+ * without one keep the public-only rule.
+ */
+export type SecureHttpAddressPolicy = Readonly<{
+  allowedPrivateNetworks: readonly AllowedPrivateNetwork[];
+}>;
 import {
   parseRequest,
   type ParsedSecureHttpRequest,
@@ -257,6 +268,7 @@ export class SecureHttpClient {
     private readonly resolver: SecureHttpResolver,
     private readonly transport: SecureHttpTransport,
     private readonly observer?: SecureHttpObserver,
+    private readonly addressPolicy?: SecureHttpAddressPolicy,
   ) {}
 
   public execute(input: SecureHttpRequest): Promise<SecureHttpResponse> {
@@ -431,11 +443,23 @@ export class SecureHttpClient {
         false,
       );
     const validated: ResolvedAddress[] = [];
+    const policy = this.addressPolicy;
     try {
       for (const candidate of addresses) {
-        const family = assertPublicAddress(candidate.address);
+        const permitted =
+          policy !== undefined &&
+          isAllowedPrivateAddress(
+            candidate.address,
+            policy.allowedPrivateNetworks,
+          );
+        const family = permitted
+          ? candidate.family
+          : assertPublicAddress(candidate.address);
         if (family !== candidate.family)
           throw new Error('address family mismatch');
+        // Plain http only inside a network the operator allowed.
+        if (policy !== undefined && url.protocol === 'http:' && !permitted)
+          throw new Error('plain http to a public address');
         validated.push(Object.freeze({ ...candidate }));
       }
     } catch (error: unknown) {
