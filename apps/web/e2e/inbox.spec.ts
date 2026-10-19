@@ -43,7 +43,7 @@ function thread(workflowId: string, workflowName: string): Thread {
 }
 
 /** An operator's workspace whose inbox holds two unread failing workflows. */
-async function mockInbox(page: Page) {
+async function mockInbox(page: Page, extraCapabilities: string[] = []) {
   const state = {
     threads: [
       thread(importId, 'Nightly import'),
@@ -84,6 +84,7 @@ async function mockInbox(page: Page) {
               'workspace:read',
               'workflow:read',
               'notification:read',
+              ...extraCapabilities,
             ],
             createdAt: timestamp,
             updatedAt: timestamp,
@@ -178,3 +179,38 @@ test('keeps the inbox usable on a phone', async ({ page }) => {
   );
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+for (const width of [1280, 390])
+  test(`keeps Notices and Requests under one header at ${String(width)}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    // Someone who reads runs gets both views.
+    await mockInbox(page, ['run:read']);
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/pending-tasks?**`,
+      (route) =>
+        route.fulfill({
+          json: { items: [], nextCursor: null, pendingCount: 0 },
+        }),
+    );
+    await page.goto(`/w/${workspaceId}/inbox`);
+    const views = page.getByRole('navigation', { name: 'Inbox views' });
+    await expect(
+      views.getByRole('link', { name: 'Notices, 2 unread' }),
+    ).toBeVisible();
+    const onNotices = await views.boundingBox();
+    const listOnNotices = await page
+      .getByRole('list', { name: 'Notices' })
+      .boundingBox();
+    await views.getByRole('link', { name: 'Requests' }).click();
+    await expect(
+      page.getByText('Nothing is waiting', { exact: true }),
+    ).toBeVisible();
+    // Switching views moves neither the views nor where the content starts.
+    expect(await views.boundingBox()).toEqual(onNotices);
+    const content = page.getByText('Nothing is waiting', { exact: true });
+    expect((await content.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(
+      listOnNotices?.y ?? 0,
+    );
+  });
