@@ -64,9 +64,26 @@ describe('explicit date conversion', () => {
     '9999-12-31T23:59:59.999-00:01',
     'tomorrow',
     '01/02/2026',
+    '2026-02-29',
+    '2026-1-9',
+    '2026-10-19T09:30',
   ])('rejects ambiguous/invalid instant %s', async (value) => {
     await expect(run('to_epoch_millis', value)).rejects.toMatchObject({
       code: 'invalid_input',
+    });
+  });
+  it('reads a plain date, as date columns and pickers give it, as midnight UTC', async () => {
+    expect(await run('to_epoch_millis', '2026-10-19')).toMatchObject({
+      output: { value: Date.UTC(2026, 9, 19) },
+    });
+    expect(await run('to_epoch_millis', '2024-02-29')).toMatchObject({
+      output: { value: Date.UTC(2024, 1, 29) },
+    });
+    expect(await run('to_iso', '2026-10-19')).toMatchObject({
+      output: { value: '2026-10-19T00:00:00.000Z' },
+    });
+    expect(await run('to_iso', '2026-10-19T09:30:00+02:00')).toMatchObject({
+      output: { value: '2026-10-19T07:30:00.000Z' },
     });
   });
   it('does not coerce or guess numeric input units', async () => {

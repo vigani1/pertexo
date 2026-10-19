@@ -32,7 +32,7 @@ function valueSchema(field: FormField): z.ZodType {
     case 'number':
       return z.number();
     case 'boolean':
-      return z.boolean();
+      return field.mustBeTicked === true ? z.literal(true) : z.boolean();
     case 'email':
       return storageTextSchema.pipe(z.email().max(FORM_LIMITS.textCharacters));
     case 'date':
@@ -143,6 +143,12 @@ function fieldMessage(
       ? (input as Record<string, unknown>)[field.name]
       : undefined;
   if (field.type === 'multi_select') return selectionMessage(field);
+  if (
+    field.type === 'boolean' &&
+    field.mustBeTicked === true &&
+    value === false
+  )
+    return 'Tick this box to continue.';
   if (value === undefined || value === null || value === '')
     return 'This field is required.';
   if (issue.code === 'too_big' && typeof value === 'string')

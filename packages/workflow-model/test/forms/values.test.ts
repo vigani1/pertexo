@@ -77,6 +77,42 @@ it.each([
     });
   },
 );
+it('accepts only a tick for a must-be-ticked box, and either answer otherwise', () => {
+  const consent = formFieldsSchema.parse([
+    {
+      id: 'agree',
+      name: 'agree',
+      label: 'I agree',
+      type: 'boolean',
+      mustBeTicked: true,
+    },
+    { id: 'urgent', name: 'urgent', label: 'Urgent', type: 'boolean' },
+  ]);
+  expect(parseFormValues(consent, { agree: true, urgent: false })).toEqual({
+    agree: true,
+    urgent: false,
+  });
+  let error: unknown;
+  try {
+    parseFormValues(consent, { agree: false, urgent: false });
+  } catch (caught) {
+    error = caught;
+  }
+  expect((error as FormValuesInvalidError).fields).toEqual([
+    { name: 'agree', message: 'Tick this box to continue.' },
+  ]);
+  expect(
+    formFieldsSchema.safeParse([
+      {
+        id: 'name',
+        name: 'name',
+        label: 'Name',
+        type: 'text',
+        mustBeTicked: true,
+      },
+    ]).success,
+  ).toBe(false);
+});
 it('bounds text and the total normalized response', () => {
   expect(() =>
     parseFormValues(fields, { ...values, name: 'x'.repeat(10001) }),

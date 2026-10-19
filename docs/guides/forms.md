@@ -15,7 +15,8 @@ Names are stable mapping keys: letters first, then letters, numbers or underscor
 Use up to 20 fields, with unique names. Choice fields allow 1–50 unique single-line options. Text
 is plain text; no HTML, files, scripts, calculations or conditional fields.
 Responses fit 64 KB; field definitions fit 10 KB. Number and boolean fields
-produce real JSON numbers and booleans. Zero and false are valid values. Optional
+produce real JSON numbers and booleans. Zero and false are valid values; turn on
+**Must be ticked to send** for an agreement box that only accepts a tick. Optional
 blank fields are omitted. Multiple-choice values are arrays such as
 `{"channels":["Email","SMS"]}`. Required fields need at least one choice; each
 choice must be configured and selected only once. Optional empty selections are

@@ -45,14 +45,14 @@ export const formFieldSchema = z
   .discriminatedUnion('type', [
     field
       .extend({
-        type: z.enum([
-          'text',
-          'textarea',
-          'email',
-          'number',
-          'boolean',
-          'date',
-        ]),
+        type: z.enum(['text', 'textarea', 'email', 'number', 'date']),
+      })
+      .strict(),
+    field
+      .extend({
+        type: z.literal('boolean'),
+        // A consent box: only a tick is accepted. Plain yes/no keeps "no".
+        mustBeTicked: z.boolean().exactOptional(),
       })
       .strict(),
     choices.extend({ type: z.literal('select') }).strict(),

@@ -45,9 +45,9 @@ export function DateSetup({
           }}
         />
         <FieldDescription>
-          Use explicit-offset timestamps or integer epoch milliseconds. A new
-          operation starts with its own settings; Undo restores the previous
-          setup.
+          Use a date like 2026-10-19, a time with its offset like
+          2026-10-19T09:30:00+02:00, or epoch milliseconds. A new operation
+          starts with its own settings; Undo restores the previous setup.
         </FieldDescription>
       </Field>
       {fields.fields.map((field) => (

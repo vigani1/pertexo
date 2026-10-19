@@ -48,7 +48,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       await closeFixture?.();
     });
 
-    it('uses literal case-sensitive search with only U+0020 trimming and UTF-8 bounds', async () => {
+    it('folds ASCII letters and otherwise searches literally, with only U+0020 trimming and UTF-8 bounds', async () => {
       const scope = await fixture.scope();
       const names = [
         'Alpha%_\\é',
@@ -67,14 +67,18 @@ describe.skipIf(!organizationFixtureEnabled)(
           names[0],
         ]);
       }
+      for (const query of ['alpha ord', 'ALPHA ORD'])
+        expect(
+          (
+            await stores.reader.listWorkflows({ ...context(scope), query })
+          ).items
+            .map((item) => item.workflow.name)
+            .toSorted(),
+        ).toEqual(['Alpha ordinary', 'alpha ordinary']);
       expect(
-        (
-          await stores.reader.listWorkflows({
-            ...context(scope),
-            query: 'alpha',
-          })
-        ).items.map((item) => item.workflow.name),
-      ).toEqual(['alpha ordinary']);
+        (await stores.reader.listWorkflows({ ...context(scope), query: 'É' }))
+          .items,
+      ).toEqual([]);
       expect(
         (
           await stores.reader.listWorkflows({ ...context(scope), query: '\t' })
