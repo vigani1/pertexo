@@ -5,6 +5,7 @@ import {
   dataTableNewColumnsSchema,
   DataTableError,
   type DataTableQuery,
+  type DataTableValues,
 } from '@pertexo/node-sdk';
 import { createDataTablesStore } from '../../src/data-tables/index.js';
 import { parseDatabaseConfig } from '../../src/config.js';
@@ -104,7 +105,7 @@ it('stores typed rows, filters/sorts stable pages and preserves exact command re
 it('keeps the columns an upsert of an existing row does not name', async () => {
   const f = await table();
   await insert(f, 'kept', 5);
-  const upsert = (values: Record<string, unknown>) =>
+  const upsert = (values: DataTableValues) =>
     store.write({
       ...scope(),
       tableId: f.id,
