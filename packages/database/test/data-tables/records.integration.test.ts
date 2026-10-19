@@ -484,3 +484,25 @@ it('imports 100,000 real rows in bounded batches, accounts bytes exactly and ref
   );
   await purgeTestWorkspace(isolated.id, { pageSize: 1000 });
 }, 90_000);
+it('names a table in words and writes to it by that name', async () => {
+  const name = `Customer orders ${randomUUID().slice(0, 8)}`;
+  const created = await store.create({
+    ...scope(),
+    name,
+    columns,
+    keyColumn: 'key',
+    idempotencyKey: randomUUID(),
+  });
+  await insert({ ...created, name }, 'spaced', 3);
+  expect(
+    (await store.find({ ...scope(), tableId: created.id, query })).rows[0]
+      ?.values,
+  ).toEqual({ key: 'spaced', amount: 3, active: true });
+  // Storage keeps the same rule as the contract.
+  await expect(
+    queryAsOwner(
+      `update app.workspace_data_tables set name=' padded' where id=$1`,
+      [created.id],
+    ),
+  ).rejects.toMatchObject({ code: '23514' });
+});

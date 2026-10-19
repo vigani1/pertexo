@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0038_step_refusal_reasons.sql';
+export const EXPECTED_MIGRATION_HEAD = '0039_table_names_with_spaces.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

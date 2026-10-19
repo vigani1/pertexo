@@ -2859,7 +2859,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
               },
               "columns": {
                 "minItems": 1,
@@ -3254,7 +3254,7 @@
       "properties": {
         "name": {
           "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
         },
         "columns": {
           "minItems": 1,
@@ -3589,7 +3589,7 @@
                 },
                 "table": {
                   "type": "string",
-                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
                 },
                 "values": {
                   "type": "object",
@@ -3651,7 +3651,7 @@
                 },
                 "table": {
                   "type": "string",
-                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
                 },
                 "values": {
                   "type": "object",
@@ -3713,7 +3713,7 @@
                 },
                 "table": {
                   "type": "string",
-                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
                 },
                 "query": {
                   "type": "object",
@@ -3877,7 +3877,7 @@
                 },
                 "table": {
                   "type": "string",
-                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
                 },
                 "query": {
                   "type": "object",
