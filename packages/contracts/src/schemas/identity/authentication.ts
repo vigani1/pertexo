@@ -8,8 +8,9 @@ import { z } from 'zod';
 const AUTHENTICATION_RETURN_PATHS = Object.freeze([
   /^\/invitations\/accept$/u,
   /^\/account\/security$/u,
-  /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:account|team)$/u,
-  /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/settings\/(?:api-tokens|sso)$/u,
+  // Any page inside a workspace, so a sign-in after the session ended
+  // returns there. Plain segments only: no query, fragment or `//`.
+  /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/[A-Za-z0-9_-]+){0,6}$/u,
 ]);
 export const authenticationReturnPathSchema = z
   .string()
