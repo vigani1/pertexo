@@ -274,7 +274,7 @@ function RunInputDialogContent({
                 name="run-input"
                 autoComplete="off"
                 spellCheck={false}
-                className="min-h-32 font-mono text-[0.8rem]"
+                className="min-h-32 font-mono text-base md:text-[0.8rem]"
                 disabled={availability.fieldsBlocked}
                 value={runInput.input}
                 onChange={(event) => {

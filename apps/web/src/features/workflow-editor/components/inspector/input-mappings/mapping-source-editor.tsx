@@ -104,7 +104,7 @@ export function MappingSourceEditor({
             autoComplete="off"
             spellCheck={false}
             placeholder="runInput.amount > 5000"
-            className="min-h-16 border-primary/30 font-mono text-[0.8rem]"
+            className="min-h-16 border-primary/30 font-mono text-base md:text-[0.8rem]"
             value={row.expression}
             disabled={disabled}
             aria-invalid={error !== undefined}
