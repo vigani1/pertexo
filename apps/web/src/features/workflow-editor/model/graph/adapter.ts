@@ -9,7 +9,10 @@ import type {
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import type { CoordinateExtent, Edge, Node } from '@xyflow/react';
-import { describeStep } from '@/features/catalog/presentation.public';
+import {
+  describeStep,
+  requiredConnections,
+} from '@/features/catalog/presentation.public';
 import {
   BODY_ORIGIN,
   bodyFrame,
@@ -308,9 +311,11 @@ function projectNode(
       testStatus: decorations.testStatuses?.get(node.id),
       sampleState: decorations.sampleStates?.get(node.id),
       issueCount: decorations.issuesByNode.get(node.id) ?? 0,
-      missingConnections: (definition?.connectionRequirements ?? []).filter(
-        (requirement) => node.connectionRefs[requirement] === undefined,
-      ).length,
+      missingConnections: (definition === undefined
+        ? []
+        : requiredConnections(definition)
+      ).filter((requirement) => node.connectionRefs[requirement] === undefined)
+        .length,
       failureEligible:
         parent === undefined &&
         isWorkflowFailureSource(node.definition) &&

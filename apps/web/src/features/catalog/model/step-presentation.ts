@@ -335,6 +335,19 @@ const connectionWords: Readonly<Record<string, string>> = {
   http_headers: 'HTTP',
 };
 
+/** The connections a step can't run without; optional ones, such as auth for a public API, are left out. */
+export function requiredConnections(
+  definition: Pick<
+    NodeDefinitionCatalogItem,
+    'connectionRequirements' | 'optionalConnections'
+  >,
+): readonly string[] {
+  const optional = new Set(definition.optionalConnections ?? []);
+  return definition.connectionRequirements.filter(
+    (requirement) => !optional.has(requirement),
+  );
+}
+
 /** A connection requirement such as `slack_bot_token` → "Slack connection". */
 export function describeConnectionRequirement(requirement: string): string {
   const known = connectionWords[requirement];

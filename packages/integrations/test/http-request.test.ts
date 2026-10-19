@@ -404,6 +404,43 @@ describe('http.request@1 server executor', () => {
     });
   });
 
+  it('calls a public API without a connection, marking dispatch without a fence', async () => {
+    const state = runtime();
+    let sent: SecureHttpRequest | undefined;
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: streamingHttpClient(async (request) => {
+        sent = request;
+        await request.beforeDispatch();
+        return response(encoder.encode('{"ok":true}'), 200);
+      }),
+    });
+    await expect(
+      registration.execute(
+        invocation(state.value, {
+          config: config({ method: 'GET' }),
+          input: {},
+          connectionRefs: {},
+        }),
+      ),
+    ).resolves.toMatchObject({ status: 200, body: { json: { ok: true } } });
+    expect(sent?.headers).toEqual({ accept: 'application/json' });
+    expect(sent?.sensitiveValues).toEqual([]);
+    expect(state.resolve).not.toHaveBeenCalled();
+    expect(state.assertCurrent).not.toHaveBeenCalled();
+    expect(state.beforeDispatch).toHaveBeenCalledWith();
+    await expect(
+      registration.execute(
+        invocation(state.value, {
+          config: config({ method: 'GET' }),
+          input: {},
+          connectionRefs: { other: connectionId },
+        }),
+      ),
+    ).rejects.toMatchObject({
+      decision: { kind: 'failed', errorKind: 'configuration' },
+    });
+  });
+
   it('atomically forwards the resolved connection fence after a rotation race', async () => {
     const state = runtime();
     const rotatedSecretVersionId = '88888888-8888-4888-8888-888888888888';

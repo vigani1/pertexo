@@ -43,7 +43,10 @@ import {
   HttpPlaceholderError,
   type HttpPlaceholderValue,
 } from './placeholders.js';
-import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
+import {
+  createProviderBeforeDispatch,
+  createUnauthenticatedBeforeDispatch,
+} from '../provider-dispatch-fence.js';
 import { decodeCredential, mergeHeaders } from './request-material.js';
 import { encodeMultipart } from './multipart/encode.js';
 import { readRequestBody, artifactContentType } from './read-body.js';
@@ -216,16 +219,17 @@ async function executeHttpRequest(
   const runtime = invocation.runtime;
   if (runtime === undefined) throw failedConfiguration();
   const connections = runtime.connections;
+  // The connection is optional: a public API needs no auth headers.
+  const connectionId = invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT];
   if (
-    connections?.assertCurrent === undefined ||
+    (connectionId !== undefined && connections?.assertCurrent === undefined) ||
     runtime.sideEffectClass !== 'unsafe' ||
     runtime.providerIdempotencyKey !== undefined ||
-    Object.keys(invocation.connectionRefs).length !== 1
+    Object.keys(invocation.connectionRefs).some(
+      (slot) => slot !== HTTP_REQUEST_CONNECTION_SLOT,
+    )
   )
     throw failedConfiguration();
-  const assertCurrent = connections.assertCurrent;
-  const connectionId = invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT];
-  if (connectionId === undefined) throw failedConfiguration();
   const target = new URL(config.url);
   if (target.protocol !== 'https:') throw failedConfiguration();
   // GET and HEAD only read (RFC 9110 §9.2.1), so a repeat can't cause a side
@@ -267,65 +271,71 @@ async function executeHttpRequest(
     throw error;
   }
 
-  let resolved;
-  try {
-    resolved = await connections.resolve({
-      connectionId,
-      expectedProviderKey: 'http',
-      expectedAuthType: 'http_headers',
-      purpose: 'http.request.execute',
-      signal: invocation.signal,
-    });
-  } catch (error: unknown) {
-    body?.fill(0);
-    if (runtime.providerDispatchUnresolved === true)
-      throw new HttpRequestExecutorError(
-        Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-        true,
-      );
-    if (safeInstanceOf(error, ProviderExecutionRateLimitError))
+  let resolved:
+    Awaited<ReturnType<NonNullable<typeof connections>['resolve']>> | undefined;
+  if (connectionId !== undefined && connections !== undefined)
+    try {
+      resolved = await connections.resolve({
+        connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'http_headers',
+        purpose: 'http.request.execute',
+        signal: invocation.signal,
+      });
+    } catch (error: unknown) {
+      body?.fill(0);
+      if (runtime.providerDispatchUnresolved === true)
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
+          true,
+        );
+      if (safeInstanceOf(error, ProviderExecutionRateLimitError))
+        throw new HttpRequestExecutorError(
+          Object.freeze({
+            kind: 'retry',
+            errorKind: 'rate_limit',
+            reuseProviderKey: false,
+          }),
+          false,
+        );
+      if (safeInstanceOf(error, ProviderCredentialInvalidError))
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+          false,
+        );
+      if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
+          false,
+        );
       throw new HttpRequestExecutorError(
         Object.freeze({
           kind: 'retry',
-          errorKind: 'rate_limit',
+          errorKind: 'provider',
           reuseProviderKey: false,
         }),
         false,
       );
-    if (safeInstanceOf(error, ProviderCredentialInvalidError))
-      throw new HttpRequestExecutorError(
-        Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-        false,
-      );
-    if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
-      throw new HttpRequestExecutorError(
-        Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
-        false,
-      );
-    throw new HttpRequestExecutorError(
-      Object.freeze({
-        kind: 'retry',
-        errorKind: 'provider',
-        reuseProviderKey: false,
-      }),
-      false,
-    );
-  }
+    }
   try {
     if (
-      resolved.connectionId !== connectionId ||
-      resolved.providerKey !== 'http' ||
-      resolved.authType !== 'http_headers'
+      resolved !== undefined &&
+      (resolved.connectionId !== connectionId ||
+        resolved.providerKey !== 'http' ||
+        resolved.authType !== 'http_headers')
     )
       throw failedConfiguration();
-    const credential = decodeCredential(
-      resolved.secret,
-      () =>
-        new HttpRequestExecutorError(
-          Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-          false,
-        ),
-    );
+    const credential =
+      resolved === undefined
+        ? { headers: Object.freeze({}) }
+        : decodeCredential(
+            resolved.secret,
+            () =>
+              new HttpRequestExecutorError(
+                Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+                false,
+              ),
+          );
     let headers: Readonly<Record<string, string>>;
     try {
       headers = requestHeaders(
@@ -358,15 +368,20 @@ async function executeHttpRequest(
           maxResponseBytes: config.maxResponseBytes,
           sensitiveValues: Object.values(credential.headers),
           signal: invocation.signal,
-          beforeDispatch: createProviderBeforeDispatch({
-            assertCurrent,
-            connectionId,
-            expectedProviderKey: 'http',
-            expectedAuthType: 'http_headers',
-            secretVersionId: resolved.secretVersionId,
-            signal: invocation.signal,
-            runtime,
-          }),
+          beforeDispatch:
+            resolved === undefined ||
+            connectionId === undefined ||
+            connections?.assertCurrent === undefined
+              ? createUnauthenticatedBeforeDispatch(runtime)
+              : createProviderBeforeDispatch({
+                  assertCurrent: connections.assertCurrent,
+                  connectionId,
+                  expectedProviderKey: 'http',
+                  expectedAuthType: 'http_headers',
+                  secretVersionId: resolved.secretVersionId,
+                  signal: invocation.signal,
+                  runtime,
+                }),
         },
         (stream) =>
           consumeResponseBody(
@@ -417,7 +432,7 @@ async function executeHttpRequest(
     });
   } finally {
     body?.fill(0);
-    resolved.secret.fill(0);
+    resolved?.secret.fill(0);
   }
 }
 

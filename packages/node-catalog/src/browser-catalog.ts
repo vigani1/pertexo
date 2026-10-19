@@ -27,6 +27,7 @@ export type PlatformNodeDefinitionBrowserProjection = Readonly<{
   }>;
   readonly credentialRequirements: readonly string[];
   readonly connectionRequirements: readonly string[];
+  readonly optionalConnections?: readonly string[];
   readonly integration?: Readonly<{
     readonly providerKey: string;
     readonly operationKey: string;
@@ -83,6 +84,13 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
         connectionRequirements: Object.freeze([
           ...projection.connectionRequirements,
         ]),
+        ...(projection.optionalConnections === undefined
+          ? {}
+          : {
+              optionalConnections: Object.freeze([
+                ...projection.optionalConnections,
+              ]),
+            }),
         ...(projection.integration === undefined
           ? {}
           : { integration: Object.freeze({ ...projection.integration }) }),

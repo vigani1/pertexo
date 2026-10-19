@@ -14,6 +14,7 @@ export {
   familyWord,
   portName,
   prettifyDefinitionKey,
+  requiredConnections,
   stepGroups,
   type StepFamily,
   type StepPresentation,

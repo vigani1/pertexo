@@ -38,6 +38,9 @@ function projectDefinitionCatalog(catalog: typeof PLATFORM_NODE_CATALOG) {
                   connectionSlots: Object.freeze([
                     ...manifest.connectionRequirements,
                   ]),
+                  optionalConnectionSlots: Object.freeze([
+                    ...(manifest.optionalConnections ?? []),
+                  ]),
                 }),
               }),
         }),

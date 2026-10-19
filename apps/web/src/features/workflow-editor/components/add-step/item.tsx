@@ -1,6 +1,9 @@
 import { PlugIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { StepTile } from '@/features/catalog/presentation.public';
+import {
+  requiredConnections,
+  StepTile,
+} from '@/features/catalog/presentation.public';
 import { STEP_DRAG_TYPE, type StepChoice } from '../../model/step-catalog';
 
 /** The shape every add-step row shares: a tile, its words and a trailing mark. */
@@ -30,7 +33,7 @@ export function AddStepItem({
   onAdd,
 }: Readonly<{ choice: StepChoice; onAdd: (choice: StepChoice) => void }>) {
   const { definition, step } = choice;
-  const needsConnection = definition.connectionRequirements.length > 0;
+  const needsConnection = requiredConnections(definition).length > 0;
   return (
     <button
       type="button"

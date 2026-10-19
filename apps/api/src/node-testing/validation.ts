@@ -148,8 +148,10 @@ export async function prepareNodeValidation(
         });
 
     const requiredSlots = new Set(definition.manifest.connectionRequirements);
+    const optionalSlots = new Set(definition.manifest.optionalConnections);
     for (const slot of [...requiredSlots].sort()) {
       const reference = node.connectionRefs[slot];
+      if (reference === undefined && optionalSlots.has(slot)) continue;
       if (reference === undefined || !UUID_PATTERN.test(reference))
         issue(issues, {
           path: `$.connectionRefs.${slot}`,

@@ -143,6 +143,9 @@ function CatalogSetupTab({
         <ConnectionSlot
           key={requirement}
           requirement={requirement}
+          optional={
+            definition?.optionalConnections?.includes(requirement) === true
+          }
           selectedId={node.connectionRefs[requirement]}
           connections={connections}
           form={form}

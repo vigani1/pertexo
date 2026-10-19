@@ -65,6 +65,10 @@ export const nodeDefinitionCatalogItemSchema = z
     connectionRequirements: z
       .array(z.string().min(1).max(128))
       .max(catalogLimits.requirements),
+    optionalConnections: z
+      .array(z.string().min(1).max(128))
+      .max(catalogLimits.requirements)
+      .optional(),
     integration: nodeIntegrationSchema.optional(),
     retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
     resourceClass: z.enum(['io', 'cpu']),

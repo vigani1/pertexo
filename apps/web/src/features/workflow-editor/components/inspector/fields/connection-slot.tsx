@@ -22,11 +22,14 @@ import { ChoiceSelect } from './choice-select';
  */
 export function ConnectionSlot({
   requirement,
+  optional = false,
   selectedId,
   connections,
   form,
 }: Readonly<{
   requirement: string;
+  /** May be left empty, as for a public API that needs no auth. */
+  optional?: boolean;
   selectedId: string | undefined;
   connections: readonly ConnectionResponse[];
   form: NodeFormApi;
@@ -70,7 +73,10 @@ export function ConnectionSlot({
         value={selectedId ?? null}
         disabled={!form.editable}
         choices={[
-          { value: null, label: 'Choose a connection' },
+          {
+            value: null,
+            label: optional ? 'No connection' : 'Choose a connection',
+          },
           ...matching.map((connection) => ({
             value: connection.id,
             label: connection.name,
@@ -86,7 +92,12 @@ export function ConnectionSlot({
         ]}
         onChange={choose}
       />
-      {matching.length === 0 ? (
+      {optional && selectedId === undefined ? (
+        <FieldDescription>
+          Leave it empty for an API that needs no key, or choose one to send its
+          headers.
+        </FieldDescription>
+      ) : matching.length === 0 ? (
         <FieldDescription>
           There’s no active {label} in this workspace yet.
           {addScope === null ? ' Admins and owners can add one.' : ''}
