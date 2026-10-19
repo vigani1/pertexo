@@ -11,7 +11,10 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { IdentityError } from '../../../src/identity/index.js';
-import { APPLICATION_ERROR_CATALOG } from '../../../src/platform/http/index.js';
+import {
+  APPLICATION_ERROR_CATALOG,
+  parseRequestBody,
+} from '../../../src/platform/http/index.js';
 import { mapIdentityWorkspaceError } from '../../../src/workspaces/index.js';
 
 describe('identity/workspace conflict mapping', () => {
@@ -113,6 +116,23 @@ describe('identity/workspace conflict mapping', () => {
     expect(mapIdentityWorkspaceError(parsed.error)).toEqual({
       code: 'request.invalid',
       safeDetail: 'The request is invalid.',
+    });
+  });
+
+  it('keeps a request body failure as the cause, so its issues go back', () => {
+    let failure: unknown;
+    try {
+      parseRequestBody(z.object({ comment: z.string().max(3) }).strict(), {
+        comment: 'too long',
+      });
+    } catch (error: unknown) {
+      failure = error;
+    }
+
+    expect(mapIdentityWorkspaceError(failure)).toEqual({
+      code: 'request.invalid',
+      safeDetail: 'The request is invalid.',
+      cause: failure,
     });
   });
 

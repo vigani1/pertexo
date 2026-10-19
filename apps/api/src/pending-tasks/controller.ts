@@ -26,6 +26,7 @@ import {
 } from '../workspaces/index.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import {
+  parseRequestBody,
   requestIdempotencyKey,
   withRequestOperationSignal,
 } from '../platform/http/index.js';
@@ -89,7 +90,10 @@ export class PendingTasksController {
     @Body() body: unknown,
   ) {
     const { workspaceId } = workspaceParams.parse(params);
-    const input = approvalAudienceInspectionRequestSchema.parse(body);
+    const input = parseRequestBody(
+      approvalAudienceInspectionRequestSchema,
+      body,
+    );
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.inspectAudience({
         workspaceId,
@@ -123,7 +127,7 @@ export class PendingTasksController {
     @Body() body: unknown,
   ) {
     const route = pendingTaskParamsSchema.parse(params);
-    const input = pendingTaskDecisionRequestSchema.parse(body);
+    const input = parseRequestBody(pendingTaskDecisionRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.decide({
@@ -147,7 +151,7 @@ export class PendingTasksController {
     @Body() body: unknown,
   ) {
     const route = pendingTaskParamsSchema.parse(params);
-    const input = pendingTaskSubmitRequestSchema.parse(body);
+    const input = parseRequestBody(pendingTaskSubmitRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.submit({
