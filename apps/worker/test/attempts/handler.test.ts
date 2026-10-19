@@ -51,6 +51,7 @@ describe('NodeAttemptHandler', () => {
         complete: vi.fn(),
         heartbeat: vi.fn(),
         loadInputs: vi.fn(),
+        readAttemptOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       },
@@ -75,6 +76,7 @@ describe('NodeAttemptHandler', () => {
         completedNodeOutputs: [],
         runInput: null,
       }),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     };
@@ -130,6 +132,7 @@ describe('NodeAttemptHandler', () => {
           completedNodeOutputs: [],
           runInput: null,
         }),
+        readAttemptOutputs: vi.fn().mockResolvedValue([]),
         readLoopDeclaration: vi.fn(),
         markDispatched: vi.fn(),
       },
@@ -170,6 +173,7 @@ describe('NodeAttemptHandler', () => {
             resumeOutput: { resumed: true },
             runInput: null,
           }),
+          readAttemptOutputs: vi.fn().mockResolvedValue([]),
           readLoopDeclaration: vi.fn(),
           markDispatched: vi.fn(),
         },
@@ -211,6 +215,7 @@ describe('NodeAttemptHandler', () => {
       complete: vi.fn(),
       heartbeat: vi.fn(),
       loadInputs: vi.fn(),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched: vi.fn(),
     } satisfies NodeAttemptRunStore;
@@ -259,6 +264,7 @@ describe('NodeAttemptHandler', () => {
         completedNodeOutputs: [],
         runInput: { hello: 'world' },
       }),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched,
     } satisfies NodeAttemptRunStore;
@@ -411,6 +417,7 @@ describe('NodeAttemptHandler', () => {
         completedNodeOutputs: [],
         runInput: {},
       }),
+      readAttemptOutputs: vi.fn().mockResolvedValue([]),
       readLoopDeclaration: vi.fn(),
       markDispatched,
     } satisfies NodeAttemptRunStore;

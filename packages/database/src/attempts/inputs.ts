@@ -10,6 +10,7 @@ import {
   loadInputsSchema,
   NodeAttemptStateCorruptError,
   type NodeAttemptLoopDeclaration,
+  type NodeAttemptStoredOutput,
   type NodeAttemptRunStore,
   type NodeAttemptStoredInputs,
 } from './contract.js';
@@ -317,6 +318,51 @@ export async function readNodeAttemptLoopDeclaration(
         attemptId: row.attempt_id,
         output: stored.value,
       });
+    },
+  );
+}
+
+/** The stored outputs of succeeded attempts in the leased run, by attempt ID. */
+export async function readNodeAttemptOutputs(
+  pool: Pool,
+  input: Parameters<NodeAttemptRunStore['readAttemptOutputs']>[0],
+): Promise<readonly NodeAttemptStoredOutput[]> {
+  assertNotAborted(input.signal);
+  if (input.attemptIds.length === 0) return Object.freeze([]);
+  return withWorkspaceReadClient(
+    pool,
+    input.lease.workspaceId,
+    input.signal,
+    async (client) => {
+      const rows = await client.query<{
+        attempt_id: string;
+        output_ref: unknown;
+      }>(
+        `select attempt.id as attempt_id,attempt.output_ref
+         from app.node_attempts attempt
+         join app.node_runs node
+           on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+         where attempt.workspace_id=$1 and node.workflow_run_id=$2
+           and attempt.id=any($3::uuid[]) and attempt.status='succeeded'`,
+        [
+          input.lease.workspaceId,
+          input.lease.runId,
+          [...new Set(input.attemptIds)],
+        ],
+      );
+      if (rows.rows.length !== new Set(input.attemptIds).size)
+        throw new NodeAttemptStateCorruptError();
+      return Object.freeze(
+        rows.rows.map((row) => {
+          const stored = parseStoredExecutionValue(row.output_ref);
+          if (stored.kind !== 'inline')
+            throw new NodeAttemptStateCorruptError();
+          return Object.freeze({
+            attemptId: row.attempt_id,
+            output: stored.value,
+          });
+        }),
+      );
     },
   );
 }

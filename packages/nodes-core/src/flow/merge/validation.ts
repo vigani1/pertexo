@@ -78,6 +78,11 @@ export const CORE_MERGE_INPUT_SCHEMA = z
     }
   });
 
-export const CORE_MERGE_OUTPUT_SCHEMA = CORE_MERGE_INPUT_SCHEMA.describe(
-  'Core merge node output',
-);
+/** What each selected branch produced, keyed by branch; bookkeeping stays internal. */
+export const CORE_MERGE_OUTPUT_SCHEMA = z
+  .object({
+    branches: z.partialRecord(CORE_PARALLEL_BRANCH_PORT_SCHEMA, z.json()),
+    selectedBranchIds: z.array(CORE_PARALLEL_BRANCH_PORT_SCHEMA).max(16),
+  })
+  .strict()
+  .describe('Core merge node output');

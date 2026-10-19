@@ -77,10 +77,7 @@ export async function* checkpoints(
           ? { branchIds: ['branch-01', 'branch-02'] }
           : attempt.nodeId === scenario.mergeNodeId
             ? {
-                ledger: {
-                  'branch-01': { disposition: 'arrived', output: {} },
-                  'branch-02': { disposition: 'arrived', output: {} },
-                },
+                branches: { 'branch-01': {}, 'branch-02': {} },
                 selectedBranchIds: ['branch-01', 'branch-02'],
               }
             : size === undefined

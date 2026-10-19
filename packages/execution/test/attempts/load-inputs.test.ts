@@ -55,6 +55,7 @@ function storeWith(
       checkpoint: checkpoint(),
       ...stored,
     }),
+    readAttemptOutputs: vi.fn().mockResolvedValue([]),
     readLoopDeclaration: vi.fn().mockResolvedValue(declaration),
   };
 }
@@ -111,7 +112,7 @@ describe('loadAttemptInputs', () => {
     expect(store.readLoopDeclaration).not.toHaveBeenCalled();
   });
 
-  it('projects a join selection as the coordinator input', async () => {
+  it('projects a join selection with each selected branch’s result as the coordinator input', async () => {
     const joinKey = invocationKey({
       workflowVersionId: VERSION_ID,
       nodeId: 'join',
@@ -145,20 +146,29 @@ describe('loadAttemptInputs', () => {
       }),
     });
 
-    const inputs = await loadAttemptInputs(
-      store,
-      request(lease({ invocationKey: joinKey, nodeId: 'join' })),
+    store.readAttemptOutputs.mockResolvedValue([
+      { attemptId: DECLARING_ATTEMPT, output: { total: 3 } },
+    ]);
+    const joinLease = lease({ invocationKey: joinKey, nodeId: 'join' });
+    const inputs = await loadAttemptInputs(store, request(joinLease));
+    expect(store.readAttemptOutputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lease: joinLease,
+        attemptIds: [DECLARING_ATTEMPT],
+      }),
     );
     expect(inputs.coordinatorInput).toEqual({
       ledger: {
-        left: {
-          disposition: 'arrived',
-          output: { kind: 'inline', attemptId: DECLARING_ATTEMPT },
-        },
+        left: { disposition: 'arrived', output: { total: 3 } },
         right: { disposition: 'skipped' },
       },
       selectedBranchIds: ['left'],
     });
+
+    store.readAttemptOutputs.mockResolvedValue([]);
+    await expect(loadAttemptInputs(store, request(joinLease))).rejects.toThrow(
+      NodeAttemptStateCorruptError,
+    );
   });
 
   it('projects the For Each item for the attempt ordinal', async () => {
