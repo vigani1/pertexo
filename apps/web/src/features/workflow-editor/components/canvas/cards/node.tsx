@@ -34,6 +34,7 @@ export function WorkflowNodeCard({
           id={data.inputPorts[0]}
           type="target"
           position={Position.Left}
+          role="img"
           aria-label={`${title}: input`}
           className={handleClass}
         />
@@ -61,6 +62,7 @@ export function WorkflowNodeCard({
           id={data.outputPorts[0]}
           type="source"
           position={Position.Right}
+          role="img"
           aria-label={`${title}: output`}
           className={handleClass}
         />
@@ -71,6 +73,7 @@ export function WorkflowNodeCard({
             id={WORKFLOW_FAILURE_PORT}
             type="source"
             position={Position.Right}
+            role="img"
             aria-label={`${title}: Failure output`}
             style={{ top: 'calc(100% - 4px)' }}
             className="!size-2.5 !border-destructive !bg-background !border-dashed"

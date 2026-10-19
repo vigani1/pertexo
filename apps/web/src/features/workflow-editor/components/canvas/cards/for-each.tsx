@@ -62,6 +62,7 @@ export function ForEachNodeCard({
             id={input}
             type="target"
             position={Position.Left}
+            role="img"
             aria-label={`${title}: input`}
             className={handleClass}
           />
@@ -78,6 +79,7 @@ export function ForEachNodeCard({
               id={output}
               type="source"
               position={Position.Right}
+              role="img"
               aria-label={`${title}: output done`}
               className={handleClass}
             />
