@@ -47,8 +47,9 @@ export function WebhookGuide({
       </summary>
       <div className="flex flex-col gap-4 border-t border-border px-3 py-4 text-sm">
         <p className="text-muted-foreground">
-          Send a POST with a JSON body of up to {WEBHOOK_MAX_BODY} to the
-          endpoint address. Each delivery starts one run.
+          {authentication.mode === 'signed'
+            ? `Send a POST with a JSON, form or plain-text body of up to ${WEBHOOK_MAX_BODY} to the endpoint address. Each delivery starts one run.`
+            : `Send a POST with a JSON, form or plain-text body of up to ${WEBHOOK_MAX_BODY}, or a GET with a query string, to the endpoint address. Each delivery starts one run.`}
         </p>
         {authentication.mode === 'signed' ? (
           <>

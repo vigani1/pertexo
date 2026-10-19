@@ -5,7 +5,7 @@ import type { ApiProblemCode } from '../errors/api-problem.js';
 import {
   csrfTokenSchema,
   idempotencyKeySchema,
-  webhookJsonContentTypeSchema,
+  webhookContentTypeSchema,
 } from '../schemas/shared/transport-headers.js';
 
 export function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
@@ -130,8 +130,9 @@ export function webhookContentTypeHeaderParameter() {
   return {
     name: 'Content-Type',
     in: 'header',
-    required: true,
-    schema: jsonSchema(webhookJsonContentTypeSchema, 'input'),
+    description: 'Required when the request has a body.',
+    required: false,
+    schema: jsonSchema(webhookContentTypeSchema, 'input'),
   } as const;
 }
 

@@ -54,7 +54,7 @@ export function WebhookCard({
             <h3 className="truncate text-base font-semibold">{stepName}</h3>
             <p className="text-xs text-muted-foreground">
               {trigger.endpointReady
-                ? 'Endpoint ready. Senders post JSON to its address.'
+                ? 'Endpoint ready. Senders call its address.'
                 : 'No endpoint yet. Create one to get an address and a signing secret.'}
             </p>
           </div>
