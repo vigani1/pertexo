@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useMatches } from '@tanstack/react-router';
+import { tablesQuery } from '@/features/data-tables/picker.public';
+import { taskQueryOptions } from '@/features/pending-tasks/queries.public';
 import {
   shortRunId,
   workflowLabel,
 } from '@/features/workflow-runs/run-labels.public';
+import type { ApiClient } from '@/lib/api/client';
 
 /** What the run page's loader knows about its run, for the breadcrumb. */
 export type RunCrumb = Readonly<{
@@ -16,9 +20,19 @@ export type RunCrumb = Readonly<{
 /** One step of the workspace breadcrumb after the switcher. */
 export type Crumb = Readonly<{ key: string; label: ReactNode }>;
 
+type NameScope = Readonly<{ apiClient: ApiClient; userId: string }>;
+
 type CrumbSource =
   | Readonly<{ kind: 'page'; label: string }>
-  | Readonly<{ kind: 'run'; run: RunCrumb | undefined }>;
+  | Readonly<{ kind: 'run'; run: RunCrumb | undefined }>
+  | Readonly<{ kind: 'settings' }>
+  | Readonly<{ kind: 'usage' }>
+  | Readonly<{ kind: 'request'; taskId: string }>
+  | Readonly<{ kind: 'table'; tableId: string }>;
+
+// Pages that sit under another page get that page as a step to go back up.
+const SHELL = '/w/$workspaceId/shell';
+const SETTINGS_HUB = `${SHELL}/settings-hub`;
 
 const crumbLinkClass =
   'rounded-sm outline-none hover:text-foreground focus-ring';
@@ -80,18 +94,75 @@ function runCrumbs(
   ];
 }
 
+function linkCrumb(
+  key: string,
+  label: string,
+  to:
+    | '/w/$workspaceId/settings'
+    | '/w/$workspaceId/settings/usage'
+    | '/w/$workspaceId/requests'
+    | '/w/$workspaceId/data-tables',
+  workspaceId: string,
+): Crumb {
+  return {
+    key,
+    label: (
+      <Link to={to} params={{ workspaceId }} className={crumbLinkClass}>
+        {label}
+      </Link>
+    ),
+  };
+}
+
+/** A request named by its title, from the read its page already makes. */
+function RequestName({
+  scope,
+  workspaceId,
+  taskId,
+}: Readonly<{ scope: NameScope; workspaceId: string; taskId: string }>) {
+  const task = useQuery(taskQueryOptions({ ...scope, workspaceId }, taskId))
+    .data?.task;
+  return task?.title ?? 'Request';
+}
+
+/** A table named by its name, from the list its page already reads. */
+function TableName({
+  scope,
+  workspaceId,
+  tableId,
+}: Readonly<{ scope: NameScope; workspaceId: string; tableId: string }>) {
+  const table = useQuery(
+    tablesQuery({ ...scope, workspaceId }),
+  ).data?.tables.find((item) => item.id === tableId);
+  return table?.name ?? 'Data table';
+}
+
 /**
- * The breadcrumb for the page on screen: each page's static name, or for a
- * run the trail back through Runs and its workflow.
+ * The breadcrumb for the page on screen, every step but the last leading
+ * back up: "Settings / Alerts", "Settings / Usage / Trends", "Requests /
+ * Refund over limit", "Data tables / Shipments", and for a run the trail
+ * back through Runs and its workflow. A record is named, never "Request".
  */
 export function useShellCrumbs(
   workspace: AccessibleWorkspace,
+  scope: NameScope,
 ): readonly Crumb[] {
   const sources = useMatches({
     select: (matches) =>
       matches.flatMap((match): CrumbSource[] => {
-        if (match.routeId === '/w/$workspaceId/shell/runs/$runId')
-          return [{ kind: 'run', run: match.loaderData?.run }];
+        switch (match.routeId) {
+          case `${SHELL}/runs/$runId`:
+            return [{ kind: 'run', run: match.loaderData?.run }];
+          case SETTINGS_HUB:
+            return [{ kind: 'settings' }];
+          case `${SETTINGS_HUB}/settings/usage/trends`:
+            return [{ kind: 'usage' }, { kind: 'page', label: 'Trends' }];
+          case `${SHELL}/requests/$taskId`:
+          case `${SHELL}/approvals/$taskId`:
+            return [{ kind: 'request', taskId: match.params.taskId }];
+          case `${SHELL}/data-tables/$tableId`:
+            return [{ kind: 'table', tableId: match.params.tableId }];
+        }
         const label = match.staticData.crumb;
         return label === undefined || label === 'Home'
           ? []
@@ -99,9 +170,74 @@ export function useShellCrumbs(
       }),
     structuralSharing: true,
   });
-  return sources.flatMap((source) =>
-    source.kind === 'page'
-      ? [{ key: source.label, label: source.label }]
-      : runCrumbs(workspace, source.run),
-  );
+  // General is Settings itself: one plain step, not a link to the same page.
+  const last = sources.at(-1);
+  const trail =
+    last?.kind === 'page' && last.label === 'Settings'
+      ? sources.filter((source) => source.kind !== 'settings')
+      : sources;
+  return trail.flatMap((source): readonly Crumb[] => {
+    switch (source.kind) {
+      case 'page':
+        return [{ key: source.label, label: source.label }];
+      case 'run':
+        return runCrumbs(workspace, source.run);
+      case 'settings':
+        return [
+          linkCrumb(
+            'settings',
+            'Settings',
+            '/w/$workspaceId/settings',
+            workspace.id,
+          ),
+        ];
+      case 'usage':
+        return [
+          linkCrumb(
+            'usage',
+            'Usage',
+            '/w/$workspaceId/settings/usage',
+            workspace.id,
+          ),
+        ];
+      case 'request':
+        return [
+          linkCrumb(
+            'requests',
+            'Requests',
+            '/w/$workspaceId/requests',
+            workspace.id,
+          ),
+          {
+            key: 'request',
+            label: (
+              <RequestName
+                scope={scope}
+                workspaceId={workspace.id}
+                taskId={source.taskId}
+              />
+            ),
+          },
+        ];
+      case 'table':
+        return [
+          linkCrumb(
+            'data-tables',
+            'Data tables',
+            '/w/$workspaceId/data-tables',
+            workspace.id,
+          ),
+          {
+            key: 'table',
+            label: (
+              <TableName
+                scope={scope}
+                workspaceId={workspace.id}
+                tableId={source.tableId}
+              />
+            ),
+          },
+        ];
+    }
+  });
 }
