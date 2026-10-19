@@ -173,3 +173,26 @@ ADR 081 already supersedes the original prohibition on synchronous replies.
 Its shared safe response contract now permits bounded non-reserved custom x-
 headers and explicit text/csv or application/xml text formats. HTML remains
 blocked, as do cookies, hop-by-hop headers and response-control overrides.
+
+## Accepted amendment — 2026-10-19
+
+The owner approved wider webhook requests, as n8n, Zapier and Make accept them
+([plan](../feature-plans/step-capability-upgrades.md)). A POST body may be UTF-8
+JSON (`application/json` or a `+json` type), form-encoded fields or plain text,
+with an optional `charset=utf-8`; an empty POST may omit the media type. Other
+media types and any content encoding still get 415. GET is accepted on Secret
+URL and Header secret endpoints. Signed endpoints answer GET with 405, because
+the signature covers the exact body bytes and a GET has none. HEAD never starts
+a run.
+
+The trigger's Run input setting chooses the body (the query for GET, today's
+shape and the default) or `{ method, body, query, headers }`. Credentials,
+cookies, Pertexo signature headers and proxy-added headers are withheld, so
+they never reach stored run input. Query and headers stay unsigned in Signed
+mode.
+
+Deduplication keeps its windows. The request fingerprint of a JSON POST
+without a query is unchanged, so retries across the upgrade still match. A
+POST adds its lowercase media type and, when present, the exact query string; a
+GET uses its exact query string. Headers never count.
+
