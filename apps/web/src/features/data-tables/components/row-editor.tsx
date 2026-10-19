@@ -3,10 +3,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import type { DataTableRow } from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
+import { DateInput } from '@/components/ui/date-input';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FieldLabel as Label } from '@/components/ui/field';
+import { LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
+import { useFieldValidation } from '@/components/ui/use-field-validation';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +22,11 @@ import {
   type TableCommand,
 } from '../data/tables.api';
 import { tableKeys } from '../data/tables.queries';
-import { readTableValues, editTableValues } from '../model/values';
+import {
+  editTableValues,
+  readTableValues,
+  tableValueErrors,
+} from '../model/values';
 import { TableChoice } from './choice';
 import { TableCommandFeedback } from './command-feedback';
 export function TableRowEditor({
@@ -41,6 +47,7 @@ export function TableRowEditor({
     editTableValues(table.columns, row?.values),
   );
   const [error, setError] = useState<string>();
+  const validation = useFieldValidation<string>();
   const command = useRetainedCommand(
     (body: TableCommand, key: string) => sendTableCommand(scope, body, key),
     async () => {
@@ -76,6 +83,9 @@ export function TableRowEditor({
           onSubmit={(event) => {
             event.preventDefault();
             if (schemaChanged) return;
+            setError(undefined);
+            if (!validation.submit(tableValueErrors(table.columns, draft)))
+              return;
             try {
               const values = readTableValues(table.columns, draft);
               void command.send({
@@ -114,71 +124,89 @@ export function TableRowEditor({
             disabled={locked || schemaChanged}
             className="grid min-w-0 gap-4"
           >
-            {table.columns.map((column) => (
-              <div key={column.name} className="grid gap-2">
-                <Label htmlFor={`cell-${column.name}`}>
-                  {column.name}
-                  {column.required ? ' *' : ''}
-                  <span className="font-normal text-muted-foreground">
-                    {' '}
-                    · {column.type}
-                  </span>
-                </Label>
-                {column.type === 'boolean' ? (
-                  <TableChoice
-                    id={`cell-${column.name}`}
-                    value={draft[column.name] ?? ''}
-                    choices={[
-                      ...(column.required
-                        ? []
-                        : [{ value: '', label: 'Empty' }]),
-                      { value: 'true', label: 'True' },
-                      { value: 'false', label: 'False' },
-                    ]}
-                    onChange={(value) => {
-                      setDraft((current) => ({
-                        ...current,
-                        [column.name]: value,
-                      }));
-                    }}
-                  />
-                ) : column.type === 'json' ? (
-                  <Textarea
-                    id={`cell-${column.name}`}
-                    value={draft[column.name] ?? ''}
-                    onChange={(event) => {
-                      setDraft((current) => ({
-                        ...current,
-                        [column.name]: event.target.value,
-                      }));
-                    }}
-                    className="font-mono"
-                    rows={4}
-                    required={column.required}
-                  />
-                ) : (
-                  <Input
-                    id={`cell-${column.name}`}
-                    type={
-                      column.type === 'date'
-                        ? 'date'
-                        : column.type === 'number'
-                          ? 'number'
-                          : 'text'
-                    }
-                    step={column.type === 'number' ? 'any' : undefined}
-                    value={draft[column.name] ?? ''}
-                    onChange={(event) => {
-                      setDraft((current) => ({
-                        ...current,
-                        [column.name]: event.target.value,
-                      }));
-                    }}
-                    required={column.required}
-                  />
-                )}
-              </div>
-            ))}
+            {table.columns.map((column) => {
+              const set = (text: string) => {
+                const next = { ...draft, [column.name]: text };
+                setDraft(next);
+                validation.change(
+                  column.name,
+                  tableValueErrors([column], next)[column.name],
+                );
+              };
+              const text = draft[column.name] ?? '';
+              return (
+                <LabelledField
+                  key={column.name}
+                  id={`cell-${column.name}`}
+                  label={
+                    <>
+                      {column.name}
+                      {column.required ? ' *' : ''}
+                      <span className="font-normal text-muted-foreground">
+                        {' '}
+                        · {column.type}
+                      </span>
+                    </>
+                  }
+                  error={validation.error(column.name)}
+                >
+                  {(control) =>
+                    column.type === 'boolean' ? (
+                      <TableChoice
+                        id={control.id}
+                        value={text}
+                        choices={[
+                          ...(column.required
+                            ? []
+                            : [{ value: '', label: 'Empty' }]),
+                          { value: 'true', label: 'True' },
+                          { value: 'false', label: 'False' },
+                        ]}
+                        onChange={set}
+                      />
+                    ) : column.type === 'date' ? (
+                      <DateInput
+                        control={control}
+                        inputRef={validation.register(column.name)}
+                        value={text}
+                        onChange={set}
+                      />
+                    ) : column.type === 'number' ? (
+                      <Input
+                        {...control}
+                        ref={validation.register(column.name)}
+                        inputMode="decimal"
+                        className="font-mono"
+                        value={text}
+                        onChange={(event) => {
+                          set(event.currentTarget.value);
+                        }}
+                      />
+                    ) : (
+                      // Text keeps its line breaks; JSON gets room to read.
+                      <Textarea
+                        {...control}
+                        ref={validation.register(column.name)}
+                        value={text}
+                        onChange={(event) => {
+                          set(event.currentTarget.value);
+                        }}
+                        className={
+                          column.type === 'json' ? 'font-mono' : 'min-h-9'
+                        }
+                        rows={Math.min(
+                          8,
+                          Math.max(
+                            column.type === 'json' ? 4 : 1,
+                            text.split('\n').length,
+                          ),
+                        )}
+                      />
+                    )
+                  }
+                </LabelledField>
+              );
+            })}
           </fieldset>
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
