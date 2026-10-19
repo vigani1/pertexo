@@ -352,6 +352,7 @@ test('a confirmed account switch revalidates another open workspace tab', async 
         email: user.email,
         emailVerified: true,
         availableProviders: [],
+        twoFactor: { enabled: false, recoveryCodesRemaining: null },
         methods: [],
       },
     });
@@ -939,6 +940,7 @@ test('keeps account security understandable and usable on a narrow screen', asyn
         email: user.email,
         emailVerified: true,
         availableProviders: ['google'],
+        twoFactor: { enabled: false, recoveryCodesRemaining: null },
         methods: [
           {
             id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -1037,6 +1039,7 @@ test('confirms method and session removal before sending security commands', asy
         email: user.email,
         emailVerified: true,
         availableProviders: ['google'],
+        twoFactor: { enabled: false, recoveryCodesRemaining: null },
         methods,
       },
     });
@@ -1130,6 +1133,7 @@ test('requires an existing-method challenge before starting provider linking', a
         email: user.email,
         emailVerified: true,
         availableProviders: ['google'],
+        twoFactor: { enabled: false, recoveryCodesRemaining: null },
         methods: [
           {
             id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',

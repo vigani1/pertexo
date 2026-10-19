@@ -1,6 +1,7 @@
 import {
   type PgTableExtraConfigValue,
   char,
+  boolean,
   check,
   foreignKey,
   index,
@@ -59,6 +60,26 @@ export const authAccounts = appSchema.table(
     index('auth_accounts_user_idx').on(table.userId, table.id),
   ],
 );
+export const authTwoFactors = appSchema.table('auth_two_factors', {
+  id: uuid().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' })
+    .unique(),
+  secret: text().notNull(),
+  backupCodes: text('backup_codes').notNull(),
+  verified: boolean().default(false).notNull(),
+  failedVerificationCount: integer('failed_verification_count')
+    .default(0)
+    .notNull(),
+  lockedUntil: timestamp('locked_until', { withTimezone: true, mode: 'date' }),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+    .default(sql`clock_timestamp()`)
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+    .default(sql`clock_timestamp()`)
+    .notNull(),
+});
 export const authSessions = appSchema.table(
   'auth_sessions',
   {

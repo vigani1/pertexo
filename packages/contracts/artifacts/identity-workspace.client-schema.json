@@ -775,6 +775,7 @@
             "auth.forbidden",
             "auth.email_not_verified",
             "auth.sso_required",
+            "auth.two_factor_locked",
             "auth.method_limit",
             "auth.recovery_required",
             "auth.organization_email_managed",
@@ -2621,6 +2622,31 @@
             ]
           }
         },
+        "twoFactor": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "recoveryCodesRemaining": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "enabled",
+            "recoveryCodesRemaining"
+          ],
+          "additionalProperties": false
+        },
         "methods": {
           "maxItems": 16,
           "type": "array",
@@ -2671,6 +2697,7 @@
         "email",
         "emailVerified",
         "availableProviders",
+        "twoFactor",
         "methods"
       ],
       "additionalProperties": false

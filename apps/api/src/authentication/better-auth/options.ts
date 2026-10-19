@@ -13,6 +13,11 @@ import type { SocialProviderGateway } from '../providers/contract.js';
 import type { AuthenticationMail } from '../mail/delivery.js';
 import type { OwnedEmailProofs } from '../mail/email-proofs.js';
 import { createTrustedSessionPlugin } from './session-plugin.js';
+import {
+  createTwoFactorPlugin,
+  isTwoFactorVerificationPath,
+  authenticationChangedError,
+} from './two-factor.js';
 
 type PertexoBetterAuthInput = Readonly<{
   pool: Pool;
@@ -49,6 +54,8 @@ const DISABLED_NATIVE_PATHS = Object.freeze([
   '/change-password',
   '/reset-password',
   '/verify-email',
+  '/two-factor/send-otp',
+  '/two-factor/verify-otp',
 ]);
 
 /**
@@ -115,7 +122,10 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
     ...(input.socialProviders === undefined
       ? {}
       : { socialProviders: input.socialProviders }),
-    plugins: [createTrustedSessionPlugin(pool, input.availableLinkProviders)],
+    plugins: [
+      createTwoFactorPlugin(),
+      createTrustedSessionPlugin(pool, input.availableLinkProviders),
+    ],
     databaseHooks: identityChangeHooks(pool),
     disabledPaths: [...DISABLED_NATIVE_PATHS],
     advanced: cookiePolicy(input.secureCookies),
@@ -205,11 +215,16 @@ function identityChangeHooks(pool: Pool) {
   return {
     session: {
       create: {
-        before: async (session) => {
+        before: async (session, context) => {
           const decision = await authorizeCredentialSignIn(
             pool,
             session.userId,
           );
+          if (
+            isTwoFactorVerificationPath(context?.path) &&
+            (decision === 'inactive' || decision === 'sso_required')
+          )
+            throw authenticationChangedError();
           if (decision === 'inactive') throw new APIError('UNAUTHORIZED');
           if (decision === 'sso_required')
             throw new APIError('FORBIDDEN', {

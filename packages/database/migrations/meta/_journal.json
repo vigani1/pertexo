@@ -281,6 +281,13 @@
       "when": 1792409699013,
       "tag": "0039_table_names_with_spaces",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792443914063,
+      "tag": "0040_two_factor_sign_in",
+      "breakpoints": true
     }
   ]
 }
