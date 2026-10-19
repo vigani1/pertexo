@@ -268,7 +268,11 @@ function InspectorFooter({
       ) : (
         <>
           <CheckIcon aria-hidden="true" className="size-3.5" />
-          Changes save automatically · <Kbd>{shortcut('Z')}</Kbd> to undo
+          Changes save automatically
+          {/* A key to press only where there's a keyboard. */}
+          <span className="pointer-coarse:hidden">
+            · <Kbd>{shortcut('Z')}</Kbd> to undo
+          </span>
         </>
       )}
     </div>
