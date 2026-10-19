@@ -7,6 +7,7 @@ import type {
   RouteShorthandOptions,
 } from 'fastify';
 import {
+  API_PROBLEM_MANIFEST,
   SAML_LIMITS,
   authenticationCapabilitiesResponseSchema,
   type AuthenticationCapabilitiesResponse,
@@ -267,6 +268,7 @@ function normalizedNativeError(
   } catch {
     nativeCode = undefined;
   }
+  const factorLocked = nativeCode === 'ACCOUNT_TEMPORARILY_LOCKED';
   const mapped =
     status === 403 && nativeCode === 'ALTERNATIVE_SIGN_IN_REQUIRED'
       ? {
@@ -333,8 +335,14 @@ function normalizedNativeError(
                           : status === 429
                             ? {
                                 status,
-                                code: 'request.rate_limited',
-                                title: 'Too many requests',
+                                code: factorLocked
+                                  ? 'auth.two_factor_locked'
+                                  : 'request.rate_limited',
+                                title: factorLocked
+                                  ? API_PROBLEM_MANIFEST[
+                                      'auth.two_factor_locked'
+                                    ].title
+                                  : 'Too many requests',
                               }
                             : status === 503
                               ? {

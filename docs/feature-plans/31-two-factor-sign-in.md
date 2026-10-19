@@ -191,11 +191,9 @@ visible behavior until slice 2 adds the controls.
 
 ### Backend alignment (owner-approved 2026-10-19)
 
-The pinned Better Auth 1.7.7 plugin also requires `failedVerificationCount`
-and `lockedUntil` for its built-in account lockout. Include the columns above,
-map their names, and retain its defaults: ten consecutive failed verifications
-lock the account for fifteen minutes. Test lockout and reset on successful
-verification. No separate lockout mechanism is added.
+Code-step account lockout returns `auth.two_factor_locked`, so the web can
+identify the account lockout and show its fifteen-minute message. The plugin
+owns the lockout counters and timing.
 
 The Fastify bridge already puts all native POST routes in the distributed
 `identity_start` class, including both code-verification routes; preserve that

@@ -307,7 +307,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           authenticatorCode(user.totpURI),
         ),
         429,
-        'request.rate_limited',
+        'auth.two_factor_locked',
       );
       await api
         .database()

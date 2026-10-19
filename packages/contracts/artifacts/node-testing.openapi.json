@@ -4147,6 +4147,7 @@
               "auth.forbidden",
               "auth.email_not_verified",
               "auth.sso_required",
+              "auth.two_factor_locked",
               "auth.method_limit",
               "auth.recovery_required",
               "auth.organization_email_managed",

@@ -302,6 +302,42 @@ describe('Better Auth Fastify bridge', () => {
     }
   });
 
+  it.each(['verify-totp', 'verify-backup-code'])(
+    'identifies account lockout on %s without exposing native error details',
+    async (path) => {
+      const application = Fastify();
+      applications.push(application);
+      registerBetterAuthHandler(application, {
+        publicOrigin: 'https://pertexo.test',
+        rateLimitConsumer: allowingRateLimit,
+        sessionCookie: { secure: true, sameSite: 'lax', maxAgeSeconds: 3600 },
+        handler: () =>
+          Promise.resolve(
+            Response.json(
+              {
+                code: 'ACCOUNT_TEMPORARILY_LOCKED',
+                message: 'private native details',
+              },
+              { status: 429 },
+            ),
+          ),
+      });
+      const reply = await application.inject({
+        method: 'POST',
+        url: `/v1/auth/two-factor/${path}`,
+        headers: { origin: 'https://pertexo.test' },
+        payload: { code: '123456' },
+      });
+      expect(reply.statusCode).toBe(429);
+      expect(apiProblemSchema.parse(reply.json())).toMatchObject({
+        code: 'auth.two_factor_locked',
+        title: 'Two-factor sign-in temporarily locked',
+      });
+      expect(reply.payload).not.toContain('private native details');
+      expect(reply.payload).not.toContain('123456');
+    },
+  );
+
   it('exposes the Better Auth password-reset request contract', async () => {
     const auth = betterAuth({
       appName: 'Pertexo',
