@@ -1,26 +1,28 @@
 // Shared, locale-aware time formatting. Inputs are ISO strings from the API
 // or epoch milliseconds; missing values render as an em dash.
 
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+import { FORMAT_LOCALE } from './locale';
+
+const dateTimeFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   dateStyle: 'medium',
   timeStyle: 'short',
 });
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
+const dateFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   dateStyle: 'medium',
 });
-const clockFormatter = new Intl.DateTimeFormat(undefined, {
+const clockFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   hour: 'numeric',
   minute: '2-digit',
   second: '2-digit',
 });
-const shortTimeFormatter = new Intl.DateTimeFormat(undefined, {
+const shortTimeFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   timeStyle: 'short',
 });
-const dayHeadingFormatter = new Intl.DateTimeFormat(undefined, {
+const dayHeadingFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   day: 'numeric',
   month: 'short',
 });
-const relativeFormatter = new Intl.RelativeTimeFormat(undefined, {
+const relativeFormatter = new Intl.RelativeTimeFormat(FORMAT_LOCALE, {
   numeric: 'auto',
   style: 'narrow',
 });
@@ -147,7 +149,7 @@ export function formatDateTimeInZone(
   let formatter = zonedFormatters.get(timeZone);
   if (formatter === undefined) {
     try {
-      formatter = new Intl.DateTimeFormat(undefined, {
+      formatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
         weekday: 'short',
         day: 'numeric',
         month: 'short',
@@ -178,17 +180,17 @@ export function localUtcOffset(date = new Date()): string {
   return `UTC${sign}${String(hours)}${minutes === 0 ? '' : `:${String(minutes).padStart(2, '0')}`}`;
 }
 
-const calendarDayFormatter = new Intl.DateTimeFormat(undefined, {
+const calendarDayFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   weekday: 'long',
   day: 'numeric',
   month: 'long',
   year: 'numeric',
 });
-const monthYearFormatter = new Intl.DateTimeFormat(undefined, {
+const monthYearFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   month: 'long',
   year: 'numeric',
 });
-const weekdayFormatter = new Intl.DateTimeFormat(undefined, {
+const weekdayFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   weekday: 'short',
 });
 
@@ -202,7 +204,9 @@ export function formatMonthYear(date: Date): string {
   return monthYearFormatter.format(date);
 }
 
-const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long' });
+const monthFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
+  month: 'long',
+});
 
 /** The month alone, for a calendar's heading: "September". */
 export function formatMonthName(date: Date): string {

@@ -1,4 +1,5 @@
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 // How the Schedule step's rule reads to people. It lives with the rest of the
 // step presentation so the editor's builder and the published trigger cards
@@ -108,7 +109,7 @@ const pad = (value: number) => String(value).padStart(2, '0');
 
 // A time of day in the person's clock, as the next-run list shows times:
 // "9:00 AM" in English, "09:00" where a 24-hour clock is the norm.
-const clockFormatter = new Intl.DateTimeFormat(undefined, {
+const clockFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   hour: 'numeric',
   minute: '2-digit',
   timeZone: 'UTC',
