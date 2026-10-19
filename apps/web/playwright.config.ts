@@ -1,13 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const webPort = Number(process.env.PERTEXO_MOCK_WEB_PORT ?? 4173);
+if (!Number.isInteger(webPort) || webPort < 1024 || webPort > 65535)
+  throw new Error('Invalid mocked browser port');
+const webOrigin = `http://127.0.0.1:${String(webPort)}`;
+
 const criticalSmoke =
-  /signs in, lands in the only workspace, and signs out|keeps the mobile workspace bar and More sheet bounded and keyboard accessible|creates the first workspace from the keyboard-accessible empty state|keeps keyboard placement usable and the narrow editor horizontally bounded/u;
+  /signs in, lands in the only workspace, and signs out|keeps the mobile workspace bar and More sheet bounded and keyboard accessible|creates the first workspace from the keyboard-accessible empty state|keeps keyboard placement usable and the narrow editor horizontally bounded|two-factor setup and challenge at 375px/u;
 
 export default defineConfig({
   testDir: './e2e',
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  use: { baseURL: 'http://127.0.0.1:4173', trace: 'retain-on-failure' },
+  use: { baseURL: webOrigin, trace: 'retain-on-failure' },
   projects: [
     {
       name: 'chromium',
@@ -34,8 +39,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm build && pnpm preview --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
+    command: `pnpm build && pnpm preview --port ${String(webPort)} --strictPort`,
+    url: webOrigin,
     reuseExistingServer: false,
     timeout: 60_000,
   },

@@ -29,7 +29,7 @@ for (const screen of [
     browser,
   }, testInfo) => {
     const context = await browser.newContext({
-      baseURL: 'http://127.0.0.1:4173',
+      baseURL: testInfo.project.use.baseURL ?? 'http://127.0.0.1:4173',
       viewport: { width: screen.width, height: 768 },
       hasTouch: screen.touch,
       reducedMotion: 'reduce',

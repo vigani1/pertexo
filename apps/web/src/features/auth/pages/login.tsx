@@ -1,3 +1,4 @@
+import { TwoFactorSignInLens } from '../components/two-factor/sign-in-lens';
 import { OrganizationSignInForm } from '@/features/federation/sign-in.public';
 import {
   AuthLens,
@@ -21,6 +22,7 @@ import { useCountdown } from '@/lib/hooks/use-countdown';
 
 type LoginView =
   | Readonly<{ kind: 'sign-in' }>
+  | Readonly<{ kind: 'two-factor' }>
   | Readonly<{ kind: 'request-verification' }>
   | Readonly<{ kind: 'organization' }>
   | Readonly<{ kind: 'verify'; email: string }>;
@@ -89,6 +91,16 @@ export function LoginPage({
       </LensUnavailable>
     );
   switch (view.kind) {
+    case 'two-factor':
+      return (
+        <TwoFactorSignInLens
+          apiClient={apiClient}
+          onAuthenticated={onAuthenticated}
+          onBack={() => {
+            setView({ kind: 'sign-in' });
+          }}
+        />
+      );
     case 'verify':
       return (
         <InboxLens
@@ -154,6 +166,9 @@ export function LoginPage({
           notice={notice}
           navigateToProvider={navigateToProvider}
           onAuthenticated={onAuthenticated}
+          onTwoFactor={() => {
+            setView({ kind: 'two-factor' });
+          }}
           onUnverified={(email) => {
             setView({ kind: 'verify', email });
           }}
