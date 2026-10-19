@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
@@ -21,7 +22,10 @@ import {
   type CommandGroup,
   type CommandItem,
 } from '@/components/patterns/command-palette';
-import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
+import {
+  workflowNameSearchQueryOptions,
+  workflowsInfiniteQueryOptions,
+} from '@/features/workflows/queries.public';
 import { useWorkspaceScope } from './use-workspace-scope';
 
 export function WorkspaceCommandPalette({
@@ -40,9 +44,16 @@ export function WorkspaceCommandPalette({
   const workspaceId = workspace.id;
   const can = (capability: (typeof workspace.capabilities)[number]) =>
     workspace.capabilities.includes(capability);
+  const [typed, setTyped] = useState('');
   const workflows = useInfiniteQuery({
     ...workflowsInfiniteQueryOptions(apiClient, user.id, workspaceId),
     enabled: open && can('workflow:read'),
+  });
+  // Recent workflows fill an empty search; typed text searches all of them
+  // on the server, so a large workspace finds any workflow by name.
+  const found = useInfiniteQuery({
+    ...workflowNameSearchQueryOptions(apiClient, user.id, workspaceId, typed),
+    enabled: open && can('workflow:read') && typed !== '',
   });
 
   const places: CommandItem[] = [
@@ -160,19 +171,23 @@ export function WorkspaceCommandPalette({
     },
   ];
 
-  const workflowItems: CommandItem[] = (workflows.data?.pages ?? [])
-    .flatMap((page) => page.items)
-    .map((workflow) => ({
-      id: `workflow-${workflow.id}`,
-      label: workflow.name,
-      icon: <WorkflowIcon />,
-      ...(workflow.lifecycleStatus === 'archived' ? { hint: 'Archived' } : {}),
-      onSelect: () =>
-        void navigate({
-          to: '/w/$workspaceId/workflows/$workflowId',
-          params: { workspaceId, workflowId: workflow.id },
-        }),
-    }));
+  const shown =
+    typed === ''
+      ? (workflows.data?.pages ?? []).flatMap((page) => page.items)
+      : (found.data?.pages ?? []).flatMap((page) =>
+          page.items.map((item) => ('workflow' in item ? item.workflow : item)),
+        );
+  const workflowItems: CommandItem[] = shown.map((workflow) => ({
+    id: `workflow-${workflow.id}`,
+    label: workflow.name,
+    icon: <WorkflowIcon />,
+    ...(workflow.lifecycleStatus === 'archived' ? { hint: 'Archived' } : {}),
+    onSelect: () =>
+      void navigate({
+        to: '/w/$workspaceId/workflows/$workflowId',
+        params: { workspaceId, workflowId: workflow.id },
+      }),
+  }));
 
   const accountItems: CommandItem[] = [
     ...workspaces
@@ -219,6 +234,7 @@ export function WorkspaceCommandPalette({
       open={open}
       onOpenChange={onOpenChange}
       groups={groups}
+      onQueryChange={setTyped}
       resolveQuery={(query) => {
         if (!can('run:read')) return undefined;
         const runId = workflowRunIdentifierSchema.safeParse(query);
