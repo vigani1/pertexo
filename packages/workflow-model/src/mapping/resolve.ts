@@ -53,7 +53,11 @@ export async function resolveValueSource(
   }
   const request = {
     expression: source.expression,
-    context,
+    // Expressions read the loop's ports as `loop.item` and `loop.ordinal`.
+    context:
+      context.structuredInputs === undefined
+        ? context
+        : { ...context, loop: context.structuredInputs },
     ...(signal === undefined ? {} : { signal }),
   };
   if (evaluator === undefined)

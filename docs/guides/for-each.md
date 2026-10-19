@@ -2,8 +2,10 @@
 
 Add **For each**, map its `items` input from a list, and open its body. Map a
 body step's input from **Current item** or the zero-based **Item ordinal**.
-Links inside the body determine its execution order. Nested bodies use their
-nearest enclosing item; the workflow's run input stays the original run input.
+Expressions in the body read them as `loop.item` and `loop.ordinal`, for
+example `loop.item.price * loop.item.quantity`. Links inside the body determine
+its execution order. Nested bodies use their nearest enclosing item; the
+workflow's run input stays the original run input.
 
 **Maximum items** declares the largest collection this loop accepts, up to
 **4,998**. **Items at a time** bounds concurrent iterations. Start with `1`,

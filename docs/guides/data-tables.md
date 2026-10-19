@@ -153,7 +153,9 @@ A query can include up to ten AND filters, an optional sort and a row limit:
 ```
 
 Operators are `equals`, `not_equals`, `contains` (text), `greater_than` and
-`less_than` (text, numbers or dates). Values must match the column type. Find
+`less_than` (text, numbers or dates). `contains` ignores capital letters A–Z, so
+"QUOTED" finds "quoted"; the others compare exactly. Values must match the
+column type. Find
 returns at most 1,000 rows and must fit the existing execution value bounds:
 narrow the filter/limit when a result is too wide. Use `hasMore` and another
 bounded query with a higher offset when paging.

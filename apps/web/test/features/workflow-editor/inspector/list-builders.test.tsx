@@ -12,7 +12,6 @@ import {
   readParallelBranches,
   readSwitchCases,
   readValidateRules,
-  validatePathProblem,
   withParallelBranchCount,
   withRuleType,
 } from '@/features/workflow-editor/model/inspector/setup-builders';
@@ -75,7 +74,7 @@ describe('setup lists', () => {
 
   it('keeps Validate rules exact, with only the bounds a type allows', () => {
     const [rule] = addValidateRule([]);
-    expect(rule).toEqual({ id: 'rule-1', path: '$.', required: true });
+    expect(rule).toEqual({ id: 'rule-1', path: '', required: true });
     const text = withRuleType(
       { id: 'r', path: '$.a', required: false, minimum: 1, maxItems: 2 },
       'string',
@@ -89,8 +88,6 @@ describe('setup lists', () => {
     expect(
       readValidateRules({ rules: [{ id: 'r', path: '$.a', regex: 'x' }] }),
     ).toBeUndefined();
-    expect(validatePathProblem('$.email')).toBeUndefined();
-    expect(validatePathProblem('email[')).toMatch(/like \$\.email/u);
     expect(parseRuleEnum('draft, sent', 'string')).toEqual({
       ok: true,
       value: ['draft', 'sent'],

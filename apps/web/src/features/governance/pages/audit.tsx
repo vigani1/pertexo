@@ -39,7 +39,14 @@ export function AuditPage({
   const [downloadError, setDownloadError] = useState<string>();
   if (!allowed)
     return (
-      <Notice>Only workspace owners and admins can read the audit log.</Notice>
+      <div className="flex min-w-0 max-w-4xl flex-col gap-8">
+        <PageHeader>
+          <PageHeaderTitle>Audit log</PageHeaderTitle>
+        </PageHeader>
+        <Notice>
+          Only workspace owners and admins can read the audit log.
+        </Notice>
+      </div>
     );
   const entries = events.data?.pages.flatMap((page) => page.items);
   const actionWords =

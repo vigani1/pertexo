@@ -103,8 +103,12 @@ export function MappingSourceEditor({
             name={`inputMapping.${row.id}.expression`}
             autoComplete="off"
             spellCheck={false}
-            placeholder="runInput.amount > 5000"
-            className="min-h-16 border-primary/30 font-mono text-[0.8rem]"
+            placeholder={
+              loopPorts.length > 0
+                ? 'loop.item.amount > 5000'
+                : 'runInput.amount > 5000'
+            }
+            className="min-h-16 border-primary/30 font-mono text-base md:text-[0.8rem]"
             value={row.expression}
             disabled={disabled}
             aria-invalid={error !== undefined}
@@ -114,9 +118,10 @@ export function MappingSourceEditor({
             }}
           />
           <FieldDescription id={`${controlId}-hint`}>
-            JSONata reads runInput, available nodeOutputs and captured $vars,
-            not this step’s mapped input. The server validates and evaluates it
-            when the step runs.
+            {loopPorts.length > 0
+              ? 'JSONata reads loop.item (the item this pass runs for), loop.ordinal, runInput, available nodeOutputs and captured $vars, not this step’s mapped input.'
+              : 'JSONata reads runInput, available nodeOutputs and captured $vars, not this step’s mapped input.'}{' '}
+            The server validates and evaluates it when the step runs.
           </FieldDescription>
           {error === undefined ? null : (
             <FieldError id={errorId}>{error}</FieldError>

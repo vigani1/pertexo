@@ -423,6 +423,28 @@ describe('organization controller registered HTTP seam (fake session and persist
     }
   });
 
+  it('says what is wrong with a tag key the caller sent', async () => {
+    const f = await httpFixture();
+    const response = await f.app.inject({
+      method: 'POST',
+      url: prefix + '/workflow-tags',
+      headers,
+      payload: { key: 'has space' },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      code: 'request.invalid',
+      errors: [
+        {
+          path: '/key',
+          message:
+            'Use 1–32 letters, numbers and single hyphens, like billing or high-priority.',
+        },
+      ],
+    });
+    expect(f.tags.createTag).not.toHaveBeenCalled();
+  });
+
   it('rejects private persistence response extensions without exposing them', async () => {
     const f = await httpFixture();
     f.tags.createTag.mockResolvedValueOnce({

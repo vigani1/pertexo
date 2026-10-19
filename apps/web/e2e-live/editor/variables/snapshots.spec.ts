@@ -136,10 +136,8 @@ test('real variables save once after a lost acknowledgement and retain old run v
   await waitForRun(page, workspaceId, source, 'waiting');
   await mkdir('/tmp/pertexo-variable-screenshots', { recursive: true });
   await page.goto(variablePage);
-  await page
-    .getByRole('region', { name: 'RATE', exact: true })
-    .getByLabel('Value', { exact: true })
-    .fill('20');
+  await rate.getByRole('button', { name: 'Edit RATE', exact: true }).click();
+  await rate.getByLabel('Value', { exact: true }).fill('20');
   await page
     .getByRole('button', { name: 'Save variables', exact: true })
     .click();
@@ -155,9 +153,13 @@ test('real variables save once after a lost acknowledgement and retain old run v
       ),
     ).toBe(true);
     if (width < 1024) {
-      const description = page
-        .getByRole('region', { name: 'RATE', exact: true })
-        .getByLabel('Description (optional)', { exact: true });
+      // Saving closed the row; reopen it to show the fields on a phone.
+      await rate
+        .getByRole('button', { name: 'Edit RATE', exact: true })
+        .click();
+      const description = rate.getByLabel('Description (optional)', {
+        exact: true,
+      });
       await description.scrollIntoViewIfNeeded();
       await description.click();
     }

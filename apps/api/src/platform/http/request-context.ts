@@ -75,6 +75,10 @@ function parseActor(value: unknown): ActorContext {
 
 export interface HttpRequestLike {
   headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
+  raw?: Readonly<{
+    destroyed?: boolean;
+    socket?: Readonly<{ destroyed?: boolean }> | null;
+  }>;
   /** Validated server request ID for downstream guards/controllers. */
   requestId?: RequestId;
   url?: string;

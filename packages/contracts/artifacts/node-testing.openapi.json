@@ -4256,6 +4256,7 @@
               "webhook.rate_limited",
               "webhook.workflow_paused",
               "webhook.unavailable",
+              "request.aborted",
               "internal.unexpected"
             ]
           },
@@ -4818,6 +4819,11 @@
                   }
                 ]
               },
+              "errorSummary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
               "createdAt": {
                 "type": "string",
                 "format": "date-time",
@@ -5116,6 +5122,11 @@
               }
             ]
           },
+          "errorSummary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -5405,6 +5416,11 @@
                     "type": "null"
                   }
                 ]
+              },
+              "errorSummary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
               },
               "createdAt": {
                 "type": "string",

@@ -31,6 +31,7 @@ import { z } from 'zod';
 import {
   applicationError,
   isApplicationError,
+  isRequestBodyError,
   throwApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
@@ -236,12 +237,19 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
   if (error instanceof WorkflowGraphContractError || isGraphSchemaError(error))
     return applicationError('request.invalid', {
       safeDetail: 'The workflow graph is invalid.',
+      ...requestBodyCause(error),
     });
   if (error instanceof z.ZodError)
     return applicationError('request.invalid', {
       safeDetail: 'The workflow request is invalid.',
+      ...requestBodyCause(error),
     });
   return applicationError('internal.unexpected', { cause: error });
+}
+
+/** A body's own issues go back to its caller; other parse failures stay private. */
+function requestBodyCause(error: unknown): Readonly<{ cause?: unknown }> {
+  return isRequestBodyError(error) ? { cause: error } : {};
 }
 
 /** Folders, tags, triggers and settings share these routes; only a graph is a graph. */
@@ -269,6 +277,7 @@ export function throwWorkflowInputCaseApplicationError(error: unknown): never {
     return throwApplicationError(
       applicationError('request.invalid', {
         safeDetail: 'The run-input case request is invalid.',
+        ...requestBodyCause(error),
       }),
     );
   return throwWorkflowApplicationError(error);

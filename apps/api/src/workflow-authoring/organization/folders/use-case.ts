@@ -19,6 +19,7 @@ import {
   workflowOrganizationContext,
   type WorkflowOrganizationInput,
 } from '../authority.js';
+import { parseRequestBody } from '../../../platform/http/index.js';
 
 type Command = WorkflowOrganizationInput &
   Readonly<{ request: unknown; idempotencyKey: string }>;
@@ -44,7 +45,10 @@ export class WorkflowFoldersUseCase {
   }
 
   public async create(input: Command) {
-    const request = workflowFolderCreateRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowFolderCreateRequestSchema,
+      input.request,
+    );
     const context = await this.command(input, 'admin');
     const result = await this.folders.createFolder({ ...context, ...request });
     input.signal?.throwIfAborted();
@@ -52,7 +56,10 @@ export class WorkflowFoldersUseCase {
   }
 
   public async rename(input: FolderCommand) {
-    const request = workflowFolderRenameRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowFolderRenameRequestSchema,
+      input.request,
+    );
     const context = await this.command(input, 'admin');
     const result = await this.folders.renameFolder({
       ...context,
@@ -64,7 +71,10 @@ export class WorkflowFoldersUseCase {
   }
 
   public async move(input: FolderCommand) {
-    const request = workflowFolderMoveRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowFolderMoveRequestSchema,
+      input.request,
+    );
     const context = await this.command(input, 'admin');
     const result = await this.folders.moveFolder({
       ...context,
@@ -76,7 +86,10 @@ export class WorkflowFoldersUseCase {
   }
 
   public async delete(input: FolderCommand) {
-    const request = workflowFolderDeleteRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowFolderDeleteRequestSchema,
+      input.request,
+    );
     const context = await this.command(input, 'admin');
     const result = await this.folders.deleteFolder({
       ...context,
@@ -88,7 +101,10 @@ export class WorkflowFoldersUseCase {
   }
 
   public async place(input: Command & Readonly<{ workflowId: string }>) {
-    const request = workflowFolderPlacementRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowFolderPlacementRequestSchema,
+      input.request,
+    );
     // Read guard at HTTP; this role fence permits archived admin placement.
     // Persistence owns the transactional lifecycle-specific editor fence.
     const context = await this.command(input, 'editor');

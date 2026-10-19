@@ -11,7 +11,10 @@ import {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,
 } from '@pertexo/integrations/server';
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  NodeExecutorFailure,
+  NodeInputValidationError,
+} from '@pertexo/node-sdk/server';
 import {
   WorkflowEngineError,
   type NodeExecutionRegistry,
@@ -804,6 +807,63 @@ describe('NodeAttemptHandler', () => {
       expect(complete.mock.calls[0]?.[0].signal).toBeInstanceOf(AbortSignal);
     },
   );
+
+  it("keeps a step's own reason when it refuses its input", async () => {
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+    const handler = createNodeAttemptHandler({
+      engine: {
+        prepare: vi.fn().mockReturnValue({
+          upstreamNodeOutputs: [],
+          execute: vi.fn().mockRejectedValue(
+            new WorkflowEngineError('attempt_invalid', 'secret detail', {
+              cause: new NodeInputValidationError(
+                'Use a date like 2026-10-19.',
+              ),
+            }),
+          ),
+        }),
+      },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn().mockResolvedValue(undefined),
+        readForExecution: vi.fn().mockResolvedValue(projection()),
+      },
+      registry: { execute: vi.fn() },
+      runStore: {
+        claimDelivery: vi
+          .fn()
+          .mockResolvedValue({ kind: 'claimed', lease: lease() }),
+        close: vi.fn().mockResolvedValue(undefined),
+        complete,
+        heartbeat: vi.fn(),
+        loadInputs: vi.fn().mockResolvedValue({
+          checkpoint: STORED_CHECKPOINT,
+          abortRequested: false,
+          completedNodeOutputs: [],
+          runInput: null,
+        }),
+        readAttemptOutputs: vi.fn().mockResolvedValue([]),
+        listNodeOutcomes: vi.fn().mockResolvedValue([]),
+        readNodeOutputs: vi.fn().mockResolvedValue([]),
+        readLoopDeclaration: vi.fn(),
+        markDispatched: vi.fn(),
+      },
+      workerId: 'worker-1',
+    });
+
+    await handler.handle(delivery(), { signal: new AbortController().signal });
+    expect(complete.mock.calls[0]?.[0].outcome).toEqual({
+      status: 'executor_failure',
+      failureKind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+      safeErrorCode: 'execution.attempt_invalid',
+      errorSummary: 'Use a date like 2026-10-19.',
+    });
+  });
 
   it('persists a typed unsafe provider ambiguity as outcome_unknown', async () => {
     const attemptLease = { ...lease(), sideEffectClass: 'unsafe' as const };

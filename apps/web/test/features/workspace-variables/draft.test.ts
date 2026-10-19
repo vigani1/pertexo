@@ -1,7 +1,10 @@
 import { expect, it } from 'vitest';
 import {
   readVariableRows,
+  valuePreview,
+  variableMatches,
   variableRows,
+  variableUnsaved,
 } from '@/features/workspace-variables/model/draft';
 it('keeps false, zero, empty text and multiline text with explicit types', () => {
   const values = { ZERO: 0, OFF: false, EMPTY: '', NOTE: 'Line 1\nLine 2' };
@@ -39,4 +42,24 @@ it('keeps descriptions optional, trims metadata and leaves text values unchanged
   expect(
     readVariableRows(variableRows({ NOTE: 'raw' }, { NOTE: 'a'.repeat(501) })),
   ).toHaveProperty('error');
+});
+it('previews values on one line and knows which rows differ from the saved set', () => {
+  const [note, flag] = variableRows(
+    { NOTE: 'Line 1\nLine 2', FLAG: false },
+    { NOTE: 'Shown in emails' },
+  );
+  if (note === undefined || flag === undefined) throw new Error('rows missing');
+  expect(valuePreview(note)).toBe('Line 1 ⏎ Line 2');
+  expect(valuePreview(flag)).toBe('False');
+  expect(valuePreview({ ...note, value: '' })).toBe('Empty');
+  expect(variableMatches(note, '  emails ')).toBe(true);
+  expect(variableMatches(flag, 'note')).toBe(false);
+  const saved = {
+    values: { NOTE: 'Line 1\nLine 2', FLAG: false },
+    descriptions: { NOTE: 'Shown in emails' },
+  };
+  expect(variableUnsaved(note, saved)).toBe(false);
+  expect(variableUnsaved({ ...note, description: '' }, saved)).toBe(true);
+  expect(variableUnsaved({ ...flag, value: 'true' }, saved)).toBe(true);
+  expect(variableUnsaved({ ...flag, name: 'NEW_FLAG' }, saved)).toBe(true);
 });

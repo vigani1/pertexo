@@ -17,8 +17,9 @@ export class WorkflowEngineError extends Error {
   constructor(
     readonly code: EngineErrorCode,
     message: string,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = 'WorkflowEngineError';
   }
 }

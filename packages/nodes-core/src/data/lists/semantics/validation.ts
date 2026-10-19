@@ -34,9 +34,11 @@ export const collectionPathSchema = z
       context.addIssue({
         code: 'custom',
         message:
-          'Use an own-property JSON path with at most 512 UTF-8 bytes and 64 segments',
+          'Write the path like $.status or $.items[0].id, with at most 512 UTF-8 bytes and 64 segments',
       });
-  });
+  })
+  // Lets the editor accept a bare field name and store it as a path.
+  .meta({ format: 'json-path' });
 export const COLLECTION_SEMANTICS = Object.freeze([
   `Collections contain at most ${String(COLLECTION_MAX_ITEMS)} items; SDK admission bounds whole input/output to 1 MiB, depth 64 and 10000 members.`,
   'Paths use the platform own-property syntax, at most 512 UTF-8 bytes and 64 segments; null is distinct from a missing path.',
