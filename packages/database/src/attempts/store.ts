@@ -10,6 +10,7 @@ import { recordNodeAttemptInput } from './input-record.js';
 import {
   loadNodeAttemptInputs,
   readNodeAttemptLoopDeclaration,
+  readNodeAttemptOutputs,
 } from './inputs.js';
 
 import {
@@ -23,6 +24,7 @@ import {
   type NodeAttemptClaimResult,
   type NodeAttemptCompletion,
   type NodeAttemptLoopDeclaration,
+  type NodeAttemptStoredOutput,
   type NodeAttemptStoredInputs,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
@@ -41,6 +43,7 @@ export type {
   NodeAttemptClaimResult,
   NodeAttemptCompletion,
   NodeAttemptLoopDeclaration,
+  NodeAttemptStoredOutput,
   NodeAttemptStoredInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,
@@ -61,6 +64,9 @@ export function createNodeAttemptRunStore(
     readLoopDeclaration: (
       input: Parameters<NodeAttemptRunStore['readLoopDeclaration']>[0],
     ) => readNodeAttemptLoopDeclaration(pool, input),
+    readAttemptOutputs: (
+      input: Parameters<NodeAttemptRunStore['readAttemptOutputs']>[0],
+    ) => readNodeAttemptOutputs(pool, input),
     markDispatched: (
       input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
     ) => markNodeAttemptDispatched(pool, input),

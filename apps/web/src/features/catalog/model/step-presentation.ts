@@ -221,7 +221,7 @@ const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
   },
   'core.merge': {
     name: 'Merge',
-    description: 'Wait for parallel branches and join them',
+    description: 'Wait for parallel branches and pass on what each produced',
     icon: GitMergeIcon,
     family: 'logic',
   },
