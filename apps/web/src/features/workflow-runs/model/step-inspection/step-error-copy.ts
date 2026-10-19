@@ -193,6 +193,65 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     sentence: 'A file this step needed wasn’t available.',
     advice: 'Replay the run once the file is available again.',
   },
+  // What a step's own executor reports, by kind of failure.
+  'execution.provider': {
+    sentence: 'The service this step calls answered with an error.',
+    advice:
+      'Check what the step sent under Input & output, fix it in Build if needed, then replay. HTTP Request can return error answers to the workflow instead: turn on Return error responses.',
+  },
+  'execution.authentication': credentialsRejected,
+  'execution.rate_limit': providerRateLimited,
+  'execution.network': {
+    sentence: 'This step couldn’t reach the service it calls.',
+    advice:
+      'Check the address and that the service is up, then replay the run.',
+  },
+  'execution.timeout': {
+    sentence: 'The service this step calls didn’t answer in time.',
+    advice:
+      'Replay the run later, or raise the step’s timeout in Build if the service is slow.',
+  },
+  'execution.configuration': {
+    sentence: 'This step’s setup couldn’t be used.',
+    advice: 'Check its settings in Build, publish, then replay the run.',
+  },
+  'execution.internal': {
+    sentence: 'Something went wrong inside this step.',
+    advice:
+      'Replay the run. If it keeps happening, send support the code below.',
+  },
+  'execution.output_invalid': {
+    sentence: 'This step returned a value Pertexo couldn’t keep.',
+    advice:
+      'Return a smaller or simpler value from the step, publish, then replay the run.',
+  },
+  'code.runtime_error': {
+    sentence: 'The code threw an error.',
+    advice:
+      'Read the error and logs below, fix the code in Build, publish, then replay the run.',
+  },
+  'code.syntax_error': {
+    sentence: 'The code has a syntax error, so it didn’t run.',
+    advice: 'Fix it in Build, publish, then replay the run.',
+  },
+  'code.timeout': {
+    sentence: 'The code ran past its time limit.',
+    advice:
+      'Make it do less per run or raise its time limit in Build, then replay.',
+  },
+  'code.memory_limit': {
+    sentence: 'The code used more memory than it’s allowed.',
+    advice: 'Process less data at once, publish, then replay the run.',
+  },
+  'code.output_invalid': {
+    sentence: 'The code returned a value Pertexo can’t pass on.',
+    advice:
+      'Return plain JSON: no undefined, dates, functions or very large values. Then replay.',
+  },
+  'code.module_refused': {
+    sentence: 'The code imported a module that isn’t allowed.',
+    advice: 'Use only the modules the Code step offers, then replay the run.',
+  },
 };
 
 const fallback: StepErrorCopy = {
@@ -230,6 +289,19 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'preview.input_invalid': 'an input couldn’t be used',
   'preview.config_invalid': 'its setup couldn’t be used',
   'execution.loop_results_too_large': 'loop results too large',
+  'execution.provider': 'the service answered with an error',
+  'execution.authentication': 'credentials rejected',
+  'execution.rate_limit': 'rate limited by the service',
+  'execution.network': 'service unreachable',
+  'execution.timeout': 'the service didn’t answer in time',
+  'execution.configuration': 'its setup couldn’t be used',
+  'execution.output_invalid': 'its output couldn’t be kept',
+  'code.runtime_error': 'the code threw an error',
+  'code.syntax_error': 'the code has a syntax error',
+  'code.timeout': 'the code ran too long',
+  'code.memory_limit': 'the code used too much memory',
+  'code.output_invalid': 'the code returned an unusable value',
+  'code.module_refused': 'the code used a module that isn’t allowed',
 };
 
 /**
@@ -238,5 +310,10 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
  * but says nothing); it stays a plain "stopped with an error".
  */
 export function shortStepError(code: string): string {
-  return SHORT_REASONS[code] ?? 'stopped with an error';
+  // A step test reports the same failure kinds as preview.<kind>.
+  return (
+    SHORT_REASONS[code] ??
+    SHORT_REASONS[code.replace(/^preview\./u, 'execution.')] ??
+    'stopped with an error'
+  );
 }

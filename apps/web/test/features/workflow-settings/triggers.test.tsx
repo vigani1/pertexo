@@ -483,6 +483,34 @@ describe('workflow triggers tab', () => {
     expect(enableKeys[0]).not.toBe(disableKeys[0]);
   });
 
+  it('tells a viewer who sees webhooks instead of asking for them', async () => {
+    installQueries(['run:read']);
+    let webhookReads = 0;
+    mockServer.use(
+      http.get(`${workflowApi}/triggers`, () => {
+        webhookReads += 1;
+        return HttpResponse.json({ items: [] });
+      }),
+      http.get(`${workflowApi}/triggers/schedules`, () =>
+        HttpResponse.json({ items: [] }),
+      ),
+    );
+    renderApp(triggersPath);
+    expect(
+      await screen.findByText(
+        'Webhook addresses and deliveries are shown to owners, admins and builders.',
+      ),
+    ).toBeVisible();
+    expect(
+      await screen.findByText('The published version has no Schedule step.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: 'Add one in Build' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/role changed/u)).not.toBeInTheDocument();
+    expect(webhookReads).toBe(0);
+  });
+
   it('points to Build when the published version has no trigger', async () => {
     installQueries();
     mockServer.use(
