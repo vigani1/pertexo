@@ -302,6 +302,42 @@ describe('Better Auth Fastify bridge', () => {
     }
   });
 
+  it.each(['verify-totp', 'verify-backup-code'])(
+    'identifies account lockout on %s without exposing native error details',
+    async (path) => {
+      const application = Fastify();
+      applications.push(application);
+      registerBetterAuthHandler(application, {
+        publicOrigin: 'https://pertexo.test',
+        rateLimitConsumer: allowingRateLimit,
+        sessionCookie: { secure: true, sameSite: 'lax', maxAgeSeconds: 3600 },
+        handler: () =>
+          Promise.resolve(
+            Response.json(
+              {
+                code: 'ACCOUNT_TEMPORARILY_LOCKED',
+                message: 'private native details',
+              },
+              { status: 429 },
+            ),
+          ),
+      });
+      const reply = await application.inject({
+        method: 'POST',
+        url: `/v1/auth/two-factor/${path}`,
+        headers: { origin: 'https://pertexo.test' },
+        payload: { code: '123456' },
+      });
+      expect(reply.statusCode).toBe(429);
+      expect(apiProblemSchema.parse(reply.json())).toMatchObject({
+        code: 'auth.two_factor_locked',
+        title: 'Two-factor sign-in temporarily locked',
+      });
+      expect(reply.payload).not.toContain('private native details');
+      expect(reply.payload).not.toContain('123456');
+    },
+  );
+
   it('exposes the Better Auth password-reset request contract', async () => {
     const auth = betterAuth({
       appName: 'Pertexo',
@@ -403,6 +439,62 @@ describe('Better Auth Fastify bridge', () => {
       ),
     ]);
   });
+
+  it.each(['verify-totp', 'verify-backup-code'])(
+    'keeps %s token-free and in the distributed sign-in rate limit',
+    async (path) => {
+      const application = Fastify();
+      applications.push(application);
+      const handler = vi.fn(() =>
+        Promise.resolve(
+          Response.json(
+            { token: 'private-token', user: { id: 'user' } },
+            {
+              headers: {
+                'set-cookie':
+                  'pertexo_session=signed-session; HttpOnly; Path=/',
+              },
+            },
+          ),
+        ),
+      );
+      const consume = vi
+        .fn()
+        .mockResolvedValueOnce({ allowed: true })
+        .mockResolvedValue({
+          allowed: false,
+          limitedDimension: 'client_address',
+          retryAfterSeconds: 5,
+        });
+      registerBetterAuthHandler(application, {
+        handler,
+        publicOrigin: 'https://pertexo.test',
+        rateLimitConsumer: { consume },
+        sessionCookie: { secure: true, sameSite: 'lax', maxAgeSeconds: 3600 },
+      });
+      const request = {
+        method: 'POST' as const,
+        url: `/v1/auth/two-factor/${path}`,
+        headers: { origin: 'https://pertexo.test' },
+        payload: { code: '123456' },
+      };
+      const accepted = await application.inject(request);
+      expect(accepted.json()).toEqual({ user: { id: 'user' } });
+      expect(accepted.headers['set-cookie']).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(/^pertexo_session=/u),
+          expect.stringMatching(/^pertexo_csrf=/u),
+        ]),
+      );
+      const refused = await application.inject(request);
+      expect(refused.statusCode).toBe(429);
+      expect(consume.mock.calls[1]?.[0]).toMatchObject({
+        endpointClass: 'identity_start',
+        failureMode: 'closed',
+      });
+      expect(handler).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('applies distributed admission to native writes and callbacks before dispatch', async () => {
     const application = Fastify();

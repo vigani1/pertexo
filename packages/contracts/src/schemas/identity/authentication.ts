@@ -73,6 +73,12 @@ export const accountSecurityResponseSchema = z
     email: z.email().max(320),
     emailVerified: z.boolean(),
     availableProviders: z.array(authenticationProviderSchema).max(4),
+    twoFactor: z
+      .object({
+        enabled: z.boolean(),
+        recoveryCodesRemaining: z.number().int().min(0).max(10).nullable(),
+      })
+      .strict(),
     methods: z
       .array(accountSecurityMethodSchema)
       .max(ACCOUNT_SIGN_IN_METHOD_LIMIT),

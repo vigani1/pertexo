@@ -18,6 +18,11 @@ import { z } from 'zod';
 import type { SocialProviderGateway } from '../providers/contract.js';
 import { accountSecurityEndpoints } from '../account-security/endpoints.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
+import {
+  twoFactorRouteGuard,
+  isTwoFactorVerificationPath,
+  authenticationChangedError,
+} from './two-factor.js';
 
 type BeforeHooks = NonNullable<
   NonNullable<BetterAuthPlugin['hooks']>['before']
@@ -40,11 +45,12 @@ export function createTrustedSessionPlugin(
       ...internalSessionEndpoints(pool),
     },
     hooks: {
-      before: nativeRouteGuards(pool),
+      before: [...nativeRouteGuards(pool), twoFactorRouteGuard(pool)],
       after: [
         {
           matcher: (context) =>
             context.path === '/sign-in/email' ||
+            isTwoFactorVerificationPath(context.path) ||
             context.path === '/internal/session/issue',
           handler: createAuthMiddleware(async (context) => {
             const created = context.context.newSession;
@@ -57,11 +63,7 @@ export function createTrustedSessionPlugin(
                 created.session.token,
               );
               deleteSessionCookie(context);
-              throw new APIError('CONFLICT', {
-                code: 'AUTHENTICATION_CHANGED',
-                message:
-                  'Sign-in settings changed. Try again using your current organization policy.',
-              });
+              throw authenticationChangedError();
             }
           }),
         },

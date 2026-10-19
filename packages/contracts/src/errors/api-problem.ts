@@ -29,6 +29,7 @@ export const API_PROBLEM_CODES = [
   'auth.forbidden',
   'auth.email_not_verified',
   'auth.sso_required',
+  'auth.two_factor_locked',
   'auth.method_limit',
   'auth.recovery_required',
   'auth.organization_email_managed',
@@ -204,6 +205,12 @@ const apiProblemDetails = {
   'auth.sso_required': {
     status: 403,
     title: 'Organization sign-in required',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.two_factor_locked': {
+    status: 429,
+    title: 'Two-factor sign-in temporarily locked',
     severity: 'info',
     exposeDetail: false,
   },

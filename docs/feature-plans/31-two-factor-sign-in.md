@@ -86,8 +86,7 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
    all old ones, needs a fresh session and the password, and shows the new
    set once. The section shows how many unused codes remain, and warns when
    two or fewer are left.
-8. **Turning it off** needs the password. Other sessions stay signed in, the
-   same as a password change today.
+8. **Turning it off** needs the password. Other sessions stay signed in.
 9. **A password reset doesn't remove two-factor.** The next sign-in still asks
    for a code.
 10. **Lost device and lost recovery codes.** Operators get one privileged
@@ -100,7 +99,7 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
     contains codes.
 12. **Read model.** `accountSecurityResponseSchema` gains
     `twoFactor: { enabled: boolean; recoveryCodesRemaining: number | null }`.
-    It is `null` when off.
+    `recoveryCodesRemaining` is `null` when off.
 13. **Fresh-session rules** stay as they are. A session created after the code
     step is fresh like any new session, so `signInEvidence` keeps working.
 
@@ -161,13 +160,13 @@ visible behavior until slice 2 adds the controls.
 
 - [ ] A person turns two-factor on with a real authenticator app, signs out,
       and can't sign in without a code.
-- [ ] A recovery code works once and is then refused; the remaining count
+- [x] A recovery code works once and is then refused; the remaining count
       drops.
-- [ ] Wrong codes are rate-limited like wrong passwords, and ten in a row
+- [x] Wrong codes are rate-limited like wrong passwords, and ten in a row
       lock the code step for fifteen minutes.
-- [ ] Turning off and getting new codes both need the password and a fresh
+- [x] Turning off and getting new codes both need the password and a fresh
       session.
-- [ ] SSO and social sign-in never ask for a code.
+- [x] SSO and social sign-in never ask for a code.
 - [ ] The secret and codes never appear in logs, URLs or error messages.
 - [ ] The phone layout works, and the code field opens the numeric keyboard
       on iPhone.
@@ -186,6 +185,22 @@ visible behavior until slice 2 adds the controls.
 
 | Slice | Status | PR |
 | --- | --- | --- |
-| 1 Backend | Approved | — |
+| 1 Backend | Implemented; awaiting PR review | [#422](https://github.com/vigani1/pertexo/pull/422) |
 | 2 Web | Approved | — |
 | 3 Support and safety | Approved | — |
+
+### Backend alignment (owner-approved 2026-10-19)
+
+Code-step account lockout returns `auth.two_factor_locked`, so the web can
+identify the account lockout and show its fifteen-minute message. The plugin
+owns the lockout counters and timing.
+
+The Fastify bridge already puts all native POST routes in the distributed
+`identity_start` class, including both code-verification routes; preserve that
+owner and prove it in tests. Strip session tokens from their JSON responses,
+just as for password sign-in. Reject `trustDevice: true` at the server boundary,
+since remembered devices are outside this feature. Native management routes
+reuse the authoritative session, double-submit CSRF and five-minute freshness
+rules. Keep the credential-session issuance policy check as well as the
+post-issuance check; a policy refusal at the code step is
+`AUTHENTICATION_CHANGED` in either case.
