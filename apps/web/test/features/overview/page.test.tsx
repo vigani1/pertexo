@@ -315,6 +315,55 @@ describe('workspace home', () => {
     ).toBeVisible();
   });
 
+  it('finds any workflow by name from the palette, not only recent ones', async () => {
+    const older = workflow({
+      id: '77777777-7777-4777-8777-777777777777',
+      name: 'Reconcile customers 0517',
+    });
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/workflows`,
+        ({ request }) => {
+          // The first page holds recent workflows; a name query searches all.
+          const query = new URL(request.url).searchParams.get('query');
+          return HttpResponse.json({
+            items:
+              query === null
+                ? [workflow()]
+                : query.toLowerCase() === 'customers 0517'
+                  ? [older]
+                  : [],
+            nextCursor: null,
+          });
+        },
+      ),
+      ...runHandlers(),
+    );
+    renderApp(`/w/${workspaceId}`);
+    const main = await screen.findByRole('main', undefined, coldStart);
+    const event = userEvent.setup();
+    await event.click(
+      await within(main).findByRole('button', { name: 'Search' }),
+    );
+    const palette = await screen.findByRole('dialog', {
+      name: 'Search Pertexo',
+    });
+    await event.type(
+      within(palette).getByRole('combobox', {
+        name: 'Search pages, workflows and actions',
+      }),
+      'customers 0517',
+    );
+    expect(
+      await within(palette).findByRole(
+        'option',
+        { name: 'Reconcile customers 0517' },
+        { timeout: 3_000 },
+      ),
+    ).toBeVisible();
+  });
+
   it('keeps blocks independent and recovers one failed read', async () => {
     let failedReads = 0;
     let failing = true;

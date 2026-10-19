@@ -107,6 +107,18 @@ export function workflowListQueryOptions(
   });
 }
 
+/** Active workflows whose name holds the text, searched on the server. */
+export function workflowNameSearchQueryOptions(
+  api: ApiClient,
+  userId: string,
+  workspaceId: string,
+  text: string,
+) {
+  return workflowOrganizationInfiniteQueryOptions(api, userId, workspaceId, {
+    query: text,
+  });
+}
+
 export function workflowOrganizationInfiniteQueryOptions(
   api: ApiClient,
   userId: string,
