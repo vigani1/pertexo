@@ -14,6 +14,7 @@ import {
 import { currentUserQueryOptions } from '@/features/auth/session/queries.public';
 import { subscribeSessionChanges } from '@/features/auth/session/session-sync.public';
 import { isApiError } from '@/lib/api/error';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 
 type PauseReason = 'changed' | 'unverified';
@@ -63,8 +64,12 @@ export function useEditorSessionVerification({
           (isApiError(error) && error.status === 401)
         )
           pauseSession('changed');
-        else if (isSessionIdentityUnverifiedError(error))
+        else if (isSessionIdentityUnverifiedError(error)) {
+          // A dropped connection or a struggling server says nothing about
+          // who is signed in: fail this action and keep editing.
+          if (isPassingFailure(error.cause)) throw error.cause;
           pauseSession('unverified');
+        }
         throw error;
       }
     },
@@ -149,4 +154,11 @@ export function useEditorSessionVerification({
     verifyOriginalAccount,
     isPaused,
   } as const;
+}
+
+function isPassingFailure(cause: unknown): boolean {
+  return (
+    isUncertainOutcome(cause) ||
+    (isApiError(cause) && (cause.status === 429 || (cause.status ?? 0) >= 500))
+  );
 }
