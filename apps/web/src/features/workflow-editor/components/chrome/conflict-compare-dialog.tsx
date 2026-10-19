@@ -11,21 +11,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   diffWorkflowGraphs,
-  type StepChangeAspect,
+  describeStepChange,
 } from '@/features/workflow-drafts/public';
 import { useEditorStore } from '../../model/state/context';
 import { stepTitle } from '../../model/graph/adapter';
 import { adoptStepFrom } from '../../model/graph/copies';
-
-const aspectWords: Readonly<Record<StepChangeAspect, string>> = {
-  label: 'name',
-  setup: 'setup',
-  inputs: 'inputs',
-  connections: 'connection',
-  enabled: 'on/off',
-  position: 'position',
-  type: 'type',
-};
 
 type Line = Readonly<{
   nodeId: string;
@@ -144,7 +134,7 @@ function compareLines(
       nodeId: change.after.id,
       name: stepTitle(change.after),
       kind: 'changed' as const,
-      detail: change.aspects.map((aspect) => aspectWords[aspect]).join(', '),
+      detail: describeStepChange(change.aspects),
     })),
   ];
 }

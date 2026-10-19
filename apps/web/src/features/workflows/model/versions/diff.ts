@@ -1,10 +1,17 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
+import {
+  describeStepChange,
+  diffWorkflowGraphs as diffGraphs,
+} from '@/features/workflow-drafts/public';
 import { stepLabel } from '../shape';
 import { canonicalizeJson } from '@/lib/canonical-json';
 
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
-
-export type VersionStepChange = Readonly<{ id: string; label: string }>;
+export type VersionStepChange = Readonly<{
+  id: string;
+  label: string;
+  /** For a changed step, what changed: "setup, inputs". */
+  detail?: string;
+}>;
 
 export type VersionDiff = Readonly<{
   added: readonly VersionStepChange[];
@@ -15,56 +22,35 @@ export type VersionDiff = Readonly<{
   settingsChanged: boolean;
 }>;
 
-/** A step's meaning without where it sits on the canvas. */
-function stepFingerprint(node: WorkflowNode): string {
-  return canonicalizeJson({ ...node, position: null });
-}
-
-function edgeFingerprint(edge: WorkflowGraphContract['edges'][number]) {
-  return `${edge.source.nodeId}:${edge.source.port}>${edge.target.nodeId}:${edge.target.port}`;
-}
-
 /**
  * What changed from one version to the next, by step: added, removed, or
- * changed (configuration, mappings, connection or name). Moving a step on
- * the canvas is not a change.
+ * changed and how (setup, inputs, connection, name). Moving a step on the
+ * canvas is not a change. Built on the drafts' graph diff, so every compare
+ * in the app agrees.
  */
 export function diffWorkflowGraphs(
   previous: WorkflowGraphContract,
   current: WorkflowGraphContract,
 ): VersionDiff {
-  const before = new Map(previous.nodes.map((node) => [node.id, node]));
-  const after = new Map(current.nodes.map((node) => [node.id, node]));
-  const added = current.nodes
-    .filter((node) => !before.has(node.id))
-    .map((node) => ({ id: node.id, label: stepLabel(node) }));
-  const removed = previous.nodes
-    .filter((node) => !after.has(node.id))
-    .map((node) => ({ id: node.id, label: stepLabel(node) }));
-  const changed = current.nodes.flatMap((node) => {
-    const earlier = before.get(node.id);
-    return earlier !== undefined &&
-      stepFingerprint(earlier) !== stepFingerprint(node)
-      ? [{ id: node.id, label: stepLabel(node) }]
-      : [];
+  const diff = diffGraphs(previous, current, { ignoreLayout: true });
+  const step = (node: WorkflowGraphContract['nodes'][number]) => ({
+    id: node.id,
+    label: stepLabel(node),
   });
-  const edgesBefore = new Set(previous.edges.map(edgeFingerprint));
-  const edgesAfter = new Set(current.edges.map(edgeFingerprint));
-  const linksChanged =
-    edgesBefore.size !== edgesAfter.size ||
-    [...edgesAfter].some((edge) => !edgesBefore.has(edge));
-  const contractChanged =
-    canonicalizeJson({ callable: previous.callable ?? null }) !==
-    canonicalizeJson({ callable: current.callable ?? null });
-  const settingsChanged =
-    canonicalizeJson(previous.settings) !== canonicalizeJson(current.settings);
   return {
-    added,
-    removed,
-    changed,
-    linksChanged,
-    contractChanged,
-    settingsChanged,
+    added: diff.added.map(step),
+    removed: diff.removed.map(step),
+    changed: diff.changed.map((change) => ({
+      ...step(change.after),
+      detail: describeStepChange(change.aspects),
+    })),
+    linksChanged: diff.linksAdded + diff.linksRemoved > 0,
+    contractChanged:
+      canonicalizeJson({ callable: previous.callable ?? null }) !==
+      canonicalizeJson({ callable: current.callable ?? null }),
+    settingsChanged:
+      canonicalizeJson(previous.settings) !==
+      canonicalizeJson(current.settings),
   };
 }
 

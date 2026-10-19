@@ -150,6 +150,8 @@ describe('workflow versions tab', () => {
     expect(within(changes).getByText('Tell the team')).toBeVisible();
     expect(within(changes).getByText('Changed')).toBeVisible();
     expect(within(changes).getByText('Call API')).toBeVisible();
+    // A changed step says what changed about it.
+    expect(within(changes).getByText('· setup')).toBeVisible();
     expect(within(changes).queryByText('Removed')).not.toBeInTheDocument();
 
     await event.click(within(sheet).getByRole('combobox', { name: 'From' }));
