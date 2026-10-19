@@ -18,6 +18,7 @@ import { IdempotencyRequestConflictError } from '@pertexo/database/runs';
 import {
   applicationError,
   isApplicationError,
+  requestBodyCause,
   type ApplicationError,
 } from '../platform/http/index.js';
 import { z } from 'zod';
@@ -45,6 +46,7 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
   if (error instanceof z.ZodError) {
     return applicationError('request.invalid', {
       safeDetail: 'The request is invalid.',
+      ...requestBodyCause(error),
     });
   }
   if (error instanceof AuthorizationError) {
