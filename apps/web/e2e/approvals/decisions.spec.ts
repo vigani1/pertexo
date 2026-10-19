@@ -103,6 +103,7 @@ for (const width of [1280, 375])
     await expect(
       page.getByText(/We couldn’t confirm the decision/u),
     ).toBeHidden();
+    await expect(page.getByText(/already has a final result/u)).toBeHidden();
     expect(writes).toHaveLength(2);
     expect(writes[1]).toEqual(writes[0]);
     expect(writes[0]?.body).toEqual({
