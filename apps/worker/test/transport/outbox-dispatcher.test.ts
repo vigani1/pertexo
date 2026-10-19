@@ -1083,7 +1083,7 @@ describe('outbox dispatcher', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('backs off empty rounds to the configured idle interval after work', async () => {
+  it('stays quick for a second after work, then backs off to the idle interval', async () => {
     vi.useFakeTimers();
     const selected = boundaries([]);
     vi.mocked(selected.database.claimBatch).mockResolvedValueOnce({
@@ -1101,7 +1101,10 @@ describe('outbox dispatcher', () => {
       dispatcher.start();
       await vi.advanceTimersByTimeAsync(0);
       let claims = 1;
-      for (const interval of [25, 50, 100, 200, 250, 250]) {
+      // A run's next step arrives within this window, so it isn't left
+      // waiting for a backed-off round.
+      const quickRounds = Array.from({ length: 40 }, () => 25);
+      for (const interval of [...quickRounds, 50, 100, 200, 250, 250]) {
         await vi.advanceTimersByTimeAsync(interval - 1);
         expect(selected.database.claimBatch).toHaveBeenCalledTimes(claims);
         await vi.advanceTimersByTimeAsync(1);
