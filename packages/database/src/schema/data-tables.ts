@@ -69,7 +69,7 @@ export const workspaceDataTables = appSchema.table(
     }).onDelete('cascade'),
     check(
       'workspace_data_tables_bounds',
-      sql`name ~ '^[A-Za-z][A-Za-z0-9_]{0,63}$' and jsonb_typeof(columns_json)='array' and jsonb_array_length(columns_json) between 1 and 50 and octet_length(columns_json::text)<=16384 and row_count between 0 and 100000 and stored_bytes>=0 and revision>0`,
+      sql`name ~ '^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$' and jsonb_typeof(columns_json)='array' and jsonb_array_length(columns_json) between 1 and 50 and octet_length(columns_json::text)<=16384 and row_count between 0 and 100000 and stored_bytes>=0 and revision>0`,
     ),
   ],
 );

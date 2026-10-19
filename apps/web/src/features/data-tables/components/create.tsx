@@ -101,12 +101,12 @@ export function CreateDataTable({
                 onChange={(event) => {
                   setName(event.target.value);
                 }}
-                placeholder="Orders"
+                placeholder="Customer orders"
                 required
                 maxLength={64}
               />
               <p className="text-xs text-muted-foreground">
-                Letters, numbers and underscores; starts with a letter.
+                Letters, numbers, spaces, hyphens and underscores.
               </p>
             </div>
             <div className="flex flex-col gap-4">

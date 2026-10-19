@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   DATA_TABLE_LIMITS,
   dataTableIdentifierSchema,
+  dataTableNameSchema,
   dataTableColumnsSchema,
   dataTableNewColumnsSchema,
   dataTableNewColumnSchema,
@@ -12,7 +13,7 @@ import {
 } from '@pertexo/node-sdk';
 export const dataTableCreateSchema = z
   .object({
-    name: dataTableIdentifierSchema,
+    name: dataTableNameSchema,
     columns: dataTableNewColumnsSchema,
     keyColumn: dataTableIdentifierSchema.nullable().optional(),
   })
