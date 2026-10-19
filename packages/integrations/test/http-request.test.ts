@@ -755,6 +755,52 @@ describe('http.request@1 server executor', () => {
     },
   );
 
+  it.each(['GET', 'HEAD'])(
+    'lets a %s that failed after sending retry, since reading has no side effect',
+    async (method) => {
+      const unavailable = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return response(encoder.encode('unavailable'), 503);
+        }),
+      }).execute(
+        invocation(runtime().value, { config: config({ method }), input: {} }),
+      );
+      await expect(unavailable).rejects.toMatchObject({
+        decision: { kind: 'retry', errorKind: 'provider' },
+        possiblyDispatched: false,
+      });
+      const timedOut = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          throw new SecureHttpError(
+            SECURE_HTTP_ERROR_CODE.timedOut,
+            'ambiguous',
+            true,
+          );
+        }),
+      }).execute(
+        invocation(runtime().value, { config: config({ method }), input: {} }),
+      );
+      await expect(timedOut).rejects.toMatchObject({
+        decision: { kind: 'retry', errorKind: 'timeout' },
+        possiblyDispatched: false,
+      });
+      const missing = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return response(encoder.encode('gone'), 404);
+        }),
+      }).execute(
+        invocation(runtime().value, { config: config({ method }), input: {} }),
+      );
+      await expect(missing).rejects.toMatchObject({
+        decision: { kind: 'failed', errorKind: 'provider' },
+        possiblyDispatched: false,
+      });
+    },
+  );
+
   it('classifies rate-limited, timed, and canceled dispatches truthfully under the pinned unsafe class', async () => {
     // A post-dispatch 429 is a definite failure for unsafe work and must
     // never enter automatic retry.
