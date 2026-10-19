@@ -185,7 +185,17 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
       await screen.findByRole('button', { name: 'Retry same run' }),
     ).toBeVisible();
 
+    // A struggling server only fails the retry; a lost session pauses.
     identity = 'unavailable';
+    await event.click(screen.getByRole('button', { name: 'Retry same run' }));
+    expect(
+      await screen.findByRole('button', { name: 'Retry same run' }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole('heading', { name: 'Editor paused' }),
+    ).not.toBeInTheDocument();
+
+    identity = 'unauthorized';
     await event.click(screen.getByRole('button', { name: 'Retry same run' }));
     expect(await findPaused()).toBeVisible();
     for (const next of ['unavailable', 'network', 'unauthorized'] as const) {

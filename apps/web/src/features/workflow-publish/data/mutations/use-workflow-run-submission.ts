@@ -190,7 +190,15 @@ export function useWorkflowRunSubmission({
       setRecoveryIntent(undefined);
       onRunCommandAccepted?.();
       if (!isSessionPaused()) {
-        await verifyIdentity();
+        try {
+          await verifyIdentity();
+        } catch (cause) {
+          // The run is accepted; a failed check only keeps it from opening
+          // by itself, and Open accepted run checks again.
+          if (owner.current === submissionOwner)
+            setError(commandErrorMessage(cause, 'opening the run'));
+          return true;
+        }
         if (owner.current === submissionOwner && !isSessionPaused())
           onRunAccepted(response.run.id);
       }

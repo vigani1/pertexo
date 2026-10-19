@@ -81,13 +81,25 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     ).toBeVisible();
     expect(requests).toHaveLength(1);
 
+    // A dropped connection says nothing about who is signed in: the retry
+    // fails and stays offered, and the editor keeps going.
     identity = 'error';
+    await event.click(screen.getByRole('button', { name: 'Retry same run' }));
+    expect(
+      await screen.findByRole('button', { name: 'Retry same run' }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole('heading', { name: 'Editor paused' }),
+    ).not.toBeInTheDocument();
+    expect(requests).toHaveLength(1);
+
+    identity = otherUser;
     await event.click(screen.getByRole('button', { name: 'Retry same run' }));
     expect(await findPaused()).toBeVisible();
     expect(requests).toHaveLength(1);
     expect(screen.queryByLabelText('Run input (JSON)')).not.toBeInTheDocument();
 
-    identity = otherUser;
+    identity = 'error';
     await event.click(
       screen.getByRole('button', { name: 'Verify original account' }),
     );
@@ -162,14 +174,14 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     ).toBeVisible();
     expect(requests).toHaveLength(1);
 
-    identity = 'error';
+    identity = otherUser;
     await event.click(
       screen.getByRole('button', { name: 'Retry original publish' }),
     );
     expect(await findPaused()).toBeVisible();
     expect(requests).toHaveLength(1);
 
-    identity = otherUser;
+    identity = 'error';
     await event.click(
       screen.getByRole('button', { name: 'Verify original account' }),
     );
