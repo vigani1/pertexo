@@ -1,6 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import { useState } from 'react';
-import { act, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
@@ -20,8 +20,8 @@ import { testFetch } from '../../support/render-app';
 import { mockServer } from '../../support/mock-server';
 import {
   api,
-  catalogDefinition,
   catalogOf,
+  curatedCatalog,
   discoveryHandlers,
   userId,
   versionId,
@@ -34,26 +34,11 @@ if (first === undefined || controlled === undefined)
   throw new Error('Missing reviewed fixtures');
 const fingerprint = `wf-compat:sha256:${'a'.repeat(64)}`;
 
-function supportedCatalog() {
-  const requirements = new Map(
-    CURATED_WORKFLOW_TEMPLATES.flatMap(
-      (template) => template.manifest.requirements.definitions,
-    ).map((definition) => [definition.key, definition]),
-  );
-  return catalogOf(
-    [...requirements.values()].map((requirement) => ({
-      ...catalogDefinition(requirement.key, 'logic'),
-      definition: { key: requirement.key, version: requirement.version },
-      configVersion: requirement.configVersion,
-    })),
-  );
-}
-
-function mount() {
+function mount(example: string, catalog = curatedCatalog()) {
   mockServer.use(...discoveryHandlers());
   mockServer.use(
     http.get('http://pertexo.test/v1/node-definitions', () =>
-      HttpResponse.json(supportedCatalog()),
+      HttpResponse.json(catalog),
     ),
   );
   const onClose = vi.fn();
@@ -84,8 +69,8 @@ function mount() {
         </button>
         <WorkflowImportDialog
           {...props}
-          // Opened to choose an example, as from New workflow.
-          examplesFirst
+          // Opened on an example, as from New workflow.
+          example={example}
           open={open}
           onClose={() => {
             setOpen(false);
@@ -99,58 +84,46 @@ function mount() {
 }
 
 describe('Curated template setup in the existing import session', () => {
-  it('retires a pending file read when selecting an example and ignores the late old file', async () => {
-    let release: (bytes: ArrayBuffer) => void = () => undefined;
-    const held = new Promise<ArrayBuffer>((resolve) => {
-      release = resolve;
+  it('opens on the chosen example once the catalog shows it can be built, without a file to drop', async () => {
+    mount(controlled.templateId);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Start from an example',
     });
-    const file = new File(['pending'], 'old.json', {
-      type: 'application/json',
-    });
-    vi.spyOn(file, 'arrayBuffer').mockReturnValue(held);
-    mockServer.use(
-      http.post(`${api}/workflows/import/preview`, () =>
-        HttpResponse.json({
-          manifestDigest: 'b'.repeat(64),
-          compatibilityFingerprint: fingerprint,
-          compatible: true,
-          issues: [],
-          truncated: false,
-          connectionSlots: [],
-        }),
-      ),
-    );
-    const { event } = mount();
-    await event.upload(
-      await screen.findByLabelText('Workflow JSON file'),
-      file,
-    );
-    await screen.findByText('Reading old.json…');
-    const choose = await screen.findByRole('button', {
-      name: `Set up ${first.title}`,
-    });
-    await waitFor(() => expect(choose).toBeEnabled());
-    await event.click(choose);
-    expect(screen.queryByText('Reading old.json…')).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Preview import' }),
-    ).toBeEnabled();
-    await act(async () => {
-      release(
-        new TextEncoder().encode(JSON.stringify(controlled.manifest)).buffer,
+    await waitFor(() => {
+      expect(within(dialog).getByLabelText('New workflow name')).toHaveValue(
+        controlled.title,
       );
-      await held;
     });
-    expect(screen.getByLabelText('New workflow name')).toHaveValue(first.title);
-    expect(screen.queryByLabelText('HTTPS endpoint')).not.toBeInTheDocument();
-    await event.click(screen.getByRole('button', { name: 'Preview import' }));
-    await screen.findByText(/Compatible with this workspace/u);
+    expect(
+      within(dialog).getByRole('button', {
+        name: `Set up ${controlled.title}`,
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(dialog).queryByLabelText('Workflow JSON file'),
+    ).not.toBeInTheDocument();
   });
+
+  it('shows why an example cannot be built here and chooses nothing', async () => {
+    mount(first.templateId, catalogOf([]));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Start from an example',
+    });
+    expect(
+      (
+        await within(dialog).findAllByText(
+          /is missing from the current catalog/u,
+        )
+      )[0],
+    ).toBeVisible();
+    expect(within(dialog).getByLabelText('New workflow name')).toHaveValue('');
+  });
+
   it('rejects unavailable exact catalog pins', () => {
     expect(templateUnavailableReasons(first, catalogOf([]))).toContain(
       'core.webhook@1 is missing from the current catalog.',
     );
-    expect(templateUnavailableReasons(first, supportedCatalog())).toEqual([]);
+    expect(templateUnavailableReasons(first, curatedCatalog())).toEqual([]);
   });
 
   it('changes only reviewed literals, preserves graph identity and verifies the historical basis', () => {
@@ -181,7 +154,7 @@ describe('Curated template setup in the existing import session', () => {
   });
 
   it('requires explicit endpoint, channel and destination bindings before previewing the effectful example', async () => {
-    const { event } = mount();
+    const { event } = mount(controlled.templateId);
     const choose = await screen.findByRole('button', {
       name: `Set up ${controlled.title}`,
     });
@@ -239,7 +212,7 @@ describe('Curated template setup in the existing import session', () => {
           : HttpResponse.json({ workflowId: versionId }, { status: 201 });
       }),
     );
-    const { event } = mount();
+    const { event } = mount(controlled.templateId);
     const choose = await screen.findByRole('button', {
       name: `Set up ${first.title}`,
     });

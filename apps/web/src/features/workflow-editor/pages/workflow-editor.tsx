@@ -302,6 +302,7 @@ function WorkflowEditorSession({
               workflow={workflow.data}
               shortcutsOpen={chrome.shortcutsOpen}
               onShortcutsOpenChange={chrome.onShortcutsOpenChange}
+              testMenuItems={chrome.workflowTestMenuItems}
               onRetrySave={() => void flushSave()}
               onReviewConflict={() => {
                 setCompareOpen(true);

@@ -37,10 +37,17 @@ export async function addSingleStep(
   kind: RegExp,
   label: string,
 ) {
-  await page
-    .getByRole('complementary', { name: 'Add a step' })
-    .getByRole('button', { name: kind })
-    .click();
+  const palette = page.getByRole('complementary', { name: 'Add a step' });
+  // Bundled steps (Switch · Parallel · Merge, Data table rows) open in place,
+  // once the catalog has drawn them.
+  await palette
+    .getByRole('button', { name: /^Switch · Parallel · Merge/u })
+    .waitFor();
+  const folded = palette.locator(
+    'button[aria-expanded="false"][aria-controls]',
+  );
+  while ((await folded.count()) > 0) await folded.first().click();
+  await palette.getByRole('button', { name: kind }).click();
   await expect
     .poll(
       async () =>

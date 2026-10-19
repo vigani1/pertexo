@@ -79,23 +79,22 @@ test('owned complete examples retain historical origin through independent edits
     await page
       .getByRole('button', { name: 'New workflow', exact: true })
       .click();
+    // The examples sit under the name in New workflow; one opens set up.
     await page
-      .getByRole('button', {
-        name: 'Or start from a ready-made example…',
-        exact: true,
-      })
+      .getByRole('dialog', { name: 'New workflow', exact: true })
+      .getByRole('button', { name: descriptor.title })
       .click();
     const dialog = page.getByRole('dialog', {
-      name: 'Import workflow',
+      name: 'Start from an example',
       exact: true,
     });
     const choice = dialog.getByRole('button', {
       name: `Set up ${descriptor.title}`,
       exact: true,
     });
-    await expect(choice).toBeEnabled();
-    // What the example takes, its limits and its effects are one fold away
-    // on its card, before anything is chosen.
+    await expect(choice).toHaveAttribute('aria-pressed', 'true');
+    // What the example takes, its limits and its effects stay one fold away
+    // on its card.
     await dialog
       .getByRole('article', { name: descriptor.title, exact: true })
       .getByText('Details', { exact: true })
@@ -109,7 +108,6 @@ test('owned complete examples retain historical origin through independent edits
     await expect(
       dialog.getByText(descriptor.effectsSummary, { exact: true }),
     ).toBeVisible();
-    await choice.click();
     await expect(
       dialog.getByRole('region', { name: 'What the file contains' }),
     ).toBeVisible();

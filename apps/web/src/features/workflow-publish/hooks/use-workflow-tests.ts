@@ -35,7 +35,20 @@ export function useWorkflowTests({
   ensureSaved: () => Promise<{ revision: number }>;
   verifyIdentity: () => Promise<void>;
 }>) {
-  const suites = useTestSuites({ scope, enabled, ensureSaved, verifyIdentity });
+  // The tests bar shows only for test activity: a test or suite started here,
+  // or history the person asked for. A running test shows it regardless.
+  const [panel, setPanel] = useState<'hidden' | 'summary' | 'history'>(
+    'hidden',
+  );
+  const suites = useTestSuites({
+    scope,
+    enabled,
+    ensureSaved,
+    verifyIdentity,
+    onStarted: () => {
+      setPanel('history');
+    },
+  });
   const queryClient = useQueryClient();
   const lifetime = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
@@ -96,6 +109,7 @@ export function useWorkflowTests({
       if (lifetime.current?.signal.aborted !== false) return;
       selectRun(result.runId);
       setOpen(false);
+      setPanel((current) => (current === 'history' ? current : 'summary'));
       await queryClient.invalidateQueries({
         queryKey: [...workflowTestsKey(scope), 'list'],
         exact: true,
@@ -190,6 +204,16 @@ export function useWorkflowTests({
     selectRun,
     blocked: blocked || suites.blocked,
     enabled,
+    panel,
+    showHistory: () => {
+      setPanel('history');
+    },
+    showSummary: () => {
+      setPanel('summary');
+    },
+    hidePanel: () => {
+      setPanel('hidden');
+    },
   };
 }
 export type WorkflowTests = ReturnType<typeof useWorkflowTests>;

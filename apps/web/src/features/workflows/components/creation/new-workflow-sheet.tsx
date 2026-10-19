@@ -20,16 +20,8 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  buildStarterGraph,
-  type AvailableStarter,
-} from '../../model/templates/starters';
-import {
-  useCreateWorkflow,
-  type CreateWorkflowResult,
-  type StarterDraftWriter,
-} from '../../data/workflows.mutations';
-import { StarterChoice, type StartChoice } from './starter-choice';
+import { useCreateWorkflow } from '../../data/workflows.mutations';
+import { ExampleCards } from '../templates/example-cards';
 
 type Attempt = Readonly<{ name: string; idempotencyKey: string }>;
 
@@ -48,41 +40,33 @@ function nameProblem(value: string): string | undefined {
 }
 
 /**
- * The New workflow lens: a name, then where to start. The same idempotency
- * key is reused while the name is unchanged, so retrying an uncertain create
- * can't make a second workflow.
+ * The New workflow lens: a name for a blank workflow, or one of the
+ * ready-made examples, which brings its own name and setup. The same
+ * idempotency key is reused while the name is unchanged, so retrying an
+ * uncertain create can't make a second workflow.
  */
 export function NewWorkflowSheet({
   apiClient,
   userId,
   workspaceId,
   open,
-  starters,
-  choice,
-  writer,
-  onChoiceChange,
   onOpenChange,
   onCreated,
-  onChooseTemplate,
+  onChooseExample,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
   open: boolean;
-  starters: readonly AvailableStarter[];
-  choice: StartChoice;
-  writer: StarterDraftWriter | undefined;
-  onChoiceChange: (choice: StartChoice) => void;
   onOpenChange: (open: boolean) => void;
   onCreated: (workflowId: string) => void;
-  onChooseTemplate?: (() => void) | undefined;
+  onChooseExample?: ((templateId: string) => void) | undefined;
 }>) {
   const notifications = useNotifications();
   const [name, setName] = useState('');
   const validation = useFieldValidation<'name'>();
   const attempt = useRef<Attempt | undefined>(undefined);
   const mutation = useCreateWorkflow(apiClient, userId, workspaceId);
-  const starter = starters.find((candidate) => candidate.id === choice);
 
   function changeName(nextName: string) {
     if (mutation.isPending) return;
@@ -90,26 +74,6 @@ export function NewWorkflowSheet({
     mutation.reset();
     validation.change('name', nameProblem(nextName));
     if (attempt.current?.name !== nextName.trim()) attempt.current = undefined;
-  }
-
-  function announce(result: CreateWorkflowResult) {
-    const title = result.created.body.workflow.name;
-    if (result.seeded === 'failed')
-      notifications.error({
-        title: 'Workflow created, but its starter steps weren’t added',
-        description: `Add the steps to “${title}” in Build.`,
-      });
-    else if (result.seeded === 'uncertain')
-      notifications.error({
-        title: 'We couldn’t confirm whether the starter steps were added',
-        description: `Check the canvas of “${title}” before adding them again.`,
-      });
-    else
-      notifications.success({
-        title: 'Workflow created',
-        description:
-          result.seeded === 'saved' ? `${title} · starter steps added` : title,
-      });
   }
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
@@ -121,24 +85,20 @@ export function NewWorkflowSheet({
         ? attempt.current
         : { name: parsed.name, idempotencyKey: crypto.randomUUID() };
     attempt.current = current;
-    const seed =
-      starter === undefined || writer === undefined
-        ? undefined
-        : { graph: buildStarterGraph(starter), write: writer };
-    let result: CreateWorkflowResult;
+    let created: Awaited<ReturnType<typeof mutation.mutateAsync>>;
     try {
-      result = await mutation.mutateAsync({
-        ...current,
-        ...(seed === undefined ? {} : { seed }),
-      });
+      created = await mutation.mutateAsync(current);
     } catch {
       return; // The mutation's error renders in the sheet.
     }
     attempt.current = undefined;
     setName('');
     validation.reset();
-    announce(result);
-    onCreated(result.created.body.workflow.id);
+    notifications.success({
+      title: 'Workflow created',
+      description: created.body.workflow.name,
+    });
+    onCreated(created.body.workflow.id);
   }
 
   return (
@@ -157,7 +117,8 @@ export function NewWorkflowSheet({
           <SheetHeader>
             <SheetTitle>New workflow</SheetTitle>
             <SheetDescription>
-              Name it, then choose how to start. Everything can change in Build.
+              Start blank with a name, or from a ready-made example. Everything
+              can change in Build.
             </SheetDescription>
           </SheetHeader>
           <SheetBody className="flex flex-col gap-6">
@@ -183,31 +144,31 @@ export function NewWorkflowSheet({
                 />
               )}
             </LabelledField>
-            {starters.length > 0 && writer !== undefined ? (
-              <StarterChoice
-                starters={starters}
-                value={starter === undefined ? 'blank' : choice}
-                disabled={mutation.isPending}
-                onChange={onChoiceChange}
-              />
-            ) : null}
-            {/* After the choices, not before the name: an example is the
-                less common start and brings its own name. */}
-            {onChooseTemplate === undefined ? null : (
-              <button
-                type="button"
-                disabled={mutation.isPending}
-                onClick={onChooseTemplate}
-                className="-mt-2 w-fit rounded-sm text-sm text-muted-foreground underline decoration-current/30 underline-offset-4 outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
-              >
-                Or start from a ready-made example…
-              </button>
-            )}
             {mutation.isError ? (
               <Notice tone="destructive">
                 {createErrorMessage(mutation.error)}
               </Notice>
             ) : null}
+            {/* After the name: an example is the less common start and
+                brings its own name and setup. */}
+            {onChooseExample === undefined ? null : (
+              <section
+                aria-labelledby="new-workflow-examples"
+                className="flex flex-col gap-2 border-t border-border pt-5"
+              >
+                <h3
+                  id="new-workflow-examples"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Or start from an example
+                </h3>
+                <ExampleCards
+                  layout="rows"
+                  disabled={mutation.isPending}
+                  onChoose={onChooseExample}
+                />
+              </section>
+            )}
           </SheetBody>
           <SheetFooter>
             <SheetClose

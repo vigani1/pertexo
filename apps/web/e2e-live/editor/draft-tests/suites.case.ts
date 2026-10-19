@@ -103,8 +103,12 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
     expect(response.status(), await response.text()).toBe(201);
   }
 
+  // Run all tests lives in the Test workflow button's menu.
   await page
-    .getByRole('button', { name: 'Run all tests', exact: true })
+    .getByRole('button', { name: 'More test actions', exact: true })
+    .click();
+  await page
+    .getByRole('menuitem', { name: 'Run all tests', exact: true })
     .click();
   const suiteDialog = page.getByRole('dialog', {
     name: 'Run all tests',
@@ -137,13 +141,11 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
       { timeout: 90000 },
     )
     .toBe('failed');
+  // A started suite opens the tests bar on its history.
   const history = page.getByRole('region', {
     name: 'Workflow tests',
     exact: true,
   });
-  await history
-    .getByRole('button', { name: 'Test history', exact: true })
-    .click();
   const suites = page.getByRole('region', { name: 'Test suites', exact: true });
   await expect(
     suites.getByText('Suite · failed', { exact: true }),

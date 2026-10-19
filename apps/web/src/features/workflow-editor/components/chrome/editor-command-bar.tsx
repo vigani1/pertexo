@@ -28,6 +28,7 @@ export function EditorCommandBar({
   workflow,
   shortcutsOpen,
   onShortcutsOpenChange,
+  testMenuItems,
   onRetrySave,
   onReviewConflict,
   onUndo,
@@ -43,6 +44,8 @@ export function EditorCommandBar({
   workflow: WorkflowSummary | undefined;
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;
+  /** Test actions, for the ⋯ menu on phones where the split button hides. */
+  testMenuItems: ReactNode;
   onRetrySave: () => void;
   onReviewConflict: () => void;
   onUndo: () => void;
@@ -94,6 +97,7 @@ export function EditorCommandBar({
               <BracesIcon aria-hidden="true" />
               Contract
             </DialogTrigger>
+            {testMenuItems}
             <HistoryMenuItems
               onUndo={onUndo}
               onRedo={onRedo}

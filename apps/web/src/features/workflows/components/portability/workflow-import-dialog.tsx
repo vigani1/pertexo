@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
   Dialog,
@@ -26,8 +27,11 @@ type WorkflowImportDialogProps = Readonly<{
   onCreated: (workflowId: string) => void;
   open?: boolean;
   onReopen?: () => void;
-  /** Opened to choose a ready-made example rather than a file. */
-  examplesFirst?: boolean;
+  /**
+   * The ready-made example to start from. Without one the dialog imports a
+   * file; with one it sets up that example, and the others stay a click away.
+   */
+  example?: string | undefined;
 }>;
 
 export function WorkflowImportDialog(props: WorkflowImportDialogProps) {
@@ -58,9 +62,11 @@ function WorkflowImportSession({
   onCreated,
   open = true,
   onReopen,
-  examplesFirst = false,
+  example,
 }: WorkflowImportDialogProps) {
   const draft = useImportDraft(apiClient, userId, workspace);
+  // The example the dialog opened on is chosen once; after that, by hand.
+  const [opening, setOpening] = useState(example);
   return (
     <>
       <WorkflowImportLeaveGuard
@@ -75,11 +81,17 @@ function WorkflowImportSession({
         }}
       >
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
-          <DialogTitle>Import workflow</DialogTitle>
+          <DialogTitle>
+            {example === undefined
+              ? 'Import workflow'
+              : 'Start from an example'}
+          </DialogTitle>
           <DialogDescription>
             {draft.denied
               ? 'Access changed. The file, preview and retained command have been cleared.'
-              : `Bring a workflow into “${workspace.name}” as an unpublished draft. Nothing runs until you publish it.`}
+              : example === undefined
+                ? `Bring a workflow into “${workspace.name}” as an unpublished draft. Nothing runs until you publish it.`
+                : `Set up a ready-made workflow in “${workspace.name}” as an unpublished draft. Nothing runs until you publish it.`}
           </DialogDescription>
           {draft.denied ? null : (
             <div className="mt-5 flex flex-col gap-5">
@@ -93,9 +105,13 @@ function WorkflowImportSession({
                 fileGeneration={draft.fileGeneration}
                 reading={draft.reading}
                 locked={draft.locked}
-                examplesFirst={examplesFirst}
+                example={example}
+                opening={opening}
                 validation={draft.validation}
-                onChooseTemplate={draft.chooseTemplate}
+                onChooseTemplate={(template) => {
+                  setOpening(undefined);
+                  draft.chooseTemplate(template);
+                }}
                 onChooseFile={(file) => void draft.chooseFile(file)}
                 onNameChange={draft.changeName}
                 onSetupChange={draft.changeSetup}

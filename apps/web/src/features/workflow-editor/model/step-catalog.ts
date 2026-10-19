@@ -1,4 +1,5 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import { WaypointsIcon } from 'lucide-react';
 import {
   describeStep,
   stepGroups,
@@ -22,9 +23,10 @@ export type StepChoice = Readonly<{
  */
 export type StepChoiceBundle = Readonly<{
   id: string;
-  /** The members' names joined: "Switch · Parallel · Merge". */
+  /** A fixed name, or the members' names joined: "Switch · Parallel · Merge". */
   name: string;
   description: string;
+  tile: Pick<StepPresentation, 'family' | 'icon'>;
   choices: readonly StepChoice[];
 }>;
 
@@ -44,12 +46,45 @@ export type StepChoiceGroup = Readonly<{
   entries: readonly StepListEntry[];
 }>;
 
-/** Branching steps that share one row while browsing, in this order. */
-const FLOW_BUNDLE = Object.freeze({
-  id: 'flows',
-  keys: Object.freeze(['core.switch', 'core.parallel', 'core.merge']),
-  description: 'Split and join branches',
-});
+type BundleRule = Readonly<{
+  id: string;
+  /** Its members, in this order. */
+  keys: readonly string[];
+  /** A fixed name; without one the members' names are joined. */
+  name?: string;
+  description: string;
+  /** Its own tile; without one it takes its first member's. */
+  tile?: Pick<StepPresentation, 'family' | 'icon'>;
+  /** Where the first member would sit, or after the group's other rows. */
+  place: 'first' | 'last';
+}>;
+
+/**
+ * Related steps that share one row while browsing. The data table writes
+ * follow the everyday actions, so a long list of table steps doesn't push
+ * HTTP, email and Slack down the palette.
+ */
+const BUNDLES: readonly BundleRule[] = Object.freeze([
+  {
+    id: 'flows',
+    keys: ['core.switch', 'core.parallel', 'core.merge'],
+    description: 'Split and join branches',
+    tile: { family: 'logic', icon: WaypointsIcon },
+    place: 'first',
+  },
+  {
+    id: 'table-writes',
+    keys: [
+      'core.table_insert',
+      'core.table_update',
+      'core.table_upsert',
+      'core.table_delete',
+    ],
+    name: 'Data table rows',
+    description: 'Insert, update, upsert or delete rows in a data table',
+    place: 'last',
+  },
+]);
 
 /**
  * One definition per step type, the way people pick steps: the catalog can
@@ -136,36 +171,47 @@ function matchRank(
 }
 
 /**
- * A group's rows with the branching steps folded into one bundle row where
- * the first of them would sit. Fewer than two of them stay as plain rows.
+ * A group's rows with each bundle's members folded into one row, where its
+ * first member would sit or after the other rows. A bundle with fewer than
+ * two members in the group leaves them as plain rows.
  */
 function bundledEntries(
   choices: readonly StepChoice[],
 ): readonly StepListEntry[] {
-  const members = FLOW_BUNDLE.keys.flatMap((key) => {
-    const member = choices.find(
-      (choice) => choice.definition.definition.key === key,
-    );
-    return member === undefined ? [] : [member];
-  });
-  const bundled = new Set(members);
-  const entries: StepListEntry[] = [];
-  for (const choice of choices) {
-    if (members.length < 2 || !bundled.has(choice)) {
-      entries.push({ kind: 'step', choice });
-      continue;
-    }
-    if (entries.some((entry) => entry.kind === 'bundle')) continue;
-    entries.push({
+  const bundles = BUNDLES.flatMap((rule) => {
+    const members = rule.keys.flatMap((key) => {
+      const member = choices.find(
+        (choice) => choice.definition.definition.key === key,
+      );
+      return member === undefined ? [] : [member];
+    });
+    const [first] = members;
+    if (first === undefined || members.length < 2) return [];
+    const entry: StepListEntry = {
       kind: 'bundle',
       bundle: {
-        id: FLOW_BUNDLE.id,
-        name: members.map((member) => member.step.name).join(' · '),
-        description: FLOW_BUNDLE.description,
+        id: rule.id,
+        name:
+          rule.name ?? members.map((member) => member.step.name).join(' · '),
+        description: rule.description,
+        tile: rule.tile ?? first.step,
         choices: members,
       },
-    });
+    };
+    return [{ rule, members: new Set(members), entry }];
+  });
+  const entries: StepListEntry[] = [];
+  const placed = new Set<string>();
+  for (const choice of choices) {
+    const bundle = bundles.find((candidate) => candidate.members.has(choice));
+    if (bundle === undefined) entries.push({ kind: 'step', choice });
+    else if (bundle.rule.place === 'first' && !placed.has(bundle.rule.id)) {
+      placed.add(bundle.rule.id);
+      entries.push(bundle.entry);
+    }
   }
+  for (const bundle of bundles)
+    if (bundle.rule.place === 'last') entries.push(bundle.entry);
   return entries;
 }
 
