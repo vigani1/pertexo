@@ -20,7 +20,11 @@ export class FormValuesInvalidError extends Error {
   constructor(
     readonly fields: readonly Readonly<{ name: string; message: string }>[],
   ) {
-    super('Check the form fields and try again.');
+    super(
+      fields.length === 1 && fields[0]?.name === ''
+        ? fields[0].message
+        : 'Check the form fields and try again.',
+    );
   }
 }
 function valueSchema(field: FormField): z.ZodType {
@@ -102,9 +106,9 @@ export function parseFormValues(
           message:
             issue.code === 'unrecognized_keys'
               ? 'Remove fields that are not in this form.'
-              : field?.type === 'multi_select'
-                ? selectionMessage(field)
-                : 'Enter a valid value for this field.',
+              : field === undefined
+                ? 'Enter a valid value for this field.'
+                : fieldMessage(field, issue, input),
         };
       }),
     );
@@ -127,4 +131,35 @@ function selectionMessage(
   const min = Math.max(1, field.minSelections ?? 1);
   const max = field.maxSelections ?? field.options.length;
   return `Choose ${min === max ? String(min) : `${String(min)}–${String(max)}`} different available options.${field.required ? '' : ' You may leave this field empty.'}`;
+}
+
+function fieldMessage(
+  field: FormField,
+  issue: z.core.$ZodIssue,
+  input: unknown,
+): string {
+  const value =
+    typeof input === 'object' && input !== null
+      ? (input as Record<string, unknown>)[field.name]
+      : undefined;
+  if (field.type === 'multi_select') return selectionMessage(field);
+  if (value === undefined || value === null || value === '')
+    return 'This field is required.';
+  if (issue.code === 'too_big' && typeof value === 'string')
+    return `Keep this to ${String(FORM_LIMITS.textCharacters)} characters.`;
+  if (issue.code === 'custom') return issue.message;
+  switch (field.type) {
+    case 'number':
+      return 'Enter a number.';
+    case 'email':
+      return 'Enter an email address.';
+    case 'date':
+      return 'Enter a date like 2026-10-19.';
+    case 'boolean':
+      return 'Choose yes or no.';
+    case 'select':
+      return 'Choose an available option.';
+    default:
+      return 'Enter text.';
+  }
 }
