@@ -1,3 +1,4 @@
+import { authenticationMailAssociatedData } from '@pertexo/database/platform';
 import { randomUUID } from 'node:crypto';
 
 import type {
@@ -241,14 +242,6 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     );
     return { id, purpose, expiresAt, sealedPayload };
   }
-}
-
-export function authenticationMailAssociatedData(
-  purpose: string,
-  id: string,
-  expiresAt: Date,
-): string {
-  return `pertexo/authentication-mail/${purpose}/${id}/${expiresAt.toISOString()}`;
 }
 
 function renderAuthenticationMail(

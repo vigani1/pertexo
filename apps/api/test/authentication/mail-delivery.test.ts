@@ -1,3 +1,4 @@
+import { authenticationMailAssociatedData } from '@pertexo/database/platform';
 import type { SystemMailEnqueueStore } from '@pertexo/database/platform';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -5,7 +6,6 @@ import {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,
   type LocalAuthenticationMailMessage,
-  authenticationMailAssociatedData,
   printLocalAuthenticationMail,
 } from '../../src/authentication/mail/delivery.js';
 

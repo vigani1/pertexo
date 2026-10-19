@@ -1,3 +1,4 @@
+import { authenticationMailAssociatedData } from '@pertexo/database/platform';
 import { captureLocalAuthenticationMail } from '../support/better-auth/mail-capture.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
@@ -17,10 +18,7 @@ import {
   type BetterAuthRuntime,
 } from '../../src/authentication/better-auth/runtime.js';
 import type { SocialProviderGateway } from '../../src/authentication/providers/contract.js';
-import {
-  DurableAuthenticationMail,
-  authenticationMailAssociatedData,
-} from '../../src/authentication/mail/delivery.js';
+import { DurableAuthenticationMail } from '../../src/authentication/mail/delivery.js';
 import { registerBetterAuthHandler } from '../../src/authentication/better-auth/fastify.js';
 import { BetterAuthSessionService } from '../../src/authentication/better-auth/session-service.js';
 import * as browserSessionBoundary from '../../src/authentication/better-auth/trusted-sessions.js';
