@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 const roles = ['owner', 'admin', 'builder', 'operator', 'viewer'] as const;

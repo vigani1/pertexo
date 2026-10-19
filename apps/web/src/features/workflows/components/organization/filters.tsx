@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/popover';
 import { SlidersHorizontalIcon } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import type { ApiClient } from '@/lib/api/client';
 import {
   workflowFoldersQueryOptions,

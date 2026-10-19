@@ -24,7 +24,7 @@ import {
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { visibleSettingsData } from '../model/settings-query';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { SettingsQueryState } from '../components/settings-query-state';
 import { RestoreVersionDialog } from '../components/versions/restore-version-dialog';
 import { VersionCompareSheet } from '../components/versions/compare-sheet';

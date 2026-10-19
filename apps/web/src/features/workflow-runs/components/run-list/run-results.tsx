@@ -3,7 +3,7 @@ import type {
   WorkflowRunListItem,
 } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/error';

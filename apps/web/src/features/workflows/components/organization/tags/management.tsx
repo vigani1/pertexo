@@ -3,7 +3,7 @@ import {
   type WorkflowTag,
 } from '@pertexo/contracts';
 import { useId, useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, LabelledField } from '@/components/ui/field';

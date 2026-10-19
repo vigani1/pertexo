@@ -5,8 +5,8 @@ import type {
   WorkspaceAutoPauseSettings,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { SettingSentence } from '@/components/patterns/setting-sentence';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingSentence } from '@/components/patterns/settings/sentence';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';

@@ -1,4 +1,4 @@
-import { CodeDiagnostics } from '@/components/patterns/code-diagnostics';
+import { CodeDiagnostics } from '@/components/patterns/code/diagnostics';
 import type { PreviewRunSummary } from '@pertexo/contracts';
 import { SampleAvailability } from '../samples/availability';
 import { PreviewInputFields, RealTestPermission } from './inputs';
@@ -7,7 +7,7 @@ import { FlaskConicalIcon, ListChecksIcon } from 'lucide-react';
 import { useImperativeHandle, useState, type Ref } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
-import { JsonTree } from '@/components/patterns/json-tree';
+import { JsonTree } from '@/components/patterns/code/json-tree';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Status, StatusGlyph } from '@/components/ui/status';

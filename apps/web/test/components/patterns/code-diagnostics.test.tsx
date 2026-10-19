@@ -1,7 +1,7 @@
 import { NotificationsProvider } from '@/components/ui/toast';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { CodeDiagnostics } from '@/components/patterns/code-diagnostics';
+import { CodeDiagnostics } from '@/components/patterns/code/diagnostics';
 
 describe('private Code diagnostics', () => {
   it('shows console messages and positioned errors as literal user text', () => {

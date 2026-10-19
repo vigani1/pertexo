@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { WorkflowComment } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { formatDateTime } from '@/lib/format/time';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { useDiscussionCommand } from '../data/collaboration.mutations';

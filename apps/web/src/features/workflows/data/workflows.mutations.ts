@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   InlineRenameCommand,
   InlineRenameError,
-} from '@/components/patterns/inline-rename';
+} from '@/components/patterns/actions/inline-rename';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';

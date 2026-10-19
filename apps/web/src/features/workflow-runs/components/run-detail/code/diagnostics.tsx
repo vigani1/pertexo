@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { CodeDiagnostics } from '@/components/patterns/code-diagnostics';
+import { CodeDiagnostics } from '@/components/patterns/code/diagnostics';
 import { Button } from '@/components/ui/button';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { nodeRunDiagnosticsQueryOptions } from '../../../data/stored-values.queries';

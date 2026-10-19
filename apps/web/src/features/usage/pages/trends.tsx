@@ -6,7 +6,7 @@ import type {
   UsageTrendPeriod,
 } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Notice } from '@/components/ui/notice';
 import { formatDurationMs, formatDateTime } from '@/lib/format/time';

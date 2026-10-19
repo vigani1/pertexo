@@ -7,7 +7,7 @@ import {
   type DirectoryMappings,
   type FederationSettings,
 } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { LabelledField } from '@/components/ui/field';
 import {
   Select,

@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { LoadMore } from '@/components/patterns/load-more';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { describeStep } from '@/features/catalog/presentation.public';

@@ -3,7 +3,7 @@ import type {
   WorkspaceLifecycleChangeResponse,
 } from '@pertexo/contracts';
 import { useState, type ReactNode } from 'react';
-import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
