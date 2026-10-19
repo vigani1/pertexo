@@ -40,19 +40,21 @@ export function RunTimeline({
       </div>
     );
   return (
+    // Columns follow the thread's own width, not the window's: beside the
+    // step lens it is narrower than the screen.
     <div
       className={cn(
-        'relative rounded-xl border border-white/6 px-2 pt-3 pb-2 sm:px-4',
+        '@container relative rounded-xl border border-white/6 px-2 pt-3 pb-2 @xl:px-4',
         active && 'live-edge',
       )}
     >
       {waiting ? <RunLoadingWave /> : null}
       <div
         aria-hidden="true"
-        className="grid grid-cols-[9rem_minmax(0,1fr)] font-mono text-[0.66rem] text-subtle-foreground sm:grid-cols-[13rem_minmax(0,1fr)]"
+        className="grid grid-cols-[9rem_minmax(0,1fr)] px-2.5 font-mono text-[0.66rem] text-subtle-foreground @xl:grid-cols-[13rem_minmax(0,1fr)]"
       >
         <span />
-        <div className="relative mr-3 h-5 sm:mr-6">
+        <div className="relative mr-3 h-5 @xl:mr-6">
           {view.ticks.map((tick) => (
             <span
               key={tick.offsetMs}
@@ -68,20 +70,26 @@ export function RunTimeline({
         {view.rows.map((row) => {
           const selected = row.key === selectedKey;
           return (
-            <li key={row.key}>
+            // The divider is an inset line, not the row's border, so a
+            // selected or hovered row hides the lines on both its edges.
+            <li
+              key={row.key}
+              className="relative before:pointer-events-none before:absolute before:inset-x-2.5 before:top-0 before:h-px before:bg-white/5 first:before:hidden has-[button:hover]:before:opacity-0 has-[[aria-pressed=true]]:before:opacity-0 [:has(button:hover)+&]:before:opacity-0 [:has([aria-pressed=true])+&]:before:opacity-0"
+            >
               <button
                 type="button"
                 aria-pressed={selected}
                 aria-label={`${row.label}: ${row.statusLabel}, ${stepTag(row, nowMs)}`}
                 className={cn(
-                  'grid h-12 w-full grid-cols-[9rem_minmax(0,1fr)] items-center rounded-md border-t border-white/5 text-left outline-none hover:bg-white/[0.03] focus-ring sm:grid-cols-[13rem_minmax(0,1fr)]',
-                  selected && 'bg-primary/[0.05] hover:bg-primary/[0.07]',
+                  'grid h-13 w-full grid-cols-[9rem_minmax(0,1fr)] items-center rounded-lg px-2.5 text-left outline-none transition-colors duration-150 hover:bg-white/[0.035] focus-ring motion-reduce:transition-none @xl:grid-cols-[13rem_minmax(0,1fr)]',
+                  selected &&
+                    'bg-action/[0.07] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_24%,transparent)] hover:bg-action/[0.09]',
                 )}
                 onClick={() => {
                   onSelectStep(row.key);
                 }}
               >
-                <span className="flex min-w-0 items-center gap-2.5 pr-3 pl-1">
+                <span className="flex min-w-0 items-center gap-2.5 pr-3">
                   <span
                     className={cn(
                       'grid size-7 shrink-0 place-items-center rounded-md border bg-card',
@@ -101,7 +109,7 @@ export function RunTimeline({
                     )}
                   </span>
                 </span>
-                <span className="relative mr-3 h-full sm:mr-6">
+                <span className="relative mr-3 h-full @xl:mr-6">
                   <RunTimelineTrack
                     view={view}
                     segments={row.segments}
