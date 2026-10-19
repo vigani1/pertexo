@@ -133,7 +133,7 @@ that table and review Inputs before publishing. No rows or schemas are imported.
 | Find rows | `query` | `{rows, affected, hasMore}` |
 | Insert row | `values` | One inserted row in `rows` |
 | Update rows | `query`, partial `values` | Number changed in `affected` |
-| Upsert by key | Complete `values`, including the unique key | One inserted/updated row in `rows` |
+| Upsert by key | `values` with the unique key; a new row needs its required columns, an existing row changes only the given columns | One inserted/updated row in `rows` |
 | Delete rows | `query` | Number removed in `affected` |
 
 Each returned row contains `id`, `revision` and `values`. For example Find rows

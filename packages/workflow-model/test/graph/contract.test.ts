@@ -104,6 +104,37 @@ describe('workflow integration usage projection', () => {
     ).toThrow(/requires connection slot primary/u);
   });
 
+  it('records no connection for a disabled step or the loop inside it', () => {
+    const disabledLoop = {
+      ...node('loop'),
+      disabled: true,
+      structured: {
+        kind: 'for_each' as const,
+        maxIterations: 2,
+        maxConcurrency: 1,
+        body: {
+          nodes: [{ ...node('inside'), connectionRefs: {} }],
+          edges: [],
+          settings: {},
+          inputPorts: ['item'],
+          outputPorts: ['result'],
+        },
+      },
+    };
+    expect(
+      workflowIntegrationUsage(
+        {
+          ...EMPTY_WORKFLOW_GRAPH,
+          nodes: [
+            { ...node('off'), disabled: true, connectionRefs: {} },
+            disabledLoop,
+          ],
+        },
+        catalog,
+      ),
+    ).toEqual([]);
+  });
+
   it('does not let projection metadata change compatibility identity', () => {
     const withoutMetadata = {
       definitions: [{ key: 'core.set', version: 1 }],

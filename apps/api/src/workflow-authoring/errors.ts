@@ -233,14 +233,23 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
         ],
       },
     });
-  if (
-    error instanceof WorkflowGraphContractError ||
-    error instanceof z.ZodError
-  )
+  if (error instanceof WorkflowGraphContractError || isGraphSchemaError(error))
     return applicationError('request.invalid', {
       safeDetail: 'The workflow graph is invalid.',
     });
+  if (error instanceof z.ZodError)
+    return applicationError('request.invalid', {
+      safeDetail: 'The workflow request is invalid.',
+    });
   return applicationError('internal.unexpected', { cause: error });
+}
+
+/** Folders, tags, triggers and settings share these routes; only a graph is a graph. */
+function isGraphSchemaError(error: unknown): boolean {
+  return (
+    error instanceof z.ZodError &&
+    error.issues.some((issue) => issue.path[0] === 'graph')
+  );
 }
 
 function validationUnavailable(): ApplicationError {

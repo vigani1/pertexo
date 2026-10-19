@@ -41,7 +41,13 @@ export async function mutateRows(
         'invalid_values',
         'Upsert needs a table with a unique key column.',
       );
-    const values = validateDataTableValues(table.columns, command.values);
+    // Only the key finds the row; other required columns apply on insert.
+    const values = validateDataTableValues(table.columns, command.values, true);
+    if ((values[table.keyColumn] ?? null) === null)
+      throw new DataTableError(
+        'invalid_values',
+        `Column ${table.keyColumn} is required.`,
+      );
     const key = keyValue(table, values);
     old = (
       await client.query<StoredRow>(
@@ -121,19 +127,14 @@ export async function mutateRows(
       [workspaceId, table.id, id, text, keyValue(table, values)],
     );
   } else {
-    const patch = validateDataTableValues(
-      table.columns,
-      command.values,
-      command.operation === 'update',
-    );
+    // An existing row keeps every column the command doesn't name.
+    const patch = validateDataTableValues(table.columns, command.values, true);
     const outputs = [];
     for (const row of old) {
-      const values = validateDataTableValues(
-        table.columns,
-        command.operation === 'upsert'
-          ? patch
-          : { ...(JSON.parse(row.values_json) as DataTableValues), ...patch },
-      );
+      const values = validateDataTableValues(table.columns, {
+        ...(JSON.parse(row.values_json) as DataTableValues),
+        ...patch,
+      });
       const text = canonicalJson(values);
       byteDelta += Buffer.byteLength(text) - Buffer.byteLength(row.values_json);
       await client.query(

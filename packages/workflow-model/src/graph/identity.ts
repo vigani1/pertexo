@@ -7,6 +7,7 @@ import { canonicalJson } from '../json/canonical.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
+  type WorkflowNode,
 } from './contract.js';
 import { parseWorkflowGraphDraft } from './validation/preflight.js';
 import { validateWorkflowGraph } from './validation/index.js';
@@ -88,7 +89,7 @@ export function workflowIntegrationUsage(
     ]),
   );
   const usages = new Map<string, WorkflowIntegrationUsage>();
-  for (const node of workflowNodes(graph)) {
+  for (const node of enabledNodes(graph)) {
     const integration = definitions.get(
       `${node.definition.key}\u0000${String(node.definition.version)}`,
     );
@@ -216,4 +217,14 @@ export function workflowDraftRepresentationTag(input: {
     )
     .digest('base64url');
   return `"draft.${digest}"`;
+}
+
+/** A disabled step, and any loop body inside it, uses no connection. */
+function* enabledNodes(graph: WorkflowGraph): Generator<WorkflowNode> {
+  for (const node of graph.nodes) {
+    if (node.disabled === true) continue;
+    yield node;
+    if (node.structured !== undefined)
+      yield* enabledNodes(node.structured.body);
+  }
 }

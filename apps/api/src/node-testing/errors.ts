@@ -145,12 +145,13 @@ export function mapNodeTestingError(error: unknown): ApplicationError {
       safeDetail: 'The workflow cannot be tested in its current form.',
       details: { issues: error.issues },
     });
-  if (
-    error instanceof WorkflowGraphContractError ||
-    error instanceof z.ZodError
-  )
+  if (error instanceof WorkflowGraphContractError)
     return applicationError('request.invalid', {
       safeDetail: 'The workflow graph is invalid.',
+    });
+  if (error instanceof z.ZodError)
+    return applicationError('request.invalid', {
+      safeDetail: 'The step test request is invalid.',
     });
   return applicationError('internal.unexpected', { cause: error });
 }

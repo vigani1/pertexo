@@ -467,15 +467,19 @@ describe('RFC 9457 problem details filter', () => {
     ],
     [
       '/v1/workspaces/workspace-a/workflows/workflow-a/draft/nodes/node-a/test',
-      'The workflow graph is invalid.',
+      'The step test request is invalid.',
     ],
     [
       '/v1/workspaces/workspace-a/previews/preview-a',
-      'The workflow graph is invalid.',
+      'The step test request is invalid.',
     ],
     [
       '/v1/workspaces/workspace-a/workflows/workflow-a/draft',
-      'The workflow graph is invalid.',
+      'The workflow request is invalid.',
+    ],
+    [
+      '/v1/workspaces/workspace-a/workflows/workflow-a/triggers/trigger-a/schedule/disable',
+      'The workflow request is invalid.',
     ],
     ['/v1/workspaces', 'The request is invalid.'],
     ['/v1/auth/oidc/callback', 'The request is invalid.'],

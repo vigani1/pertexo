@@ -285,9 +285,7 @@ test('published member and public forms start real runs; captured member input c
         .getByRole('button', { name: 'Send response', exact: true })
         .click();
       await expect(
-        responder
-          .getByText('Enter a valid value for this field.', { exact: true })
-          .first(),
+        responder.getByText('This field is required.', { exact: true }).first(),
       ).toBeVisible();
       await responder
         .getByLabel('Message', { exact: true })
