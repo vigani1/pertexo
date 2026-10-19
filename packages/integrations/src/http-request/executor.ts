@@ -175,6 +175,13 @@ async function executeHttpRequest(
   if (connectionId === undefined) throw failedConfiguration();
   const target = new URL(config.url);
   if (target.protocol !== 'https:') throw failedConfiguration();
+  // GET and HEAD only read (RFC 9110 §9.2.1), so a repeat can't cause a side
+  // effect: their failures retry and can follow a failure link instead of
+  // leaving the outcome unknown.
+  const repeatable = config.method === 'GET' || config.method === 'HEAD';
+  const sideEffect = repeatable
+    ? HTTP_SIDE_EFFECT_CLASS.safe
+    : HTTP_SIDE_EFFECT_CLASS.unsafe;
   let body: Uint8Array | undefined;
   let multipartContentType: string | undefined;
   try {
@@ -337,21 +344,17 @@ async function executeHttpRequest(
       if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
         throw failedConfiguration();
       throw new HttpRequestExecutorError(
-        classifySecureHttpError(
-          secureError.error,
-          HTTP_SIDE_EFFECT_CLASS.unsafe,
-          false,
-        ),
-        secureError.possiblyDispatched,
+        classifySecureHttpError(secureError.error, sideEffect, false),
+        !repeatable && secureError.possiblyDispatched,
       );
     }
     const decision = classifySecureHttpResponse(
       response.status,
-      HTTP_SIDE_EFFECT_CLASS.unsafe,
+      sideEffect,
       false,
     );
     if (decision.kind !== 'succeeded')
-      throw new HttpRequestExecutorError(decision, true);
+      throw new HttpRequestExecutorError(decision, !repeatable);
     return httpRequestOutputSchema.parse({
       status: response.status,
       headers: response.headers,
