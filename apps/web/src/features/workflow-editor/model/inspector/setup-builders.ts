@@ -1,5 +1,4 @@
 import { isRecord } from '@pertexo/workflow-model';
-import { parseJsonPath } from '@pertexo/workflow-model';
 import type { FieldParseResult, NodeConfig } from './draft';
 
 // Setup for the steps whose settings are lists (Switch cases, Parallel
@@ -271,10 +270,7 @@ export function addValidateRule(
   const ids = new Set(rules.map((rule) => rule.id));
   let number = rules.length + 1;
   while (ids.has(`rule-${String(number)}`)) number += 1;
-  return [
-    ...rules,
-    { id: `rule-${String(number)}`, path: '$.', required: true },
-  ];
+  return [...rules, { id: `rule-${String(number)}`, path: '', required: true }];
 }
 
 /** One rule with a new type, dropping bounds and values the type can't have. */
@@ -295,14 +291,6 @@ export function withRuleType(
     ...(kept as ValidateRule),
     ...(type === undefined ? {} : { type }),
   };
-}
-
-/** Why a path can't be used, or undefined when it can. */
-export function validatePathProblem(path: string): string | undefined {
-  if (path.trim() === '') return 'Enter the path to check, like $.email.';
-  if (parseJsonPath(path) === undefined)
-    return 'Write the path like $.email or $.items[0].id.';
-  return undefined;
 }
 
 /**

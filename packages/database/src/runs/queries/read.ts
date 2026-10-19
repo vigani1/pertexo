@@ -131,12 +131,12 @@ async function readRunModel(
       completed_at,
       case when control_kind='human_task' then null else coalesce(retry_due_at, resume_at) end as resume_at,
       safe_error_code,
-      case when safe_error_code = 'execution.file_input' then (
+      case when safe_error_code in ('execution.file_input','execution.attempt_invalid') then (
         select attempt.error_summary from app.node_attempts attempt
         where attempt.workspace_id = app.node_runs.workspace_id
           and attempt.node_run_id = app.node_runs.id
           and attempt.id = app.node_runs.current_attempt_id
-          and attempt.safe_error_code = 'execution.file_input'
+          and attempt.safe_error_code = app.node_runs.safe_error_code
       ) end as error_summary,
       failure_handler_entry_key, failure_handler_sink_key, failure_handling,
       reused_source_run_id, reused_source_node_run_id, reused_source_completed_at

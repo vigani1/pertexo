@@ -53,7 +53,7 @@ export const CORE_VALIDATE_PATH_SCHEMA = z
     if (segments === undefined)
       context.addIssue({
         code: 'custom',
-        message: 'Validate path must use the platform JSON path syntax',
+        message: 'Write the path like $.email or $.items[0].id',
       });
     else if (segments.length > CORE_VALIDATE_MAX_PATH_SEGMENTS)
       context.addIssue({

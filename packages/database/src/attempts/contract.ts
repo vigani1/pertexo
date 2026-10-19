@@ -236,8 +236,9 @@ const completionOutcomeSchema = z.discriminatedUnion('status', [
     .refine(
       (outcome) =>
         outcome.errorSummary === undefined ||
-        outcome.safeErrorCode === 'execution.file_input',
-      'Only the sanitized file diagnostic can accompany an executor failure',
+        outcome.safeErrorCode === 'execution.file_input' ||
+        outcome.safeErrorCode === 'execution.attempt_invalid',
+      'Only a sanitized file diagnostic or a step’s own refusal can accompany an executor failure',
     ),
 ]);
 const traceparentSchema = z
