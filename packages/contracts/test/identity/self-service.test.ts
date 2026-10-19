@@ -81,13 +81,17 @@ describe('member removal, self profile and return path contracts', () => {
     ).toBe(false);
   });
 
-  it('accepts only known same-origin return paths', () => {
+  it('accepts only same-origin app paths without a query or fragment', () => {
     for (const path of [
       '/invitations/accept',
       '/account/security',
+      `/w/${workspaceId}`,
       `/w/${workspaceId}/account`,
       `/w/${workspaceId}/team`,
+      `/w/${workspaceId}/settings`,
       `/w/${workspaceId}/settings/api-tokens`,
+      `/w/${workspaceId}/workflows/${workspaceId}/runs`,
+      `/w/${workspaceId}/data-tables/${workspaceId}`,
     ])
       expect(authenticationReturnPathSchema.parse(path)).toBe(path);
     for (const path of [
@@ -99,9 +103,9 @@ describe('member removal, self profile and return path contracts', () => {
       '/invitations/accept#token=secret',
       '/account/security/../../admin',
       '/w/not-a-workspace/account',
-      `/w/${workspaceId}/settings`,
       `/w/${workspaceId}/team?invite=true`,
-      `/w/${workspaceId}/teams`,
+      `/w/${workspaceId}//evil.example`,
+      `/w/${workspaceId}/runs/./x`,
       `/w/${workspaceId}/settings/api-tokens?secret=anything`,
       `/w/${workspaceId}/settings/api-tokens#secret`,
       `/w/${workspaceId}/settings/api-tokens/../../admin`,
