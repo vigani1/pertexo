@@ -9,7 +9,8 @@ export const CORE_FILTER_CONFIG_SCHEMA = z
   .object({
     path: collectionPathSchema.meta({
       title: 'Item path',
-      description: 'The own field to compare; $ selects the whole item.',
+      description:
+        'A field like status or order.total; $ selects the whole item.',
     }),
     operator: z
       .enum([
