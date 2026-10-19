@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 async function formatIn(language: string) {
-  vi.stubGlobal('navigator', { ...navigator, language });
+  vi.spyOn(navigator, 'language', 'get').mockReturnValue(language);
   vi.resetModules();
   return import('@/lib/format/time');
 }
 
 afterEach(() => {
-  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   vi.resetModules();
 });
 
