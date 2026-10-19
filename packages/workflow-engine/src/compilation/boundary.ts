@@ -18,7 +18,7 @@ import {
 } from './graph-boundary.js';
 import {
   exactKeys,
-  normalizeBoundedEngineJson,
+  normalizeBoundedEngineValue,
   parseGlobals,
   record,
 } from './validation.js';
@@ -27,7 +27,8 @@ export function parseBoundary(input: {
   readonly envelope: unknown;
   readonly catalog: unknown;
 }): WorkflowExecutable {
-  const normalizedEnvelope: unknown = normalizeBoundedEngineJson(
+  // Authored order survives, so a step's fields reach it as they were laid out.
+  const normalizedEnvelope: unknown = normalizeBoundedEngineValue(
     input.envelope,
   );
   const envelope = record(normalizedEnvelope, 'executable envelope');

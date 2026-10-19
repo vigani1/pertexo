@@ -1,6 +1,6 @@
 import { lookupWorkspaceVariable } from '../variables/lookup.js';
 import { Worker } from 'node:worker_threads';
-import { canonicalizeJson, inspectJsonValue } from '../json/canonical.js';
+import { inspectJsonValue, normalizeJson } from '../json/canonical.js';
 import {
   EXPRESSION_POLICY,
   JSONATA_EVALUATOR_DIAGNOSTICS,
@@ -407,7 +407,7 @@ export class JsonataEvaluator implements ExpressionEvaluator {
         return;
       }
       try {
-        const value = canonicalizeJson(response.value);
+        const value = normalizeJson(response.value);
         const output = inspectJsonValue(value);
         for (const [limit, actual, maximum] of [
           ['output_bytes', output.bytes, EXPRESSION_POLICY.outputBytes],
