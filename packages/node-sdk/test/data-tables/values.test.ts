@@ -53,9 +53,15 @@ describe('typed data table boundary', () => {
     expect(() => validateDataTableValues(columns, { id: null }, true)).toThrow(
       'required',
     );
+    // Blank text in a required column is missing too, from any writer.
+    expect(() => validateDataTableValues(columns, { id: '  ' }, true)).toThrow(
+      'required',
+    );
   });
   it('converts CSV by the declared column type and escapes formulas for export', () => {
     expect(dataTableCsvValue(required(columns[0]), '00123')).toBe('00123');
+    // An empty cell is no value, so a required column reports it missing.
+    expect(dataTableCsvValue(required(columns[0]), '')).toBeNull();
     expect(dataTableCsvValue(required(columns[1]), '12.5')).toBe(12.5);
     expect(dataTableCsvValue(required(columns[2]), 'false')).toBe(false);
     expect(dataTableCsvValue(required(columns[4]), '{"x":1}')).toEqual({

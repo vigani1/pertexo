@@ -88,6 +88,29 @@ describe('typed CSV import', () => {
       expect(imported).toHaveBeenCalledOnce();
     },
   );
+  it('imports a file that leaves out optional columns, which stay empty', async () => {
+    const { service, prepared } = fixture();
+    expect(
+      await service.importCsv({ ...input, csv: 'amount,id\n3,b-1' }),
+    ).toEqual({ affected: 1 });
+    expect(prepared[0]).toEqual([{ amount: 3, id: 'b-1' }]);
+  });
+  it.each([
+    ['id,id,active\na,1,true', 'The CSV names the column id more than once.'],
+    [
+      'id,amount,colour\na,1,red',
+      'The CSV has a column this table doesn’t: colour. Rename or remove it.',
+    ],
+    ['id,active\na,true', 'The CSV is missing the required column amount.'],
+  ])('names what is wrong with the header: %s', async (csv, message) => {
+    const { service } = fixture();
+    await expect(service.importCsv({ ...input, csv })).rejects.toThrow(message);
+  });
+  it('passes an empty cell on as no value, for the store to require', async () => {
+    const { service, prepared } = fixture();
+    await service.importCsv({ ...input, csv: 'id,amount\n,4' });
+    expect(prepared[0]).toEqual([{ id: null, amount: 4 }]);
+  });
   it('reports the exact bad record and column without partially importing', async () => {
     const { service, imported } = fixture();
     imported.mockRejectedValue(

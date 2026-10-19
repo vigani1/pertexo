@@ -71,7 +71,12 @@ export const dataTableImportedSchema = z
   })
   .strict();
 export const dataTableCsvImportSchema = z
-  .object({ csv: z.string().min(1).max(1_048_576) })
+  .object({
+    csv: z
+      .string()
+      .min(1, 'The CSV is empty. Add a header row and at least one row.')
+      .max(1_048_576, 'CSV imports must fit 1 MB. Split the file.'),
+  })
   .strict();
 export { dataTableQuerySchema, dataTableResultSchema };
 export type DataTablesResponse = z.infer<typeof dataTablesResponseSchema>;
