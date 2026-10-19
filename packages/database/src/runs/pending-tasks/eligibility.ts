@@ -25,7 +25,8 @@ export function pendingTaskBlockedSql(
   actorParameter: string,
   roleParameter: string,
 ): string {
-  return `case when task.status='expired' then 'expired' when task.status <> 'pending' then 'resolved'
+  // A canceled task closed with its run; nobody resolved it.
+  return `case when task.status='expired' then 'expired' when task.status='canceled' then 'run_closed' when task.status <> 'pending' then 'resolved'
     when run.status not in ('queued','running','waiting') or run.cancel_requested_at is not null or run.deadline_at<=clock_timestamp() then 'run_closed'
     when task.expires_at <= clock_timestamp() then 'expired'
     when ${starterExcludedSql(actorParameter)} then 'starter'
