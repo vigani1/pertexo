@@ -7,7 +7,8 @@ import { Wordmark } from './wordmark';
 
 type StageLayout = 'docked' | 'centered';
 
-// Below 900px the Core is a 180px band above the lens and the threads turn
+// Below 900px the Core is a band above the lens, at most 180px and smaller
+// on a short phone so the lens fits without scrolling, and the threads turn
 // off. Above it, `docked` sets the Core in the stage beside the lens: its
 // size is capped by the height so it ends above the product facts, and by
 // the width left of the lens so the two never collide. `centered` keeps the
@@ -44,12 +45,13 @@ const FACTS = [
 ] as const;
 
 function ProductFacts() {
-  // On a short wide screen the lens needs the height; the facts step aside
-  // rather than sit half under the fold.
+  // The facts stand beside the lens on a wide screen. Anywhere narrower, or
+  // short, they would sit under the form and make sign-in scroll, so they
+  // step aside: the page's one job is the lens.
   return (
     <aside
       aria-label="About Pertexo"
-      className="relative z-10 mx-auto w-full max-w-[27.25rem] px-4 pt-4 pb-12 min-[900px]:absolute min-[900px]:bottom-11 min-[900px]:left-11 min-[900px]:mx-0 min-[900px]:w-auto min-[900px]:max-w-[min(35rem,calc(100vw-34.5rem))] min-[900px]:p-0 min-[900px]:[@media(max-height:40.625rem)]:hidden"
+      className="relative z-10 mx-auto hidden w-full max-w-[27.25rem] px-4 pt-4 pb-12 min-[900px]:absolute min-[900px]:block min-[900px]:bottom-11 min-[900px]:left-11 min-[900px]:mx-0 min-[900px]:w-auto min-[900px]:max-w-[min(35rem,calc(100vw-34.5rem))] min-[900px]:p-0 min-[900px]:[@media(max-height:40.625rem)]:hidden"
     >
       <p className="font-display text-[clamp(2.25rem,4.4vw,3.625rem)] leading-[0.92] text-balance [--display-optical-size:96] [--display-width:74%]">
         Workflows that <span className="text-action">finish</span> what they
@@ -107,7 +109,7 @@ export function AuthStage({
         ref={coreRef}
         aria-hidden="true"
         className={cn(
-          'pointer-events-none relative mx-auto size-[11.25rem]',
+          'pointer-events-none relative mx-auto size-[clamp(4.5rem,calc(100dvh-34rem),11.25rem)]',
           CORE_SLOT[layout],
         )}
       >
@@ -116,7 +118,7 @@ export function AuthStage({
       <main
         id="main"
         className={cn(
-          'relative z-10 flex items-start justify-center px-4 pb-10 min-[900px]:pb-16',
+          'relative z-10 flex items-start justify-center px-4 pb-6 min-[900px]:pb-16',
           MAIN_LAYOUT[layout],
         )}
       >
