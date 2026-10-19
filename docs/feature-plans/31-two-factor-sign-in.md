@@ -172,6 +172,25 @@ visible behavior until slice 2 adds the controls.
 
 | Slice | Status | PR |
 | --- | --- | --- |
-| 1 Backend | Approved | — |
+| 1 Backend | Blocked: plugin schema mismatch; owner review needed | — |
 | 2 Web | Approved | — |
 | 3 Support and safety | Approved | — |
+
+### Backend prerequisite found on 2026-10-19
+
+Implementation inspection against main `faef86f13` found that the pinned Better
+Auth 1.7.7 plugin's `dist/plugins/two-factor/schema.mjs` also defines
+`failedVerificationCount` and `lockedUntil`. The Data section above omits both.
+The plugin's `verify-two-factor.mjs` reads and writes these fields for its
+built-in account lockout, enabled by default: ten consecutive failed code
+verifications lock the account for fifteen minutes. Leaving these columns out
+does not implement the plugin's current storage contract.
+
+Recommended adjustment, pending owner review: add
+`failed_verification_count integer not null default 0` and nullable
+`locked_until timestamptz` to `app.auth_two_factors`, map their plugin field
+names, and retain the plugin's default lockout behavior. Cover locking and
+successful-verification counter reset in the backend integration tests. This
+uses the existing plugin, table and migration; it adds no separate lockout
+implementation. No authentication code or migration has been changed. Resume
+slice 1 only after the plan's Data section and this prerequisite are resolved.
