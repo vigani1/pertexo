@@ -37,10 +37,20 @@ export const CORE_FOR_EACH_CONFIG_SCHEMA = z.object({}).strict();
 export const CORE_FOR_EACH_INPUT_SCHEMA = z
   .object({ items: itemsSchema })
   .strict();
+// Steps after the loop also see `results`, added when they read its output:
+// each pass's result in item order, null where a pass skipped the body's
+// last step.
 export const CORE_FOR_EACH_OUTPUT_SCHEMA = z
   .object({
     items: itemsSchema,
     iterationCount: z.number().int().min(0).max(CORE_FOR_EACH_MAX_ITEMS),
+    results: z
+      .array(z.json())
+      .max(CORE_FOR_EACH_MAX_ITEMS)
+      .optional()
+      .describe(
+        "Each pass's result, in item order: what the loop's last step returned, or null where a pass skipped it.",
+      ),
   })
   .strict()
   .superRefine(({ items, iterationCount }, context) => {

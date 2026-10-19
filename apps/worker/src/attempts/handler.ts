@@ -11,7 +11,12 @@ import type {
   WorkflowExecutionReader,
   WorkflowExecutionProjection,
 } from '@pertexo/database/runs';
-import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/execution';
+import {
+  loadAttemptInputs,
+  type ForEachUpstream,
+  type NodeAttemptInputs,
+} from '@pertexo/execution';
+import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import type {
   QueueDelivery,
   QueueHandlerContext,
@@ -56,6 +61,8 @@ export interface PreparedNodeAttempt {
     nodeId: string;
     invocationKey: string;
   }>[];
+  /** The upstream For Each steps whose results the attempt receives. */
+  readonly forEachUpstreams?: readonly ForEachUpstream[];
   execute(
     input: Readonly<
       NodeAttemptInputs & {
@@ -430,14 +437,21 @@ export function createNodeAttemptHandler(
         lease: claimed.lease,
         projection: published,
       });
-      const inputs = await loadAttemptInputs(dependencies.runStore, {
-        lease: claimed.lease,
-        upstreamNodeOutputs: prepared.upstreamNodeOutputs,
-        ...(prepared.sourceFailure === undefined
-          ? {}
-          : { sourceFailure: prepared.sourceFailure }),
-        signal: context.signal,
-      });
+      const inputs = await loadAttemptInputs(
+        dependencies.runStore,
+        {
+          lease: claimed.lease,
+          upstreamNodeOutputs: prepared.upstreamNodeOutputs,
+          ...(prepared.sourceFailure === undefined
+            ? {}
+            : { sourceFailure: prepared.sourceFailure }),
+          signal: context.signal,
+        },
+        {
+          loops: prepared.forEachUpstreams ?? [],
+          maxBytes: NODE_JSON_LIMITS.bytes,
+        },
+      );
       if (inputs.abortRequested) {
         if (inputs.abortReason === undefined)
           throw new NodeAttemptHandlerStateError('control_reason_missing');
@@ -449,6 +463,22 @@ export function createNodeAttemptHandler(
           context.signal,
           hasProviderDispatchUncertainty(claimed.lease, false),
         );
+      }
+      if (inputs.loopResultsTooLarge === true) {
+        // The step's input can't be built: a definite failure of the step,
+        // which its failure link can take.
+        const completed = await dependencies.runStore.complete({
+          lease: claimed.lease,
+          outcome: {
+            status: 'executor_failure',
+            failureKind: 'failed',
+            errorKind: 'configuration',
+            possiblyDispatched: false,
+            safeErrorCode: 'execution.loop_results_too_large',
+          },
+          signal: context.signal,
+        });
+        return completionResult(dependencies, claimed.lease, completed.kind);
       }
       if (prepared.testPinRequired === true) {
         const completed = await dependencies.runStore.complete({

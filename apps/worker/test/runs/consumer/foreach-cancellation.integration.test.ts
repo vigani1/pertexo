@@ -1138,6 +1138,12 @@ describeIntegration('For Each cancellation recovery', () => {
             value: { result: { item, ordinal } },
           })),
         );
+        // The step after the loop also gets each pass's result, in order.
+        const items = [
+          { id: 'alpha', value: 11 },
+          { id: 'beta', value: 22 },
+          { id: 'gamma', value: 33 },
+        ];
         expect(
           facts.find(({ node_id }) => node_id === 'outer-successor')
             ?.output_ref,
@@ -1145,12 +1151,11 @@ describeIntegration('For Each cancellation recovery', () => {
           kind: 'inline',
           value: {
             result: {
-              items: [
-                { id: 'alpha', value: 11 },
-                { id: 'beta', value: 22 },
-                { id: 'gamma', value: 33 },
-              ],
+              items,
               iterationCount: 3,
+              results: items.map((item, ordinal) => ({
+                result: { item, ordinal },
+              })),
             },
           },
         });

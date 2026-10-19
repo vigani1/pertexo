@@ -28,6 +28,7 @@ describe('safe selected failure fields', () => {
     ['configuration', 'execution.variable_missing'],
     ['configuration', 'execution.table_key_conflict'],
     ['configuration', 'execution.file_input'],
+    ['configuration', 'execution.loop_results_too_large'],
     ['configuration', 'code.output_invalid'],
     ['internal', 'code.runtime_error'],
     ['timeout', 'code.timeout'],

@@ -7,5 +7,9 @@ export {
   initialCheckpointFactory,
 } from './runs/initial-checkpoint.js';
 export { loadAttemptInputs } from './attempts/load-inputs.js';
-export type { NodeAttemptInputs } from './attempts/load-inputs.js';
+export type {
+  ForEachUpstream,
+  LoopResultsRequest,
+  NodeAttemptInputs,
+} from './attempts/load-inputs.js';
 export { recoveryPreparation } from './runs/prepare-recovery.js';
