@@ -2,16 +2,32 @@
 
 Publish a workflow with a **Webhook** trigger, open **Triggers**, and create its
 endpoint. Store the address and secret when shown: Pertexo cannot show them
-again. Send a POST with UTF-8 JSON, at most 256 KB. Every accepted event starts
-work on the worker. The default response is 202 with the run ID.
+again. Send a POST whose UTF-8 body is JSON (`application/json` or any
+`+json` type), a form (`application/x-www-form-urlencoded`) or plain text, at
+most 256 KB, or a GET with a query string. A POST may also come without a body.
+Every accepted event starts work on the worker. The default response is 202
+with the run ID.
 
 For a single-server installation, the public address is
 `https://<app host>/hooks/<key>`, on the same host as the editor, for example
 `https://app.example.com/hooks/<key>`. Use the exact address from **Triggers**;
-there is no `/v1` prefix. Caddy sends POST and OPTIONS directly to the API,
+there is no `/v1` prefix. Caddy sends `/hooks/*` directly to the API,
 keeping credential paths out of nginx. Its default log encoder redacts the
 entire URI, including when the API is unavailable. Preserve that protection in
 any customized proxy or access logger.
+
+## What the run receives
+
+The trigger's **Run input** setting decides what the workflow sees:
+
+- **Data sent** (the default): the JSON value, the form fields or the text of a
+  POST, or the query fields of a GET. An empty POST gives `{}`. A field sent
+  more than once becomes a list of its values, in order.
+- **Full request**: `{ method, body, query, headers }`. Header names are
+  lowercase. Pertexo leaves out credentials (`Authorization`,
+  `Proxy-Authorization`, the configured secret header), cookies, its own
+  signature headers, and what proxies add (`Forwarded`, `Via`, `X-Forwarded-*`,
+  `X-Real-IP` and connection headers), so they never reach run history.
 
 ## Choose authentication
 
@@ -19,7 +35,9 @@ any customized proxy or access logger.
 `X-Pertexo-Timestamp` (Unix seconds) and `X-Pertexo-Signature` (`v1=` plus lowercase
 hex HMAC-SHA256 of `<timestamp>.<exact request body>`). Decode the shown signing
 secret from base64url before using it as the HMAC key. Timestamp tolerance is
-five minutes. The Triggers page includes curl and Node examples.
+five minutes. The Triggers page includes curl and Node examples. The signature
+covers only the body, so a Signed endpoint accepts POST only and answers GET
+with 405. Treat the query and headers of a signed request as unverified.
 
 **Secret URL** works when the sender cannot sign or attach a header. The entire
 random endpoint URL is its credential: anyone possessing it can start runs.
@@ -50,7 +68,7 @@ wildcards, credentials or `null` origins. An empty list allows no browser origin
 Server callers without an Origin header keep working.
 
 Use `fetch` with `credentials: 'omit'`. Pertexo answers the endpoint's OPTIONS
-preflight without starting a run. Preflight allows 60 attempts/minute per client
+preflight for GET and POST without starting a run. Preflight allows 60 attempts/minute per client
 address and does not consume the endpoint POST allowance. Allowed request
 headers are Content-Type, Idempotency-Key and the configured secret header. Allowed origins receive an
 explicit Access-Control-Allow-Origin on the accepted receipt or workflow reply;
@@ -61,9 +79,11 @@ or header secret exposes that credential to its visitors.
 ## Retries and limits
 
 Use the same `Idempotency-Key` (1–128 visible ASCII characters, no comma) for the
-same event. It deduplicates exact body bytes for 24 hours. Without one, exact
-body bytes deduplicate for five minutes. Different whitespace counts as
-different bytes. A reused key with changed bytes returns 409. All modes share
+same event. It deduplicates the exact request for 24 hours. Without one, the
+exact request deduplicates for five minutes. For a POST that means its body
+bytes, media type and query string; for a GET, its query string. Headers don't
+count. Different whitespace counts as different bytes. A reused key with a
+changed request returns 409. All modes share
 these rules, the 60-POST-attempt/minute endpoint allowance, workspace capacity and the metadata-only delivery log. Authentication failures
 don't disclose whether an endpoint exists.
 
