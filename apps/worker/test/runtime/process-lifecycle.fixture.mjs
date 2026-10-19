@@ -4,7 +4,7 @@ import process from 'node:process';
 import { clearInterval, setInterval } from 'node:timers';
 
 const mode = process.argv[2];
-if (!['active', 'bootstrap-failure', 'disabled'].includes(mode)) {
+if (!['active', 'bootstrap-failure', 'disabled', 'held-open'].includes(mode)) {
   throw new Error('worker process lifecycle fixture mode is invalid');
 }
 
@@ -66,6 +66,8 @@ const readinessMarker = {
 
 const activeTimer =
   mode === 'active' ? setInterval(() => undefined, 60_000) : undefined;
+// Like a reconnect timer left by a client that couldn't close: nothing clears it.
+if (mode === 'held-open') setInterval(() => undefined, 60_000);
 const activeConsumer = {
   close: () => {
     if (activeTimer !== undefined) clearInterval(activeTimer);
