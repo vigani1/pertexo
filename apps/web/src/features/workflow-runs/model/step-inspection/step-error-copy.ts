@@ -227,6 +227,8 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'execution.variable_missing': 'a workspace variable is missing',
   'preview.variable_missing': 'a workspace variable is missing',
   'execution.attempt_invalid': 'an input couldn’t be worked out',
+  'preview.input_invalid': 'an input couldn’t be used',
+  'preview.config_invalid': 'its setup couldn’t be used',
   'execution.loop_results_too_large': 'loop results too large',
 };
 

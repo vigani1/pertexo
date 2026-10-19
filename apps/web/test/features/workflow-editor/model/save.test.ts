@@ -40,6 +40,51 @@ function snapshot(
 }
 
 describe('workflow editor save coordinator', () => {
+  it('saves again by itself once a rate limit’s wait is over', async () => {
+    vi.useFakeTimers();
+    try {
+      const store = createEditorStore({
+        graph: emptyGraph(),
+        etag: etagA,
+        revision: 1,
+      });
+      const limited = Object.assign(new Error('rate limited'), {
+        status: 429,
+      });
+      const save = vi
+        .fn<(graph: WorkflowGraphContract) => Promise<WorkflowDraftSnapshot>>()
+        .mockRejectedValueOnce(limited)
+        .mockImplementation((graph) =>
+          Promise.resolve(snapshot(graph, etagB, 2)),
+        );
+      const coordinator = createSaveCoordinator(store, {
+        save,
+        reload: vi.fn(),
+        isConflict: () => false,
+        isUncertain: () => false,
+        retryAfterMs: (error) => (error === limited ? 3_000 : undefined),
+        message: () => 'Too many saves in a short time. Saving again shortly.',
+      });
+      const one = addDefinitionNode(
+        emptyGraph(),
+        definition,
+        { x: 0, y: 0 },
+        'a',
+      );
+      store.getState().transact(one);
+      await coordinator.flush();
+      expect(store.getState().saveStatus).toBe('failed');
+      await vi.advanceTimersByTimeAsync(2_900);
+      expect(save).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(200);
+      expect(save).toHaveBeenCalledTimes(2);
+      expect(store.getState().saveStatus).toBe('clean');
+      coordinator.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('keeps edits made during a save dirty and serializes a second save', async () => {
     const store = createEditorStore({
       graph: emptyGraph(),
@@ -62,6 +107,7 @@ describe('workflow editor save coordinator', () => {
       reload: vi.fn(),
       isConflict: () => false,
       isUncertain: () => false,
+      retryAfterMs: () => undefined,
       message: () => 'failed',
     });
     const one = addDefinitionNode(
@@ -105,6 +151,7 @@ describe('workflow editor save coordinator', () => {
       reload: vi.fn(),
       isConflict: () => false,
       isUncertain: () => false,
+      retryAfterMs: () => undefined,
       message: () => 'failed',
     });
 
@@ -145,6 +192,7 @@ describe('workflow editor save coordinator', () => {
       reload: vi.fn().mockResolvedValue(snapshot(remote, etagB, 2)),
       isConflict: () => true,
       isUncertain: () => false,
+      retryAfterMs: () => undefined,
       message: () => 'failed',
     });
     await coordinator.flush();
@@ -211,6 +259,7 @@ describe('workflow editor conflicts and uncertain saves', () => {
       reload: vi.fn().mockResolvedValue(snapshot(remote, etagB, 2)),
       isConflict: () => true,
       isUncertain: () => false,
+      retryAfterMs: () => undefined,
       message: () => 'failed',
     });
 
@@ -253,6 +302,7 @@ describe('workflow editor conflicts and uncertain saves', () => {
       reload: vi.fn().mockResolvedValue(snapshot(local, etagB, 2)),
       isConflict: () => true,
       isUncertain: () => false,
+      retryAfterMs: () => undefined,
       message: () => 'failed',
     });
     await coordinator.flush();
@@ -282,6 +332,7 @@ describe('workflow editor conflicts and uncertain saves', () => {
       reload: vi.fn().mockResolvedValue(snapshot(latest, etagB, 2)),
       isConflict: () => false,
       isUncertain: () => true,
+      retryAfterMs: () => undefined,
       message: () => 'uncertain',
     });
     await coordinator.flush();

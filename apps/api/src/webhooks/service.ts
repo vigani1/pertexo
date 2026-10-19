@@ -11,6 +11,7 @@ import { webhookCredentialSchema } from '@pertexo/contracts';
 import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
+  WebhookTriggerStateError,
   type WebhookDeliveryRecord,
   type WebhookTriggerDatabase,
   type WorkflowTriggerHealth,
@@ -341,6 +342,15 @@ function secretContext(input: WebhookCommandInput, secretVersionId: string) {
   };
 }
 
+const TRIGGER_STATE_COPY = {
+  setting_up:
+    'This webhook is still being set up after publishing. Try again in a few seconds.',
+  provisioned:
+    'This webhook already has an endpoint. Replace its address to get a new one.',
+  unavailable:
+    'This webhook can’t take an endpoint while its trigger is off or failing.',
+} as const;
+
 function mapManagementError(error: unknown): never {
   if (error instanceof InvalidWebhookDeliveryCursorError)
     return throwApplicationError(
@@ -350,6 +360,12 @@ function mapManagementError(error: unknown): never {
     );
   if (error instanceof WebhookTriggerNotFoundError)
     return throwApplicationError(applicationError('resource.not_found'));
+  if (error instanceof WebhookTriggerStateError)
+    return throwApplicationError(
+      applicationError('workspace.conflict', {
+        safeDetail: TRIGGER_STATE_COPY[error.reason],
+      }),
+    );
   if (error instanceof WebhookTriggerIdempotencyConflictError)
     return throwApplicationError(
       applicationError('request.idempotency_conflict', {

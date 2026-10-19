@@ -15,8 +15,13 @@ import {
 } from '@pertexo/integrations';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  NodeConfigValidationError,
+  NodeExecutorFailure,
+  NodeInputValidationError,
+} from '@pertexo/node-sdk/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import {
   createPlatformPreviewNodeInvoker as createUnownedPlatformPreviewNodeInvoker,
@@ -616,6 +621,25 @@ describe('platform preview node invoker', () => {
     [
       Object.assign(new Error('aborted'), { code: 'ABORT_ERR' }),
       { safeErrorCode: 'execution.canceled', status: 'canceled' },
+    ],
+    [
+      new NodeInputValidationError('Use a date like 2026-10-19.'),
+      {
+        safeErrorCode: 'preview.input_invalid',
+        errorSummary: 'Use a date like 2026-10-19.',
+        status: 'failed',
+      },
+    ],
+    [
+      new NodeConfigValidationError(
+        z.object({ path: z.string() }).safeParse({ path: 1 }).error,
+      ),
+      {
+        safeErrorCode: 'preview.config_invalid',
+        errorSummary:
+          'Setting path: Invalid input: expected string, received number',
+        status: 'failed',
+      },
     ],
     [
       new Error('boom'),

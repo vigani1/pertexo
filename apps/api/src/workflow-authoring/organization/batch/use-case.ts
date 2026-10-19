@@ -24,6 +24,7 @@ import {
   workflowOrganizationContext,
   type WorkflowOrganizationInput,
 } from '../authority.js';
+import { parseRequestBody } from '../../../platform/http/index.js';
 
 type Input = WorkflowOrganizationInput &
   Readonly<{ request: unknown; idempotencyKey: string }>;
@@ -37,14 +38,20 @@ export class WorkflowOrganizationBatchesUseCase {
   ) {}
 
   public async bulk(input: Input) {
-    const request = workflowOrganizationBulkRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowOrganizationBulkRequestSchema,
+      input.request,
+    );
     return workflowOrganizationBulkResponseSchema.parse({
       items: await this.execute(input, request),
     });
   }
 
   public async cleanup(input: Input) {
-    const request = workflowTagCleanupDetachRequestSchema.parse(input.request);
+    const request = parseRequestBody(
+      workflowTagCleanupDetachRequestSchema,
+      input.request,
+    );
     const items = await this.execute(input, {
       operation: 'tag_cleanup',
       tagId: request.tagId,

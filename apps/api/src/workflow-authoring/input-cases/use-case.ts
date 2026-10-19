@@ -16,7 +16,10 @@ import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
-import { applicationError } from '../../platform/http/index.js';
+import {
+  applicationError,
+  parseRequestBody,
+} from '../../platform/http/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
 import { WorkflowHeaderError } from '../http/preconditions.js';
 import { decodeInputCaseCursor, encodeInputCaseCursor } from './cursor.js';
@@ -69,8 +72,10 @@ export class WorkflowInputCasesUseCase {
   }
   public async create(input: CommandInput) {
     await this.authorize(input, 'workflow:update');
-    const { expectations, ...request } =
-      workflowInputCaseCreateRequestSchema.parse(input.request);
+    const { expectations, ...request } = parseRequestBody(
+      workflowInputCaseCreateRequestSchema,
+      input.request,
+    );
     return workflowInputCaseCommandResponseSchema.parse(
       await this.persistence.createCase({
         ...this.commandContext(input),
@@ -87,8 +92,10 @@ export class WorkflowInputCasesUseCase {
       input.representationTag,
       input.caseId,
     );
-    const { expectations, ...request } =
-      workflowInputCaseUpdateRequestSchema.parse(input.request);
+    const { expectations, ...request } = parseRequestBody(
+      workflowInputCaseUpdateRequestSchema,
+      input.request,
+    );
     return workflowInputCaseCommandResponseSchema.parse(
       await this.persistence.updateCase({
         ...this.commandContext(input),

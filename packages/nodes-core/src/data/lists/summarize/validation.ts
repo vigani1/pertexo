@@ -11,12 +11,12 @@ export const CORE_SUMMARIZE_CONFIG_SCHEMA = z
     valuePath: collectionPathSchema.meta({
       title: 'Numeric value',
       description:
-        '$ selects numeric items. Numeric strings are not coerced; use Number conversion in an expression first.',
+        'A number field like amount; $ selects numeric items. Numeric strings are not coerced; use Number conversion in an expression first.',
     }),
     groupBy: collectionPathSchema.optional().meta({
       title: 'Group by',
       description:
-        'Optional scalar field. Groups keep first-seen order; leave empty for one summary.',
+        'Optional field like region. Groups keep first-seen order; leave empty for one summary.',
     }),
     missing: z.enum(['error', 'skip']).meta({
       title: 'Missing values',

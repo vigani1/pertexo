@@ -379,6 +379,9 @@ export class GetPreviewRunUseCase {
         ...(preview.codeDiagnostics === undefined
           ? {}
           : { codeDiagnostics: preview.codeDiagnostics }),
+        ...(preview.errorSummary === undefined
+          ? {}
+          : { errorSummary: preview.errorSummary }),
         ...(preview.pinnedSampleId == null
           ? {}
           : { pinnedSampleId: preview.pinnedSampleId }),

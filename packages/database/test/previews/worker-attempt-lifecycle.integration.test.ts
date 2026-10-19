@@ -91,6 +91,49 @@ describe('preview worker attempt lifecycle', () => {
     expect(expired).toBeNull();
   });
 
+  it("keeps a step's own refusal reason with its failed preview", async () => {
+    const claimed = await claimFixture(
+      await acceptFixture(),
+      'worker-refusal-preview',
+    );
+    const input = {
+      delivery: claimed.fixture.delivery,
+      lease: claimed.lease,
+      outcome: {
+        status: 'failed' as const,
+        safeErrorCode: 'preview.input_invalid',
+        errorSummary: 'Use a date like 2026-10-19.',
+      },
+      workerId: claimed.workerId,
+    };
+    expect((await completePreviewAttempt(workerPool, input)).kind).toBe(
+      'committed',
+    );
+    expect((await completePreviewAttempt(workerPool, input)).kind).toBe(
+      'duplicate',
+    );
+    await expect(
+      completePreviewAttempt(workerPool, {
+        ...input,
+        outcome: { ...input.outcome, errorSummary: 'Another reason.' },
+      }),
+    ).rejects.toBeInstanceOf(PreviewAttemptStateError);
+    const preview = await withWorkspaceTransaction(
+      apiPool,
+      workspaceId,
+      (transaction) =>
+        readPreviewRun(transaction, {
+          actorUserId,
+          previewRunId: claimed.fixture.previewRunId,
+        }),
+    );
+    expect(preview).toMatchObject({
+      status: 'failed',
+      safeErrorCode: 'preview.input_invalid',
+      errorSummary: 'Use a date like 2026-10-19.',
+    });
+  });
+
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),

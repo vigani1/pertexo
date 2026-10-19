@@ -11,6 +11,8 @@ export type SaveCoordinatorTransport = Readonly<{
   reload: (signal: AbortSignal) => Promise<WorkflowDraftSnapshot>;
   isConflict: (error: unknown) => boolean;
   isUncertain: (error: unknown) => boolean;
+  /** How long a refusal asks the editor to wait before saving again. */
+  retryAfterMs: (error: unknown) => number | undefined;
   message: (error: unknown) => string;
 }>;
 
@@ -19,6 +21,8 @@ export type SaveCoordinatorTransport = Readonly<{
  * land here too, so a busy session stays well inside the draft-save limit.
  */
 const SAVE_DEBOUNCE_MS = 1_000;
+/** The longest a rate-limited save waits before trying on its own. */
+const MAX_RETRY_WAIT_MS = 60_000;
 
 export type SaveCoordinator = Readonly<{
   schedule: () => void;
@@ -143,6 +147,15 @@ export function createSaveCoordinator(
         await reconcileUncertain(snapshot, error, request.signal);
       } else {
         store.getState().reportFailure(transport.message(error), false);
+        // A rate limit says when to come back, so saving resumes by itself.
+        const wait = transport.retryAfterMs(error);
+        if (wait !== undefined) {
+          cancelTimer();
+          timer = window.setTimeout(
+            () => void flush(),
+            Math.min(Math.max(wait, debounceMs), MAX_RETRY_WAIT_MS),
+          );
+        }
       }
     } finally {
       if (activeRequest === request) activeRequest = undefined;

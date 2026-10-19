@@ -100,6 +100,7 @@ it('renames populated mail without changing row, grant, index or referenced rela
       '0035_workflow_promotions.sql',
       '0036_workflow_collaboration.sql',
       '0037_keep_field_order.sql',
+      '0038_step_refusal_reasons.sql',
     ]);
     expect(await catalog('app.system_mail_deliveries')).toEqual(before);
     expect(

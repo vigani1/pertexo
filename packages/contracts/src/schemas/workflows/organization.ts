@@ -23,11 +23,13 @@ export const workflowOrganizationRevisionSchema = z
   .max(Number.MAX_SAFE_INTEGER);
 export const workflowTagRevisionSchema =
   workflowOrganizationRevisionSchema.clone();
+const TAG_KEY_RULE =
+  'Use 1–32 letters, numbers and single hyphens, like billing or high-priority.';
 export const workflowTagKeySchema = z
   .string()
-  .min(1)
-  .max(WORKFLOW_ORGANIZATION_LIMITS.tagKeyBytes)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$(?![\s\S])/u);
+  .min(1, TAG_KEY_RULE)
+  .max(WORKFLOW_ORGANIZATION_LIMITS.tagKeyBytes, TAG_KEY_RULE)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$(?![\s\S])/u, TAG_KEY_RULE);
 export const workflowTagKeyInputSchema = z
   .string()
   .overwrite(normalizeWorkflowTagKey)

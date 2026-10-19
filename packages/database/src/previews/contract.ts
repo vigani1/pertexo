@@ -76,6 +76,8 @@ export type PreviewTerminalOutcome =
     }>
   | Readonly<{
       safeErrorCode: z.output<typeof safeErrorCodeSchema>;
+      /** The step's own reason, when it refused its input or setup. */
+      errorSummary?: string;
       status: Exclude<
         PreviewStatus,
         | typeof PREVIEW_STATUS.queued

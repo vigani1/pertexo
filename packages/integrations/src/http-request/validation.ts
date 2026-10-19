@@ -190,6 +190,11 @@ export const httpRequestConfigSchema = z
     maxResponseBytes: z.number().int().min(1).max(MAX_RESPONSE_BYTES),
     inlineResponseBytes: z.number().int().min(1).max(MAX_INLINE_RESPONSE_BYTES),
     multipart: httpMultipartConfigSchema.optional(),
+    returnErrorResponses: z.boolean().optional().meta({
+      title: 'Return error responses',
+      description:
+        'Pass a 3xx, 4xx or 5xx response on as the step’s output instead of failing, so a Condition can check its status.',
+    }),
   })
   .strict()
   .superRefine((config, context) => {
@@ -301,7 +306,8 @@ const artifactBodySchema = nodeArtifactReferenceSchema
 
 export const httpRequestOutputSchema = z
   .object({
-    status: z.number().int().min(200).max(299),
+    // Below 300 unless the step returns error responses.
+    status: z.number().int().min(200).max(599),
     headers: z.record(z.string().max(128), z.string().max(2_048)),
     body: z.discriminatedUnion('kind', [inlineBodySchema, artifactBodySchema]),
     finalOrigin: z.string().max(MAX_URL_BYTES),
