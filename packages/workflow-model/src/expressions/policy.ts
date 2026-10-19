@@ -65,6 +65,8 @@ export interface ExpressionContext {
   readonly variables?: WorkspaceVariableValues;
   readonly runInput: JsonValue;
   readonly nodeOutputs: Readonly<Record<string, JsonValue>>;
+  /** Inside a For each body, the nearest iteration's `item` and `ordinal`. */
+  readonly loop?: Readonly<Record<string, JsonValue>>;
 }
 
 export interface ExpressionRequest {
@@ -344,10 +346,15 @@ export function projectExpressionContext(
     if (variablesDescriptor !== undefined && !('value' in variablesDescriptor))
       throw new TypeError();
     const variablesValue: unknown = variablesDescriptor?.value;
+    const loopDescriptor = Object.getOwnPropertyDescriptor(value, 'loop');
+    if (loopDescriptor !== undefined && !('value' in loopDescriptor))
+      throw new TypeError();
+    const loopValue: unknown = loopDescriptor?.value;
     const canonical = normalizeJson({
       runInput: runInputValue,
       nodeOutputs: nodeOutputsValue,
       ...(variablesValue === undefined ? {} : { variables: variablesValue }),
+      ...(loopValue === undefined ? {} : { loop: loopValue }),
     });
     if (!isJsonObject(canonical)) throw new TypeError();
     const variables =
@@ -356,16 +363,19 @@ export function projectExpressionContext(
         : workspaceVariableValuesSchema.parse(canonical.variables);
     const runInput = canonical.runInput;
     const nodeOutputs = canonical.nodeOutputs;
+    const loop = canonical.loop;
     if (
       runInput === undefined ||
       nodeOutputs === undefined ||
-      !isJsonObject(nodeOutputs)
+      !isJsonObject(nodeOutputs) ||
+      (loop !== undefined && !isJsonObject(loop))
     )
       throw new TypeError();
     return {
       runInput,
       nodeOutputs,
       ...(variables === undefined ? {} : { variables }),
+      ...(loop === undefined ? {} : { loop }),
     };
   } catch {
     throw new TypeError('invalid expression context');

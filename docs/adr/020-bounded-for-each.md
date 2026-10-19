@@ -194,3 +194,11 @@ Results larger than the node JSON byte limit are not read. The step fails as a
 configuration failure with `execution.loop_results_too_large`, which a failure
 link can take, and the person is told to return less from the loop's last step.
 
+
+## Expressions read the current item — 2026-10-19
+
+Expressions inside a body can read the nearest iteration's ports as
+`loop.item` and `loop.ordinal`, as n8n's `$json` and Make's iterator bundle
+allow, so a body step no longer needs a Set step to copy the item first. The
+values are the same ones `structured_input` mappings resolve. `runInput` still
+means the outer run input, and outside a body `loop` is absent.
