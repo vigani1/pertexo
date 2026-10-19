@@ -100,6 +100,7 @@ function WorkflowImportSession({
                 userId={userId}
                 template={draft.template}
                 manifest={draft.manifest}
+                optionalSlots={draft.optionalSlots}
                 setupValues={draft.setupValues}
                 name={draft.name}
                 fileGeneration={draft.fileGeneration}
@@ -123,6 +124,7 @@ function WorkflowImportSession({
                 manifest={draft.manifest}
                 preview={draft.preview}
                 bindings={draft.bindings}
+                optionalSlots={draft.optionalSlots}
                 disabled={draft.locked}
                 onBindingsChange={draft.changeBindings}
               />

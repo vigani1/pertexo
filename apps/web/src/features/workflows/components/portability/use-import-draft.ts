@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
   WorkflowImportPreviewResponse,
@@ -17,7 +18,12 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../../model/rename';
-import { readPortableWorkflowFile } from '../../model/portability';
+import {
+  connectionSlotKey,
+  optionalConnectionSlots,
+  readPortableWorkflowFile,
+} from '../../model/portability';
+import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import { previewWorkflowImport } from '../../data/portability/api';
 import { usePortabilityLifetime } from './use-lifetime';
 import { useWorkflowImportCommand } from '../../data/portability/mutations';
@@ -84,12 +90,22 @@ export function useImportDraft(
     template === undefined
       ? manifest
       : configureTemplate(template, setupValues);
+  const catalog = useQuery({
+    ...authoringCatalogQueryOptions(apiClient, userId),
+    enabled: manifest !== undefined,
+  });
+  const optionalSlots =
+    manifest === undefined || catalog.data === undefined
+      ? new Set<string>()
+      : optionalConnectionSlots(manifest, catalog.data.definitions.items);
   const complete =
-    manifest?.connectionSlots.every((slot) =>
-      bindings.some(
-        (binding) =>
-          binding.nodeId === slot.nodeId && binding.slot === slot.slot,
-      ),
+    manifest?.connectionSlots.every(
+      (slot) =>
+        optionalSlots.has(connectionSlotKey(slot.nodeId, slot.slot)) ||
+        bindings.some(
+          (binding) =>
+            binding.nodeId === slot.nodeId && binding.slot === slot.slot,
+        ),
     ) ?? false;
   const readyPreview =
     preview?.compatible === true &&
@@ -168,10 +184,12 @@ export function useImportDraft(
     try {
       const parsed = await readPortableWorkflowFile(file);
       if (request.current() && epoch === intent.current) setManifest(parsed);
-    } catch {
+    } catch (failure) {
       if (request.current() && epoch === intent.current)
         setError(
-          'Choose a valid portable workflow JSON file no larger than 2 MiB. Duplicate keys, excessive nesting and unsupported content are rejected.',
+          failure instanceof Error
+            ? failure.message
+            : 'This file can’t be read. Choose a workflow file exported from Pertexo.',
         );
     } finally {
       request.done();
@@ -284,6 +302,7 @@ export function useImportDraft(
     denied: lifetime.denied,
     locked,
     complete,
+    optionalSlots,
     commandState: command.state,
     canImport:
       readyPreview !== undefined && workflowNameError(name) === undefined,

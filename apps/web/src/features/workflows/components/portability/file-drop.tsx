@@ -1,3 +1,4 @@
+import { connectionSlotKey } from '../../model/portability';
 import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 import { useId, useState, type DragEvent, type Ref } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -16,6 +17,7 @@ export function WorkflowFileDrop({
   locked,
   reading,
   manifest,
+  optionalSlots,
   onChoose,
 }: Readonly<{
   inputRef: Ref<HTMLInputElement>;
@@ -24,6 +26,7 @@ export function WorkflowFileDrop({
   reading: boolean;
   /** The file's workflow once read; a chosen example doesn't count. */
   manifest: WorkflowPortableManifest | undefined;
+  optionalSlots: ReadonlySet<string>;
   onChoose: (file: File | undefined) => void;
 }>) {
   const id = useId();
@@ -45,7 +48,11 @@ export function WorkflowFileDrop({
 
   const read = manifest !== undefined && file !== undefined;
   const steps = manifest?.graph.nodes.length ?? 0;
-  const slots = manifest?.connectionSlots.length ?? 0;
+  // Steps that run without a connection don't count as needing one.
+  const slots =
+    manifest?.connectionSlots.filter(
+      (slot) => !optionalSlots.has(connectionSlotKey(slot.nodeId, slot.slot)),
+    ).length ?? 0;
   return (
     <div className="flex flex-col gap-1.5">
       <div

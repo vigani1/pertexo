@@ -24,6 +24,8 @@ export type PortableConnectionSlotPolicy = Readonly<{
   slot: string;
   providerKey: string;
   authType: string;
+  /** A step that runs without this connection, such as HTTP to a public API. */
+  optional?: boolean;
 }>;
 
 export class WorkflowPortabilityError extends Error {
@@ -104,6 +106,8 @@ function facts(graph: WorkflowGraph, catalog: WorkflowPortabilityCatalog) {
     { key: string; version: number; configVersion: number }
   >();
   const slots: PortableConnectionSlot[] = [];
+  // Only these must be bound on import; the file format lists every slot.
+  const required = new Set<string>();
   for (const node of nodes(graph)) {
     const identity = `${node.definition.key}\u0000${String(node.definition.version)}`;
     const definition = definitions.get(identity);
@@ -128,8 +132,16 @@ function facts(graph: WorkflowGraph, catalog: WorkflowPortabilityCatalog) {
       ...node.definition,
       configVersion: node.configVersion,
     });
-    for (const slot of definition.slots)
-      slots.push({ nodeId: node.id, ...slot });
+    for (const slot of definition.slots) {
+      slots.push({
+        nodeId: node.id,
+        slot: slot.slot,
+        providerKey: slot.providerKey,
+        authType: slot.authType,
+      });
+      if (slot.optional !== true)
+        required.add(JSON.stringify([node.id, slot.slot]));
+    }
   }
   const compare = (left: string, right: string) =>
     left < right ? -1 : left > right ? 1 : 0;
@@ -143,7 +155,7 @@ function facts(graph: WorkflowGraph, catalog: WorkflowPortabilityCatalog) {
   );
   if (slots.length > WORKFLOW_PORTABILITY_LIMITS.connectionSlots)
     throw new WorkflowPortabilityError('connection_slot_limit');
-  return { definitions: selected, slots };
+  return { definitions: selected, slots, required };
 }
 
 function replaceConnections(
@@ -225,7 +237,7 @@ export function inspectWorkflowPortableManifest(
     connectionRefs.set(binding.nodeId, references);
   }
   const issues: PortableIssue[] = [];
-  if (seen.size !== expected.size)
+  if ([...selected.required].some((token) => !seen.has(token)))
     issues.push({
       code: 'connection_binding_required',
       path: '$.bindings',
