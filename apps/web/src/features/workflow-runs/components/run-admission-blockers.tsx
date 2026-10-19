@@ -1,30 +1,37 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { formatDateTime } from '@/lib/format/time';
+import { admissionBlockerWords } from '../model/presentation/admission';
 
-const reasons = {
-  workspace_capacity: 'workspace capacity',
-  workflow_capacity: 'workflow concurrency capacity',
-  workflow_order: 'an earlier accepted run to start',
-} as const;
-
-/** Current server projection, not a promise of start time or a new run status. */
+/**
+ * Current server projection, not a promise of start time or a new run
+ * status. In a list, `compact` keeps a row to the reason; the list says the
+ * rest once.
+ */
 export function RunAdmissionBlockers({
   run,
+  compact = false,
   className,
-}: Readonly<{ run: WorkflowRunReadSummary; className?: string }>) {
+}: Readonly<{
+  run: WorkflowRunReadSummary;
+  compact?: boolean;
+  className?: string;
+}>) {
   if (
     run.status !== 'queued' ||
     run.admissionBlockers === undefined ||
     run.admissionBlockers.reasons.length === 0
   )
     return null;
+  if (compact)
+    return (
+      <p className={className}>
+        Waiting for {admissionBlockerWords(run.admissionBlockers.reasons)}
+      </p>
+    );
   return (
     <p className={className}>
-      Waiting for{' '}
-      {run.admissionBlockers.reasons
-        .map((reason) => reasons[reason])
-        .join(', ')}
-      . Observed{' '}
+      Waiting for {admissionBlockerWords(run.admissionBlockers.reasons)}.
+      Observed{' '}
       <time
         dateTime={run.admissionBlockers.asOf}
         title={run.admissionBlockers.asOf}
