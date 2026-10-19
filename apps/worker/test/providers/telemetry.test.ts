@@ -114,6 +114,14 @@ describe('provider telemetry', () => {
         status_class: '2xx',
       },
     });
+    // A returned error response keeps its class.
+    await createHttpProviderTelemetry(recorded).measure(() =>
+      Promise.resolve({ status: 404, body: { kind: 'inline' } } as never),
+    );
+    expect(recorded.spans[1]?.attributes).toMatchObject({
+      outcome: 'succeeded',
+      status_class: '4xx',
+    });
   });
 
   it('classifies a provider failure and counts rate limits', async () => {
