@@ -393,7 +393,7 @@ async function verifyFailedStepRecovery(
     const proof = await database.query(
       `select
       recovered.workflow_version_id=source.workflow_version_id same_version,
-      recovered.input_ref=source.input_ref same_input,
+      recovered.input_ref::jsonb=source.input_ref::jsonb same_input,
       (select count(*)::int from app.node_runs node where node.workspace_id=recovered.workspace_id and node.workflow_run_id=recovered.id
         and node.reused_source_run_id=source.id and node.current_attempt_id is null) copies,
       (select count(*)::int from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id where node.workspace_id=recovered.workspace_id and node.workflow_run_id=source.id) source_attempts,
