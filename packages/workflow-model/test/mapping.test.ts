@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
+import { JsonataEvaluator } from '../src/expressions/evaluator.js';
 import type { ExpressionEvaluator } from '../src/expressions/policy.js';
 import { resolveJsonPath } from '../src/json/path.js';
 import { resolveValueSource } from '../src/mapping/resolve.js';
+
+const evaluators: JsonataEvaluator[] = [];
+afterAll(async () => {
+  await Promise.all(evaluators.map(async (e) => e.shutdown()));
+});
 
 describe('value sources', () => {
   it('resolves deterministic JSON paths and distinguishes missing from null', () => {
@@ -90,6 +96,36 @@ describe('value sources', () => {
       ),
     ).toEqual({ kind: 'missing' });
   });
+  it('lets an expression in a For each body read the current item', async () => {
+    const evaluator = new JsonataEvaluator();
+    evaluators.push(evaluator);
+    const expression = (text: string) =>
+      ({ kind: 'expression', language: 'jsonata', expression: text }) as const;
+    const body = {
+      runInput: { currency: 'EUR' },
+      nodeOutputs: {},
+      structuredInputs: { item: { price: 21, sku: 'A-1' }, ordinal: 3 },
+    };
+    await expect(
+      resolveValueSource(expression('loop.item.price * 2'), body, evaluator),
+    ).resolves.toEqual({ kind: 'value', value: 42 });
+    await expect(
+      resolveValueSource(
+        expression('loop.item.sku & "/" & $string(loop.ordinal + 1)'),
+        body,
+        evaluator,
+      ),
+    ).resolves.toEqual({ kind: 'value', value: 'A-1/4' });
+    // Outside a loop there is no current item.
+    await expect(
+      resolveValueSource(
+        expression('loop.item'),
+        { runInput: null, nodeOutputs: {} },
+        evaluator,
+      ),
+    ).resolves.toEqual({ kind: 'missing' });
+  });
+
   it('propagates the execution cancellation signal through expression mapping', async () => {
     const controller = new AbortController();
     let received: AbortSignal | undefined;

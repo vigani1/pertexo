@@ -446,6 +446,17 @@ describe('working inside a For each body', { timeout: 30_000 }, () => {
         item: { kind: 'structured_input', port: 'item', path: '$' },
       });
     });
+    // An expression in the body can read the item too.
+    await event.click(screen.getByRole('button', { name: 'Expression' }));
+    const expression = screen.getByLabelText('Expression');
+    expect(expression).toHaveAttribute(
+      'placeholder',
+      'loop.item.amount > 5000',
+    );
+    expect(expression).toHaveAccessibleDescription(
+      /loop\.item \(the item this pass runs for\), loop\.ordinal, runInput/u,
+    );
+    await event.click(screen.getByRole('button', { name: 'Loop item' }));
 
     await event.click(screen.getByRole('button', { name: 'Link a step' }));
     await event.click(screen.getByLabelText('Link from step'));
