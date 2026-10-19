@@ -60,7 +60,9 @@ export function DateInput({
         </PopoverTrigger>
         <PopoverContent align="end" className="w-auto p-3">
           <Calendar
-            value={dateOf(value.trim()) === undefined ? undefined : value.trim()}
+            value={
+              dateOf(value.trim()) === undefined ? undefined : value.trim()
+            }
             onSelect={(day) => {
               onChange(day);
               setOpen(false);
