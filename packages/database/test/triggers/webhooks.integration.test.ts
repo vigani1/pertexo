@@ -2631,6 +2631,25 @@ describe('generic webhook database seam', () => {
       expect(stored.rows[0]?.input_ref.value).toEqual(expected);
     },
   );
+  it('says a webhook that already has an endpoint can’t take another', async () => {
+    const { verification } = await createWebhookScenario();
+    await expect(
+      webhook.provision({
+        workspaceId,
+        workflowId: verification.workflowId,
+        actorId,
+        triggerId: verification.triggerId,
+        endpointId: randomUUID(),
+        endpointKeyHash: hash(`endpoint-${randomUUID()}`),
+        secret: secret(),
+        idempotencyKey: randomUUID(),
+        requestHash: hash(randomUUID()),
+      }),
+    ).rejects.toMatchObject({
+      name: 'WebhookTriggerStateError',
+      reason: 'provisioned',
+    });
+  });
   it.each(['deduplicate', 'debounce', 'throttle'] as const)(
     'coordinates verified %s deliveries before ordinary run admission',
     async (mode) => {
