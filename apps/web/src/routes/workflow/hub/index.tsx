@@ -47,7 +47,7 @@ export function WorkflowHubRoute() {
       }}
     >
       <div className="relative min-h-svh bg-background">
-        <div className="ambient fixed" aria-hidden="true" />
+        <div className="ambient ambient-still fixed" aria-hidden="true" />
         <main id="main" className="relative min-h-svh">
           <Outlet />
         </main>
