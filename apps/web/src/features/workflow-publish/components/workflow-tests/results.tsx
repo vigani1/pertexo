@@ -89,12 +89,12 @@ function TestOutput(props: Readonly<TestOutputProps>) {
     </Disclosure>
   );
 }
-type TestOutputProps = {
+interface TestOutputProps {
   tests: WorkflowTests;
   runId: string;
   nodeRunId: string;
   status: string;
-};
+}
 /** Read only once the fold opens: an output can be large. */
 function TestOutputValue({
   tests,
