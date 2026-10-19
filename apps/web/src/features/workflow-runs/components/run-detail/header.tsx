@@ -7,7 +7,7 @@ import type {
 import { Link } from '@tanstack/react-router';
 import { RefreshCwIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { CoreOrb } from '@/components/patterns/core/orb';
+import { CORE_IDLE_ENERGY, CoreOrb } from '@/components/patterns/core/orb';
 import {
   PageHeaderMeta,
   PageHeaderTitle,
@@ -224,8 +224,9 @@ export function RunHeader({
       <div className="size-16 shrink-0 md:size-28">
         <CoreOrb
           state={runCoreState(run.status)}
-          energy={run.status === 'running' ? 1.1 : 0.6}
-          still={!active}
+          energy={
+            run.status === 'running' ? 1.1 : active ? 0.6 : CORE_IDLE_ENERGY
+          }
           className="size-full"
         />
       </div>
