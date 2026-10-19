@@ -131,6 +131,7 @@ const scenario = z
     'promotion',
     'collaboration',
     'federation',
+    'two-factor',
     'organization-oidc',
     'notifications',
     'transforms',
@@ -1151,8 +1152,10 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'federation'
-              ? 'editor/federation/sign-in.spec.ts'
+            scenario === 'federation' || scenario === 'two-factor'
+              ? scenario === 'two-factor'
+                ? 'authentication/two-factor.spec.ts'
+                : 'editor/federation/sign-in.spec.ts'
               : scenario === 'organization-oidc'
                 ? 'editor/federation/organization.spec.ts'
                 : scenario === 'collaboration'
@@ -1250,6 +1253,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       ).toBe(0);
       return;
     }
+    if (scenario === 'two-factor') return;
     if (scenario === 'federation') {
       const providers = await api
         .database()

@@ -1,6 +1,6 @@
 # F31 — Two-factor sign-in
 
-Status: approved by the owner 2026-10-19; ready for implementation.
+Status: backend merged; web implemented; support and safety next. Owner-approved 2026-10-19.
 Parent: [product roadmap](../product-roadmap.md). Size: **M**.
 
 ## Outcome
@@ -60,7 +60,7 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
       required "I've saved these codes" checkbox before Done.
 
    Draw the QR code in the browser with one small library that renders SVG
-   and has no dependencies (for example `uqr`). The `otpauth://` URI holds the
+   and has no dependencies (`uqr` 0.1.3). The `otpauth://` URI holds the
    secret, so it must never be sent to an outside QR service.
 4. **Signing in.** After a correct password, the sign-in page shows "Enter the
    6-digit code from your authenticator app", with a link "Use a recovery code
@@ -158,7 +158,7 @@ visible behavior until slice 2 adds the controls.
 
 ## Acceptance
 
-- [ ] A person turns two-factor on with a real authenticator app, signs out,
+- [x] A person turns two-factor on with a real authenticator app, signs out,
       and can't sign in without a code.
 - [x] A recovery code works once and is then refused; the remaining count
       drops.
@@ -167,8 +167,8 @@ visible behavior until slice 2 adds the controls.
 - [x] Turning off and getting new codes both need the password and a fresh
       session.
 - [x] SSO and social sign-in never ask for a code.
-- [ ] The secret and codes never appear in logs, URLs or error messages.
-- [ ] The phone layout works, and the code field opens the numeric keyboard
+- [x] The secret and codes never appear in logs, URLs or error messages.
+- [x] The phone layout works, and the code field opens the numeric keyboard
       on iPhone.
 - [ ] The guide is published and the roadmap row is updated.
 
@@ -185,8 +185,8 @@ visible behavior until slice 2 adds the controls.
 
 | Slice | Status | PR |
 | --- | --- | --- |
-| 1 Backend | Implemented; awaiting PR review | [#422](https://github.com/vigani1/pertexo/pull/422) |
-| 2 Web | Approved | — |
+| 1 Backend | Merged | [#425](https://github.com/vigani1/pertexo/pull/425) |
+| 2 Web | Implemented; verified in component, mocked and live browser tests | This PR |
 | 3 Support and safety | Approved | — |
 
 ### Backend alignment (owner-approved 2026-10-19)

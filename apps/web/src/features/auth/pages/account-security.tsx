@@ -1,3 +1,4 @@
+import { AccountTwoFactorSection } from '../components/two-factor/section';
 import type { UserProfileResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -5,6 +6,7 @@ import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
+import { isApiError } from '@/lib/api/error';
 import { accountSecurityQueryOptions } from '../data/account-security.queries';
 import { AccountEmailSection } from '../components/account/email-section';
 import { AccountFactsSection } from '../components/account/facts-section';
@@ -58,6 +60,11 @@ export function AccountSecurityPage({
     />
   ) : null;
 
+  const denied =
+    isApiError(security.error) &&
+    (security.error.status === 401 || security.error.status === 403);
+  const snapshot = denied ? undefined : security.data;
+
   return (
     <div className="flex w-full max-w-5xl flex-col gap-6">
       <PageHeader>
@@ -90,21 +97,36 @@ export function AccountSecurityPage({
           {linkOutcome === undefined ? null : (
             <LinkOutcomeLine outcome={linkOutcome} />
           )}
-          {security.isPending ? (
-            <SkeletonRows label="Loading your sign-in methods" rows={2} />
-          ) : security.isError ? (
-            securityFailure
+          {snapshot === undefined ? (
+            security.isPending ? (
+              <SkeletonRows label="Loading your sign-in methods" rows={2} />
+            ) : (
+              securityFailure
+            )
           ) : (
             <>
+              {securityFailure}
               <AccountMethodsSection
                 apiClient={apiClient}
                 userId={user.id}
-                security={security.data}
+                security={snapshot}
               />
               <AccountPasswordSection
                 apiClient={apiClient}
                 userId={user.id}
-                security={security.data}
+                security={snapshot}
+              />
+              <AccountTwoFactorSection
+                readState={
+                  security.isFetching
+                    ? 'refreshing'
+                    : security.isError
+                      ? 'unavailable'
+                      : 'ready'
+                }
+                apiClient={apiClient}
+                userId={user.id}
+                security={snapshot}
               />
             </>
           )}
