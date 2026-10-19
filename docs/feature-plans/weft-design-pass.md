@@ -75,9 +75,9 @@ result at desktop and phone width, then rebase-merge after CI passes.
   client-side starters are gone: like n8n and Zapier, Pertexo keeps one
   library of ready-made workflows. The curated examples sit under the name in
   New workflow and as cards on an empty list, and each opens its setup in a
-  "Start from an example" dialog; Import takes files. The step palette should
-  show everyday actions before the four data table steps, which could share one
-  bundle once a bundle can carry its own tile.
+  "Start from an example" dialog; Import takes files. In the step palette the
+  four data table writes share one "Data table rows" row with the table tile,
+  after the everyday actions; a bundle names its own tile and place.
 - [x] 6. **Plain words on the newer screens.** Data tables, notifications,
   usage, single sign-on and promotion open with a sentence or two about what the
   page is for; variables keep their limits in a disclosure. Requests and Inbox

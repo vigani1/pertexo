@@ -1,16 +1,14 @@
-import { ChevronDownIcon, WaypointsIcon } from 'lucide-react';
+import { ChevronDownIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { StepTile } from '@/features/catalog/presentation.public';
 import { cn } from '@/lib/utils';
 import type { StepChoice, StepChoiceBundle } from '../../model/step-catalog';
 import { AddStepItem, StepRowText, stepRowClass } from './item';
 
-const bundleTile = { family: 'logic', icon: WaypointsIcon } as const;
-
 /**
- * "Switch · Parallel · Merge": one row that opens in place to its steps, so
- * the list stays short while each step is one more press away. A search
- * lists them on their own instead.
+ * Related steps, such as "Switch · Parallel · Merge" or the data table
+ * writes: one row that opens in place to its steps, so the list stays short
+ * while each step is one more press away. A search lists them on their own.
  */
 export function AddStepBundle({
   bundle,
@@ -36,7 +34,7 @@ export function AddStepBundle({
           else if (event.key === 'ArrowLeft' && open) setOpen(false);
         }}
       >
-        <StepTile step={bundleTile} size="sm" />
+        <StepTile step={bundle.tile} size="sm" />
         <StepRowText name={bundle.name} description={bundle.description} />
         <ChevronDownIcon
           aria-hidden="true"

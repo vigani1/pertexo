@@ -365,6 +365,44 @@ describe('add-step choices', () => {
     expect(alone?.entries.map((entry) => entry.kind)).toEqual(['step']);
   });
 
+  it('folds the data table writes into one row after the everyday actions', () => {
+    const action = (key: string) =>
+      ({
+        ...definition,
+        definition: { key, version: 1 },
+        family: 'action',
+      }) satisfies NodeDefinitionCatalogItem;
+    const catalog = [
+      action('core.table_delete'),
+      action('core.table_insert'),
+      action('http.request'),
+      action('core.table_update'),
+      action('core.table_upsert'),
+      action('email.send_notification'),
+    ];
+    const [browsing] = groupStepChoices(catalog, '');
+    expect(
+      browsing?.entries.map((entry) =>
+        entry.kind === 'step' ? entry.choice.step.name : entry.bundle.name,
+      ),
+    ).toEqual(['HTTP request', 'Send email', 'Data table rows']);
+    const bundle = browsing?.entries.at(-1);
+    expect(
+      bundle?.kind === 'bundle'
+        ? bundle.bundle.choices.map((choice) => choice.step.name)
+        : [],
+    ).toEqual(['Insert row', 'Update rows', 'Upsert by key', 'Delete rows']);
+    // The row takes its members' table tile.
+    expect(bundle?.kind === 'bundle' ? bundle.bundle.tile.family : '').toBe(
+      'action',
+    );
+
+    const [searching] = groupStepChoices(catalog, 'upsert');
+    expect(searching?.entries).toEqual([
+      { kind: 'step', choice: searching?.choices[0] },
+    ]);
+  });
+
   it('lists the step whose name matches first, so Enter adds it', () => {
     const logic = (key: string) =>
       ({
