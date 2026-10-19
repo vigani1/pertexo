@@ -2,7 +2,7 @@ import { useState, type Ref } from 'react';
 import { CalendarIcon } from 'lucide-react';
 import { Button } from './button';
 import { Calendar } from './calendar';
-import { dateOf } from './date-time-parts';
+import { dateOf, typedDate } from './date-time-parts';
 import type { LabelledControlProps } from './field';
 import { Input } from './input';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
@@ -41,7 +41,7 @@ export function DateInput({
         required={required}
         value={value}
         onChange={(event) => {
-          onChange(event.currentTarget.value);
+          onChange(typedDate(event.currentTarget.value));
         }}
       />
       <Popover open={open} onOpenChange={setOpen}>

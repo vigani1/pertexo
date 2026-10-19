@@ -86,6 +86,14 @@ export function sameMonth(left: LocalDate, right: LocalDate): boolean {
 }
 
 /**
+ * A day typed as eight digits, "20261019" → "2026-10-19": a phone's digit
+ * pad has no "-". Any other text comes back as it was typed.
+ */
+export function typedDate(text: string): string {
+  return text.replace(/^(\d{4})(\d{2})(\d{2})$/u, '$1-$2-$3');
+}
+
+/**
  * Typed times people write: "9" → 09:00, "930" → 09:30, "21:5" → 21:05.
  * Undefined when it isn't a time of day.
  */

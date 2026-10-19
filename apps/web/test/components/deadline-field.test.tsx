@@ -7,6 +7,7 @@ import {
   normalizeClock,
   shiftDays,
   shiftMonths,
+  typedDate,
 } from '../../src/components/ui/date-time-parts';
 import { DeadlineField } from '../../src/components/ui/deadline-field';
 
@@ -34,6 +35,13 @@ describe('date and time parts', () => {
     expect(normalizeClock('2359')).toBe('23:59');
     expect(normalizeClock('24:00')).toBeUndefined();
     expect(normalizeClock('noon')).toBeUndefined();
+  });
+
+  it('reads a day typed as digits alone, as on a phone’s digit pad', () => {
+    expect(typedDate('20261019')).toBe('2026-10-19');
+    expect(typedDate('2026101')).toBe('2026101');
+    expect(typedDate('2026-10-19')).toBe('2026-10-19');
+    expect(typedDate('2026-1-19')).toBe('2026-1-19');
   });
 
   it('lays a month out in Monday-first weeks and keeps days valid', () => {
@@ -81,6 +89,17 @@ describe('DeadlineField', () => {
     await event.type(screen.getByLabelText('Deadline time'), '930');
     await event.tab();
     expect(screen.getByTestId('value')).toHaveTextContent('2030-03-04T09:30');
+  });
+
+  it('takes a date typed on a digit pad', async () => {
+    const event = userEvent.setup();
+    render(<Harness />);
+    await event.click(screen.getByRole('button', { name: 'Pick a time' }));
+    await event.type(screen.getByLabelText('Deadline date'), '20300304');
+    await event.type(screen.getByLabelText('Deadline time'), '1830');
+    await event.tab();
+    expect(screen.getByLabelText('Deadline date')).toHaveValue('2030-03-04');
+    expect(screen.getByTestId('value')).toHaveTextContent('2030-03-04T18:30');
   });
 
   it('picks the date from a calendar, from the keyboard too', async () => {
