@@ -66,7 +66,11 @@ export function RunRow({
   share: number;
   nowMs: number;
 }>) {
-  const look = describeRunStatus(run.status, run.handledFailureCount);
+  const look = describeRunStatus(
+    run.status,
+    run.handledFailureCount,
+    run.cancelRequestedAt !== null,
+  );
   const layout = RUN_ROW_LAYOUT[variant];
   const inWorkflow = variant === 'workflow';
   const failure = describeListedFailure(run.failedStep);
@@ -137,6 +141,7 @@ export function RunRow({
       )}
       <RunAdmissionBlockers
         run={run}
+        compact
         className="col-span-2 row-start-4 min-w-0 text-xs text-muted-foreground md:col-start-2 md:col-end-[-1] md:row-start-2"
       />
       <RunDurationBar

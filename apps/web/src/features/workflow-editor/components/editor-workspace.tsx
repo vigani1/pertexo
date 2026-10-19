@@ -140,6 +140,11 @@ export function EditorWorkspace({
   const lastTest = useLastTest();
   const { setMobilePanel } = navigation;
   const addStep = useAddStepFold(editable, setMobilePanel);
+  // An instance with Code steps off doesn't offer them; existing ones explain.
+  const placeable =
+    codeSettings?.enabled === false
+      ? definitions.filter(({ definition }) => definition.key !== 'core.code')
+      : definitions;
   const { placement, quickAdd, addAfter, addToBody } = useStepAdding({
     store,
     definitions,
@@ -254,7 +259,7 @@ export function EditorWorkspace({
       }
       addStep={
         <AddStepLens
-          definitions={definitions}
+          definitions={placeable}
           collapsed={addStep.collapsed}
           searchRef={addStep.searchRef}
           onToggleCollapsed={addStep.toggle}
@@ -345,7 +350,7 @@ export function EditorWorkspace({
           <QuickAddLens
             // It renders in a portal, outside the workspace a pause makes inert.
             request={editable && !paused ? quickAdd.request : undefined}
-            definitions={definitions}
+            definitions={placeable}
             fallbackFocus={canvasRef}
             onPortChange={quickAdd.choosePort}
             onChoose={quickAdd.choose}
